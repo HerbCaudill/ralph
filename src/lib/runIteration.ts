@@ -54,7 +54,7 @@ export const runIteration = (i: number, iterations: number) => {
       process.exit(1)
     }
 
-    if (output.includes("<result>COMPLETE</result>")) {
+    if (output.includes("<promise>COMPLETE</promise>")) {
       console.log(chalk.green("Todo list complete, exiting."))
       process.exit(0)
     }

@@ -133,7 +133,7 @@ Ralph is a thin wrapper around the Claude CLI that:
 2. **Captures output** as streaming JSON events
 3. **Processes events** to display tool usage (Read, Edit, Bash, etc.) in a readable format
 4. **Logs everything** to `events.log` for replay and debugging
-5. **Detects completion** when Claude outputs `<result>COMPLETE</result>`
+5. **Detects completion** when Claude outputs `<promise>COMPLETE</promise>`
 6. **Recursively runs** next iteration until count reached or todo list complete
 
 ## Requirements
