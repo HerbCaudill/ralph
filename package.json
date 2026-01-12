@@ -17,6 +17,9 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "ralph": "tsx src/index.ts",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
     "format": "prettier --write .",
     "prepublishOnly": "pnpm build"
   },
@@ -44,10 +47,12 @@
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.8",
+    "@vitest/ui": "^4.0.17",
     "ink-testing-library": "^4.0.0",
     "prettier": "^3.5.3",
     "tsx": "^4.21.0",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.17"
   },
   "engines": {
     "node": ">=18.0.0"
