@@ -14,6 +14,7 @@ import { copyRalphFilesToWorktree } from "../lib/copyRalphFilesToWorktree.js"
 import { copyRalphFilesFromWorktree } from "../lib/copyRalphFilesFromWorktree.js"
 import { mergeWorktreeToMain } from "../lib/mergeWorktreeToMain.js"
 import { cleanupWorktree } from "../lib/cleanupWorktree.js"
+import { installDependencies } from "../lib/installDependencies.js"
 
 const repoRoot = process.cwd()
 const ralphDir = join(repoRoot, ".ralph")
@@ -133,6 +134,9 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
       // Copy .ralph files to worktree
       copyRalphFilesToWorktree(gitRoot, worktree.path)
+
+      // Install dependencies if package.json exists
+      installDependencies(worktree.path)
 
       // Clear events for this iteration
       setEvents([])
