@@ -10,6 +10,28 @@ Each entry should include:
 
 ---
 
+## 2026-01-12: Improved initialization prompt UI
+
+**What:** Replaced the simple yes/no keyboard input with a nicer selection UI using `ink-select-input`
+
+**Why:** To provide a better, more intuitive user experience when prompted to initialize the ralph project. The new UI shows clear options with descriptive labels and supports arrow key navigation.
+
+**Changes:**
+
+- Added `ink-select-input` dependency to package.json (version 6.2.0)
+- Modified `src/components/IterationRunner.tsx`:
+  - Imported `SelectInput` from `ink-select-input`
+  - Removed the `useInput` hook that was handling raw keyboard input (y/n/Esc keys)
+  - Created `handleInitSelection` function to handle the selection callback
+  - Replaced the simple text prompt with a `SelectInput` component showing two options:
+    - "Yes, initialize the project"
+    - "No, exit"
+- Kept the non-TTY fallback behavior unchanged (shows instruction to run `ralph init`)
+
+**Notes:** All 78 tests pass. The new UI provides a cleaner, more discoverable interface with arrow key navigation and Enter to confirm, replacing the previous single-key (y/n) input method.
+
+---
+
 ## 2026-01-12: Added box border around header
 
 **What:** Added a full border box around the entire header component instead of just a bottom border

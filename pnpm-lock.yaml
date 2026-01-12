@@ -22,6 +22,9 @@ importers:
       ink-gradient:
         specifier: ^3.0.0
         version: 3.0.0(ink@6.6.0(@types/react@19.2.8)(react@19.2.3))
+      ink-select-input:
+        specifier: ^6.2.0
+        version: 6.2.0(ink@6.6.0(@types/react@19.2.8)(react@19.2.3))(react@19.2.3)
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -952,6 +955,16 @@ packages:
     peerDependencies:
       ink: ">=4"
 
+  ink-select-input@6.2.0:
+    resolution:
+      {
+        integrity: sha512-304fZXxkpYxJ9si5lxRCaX01GNlmPBgOZumXXRnPYbHW/iI31cgQynqk2tRypGLOF1cMIwPUzL2LSm6q4I5rQQ==,
+      }
+    engines: { node: ">=18" }
+    peerDependencies:
+      ink: ">=5.0.0"
+      react: ">=18.0.0"
+
   ink-testing-library@4.0.0:
     resolution:
       {
@@ -1408,6 +1421,13 @@ packages:
         integrity: sha512-PSkbLUoxOFRzJYjjxHJt9xro7D+iilgMX/C9lawzVuYiIdcihh9DXmVibBe8lmcFrRi/VzlPjBxbN7rH24q8/Q==,
       }
     engines: { node: ">=14.0.0" }
+
+  to-rotated@1.0.0:
+    resolution:
+      {
+        integrity: sha512-KsEID8AfgUy+pxVRLsWp0VzCa69wxzUDZnzGbyIST/bcgcrMvTYoFBX/QORH4YApoD89EDuUovx4BTdpOn319Q==,
+      }
+    engines: { node: ">=18" }
 
   totalist@3.0.1:
     resolution:
@@ -2025,6 +2045,13 @@ snapshots:
       prop-types: 15.8.1
       strip-ansi: 7.1.2
 
+  ink-select-input@6.2.0(ink@6.6.0(@types/react@19.2.8)(react@19.2.3))(react@19.2.3):
+    dependencies:
+      figures: 6.1.0
+      ink: 6.6.0(@types/react@19.2.8)(react@19.2.3)
+      react: 19.2.3
+      to-rotated: 1.0.0
+
   ink-testing-library@4.0.0(@types/react@19.2.8):
     optionalDependencies:
       "@types/react": 19.2.8
@@ -2283,6 +2310,8 @@ snapshots:
       tinycolor2: 1.6.0
 
   tinyrainbow@3.0.3: {}
+
+  to-rotated@1.0.0: {}
 
   totalist@3.0.1: {}
 

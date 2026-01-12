@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
-import { Box, Text, useApp, useInput } from "ink"
+import { Box, Text, useApp } from "ink"
+import SelectInput from "ink-select-input"
 import { spawn, execSync } from "child_process"
 import { appendFileSync, writeFileSync, mkdirSync, existsSync } from "fs"
 import { join, dirname } from "path"
@@ -26,35 +27,30 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
 
-  useInput(
-    (input, key) => {
-      if (needsInit && !initializing) {
-        if (input === "y" || input === "Y") {
-          setInitializing(true)
-          try {
-            // Run ralph init in a separate process
-            execSync("pnpm ralph init", { stdio: "inherit" })
-            setTimeout(() => {
-              exit()
-              process.exit(0)
-            }, 100)
-          } catch (err) {
-            setError(`Failed to initialize: ${err instanceof Error ? err.message : String(err)}`)
-            setTimeout(() => {
-              exit()
-              process.exit(1)
-            }, 100)
-          }
-        } else if (input === "n" || input === "N" || key.escape) {
-          setTimeout(() => {
-            exit()
-            process.exit(1)
-          }, 100)
-        }
+  const handleInitSelection = (item: { value: string }) => {
+    if (item.value === "yes") {
+      setInitializing(true)
+      try {
+        // Run ralph init in a separate process
+        execSync("pnpm ralph init", { stdio: "inherit" })
+        setTimeout(() => {
+          exit()
+          process.exit(0)
+        }, 100)
+      } catch (err) {
+        setError(`Failed to initialize: ${err instanceof Error ? err.message : String(err)}`)
+        setTimeout(() => {
+          exit()
+          process.exit(1)
+        }, 100)
       }
-    },
-    { isActive: stdinSupportsRawMode && needsInit !== null && !initializing },
-  )
+    } else {
+      setTimeout(() => {
+        exit()
+        process.exit(1)
+      }, 100)
+    }
+  }
 
   useEffect(() => {
     if (currentIteration > totalIterations) {
@@ -190,9 +186,18 @@ export const IterationRunner = ({ totalIterations }: Props) => {
         </Box>
         <Box marginTop={1}>
           {stdinSupportsRawMode ?
-            <Text>
-              Initialize now? <Text color="green">(y)</Text> / <Text color="red">(n)</Text>
-            </Text>
+            <>
+              <Text>Initialize now?</Text>
+              <Box marginTop={1}>
+                <SelectInput
+                  items={[
+                    { label: "Yes, initialize the project", value: "yes" },
+                    { label: "No, exit", value: "no" },
+                  ]}
+                  onSelect={handleInitSelection}
+                />
+              </Box>
+            </>
           : <Text>
               Run <Text color="cyan">ralph init</Text> to initialize the project.
             </Text>
