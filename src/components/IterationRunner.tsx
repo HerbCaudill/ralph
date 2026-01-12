@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp } from "ink"
+import Spinner from "ink-spinner"
 import SelectInput from "ink-select-input"
 import { execSync } from "child_process"
 import { execa, type ResultPromise } from "execa"
@@ -35,6 +36,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   const [error, setError] = useState<string>()
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
   const [initializing, setInitializing] = useState(false)
+  const [isRunning, setIsRunning] = useState(false)
 
   // Use refs for worktree/stash state to avoid triggering effect re-runs
   const currentWorktreeRef = useRef<WorktreeInfo | null>(null)
@@ -179,6 +181,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
         },
       )
       childProcessRef.current = child
+      setIsRunning(true)
 
       let fullOutput = ""
       const worktreeLogFile = join(worktree.path, ".ralph", "events.log")
@@ -203,6 +206,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
       // Handle process completion
       child.then(result => {
         childProcessRef.current = null
+        setIsRunning(false)
         const gitRoot = getGitRoot(repoRoot)
 
         // Handle error exit (but not if terminated by signal during cleanup)
@@ -333,7 +337,15 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   return (
     <Box flexDirection="column">
       <Box borderStyle="round" borderColor="cyan" paddingX={1} marginTop={1} marginBottom={1}>
-        <Text color="cyan">Iteration {currentIteration}</Text>
+        <Text color="cyan">
+          {isRunning && (
+            <>
+              <Spinner type="dots" />
+              {"  "}
+            </>
+          )}
+          Iteration {currentIteration}
+        </Text>
       </Box>
       <EventDisplay events={events} />
     </Box>
