@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
-import { Box, Text, useApp } from "ink"
-import { spawn } from "child_process"
+import { Box, Text, useApp, useInput } from "ink"
+import { spawn, execSync } from "child_process"
 import { appendFileSync, writeFileSync, mkdirSync, existsSync } from "fs"
 import { join, dirname } from "path"
 import { EventDisplay } from "./EventDisplay.js"
@@ -21,6 +21,40 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   const [output, setOutput] = useState("")
   const [error, setError] = useState<string>()
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
+  const [initializing, setInitializing] = useState(false)
+
+  // Only use input handling if stdin supports raw mode
+  const stdinSupportsRawMode = process.stdin.isTTY === true
+
+  useInput(
+    (input, key) => {
+      if (needsInit && !initializing) {
+        if (input === "y" || input === "Y") {
+          setInitializing(true)
+          try {
+            // Run ralph init in a separate process
+            execSync("pnpm ralph init", { stdio: "inherit" })
+            setTimeout(() => {
+              exit()
+              process.exit(0)
+            }, 100)
+          } catch (err) {
+            setError(`Failed to initialize: ${err instanceof Error ? err.message : String(err)}`)
+            setTimeout(() => {
+              exit()
+              process.exit(1)
+            }, 100)
+          }
+        } else if (input === "n" || input === "N" || key.escape) {
+          setTimeout(() => {
+            exit()
+            process.exit(1)
+          }, 100)
+        }
+      }
+    },
+    { isActive: stdinSupportsRawMode && needsInit !== null && !initializing },
+  )
 
   useEffect(() => {
     if (currentIteration > totalIterations) {
@@ -32,10 +66,13 @@ export const IterationRunner = ({ totalIterations }: Props) => {
     const { missing, exists } = checkRequiredFiles()
     if (!exists) {
       setNeedsInit(missing)
-      setTimeout(() => {
-        exit()
-        process.exit(1)
-      }, 100)
+      // If stdin doesn't support raw mode, exit after showing the message
+      if (!stdinSupportsRawMode) {
+        setTimeout(() => {
+          exit()
+          process.exit(1)
+        }, 100)
+      }
       return
     }
 
@@ -133,9 +170,17 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   }, [currentIteration, totalIterations, exit])
 
   if (needsInit) {
+    if (initializing) {
+      return (
+        <Box flexDirection="column" paddingY={1}>
+          <Text color="cyan">Initializing ralph...</Text>
+        </Box>
+      )
+    }
+
     return (
       <Box flexDirection="column" paddingY={1}>
-        <Text color="red">Missing required files in .ralph directory:</Text>
+        <Text color="yellow">Missing required files in .ralph directory:</Text>
         <Box flexDirection="column" paddingLeft={2} paddingY={1}>
           {needsInit.map(file => (
             <Text key={file} dimColor>
@@ -143,9 +188,16 @@ export const IterationRunner = ({ totalIterations }: Props) => {
             </Text>
           ))}
         </Box>
-        <Text>
-          Run <Text color="cyan">ralph init</Text> to initialize the project.
-        </Text>
+        <Box marginTop={1}>
+          {stdinSupportsRawMode ?
+            <Text>
+              Initialize now? <Text color="green">(y)</Text> / <Text color="red">(n)</Text>
+            </Text>
+          : <Text>
+              Run <Text color="cyan">ralph init</Text> to initialize the project.
+            </Text>
+          }
+        </Box>
       </Box>
     )
   }
