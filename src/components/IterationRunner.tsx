@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from "react"
 import { Box, Text, useApp } from "ink"
 import { spawn } from "child_process"
-import { appendFileSync, writeFileSync, mkdirSync } from "fs"
+import { appendFileSync, writeFileSync, mkdirSync, existsSync } from "fs"
 import { join, dirname } from "path"
 import { EventDisplay } from "./EventDisplay.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
+const ralphDir = join(process.cwd(), ".ralph")
+
+const checkRequiredFiles = (): { missing: string[]; exists: boolean } => {
+  const requiredFiles = ["prompt.md", "todo.md", "progress.md"]
+  const missing = requiredFiles.filter(file => !existsSync(join(ralphDir, file)))
+  return { missing, exists: missing.length === 0 }
+}
 
 export const IterationRunner = ({ totalIterations }: Props) => {
   const { exit } = useApp()
@@ -13,10 +20,22 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const [output, setOutput] = useState("")
   const [error, setError] = useState<string>()
+  const [needsInit, setNeedsInit] = useState<string[] | null>(null)
 
   useEffect(() => {
     if (currentIteration > totalIterations) {
       exit()
+      return
+    }
+
+    // Check if required files exist
+    const { missing, exists } = checkRequiredFiles()
+    if (!exists) {
+      setNeedsInit(missing)
+      setTimeout(() => {
+        exit()
+        process.exit(1)
+      }, 100)
       return
     }
 
@@ -112,6 +131,24 @@ export const IterationRunner = ({ totalIterations }: Props) => {
       child.kill()
     }
   }, [currentIteration, totalIterations, exit])
+
+  if (needsInit) {
+    return (
+      <Box flexDirection="column" paddingY={1}>
+        <Text color="red">Missing required files in .ralph directory:</Text>
+        <Box flexDirection="column" paddingLeft={2} paddingY={1}>
+          {needsInit.map(file => (
+            <Text key={file} dimColor>
+              • {file}
+            </Text>
+          ))}
+        </Box>
+        <Text>
+          Run <Text color="cyan">ralph init</Text> to initialize the project.
+        </Text>
+      </Box>
+    )
+  }
 
   if (error) {
     return (
