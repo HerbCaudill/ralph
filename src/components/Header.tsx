@@ -13,7 +13,7 @@ export const Header = ({ claudeVersion, ralphVersion }: Props) => {
       alignItems="center"
     >
       <Gradient colors={["#30A6E4", "#EBC635"]}>
-        <BigText text="Ralph" font="block" />
+        <BigText text="Ralph" font="tiny" />
       </Gradient>
       <Text dimColor>
         @herbcaudill/ralph v{ralphVersion} • Claude Code v{claudeVersion}
