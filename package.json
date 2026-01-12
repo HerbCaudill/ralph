@@ -1,0 +1,46 @@
+{
+  "name": "@herbcaudill/ralph",
+  "version": "0.1.0",
+  "description": "Autonomous AI iteration engine for Claude CLI",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ralph": "./bin/ralph.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "claude",
+    "ai",
+    "automation",
+    "cli",
+    "iteration",
+    "autonomous"
+  ],
+  "author": "Herb Caudill",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HerbCaudill/ralph.git"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
