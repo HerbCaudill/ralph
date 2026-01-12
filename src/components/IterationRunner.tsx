@@ -175,6 +175,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
           stdout: "pipe",
           stderr: "inherit",
           reject: false, // Don't throw on non-zero exit
+          detached: true, // Run in new process group to prevent SIGINT propagation
         },
       )
       childProcessRef.current = child

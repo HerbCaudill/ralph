@@ -15,4 +15,6 @@ When you complete a task, before committing:
 - Update the todo list by checking off the completed task and moving it to the "Done" section
 - Append your progress to the @.ralph/progress.md file. Use this to leave a note for the next person working in the codebase
 
-Make one git commit for this task. If, while implementing the task, you notice the todo list is complete, output <promise>COMPLETE</promise> and exit.
+Make one git commit for this task and push to origin. Then run `bump_version patch` or `bump_version minor` as appropriate.
+
+If, while implementing the task, you notice the todo list is complete, output <promise>COMPLETE</promise> and exit.
