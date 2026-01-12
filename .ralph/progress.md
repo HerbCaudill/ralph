@@ -60,3 +60,20 @@ Each entry should include:
 - Updated existing tests in `eventToBlocks.test.ts` to reflect the new merging behavior
 
 **Notes:** The fix works at two levels: (1) merging consecutive text blocks in eventToBlocks, and (2) using a Box wrapper in StreamingText to keep formatted text segments inline. All 77 tests pass.
+
+---
+
+## 2026-01-12: Added gradient color to header text
+
+**What:** Implemented ink-gradient for the "Ralph" header text using custom colors from blue (#30A6E4) to yellow (#EBC635)
+
+**Why:** Visual enhancement to make the header more distinctive and polished
+
+**Changes:**
+
+- Added `ink-gradient` dependency to package.json
+- Updated `src/components/Header.tsx` to import and use the Gradient component
+- Wrapped the BigText component with Gradient, passing colors prop with the specified hex colors
+- Removed the old colors prop from BigText (which was cyan/magenta)
+
+**Notes:** All 78 tests pass. The gradient provides a smooth color transition from blue to yellow across the "Ralph" title text.

@@ -19,6 +19,9 @@ importers:
       ink-big-text:
         specifier: ^2.0.0
         version: 2.0.0(ink@6.6.0(@types/react@19.2.8)(react@19.2.3))(react@19.2.3)
+      ink-gradient:
+        specifier: ^3.0.0
+        version: 3.0.0(ink@6.6.0(@types/react@19.2.8)(react@19.2.3))
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -542,6 +545,12 @@ packages:
         integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==,
       }
 
+  "@types/gradient-string@1.1.6":
+    resolution:
+      {
+        integrity: sha512-LkaYxluY4G5wR1M4AKQUal2q61Di1yVVCw42ImFTuaIoQVgmV0WP1xUaLB8zwb47mp82vWTpePI9JmrjEnJ7nQ==,
+      }
+
   "@types/node@24.10.7":
     resolution:
       {
@@ -552,6 +561,12 @@ packages:
     resolution:
       {
         integrity: sha512-3MbSL37jEchWZz2p2mjntRZtPt837ij10ApxKfgmXCTuHWagYg7iA5bqPw6C8BMPfwidlvfPI/fxOc42HLhcyg==,
+      }
+
+  "@types/tinycolor2@1.4.6":
+    resolution:
+      {
+        integrity: sha512-iEN8J0BoMnsWBqjVbWH/c0G0Hh7O21lpR2/+PrvAVgWdzL7eexIFm4JN/Wn10PTcmNdtS6U67r499mlWMXOxNw==,
       }
 
   "@vitest/expect@4.0.17":
@@ -626,6 +641,13 @@ packages:
       }
     engines: { node: ">=12" }
 
+  ansi-styles@4.3.0:
+    resolution:
+      {
+        integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==,
+      }
+    engines: { node: ">=8" }
+
   ansi-styles@6.2.3:
     resolution:
       {
@@ -662,6 +684,13 @@ packages:
       }
     engines: { node: ">=18" }
 
+  chalk@4.1.2:
+    resolution:
+      {
+        integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==,
+      }
+    engines: { node: ">=10" }
+
   chalk@5.6.2:
     resolution:
       {
@@ -696,6 +725,19 @@ packages:
         integrity: sha512-xxodCmBen3iy2i0WtAK8FlFNrRzjUqjRsMfho58xT/wvZU1YTM3fCnRjcy1gJPMepaRlgm/0e6w8SpWHpn3/cA==,
       }
     engines: { node: ^12.20.0 || ^14.13.1 || >=16.0.0 }
+
+  color-convert@2.0.1:
+    resolution:
+      {
+        integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==,
+      }
+    engines: { node: ">=7.0.0" }
+
+  color-name@1.1.4:
+    resolution:
+      {
+        integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==,
+      }
 
   commander@14.0.2:
     resolution:
@@ -856,6 +898,13 @@ packages:
         integrity: sha512-1VKTZJCwBrvbd+Wn3AOgQP/2Av+TfTCOlE4AcRJE72W1ksZXbAx8PPBR9RzgTeSPzlPMHrbANMH3LbltH73wxQ==,
       }
 
+  gradient-string@2.0.2:
+    resolution:
+      {
+        integrity: sha512-rEDCuqUQ4tbD78TpzsMtt5OIf0cBCSDWSJtUDaF6JsAh+k0v9r++NzxNEG87oDZx9ZwGhD8DaezR2L/yrw0Jdw==,
+      }
+    engines: { node: ">=10" }
+
   has-flag@4.0.0:
     resolution:
       {
@@ -893,6 +942,15 @@ packages:
     peerDependencies:
       ink: ">=4"
       react: ">=18"
+
+  ink-gradient@3.0.0:
+    resolution:
+      {
+        integrity: sha512-OVyPBovBxE1tFcBhSamb+P1puqDP6pG3xFe2W9NiLgwUZd9RbcjBeR7twLbliUT9navrUstEf1ZcPKKvx71BsQ==,
+      }
+    engines: { node: ">=16" }
+    peerDependencies:
+      ink: ">=4"
 
   ink-testing-library@4.0.0:
     resolution:
@@ -1298,6 +1356,13 @@ packages:
       }
     engines: { node: ">=18" }
 
+  supports-color@7.2.0:
+    resolution:
+      {
+        integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==,
+      }
+    engines: { node: ">=8" }
+
   supports-color@8.1.1:
     resolution:
       {
@@ -1309,6 +1374,12 @@ packages:
     resolution:
       {
         integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==,
+      }
+
+  tinycolor2@1.6.0:
+    resolution:
+      {
+        integrity: sha512-XPaBkWQJdsf3pLKJV9p4qN/S+fm2Oj8AIPo1BTUhg5oxkvm9+SVEGFdhyOz7tTdUTfvxMiAs4sp6/eZO2Ew+pw==,
       }
 
   tinyexec@1.0.2:
@@ -1324,6 +1395,12 @@ packages:
         integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==,
       }
     engines: { node: ">=12.0.0" }
+
+  tinygradient@1.1.5:
+    resolution:
+      {
+        integrity: sha512-8nIfc2vgQ4TeLnk2lFj4tRLvvJwEfQuabdsmvDdQPT0xlk9TaNtpGd6nNRxXoK6vQhN6RSzj+Cnp5tTQmpxmbw==,
+      }
 
   tinyrainbow@3.0.3:
     resolution:
@@ -1699,6 +1776,10 @@ snapshots:
 
   "@types/estree@1.0.8": {}
 
+  "@types/gradient-string@1.1.6":
+    dependencies:
+      "@types/tinycolor2": 1.4.6
+
   "@types/node@24.10.7":
     dependencies:
       undici-types: 7.16.0
@@ -1706,6 +1787,8 @@ snapshots:
   "@types/react@19.2.8":
     dependencies:
       csstype: 3.2.3
+
+  "@types/tinycolor2@1.4.6": {}
 
   "@vitest/expect@4.0.17":
     dependencies:
@@ -1763,6 +1846,10 @@ snapshots:
 
   ansi-regex@6.2.2: {}
 
+  ansi-styles@4.3.0:
+    dependencies:
+      color-convert: 2.0.1
+
   ansi-styles@6.2.3: {}
 
   assertion-error@2.0.1: {}
@@ -1775,6 +1862,11 @@ snapshots:
       window-size: 1.1.1
 
   chai@6.2.2: {}
+
+  chalk@4.1.2:
+    dependencies:
+      ansi-styles: 4.3.0
+      supports-color: 7.2.0
 
   chalk@5.6.2: {}
 
@@ -1792,6 +1884,12 @@ snapshots:
   code-excerpt@4.0.0:
     dependencies:
       convert-to-spaces: 2.0.1
+
+  color-convert@2.0.1:
+    dependencies:
+      color-name: 1.1.4
+
+  color-name@1.1.4: {}
 
   commander@14.0.2: {}
 
@@ -1897,6 +1995,11 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
+  gradient-string@2.0.2:
+    dependencies:
+      chalk: 4.1.2
+      tinygradient: 1.1.5
+
   has-flag@4.0.0: {}
 
   hasown@2.0.2:
@@ -1913,6 +2016,14 @@ snapshots:
       ink: 6.6.0(@types/react@19.2.8)(react@19.2.3)
       prop-types: 15.8.1
       react: 19.2.3
+
+  ink-gradient@3.0.0(ink@6.6.0(@types/react@19.2.8)(react@19.2.3)):
+    dependencies:
+      "@types/gradient-string": 1.1.6
+      gradient-string: 2.0.2
+      ink: 6.6.0(@types/react@19.2.8)(react@19.2.3)
+      prop-types: 15.8.1
+      strip-ansi: 7.1.2
 
   ink-testing-library@4.0.0(@types/react@19.2.8):
     optionalDependencies:
@@ -2147,11 +2258,17 @@ snapshots:
 
   strip-final-newline@4.0.0: {}
 
+  supports-color@7.2.0:
+    dependencies:
+      has-flag: 4.0.0
+
   supports-color@8.1.1:
     dependencies:
       has-flag: 4.0.0
 
   tinybench@2.9.0: {}
+
+  tinycolor2@1.6.0: {}
 
   tinyexec@1.0.2: {}
 
@@ -2159,6 +2276,11 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
+
+  tinygradient@1.1.5:
+    dependencies:
+      "@types/tinycolor2": 1.4.6
+      tinycolor2: 1.6.0
 
   tinyrainbow@3.0.3: {}
 
