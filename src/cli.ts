@@ -3,8 +3,9 @@ import { Command } from "commander"
 import { existsSync, mkdirSync, copyFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
-import { replayLog } from "./lib/replayLog.js"
-import { runIteration } from "./lib/runIteration.js"
+import { render } from "ink"
+import React from "react"
+import { App } from "./components/App.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -15,14 +16,14 @@ export const program = new Command()
   .argument("[iterations]", "number of iterations to run", (val) => parseInt(val, 10), 10)
   .option("--replay [file]", "replay events from log file")
   .action((iterations, options) => {
-    if (options.replay !== undefined) {
-      const replayFile = typeof options.replay === "string"
-        ? options.replay
+    const replayFile =
+      options.replay !== undefined ?
+        typeof options.replay === "string" ?
+          options.replay
         : join(process.cwd(), ".ralph", "events.log")
-      replayLog(replayFile)
-    } else {
-      runIteration(1, iterations)
-    }
+      : undefined
+
+    render(React.createElement(App, { iterations, replayFile }))
   })
 
 program
