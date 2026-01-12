@@ -136,30 +136,6 @@ Ralph is a thin wrapper around the Claude CLI that:
 5. **Detects completion** when Claude outputs `<result>COMPLETE</result>`
 6. **Recursively runs** next iteration until count reached or todo list complete
 
-### Event processing
-
-Ralph parses Claude's tool usage and displays it concisely:
-
-```
-  Read src/auth.ts
-  Edit src/auth.ts
-  $ pnpm test
-  TodoWrite
-      [x] Add user authentication
-      [ ] Fix login form validation
-```
-
-This makes it easy to follow Claude's progress without overwhelming detail.
-
-### Replay mode
-
-Replay recorded sessions for debugging or review:
-
-```bash
-ralph --replay                    # Replay default log
-ralph --replay .ralph/events.log  # Replay specific log
-```
-
 ## Requirements
 
 - **Claude CLI** must be installed and configured
@@ -186,32 +162,9 @@ claude auth
 
 - **Start with small iteration counts** (3-5) to verify the workflow before running longer sessions
 - **Review progress.md** between runs to understand what changed
-- **Use replay mode** to debug issues or review past sessions
 - **Customize prompt.md** for your project's specific needs (build commands, test frameworks, etc.)
 - **Break down complex tasks** into smaller subtasks in todo.md
 - **Let Claude prioritize** by not ordering tasks strictly - Claude will choose what makes sense
-
-## Example workflow
-
-```bash
-# Initialize ralph
-npx ralph init
-
-# Edit .ralph/prompt.md to match your project
-# Add tasks to .ralph/todo.md
-
-# Run a short session to test
-npx ralph 3
-
-# Check progress
-cat .ralph/progress.md
-
-# Run a longer session
-npx ralph 10
-
-# Replay the session
-npx ralph --replay
-```
 
 ## License
 
