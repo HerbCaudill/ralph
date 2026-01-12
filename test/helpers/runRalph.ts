@@ -1,6 +1,6 @@
-import { execa } from "execa"
+import { spawn } from "child_process"
 import { join } from "path"
-import { writeFileSync, mkdirSync, existsSync } from "fs"
+import { createWriteStream, mkdirSync, existsSync } from "fs"
 
 export type RunRalphOptions = {
   args?: string[]
@@ -20,80 +20,121 @@ export type RunRalphResult = {
 }
 
 /**
- * Runs the ralph binary for E2E testing and saves output to .test-results
+ * Runs the ralph binary for E2E testing and streams output to .test-results
  */
 export const runRalph = async (options: RunRalphOptions = {}): Promise<RunRalphResult> => {
   const { args = [], cwd = process.cwd(), timeout = 5000, env = {}, input, testName } = options
 
   const ralphBin = join(__dirname, "../../bin/ralph.js")
 
-  let result: Awaited<ReturnType<typeof execa>>
-  let timedOut = false
+  return new Promise((resolve, reject) => {
+    let outputFile: string | undefined
+    let fileStream: ReturnType<typeof createWriteStream> | undefined
 
-  try {
-    result = await execa("node", [ralphBin, ...args], {
-      cwd,
-      env: { ...process.env, ...env, CI: "true" }, // Force non-TTY mode
-      input,
-      timeout,
-      reject: false, // Don't throw on non-zero exit
-      all: true, // Combine stdout and stderr
-    })
-  } catch (error: unknown) {
-    // Handle timeout
-    if (error && typeof error === "object" && "timedOut" in error) {
-      timedOut = true
-      result = error as Awaited<ReturnType<typeof execa>>
-    } else {
-      throw error
-    }
-  }
+    // Set up output file if testName provided
+    if (testName) {
+      const resultsDir = join(__dirname, "../../.test-results")
+      if (!existsSync(resultsDir)) {
+        mkdirSync(resultsDir, { recursive: true })
+      }
 
-  const exitCode = result.exitCode ?? -1
-  const stdout = result.stdout ?? ""
-  const stderr = result.stderr ?? ""
+      // Sanitize test name for filename
+      const safeTestName = testName.replace(/[^a-z0-9]/gi, "-").toLowerCase()
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+      const filename = `${safeTestName}-${timestamp}.txt`
+      outputFile = join(resultsDir, filename)
 
-  // Save output to file if testName provided
-  let outputFile: string | undefined
-  if (testName) {
-    const resultsDir = join(__dirname, "../../.test-results")
-    if (!existsSync(resultsDir)) {
-      mkdirSync(resultsDir, { recursive: true })
-    }
+      fileStream = createWriteStream(outputFile, { flags: "w" })
 
-    // Sanitize test name for filename
-    const safeTestName = testName.replace(/[^a-z0-9]/gi, "-").toLowerCase()
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
-    const filename = `${safeTestName}-${timestamp}.txt`
-    outputFile = join(resultsDir, filename)
-
-    const output = `
-=== Ralph E2E Test Output ===
+      // Write header
+      fileStream.write(`=== Ralph E2E Test Output ===
 Test: ${testName}
 Args: ${args.join(" ")}
 CWD: ${cwd}
+Started: ${new Date().toISOString()}
+
+=== STREAMING OUTPUT ===
+
+`)
+    }
+
+    const proc = spawn("node", [ralphBin, ...args], {
+      cwd,
+      env: { ...process.env, ...env, CI: "true" }, // Force non-TTY mode
+      stdio: ["pipe", "pipe", "pipe"],
+    })
+
+    let stdout = ""
+    let stderr = ""
+    let timedOut = false
+    let timeoutHandle: NodeJS.Timeout | undefined
+
+    // Set up timeout
+    if (timeout) {
+      timeoutHandle = setTimeout(() => {
+        timedOut = true
+        proc.kill("SIGTERM")
+      }, timeout)
+    }
+
+    // Capture and stream stdout
+    proc.stdout?.on("data", (data: Buffer) => {
+      const text = data.toString()
+      stdout += text
+      fileStream?.write(text)
+      // Also write to console for visibility during test runs
+      process.stdout.write(text)
+    })
+
+    // Capture and stream stderr
+    proc.stderr?.on("data", (data: Buffer) => {
+      const text = data.toString()
+      stderr += text
+      fileStream?.write(`[STDERR] ${text}`)
+      process.stderr.write(text)
+    })
+
+    // Handle stdin input
+    if (input && proc.stdin) {
+      proc.stdin.write(input)
+      proc.stdin.end()
+    }
+
+    // Handle process exit
+    proc.on("close", code => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+
+      const exitCode = code ?? -1
+
+      // Write footer to file
+      if (fileStream) {
+        fileStream.write(`
+
+=== TEST COMPLETE ===
 Exit Code: ${exitCode}
 Timed Out: ${timedOut}
-Timestamp: ${new Date().toISOString()}
+Finished: ${new Date().toISOString()}
+`)
+        fileStream.end()
+      }
 
-=== STDOUT ===
-${stdout}
+      resolve({
+        exitCode,
+        stdout,
+        stderr,
+        timedOut,
+        outputFile,
+      })
+    })
 
-=== STDERR ===
-${stderr}
-
-=== COMBINED OUTPUT ===
-${result.all ?? ""}
-`.trim()
-
-    writeFileSync(outputFile, output, "utf-8")
-  }
-
-  return {
-    exitCode,
-    stdout,
-    stderr,
-    timedOut,
-    outputFile,
-  }
+    proc.on("error", error => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+      fileStream?.end()
+      reject(error)
+    })
+  })
 }
