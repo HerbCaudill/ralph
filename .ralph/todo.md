@@ -1,6 +1,5 @@
 ### To do
 
-- [ ] Add a border below the header
 - [ ] Use a nicer selection UI for the yes/no init question
 - [ ] For the header text, use ink-gradient from #30A6E4 to #EBC635
 - [ ] In the header show `@herbcaudill/ralph vxxx` on the same line as the claude code version
