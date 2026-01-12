@@ -10,9 +10,10 @@ import { WorktreeInfo, execOptions } from "./types.js"
  */
 export function createWorktree(repoRoot: string): WorktreeInfo {
   const guid = randomUUID()
-  const branch = `ralph-${guid}`
+  const shortId = guid.slice(-6)
+  const branch = `ralph-${shortId}`
   const worktreesDir = join(tmpdir(), "ralph-worktrees")
-  const worktreePath = join(worktreesDir, guid)
+  const worktreePath = join(worktreesDir, shortId)
 
   try {
     // Ensure worktrees directory exists
