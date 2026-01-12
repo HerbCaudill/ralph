@@ -65,8 +65,14 @@ export const initRalph = () => {
   }
 
   console.log(chalk.green("\n✓ Ralph initialized successfully!"))
-  console.log(chalk.dim("\nNext steps:"))
-  console.log(chalk.dim("  1. Customize .ralph/prompt.md with your project's workflow"))
-  console.log(chalk.dim("  2. Add tasks to .ralph/todo.md"))
-  console.log(chalk.dim("  3. Run: ralph\n"))
+  console.log(chalk.bold("\nBefore running ralph, you need to:"))
+  console.log(
+    chalk.cyan("  1. Edit .ralph/prompt.md") +
+      chalk.dim(" - Add your project context and workflow instructions"),
+  )
+  console.log(
+    chalk.cyan("  2. Edit .ralph/todo.md") +
+      chalk.dim(" - Add the tasks you want Ralph to work on"),
+  )
+  console.log(chalk.bold("\nThen run: ") + chalk.cyan("ralph") + "\n")
 }
