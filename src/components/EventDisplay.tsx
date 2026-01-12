@@ -8,19 +8,17 @@ export const EventDisplay = ({ events }: Props) => {
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([])
 
   useEffect(() => {
-    // Deduplicate events by message ID, keeping only the latest version
+    // Filter to only show complete assistant messages, not streaming events
+    // streaming events are incomplete and cause duplicate/disappearing content
+    const assistantEvents = events.filter(event => event.type === "assistant")
+
+    // Deduplicate by message ID, keeping only the latest version
     const eventsByMessageId = new Map<string, Record<string, unknown>>()
-    for (const event of events) {
-      if (event.type === "assistant") {
-        const message = event.message as Record<string, unknown> | undefined
-        const messageId = message?.id as string | undefined
-        if (messageId) {
-          eventsByMessageId.set(messageId, event)
-        }
-      } else {
-        // Non-assistant events don't have message IDs, process them as-is
-        // Use a unique key based on array index
-        eventsByMessageId.set(`event-${events.indexOf(event)}`, event)
+    for (const event of assistantEvents) {
+      const message = event.message as Record<string, unknown> | undefined
+      const messageId = message?.id as string | undefined
+      if (messageId) {
+        eventsByMessageId.set(messageId, event)
       }
     }
 

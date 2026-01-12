@@ -4,6 +4,34 @@ import { describe, it, expect, vi } from "vitest"
 import { EventDisplay } from "./EventDisplay.js"
 
 describe("EventDisplay", () => {
+  it("filters out stream_event types and only shows assistant messages", async () => {
+    const events = [
+      {
+        type: "stream_event",
+        event: {
+          type: "content_block_delta",
+          delta: { type: "text_delta", text: "Streaming..." },
+        },
+      },
+      {
+        type: "assistant",
+        message: {
+          id: "msg_123",
+          content: [{ type: "text", text: "Complete message" }],
+        },
+      },
+    ]
+
+    const { lastFrame } = render(<EventDisplay events={events} />)
+
+    await vi.waitFor(() => {
+      const output = lastFrame() ?? ""
+      expect(output).toContain("Complete message")
+      // Should not show streaming events
+      expect(output).not.toContain("Streaming...")
+    })
+  })
+
   it("deduplicates events with the same message ID", async () => {
     const events = [
       {
