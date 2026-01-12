@@ -5,7 +5,13 @@ import Gradient from "ink-gradient"
 
 export const Header = ({ claudeVersion, ralphVersion }: Props) => {
   return (
-    <Box flexDirection="column" marginBottom={1} borderStyle="single" padding={1}>
+    <Box
+      flexDirection="column"
+      marginBottom={1}
+      borderStyle="single"
+      padding={1}
+      alignItems="center"
+    >
       <Gradient colors={["#30A6E4", "#EBC635"]}>
         <BigText text="Ralph" font="block" />
       </Gradient>
