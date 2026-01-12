@@ -1,5 +1,4 @@
 import React from "react"
-import { Box, Text } from "ink"
 import { IterationRunner } from "./IterationRunner.js"
 import { ReplayLog } from "./ReplayLog.js"
 
