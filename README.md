@@ -5,6 +5,7 @@ Autonomous AI iteration engine for Claude CLI. Ralph runs Claude in a loop to sy
 ## Overview
 
 Ralph spawns multiple Claude CLI sessions that:
+
 1. Check project health (build, tests)
 2. Select and work on the highest-priority task
 3. Validate changes with tests
@@ -24,15 +25,16 @@ Or use directly with npx:
 npx @herbcaudill/ralph
 ```
 
-## Quick Start
+## Quick start
 
 1. **Initialize ralph in your project:**
 
 ```bash
-npx ralph init
+npx @herbcaudill/ralph init
 ```
 
 This creates a `.ralph/` directory with template files:
+
 - `prompt.md` - Instructions for Claude during each iteration
 - `todo.md` - Your task list
 - `progress.md` - Progress log (auto-updated)
@@ -67,22 +69,23 @@ npx ralph 5        # Run 5 iterations
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `ralph` | Run 10 iterations (default) |
-| `ralph <n>` | Run specified number of iterations |
-| `ralph init` | Initialize .ralph directory with templates |
-| `ralph --replay` | Replay events from `.ralph/events.log` |
-| `ralph --replay <file>` | Replay events from custom log file |
-| `ralph --help` | Show help |
+| Command                 | Description                                |
+| ----------------------- | ------------------------------------------ |
+| `ralph`                 | Run 10 iterations (default)                |
+| `ralph <n>`             | Run specified number of iterations         |
+| `ralph init`            | Initialize .ralph directory with templates |
+| `ralph --replay`        | Replay events from `.ralph/events.log`     |
+| `ralph --replay <file>` | Replay events from custom log file         |
+| `ralph --help`          | Show help                                  |
 
 ## Configuration
 
-### Template Files
+### Template files
 
 **`.ralph/prompt.md`**
 
 Instructions for Claude's workflow. Customize this for your project:
+
 - Build/typecheck commands
 - Test commands
 - Project-specific conventions
@@ -91,6 +94,7 @@ Instructions for Claude's workflow. Customize this for your project:
 **`.ralph/todo.md`**
 
 Your task list with priority and completion status. Tasks can be:
+
 - Simple one-liners: `- [ ] Fix header alignment`
 - Detailed descriptions with acceptance criteria
 - Broken down into subtasks
@@ -98,6 +102,7 @@ Your task list with priority and completion status. Tasks can be:
 **`.ralph/progress.md`**
 
 Auto-updated log of completed work. Each entry includes:
+
 - What was changed
 - Why it was changed
 - Commit information
@@ -106,7 +111,7 @@ Auto-updated log of completed work. Each entry includes:
 
 Machine-readable log of all Claude interactions (JSON). Use for debugging or replay.
 
-### Customizing the Prompt
+### Customizing the prompt
 
 The default prompt template checks for build errors and tests, but you should customize it for your project:
 
@@ -120,7 +125,7 @@ If no errors, work on the highest-priority task from @.ralph/todo.md.
 
 Replace with your actual build/test commands (e.g., `pnpm build`, `cargo test`, `pytest`, etc.).
 
-## How It Works
+## How it works
 
 Ralph is a thin wrapper around the Claude CLI that:
 
@@ -131,7 +136,7 @@ Ralph is a thin wrapper around the Claude CLI that:
 5. **Detects completion** when Claude outputs `<result>COMPLETE</result>`
 6. **Recursively runs** next iteration until count reached or todo list complete
 
-### Event Processing
+### Event processing
 
 Ralph parses Claude's tool usage and displays it concisely:
 
@@ -146,7 +151,7 @@ Ralph parses Claude's tool usage and displays it concisely:
 
 This makes it easy to follow Claude's progress without overwhelming detail.
 
-### Replay Mode
+### Replay mode
 
 Replay recorded sessions for debugging or review:
 
@@ -186,7 +191,7 @@ claude auth
 - **Break down complex tasks** into smaller subtasks in todo.md
 - **Let Claude prioritize** by not ordering tasks strictly - Claude will choose what makes sense
 
-## Example Workflow
+## Example workflow
 
 ```bash
 # Initialize ralph
