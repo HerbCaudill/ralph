@@ -7,7 +7,7 @@ import { ReplayLog } from "./ReplayLog.js"
 export const App = ({ iterations, replayFile, claudeVersion, ralphVersion }: Props) => {
   if (replayFile) {
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column" marginX={1}>
         <Header claudeVersion={claudeVersion} ralphVersion={ralphVersion} />
         <ReplayLog filePath={replayFile} />
       </Box>
@@ -15,7 +15,7 @@ export const App = ({ iterations, replayFile, claudeVersion, ralphVersion }: Pro
   }
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" marginX={1}>
       <Header claudeVersion={claudeVersion} ralphVersion={ralphVersion} />
       <IterationRunner totalIterations={iterations} />
     </Box>
