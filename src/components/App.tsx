@@ -4,11 +4,11 @@ import { Header } from "./Header.js"
 import { IterationRunner } from "./IterationRunner.js"
 import { ReplayLog } from "./ReplayLog.js"
 
-export const App = ({ iterations, replayFile, claudeVersion }: Props) => {
+export const App = ({ iterations, replayFile, claudeVersion, ralphVersion }: Props) => {
   if (replayFile) {
     return (
       <Box flexDirection="column">
-        <Header version={claudeVersion} />
+        <Header claudeVersion={claudeVersion} ralphVersion={ralphVersion} />
         <ReplayLog filePath={replayFile} />
       </Box>
     )
@@ -16,7 +16,7 @@ export const App = ({ iterations, replayFile, claudeVersion }: Props) => {
 
   return (
     <Box flexDirection="column">
-      <Header version={claudeVersion} />
+      <Header claudeVersion={claudeVersion} ralphVersion={ralphVersion} />
       <IterationRunner totalIterations={iterations} />
     </Box>
   )
@@ -26,4 +26,5 @@ type Props = {
   iterations: number
   replayFile?: string
   claudeVersion: string
+  ralphVersion: string
 }

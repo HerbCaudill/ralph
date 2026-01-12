@@ -10,6 +10,25 @@ Each entry should include:
 
 ---
 
+## 2026-01-12: Display ralph version alongside Claude Code version in header
+
+**What:** Updated header to show both ralph version and Claude Code version on the same line
+
+**Why:** To provide users with clear visibility of both tool versions at a glance
+
+**Changes:**
+
+- Modified `src/cli.ts` to import version from `package.json` using JSON import assertions
+- Updated `.version()` call in Commander to use `packageJson.version` instead of hardcoded string
+- Added `ralphVersion` parameter to App component and passed it through to Header
+- Updated Header component to accept both `claudeVersion` and `ralphVersion` props
+- Changed header display format to: `@herbcaudill/ralph v{ralphVersion} • Claude Code v{claudeVersion}`
+- Updated all Header tests to use the new two-parameter API
+
+**Notes:** All 78 tests pass. The version is now dynamically loaded from package.json, ensuring it stays in sync with the actual published version.
+
+---
+
 ## 2026-01-12: Fixed Claude Code version display
 
 **What:** Implemented automatic Claude version detection by calling `claude --version` at startup

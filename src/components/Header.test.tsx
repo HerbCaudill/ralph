@@ -5,7 +5,7 @@ import { Header } from "./Header.js"
 
 describe("Header", () => {
   it("renders the title", () => {
-    const { lastFrame } = render(<Header version="1.0.0" />)
+    const { lastFrame } = render(<Header claudeVersion="1.0.0" ralphVersion="0.2.0" />)
     const output = lastFrame()
     // BigText renders ASCII art with ANSI codes
     // Check for box-drawing characters or unicode that appear in the art
@@ -13,15 +13,17 @@ describe("Header", () => {
     expect(output).toContain("Claude Code")
   })
 
-  it("displays the version number", () => {
-    const { lastFrame } = render(<Header version="2.5.3" />)
+  it("displays both version numbers on the same line", () => {
+    const { lastFrame } = render(<Header claudeVersion="2.5.3" ralphVersion="0.2.0" />)
     const output = lastFrame()
-    expect(output).toContain("v2.5.3")
+    expect(output).toContain("@herbcaudill/ralph v0.2.0")
+    expect(output).toContain("Claude Code v2.5.3")
+    expect(output).toContain("•")
   })
 
-  it("displays Claude Code prefix with version", () => {
-    const { lastFrame } = render(<Header version="1.0.0" />)
+  it("displays versions with correct formatting", () => {
+    const { lastFrame } = render(<Header claudeVersion="1.0.0" ralphVersion="0.1.0" />)
     const output = lastFrame()
-    expect(output).toContain("Claude Code v1.0.0")
+    expect(output).toContain("@herbcaudill/ralph v0.1.0 • Claude Code v1.0.0")
   })
 })
