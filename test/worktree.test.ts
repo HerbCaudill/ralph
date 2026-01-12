@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { execSync } from "child_process"
 import { mkdirSync, writeFileSync, existsSync, rmSync, realpathSync } from "fs"
-import { join } from "path"
+import { join, basename, dirname } from "path"
 import { tmpdir } from "os"
 import { getGitRoot } from "../src/lib/getGitRoot.js"
 import { stashChanges } from "../src/lib/stashChanges.js"
@@ -41,15 +41,15 @@ describe("worktree utilities", () => {
   })
 
   afterEach(() => {
+    // Clean up any leftover worktrees (sibling directory)
+    const worktreesDir = join(dirname(testRepo), `${basename(testRepo)}-worktrees`)
+    if (existsSync(worktreesDir)) {
+      rmSync(worktreesDir, { recursive: true, force: true })
+    }
+
     // Clean up test repo
     if (existsSync(testRepo)) {
       rmSync(testRepo, { recursive: true, force: true })
-    }
-
-    // Clean up any leftover worktrees
-    const worktreesDir = join(tmpdir(), "ralph-worktrees")
-    if (existsSync(worktreesDir)) {
-      rmSync(worktreesDir, { recursive: true, force: true })
     }
   })
 
@@ -103,7 +103,8 @@ describe("worktree utilities", () => {
     it("creates a new worktree with unique branch", () => {
       const worktree = createWorktree(testRepo)
 
-      expect(worktree.path).toContain("ralph-worktrees")
+      // Worktree should be in sibling directory named <repo>-worktrees
+      expect(worktree.path).toContain(`${basename(testRepo)}-worktrees`)
       expect(worktree.branch).toMatch(/^ralph-[0-9a-f-]+$/)
       expect(worktree.guid).toMatch(/^[0-9a-f-]+$/)
       expect(existsSync(worktree.path)).toBe(true)

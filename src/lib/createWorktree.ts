@@ -1,9 +1,8 @@
 import { execSync } from "child_process"
 import { mkdirSync } from "fs"
-import { tmpdir } from "os"
 import { join } from "path"
 import { randomUUID } from "crypto"
-import { WorktreeInfo, execOptions } from "./types.js"
+import { WorktreeInfo, execOptions, getWorktreesDir } from "./types.js"
 
 /**
  * Create a new git worktree for an iteration
@@ -12,7 +11,7 @@ export function createWorktree(repoRoot: string): WorktreeInfo {
   const guid = randomUUID()
   const shortId = guid.slice(-6)
   const branch = `ralph-${shortId}`
-  const worktreesDir = join(tmpdir(), "ralph-worktrees")
+  const worktreesDir = getWorktreesDir(repoRoot)
   const worktreePath = join(worktreesDir, shortId)
 
   try {
