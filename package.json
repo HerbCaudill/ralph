@@ -15,8 +15,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch",
-    "dev": "tsx src/index.ts",
+    "dev": "tsc --watch",
+    "ralph": "tsx src/index.ts",
     "prepublishOnly": "pnpm build"
   },
   "keywords": [
