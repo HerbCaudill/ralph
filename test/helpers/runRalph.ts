@@ -82,8 +82,6 @@ Started: ${new Date().toISOString()}
       const text = data.toString()
       stdout += text
       fileStream?.write(text)
-      // Also write to console for visibility during test runs
-      process.stdout.write(text)
     })
 
     // Capture and stream stderr
@@ -91,7 +89,6 @@ Started: ${new Date().toISOString()}
       const text = data.toString()
       stderr += text
       fileStream?.write(`[STDERR] ${text}`)
-      process.stderr.write(text)
     })
 
     // Handle stdin input
