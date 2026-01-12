@@ -99,13 +99,20 @@ export const EventDisplay = ({ events }: Props) => {
 
   return (
     <Box flexDirection="column">
-      {contentBlocks.map((block, i) =>
-        block.type === "text" ? (
+      {contentBlocks.map((block, i) => {
+        const prevBlock = i > 0 ? contentBlocks[i - 1] : null
+        const needsTopMargin = block.type === "tool" && prevBlock?.type === "text"
+        const needsBottomMargin = block.type === "tool" &&
+          (i === contentBlocks.length - 1 || contentBlocks[i + 1]?.type === "text")
+
+        return block.type === "text" ? (
           <StreamingText key={i} content={block.content} />
         ) : (
-          <ToolUse key={i} name={block.name} arg={block.arg} />
-        ),
-      )}
+          <Box key={i} marginTop={needsTopMargin ? 1 : 0} marginBottom={needsBottomMargin ? 1 : 0}>
+            <ToolUse name={block.name} arg={block.arg} />
+          </Box>
+        )
+      })}
     </Box>
   )
 }
