@@ -174,6 +174,7 @@ describe("EventDisplay", () => {
             { type: "text", text: "Thinking..." },
             {
               type: "tool_use",
+              id: "toolu_read1",
               name: "Read",
               input: { file_path: "/path/file.ts" },
             },
@@ -188,11 +189,13 @@ describe("EventDisplay", () => {
             { type: "text", text: "Thinking..." },
             {
               type: "tool_use",
+              id: "toolu_read1",
               name: "Read",
               input: { file_path: "/path/file.ts" },
             },
             {
               type: "tool_use",
+              id: "toolu_edit1",
               name: "Edit",
               input: { file_path: "/path/file.ts" },
             },
