@@ -13,7 +13,7 @@ export const program = new Command()
   .name("ralph")
   .description("Autonomous AI iteration engine for Claude CLI")
   .version("0.2.0")
-  .argument("[iterations]", "number of iterations to run", (val) => parseInt(val, 10), 10)
+  .argument("[iterations]", "number of iterations to run", val => parseInt(val, 10), 10)
   .option("--replay [file]", "replay events from log file")
   .action((iterations, options) => {
     const replayFile =

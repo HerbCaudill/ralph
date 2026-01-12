@@ -17,6 +17,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "ralph": "tsx src/index.ts",
+    "format": "prettier --write .",
     "prepublishOnly": "pnpm build"
   },
   "keywords": [
@@ -43,6 +44,7 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.8",
     "ink-testing-library": "^4.0.0",
+    "prettier": "^3.5.3",
     "tsx": "^4.21.0",
     "typescript": "~5.9.3"
   },
