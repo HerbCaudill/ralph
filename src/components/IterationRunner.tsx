@@ -122,11 +122,8 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
   return (
     <Box flexDirection="column">
-      <Box marginTop={1} marginBottom={1}>
+      <Box borderStyle="round" borderColor="cyan" paddingX={1} marginTop={1} marginBottom={1}>
         <Text color="cyan">Iteration {currentIteration}</Text>
-      </Box>
-      <Box marginBottom={1}>
-        <Text dimColor>{"─".repeat(40)}</Text>
       </Box>
       <EventDisplay events={events} />
     </Box>

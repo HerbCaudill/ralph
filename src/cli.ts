@@ -23,7 +23,9 @@ export const program = new Command()
         : join(process.cwd(), ".ralph", "events.log")
       : undefined
 
-    render(React.createElement(App, { iterations, replayFile }))
+    const claudeVersion = process.env.CLAUDE_VERSION || "unknown"
+
+    render(React.createElement(App, { iterations, replayFile, claudeVersion }))
   })
 
 program
