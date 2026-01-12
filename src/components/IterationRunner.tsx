@@ -52,7 +52,9 @@ export const IterationRunner = ({ totalIterations }: Props) => {
       const { code, signal } = closeInfo
       if (code !== 0) {
         setError(
-          `Claude exited with code ${code}${signal ? ` (signal: ${signal})` : ""}\n\nLast 2000 chars:\n${fullOutput.slice(-2000)}`,
+          `Claude exited with code ${code}${
+            signal ? ` (signal: ${signal})` : ""
+          }\n\nLast 2000 chars:\n${fullOutput.slice(-2000)}`,
         )
         setTimeout(() => {
           exit()
@@ -120,7 +122,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
   return (
     <Box flexDirection="column">
-      <Box marginBottom={1}>
+      <Box marginTop={1} marginBottom={1}>
         <Text color="cyan">Iteration {currentIteration}</Text>
       </Box>
       <Box marginBottom={1}>
