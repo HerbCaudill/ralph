@@ -10,6 +10,22 @@ Each entry should include:
 
 ---
 
+## 2026-01-12: Added box border around header
+
+**What:** Added a full border box around the entire header component instead of just a bottom border
+
+**Why:** Visual improvement to make the header stand out more clearly and create better visual separation from the content
+
+**Changes:**
+
+- Modified `src/components/Header.tsx` to add `borderStyle="single"` to the outer Box component
+- Added `padding={1}` to provide spacing inside the border
+- Removed the separate bottom-border-only Box element that was previously used
+
+**Notes:** All 78 tests pass. The header now has a complete single-line border around it with padding for better visual presentation.
+
+---
+
 ## 2026-01-12: Display ralph version alongside Claude Code version in header
 
 **What:** Updated header to show both ralph version and Claude Code version on the same line
