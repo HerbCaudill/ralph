@@ -17,7 +17,7 @@ const TEST_WORKSPACE = join(__dirname, "../../.test-workspace")
  *
  * To run these tests: pnpm test:e2e
  */
-describe.skip("Ralph E2E Tests", () => {
+describe("Ralph E2E Tests", () => {
   beforeEach(() => {
     // Clean up test workspace
     if (existsSync(TEST_WORKSPACE)) {
@@ -43,6 +43,7 @@ describe.skip("Ralph E2E Tests", () => {
         args: ["init"],
         cwd: workspacePath,
         timeout: 10000,
+        testName: "ralph-init-empty-project",
       })
 
       expect(result.exitCode).toBe(0)
@@ -60,10 +61,11 @@ describe.skip("Ralph E2E Tests", () => {
         args: ["init"],
         cwd: workspacePath,
         timeout: 10000,
+        testName: "ralph-init-incomplete-setup",
       })
 
       expect(result.exitCode).toBe(0)
-      // Should keep existing prompt.md
+      // Should preserve existing prompt.md
       const promptContent = readFileSync(join(workspacePath, ".ralph/prompt.md"), "utf-8")
       expect(promptContent).toContain("only has prompt.md")
       // Should create missing files
@@ -82,6 +84,7 @@ describe.skip("Ralph E2E Tests", () => {
         args: ["init"],
         cwd: workspacePath,
         timeout: 10000,
+        testName: "ralph-init-complete-setup",
       })
 
       expect(result.exitCode).toBe(0)
@@ -101,6 +104,7 @@ describe.skip("Ralph E2E Tests", () => {
         cwd: workspacePath,
         timeout: 5000,
         env: { CI: "true" }, // Simulate non-TTY
+        testName: "ralph-missing-files-error",
       })
 
       expect(result.exitCode).toBe(1)
@@ -117,13 +121,14 @@ describe.skip("Ralph E2E Tests", () => {
       const result = await runRalph({
         args: ["1"],
         cwd: workspacePath,
-        timeout: 60000, // Claude API calls can take time
+        timeout: 120000, // Claude API calls can take time
+        testName: "ralph-one-iteration",
       })
 
       // May exit with 0 (if COMPLETE) or continue (normal iteration end)
       expect(result.exitCode === 0 || result.exitCode === null).toBe(true)
       expect(existsSync(join(workspacePath, ".ralph/events.log"))).toBe(true)
-    })
+    }, 120000)
 
     it("runs multiple iterations", async () => {
       const fixturePath = join(FIXTURES_DIR, "realistic-workflow")
@@ -134,6 +139,7 @@ describe.skip("Ralph E2E Tests", () => {
         args: ["3"],
         cwd: workspacePath,
         timeout: 180000, // 3 minutes for multiple iterations
+        testName: "ralph-three-iterations",
       })
 
       expect(existsSync(join(workspacePath, ".ralph/events.log"))).toBe(true)
@@ -142,7 +148,7 @@ describe.skip("Ralph E2E Tests", () => {
       const todoContent = readFileSync(join(workspacePath, ".ralph/todo.md"), "utf-8")
       // At least one task should be marked complete
       expect(todoContent).toMatch(/- \[x\]/)
-    })
+    }, 180000)
 
     it("stops when COMPLETE promise is detected", async () => {
       const fixturePath = join(FIXTURES_DIR, "realistic-workflow")
@@ -153,11 +159,12 @@ describe.skip("Ralph E2E Tests", () => {
         args: ["10"], // Request many iterations
         cwd: workspacePath,
         timeout: 180000,
+        testName: "ralph-complete-detection",
       })
 
       // Should exit with 0 when COMPLETE is detected
       expect(result.exitCode).toBe(0)
-    })
+    }, 180000)
   })
 })
 
@@ -170,6 +177,7 @@ describe("Ralph CLI interface", () => {
     const result = await runRalph({
       args: ["invalid-command"],
       timeout: 2000,
+      testName: "ralph-invalid-command",
     })
 
     expect(result.exitCode).not.toBe(0)
@@ -181,6 +189,7 @@ describe("Ralph CLI interface", () => {
       args: ["5"],
       cwd: TEST_WORKSPACE,
       timeout: 2000,
+      testName: "ralph-numeric-argument",
     })
 
     // Should not be a parsing error
@@ -195,6 +204,7 @@ describe("Ralph CLI interface", () => {
       args: ["init"],
       cwd: workspacePath,
       timeout: 2000,
+      testName: "ralph-init-recognized",
     })
 
     // Should not error on the command itself

@@ -4,8 +4,8 @@
 - [ ] Add a border below the header
 - [ ] Add a footer showing the iteration we're on
 - [ ] Use a nicer selection UI for the yes/no init question
-- [ ] Use ink-tasklist for displaying task lists
 - [ ] Should we use ink-markdown for processing markdown?
+- [ ] For the header text, use ink-gradient from #30A6E4 to #EBC635
 
 ---
 

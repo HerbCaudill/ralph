@@ -14,10 +14,18 @@ export const InitRalph = () => {
   useEffect(() => {
     const initialize = async () => {
       const ralphDir = join(process.cwd(), ".ralph")
+      const templatesDir = join(__dirname, "..", "..", "templates")
+      const templates = ["prompt.md", "todo.md", "progress.md"]
 
+      // Check if .ralph exists and all files are present
       if (existsSync(ralphDir)) {
-        setStatus("exists")
-        return
+        const allFilesExist = templates.every(template => existsSync(join(ralphDir, template)))
+
+        if (allFilesExist) {
+          setStatus("exists")
+          return
+        }
+        // If not all files exist, continue to create missing ones
       }
 
       setStatus("creating")
@@ -25,8 +33,6 @@ export const InitRalph = () => {
       try {
         mkdirSync(ralphDir, { recursive: true })
 
-        const templatesDir = join(__dirname, "..", "..", "templates")
-        const templates = ["prompt.md", "todo.md", "progress.md"]
         const created: string[] = []
         const failed: string[] = []
 
@@ -34,11 +40,14 @@ export const InitRalph = () => {
           const src = join(templatesDir, template)
           const dest = join(ralphDir, template)
 
-          if (existsSync(src)) {
-            copyFileSync(src, dest)
-            created.push(template)
-          } else {
-            failed.push(`Template not found: ${template}`)
+          // Only copy if the destination doesn't exist
+          if (!existsSync(dest)) {
+            if (existsSync(src)) {
+              copyFileSync(src, dest)
+              created.push(template)
+            } else {
+              failed.push(`Template not found: ${template}`)
+            }
           }
         }
 

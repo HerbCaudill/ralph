@@ -3,3 +3,5 @@ dist
 .DS_Store
 *.log
 .ralph/events.log
+.test-results
+.test-workspace
