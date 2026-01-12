@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react"
 import { Box, Text, useApp } from "ink"
 import { spawn } from "child_process"
-import { appendFileSync, writeFileSync } from "fs"
-import { join } from "path"
+import { appendFileSync, writeFileSync, mkdirSync } from "fs"
+import { join, dirname } from "path"
 import { EventDisplay } from "./EventDisplay.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
@@ -20,7 +20,8 @@ export const IterationRunner = ({ totalIterations }: Props) => {
       return
     }
 
-    // Clear log file at start of each iteration
+    // Ensure .ralph directory exists and clear log file at start of each iteration
+    mkdirSync(dirname(logFile), { recursive: true })
     writeFileSync(logFile, "")
     setEvents([])
     setOutput("")

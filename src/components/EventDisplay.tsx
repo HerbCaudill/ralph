@@ -14,10 +14,10 @@ export const EventDisplay = ({ events }: Props) => {
 
   return (
     <Box flexDirection="column" gap={1}>
-      {contentBlocks.map((block, i) =>
+      {contentBlocks.map(block =>
         block.type === "text" ?
-          <StreamingText key={i} content={block.content} />
-        : <ToolUse key={i} name={block.name} arg={block.arg} />,
+          <StreamingText key={block.id} content={block.content} />
+        : <ToolUse key={block.id} name={block.name} arg={block.arg} />,
       )}
     </Box>
   )
