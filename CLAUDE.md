@@ -64,6 +64,13 @@ pnpm build
 # Run in development (uses tsx, no build needed)
 pnpm ralph
 
+# Run tests
+pnpm test              # Run all tests (E2E tests skipped by default)
+pnpm test:unit         # Run only unit tests
+pnpm test:e2e          # Run E2E tests (requires Claude CLI with API key)
+pnpm test:watch        # Run tests in watch mode
+pnpm test:ui           # Open Vitest UI
+
 # Format code with Prettier
 pnpm format
 
@@ -91,6 +98,16 @@ src/
   lib/
     rel.ts                 # Convert absolute → relative paths
     shortenTempPaths.ts    # Shorten temp paths in commands
+test/
+  e2e/
+    ralph.test.ts          # E2E tests for ralph CLI (skipped by default)
+  fixtures/                # Test fixtures for E2E tests
+    empty/                 # Empty project (no .ralph)
+    valid-setup/           # Complete .ralph setup
+    incomplete-setup/      # Partial .ralph setup
+    realistic-workflow/    # Realistic todo workflow
+  helpers/
+    runRalph.ts            # Helper to run ralph binary in tests
 templates/                 # Template files for ralph init
 bin/ralph.js              # Published executable
 ```
@@ -123,11 +140,63 @@ On startup, `IterationRunner` checks for required files. If missing:
 - In non-TTY environments: Shows message and exits
 - User can press Y to run init, N/Esc to cancel
 
-## Testing Notes
+## Testing
 
-This project doesn't currently have automated tests. When adding tests:
+Ralph has comprehensive test coverage at multiple levels:
 
-- Use Vitest for unit tests
-- Test event parsing logic in `eventToBlocks.ts`
-- Test path manipulation in `lib/rel.ts` and `lib/shortenTempPaths.ts`
-- Consider snapshot tests for React components using `ink-testing-library`
+### Unit Tests (124 tests)
+
+**Utility Functions:**
+
+- `rel.ts` - Path conversion (absolute to relative, temp path handling)
+- `shortenTempPaths.ts` - Temp path shortening in command strings
+- `eventToBlocks.ts` - JSON event parsing and transformation (23 test cases covering all tool types)
+
+**React Components** (using `ink-testing-library`):
+
+- `Header.tsx` - Title and version display
+- `ToolUse.tsx` - Tool call rendering with various arguments
+- `StreamingText.tsx` - Markdown formatting (bold, code)
+
+**Integration:**
+
+- `IterationRunner.tsx` - File checking logic with mocked fs
+
+All unit tests run automatically with `pnpm test` (124 tests).
+
+### E2E Tests
+
+End-to-end tests are in `test/e2e/` and use real test fixtures to verify the full CLI workflow.
+
+**Test Fixtures:**
+
+- `empty/` - Empty project with no `.ralph` directory
+- `valid-setup/` - Complete `.ralph` setup ready to run
+- `incomplete-setup/` - Partial `.ralph` (only prompt.md)
+- `realistic-workflow/` - Realistic todo list with workflow prompt
+
+**Running E2E Tests:**
+
+E2E tests are skipped by default (marked with `describe.skip`) because they require:
+
+1. A working `claude` CLI in PATH
+2. Claude CLI configured with API key
+3. Network access to Claude API
+
+To run E2E tests:
+
+```bash
+# Ensure Claude CLI is installed and configured
+claude --version
+
+# Run E2E tests
+pnpm test:e2e
+```
+
+The E2E tests verify:
+
+- `ralph init` creates required files
+- Missing file detection and error handling
+- Multiple iteration execution
+- COMPLETE promise detection
+- Todo list updates across iterations

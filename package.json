@@ -18,6 +18,8 @@
     "dev": "tsc --watch",
     "ralph": "tsx src/index.ts",
     "test": "vitest",
+    "test:unit": "vitest --exclude test/e2e/**",
+    "test:e2e": "vitest test/e2e",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "format": "prettier --write .",
