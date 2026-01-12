@@ -1,5 +1,5 @@
 import React from "react"
-import { Text } from "ink"
+import { Box, Text } from "ink"
 
 export const StreamingText = ({ content }: Props) => {
   // Process markdown formatting: **bold** and `code`
@@ -38,7 +38,7 @@ export const StreamingText = ({ content }: Props) => {
   }
 
   return (
-    <>
+    <Box>
       {parts.map((part, i) => {
         if (part.code) {
           return (
@@ -56,7 +56,7 @@ export const StreamingText = ({ content }: Props) => {
         }
         return <Text key={i}>{part.text}</Text>
       })}
-    </>
+    </Box>
   )
 }
 

@@ -17,8 +17,27 @@ Each entry should include:
 **Why:** The version was showing as "unknown" because it was reading from an undefined environment variable `CLAUDE_VERSION`
 
 **Changes:**
+
 - Created `src/lib/getClaudeVersion.ts` that executes `claude --version` and extracts the version number
 - Updated `src/cli.ts` to use `getClaudeVersion()` instead of reading from environment variable
 - Added comprehensive unit tests in `src/lib/getClaudeVersion.test.ts` (6 test cases)
 
 **Notes:** The function gracefully handles errors and returns "unknown" if the claude command fails or produces unexpected output. All tests pass (75 total).
+
+---
+
+## 2026-01-12: Fixed inline code blocks appearing in separate paragraphs
+
+**What:** Fixed a bug where inline code (e.g., `console.log()`) was being rendered on separate lines with unwanted gaps instead of flowing inline with the surrounding text
+
+**Why:** Claude's message content can contain multiple consecutive text blocks (e.g., "Use the ", "`console.log()`", " function"). Each was being rendered as a separate component with gaps between them due to Ink's column layout.
+
+**Changes:**
+
+- Modified `src/components/eventToBlocks.ts` to merge consecutive text blocks into a single content block before rendering
+- Added a textBuffer that accumulates consecutive text blocks and only flushes when encountering a tool_use block or at the end
+- Wrapped StreamingText content in a `<Box>` component to prevent Ink from treating multiple `<Text>` children as separate blocks
+- Added new test in `EventDisplay.test.tsx` to verify consecutive text blocks are merged and rendered on one line
+- Updated existing tests in `eventToBlocks.test.ts` to reflect the new merging behavior
+
+**Notes:** The fix works at two levels: (1) merging consecutive text blocks in eventToBlocks, and (2) using a Box wrapper in StreamingText to keep formatted text segments inline. All 77 tests pass.

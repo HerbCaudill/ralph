@@ -21,13 +21,20 @@ export const eventToBlocks = (event: Record<string, unknown>): ContentBlock[] =>
   const messageId = (message?.id as string | undefined) ?? "unknown"
   let blockIndex = 0
 
+  let textBuffer = "" // Accumulate consecutive text blocks
+
   for (const block of content) {
     if (block.type === "text") {
       const text = block.text as string | undefined
       if (text) {
-        blocks.push({ type: "text", content: text, id: `${messageId}-${blockIndex++}` })
+        textBuffer += text
       }
     } else if (block.type === "tool_use") {
+      // Flush accumulated text before processing tool
+      if (textBuffer) {
+        blocks.push({ type: "text", content: textBuffer, id: `${messageId}-${blockIndex++}` })
+        textBuffer = ""
+      }
       const input = block.input as Record<string, unknown> | undefined
       const name = block.name as string
 
@@ -130,6 +137,11 @@ export const eventToBlocks = (event: Record<string, unknown>): ContentBlock[] =>
         blocks.push({ type: "tool", name: "Skill", arg: skill, id: `${messageId}-${blockIndex++}` })
       }
     }
+  }
+
+  // Flush any remaining text at the end
+  if (textBuffer) {
+    blocks.push({ type: "text", content: textBuffer, id: `${messageId}-${blockIndex++}` })
   }
 
   return blocks

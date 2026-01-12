@@ -32,7 +32,7 @@ describe("eventToBlocks", () => {
     expect(result).toEqual([{ type: "text", content: "Hello world", id: "msg_123-0" }])
   })
 
-  it("extracts multiple text blocks", () => {
+  it("merges consecutive text blocks", () => {
     const event = {
       type: "assistant",
       message: {
@@ -44,9 +44,30 @@ describe("eventToBlocks", () => {
       },
     }
     const result = eventToBlocks(event)
+    expect(result).toEqual([{ type: "text", content: "FirstSecond", id: "msg_123-0" }])
+  })
+
+  it("keeps text blocks separate when interrupted by tool calls", () => {
+    const event = {
+      type: "assistant",
+      message: {
+        id: "msg_123",
+        content: [
+          { type: "text", text: "Before tool" },
+          {
+            type: "tool_use",
+            name: "Read",
+            input: { file_path: `${process.cwd()}/file.ts` },
+          },
+          { type: "text", text: "After tool" },
+        ],
+      },
+    }
+    const result = eventToBlocks(event)
     expect(result).toEqual([
-      { type: "text", content: "First", id: "msg_123-0" },
-      { type: "text", content: "Second", id: "msg_123-1" },
+      { type: "text", content: "Before tool", id: "msg_123-0" },
+      { type: "tool", name: "Read", arg: "file.ts", id: "msg_123-1" },
+      { type: "text", content: "After tool", id: "msg_123-2" },
     ])
   })
 
@@ -380,15 +401,25 @@ describe("eventToBlocks", () => {
         id: "msg_123",
         content: [
           { type: "text", text: "First" },
+          {
+            type: "tool_use",
+            name: "Read",
+            input: { file_path: `${process.cwd()}/file1.ts` },
+          },
           { type: "text", text: "Second" },
+          {
+            type: "tool_use",
+            name: "Read",
+            input: { file_path: `${process.cwd()}/file2.ts` },
+          },
           { type: "text", text: "Third" },
         ],
       },
     }
     const result = eventToBlocks(event)
     const ids = result.map(block => block.id)
-    expect(ids).toEqual(["msg_123-0", "msg_123-1", "msg_123-2"])
-    expect(new Set(ids).size).toBe(3) // All unique
+    expect(ids).toEqual(["msg_123-0", "msg_123-1", "msg_123-2", "msg_123-3", "msg_123-4"])
+    expect(new Set(ids).size).toBe(5) // All unique
   })
 
   it('uses "unknown" ID when message has no ID', () => {

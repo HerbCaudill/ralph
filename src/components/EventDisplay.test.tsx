@@ -213,4 +213,36 @@ describe("EventDisplay", () => {
       expect(output.match(/Edit/g)?.length).toBe(1)
     })
   })
+
+  it("merges consecutive text blocks to prevent unwanted gaps", async () => {
+    // When Claude outputs text in multiple blocks (e.g., before and after inline code),
+    // we should merge them into one StreamingText component to avoid gaps
+    const events = [
+      {
+        type: "assistant",
+        message: {
+          id: "msg_123",
+          content: [
+            { type: "text", text: "Use the " },
+            { type: "text", text: "`console.log()`" },
+            { type: "text", text: " function to debug." },
+          ],
+        },
+      },
+    ]
+
+    const { lastFrame } = render(<EventDisplay events={events} />)
+
+    await vi.waitFor(() => {
+      const output = lastFrame() ?? ""
+      expect(output).toContain("Use the")
+      expect(output).toContain("console.log()")
+      expect(output).toContain("function to debug")
+    })
+
+    // The output should be on one line without extra spacing
+    const output = lastFrame() ?? ""
+    const lines = output.split("\n").filter(l => l.trim())
+    expect(lines.length).toBe(1)
+  })
 })
