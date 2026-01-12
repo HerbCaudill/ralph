@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from "vitest"
 import { join } from "path"
 import { existsSync, rmSync, cpSync, mkdirSync, readFileSync } from "fs"
-import { runRalph } from "../helpers/runRalph.js"
+import { runRalph, cleanTestResults } from "../helpers/runRalph.js"
 
 const FIXTURES_DIR = join(__dirname, "../fixtures")
 const TEST_WORKSPACE = join(__dirname, "../../.test-workspace")
@@ -18,6 +18,11 @@ const TEST_WORKSPACE = join(__dirname, "../../.test-workspace")
  * To run these tests: pnpm test:e2e
  */
 describe("Ralph E2E Tests", () => {
+  beforeAll(() => {
+    // Clean test results directory at start of test suite
+    cleanTestResults()
+  })
+
   beforeEach(() => {
     // Clean up test workspace
     if (existsSync(TEST_WORKSPACE)) {
@@ -173,6 +178,11 @@ describe("Ralph E2E Tests", () => {
  * These verify the CLI interface without actually running iterations
  */
 describe("Ralph CLI interface", () => {
+  beforeAll(() => {
+    // Clean test results directory at start of test suite
+    cleanTestResults()
+  })
+
   it("shows error for invalid command", async () => {
     const result = await runRalph({
       args: ["invalid-command"],

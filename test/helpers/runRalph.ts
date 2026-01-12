@@ -1,6 +1,6 @@
 import { spawn } from "child_process"
 import { join } from "path"
-import { createWriteStream, mkdirSync, existsSync } from "fs"
+import { createWriteStream, mkdirSync, existsSync, rmSync, readdirSync } from "fs"
 
 export type RunRalphOptions = {
   args?: string[]
@@ -17,6 +17,22 @@ export type RunRalphResult = {
   stderr: string
   timedOut: boolean
   outputFile?: string // Path to saved output file
+}
+
+/**
+ * Cleans the .test-results directory
+ */
+export const cleanTestResults = () => {
+  const resultsDir = join(__dirname, "../../.test-results")
+  if (existsSync(resultsDir)) {
+    // Remove all .txt files in the directory
+    const files = readdirSync(resultsDir)
+    for (const file of files) {
+      if (file.endsWith(".txt")) {
+        rmSync(join(resultsDir, file))
+      }
+    }
+  }
 }
 
 /**
@@ -38,10 +54,9 @@ export const runRalph = async (options: RunRalphOptions = {}): Promise<RunRalphR
         mkdirSync(resultsDir, { recursive: true })
       }
 
-      // Sanitize test name for filename
+      // Sanitize test name for filename (no timestamp - overwrite previous run)
       const safeTestName = testName.replace(/[^a-z0-9]/gi, "-").toLowerCase()
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
-      const filename = `${safeTestName}-${timestamp}.txt`
+      const filename = `${safeTestName}.txt`
       outputFile = join(resultsDir, filename)
 
       fileStream = createWriteStream(outputFile, { flags: "w" })
