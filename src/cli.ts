@@ -1,46 +1,36 @@
 import chalk from "chalk"
+import { Command } from "commander"
 import { existsSync, mkdirSync, copyFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
+import { replayLog } from "./lib/replayLog.js"
+import { runIteration } from "./lib/runIteration.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-export const parseArgs = (args: string[]) => {
-  const replayIndex = args.indexOf("--replay")
-  const initIndex = args.indexOf("init")
-  const helpIndex = args.findIndex(a => a === "--help" || a === "-h")
+export const program = new Command()
+  .name("ralph")
+  .description("Autonomous AI iteration engine for Claude CLI")
+  .version("0.2.0")
+  .argument("[iterations]", "number of iterations to run", (val) => parseInt(val, 10), 10)
+  .option("--replay [file]", "replay events from log file")
+  .action((iterations, options) => {
+    if (options.replay !== undefined) {
+      const replayFile = typeof options.replay === "string"
+        ? options.replay
+        : join(process.cwd(), ".ralph", "events.log")
+      replayLog(replayFile)
+    } else {
+      runIteration(1, iterations)
+    }
+  })
 
-  if (helpIndex !== -1) {
-    return { mode: "help" as const }
-  }
-
-  if (initIndex !== -1) {
-    return { mode: "init" as const }
-  }
-
-  if (replayIndex !== -1) {
-    const replayFile = args[replayIndex + 1] || join(process.cwd(), ".ralph", "events.log")
-    return { mode: "replay" as const, replayFile }
-  }
-
-  const iterations = parseInt(args.find(a => /^\d+$/.test(a)) ?? "", 10) || 10
-  return { mode: "run" as const, iterations }
-}
-
-export const showHelp = () => {
-  console.log(chalk.bold("ralph") + " - Autonomous AI iteration engine for Claude CLI\n")
-  console.log(chalk.bold("Usage:"))
-  console.log("  ralph [iterations]        Run ralph for specified iterations (default: 10)")
-  console.log("  ralph init                Initialize .ralph directory with templates")
-  console.log("  ralph --replay [file]     Replay events from log file")
-  console.log("  ralph --help              Show this help message\n")
-  console.log(chalk.bold("Examples:"))
-  console.log("  ralph                     Run 10 iterations")
-  console.log("  ralph 5                   Run 5 iterations")
-  console.log("  ralph init                Create .ralph directory")
-  console.log("  ralph --replay            Replay default log file")
-  console.log("  ralph --replay custom.log Replay custom log file\n")
-}
+program
+  .command("init")
+  .description("initialize .ralph directory with templates")
+  .action(() => {
+    initRalph()
+  })
 
 export const initRalph = () => {
   const ralphDir = join(process.cwd(), ".ralph")

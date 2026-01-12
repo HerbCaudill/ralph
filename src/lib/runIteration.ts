@@ -13,7 +13,7 @@ export const runIteration = (i: number, iterations: number) => {
     return
   }
 
-  console.log(chalk.cyan(`\nIteration ${i}`))
+  console.log(chalk.cyan(`\n\nIteration ${i}`))
   console.log(chalk.dim("─".repeat(40)) + "\n")
 
   // Clear log file at start of each iteration

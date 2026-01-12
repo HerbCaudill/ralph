@@ -1,31 +1,7 @@
-import { join } from "path"
-import { replayLog } from "./lib/replayLog.js"
-import { runIteration } from "./lib/runIteration.js"
-import { parseArgs, showHelp, initRalph } from "./cli.js"
+import { program } from "./cli.js"
 
 export const run = () => {
-  const args = process.argv.slice(2)
-  const parsed = parseArgs(args)
-
-  if (parsed.mode === "help") {
-    showHelp()
-    return
-  }
-
-  if (parsed.mode === "init") {
-    initRalph()
-    return
-  }
-
-  if (parsed.mode === "replay") {
-    replayLog(parsed.replayFile)
-    return
-  }
-
-  if (parsed.mode === "run") {
-    runIteration(1, parsed.iterations)
-    return
-  }
+  program.parse(process.argv)
 }
 
 // Run if called directly
