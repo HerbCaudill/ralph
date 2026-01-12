@@ -1,3 +1,9 @@
+## Context
+
+You are working in a git worktree. Each iteration runs in an isolated worktree branch, and your changes will be automatically merged back to the main branch when this iteration completes.
+
+## Workflow
+
 Before doing anything, check that the project builds successfully. Run your project's build/typecheck commands and tests.
 
 If there are build errors or test failures: YOUR ONLY TASK IS TO FIX THEM.
@@ -15,4 +21,8 @@ When you complete a task, before committing:
 - Update the todo list by checking off the completed task and moving it to the "Done" section
 - Append your progress to the @.ralph/progress.md file. Use this to leave a note for the next person working in the codebase
 
-Make one git commit for this task. If, while implementing the task, you notice the todo list is complete, output <promise>COMPLETE</promise> and exit.
+Make one git commit for this task.
+
+If merge conflicts occur when your changes are merged back to main, resolve them in the next iteration. The merge process happens automatically after each iteration completes.
+
+If, while implementing the task, you notice the todo list is complete, output <promise>COMPLETE</promise> and exit.

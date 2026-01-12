@@ -13,9 +13,12 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
 
 2. **Iteration Runner** (`IterationRunner.tsx`) → Core orchestration:
    - Checks for required files (`.ralph/prompt.md`, `todo.md`, `progress.md`)
-   - Spawns `claude` CLI with `--output-format stream-json`
+   - Creates isolated git worktree for each iteration
+   - Copies `.ralph/` files to worktree
+   - Spawns `claude` CLI in worktree with `--output-format stream-json`
    - Parses streaming JSON events line-by-line
-   - Appends events to `.ralph/events.log`
+   - Appends events to `.ralph/events.log` in worktree
+   - On completion: merges worktree changes back to main branch
    - Detects `<promise>COMPLETE</promise>` to exit early
    - Recursively runs next iteration after completion
 
@@ -26,6 +29,25 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
    - Creates unique IDs for React keys
 
 4. **Display Layer** (`EventDisplay.tsx`, `ToolUse.tsx`) → Renders events using Ink components
+
+### Git Worktree Isolation
+
+Each iteration runs in an isolated git worktree:
+
+- **Before first iteration**: Stashes any uncommitted changes in main repo
+- **For each iteration**:
+  - Creates new worktree in `/tmp/ralph-worktrees/<uuid>` with branch `ralph-<uuid>`
+  - Copies `.ralph/` files (prompt.md, todo.md, progress.md) to worktree
+  - Spawns Claude CLI with `cwd` set to worktree directory
+  - On success: Copies updated `.ralph/` files back and merges worktree to main
+  - On error: Cleans up worktree without merging
+- **After all iterations**: Pops stashed changes back to main repo
+
+Benefits:
+- Iterations cannot interfere with each other
+- Failed iterations don't pollute the main branch
+- Easy rollback if something goes wrong
+- Parallel execution possible in the future
 
 ### Template System
 
@@ -98,6 +120,7 @@ src/
   lib/
     rel.ts                 # Convert absolute → relative paths
     shortenTempPaths.ts    # Shorten temp paths in commands
+    worktree.ts            # Git worktree management utilities
 test/
   e2e/
     ralph.test.ts          # E2E tests for ralph CLI (skipped by default)
@@ -108,6 +131,7 @@ test/
     realistic-workflow/    # Realistic todo workflow
   helpers/
     runRalph.ts            # Helper to run ralph binary in tests
+  worktree.test.ts         # Unit tests for worktree utilities
 templates/                 # Template files for ralph init
 bin/ralph.js              # Published executable
 ```
@@ -129,8 +153,22 @@ An iteration ends when:
 
 1. The `claude` process exits (stdout closes AND process closes)
 2. Exit code is checked - non-zero exits the entire program with error
-3. If output contains `<promise>COMPLETE</promise>`, exit entire program successfully
-4. Otherwise, start next iteration after 500ms delay
+3. Worktree changes are merged back to main branch
+4. If output contains `<promise>COMPLETE</promise>`, exit entire program successfully
+5. Otherwise, start next iteration after 500ms delay
+
+### Worktree Management
+
+Ralph uses git worktrees to isolate iterations. Key functions in `worktree.ts`:
+
+- `getGitRoot()` - Find repository root
+- `stashChanges()` / `popStash()` - Manage uncommitted changes
+- `createWorktree()` - Create new worktree with unique GUID branch
+- `copyRalphFilesToWorktree()` - Copy context files to worktree
+- `copyRalphFilesFromWorktree()` - Copy updated files back
+- `mergeWorktreeToMain()` - Merge changes with `--no-ff` (preserves history)
+- `cleanupWorktree()` - Remove worktree and delete branch
+- `cleanupAllWorktrees()` - Emergency cleanup of all ralph worktrees
 
 ### Initialization Detection
 
@@ -144,13 +182,14 @@ On startup, `IterationRunner` checks for required files. If missing:
 
 Ralph has comprehensive test coverage at multiple levels:
 
-### Unit Tests (124 tests)
+### Unit Tests (90 tests)
 
 **Utility Functions:**
 
 - `rel.ts` - Path conversion (absolute to relative, temp path handling)
 - `shortenTempPaths.ts` - Temp path shortening in command strings
 - `eventToBlocks.ts` - JSON event parsing and transformation (23 test cases covering all tool types)
+- `worktree.ts` - Git worktree management (12 tests covering stashing, worktree creation, merging, cleanup)
 
 **React Components** (using `ink-testing-library`):
 
@@ -162,7 +201,7 @@ Ralph has comprehensive test coverage at multiple levels:
 
 - `IterationRunner.tsx` - File checking logic with mocked fs
 
-All unit tests run automatically with `pnpm test` (124 tests).
+All unit tests run automatically with `pnpm test` (90 tests).
 
 ### E2E Tests
 

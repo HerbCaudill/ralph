@@ -2,12 +2,23 @@ import React, { useState, useEffect } from "react"
 import { Box, Text, useApp } from "ink"
 import SelectInput from "ink-select-input"
 import { spawn, execSync } from "child_process"
-import { appendFileSync, writeFileSync, mkdirSync, existsSync } from "fs"
-import { join, dirname } from "path"
+import { appendFileSync, mkdirSync, existsSync } from "fs"
+import { join } from "path"
 import { EventDisplay } from "./EventDisplay.js"
+import {
+  getGitRoot,
+  stashChanges,
+  popStash,
+  createWorktree,
+  copyRalphFilesToWorktree,
+  copyRalphFilesFromWorktree,
+  mergeWorktreeToMain,
+  cleanupWorktree,
+  type WorktreeInfo,
+} from "../lib/worktree.js"
 
-const logFile = join(process.cwd(), ".ralph", "events.log")
-const ralphDir = join(process.cwd(), ".ralph")
+const repoRoot = process.cwd()
+const ralphDir = join(repoRoot, ".ralph")
 
 const checkRequiredFiles = (): { missing: string[]; exists: boolean } => {
   const requiredFiles = ["prompt.md", "todo.md", "progress.md"]
@@ -23,9 +34,42 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   const [error, setError] = useState<string>()
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
   const [initializing, setInitializing] = useState(false)
+  const [currentWorktree, setCurrentWorktree] = useState<WorktreeInfo | null>(null)
+  const [hasStashedChanges, setHasStashedChanges] = useState(false)
 
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
+
+  // Cleanup function for worktrees and stash
+  const cleanup = (worktree: WorktreeInfo | null, hasStash: boolean) => {
+    try {
+      if (worktree) {
+        const gitRoot = getGitRoot(repoRoot)
+        cleanupWorktree(gitRoot, worktree)
+      }
+      if (hasStash) {
+        const gitRoot = getGitRoot(repoRoot)
+        popStash(gitRoot)
+      }
+    } catch (err) {
+      console.error(`Cleanup error: ${err}`)
+    }
+  }
+
+  // Handle process exit signals
+  useEffect(() => {
+    const handleExit = () => {
+      cleanup(currentWorktree, hasStashedChanges)
+    }
+
+    process.on("SIGINT", handleExit)
+    process.on("SIGTERM", handleExit)
+
+    return () => {
+      process.off("SIGINT", handleExit)
+      process.off("SIGTERM", handleExit)
+    }
+  }, [currentWorktree, hasStashedChanges])
 
   const handleInitSelection = (item: { value: string }) => {
     if (item.value === "yes") {
@@ -54,6 +98,8 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
   useEffect(() => {
     if (currentIteration > totalIterations) {
+      // Clean up and exit
+      cleanup(currentWorktree, hasStashedChanges)
       exit()
       return
     }
@@ -72,98 +118,171 @@ export const IterationRunner = ({ totalIterations }: Props) => {
       return
     }
 
-    // Ensure .ralph directory exists and clear log file at start of each iteration
-    mkdirSync(dirname(logFile), { recursive: true })
-    writeFileSync(logFile, "")
-    setEvents([])
-    setOutput("")
+    let worktree: WorktreeInfo | null = null
 
-    const child = spawn(
-      "claude",
-      [
-        "--permission-mode",
-        "bypassPermissions",
-        "-p",
-        "@.ralph/prompt.md",
-        "@.ralph/todo.md",
-        "@.ralph/progress.md",
-        "--output-format",
-        "stream-json",
-        "--include-partial-messages",
-        "--verbose",
-      ],
-      { stdio: ["inherit", "pipe", "inherit"] },
-    )
+    try {
+      const gitRoot = getGitRoot(repoRoot)
 
-    let fullOutput = ""
-    let stdoutEnded = false
-    let closeInfo: { code: number | null; signal: NodeJS.Signals | null } | null = null
+      // Stash changes before first iteration
+      if (currentIteration === 1) {
+        const hasChanges = stashChanges(gitRoot)
+        setHasStashedChanges(hasChanges)
+      }
 
-    const handleIterationComplete = () => {
-      if (!stdoutEnded || !closeInfo) return
+      // Create worktree for this iteration
+      worktree = createWorktree(gitRoot)
+      setCurrentWorktree(worktree)
 
-      const { code, signal } = closeInfo
-      if (code !== 0) {
-        setError(
-          `Claude exited with code ${code}${
-            signal ? ` (signal: ${signal})` : ""
-          }\n\nLast 2000 chars:\n${fullOutput.slice(-2000)}`,
-        )
+      // Copy .ralph files to worktree
+      copyRalphFilesToWorktree(gitRoot, worktree.path)
+
+      // Clear events for this iteration
+      setEvents([])
+      setOutput("")
+
+      // Ensure .ralph directory exists in worktree
+      const worktreeRalphDir = join(worktree.path, ".ralph")
+      mkdirSync(worktreeRalphDir, { recursive: true })
+
+      const child = spawn(
+        "claude",
+        [
+          "--permission-mode",
+          "bypassPermissions",
+          "-p",
+          "@.ralph/prompt.md",
+          "@.ralph/todo.md",
+          "@.ralph/progress.md",
+          "--output-format",
+          "stream-json",
+          "--include-partial-messages",
+          "--verbose",
+        ],
+        {
+          stdio: ["inherit", "pipe", "inherit"],
+          cwd: worktree.path,
+        },
+      )
+
+      let fullOutput = ""
+      let stdoutEnded = false
+      let closeInfo: { code: number | null; signal: NodeJS.Signals | null } | null = null
+
+      const handleIterationComplete = () => {
+        if (!stdoutEnded || !closeInfo || !worktree) return
+
+        const { code, signal } = closeInfo
+        const gitRoot = getGitRoot(repoRoot)
+
+        // Handle error exit
+        if (code !== 0) {
+          setError(
+            `Claude exited with code ${code}${
+              signal ? ` (signal: ${signal})` : ""
+            }\n\nLast 2000 chars:\n${fullOutput.slice(-2000)}`,
+          )
+          cleanupWorktree(gitRoot, worktree)
+          setCurrentWorktree(null)
+          setTimeout(() => {
+            cleanup(null, hasStashedChanges)
+            exit()
+            process.exit(1)
+          }, 100)
+          return
+        }
+
+        // Merge worktree changes back to main
+        try {
+          copyRalphFilesFromWorktree(gitRoot, worktree.path)
+          mergeWorktreeToMain(gitRoot, worktree)
+          cleanupWorktree(gitRoot, worktree)
+          setCurrentWorktree(null)
+        } catch (err) {
+          setError(`Failed to merge worktree: ${err}`)
+          cleanupWorktree(gitRoot, worktree)
+          setCurrentWorktree(null)
+          setTimeout(() => {
+            cleanup(null, hasStashedChanges)
+            exit()
+            process.exit(1)
+          }, 100)
+          return
+        }
+
+        // Check if complete
+        if (fullOutput.includes("<promise>COMPLETE</promise>")) {
+          cleanup(null, hasStashedChanges)
+          exit()
+          process.exit(0)
+          return
+        }
+
+        // Move to next iteration
+        setTimeout(() => setCurrentIteration(i => i + 1), 500)
+      }
+
+      const worktreeLogFile = join(worktree.path, ".ralph", "events.log")
+
+      child.stdout.on("data", data => {
+        const chunk = data.toString()
+        for (const line of chunk.split("\n")) {
+          if (!line.trim()) continue
+          try {
+            const event = JSON.parse(line)
+            appendFileSync(worktreeLogFile, JSON.stringify(event, null, 2) + "\n\n")
+            setEvents(prev => [...prev, event])
+          } catch {
+            // Incomplete JSON line, ignore
+          }
+        }
+        fullOutput += chunk
+        setOutput(fullOutput)
+      })
+
+      child.stdout.on("end", () => {
+        stdoutEnded = true
+        handleIterationComplete()
+      })
+
+      child.on("close", (code, signal) => {
+        closeInfo = { code, signal }
+        handleIterationComplete()
+      })
+
+      child.on("error", error => {
+        setError(`Error running Claude: ${error.message}`)
+        if (worktree) {
+          const gitRoot = getGitRoot(repoRoot)
+          cleanupWorktree(gitRoot, worktree)
+          setCurrentWorktree(null)
+        }
         setTimeout(() => {
+          cleanup(null, hasStashedChanges)
           exit()
           process.exit(1)
         }, 100)
-        return
+      })
+
+      return () => {
+        child.kill()
       }
-
-      if (fullOutput.includes("<promise>COMPLETE</promise>")) {
-        exit()
-        process.exit(0)
-        return
-      }
-
-      // Move to next iteration
-      setTimeout(() => setCurrentIteration(i => i + 1), 500)
-    }
-
-    child.stdout.on("data", data => {
-      const chunk = data.toString()
-      for (const line of chunk.split("\n")) {
-        if (!line.trim()) continue
+    } catch (err) {
+      setError(`Failed to set up worktree: ${err}`)
+      if (worktree) {
         try {
-          const event = JSON.parse(line)
-          appendFileSync(logFile, JSON.stringify(event, null, 2) + "\n\n")
-          setEvents(prev => [...prev, event])
+          const gitRoot = getGitRoot(repoRoot)
+          cleanupWorktree(gitRoot, worktree)
         } catch {
-          // Incomplete JSON line, ignore
+          // Ignore cleanup errors
         }
       }
-      fullOutput += chunk
-      setOutput(fullOutput)
-    })
-
-    child.stdout.on("end", () => {
-      stdoutEnded = true
-      handleIterationComplete()
-    })
-
-    child.on("close", (code, signal) => {
-      closeInfo = { code, signal }
-      handleIterationComplete()
-    })
-
-    child.on("error", error => {
-      setError(`Error running Claude: ${error.message}`)
       setTimeout(() => {
+        cleanup(null, hasStashedChanges)
         exit()
         process.exit(1)
       }, 100)
-    })
-
-    return () => {
-      child.kill()
     }
-  }, [currentIteration, totalIterations, exit])
+  }, [currentIteration, totalIterations, exit, currentWorktree, hasStashedChanges])
 
   if (needsInit) {
     if (initializing) {
