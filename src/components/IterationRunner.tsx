@@ -13,7 +13,6 @@ import { stashChanges } from "../lib/stashChanges.js"
 import { popStash } from "../lib/popStash.js"
 import { createWorktree } from "../lib/createWorktree.js"
 import { copyRalphFilesToWorktree } from "../lib/copyRalphFilesToWorktree.js"
-import { copyRalphFilesFromWorktree } from "../lib/copyRalphFilesFromWorktree.js"
 import { mergeWorktreeToMain } from "../lib/mergeWorktreeToMain.js"
 import { cleanupWorktree } from "../lib/cleanupWorktree.js"
 import { installDependencies } from "../lib/installDependencies.js"
@@ -232,8 +231,8 @@ export const IterationRunner = ({ totalIterations }: Props) => {
         }
 
         // Merge worktree changes back to main
+        // Note: .ralph/ files are included in the merge since Claude commits them in the worktree
         try {
-          copyRalphFilesFromWorktree(gitRoot, worktree!.path)
           mergeWorktreeToMain(gitRoot, worktree!)
           cleanupWorktree(gitRoot, worktree!)
           currentWorktreeRef.current = null
