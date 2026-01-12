@@ -337,17 +337,16 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   return (
     <Box flexDirection="column">
       <Box borderStyle="round" borderColor="cyan" paddingX={1} marginTop={1} marginBottom={1}>
-        <Text color="cyan">
-          {isRunning && (
-            <>
-              <Spinner type="dots" />
-              {"  "}
-            </>
-          )}
-          Iteration {currentIteration}
-        </Text>
+        <Text color="cyan">Iteration {currentIteration}</Text>
       </Box>
       <EventDisplay events={events} />
+      {isRunning && (
+        <Box marginTop={1}>
+          <Text color="cyan">
+            <Spinner type="dots" />
+          </Text>
+        </Box>
+      )}
     </Box>
   )
 }
