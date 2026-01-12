@@ -5,17 +5,15 @@ import { spawn, execSync } from "child_process"
 import { appendFileSync, mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import { EventDisplay } from "./EventDisplay.js"
-import {
-  getGitRoot,
-  stashChanges,
-  popStash,
-  createWorktree,
-  copyRalphFilesToWorktree,
-  copyRalphFilesFromWorktree,
-  mergeWorktreeToMain,
-  cleanupWorktree,
-  type WorktreeInfo,
-} from "../lib/worktree.js"
+import { type WorktreeInfo } from "../lib/types.js"
+import { getGitRoot } from "../lib/getGitRoot.js"
+import { stashChanges } from "../lib/stashChanges.js"
+import { popStash } from "../lib/popStash.js"
+import { createWorktree } from "../lib/createWorktree.js"
+import { copyRalphFilesToWorktree } from "../lib/copyRalphFilesToWorktree.js"
+import { copyRalphFilesFromWorktree } from "../lib/copyRalphFilesFromWorktree.js"
+import { mergeWorktreeToMain } from "../lib/mergeWorktreeToMain.js"
+import { cleanupWorktree } from "../lib/cleanupWorktree.js"
 
 const repoRoot = process.cwd()
 const ralphDir = join(repoRoot, ".ralph")

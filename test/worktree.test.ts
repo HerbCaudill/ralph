@@ -3,16 +3,14 @@ import { execSync } from "child_process"
 import { mkdirSync, writeFileSync, existsSync, rmSync, realpathSync } from "fs"
 import { join } from "path"
 import { tmpdir } from "os"
-import {
-  getGitRoot,
-  stashChanges,
-  popStash,
-  createWorktree,
-  copyRalphFilesToWorktree,
-  copyRalphFilesFromWorktree,
-  mergeWorktreeToMain,
-  cleanupWorktree,
-} from "../src/lib/worktree.js"
+import { getGitRoot } from "../src/lib/getGitRoot.js"
+import { stashChanges } from "../src/lib/stashChanges.js"
+import { popStash } from "../src/lib/popStash.js"
+import { createWorktree } from "../src/lib/createWorktree.js"
+import { copyRalphFilesToWorktree } from "../src/lib/copyRalphFilesToWorktree.js"
+import { copyRalphFilesFromWorktree } from "../src/lib/copyRalphFilesFromWorktree.js"
+import { mergeWorktreeToMain } from "../src/lib/mergeWorktreeToMain.js"
+import { cleanupWorktree } from "../src/lib/cleanupWorktree.js"
 
 describe("worktree utilities", () => {
   let testRepo: string
