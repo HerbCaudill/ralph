@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp } from "ink"
 import SelectInput from "ink-select-input"
 import { spawn, execSync } from "child_process"
@@ -32,22 +32,26 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   const [error, setError] = useState<string>()
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
   const [initializing, setInitializing] = useState(false)
-  const [currentWorktree, setCurrentWorktree] = useState<WorktreeInfo | null>(null)
-  const [hasStashedChanges, setHasStashedChanges] = useState(false)
+
+  // Use refs for worktree/stash state to avoid triggering effect re-runs
+  const currentWorktreeRef = useRef<WorktreeInfo | null>(null)
+  const hasStashedChangesRef = useRef(false)
 
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
 
   // Cleanup function for worktrees and stash
-  const cleanup = (worktree: WorktreeInfo | null, hasStash: boolean) => {
+  const cleanup = () => {
     try {
-      if (worktree) {
+      if (currentWorktreeRef.current) {
         const gitRoot = getGitRoot(repoRoot)
-        cleanupWorktree(gitRoot, worktree)
+        cleanupWorktree(gitRoot, currentWorktreeRef.current)
+        currentWorktreeRef.current = null
       }
-      if (hasStash) {
+      if (hasStashedChangesRef.current) {
         const gitRoot = getGitRoot(repoRoot)
         popStash(gitRoot)
+        hasStashedChangesRef.current = false
       }
     } catch (err) {
       console.error(`Cleanup error: ${err}`)
@@ -56,18 +60,14 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
   // Handle process exit signals
   useEffect(() => {
-    const handleExit = () => {
-      cleanup(currentWorktree, hasStashedChanges)
-    }
-
-    process.on("SIGINT", handleExit)
-    process.on("SIGTERM", handleExit)
+    process.on("SIGINT", cleanup)
+    process.on("SIGTERM", cleanup)
 
     return () => {
-      process.off("SIGINT", handleExit)
-      process.off("SIGTERM", handleExit)
+      process.off("SIGINT", cleanup)
+      process.off("SIGTERM", cleanup)
     }
-  }, [currentWorktree, hasStashedChanges])
+  }, [])
 
   const handleInitSelection = (item: { value: string }) => {
     if (item.value === "yes") {
@@ -97,7 +97,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   useEffect(() => {
     if (currentIteration > totalIterations) {
       // Clean up and exit
-      cleanup(currentWorktree, hasStashedChanges)
+      cleanup()
       exit()
       return
     }
@@ -124,12 +124,12 @@ export const IterationRunner = ({ totalIterations }: Props) => {
       // Stash changes before first iteration
       if (currentIteration === 1) {
         const hasChanges = stashChanges(gitRoot)
-        setHasStashedChanges(hasChanges)
+        hasStashedChangesRef.current = hasChanges
       }
 
       // Create worktree for this iteration
       worktree = createWorktree(gitRoot)
-      setCurrentWorktree(worktree)
+      currentWorktreeRef.current = worktree
 
       // Copy .ralph files to worktree
       copyRalphFilesToWorktree(gitRoot, worktree.path)
@@ -180,9 +180,9 @@ export const IterationRunner = ({ totalIterations }: Props) => {
             }\n\nLast 2000 chars:\n${fullOutput.slice(-2000)}`,
           )
           cleanupWorktree(gitRoot, worktree)
-          setCurrentWorktree(null)
+          currentWorktreeRef.current = null
           setTimeout(() => {
-            cleanup(null, hasStashedChanges)
+            cleanup()
             exit()
             process.exit(1)
           }, 100)
@@ -194,13 +194,13 @@ export const IterationRunner = ({ totalIterations }: Props) => {
           copyRalphFilesFromWorktree(gitRoot, worktree.path)
           mergeWorktreeToMain(gitRoot, worktree)
           cleanupWorktree(gitRoot, worktree)
-          setCurrentWorktree(null)
+          currentWorktreeRef.current = null
         } catch (err) {
           setError(`Failed to merge worktree: ${err}`)
           cleanupWorktree(gitRoot, worktree)
-          setCurrentWorktree(null)
+          currentWorktreeRef.current = null
           setTimeout(() => {
-            cleanup(null, hasStashedChanges)
+            cleanup()
             exit()
             process.exit(1)
           }, 100)
@@ -209,7 +209,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
         // Check if complete
         if (fullOutput.includes("<promise>COMPLETE</promise>")) {
-          cleanup(null, hasStashedChanges)
+          cleanup()
           exit()
           process.exit(0)
           return
@@ -252,10 +252,10 @@ export const IterationRunner = ({ totalIterations }: Props) => {
         if (worktree) {
           const gitRoot = getGitRoot(repoRoot)
           cleanupWorktree(gitRoot, worktree)
-          setCurrentWorktree(null)
+          currentWorktreeRef.current = null
         }
         setTimeout(() => {
-          cleanup(null, hasStashedChanges)
+          cleanup()
           exit()
           process.exit(1)
         }, 100)
@@ -270,17 +270,18 @@ export const IterationRunner = ({ totalIterations }: Props) => {
         try {
           const gitRoot = getGitRoot(repoRoot)
           cleanupWorktree(gitRoot, worktree)
+          currentWorktreeRef.current = null
         } catch {
           // Ignore cleanup errors
         }
       }
       setTimeout(() => {
-        cleanup(null, hasStashedChanges)
+        cleanup()
         exit()
         process.exit(1)
       }, 100)
     }
-  }, [currentIteration, totalIterations, exit, currentWorktree, hasStashedChanges])
+  }, [currentIteration, totalIterations, exit])
 
   if (needsInit) {
     if (initializing) {

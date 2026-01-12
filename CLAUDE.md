@@ -44,6 +44,7 @@ Each iteration runs in an isolated git worktree:
 - **After all iterations**: Pops stashed changes back to main repo
 
 Benefits:
+
 - Iterations cannot interfere with each other
 - Failed iterations don't pollute the main branch
 - Easy rollback if something goes wrong
