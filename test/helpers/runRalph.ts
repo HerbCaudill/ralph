@@ -76,7 +76,7 @@ Started: ${new Date().toISOString()}
     const proc = spawn("node", [ralphBin, ...args], {
       cwd,
       env: { ...process.env, ...env, CI: "true" }, // Force non-TTY mode
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"], // Ignore stdin to prevent Ink from waiting
     })
 
     let stdout = ""
@@ -106,8 +106,9 @@ Started: ${new Date().toISOString()}
       fileStream?.write(`[STDERR] ${text}`)
     })
 
-    // Handle stdin input
-    if (input && proc.stdin) {
+    // Handle stdin input (only if we're piping stdin, not ignoring it)
+    // Currently stdin is ignored for CI mode, so this won't be called
+    if (input && proc.stdin && "write" in proc.stdin) {
       proc.stdin.write(input)
       proc.stdin.end()
     }
