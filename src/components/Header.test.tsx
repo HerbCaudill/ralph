@@ -9,7 +9,7 @@ describe("Header", () => {
     const output = lastFrame()
     // BigText renders ASCII art with ANSI codes
     // Check for box-drawing characters or unicode that appear in the art
-    expect(output.length).toBeGreaterThan(0)
+    expect(output?.length).toBeGreaterThan(0)
     expect(output).toContain("Claude Code")
   })
 
