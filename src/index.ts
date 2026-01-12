@@ -1,4 +1,5 @@
 import { program } from "./cli.js"
+import "./lib/signalHandler.js" // Register global SIGINT/SIGTERM handlers
 
 export const run = () => {
   program.parse(process.argv)

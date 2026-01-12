@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp } from "ink"
 import SelectInput from "ink-select-input"
-import { spawn, execSync } from "child_process"
+import { execSync } from "child_process"
+import { execa, type ResultPromise } from "execa"
 import { appendFileSync, mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import { EventDisplay } from "./EventDisplay.js"
@@ -15,6 +16,7 @@ import { copyRalphFilesFromWorktree } from "../lib/copyRalphFilesFromWorktree.js
 import { mergeWorktreeToMain } from "../lib/mergeWorktreeToMain.js"
 import { cleanupWorktree } from "../lib/cleanupWorktree.js"
 import { installDependencies } from "../lib/installDependencies.js"
+import { registerCleanup, unregisterCleanup } from "../lib/signalHandler.js"
 
 const repoRoot = process.cwd()
 const ralphDir = join(repoRoot, ".ralph")
@@ -37,6 +39,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   // Use refs for worktree/stash state to avoid triggering effect re-runs
   const currentWorktreeRef = useRef<WorktreeInfo | null>(null)
   const hasStashedChangesRef = useRef(false)
+  const childProcessRef = useRef<ResultPromise | null>(null)
 
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
@@ -59,14 +62,20 @@ export const IterationRunner = ({ totalIterations }: Props) => {
     }
   }
 
-  // Handle process exit signals
+  // Register cleanup for SIGINT/SIGTERM (Ctrl+C)
   useEffect(() => {
-    process.on("SIGINT", cleanup)
-    process.on("SIGTERM", cleanup)
+    registerCleanup(async () => {
+      const child = childProcessRef.current
+      if (child) {
+        child.kill("SIGTERM")
+        await child // Wait for process to actually terminate
+        childProcessRef.current = null
+      }
+      cleanup()
+    })
 
     return () => {
-      process.off("SIGINT", cleanup)
-      process.off("SIGTERM", cleanup)
+      unregisterCleanup()
     }
   }, [])
 
@@ -146,7 +155,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
       const worktreeRalphDir = join(worktree.path, ".ralph")
       mkdirSync(worktreeRalphDir, { recursive: true })
 
-      const child = spawn(
+      const child = execa(
         "claude",
         [
           "--permission-mode",
@@ -161,29 +170,48 @@ export const IterationRunner = ({ totalIterations }: Props) => {
           "--verbose",
         ],
         {
-          stdio: ["inherit", "pipe", "inherit"],
           cwd: worktree.path,
+          stdin: "inherit",
+          stdout: "pipe",
+          stderr: "inherit",
+          reject: false, // Don't throw on non-zero exit
         },
       )
+      childProcessRef.current = child
 
       let fullOutput = ""
-      let stdoutEnded = false
-      let closeInfo: { code: number | null; signal: NodeJS.Signals | null } | null = null
+      const worktreeLogFile = join(worktree.path, ".ralph", "events.log")
 
-      const handleIterationComplete = () => {
-        if (!stdoutEnded || !closeInfo || !worktree) return
+      // Handle streaming stdout
+      child.stdout?.on("data", (data: Buffer) => {
+        const chunk = data.toString()
+        for (const line of chunk.split("\n")) {
+          if (!line.trim()) continue
+          try {
+            const event = JSON.parse(line)
+            appendFileSync(worktreeLogFile, JSON.stringify(event, null, 2) + "\n\n")
+            setEvents(prev => [...prev, event])
+          } catch {
+            // Incomplete JSON line, ignore
+          }
+        }
+        fullOutput += chunk
+        setOutput(fullOutput)
+      })
 
-        const { code, signal } = closeInfo
+      // Handle process completion
+      child.then(result => {
+        childProcessRef.current = null
         const gitRoot = getGitRoot(repoRoot)
 
-        // Handle error exit
-        if (code !== 0) {
+        // Handle error exit (but not if terminated by signal during cleanup)
+        if (result.exitCode !== 0 && !result.isTerminated) {
           setError(
-            `Claude exited with code ${code}${
-              signal ? ` (signal: ${signal})` : ""
+            `Claude exited with code ${result.exitCode}${
+              result.signal ? ` (signal: ${result.signal})` : ""
             }\n\nLast 2000 chars:\n${fullOutput.slice(-2000)}`,
           )
-          cleanupWorktree(gitRoot, worktree)
+          cleanupWorktree(gitRoot, worktree!)
           currentWorktreeRef.current = null
           setTimeout(() => {
             cleanup()
@@ -193,15 +221,20 @@ export const IterationRunner = ({ totalIterations }: Props) => {
           return
         }
 
+        // If terminated during cleanup, don't proceed
+        if (result.isTerminated) {
+          return
+        }
+
         // Merge worktree changes back to main
         try {
-          copyRalphFilesFromWorktree(gitRoot, worktree.path)
-          mergeWorktreeToMain(gitRoot, worktree)
-          cleanupWorktree(gitRoot, worktree)
+          copyRalphFilesFromWorktree(gitRoot, worktree!.path)
+          mergeWorktreeToMain(gitRoot, worktree!)
+          cleanupWorktree(gitRoot, worktree!)
           currentWorktreeRef.current = null
         } catch (err) {
           setError(`Failed to merge worktree: ${err}`)
-          cleanupWorktree(gitRoot, worktree)
+          cleanupWorktree(gitRoot, worktree!)
           currentWorktreeRef.current = null
           setTimeout(() => {
             cleanup()
@@ -221,52 +254,11 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
         // Move to next iteration
         setTimeout(() => setCurrentIteration(i => i + 1), 500)
-      }
-
-      const worktreeLogFile = join(worktree.path, ".ralph", "events.log")
-
-      child.stdout.on("data", data => {
-        const chunk = data.toString()
-        for (const line of chunk.split("\n")) {
-          if (!line.trim()) continue
-          try {
-            const event = JSON.parse(line)
-            appendFileSync(worktreeLogFile, JSON.stringify(event, null, 2) + "\n\n")
-            setEvents(prev => [...prev, event])
-          } catch {
-            // Incomplete JSON line, ignore
-          }
-        }
-        fullOutput += chunk
-        setOutput(fullOutput)
-      })
-
-      child.stdout.on("end", () => {
-        stdoutEnded = true
-        handleIterationComplete()
-      })
-
-      child.on("close", (code, signal) => {
-        closeInfo = { code, signal }
-        handleIterationComplete()
-      })
-
-      child.on("error", error => {
-        setError(`Error running Claude: ${error.message}`)
-        if (worktree) {
-          const gitRoot = getGitRoot(repoRoot)
-          cleanupWorktree(gitRoot, worktree)
-          currentWorktreeRef.current = null
-        }
-        setTimeout(() => {
-          cleanup()
-          exit()
-          process.exit(1)
-        }, 100)
       })
 
       return () => {
         child.kill()
+        childProcessRef.current = null
       }
     } catch (err) {
       setError(`Failed to set up worktree: ${err}`)
