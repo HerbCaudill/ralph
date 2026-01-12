@@ -4,6 +4,7 @@ import { render } from "ink"
 import React from "react"
 import { App } from "./components/App.js"
 import { InitRalph } from "./components/InitRalph.js"
+import { getClaudeVersion } from "./lib/getClaudeVersion.js"
 
 export const program = new Command()
   .name("ralph")
@@ -19,7 +20,7 @@ export const program = new Command()
         : join(process.cwd(), ".ralph", "events.log")
       : undefined
 
-    const claudeVersion = process.env.CLAUDE_VERSION || "unknown"
+    const claudeVersion = getClaudeVersion()
 
     render(React.createElement(App, { iterations, replayFile, claudeVersion }))
   })

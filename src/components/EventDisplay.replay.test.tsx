@@ -24,9 +24,7 @@ describe("EventDisplay replay tests", () => {
       }
     }
 
-    console.log(`Parsed ${events.length} events`)
     const assistantEvents = events.filter(e => e.type === "assistant")
-    console.log(`Found ${assistantEvents.length} assistant events`)
 
     // Render with all events
     const { lastFrame } = render(<EventDisplay events={events} />)
@@ -41,25 +39,34 @@ describe("EventDisplay replay tests", () => {
     )
 
     const output = lastFrame() ?? ""
-    console.log("Output length:", output.length)
-    console.log("Output preview:", output.substring(0, 200))
 
-    // Expected content based on the log:
-    // 1. First text message: "I'll start by checking the types..."
-    expect(output).toContain("I'll start by checking the types")
+    expect(output).toMatchInlineSnapshot(`
+      "I'll start by checking the types, unit tests, and end-to-end tests as instructed.
 
-    // 2. TodoWrite should show (from first message)
-    expect(output).toContain("TodoWrite")
+        TodoWrite
+                      [~] Run typecheck to verify types
+                      [ ] Run unit tests via pnpm test
+                      [ ] Run end-to-end tests via pnpm test:pw
 
-    // 3. Bash command should show
-    expect(output).toContain("$ pnpm typecheck")
+        $ pnpm typecheck
 
-    // 4. Second text message: "Good! Types check successfully..."
-    expect(output).toContain("Good! Types check successfully")
+      Good! Types check successfully. Now let me run the unit tests.
 
-    // Should NOT duplicate message IDs
-    // The same message ID appears multiple times but should only show once
-    const textOccurrences = output.match(/I'll start by checking the types/g)?.length || 0
-    expect(textOccurrences).toBe(1)
+        TodoWrite
+                      [x] Run typecheck to verify types
+                      [~] Run unit tests via pnpm test
+                      [ ] Run end-to-end tests via pnpm test:pw
+
+        $ pnpm test
+
+      Perfect! Unit tests pass. Now let me run the end-to-end tests.
+
+        TodoWrite
+                      [x] Run typecheck to verify types
+                      [x] Run unit tests via pnpm test
+                      [~] Run end-to-end tests via pnpm test:pw
+
+        $ pnpm test:pw"
+    `)
   })
 })
