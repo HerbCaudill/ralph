@@ -146,3 +146,35 @@ Each entry should include:
 - Updated inline snapshots in `EventDisplay.replay.test.tsx` to account for the slight formatting difference (trailing newline after Static content)
 
 **Notes:** All 85 tests pass. The Static component is designed for exactly this use case - rendering completed/historical content that shouldn't change while keeping dynamic content (like the spinner) at the bottom.
+
+---
+
+## 2026-01-13: Preserve iteration event history
+
+**What:** Modified the output to show all iterations and their events instead of replacing each iteration's output with the next one
+
+**Why:** When running multiple iterations, users could only see the current iteration's events. Previous iteration output was lost when a new iteration started, making it difficult to understand the full workflow.
+
+**Changes:**
+
+- Modified `src/components/IterationRunner.tsx`:
+  - Added `completedIterations` state to store finished iterations' events
+  - Added `eventsRef` ref to capture current events when an iteration completes
+  - When an iteration finishes, its events are saved to completedIterations before starting the next one
+  - Pass completedIterations to EventDisplay component
+
+- Modified `src/components/EventDisplay.tsx`:
+  - Added `completedIterations` prop
+  - Refactored to use `useMemo` for computing static items instead of `useState`/`useEffect`
+  - Extracted `processEvents` helper function for processing raw events into content blocks
+  - Build static items array with: app header, then each completed iteration (header + content), then current iteration (header + content)
+  - Prefix block IDs with iteration number to ensure uniqueness across iterations
+
+- Modified `src/components/ReplayLog.tsx`:
+  - Added `completedIterations={[]}` prop to EventDisplay (replay mode has no iterations)
+
+- Updated tests:
+  - Added `completedIterations` prop to all EventDisplay test renders
+  - Added new test "displays completed iterations before current iteration" to verify iteration history is preserved and ordered correctly
+
+**Notes:** All 86 tests pass. Each iteration's output now remains visible in the terminal scrollback, with iteration headers clearly separating each one.

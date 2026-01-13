@@ -23,7 +23,13 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+      <EventDisplay
+        events={events}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
     )
 
     await vi.waitFor(() => {
@@ -56,7 +62,13 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+      <EventDisplay
+        events={events}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
     )
 
     // Wait for useEffect to complete
@@ -89,7 +101,13 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+      <EventDisplay
+        events={events}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
     )
 
     await vi.waitFor(() => {
@@ -117,7 +135,13 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+      <EventDisplay
+        events={events}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
     )
 
     await vi.waitFor(() => {
@@ -139,7 +163,13 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame, rerender } = render(
-      <EventDisplay events={events1} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+      <EventDisplay
+        events={events1}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
     )
 
     await vi.waitFor(() => {
@@ -158,7 +188,13 @@ describe("EventDisplay", () => {
     ]
 
     rerender(
-      <EventDisplay events={events2} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+      <EventDisplay
+        events={events2}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
     )
 
     await vi.waitFor(() => {
@@ -217,7 +253,13 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+      <EventDisplay
+        events={events}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
     )
 
     await vi.waitFor(() => {
@@ -246,7 +288,13 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+      <EventDisplay
+        events={events}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
     )
 
     await vi.waitFor(() => {
@@ -264,5 +312,73 @@ describe("EventDisplay", () => {
       .filter(l => l.trim())
       .filter(l => !l.includes("─") && !l.includes("│") && !l.includes("╭") && !l.includes("╰"))
     expect(contentLines.length).toBe(1)
+  })
+
+  it("displays completed iterations before current iteration", async () => {
+    const completedIterations = [
+      {
+        iteration: 1,
+        events: [
+          {
+            type: "assistant",
+            message: {
+              id: "msg_iter1",
+              content: [{ type: "text", text: "First iteration work" }],
+            },
+          },
+        ],
+      },
+      {
+        iteration: 2,
+        events: [
+          {
+            type: "assistant",
+            message: {
+              id: "msg_iter2",
+              content: [{ type: "text", text: "Second iteration work" }],
+            },
+          },
+        ],
+      },
+    ]
+
+    const currentEvents = [
+      {
+        type: "assistant",
+        message: {
+          id: "msg_iter3",
+          content: [{ type: "text", text: "Third iteration work" }],
+        },
+      },
+    ]
+
+    const { lastFrame } = render(
+      <EventDisplay
+        events={currentEvents}
+        iteration={3}
+        completedIterations={completedIterations}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
+    )
+
+    await vi.waitFor(() => {
+      const output = lastFrame() ?? ""
+      // Should show all 3 iterations
+      expect(output).toContain("Iteration 1")
+      expect(output).toContain("First iteration work")
+      expect(output).toContain("Iteration 2")
+      expect(output).toContain("Second iteration work")
+      expect(output).toContain("Iteration 3")
+      expect(output).toContain("Third iteration work")
+    })
+
+    // Verify order: iteration 1 before 2, iteration 2 before 3
+    const output = lastFrame() ?? ""
+    const iter1Pos = output.indexOf("Iteration 1")
+    const iter2Pos = output.indexOf("Iteration 2")
+    const iter3Pos = output.indexOf("Iteration 3")
+    expect(iter1Pos).toBeLessThan(iter2Pos)
+    expect(iter2Pos).toBeLessThan(iter3Pos)
   })
 })

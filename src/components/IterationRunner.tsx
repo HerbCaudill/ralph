@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp } from "ink"
 import Spinner from "ink-spinner"
 import SelectInput from "ink-select-input"
@@ -16,10 +16,17 @@ const checkRequiredFiles = (): { missing: string[]; exists: boolean } => {
   return { missing, exists: missing.length === 0 }
 }
 
+type IterationEvents = {
+  iteration: number
+  events: Array<Record<string, unknown>>
+}
+
 export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }: Props) => {
   const { exit } = useApp()
   const [currentIteration, setCurrentIteration] = useState(1)
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
+  const eventsRef = useRef<Array<Record<string, unknown>>>([])
+  const [completedIterations, setCompletedIterations] = useState<IterationEvents[]>([])
   const [output, setOutput] = useState("")
   const [error, setError] = useState<string>()
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
@@ -53,6 +60,11 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       }, 100)
     }
   }
+
+  // Keep ref in sync with events state for access in callbacks
+  useEffect(() => {
+    eventsRef.current = events
+  }, [events])
 
   useEffect(() => {
     if (currentIteration > totalIterations) {
@@ -133,7 +145,12 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
         return
       }
 
-      // Move to next iteration
+      // Save current events and move to next iteration
+      const currentEvents = eventsRef.current
+      setCompletedIterations(prev => [
+        ...prev,
+        { iteration: currentIteration, events: currentEvents },
+      ])
       setTimeout(() => setCurrentIteration(i => i + 1), 500)
     }
 
@@ -231,6 +248,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       <EventDisplay
         events={events}
         iteration={currentIteration}
+        completedIterations={completedIterations}
         claudeVersion={claudeVersion}
         ralphVersion={ralphVersion}
       />

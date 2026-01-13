@@ -28,7 +28,13 @@ async function replay(logFile: string): Promise<string> {
 
   // Render with all events
   const { lastFrame } = render(
-    <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    <EventDisplay
+      events={events}
+      iteration={1}
+      completedIterations={[]}
+      claudeVersion="1.0.0"
+      ralphVersion="0.1.0"
+    />,
   )
 
   // Wait for rendering

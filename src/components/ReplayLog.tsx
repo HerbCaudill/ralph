@@ -57,6 +57,7 @@ export const ReplayLog = ({ filePath, claudeVersion, ralphVersion }: Props) => {
       <EventDisplay
         events={events}
         iteration={1}
+        completedIterations={[]}
         claudeVersion={claudeVersion}
         ralphVersion={ralphVersion}
       />

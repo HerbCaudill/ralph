@@ -1,10 +1,10 @@
 ### To do
 
-- [ ] The output should show each iteration followed by its events. Currently each new iteration replaces the previous one.
-- [ ] Remove excessive white space from header
+- [ ] Remove padding from header
 
 ### Done
 
+- [x] Preserve iteration event history across multiple iterations
 - [x] Fix terminal scrolling by using Static component for content blocks
 - [x] Fix LSP server notification error by setting ENABLE_LSP_TOOL=0 environment variable
 
