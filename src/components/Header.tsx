@@ -9,7 +9,6 @@ export const Header = ({ claudeVersion, ralphVersion, width }: Props) => {
       flexDirection="column"
       marginBottom={1}
       borderStyle="single"
-      padding={1}
       alignItems="center"
       width={width}
     >

@@ -1,8 +1,10 @@
 ### To do
 
-- [ ] Remove padding from header
+- [ ] Support just typing `ralph todo` and then being prompted for the todo
 
 ### Done
+
+- [x] Remove padding from header
 
 - [x] Preserve iteration event history across multiple iterations
 - [x] Fix terminal scrolling by using Static component for content blocks

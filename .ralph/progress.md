@@ -149,6 +149,21 @@ Each entry should include:
 
 ---
 
+## 2026-01-13: Removed padding from header
+
+**What:** Removed the inner padding from the header box
+
+**Why:** To make the header more compact and reduce vertical space usage
+
+**Changes:**
+
+- Modified `src/components/Header.tsx` to remove `padding={1}` from the outer Box component
+- Updated inline snapshots in `EventDisplay.replay.test.tsx` to reflect the smaller header (2 fewer blank lines)
+
+**Notes:** All 86 tests pass. The header now has a tighter appearance with the border directly adjacent to the content.
+
+---
+
 ## 2026-01-13: Preserve iteration event history
 
 **What:** Modified the output to show all iterations and their events instead of replacing each iteration's output with the next one
