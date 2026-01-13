@@ -1,17 +1,16 @@
 ### To do
 
+- [ ] Add a haiku to the README
+- [ ] Replace the English text in the README with a Japanese translation
+
 ### Done
 
 - [x] when adding a todo, don't echo the todo text back - just respond "✅ added"
-
 - [x] Support just typing `ralph todo` and then being prompted for the todo
-
 - [x] Remove padding from header
-
 - [x] Preserve iteration event history across multiple iterations
 - [x] Fix terminal scrolling by using Static component for content blocks
 - [x] Fix LSP server notification error by setting ENABLE_LSP_TOOL=0 environment variable
-
 - [x] Use a nicer selection UI for the yes/no init question
 - [x] Put a box around the header
 - [x] For the header text, use ink-gradient from #30A6E4 to #EBC635
