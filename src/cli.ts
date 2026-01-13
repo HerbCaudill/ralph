@@ -5,6 +5,7 @@ import React from "react"
 import { App } from "./components/App.js"
 import { InitRalph } from "./components/InitRalph.js"
 import { getClaudeVersion } from "./lib/getClaudeVersion.js"
+import { addTodo } from "./lib/addTodo.js"
 import packageJson from "../package.json" with { type: "json" }
 
 export const program = new Command()
@@ -32,4 +33,17 @@ program
   .description("initialize .ralph directory with templates")
   .action(() => {
     render(React.createElement(InitRalph))
+  })
+
+program
+  .command("todo <description...>")
+  .description("add a todo item and commit it (safe to use while ralph is running)")
+  .action((descriptionParts: string[]) => {
+    const description = descriptionParts.join(" ")
+    try {
+      addTodo(description)
+    } catch (error) {
+      console.error(`Failed to add todo: ${error instanceof Error ? error.message : error}`)
+      process.exit(1)
+    }
   })

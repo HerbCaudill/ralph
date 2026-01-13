@@ -1,6 +1,8 @@
 ### To do
 
----
+- [ ] Scrolling is weird - if I scroll up, I can't scroll back down again with the scroll wheel or scroll bar (I can press down arrow though)
+- [ ] Preserve complete iterations rather than starting over
+- [ ] I'm getting this error `Cannot send notification to LSP server 'plugin:typescript-lsp:typescript': server is error (/$bunfs/root/claude:2082:34003)\n    at processTicksAndRejections` again - I think we already fixed that somewhere in the worktrees branch
 
 ### Done
 
