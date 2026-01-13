@@ -1,6 +1,5 @@
 import React from "react"
 import { Box } from "ink"
-import { Header } from "./Header.js"
 import { IterationRunner } from "./IterationRunner.js"
 import { ReplayLog } from "./ReplayLog.js"
 
@@ -8,16 +7,22 @@ export const App = ({ iterations, replayFile, claudeVersion, ralphVersion }: Pro
   if (replayFile) {
     return (
       <Box flexDirection="column" marginX={1}>
-        <Header claudeVersion={claudeVersion} ralphVersion={ralphVersion} />
-        <ReplayLog filePath={replayFile} />
+        <ReplayLog
+          filePath={replayFile}
+          claudeVersion={claudeVersion}
+          ralphVersion={ralphVersion}
+        />
       </Box>
     )
   }
 
   return (
     <Box flexDirection="column" marginX={1}>
-      <Header claudeVersion={claudeVersion} ralphVersion={ralphVersion} />
-      <IterationRunner totalIterations={iterations} />
+      <IterationRunner
+        totalIterations={iterations}
+        claudeVersion={claudeVersion}
+        ralphVersion={ralphVersion}
+      />
     </Box>
   )
 }

@@ -22,7 +22,9 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
+    const { lastFrame } = render(
+      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    )
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -53,7 +55,9 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
+    const { lastFrame } = render(
+      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    )
 
     // Wait for useEffect to complete
     await vi.waitFor(() => {
@@ -84,7 +88,9 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
+    const { lastFrame } = render(
+      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    )
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -110,7 +116,9 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
+    const { lastFrame } = render(
+      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    )
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -130,7 +138,9 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame, rerender } = render(<EventDisplay events={events1} iteration={1} />)
+    const { lastFrame, rerender } = render(
+      <EventDisplay events={events1} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    )
 
     await vi.waitFor(() => {
       expect(lastFrame()).toContain("Initial")
@@ -147,7 +157,9 @@ describe("EventDisplay", () => {
       },
     ]
 
-    rerender(<EventDisplay events={events2} iteration={1} />)
+    rerender(
+      <EventDisplay events={events2} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    )
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -204,7 +216,9 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
+    const { lastFrame } = render(
+      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    )
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -231,7 +245,9 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
+    const { lastFrame } = render(
+      <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+    )
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""

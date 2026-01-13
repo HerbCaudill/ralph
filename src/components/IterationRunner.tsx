@@ -16,7 +16,7 @@ const checkRequiredFiles = (): { missing: string[]; exists: boolean } => {
   return { missing, exists: missing.length === 0 }
 }
 
-export const IterationRunner = ({ totalIterations }: Props) => {
+export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }: Props) => {
   const { exit } = useApp()
   const [currentIteration, setCurrentIteration] = useState(1)
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
@@ -228,7 +228,12 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
   return (
     <Box flexDirection="column">
-      <EventDisplay events={events} iteration={currentIteration} />
+      <EventDisplay
+        events={events}
+        iteration={currentIteration}
+        claudeVersion={claudeVersion}
+        ralphVersion={ralphVersion}
+      />
       {isRunning && (
         <Box marginTop={1}>
           <Text color="cyan">
@@ -242,4 +247,6 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
 type Props = {
   totalIterations: number
+  claudeVersion: string
+  ralphVersion: string
 }

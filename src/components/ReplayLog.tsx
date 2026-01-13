@@ -3,7 +3,7 @@ import { Box, Text, useApp } from "ink"
 import { readFileSync } from "fs"
 import { EventDisplay } from "./EventDisplay.js"
 
-export const ReplayLog = ({ filePath }: Props) => {
+export const ReplayLog = ({ filePath, claudeVersion, ralphVersion }: Props) => {
   const { exit } = useApp()
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const [error, setError] = useState<string>()
@@ -54,11 +54,18 @@ export const ReplayLog = ({ filePath }: Props) => {
       <Box marginBottom={1}>
         <Text dimColor>{"─".repeat(40)}</Text>
       </Box>
-      <EventDisplay events={events} iteration={1} />
+      <EventDisplay
+        events={events}
+        iteration={1}
+        claudeVersion={claudeVersion}
+        ralphVersion={ralphVersion}
+      />
     </Box>
   )
 }
 
 type Props = {
   filePath: string
+  claudeVersion: string
+  ralphVersion: string
 }

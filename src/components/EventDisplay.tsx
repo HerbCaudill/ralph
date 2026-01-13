@@ -2,11 +2,15 @@ import React, { useState, useEffect } from "react"
 import { Box, Static, Text } from "ink"
 import { StreamingText } from "./StreamingText.js"
 import { ToolUse } from "./ToolUse.js"
+import { Header } from "./Header.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
 
-type StaticItem = { type: "header"; id: string; iteration: number } | ContentBlock
+type StaticItem =
+  | { type: "app-header"; id: string; claudeVersion: string; ralphVersion: string }
+  | { type: "iteration-header"; id: string; iteration: number }
+  | ContentBlock
 
-export const EventDisplay = ({ events, iteration }: Props) => {
+export const EventDisplay = ({ events, iteration, claudeVersion, ralphVersion }: Props) => {
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([])
 
   useEffect(() => {
@@ -68,9 +72,10 @@ export const EventDisplay = ({ events, iteration }: Props) => {
     setContentBlocks(blocks)
   }, [events])
 
-  // Prepend the iteration header as the first static item
+  // Prepend headers as the first static items
   const staticItems: StaticItem[] = [
-    { type: "header", id: `iteration-${iteration}`, iteration },
+    { type: "app-header", id: "app-header", claudeVersion, ralphVersion },
+    { type: "iteration-header", id: `iteration-${iteration}`, iteration },
     ...contentBlocks,
   ]
 
@@ -80,22 +85,24 @@ export const EventDisplay = ({ events, iteration }: Props) => {
   return (
     <Static items={staticItems}>
       {(item, index) => {
-        if (item.type === "header") {
+        if (item.type === "app-header") {
           return (
-            <Box
+            <Header
               key={item.id}
-              borderStyle="round"
-              borderColor="cyan"
-              paddingX={1}
-              marginTop={1}
-              marginBottom={1}
-            >
+              claudeVersion={item.claudeVersion}
+              ralphVersion={item.ralphVersion}
+            />
+          )
+        }
+        if (item.type === "iteration-header") {
+          return (
+            <Box key={item.id} borderStyle="round" borderColor="cyan" paddingX={1} marginBottom={1}>
               <Text color="cyan">Iteration {item.iteration}</Text>
             </Box>
           )
         }
         return (
-          <Box key={item.id} marginTop={index > 1 ? 1 : 0}>
+          <Box key={item.id} marginTop={index > 2 ? 1 : 0}>
             {item.type === "text" ?
               <StreamingText content={item.content} />
             : <ToolUse name={item.name} arg={item.arg} />}
@@ -109,4 +116,6 @@ export const EventDisplay = ({ events, iteration }: Props) => {
 type Props = {
   events: Array<Record<string, unknown>>
   iteration: number
+  claudeVersion: string
+  ralphVersion: string
 }

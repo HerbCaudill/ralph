@@ -27,7 +27,9 @@ async function replay(logFile: string): Promise<string> {
   }
 
   // Render with all events
-  const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
+  const { lastFrame } = render(
+    <EventDisplay events={events} iteration={1} claudeVersion="1.0.0" ralphVersion="0.1.0" />,
+  )
 
   // Wait for rendering
   await vi.waitFor(
@@ -44,10 +46,21 @@ async function replay(logFile: string): Promise<string> {
 describe("EventDisplay replay tests", () => {
   it("replays 1.txt", async () => {
     expect(await replay("1.txt")).toMatchInlineSnapshot(`
-      "
-      ╭─────────────╮
-      │ Iteration 1 │
-      ╰─────────────╯
+      "┌────────────────────────────────────────────────┐
+      │                                                │
+      │                                                │
+      │                                                │
+      │               █▀█ ▄▀█ █   █▀█ █ █              │
+      │               █▀▄ █▀█ █▄▄ █▀▀ █▀█              │
+      │                                                │
+      │                                                │
+      │ @herbcaudill/ralph v0.1.0 • Claude Code v1.0.0 │
+      │                                                │
+      └────────────────────────────────────────────────┘
+
+      ╭────────────────────────────────────────────────╮
+      │ Iteration 1                                    │
+      ╰────────────────────────────────────────────────╯
 
       I'll start by checking the types, unit tests, and end-to-end tests as instructed.
 
@@ -81,10 +94,21 @@ describe("EventDisplay replay tests", () => {
 
   it("replays 2.txt", async () => {
     expect(await replay("2.txt")).toMatchInlineSnapshot(`
-      "
-      ╭─────────────╮
-      │ Iteration 1 │
-      ╰─────────────╯
+      "┌────────────────────────────────────────────────┐
+      │                                                │
+      │                                                │
+      │                                                │
+      │               █▀█ ▄▀█ █   █▀█ █ █              │
+      │               █▀▄ █▀█ █▄▄ █▀▀ █▀█              │
+      │                                                │
+      │                                                │
+      │ @herbcaudill/ralph v0.1.0 • Claude Code v1.0.0 │
+      │                                                │
+      └────────────────────────────────────────────────┘
+
+      ╭────────────────────────────────────────────────╮
+      │ Iteration 1                                    │
+      ╰────────────────────────────────────────────────╯
 
       I'll start by checking that the project builds successfully and running tests.
 
