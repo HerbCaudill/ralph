@@ -120,6 +120,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     let fullOutput = ""
     let stdoutEnded = false
     let closeInfo: { code: number | null; signal: NodeJS.Signals | null } | null = null
+    let finalResult = ""
 
     const handleIterationComplete = () => {
       if (!stdoutEnded || !closeInfo) return
@@ -139,7 +140,9 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
         return
       }
 
-      if (fullOutput.includes("<promise>COMPLETE</promise>")) {
+      // Only check Claude's final result message, not the entire output
+      // (which may include file contents that contain the completion string)
+      if (finalResult.includes("<promise>COMPLETE</promise>")) {
         exit()
         process.exit(0)
         return
@@ -162,6 +165,10 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
           const event = JSON.parse(line)
           appendFileSync(logFile, JSON.stringify(event, null, 2) + "\n\n")
           setEvents(prev => [...prev, event])
+          // Capture the final result message from result events
+          if (event.type === "result" && typeof event.result === "string") {
+            finalResult = event.result
+          }
         } catch {
           // Incomplete JSON line, ignore
         }
