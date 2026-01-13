@@ -117,7 +117,7 @@ export const EventDisplay = ({ events, iteration, completedIterations, height }:
     <Box flexDirection="column">
       {visibleLines.map((line, index) => (
         <Text key={index} wrap="wrap">
-          {line}
+          {line || " "}
         </Text>
       ))}
     </Box>
