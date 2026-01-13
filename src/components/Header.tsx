@@ -3,7 +3,7 @@ import { Box, Text } from "ink"
 import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 
-export const Header = ({ claudeVersion, ralphVersion }: Props) => {
+export const Header = ({ claudeVersion, ralphVersion, width }: Props) => {
   return (
     <Box
       flexDirection="column"
@@ -11,6 +11,7 @@ export const Header = ({ claudeVersion, ralphVersion }: Props) => {
       borderStyle="single"
       padding={1}
       alignItems="center"
+      width={width}
     >
       <Gradient colors={["#30A6E4", "#EBC635"]}>
         <BigText text="Ralph" font="tiny" />
@@ -25,4 +26,5 @@ export const Header = ({ claudeVersion, ralphVersion }: Props) => {
 type Props = {
   claudeVersion: string
   ralphVersion: string
+  width?: number
 }

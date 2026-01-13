@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react"
-import { Box, Static, Text } from "ink"
+import { Box, Static, Text, useStdout } from "ink"
 import { StreamingText } from "./StreamingText.js"
 import { ToolUse } from "./ToolUse.js"
 import { Header } from "./Header.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
 
 type StaticItem =
-  | { type: "app-header"; id: string; claudeVersion: string; ralphVersion: string }
-  | { type: "iteration-header"; id: string; iteration: number }
+  | { type: "app-header"; id: string; claudeVersion: string; ralphVersion: string; width: number }
+  | { type: "iteration-header"; id: string; iteration: number; width: number }
   | ContentBlock
 
 export const EventDisplay = ({ events, iteration, claudeVersion, ralphVersion }: Props) => {
+  const { stdout } = useStdout()
+  // Account for the marginX={1} in App.tsx (2 chars total)
+  const terminalWidth = (stdout?.columns ?? 80) - 2
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([])
 
   useEffect(() => {
@@ -74,8 +77,8 @@ export const EventDisplay = ({ events, iteration, claudeVersion, ralphVersion }:
 
   // Prepend headers as the first static items
   const staticItems: StaticItem[] = [
-    { type: "app-header", id: "app-header", claudeVersion, ralphVersion },
-    { type: "iteration-header", id: `iteration-${iteration}`, iteration },
+    { type: "app-header", id: "app-header", claudeVersion, ralphVersion, width: terminalWidth },
+    { type: "iteration-header", id: `iteration-${iteration}`, iteration, width: terminalWidth },
     ...contentBlocks,
   ]
 
@@ -91,12 +94,20 @@ export const EventDisplay = ({ events, iteration, claudeVersion, ralphVersion }:
               key={item.id}
               claudeVersion={item.claudeVersion}
               ralphVersion={item.ralphVersion}
+              width={item.width}
             />
           )
         }
         if (item.type === "iteration-header") {
           return (
-            <Box key={item.id} borderStyle="round" borderColor="cyan" paddingX={1} marginBottom={1}>
+            <Box
+              key={item.id}
+              borderStyle="round"
+              borderColor="cyan"
+              paddingX={1}
+              marginBottom={1}
+              width={item.width}
+            >
               <Text color="cyan">Iteration {item.iteration}</Text>
             </Box>
           )

@@ -1,6 +1,7 @@
 ### To do
 
-- [ ] Preserve complete iterations rather than starting over
+- [ ] Preserve each iteration's events
+- [ ] Remove excessive white space from header
 
 ### Done
 
