@@ -91,8 +91,7 @@ describe("EventDisplay replay tests", () => {
                       [x] Run unit tests via pnpm test
                       [~] Run end-to-end tests via pnpm test:pw
 
-        $ pnpm test:pw
-      "
+        $ pnpm test:pw"
     `)
   })
 
@@ -441,8 +440,7 @@ describe("EventDisplay replay tests", () => {
 
       Perfect! Let me verify git status:
 
-        $ git status
-      "
+        $ git status"
     `)
   })
 })

@@ -381,4 +381,63 @@ describe("EventDisplay", () => {
     expect(iter1Pos).toBeLessThan(iter2Pos)
     expect(iter2Pos).toBeLessThan(iter3Pos)
   })
+
+  it("shows new iteration header when transitioning between iterations", async () => {
+    // Start with iteration 1
+    const iter1Events = [
+      {
+        type: "assistant",
+        message: {
+          id: "msg_iter1",
+          content: [{ type: "text", text: "First iteration" }],
+        },
+      },
+    ]
+
+    const { lastFrame, rerender } = render(
+      <EventDisplay
+        events={iter1Events}
+        iteration={1}
+        completedIterations={[]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
+    )
+
+    await vi.waitFor(() => {
+      const output = lastFrame() ?? ""
+      expect(output).toContain("Iteration 1")
+      expect(output).toContain("First iteration")
+    })
+
+    // Transition to iteration 2 (iteration 1 moves to completedIterations)
+    const iter2Events = [
+      {
+        type: "assistant",
+        message: {
+          id: "msg_iter2",
+          content: [{ type: "text", text: "Second iteration" }],
+        },
+      },
+    ]
+
+    rerender(
+      <EventDisplay
+        events={iter2Events}
+        iteration={2}
+        completedIterations={[{ iteration: 1, events: iter1Events }]}
+        claudeVersion="1.0.0"
+        ralphVersion="0.1.0"
+      />,
+    )
+
+    await vi.waitFor(() => {
+      const output = lastFrame() ?? ""
+      // Should show both iterations
+      expect(output).toContain("Iteration 1")
+      expect(output).toContain("First iteration")
+      expect(output).toContain("Iteration 2")
+      expect(output).toContain("Second iteration")
+    })
+  })
 })

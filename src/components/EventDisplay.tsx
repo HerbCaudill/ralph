@@ -85,7 +85,8 @@ export const EventDisplay = ({
   // Account for the marginX={1} in App.tsx (2 chars total)
   const terminalWidth = (stdout?.columns ?? 80) - 2
 
-  // Build all static items in a single computation
+  // Build static items for completed iterations only
+  // Current iteration is rendered separately to ensure proper ordering
   const staticItems = useMemo((): StaticItem[] => {
     const items: StaticItem[] = [
       { type: "app-header", id: "app-header", claudeVersion, ralphVersion, width: terminalWidth },
@@ -109,64 +110,70 @@ export const EventDisplay = ({
       }
     }
 
-    // Add current iteration header and content
-    items.push({
-      type: "iteration-header",
-      id: `iteration-${iteration}`,
-      iteration,
-      width: terminalWidth,
-    })
-    const currentBlocks = processEvents(events)
-    for (const block of currentBlocks) {
-      // Prefix block IDs with iteration number to ensure uniqueness
-      items.push({
-        ...block,
-        id: `iter${iteration}-${block.id}`,
-      })
-    }
-
     return items
-  }, [completedIterations, events, iteration, claudeVersion, ralphVersion, terminalWidth])
+  }, [completedIterations, claudeVersion, ralphVersion, terminalWidth])
 
-  // Use Static to render content permanently to the scrollback buffer.
-  // This prevents re-rendering of completed content and allows
-  // natural terminal scrolling behavior.
+  // Process current iteration events
+  const currentBlocks = useMemo(() => processEvents(events), [events])
+
+  // Use Static to render completed iterations permanently to the scrollback buffer.
+  // Current iteration is rendered normally below to ensure headers appear correctly.
   return (
-    <Static items={staticItems}>
-      {(item, index) => {
-        if (item.type === "app-header") {
+    <Box flexDirection="column">
+      <Static items={staticItems}>
+        {(item, index) => {
+          if (item.type === "app-header") {
+            return (
+              <Header
+                key={item.id}
+                claudeVersion={item.claudeVersion}
+                ralphVersion={item.ralphVersion}
+                width={item.width}
+              />
+            )
+          }
+          if (item.type === "iteration-header") {
+            return (
+              <Box
+                key={item.id}
+                borderStyle="round"
+                borderColor="cyan"
+                paddingX={1}
+                marginBottom={1}
+                width={item.width}
+              >
+                <Text color="cyan">Iteration {item.iteration}</Text>
+              </Box>
+            )
+          }
           return (
-            <Header
-              key={item.id}
-              claudeVersion={item.claudeVersion}
-              ralphVersion={item.ralphVersion}
-              width={item.width}
-            />
-          )
-        }
-        if (item.type === "iteration-header") {
-          return (
-            <Box
-              key={item.id}
-              borderStyle="round"
-              borderColor="cyan"
-              paddingX={1}
-              marginBottom={1}
-              width={item.width}
-            >
-              <Text color="cyan">Iteration {item.iteration}</Text>
+            <Box key={item.id} marginTop={index > 2 ? 1 : 0}>
+              {item.type === "text" ?
+                <StreamingText content={item.content} />
+              : <ToolUse name={item.name} arg={item.arg} />}
             </Box>
           )
-        }
-        return (
-          <Box key={item.id} marginTop={index > 2 ? 1 : 0}>
-            {item.type === "text" ?
-              <StreamingText content={item.content} />
-            : <ToolUse name={item.name} arg={item.arg} />}
-          </Box>
-        )
-      }}
-    </Static>
+        }}
+      </Static>
+
+      {/* Current iteration - rendered outside Static to ensure header appears */}
+      <Box
+        borderStyle="round"
+        borderColor="cyan"
+        paddingX={1}
+        marginBottom={1}
+        width={terminalWidth}
+      >
+        <Text color="cyan">Iteration {iteration}</Text>
+      </Box>
+      {currentBlocks.map((block, index) => (
+        <Box key={`iter${iteration}-${block.id}`} marginTop={index > 0 ? 1 : 0}>
+          {block.type === "text" ?
+            <StreamingText content={block.content} />
+          : <ToolUse name={block.name} arg={block.arg} />}
+        </Box>
+      ))}
+    </Box>
   )
 }
 
