@@ -258,7 +258,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       </Text>
     : <Text dimColor>Ready</Text>
 
-  const version = `v${ralphVersion} • Claude Code v${claudeVersion}`
+  const version = `@herbcaudill/ralph v${ralphVersion} • Claude Code v${claudeVersion}`
   const contentHeight = useContentHeight(true)
 
   return (

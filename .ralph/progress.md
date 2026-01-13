@@ -240,3 +240,17 @@ Each entry should include:
 - Modified `src/components/IterationRunner.tsx` line 257: changed the footer text format
 
 **Notes:** All 87 tests pass. Simple text format change.
+
+---
+
+## 2026-01-13: Added @herbcaudill/ralph prefix to footer version
+
+**What:** Added `@herbcaudill/ralph` prefix before the version number in the footer
+
+**Why:** Task requested the package name appear before the version for clarity
+
+**Changes:**
+
+- Modified `src/components/IterationRunner.tsx` line 261: changed version string from `v${ralphVersion} • Claude Code v${claudeVersion}` to `@herbcaudill/ralph v${ralphVersion} • Claude Code v${claudeVersion}`
+
+**Notes:** All 87 tests pass. The footer now shows the full package identifier matching what users would install from npm.

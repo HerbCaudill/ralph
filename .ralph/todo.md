@@ -1,9 +1,8 @@
 ### To do
 
-- [ ] In the footer put `@herbcaudill/ralph` before the version
-
 ### Done
 
+- [x] In the footer put `@herbcaudill/ralph` before the version
 - [x] In the footer say `Running iteration X (max Y)`
 
 - [x] when adding a todo, don't echo the todo text back - just respond "✅ added"
