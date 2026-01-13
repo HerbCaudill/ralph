@@ -212,3 +212,17 @@ Each entry should include:
   - Exits with error if user provides empty input
 
 **Notes:** All 86 tests pass. Both modes work: `ralph todo "my item"` and interactive `ralph todo` with prompt.
+
+---
+
+## 2026-01-13: Simplified todo add confirmation message
+
+**What:** Changed the console output when adding a todo from echoing the full todo text to just "✅ added"
+
+**Why:** The task requested a simpler confirmation message that doesn't repeat the todo text back
+
+**Changes:**
+
+- Modified `src/lib/addTodo.ts` line 45: changed `console.log(\`Added todo: ${description}\`)`to`console.log(\`✅ added\`)`
+
+**Notes:** All 86 tests pass. The change is purely cosmetic - the addTodo function's core behavior is unchanged.

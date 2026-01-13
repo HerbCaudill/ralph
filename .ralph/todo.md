@@ -1,8 +1,8 @@
 ### To do
 
-- [ ] when adding a todo, don't echo the todo text back - just respond "✅ added"
-
 ### Done
+
+- [x] when adding a todo, don't echo the todo text back - just respond "✅ added"
 
 - [x] Support just typing `ralph todo` and then being prompted for the todo
 

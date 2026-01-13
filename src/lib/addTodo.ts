@@ -42,7 +42,7 @@ export const addTodo = (description: string, cwd: string = process.cwd()): void 
   // Commit just the staged change
   execSync(`git commit -m "todo: ${description}"`, { cwd, stdio: "pipe" })
 
-  console.log(`Added todo: ${description}`)
+  console.log(`✅ added`)
 }
 
 /**
