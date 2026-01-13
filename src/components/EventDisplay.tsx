@@ -118,8 +118,9 @@ export const EventDisplay = ({
 
   // Use Static to render completed iterations permanently to the scrollback buffer.
   // Current iteration is rendered normally below to ensure headers appear correctly.
+  // Note: We use a fragment to avoid wrapper Box indentation issues with Static.
   return (
-    <Box flexDirection="column">
+    <>
       <Static items={staticItems}>
         {(item, index) => {
           if (item.type === "app-header") {
@@ -157,23 +158,25 @@ export const EventDisplay = ({
       </Static>
 
       {/* Current iteration - rendered outside Static to ensure header appears */}
-      <Box
-        borderStyle="round"
-        borderColor="cyan"
-        paddingX={1}
-        marginBottom={1}
-        width={terminalWidth}
-      >
-        <Text color="cyan">Iteration {iteration}</Text>
-      </Box>
-      {currentBlocks.map((block, index) => (
-        <Box key={`iter${iteration}-${block.id}`} marginTop={index > 0 ? 1 : 0}>
-          {block.type === "text" ?
-            <StreamingText content={block.content} />
-          : <ToolUse name={block.name} arg={block.arg} />}
+      <Box flexDirection="column">
+        <Box
+          borderStyle="round"
+          borderColor="cyan"
+          paddingX={1}
+          marginBottom={1}
+          width={terminalWidth}
+        >
+          <Text color="cyan">Iteration {iteration}</Text>
         </Box>
-      ))}
-    </Box>
+        {currentBlocks.map((block, index) => (
+          <Box key={`iter${iteration}-${block.id}`} marginTop={index > 0 ? 1 : 0}>
+            {block.type === "text" ?
+              <StreamingText content={block.content} />
+            : <ToolUse name={block.name} arg={block.arg} />}
+          </Box>
+        ))}
+      </Box>
+    </>
   )
 }
 
