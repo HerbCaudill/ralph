@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { Box, Text, useApp } from "ink"
+import Spinner from "ink-spinner"
 import SelectInput from "ink-select-input"
 import { spawn, execSync } from "child_process"
 import { appendFileSync, writeFileSync, mkdirSync, existsSync } from "fs"
@@ -23,6 +24,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
   const [error, setError] = useState<string>()
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
   const [initializing, setInitializing] = useState(false)
+  const [isRunning, setIsRunning] = useState(false)
 
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
@@ -94,6 +96,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
       ],
       { stdio: ["inherit", "pipe", "inherit"] },
     )
+    setIsRunning(true)
 
     let fullOutput = ""
     let stdoutEnded = false
@@ -101,6 +104,7 @@ export const IterationRunner = ({ totalIterations }: Props) => {
 
     const handleIterationComplete = () => {
       if (!stdoutEnded || !closeInfo) return
+      setIsRunning(false)
 
       const { code, signal } = closeInfo
       if (code !== 0) {
@@ -221,6 +225,13 @@ export const IterationRunner = ({ totalIterations }: Props) => {
         <Text color="cyan">Iteration {currentIteration}</Text>
       </Box>
       <EventDisplay events={events} />
+      {isRunning && (
+        <Box marginTop={1}>
+          <Text color="cyan">
+            <Spinner type="dots" />
+          </Text>
+        </Box>
+      )}
     </Box>
   )
 }
