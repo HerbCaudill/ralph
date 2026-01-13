@@ -226,3 +226,17 @@ Each entry should include:
 - Modified `src/lib/addTodo.ts` line 45: changed `console.log(\`Added todo: ${description}\`)`to`console.log(\`✅ added\`)`
 
 **Notes:** All 86 tests pass. The change is purely cosmetic - the addTodo function's core behavior is unchanged.
+
+---
+
+## 2026-01-13: Changed iteration progress format in footer
+
+**What:** Changed the footer text format from "Running iteration X of Y" to "Running iteration X (max Y)"
+
+**Why:** Task requested the "(max Y)" format instead of "of Y"
+
+**Changes:**
+
+- Modified `src/components/IterationRunner.tsx` line 257: changed the footer text format
+
+**Notes:** All 87 tests pass. Simple text format change.

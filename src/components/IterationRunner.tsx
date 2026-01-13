@@ -254,7 +254,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   const footer =
     isRunning ?
       <Text color="cyan">
-        <Spinner type="dots" /> Running iteration {currentIteration} of {totalIterations}
+        <Spinner type="dots" /> Running iteration {currentIteration} (max {totalIterations})
       </Text>
     : <Text dimColor>Ready</Text>
 
