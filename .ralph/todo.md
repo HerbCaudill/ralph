@@ -1,6 +1,6 @@
 ### To do
 
-- [ ] Preserve each iteration's events
+- [ ] The output should show each iteration followed by its events. Currently each new iteration replaces the previous one.
 - [ ] Remove excessive white space from header
 
 ### Done
