@@ -6,6 +6,7 @@ import { spawn, execSync } from "child_process"
 import { appendFileSync, writeFileSync, mkdirSync, existsSync } from "fs"
 import { join, dirname } from "path"
 import { EventDisplay } from "./EventDisplay.js"
+import { FullScreenLayout } from "./FullScreenLayout.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -250,23 +251,23 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     )
   }
 
+  const footer =
+    isRunning ?
+      <Text color="cyan">
+        <Spinner type="dots" /> Running iteration {currentIteration} of {totalIterations}
+      </Text>
+    : <Text dimColor>
+        v{ralphVersion} • Claude Code v{claudeVersion}
+      </Text>
+
   return (
-    <Box flexDirection="column">
+    <FullScreenLayout title="Ralph" footer={footer}>
       <EventDisplay
         events={events}
         iteration={currentIteration}
         completedIterations={completedIterations}
-        claudeVersion={claudeVersion}
-        ralphVersion={ralphVersion}
       />
-      {isRunning && (
-        <Box marginTop={1}>
-          <Text color="cyan">
-            <Spinner type="dots" />
-          </Text>
-        </Box>
-      )}
-    </Box>
+    </FullScreenLayout>
   )
 }
 

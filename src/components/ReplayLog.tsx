@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react"
 import { Box, Text, useApp } from "ink"
 import { readFileSync } from "fs"
 import { EventDisplay } from "./EventDisplay.js"
+import { FullScreenLayout } from "./FullScreenLayout.js"
 
-export const ReplayLog = ({ filePath, claudeVersion, ralphVersion }: Props) => {
+export const ReplayLog = ({ filePath }: Props) => {
   const { exit } = useApp()
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const [error, setError] = useState<string>()
@@ -46,27 +47,15 @@ export const ReplayLog = ({ filePath, claudeVersion, ralphVersion }: Props) => {
     )
   }
 
+  const footer = <Text dimColor>Replaying: {filePath}</Text>
+
   return (
-    <Box flexDirection="column">
-      <Box marginBottom={1}>
-        <Text color="cyan">Replaying: {filePath}</Text>
-      </Box>
-      <Box marginBottom={1}>
-        <Text dimColor>{"─".repeat(40)}</Text>
-      </Box>
-      <EventDisplay
-        events={events}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion={claudeVersion}
-        ralphVersion={ralphVersion}
-      />
-    </Box>
+    <FullScreenLayout title="Ralph" footer={footer}>
+      <EventDisplay events={events} iteration={1} completedIterations={[]} />
+    </FullScreenLayout>
   )
 }
 
 type Props = {
   filePath: string
-  claudeVersion: string
-  ralphVersion: string
 }

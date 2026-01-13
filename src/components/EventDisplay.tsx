@@ -1,19 +1,13 @@
 import React, { useMemo } from "react"
-import { Box, Static, Text, useStdout } from "ink"
+import { Box, Text } from "ink"
 import { StreamingText } from "./StreamingText.js"
 import { ToolUse } from "./ToolUse.js"
-import { Header } from "./Header.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
 
 type IterationEvents = {
   iteration: number
   events: Array<Record<string, unknown>>
 }
-
-type StaticItem =
-  | { type: "app-header"; id: string; claudeVersion: string; ralphVersion: string; width: number }
-  | { type: "iteration-header"; id: string; iteration: number; width: number }
-  | ContentBlock
 
 // Process raw events into content blocks
 const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] => {
@@ -74,109 +68,59 @@ const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] =
   return mergedEvents.flatMap(event => eventToBlocks(event))
 }
 
-export const EventDisplay = ({
-  events,
-  iteration,
-  completedIterations,
-  claudeVersion,
-  ralphVersion,
-}: Props) => {
-  const { stdout } = useStdout()
-  // Account for the marginX={1} in App.tsx (2 chars total)
-  const terminalWidth = (stdout?.columns ?? 80) - 2
+// Render a single content block
+const ContentBlockView = ({ block }: { block: ContentBlock }) => {
+  if (block.type === "text") {
+    return <StreamingText content={block.content} />
+  }
+  return <ToolUse name={block.name} arg={block.arg} />
+}
 
-  // Build static items for completed iterations only
-  // Current iteration is rendered separately to ensure proper ordering
-  const staticItems = useMemo((): StaticItem[] => {
-    const items: StaticItem[] = [
-      { type: "app-header", id: "app-header", claudeVersion, ralphVersion, width: terminalWidth },
-    ]
+// Render an iteration header
+const IterationHeader = ({ iteration }: { iteration: number }) => (
+  <Box marginTop={1}>
+    <Text color="cyan" bold>
+      ─── Iteration {iteration} ───
+    </Text>
+  </Box>
+)
 
-    // Add completed iterations and their content
-    for (const completed of completedIterations) {
-      items.push({
-        type: "iteration-header",
-        id: `iteration-${completed.iteration}`,
-        iteration: completed.iteration,
-        width: terminalWidth,
-      })
-      const blocks = processEvents(completed.events)
-      for (const block of blocks) {
-        // Prefix block IDs with iteration number to ensure uniqueness
-        items.push({
-          ...block,
-          id: `iter${completed.iteration}-${block.id}`,
-        })
-      }
-    }
-
-    return items
-  }, [completedIterations, claudeVersion, ralphVersion, terminalWidth])
+export const EventDisplay = ({ events, iteration, completedIterations }: Props) => {
+  // Process completed iterations
+  const completedContent = useMemo(() => {
+    return completedIterations.map(completed => ({
+      iteration: completed.iteration,
+      blocks: processEvents(completed.events),
+    }))
+  }, [completedIterations])
 
   // Process current iteration events
   const currentBlocks = useMemo(() => processEvents(events), [events])
 
-  // Use Static to render completed iterations permanently to the scrollback buffer.
-  // Current iteration is rendered normally below to ensure headers appear correctly.
-  // Note: We use a fragment to avoid wrapper Box indentation issues with Static.
   return (
-    <>
-      <Static items={staticItems}>
-        {(item, index) => {
-          if (item.type === "app-header") {
-            return (
-              <Header
-                key={item.id}
-                claudeVersion={item.claudeVersion}
-                ralphVersion={item.ralphVersion}
-                width={item.width}
-              />
-            )
-          }
-          if (item.type === "iteration-header") {
-            return (
-              <Box
-                key={item.id}
-                borderStyle="round"
-                borderColor="cyan"
-                paddingX={1}
-                marginBottom={1}
-                width={item.width}
-              >
-                <Text color="cyan">Iteration {item.iteration}</Text>
-              </Box>
-            )
-          }
-          return (
-            <Box key={item.id} marginTop={index > 2 ? 1 : 0}>
-              {item.type === "text" ?
-                <StreamingText content={item.content} />
-              : <ToolUse name={item.name} arg={item.arg} />}
+    <Box flexDirection="column">
+      {/* Completed iterations */}
+      {completedContent.map(({ iteration: iter, blocks }) => (
+        <Box key={`iteration-${iter}`} flexDirection="column">
+          <IterationHeader iteration={iter} />
+          {blocks.map((block, index) => (
+            <Box key={`iter${iter}-${block.id}`} marginTop={index > 0 ? 1 : 0}>
+              <ContentBlockView block={block} />
             </Box>
-          )
-        }}
-      </Static>
-
-      {/* Current iteration - rendered outside Static to ensure header appears */}
-      <Box flexDirection="column">
-        <Box
-          borderStyle="round"
-          borderColor="cyan"
-          paddingX={1}
-          marginBottom={1}
-          width={terminalWidth}
-        >
-          <Text color="cyan">Iteration {iteration}</Text>
+          ))}
         </Box>
+      ))}
+
+      {/* Current iteration */}
+      <Box flexDirection="column">
+        <IterationHeader iteration={iteration} />
         {currentBlocks.map((block, index) => (
           <Box key={`iter${iteration}-${block.id}`} marginTop={index > 0 ? 1 : 0}>
-            {block.type === "text" ?
-              <StreamingText content={block.content} />
-            : <ToolUse name={block.name} arg={block.arg} />}
+            <ContentBlockView block={block} />
           </Box>
         ))}
       </Box>
-    </>
+    </Box>
   )
 }
 
@@ -184,6 +128,4 @@ type Props = {
   events: Array<Record<string, unknown>>
   iteration: number
   completedIterations: IterationEvents[]
-  claudeVersion: string
-  ralphVersion: string
 }

@@ -23,13 +23,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay
-        events={events}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
+      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -62,13 +56,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay
-        events={events}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
+      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
     )
 
     // Wait for useEffect to complete
@@ -101,13 +89,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay
-        events={events}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
+      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -135,13 +117,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay
-        events={events}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
+      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -163,13 +139,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame, rerender } = render(
-      <EventDisplay
-        events={events1}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
+      <EventDisplay events={events1} iteration={1} completedIterations={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -187,15 +157,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    rerender(
-      <EventDisplay
-        events={events2}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
-    )
+    rerender(<EventDisplay events={events2} iteration={1} completedIterations={[]} />)
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -253,13 +215,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay
-        events={events}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
+      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -288,13 +244,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay
-        events={events}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
+      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -357,8 +307,6 @@ describe("EventDisplay", () => {
         events={currentEvents}
         iteration={3}
         completedIterations={completedIterations}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
       />,
     )
 
@@ -395,13 +343,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame, rerender } = render(
-      <EventDisplay
-        events={iter1Events}
-        iteration={1}
-        completedIterations={[]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
-      />,
+      <EventDisplay events={iter1Events} iteration={1} completedIterations={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -426,8 +368,6 @@ describe("EventDisplay", () => {
         events={iter2Events}
         iteration={2}
         completedIterations={[{ iteration: 1, events: iter1Events }]}
-        claudeVersion="1.0.0"
-        ralphVersion="0.1.0"
       />,
     )
 

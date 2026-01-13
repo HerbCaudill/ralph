@@ -28,13 +28,7 @@ async function replay(logFile: string): Promise<string> {
 
   // Render with all events
   const { lastFrame } = render(
-    <EventDisplay
-      events={events}
-      iteration={1}
-      completedIterations={[]}
-      claudeVersion="1.0.0"
-      ralphVersion="0.1.0"
-    />,
+    <EventDisplay events={events} iteration={1} completedIterations={[]} />,
   )
 
   // Wait for rendering
@@ -52,20 +46,8 @@ async function replay(logFile: string): Promise<string> {
 describe("EventDisplay replay tests", () => {
   it("replays 1.txt", async () => {
     expect(await replay("1.txt")).toMatchInlineSnapshot(`
-      "┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-      │                                                                                                │
-      │                                                                                                │
-      │                                       █▀█ ▄▀█ █   █▀█ █ █                                      │
-      │                                       █▀▄ █▀█ █▄▄ █▀▀ █▀█                                      │
-      │                                                                                                │
-      │                                                                                                │
-      │                         @herbcaudill/ralph v0.1.0 • Claude Code v1.0.0                         │
-      └────────────────────────────────────────────────────────────────────────────────────────────────┘
-
-      ╭────────────────────────────────────────────────────────────────────────────────────────────────╮
-      │ Iteration 1                                                                                    │
-      ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
-
+      "
+      ─── Iteration 1 ───
       I'll start by checking the types, unit tests, and end-to-end tests as instructed.
 
         TodoWrite
@@ -97,20 +79,8 @@ describe("EventDisplay replay tests", () => {
 
   it("replays 2.txt", async () => {
     expect(await replay("2.txt")).toMatchInlineSnapshot(`
-      "┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-      │                                                                                                │
-      │                                                                                                │
-      │                                       █▀█ ▄▀█ █   █▀█ █ █                                      │
-      │                                       █▀▄ █▀█ █▄▄ █▀▀ █▀█                                      │
-      │                                                                                                │
-      │                                                                                                │
-      │                         @herbcaudill/ralph v0.1.0 • Claude Code v1.0.0                         │
-      └────────────────────────────────────────────────────────────────────────────────────────────────┘
-
-      ╭────────────────────────────────────────────────────────────────────────────────────────────────╮
-      │ Iteration 1                                                                                    │
-      ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
-
+      "
+      ─── Iteration 1 ───
       I'll start by checking that the project builds successfully and running tests.
 
         $ pnpm build
