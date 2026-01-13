@@ -130,3 +130,19 @@ Each entry should include:
 - The environment includes all existing process environment variables plus `ENABLE_LSP_TOOL: "0"`
 
 **Notes:** All 85 tests pass. This fix was cherry-picked from commit c7ca452 on the worktrees branch.
+
+---
+
+## 2026-01-13: Fixed terminal scrolling behavior
+
+**What:** Replaced dynamic Box rendering with Ink's Static component for content blocks in EventDisplay
+
+**Why:** When scrolling up with the mouse wheel/scrollbar, users couldn't scroll back down again. This was because Ink was re-rendering content at the cursor position, which confused the terminal's scrollback buffer. The Static component renders content permanently to the scrollback buffer, allowing natural terminal scrolling.
+
+**Changes:**
+
+- Modified `src/components/EventDisplay.tsx` to use `<Static items={contentBlocks}>` instead of `<Box flexDirection="column" gap={1}>`
+- Each content block is now wrapped in a Box with conditional `marginTop` (0 for first item, 1 for others) to maintain spacing
+- Updated inline snapshots in `EventDisplay.replay.test.tsx` to account for the slight formatting difference (trailing newline after Static content)
+
+**Notes:** All 85 tests pass. The Static component is designed for exactly this use case - rendering completed/historical content that shouldn't change while keeping dynamic content (like the spinner) at the bottom.

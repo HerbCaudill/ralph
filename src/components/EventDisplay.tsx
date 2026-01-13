@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { Box } from "ink"
+import { Box, Static } from "ink"
 import { StreamingText } from "./StreamingText.js"
 import { ToolUse } from "./ToolUse.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
@@ -66,14 +66,19 @@ export const EventDisplay = ({ events }: Props) => {
     setContentBlocks(blocks)
   }, [events])
 
+  // Use Static to render content permanently to the scrollback buffer.
+  // This prevents re-rendering of completed content and allows
+  // natural terminal scrolling behavior.
   return (
-    <Box flexDirection="column" gap={1}>
-      {contentBlocks.map(block =>
-        block.type === "text" ?
-          <StreamingText key={block.id} content={block.content} />
-        : <ToolUse key={block.id} name={block.name} arg={block.arg} />,
+    <Static items={contentBlocks}>
+      {(block, index) => (
+        <Box key={block.id} marginTop={index > 0 ? 1 : 0}>
+          {block.type === "text" ?
+            <StreamingText content={block.content} />
+          : <ToolUse name={block.name} arg={block.arg} />}
+        </Box>
       )}
-    </Box>
+    </Static>
   )
 }
 

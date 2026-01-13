@@ -1,10 +1,10 @@
 ### To do
 
-- [ ] Scrolling is weird - if I scroll up, I can't scroll back down again with the scroll wheel or scroll bar (I can press down arrow though)
 - [ ] Preserve complete iterations rather than starting over
 
 ### Done
 
+- [x] Fix terminal scrolling by using Static component for content blocks
 - [x] Fix LSP server notification error by setting ENABLE_LSP_TOOL=0 environment variable
 
 - [x] Use a nicer selection UI for the yes/no init question
