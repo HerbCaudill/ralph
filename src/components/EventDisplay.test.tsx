@@ -22,7 +22,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} />)
+    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -53,7 +53,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} />)
+    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
 
     // Wait for useEffect to complete
     await vi.waitFor(() => {
@@ -84,7 +84,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} />)
+    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -110,7 +110,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} />)
+    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -130,7 +130,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame, rerender } = render(<EventDisplay events={events1} />)
+    const { lastFrame, rerender } = render(<EventDisplay events={events1} iteration={1} />)
 
     await vi.waitFor(() => {
       expect(lastFrame()).toContain("Initial")
@@ -147,7 +147,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    rerender(<EventDisplay events={events2} />)
+    rerender(<EventDisplay events={events2} iteration={1} />)
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -204,7 +204,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} />)
+    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -231,7 +231,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    const { lastFrame } = render(<EventDisplay events={events} />)
+    const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -240,9 +240,13 @@ describe("EventDisplay", () => {
       expect(output).toContain("function to debug")
     })
 
-    // The output should be on one line without extra spacing
+    // The text content should be on one line (after the header)
     const output = lastFrame() ?? ""
-    const lines = output.split("\n").filter(l => l.trim())
-    expect(lines.length).toBe(1)
+    // Filter out header lines (containing box border characters or "Iteration")
+    const contentLines = output
+      .split("\n")
+      .filter(l => l.trim())
+      .filter(l => !l.includes("─") && !l.includes("│") && !l.includes("╭") && !l.includes("╰"))
+    expect(contentLines.length).toBe(1)
   })
 })

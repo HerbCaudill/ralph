@@ -27,7 +27,7 @@ async function replay(logFile: string): Promise<string> {
   }
 
   // Render with all events
-  const { lastFrame } = render(<EventDisplay events={events} />)
+  const { lastFrame } = render(<EventDisplay events={events} iteration={1} />)
 
   // Wait for rendering
   await vi.waitFor(
@@ -44,7 +44,12 @@ async function replay(logFile: string): Promise<string> {
 describe("EventDisplay replay tests", () => {
   it("replays 1.txt", async () => {
     expect(await replay("1.txt")).toMatchInlineSnapshot(`
-      "I'll start by checking the types, unit tests, and end-to-end tests as instructed.
+      "
+      ╭─────────────╮
+      │ Iteration 1 │
+      ╰─────────────╯
+
+      I'll start by checking the types, unit tests, and end-to-end tests as instructed.
 
         TodoWrite
                       [~] Run typecheck to verify types
@@ -76,7 +81,12 @@ describe("EventDisplay replay tests", () => {
 
   it("replays 2.txt", async () => {
     expect(await replay("2.txt")).toMatchInlineSnapshot(`
-      "I'll start by checking that the project builds successfully and running tests.
+      "
+      ╭─────────────╮
+      │ Iteration 1 │
+      ╰─────────────╯
+
+      I'll start by checking that the project builds successfully and running tests.
 
         $ pnpm build
 

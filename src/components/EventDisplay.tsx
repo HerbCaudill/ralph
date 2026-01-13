@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react"
-import { Box, Static } from "ink"
+import { Box, Static, Text } from "ink"
 import { StreamingText } from "./StreamingText.js"
 import { ToolUse } from "./ToolUse.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
 
-export const EventDisplay = ({ events }: Props) => {
+type StaticItem = { type: "header"; id: string; iteration: number } | ContentBlock
+
+export const EventDisplay = ({ events, iteration }: Props) => {
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([])
 
   useEffect(() => {
@@ -66,22 +68,45 @@ export const EventDisplay = ({ events }: Props) => {
     setContentBlocks(blocks)
   }, [events])
 
+  // Prepend the iteration header as the first static item
+  const staticItems: StaticItem[] = [
+    { type: "header", id: `iteration-${iteration}`, iteration },
+    ...contentBlocks,
+  ]
+
   // Use Static to render content permanently to the scrollback buffer.
   // This prevents re-rendering of completed content and allows
   // natural terminal scrolling behavior.
   return (
-    <Static items={contentBlocks}>
-      {(block, index) => (
-        <Box key={block.id} marginTop={index > 0 ? 1 : 0}>
-          {block.type === "text" ?
-            <StreamingText content={block.content} />
-          : <ToolUse name={block.name} arg={block.arg} />}
-        </Box>
-      )}
+    <Static items={staticItems}>
+      {(item, index) => {
+        if (item.type === "header") {
+          return (
+            <Box
+              key={item.id}
+              borderStyle="round"
+              borderColor="cyan"
+              paddingX={1}
+              marginTop={1}
+              marginBottom={1}
+            >
+              <Text color="cyan">Iteration {item.iteration}</Text>
+            </Box>
+          )
+        }
+        return (
+          <Box key={item.id} marginTop={index > 1 ? 1 : 0}>
+            {item.type === "text" ?
+              <StreamingText content={item.content} />
+            : <ToolUse name={item.name} arg={item.arg} />}
+          </Box>
+        )
+      }}
     </Static>
   )
 }
 
 type Props = {
   events: Array<Record<string, unknown>>
+  iteration: number
 }

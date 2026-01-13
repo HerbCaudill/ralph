@@ -54,7 +54,7 @@ export const ReplayLog = ({ filePath }: Props) => {
       <Box marginBottom={1}>
         <Text dimColor>{"─".repeat(40)}</Text>
       </Box>
-      <EventDisplay events={events} />
+      <EventDisplay events={events} iteration={1} />
     </Box>
   )
 }
