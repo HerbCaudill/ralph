@@ -94,7 +94,14 @@ export const IterationRunner = ({ totalIterations }: Props) => {
         "--include-partial-messages",
         "--verbose",
       ],
-      { stdio: ["inherit", "pipe", "inherit"] },
+      {
+        stdio: ["inherit", "pipe", "inherit"],
+        env: {
+          ...process.env,
+          // Disable LSP plugins to avoid crashes when TypeScript LSP server errors
+          ENABLE_LSP_TOOL: "0",
+        },
+      },
     )
     setIsRunning(true)
 

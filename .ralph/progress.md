@@ -115,3 +115,18 @@ Each entry should include:
 - Removed the old colors prop from BigText (which was cyan/magenta)
 
 **Notes:** All 78 tests pass. The gradient provides a smooth color transition from blue to yellow across the "Ralph" title text.
+
+---
+
+## 2026-01-13: Fixed LSP server notification error
+
+**What:** Added `ENABLE_LSP_TOOL=0` environment variable when spawning Claude CLI to disable LSP plugins
+
+**Why:** The TypeScript LSP server was causing errors like `Cannot send notification to LSP server 'plugin:typescript-lsp:typescript': server is error` which could crash the process. This fix was previously implemented on the `worktrees` branch but hadn't been merged to main.
+
+**Changes:**
+
+- Modified `src/components/IterationRunner.tsx` to pass an `env` option when spawning the Claude CLI process
+- The environment includes all existing process environment variables plus `ENABLE_LSP_TOOL: "0"`
+
+**Notes:** All 85 tests pass. This fix was cherry-picked from commit c7ca452 on the worktrees branch.
