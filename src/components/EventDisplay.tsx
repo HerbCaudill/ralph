@@ -1,8 +1,7 @@
 import React, { useMemo } from "react"
 import { Box, Text } from "ink"
-import { StreamingText } from "./StreamingText.js"
-import { ToolUse } from "./ToolUse.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
+import { formatContentBlock, formatIterationHeader } from "../lib/formatContentBlock.js"
 
 type IterationEvents = {
   iteration: number
@@ -68,58 +67,57 @@ const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] =
   return mergedEvents.flatMap(event => eventToBlocks(event))
 }
 
-// Render a single content block
-const ContentBlockView = ({ block }: { block: ContentBlock }) => {
-  if (block.type === "text") {
-    return <StreamingText content={block.content} />
+// Convert content blocks to lines of formatted text
+const blocksToLines = (blocks: ContentBlock[]): string[] => {
+  const lines: string[] = []
+  for (let i = 0; i < blocks.length; i++) {
+    // Add blank line between blocks (except before first)
+    if (i > 0) {
+      lines.push("")
+    }
+    const blockLines = formatContentBlock(blocks[i])
+    lines.push(...blockLines)
   }
-  return <ToolUse name={block.name} arg={block.arg} />
+  return lines
 }
 
-// Render an iteration header
-const IterationHeader = ({ iteration }: { iteration: number }) => (
-  <Box marginTop={1}>
-    <Text color="cyan" bold>
-      ─── Iteration {iteration} ───
-    </Text>
-  </Box>
-)
+export const EventDisplay = ({ events, iteration, completedIterations, height }: Props) => {
+  // Convert all content to lines for virtual scrolling
+  const allLines = useMemo(() => {
+    const lines: string[] = []
 
-export const EventDisplay = ({ events, iteration, completedIterations }: Props) => {
-  // Process completed iterations
-  const completedContent = useMemo(() => {
-    return completedIterations.map(completed => ({
-      iteration: completed.iteration,
-      blocks: processEvents(completed.events),
-    }))
-  }, [completedIterations])
+    // Add completed iterations
+    for (const completed of completedIterations) {
+      lines.push("")
+      lines.push(formatIterationHeader(completed.iteration))
+      const blocks = processEvents(completed.events)
+      lines.push(...blocksToLines(blocks))
+    }
 
-  // Process current iteration events
-  const currentBlocks = useMemo(() => processEvents(events), [events])
+    // Add current iteration
+    lines.push("")
+    lines.push(formatIterationHeader(iteration))
+    const currentBlocks = processEvents(events)
+    lines.push(...blocksToLines(currentBlocks))
+
+    return lines
+  }, [events, iteration, completedIterations])
+
+  // Calculate visible lines (auto-scroll to bottom)
+  const visibleLines = useMemo(() => {
+    if (!height || allLines.length <= height) {
+      return allLines
+    }
+    return allLines.slice(-height)
+  }, [allLines, height])
 
   return (
     <Box flexDirection="column">
-      {/* Completed iterations */}
-      {completedContent.map(({ iteration: iter, blocks }) => (
-        <Box key={`iteration-${iter}`} flexDirection="column">
-          <IterationHeader iteration={iter} />
-          {blocks.map((block, index) => (
-            <Box key={`iter${iter}-${block.id}`} marginTop={index > 0 ? 1 : 0}>
-              <ContentBlockView block={block} />
-            </Box>
-          ))}
-        </Box>
+      {visibleLines.map((line, index) => (
+        <Text key={index} wrap="truncate">
+          {line}
+        </Text>
       ))}
-
-      {/* Current iteration */}
-      <Box flexDirection="column">
-        <IterationHeader iteration={iteration} />
-        {currentBlocks.map((block, index) => (
-          <Box key={`iter${iteration}-${block.id}`} marginTop={index > 0 ? 1 : 0}>
-            <ContentBlockView block={block} />
-          </Box>
-        ))}
-      </Box>
     </Box>
   )
 }
@@ -128,4 +126,5 @@ type Props = {
   events: Array<Record<string, unknown>>
   iteration: number
   completedIterations: IterationEvents[]
+  height?: number
 }

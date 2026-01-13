@@ -1,19 +1,26 @@
 import React, { ReactNode } from "react"
-import { Box } from "ink"
+import { Box, Text } from "ink"
 import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 import { useTerminalSize } from "../lib/useTerminalSize.js"
 
-export const FullScreenLayout = ({ title, children, footer }: Props) => {
-  const { columns, rows } = useTerminalSize()
+// Constants for layout calculations
+const HEADER_HEIGHT = 5 // BigText "tiny" font (4 rows) + separator
+const FOOTER_HEIGHT = 2 // Separator + content
+const BORDER_HEIGHT = 2 // Top and bottom borders
 
-  // BigText "tiny" font takes 4 rows
-  // Plus borders (2 rows for outer box)
-  // Plus separator line between header and content (1 row)
-  const headerHeight = 5
-  const footerHeight = footer ? 2 : 0 // 1 for separator, 1 for content
-  const borderHeight = 2
-  const contentHeight = Math.max(1, rows - headerHeight - footerHeight - borderHeight)
+/**
+ * Calculate the available content height based on terminal size
+ */
+export const useContentHeight = (hasFooter: boolean = true): number => {
+  const { rows } = useTerminalSize()
+  const footerHeight = hasFooter ? FOOTER_HEIGHT : 0
+  return Math.max(1, rows - HEADER_HEIGHT - footerHeight - BORDER_HEIGHT)
+}
+
+export const FullScreenLayout = ({ title, children, footer, version }: Props) => {
+  const { columns, rows } = useTerminalSize()
+  const contentHeight = useContentHeight(!!footer)
 
   return (
     <Box
@@ -28,7 +35,7 @@ export const FullScreenLayout = ({ title, children, footer }: Props) => {
         flexDirection="column"
         alignItems="center"
         justifyContent="center"
-        height={headerHeight}
+        height={HEADER_HEIGHT}
         borderStyle="single"
         borderTop={false}
         borderLeft={false}
@@ -55,7 +62,7 @@ export const FullScreenLayout = ({ title, children, footer }: Props) => {
       {footer && (
         <Box
           paddingX={1}
-          height={footerHeight}
+          height={FOOTER_HEIGHT}
           borderStyle="single"
           borderTop
           borderBottom={false}
@@ -63,8 +70,10 @@ export const FullScreenLayout = ({ title, children, footer }: Props) => {
           borderRight={false}
           borderColor="gray"
           alignItems="center"
+          justifyContent="space-between"
         >
-          {footer}
+          <Box>{footer}</Box>
+          {version && <Text dimColor>{version}</Text>}
         </Box>
       )}
     </Box>
@@ -75,4 +84,5 @@ type Props = {
   title: string
   children: ReactNode
   footer?: ReactNode
+  version?: string
 }

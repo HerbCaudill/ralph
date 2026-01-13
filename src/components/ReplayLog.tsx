@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { Box, Text, useApp } from "ink"
 import { readFileSync } from "fs"
 import { EventDisplay } from "./EventDisplay.js"
-import { FullScreenLayout } from "./FullScreenLayout.js"
+import { FullScreenLayout, useContentHeight } from "./FullScreenLayout.js"
 
 export const ReplayLog = ({ filePath }: Props) => {
   const { exit } = useApp()
@@ -48,10 +48,11 @@ export const ReplayLog = ({ filePath }: Props) => {
   }
 
   const footer = <Text dimColor>Replaying: {filePath}</Text>
+  const contentHeight = useContentHeight(true)
 
   return (
     <FullScreenLayout title="Ralph" footer={footer}>
-      <EventDisplay events={events} iteration={1} completedIterations={[]} />
+      <EventDisplay events={events} iteration={1} completedIterations={[]} height={contentHeight} />
     </FullScreenLayout>
   )
 }
