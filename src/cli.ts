@@ -36,10 +36,32 @@ program
   })
 
 program
-  .command("todo <description...>")
+  .command("todo [description...]")
   .description("add a todo item and commit it (safe to use while ralph is running)")
-  .action((descriptionParts: string[]) => {
-    const description = descriptionParts.join(" ")
+  .action(async (descriptionParts: string[]) => {
+    let description = descriptionParts.join(" ").trim()
+
+    if (!description) {
+      // Prompt for description interactively
+      const readline = await import("readline")
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      })
+
+      description = await new Promise<string>(resolve => {
+        rl.question("Todo: ", answer => {
+          rl.close()
+          resolve(answer.trim())
+        })
+      })
+
+      if (!description) {
+        console.error("No todo description provided")
+        process.exit(1)
+      }
+    }
+
     try {
       addTodo(description)
     } catch (error) {

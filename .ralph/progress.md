@@ -193,3 +193,22 @@ Each entry should include:
   - Added new test "displays completed iterations before current iteration" to verify iteration history is preserved and ordered correctly
 
 **Notes:** All 86 tests pass. Each iteration's output now remains visible in the terminal scrollback, with iteration headers clearly separating each one.
+
+---
+
+## 2026-01-13: Support interactive prompt for `ralph todo`
+
+**What:** Made the description argument optional for `ralph todo` command, prompting interactively if not provided
+
+**Why:** Users can now type just `ralph todo` without having to include the description on the command line, making it more convenient to add todos
+
+**Changes:**
+
+- Modified `src/cli.ts`:
+  - Changed command definition from `todo <description...>` to `todo [description...]` (making it optional)
+  - Made the action handler async
+  - Added interactive prompt using Node.js `readline` when no description is provided
+  - Shows "Todo: " prompt and waits for user input
+  - Exits with error if user provides empty input
+
+**Notes:** All 86 tests pass. Both modes work: `ralph todo "my item"` and interactive `ralph todo` with prompt.

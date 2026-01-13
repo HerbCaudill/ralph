@@ -1,8 +1,8 @@
 ### To do
 
-- [ ] Support just typing `ralph todo` and then being prompted for the todo
-
 ### Done
+
+- [x] Support just typing `ralph todo` and then being prompted for the todo
 
 - [x] Remove padding from header
 
