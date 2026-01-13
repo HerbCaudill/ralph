@@ -70,13 +70,11 @@ const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] =
 // Convert content blocks to lines of formatted text
 const blocksToLines = (blocks: ContentBlock[]): string[] => {
   const lines: string[] = []
-  for (let i = 0; i < blocks.length; i++) {
-    // Add blank line between blocks (except before first)
-    if (i > 0) {
-      lines.push("")
-    }
-    const blockLines = formatContentBlock(blocks[i])
+  for (const block of blocks) {
+    const blockLines = formatContentBlock(block)
     lines.push(...blockLines)
+    // Add blank line after each block
+    lines.push("")
   }
   return lines
 }
@@ -89,14 +87,18 @@ export const EventDisplay = ({ events, iteration, completedIterations, height }:
     // Add completed iterations
     for (const completed of completedIterations) {
       lines.push("")
+      lines.push("")
       lines.push(formatIterationHeader(completed.iteration))
+      lines.push("")
       const blocks = processEvents(completed.events)
       lines.push(...blocksToLines(blocks))
     }
 
     // Add current iteration
     lines.push("")
+    lines.push("")
     lines.push(formatIterationHeader(iteration))
+    lines.push("")
     const currentBlocks = processEvents(events)
     lines.push(...blocksToLines(currentBlocks))
 
@@ -114,7 +116,7 @@ export const EventDisplay = ({ events, iteration, completedIterations, height }:
   return (
     <Box flexDirection="column">
       {visibleLines.map((line, index) => (
-        <Text key={index} wrap="truncate">
+        <Text key={index} wrap="wrap">
           {line}
         </Text>
       ))}
