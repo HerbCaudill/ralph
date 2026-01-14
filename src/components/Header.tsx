@@ -11,6 +11,7 @@ export const Header = ({ claudeVersion, ralphVersion, width }: Props) => {
       borderStyle="single"
       alignItems="center"
       width={width}
+      paddingX={2}
     >
       <Gradient colors={["#30A6E4", "#EBC635"]}>
         <BigText text="Ralph" font="tiny" />

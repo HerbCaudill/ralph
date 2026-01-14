@@ -1,9 +1,10 @@
 ### To do
 
 - [ ] While it's working, let's allow the user to type ctrl-T to add a new todo. (Note that we already support `ralph todo` so we can reuse that functionality)
-- [ ] add horizontal padding to the header
 
 ### Done
+
+- [x] add horizontal padding to the header
 
 - [x] Fix spacing weirdness and missing characters - improved text deduplication logic to handle incremental text updates correctly, and added spacing between content blocks
 
