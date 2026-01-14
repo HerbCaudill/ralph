@@ -2,19 +2,32 @@ import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp } from "ink"
 import Spinner from "ink-spinner"
 import SelectInput from "ink-select-input"
-import { spawn, execSync } from "child_process"
-import { appendFileSync, writeFileSync, mkdirSync, existsSync } from "fs"
+import { execSync } from "child_process"
+import { appendFileSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "fs"
 import { join, dirname } from "path"
+import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { EventDisplay } from "./EventDisplay.js"
 import { FullScreenLayout, useContentHeight } from "./FullScreenLayout.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
+const promptFile = join(ralphDir, "prompt.md")
+const todoFile = join(ralphDir, "todo.md")
 
 const checkRequiredFiles = (): { missing: string[]; exists: boolean } => {
   const requiredFiles = ["prompt.md", "todo.md"]
   const missing = requiredFiles.filter(file => !existsSync(join(ralphDir, file)))
   return { missing, exists: missing.length === 0 }
+}
+
+// Convert SDK message to event format for display
+const sdkMessageToEvent = (message: SDKMessage): Record<string, unknown> | null => {
+  // Pass through messages that have the structure we expect
+  if (message.type === "assistant" || message.type === "user" || message.type === "result") {
+    return message as unknown as Record<string, unknown>
+  }
+  // Skip system and stream_event messages for display
+  return null
 }
 
 type IterationEvents = {
@@ -28,7 +41,6 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const eventsRef = useRef<Array<Record<string, unknown>>>([])
   const [completedIterations, setCompletedIterations] = useState<IterationEvents[]>([])
-  const [output, setOutput] = useState("")
   const [error, setError] = useState<string>()
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
   const [initializing, setInitializing] = useState(false)
@@ -94,112 +106,85 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     mkdirSync(dirname(logFile), { recursive: true })
     writeFileSync(logFile, "")
     setEvents([])
-    setOutput("")
 
-    const child = spawn(
-      "claude",
-      [
-        "--permission-mode",
-        "bypassPermissions",
-        "-p",
-        "@.ralph/prompt.md",
-        "@.ralph/todo.md",
-        "--output-format",
-        "stream-json",
-        "--include-partial-messages",
-        "--verbose",
-      ],
-      {
-        stdio: ["inherit", "pipe", "inherit"],
-        env: {
-          ...process.env,
-          // Disable LSP plugins to avoid crashes when TypeScript LSP server errors
-          ENABLE_LSP_TOOL: "0",
-        },
-      },
-    )
+    // Read prompt and todo files
+    const promptContent = readFileSync(promptFile, "utf-8")
+    const todoContent = readFileSync(todoFile, "utf-8")
+    const fullPrompt = `${promptContent}\n\n## Current Todo List\n\n${todoContent}`
+
+    const abortController = new AbortController()
     setIsRunning(true)
 
-    let fullOutput = ""
-    let stdoutEnded = false
-    let closeInfo: { code: number | null; signal: NodeJS.Signals | null } | null = null
-    let finalResult = ""
+    const runQuery = async () => {
+      let finalResult = ""
 
-    const handleIterationComplete = () => {
-      if (!stdoutEnded || !closeInfo) return
-      setIsRunning(false)
+      try {
+        for await (const message of query({
+          prompt: fullPrompt,
+          options: {
+            abortController,
+            permissionMode: "bypassPermissions",
+            allowDangerouslySkipPermissions: true,
+            includePartialMessages: true,
+            env: {
+              ...process.env,
+              // Disable LSP plugins to avoid crashes when TypeScript LSP server errors
+              ENABLE_LSP_TOOL: "0",
+            },
+          },
+        })) {
+          // Log raw message to file
+          appendFileSync(logFile, JSON.stringify(message, null, 2) + "\n\n")
 
-      const { code, signal } = closeInfo
-      if (code !== 0) {
-        setError(
-          `Claude exited with code ${code}${
-            signal ? ` (signal: ${signal})` : ""
-          }\n\nLast 2000 chars:\n${fullOutput.slice(-2000)}`,
-        )
+          // Convert to event format for display
+          const event = sdkMessageToEvent(message)
+          if (event) {
+            setEvents(prev => [...prev, event])
+          }
+
+          // Capture the final result message
+          if (
+            message.type === "result" &&
+            "result" in message &&
+            typeof message.result === "string"
+          ) {
+            finalResult = message.result
+          }
+        }
+
+        setIsRunning(false)
+
+        // Check for completion
+        if (finalResult.includes("<promise>COMPLETE</promise>")) {
+          exit()
+          process.exit(0)
+          return
+        }
+
+        // Save current events and move to next iteration
+        const currentEvents = eventsRef.current
+        setCompletedIterations(prev => [
+          ...prev,
+          { iteration: currentIteration, events: currentEvents },
+        ])
+        setTimeout(() => setCurrentIteration(i => i + 1), 500)
+      } catch (err) {
+        setIsRunning(false)
+        if (abortController.signal.aborted) {
+          return // Intentionally aborted
+        }
+        setError(`Error running Claude: ${err instanceof Error ? err.message : String(err)}`)
         setTimeout(() => {
           exit()
           process.exit(1)
         }, 100)
-        return
       }
-
-      // Only check Claude's final result message, not the entire output
-      // (which may include file contents that contain the completion string)
-      if (finalResult.includes("<promise>COMPLETE</promise>")) {
-        exit()
-        process.exit(0)
-        return
-      }
-
-      // Save current events and move to next iteration
-      const currentEvents = eventsRef.current
-      setCompletedIterations(prev => [
-        ...prev,
-        { iteration: currentIteration, events: currentEvents },
-      ])
-      setTimeout(() => setCurrentIteration(i => i + 1), 500)
     }
 
-    child.stdout.on("data", data => {
-      const chunk = data.toString()
-      for (const line of chunk.split("\n")) {
-        if (!line.trim()) continue
-        try {
-          const event = JSON.parse(line)
-          appendFileSync(logFile, JSON.stringify(event, null, 2) + "\n\n")
-          setEvents(prev => [...prev, event])
-          // Capture the final result message from result events
-          if (event.type === "result" && typeof event.result === "string") {
-            finalResult = event.result
-          }
-        } catch {
-          // Incomplete JSON line, ignore
-        }
-      }
-      fullOutput += chunk
-      setOutput(fullOutput)
-    })
-
-    child.stdout.on("end", () => {
-      stdoutEnded = true
-      handleIterationComplete()
-    })
-
-    child.on("close", (code, signal) => {
-      closeInfo = { code, signal }
-      handleIterationComplete()
-    })
-
-    child.on("error", error => {
-      setError(`Error running Claude: ${error.message}`)
-      setTimeout(() => {
-        exit()
-        process.exit(1)
-      }, 100)
-    })
+    runQuery()
 
     return () => {
-      child.kill()
+      abortController.abort()
     }
   }, [currentIteration, totalIterations, exit])
 
