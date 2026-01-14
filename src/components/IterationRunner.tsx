@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from "react"
-import { Box, Text, useApp } from "ink"
+import { Box, Text, useApp, Static } from "ink"
 import Spinner from "ink-spinner"
 import SelectInput from "ink-select-input"
 import { execSync } from "child_process"
 import { appendFileSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "fs"
 import { join, dirname } from "path"
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
-import { EventDisplay } from "./EventDisplay.js"
-import { FullScreenLayout, useContentHeight } from "./FullScreenLayout.js"
+import { Header } from "./Header.js"
+import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
+import { formatContentBlock, formatIterationHeader } from "../lib/formatContentBlock.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -35,19 +36,80 @@ type IterationEvents = {
   events: Array<Record<string, unknown>>
 }
 
+// Process raw events into content blocks (moved from EventDisplay)
+const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] => {
+  const assistantEvents = events.filter(event => event.type === "assistant")
+
+  const messageMap = new Map<string, Array<Record<string, unknown>>>()
+  for (const event of assistantEvents) {
+    const message = event.message as Record<string, unknown> | undefined
+    const messageId = message?.id as string | undefined
+    const content = message?.content as Array<Record<string, unknown>> | undefined
+
+    if (messageId && content) {
+      if (!messageMap.has(messageId)) {
+        messageMap.set(messageId, [])
+      }
+      messageMap.get(messageId)!.push(...content)
+    }
+  }
+
+  const mergedEvents = Array.from(messageMap.entries()).map(([messageId, allContent]) => {
+    const seenBlocks = new Set<string>()
+    const uniqueContent: Array<Record<string, unknown>> = []
+
+    for (const block of allContent) {
+      const blockType = block.type as string
+      let blockKey: string
+
+      if (blockType === "tool_use") {
+        blockKey = block.id as string
+      } else if (blockType === "text") {
+        blockKey = `text:${block.text}`
+      } else {
+        blockKey = JSON.stringify(block)
+      }
+
+      if (!seenBlocks.has(blockKey)) {
+        seenBlocks.add(blockKey)
+        uniqueContent.push(block)
+      }
+    }
+
+    return {
+      type: "assistant",
+      message: {
+        id: messageId,
+        content: uniqueContent,
+      },
+    }
+  })
+
+  return mergedEvents.flatMap(event => eventToBlocks(event))
+}
+
+// Static item representing either header, iteration header, or content block
+type StaticItem =
+  | { type: "header"; claudeVersion: string; ralphVersion: string; key: string }
+  | { type: "iteration"; iteration: number; key: string }
+  | { type: "block"; block: ContentBlock; key: string }
+
 export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }: Props) => {
   const { exit } = useApp()
   const [currentIteration, setCurrentIteration] = useState(1)
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const eventsRef = useRef<Array<Record<string, unknown>>>([])
-  const [completedIterations, setCompletedIterations] = useState<IterationEvents[]>([])
   const [error, setError] = useState<string>()
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
   const [initializing, setInitializing] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
 
-  // Hook must be called before any conditional returns
-  const contentHeight = useContentHeight(true)
+  // Track static items that have been rendered (for Ink's Static component)
+  const [staticItems, setStaticItems] = useState<StaticItem[]>([
+    { type: "header", claudeVersion, ralphVersion, key: "header" },
+  ])
+  const renderedBlocksRef = useRef<Set<string>>(new Set())
+  const lastIterationRef = useRef<number>(0)
 
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
@@ -81,6 +143,41 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   useEffect(() => {
     eventsRef.current = events
   }, [events])
+
+  // Convert events to static items as they arrive
+  useEffect(() => {
+    const newItems: StaticItem[] = []
+
+    // Add iteration header if this is a new iteration
+    if (currentIteration > lastIterationRef.current) {
+      newItems.push({
+        type: "iteration",
+        iteration: currentIteration,
+        key: `iteration-${currentIteration}`,
+      })
+      lastIterationRef.current = currentIteration
+    }
+
+    // Process current events into blocks
+    const blocks = processEvents(events)
+
+    // Add any new blocks that haven't been rendered yet
+    for (const block of blocks) {
+      const blockKey =
+        block.type === "tool"
+          ? `tool-${block.name}-${block.arg || ""}-${events.length}`
+          : `text-${block.content.substring(0, 50)}-${events.length}`
+
+      if (!renderedBlocksRef.current.has(blockKey)) {
+        renderedBlocksRef.current.add(blockKey)
+        newItems.push({ type: "block", block, key: blockKey })
+      }
+    }
+
+    if (newItems.length > 0) {
+      setStaticItems(prev => [...prev, ...newItems])
+    }
+  }, [events, currentIteration])
 
   useEffect(() => {
     if (currentIteration > totalIterations) {
@@ -161,12 +258,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
           return
         }
 
-        // Save current events and move to next iteration
-        const currentEvents = eventsRef.current
-        setCompletedIterations(prev => [
-          ...prev,
-          { iteration: currentIteration, events: currentEvents },
-        ])
+        // Move to next iteration
         setTimeout(() => setCurrentIteration(i => i + 1), 500)
       } catch (err) {
         setIsRunning(false)
@@ -238,24 +330,49 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     )
   }
 
-  const footer =
-    isRunning ?
-      <Text color="cyan">
-        <Spinner type="dots" /> Running iteration {currentIteration} (max {totalIterations})
-      </Text>
-    : <Text dimColor>Ready</Text>
-
-  const version = `@herbcaudill/ralph v${ralphVersion} • Claude Code v${claudeVersion}`
+  // Render a static item (header, iteration header, or content block)
+  const renderStaticItem = (item: StaticItem) => {
+    if (item.type === "header") {
+      return <Header claudeVersion={item.claudeVersion} ralphVersion={item.ralphVersion} />
+    }
+    if (item.type === "iteration") {
+      return (
+        <Box flexDirection="column" marginTop={1}>
+          <Text>{formatIterationHeader(item.iteration)}</Text>
+        </Box>
+      )
+    }
+    // Content block
+    const lines = formatContentBlock(item.block)
+    return (
+      <Box flexDirection="column">
+        {lines.map((line, i) => (
+          <Text key={i}>{line || " "}</Text>
+        ))}
+      </Box>
+    )
+  }
 
   return (
-    <FullScreenLayout title="Ralph" footer={footer} version={version}>
-      <EventDisplay
-        events={events}
-        iteration={currentIteration}
-        completedIterations={completedIterations}
-        height={contentHeight}
-      />
-    </FullScreenLayout>
+    <Box flexDirection="column">
+      {/* Static content that has already been rendered - won't re-render */}
+      <Static items={staticItems}>
+        {item => (
+          <Box key={item.key} flexDirection="column">
+            {renderStaticItem(item)}
+          </Box>
+        )}
+      </Static>
+
+      {/* Dynamic footer with spinner */}
+      <Box marginTop={1}>
+        {isRunning ?
+          <Text color="cyan">
+            <Spinner type="dots" /> Running iteration {currentIteration} (max {totalIterations})
+          </Text>
+        : <Text dimColor>Ready</Text>}
+      </Box>
+    </Box>
   )
 }
 
