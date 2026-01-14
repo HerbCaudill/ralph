@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/ralph",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Autonomous AI iteration engine for Claude CLI",
   "type": "module",
   "main": "./dist/index.js",
