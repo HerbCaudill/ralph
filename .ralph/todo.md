@@ -1,8 +1,8 @@
 ### To do
 
-- [ ] While it's working, let's allow the user to type ctrl-T to add a new todo. (Note that we already support `ralph todo` so we can reuse that functionality)
-
 ### Done
+
+- [x] While it's working, let's allow the user to type ctrl-T to add a new todo. (Note that we already support `ralph todo` so we can reuse that functionality)
 
 - [x] add horizontal padding to the header
 

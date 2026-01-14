@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
-import { Box, Text, useApp, Static } from "ink"
+import { Box, Text, useApp, Static, useInput } from "ink"
+import TextInput from "ink-text-input"
 import Spinner from "ink-spinner"
 import SelectInput from "ink-select-input"
 import { execSync } from "child_process"
@@ -9,6 +10,7 @@ import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { Header } from "./Header.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
 import { formatContentBlock, formatIterationHeader } from "../lib/formatContentBlock.js"
+import { addTodo } from "../lib/addTodo.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -138,6 +140,11 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   const [needsInit, setNeedsInit] = useState<string[] | null>(null)
   const [initializing, setInitializing] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
+  const [isAddingTodo, setIsAddingTodo] = useState(false)
+  const [todoText, setTodoText] = useState("")
+  const [todoMessage, setTodoMessage] = useState<{ type: "success" | "error"; text: string } | null>(
+    null,
+  )
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -173,6 +180,52 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       }, 100)
     }
   }
+
+  // Handle Ctrl-T to add a new todo
+  const handleTodoSubmit = (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) {
+      setIsAddingTodo(false)
+      setTodoText("")
+      return
+    }
+
+    try {
+      addTodo(trimmed)
+      setTodoMessage({ type: "success", text: "✅ added" })
+      setTodoText("")
+      setIsAddingTodo(false)
+      // Clear success message after 2 seconds
+      setTimeout(() => setTodoMessage(null), 2000)
+    } catch (err) {
+      setTodoMessage({
+        type: "error",
+        text: `Failed to add todo: ${err instanceof Error ? err.message : String(err)}`,
+      })
+      setTodoText("")
+      setIsAddingTodo(false)
+      // Clear error message after 5 seconds
+      setTimeout(() => setTodoMessage(null), 5000)
+    }
+  }
+
+  // Handle keyboard input for Ctrl-T
+  useInput(
+    (input, key) => {
+      // Ctrl-T to start adding a todo
+      if (key.ctrl && input === "t") {
+        setIsAddingTodo(true)
+        setTodoText("")
+        setTodoMessage(null)
+      }
+      // Escape to cancel adding a todo
+      if (key.escape && isAddingTodo) {
+        setIsAddingTodo(false)
+        setTodoText("")
+      }
+    },
+    { isActive: stdinSupportsRawMode && !needsInit },
+  )
 
   // Keep ref in sync with events state for access in callbacks
   useEffect(() => {
@@ -397,6 +450,22 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
           </Box>
         )}
       </Static>
+
+      {/* Todo input (shown when Ctrl-T is pressed) */}
+      {isAddingTodo && (
+        <Box marginTop={1}>
+          <Text color="yellow">Todo: </Text>
+          <TextInput value={todoText} onChange={setTodoText} onSubmit={handleTodoSubmit} />
+          <Text dimColor> (Enter to add, Esc to cancel)</Text>
+        </Box>
+      )}
+
+      {/* Todo message (success or error) */}
+      {todoMessage && (
+        <Box marginTop={1}>
+          <Text color={todoMessage.type === "success" ? "green" : "red"}>{todoMessage.text}</Text>
+        </Box>
+      )}
 
       {/* Dynamic footer with spinner */}
       <Box marginTop={1}>
