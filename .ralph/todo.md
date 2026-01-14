@@ -1,10 +1,11 @@
 ### To do
 
-- [ ] change the default iterations to 30
 - [ ] Let's get rid of the static frame and go back to just working normally in the terminal. Put the header in a box, along with the version numbers, and just append events to the bottom. Keep the spinner with "Running iteration N (max X)" at the bottom
 - [ ] While it's working, let's allow the user to type ctrl-T to add a new todo
 
 ### Done
+
+- [x] Change the default iterations to 30
 
 - [x] In the footer put `@herbcaudill/ralph` before the version
 - [x] In the footer say `Running iteration X (max Y)`
