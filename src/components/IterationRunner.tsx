@@ -34,6 +34,9 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   const [initializing, setInitializing] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
 
+  // Hook must be called before any conditional returns
+  const contentHeight = useContentHeight(true)
+
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
 
@@ -258,7 +261,6 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     : <Text dimColor>Ready</Text>
 
   const version = `@herbcaudill/ralph v${ralphVersion} • Claude Code v${claudeVersion}`
-  const contentHeight = useContentHeight(true)
 
   return (
     <FullScreenLayout title="Ralph" footer={footer} version={version}>
