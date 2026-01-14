@@ -1,17 +1,19 @@
 ### To do
 
-- [ ] While it's working, let's allow the user to type ctrl-T to add a new todo
-- [ ] Fix spacing weirdness and missing characters
-      In this output:
+- [ ] While it's working, let's allow the user to type ctrl-T to add a new todo. (Note that we already support `ralph todo` so we can reuse that functionality)
+- [ ] add horizontal padding to the header
+- [ ] Fix spacing weirdness and missing characters - see example below
+
   ```bash
-  │ This is a substantial refactor. Given the complexity, I should break this task into subtasks as instructed. Let me       │
-  │  pdate the todo file:                                                                                                    │
-  │   Read .ralph/todo.md                                                                                                    │
-  │                                                                                                                          │
-  │ Found it. The default iterations is set in src/cli.ts line 15. The default is currently 10. Let me read the file and     │
-  │  hange it to 30:                                                                                                         │
-  │   Read src/cli.ts                                                                                                        │
+  This is a substantial refactor. Given the complexity, I should break this task into subtasks as instructed. Let me
+   pdate the todo file:
+    Read .ralph/todo.md
+
+  Found it. The default iterations is set in src/cli.ts line 15. The default is currently 10. Let me read the file and
+   hange it to 30:
+    Read src/cli.ts
   ```
+
       the `u` in "update" is missing and so is the `c` in "change". Also there should be a blank line after "...todo file:" and
       also after "(c)hange it to 30:"
 
