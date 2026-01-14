@@ -31,7 +31,7 @@ describe("IterationRunner file checking", () => {
     mockExistsSync.mockReturnValue(true)
 
     // Simulate the logic from checkRequiredFiles
-    const requiredFiles = ["prompt.md", "todo.md", "progress.md"]
+    const requiredFiles = ["prompt.md", "todo.md"]
     const missing = requiredFiles.filter(file => !existsSync(file))
     const exists = missing.length === 0
 
@@ -45,7 +45,7 @@ describe("IterationRunner file checking", () => {
       return !path.includes("prompt.md")
     })
 
-    const requiredFiles = ["prompt.md", "todo.md", "progress.md"]
+    const requiredFiles = ["prompt.md", "todo.md"]
     const missing = requiredFiles.filter(file => !existsSync(file))
     const exists = missing.length === 0
 
@@ -57,12 +57,12 @@ describe("IterationRunner file checking", () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
     mockExistsSync.mockReturnValue(false)
 
-    const requiredFiles = ["prompt.md", "todo.md", "progress.md"]
+    const requiredFiles = ["prompt.md", "todo.md"]
     const missing = requiredFiles.filter(file => !existsSync(file))
     const exists = missing.length === 0
 
     expect(exists).toBe(false)
-    expect(missing).toEqual(["prompt.md", "todo.md", "progress.md"])
+    expect(missing).toEqual(["prompt.md", "todo.md"])
   })
 
   it("detects only todo.md exists", () => {
@@ -71,12 +71,12 @@ describe("IterationRunner file checking", () => {
       return path.includes("todo.md")
     })
 
-    const requiredFiles = ["prompt.md", "todo.md", "progress.md"]
+    const requiredFiles = ["prompt.md", "todo.md"]
     const missing = requiredFiles.filter(file => !existsSync(file))
     const exists = missing.length === 0
 
     expect(exists).toBe(false)
-    expect(missing).toEqual(["prompt.md", "progress.md"])
+    expect(missing).toEqual(["prompt.md"])
     expect(missing).not.toContain("todo.md")
   })
 })

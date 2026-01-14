@@ -13,6 +13,5 @@ When you complete a task, before committing:
 - Check that the project builds successfully and tests pass
 - Where applicable, add tests to validate your changes and confirm that they pass
 - Update the todo list by checking off the completed task and moving it to the "Done" section
-- Append your progress to the @.ralph/progress.md file. Use this to leave a note for the next person working in the codebase
 
 Make one git commit for this task. If, while implementing the task, you notice the todo list is complete, output <promise>COMPLETE</promise> and exit.

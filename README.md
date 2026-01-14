@@ -9,9 +9,8 @@ Ralph spawns multiple Claude CLI sessions that:
 1. Check project health (build, tests)
 2. Select and work on the highest-priority task
 3. Validate changes with tests
-4. Document progress
-5. Commit changes
-6. Repeat
+4. Commit changes
+5. Repeat
 
 ## Installation
 
@@ -37,8 +36,7 @@ This creates a `.ralph/` directory with template files:
 
 - `prompt.md` - Instructions for Claude during each iteration
 - `todo.md` - Your task list
-- `progress.md` - Progress log (auto-updated)
-- `events.log` - Event log (auto-generated)
+- `events.log` - Event log (auto-generated during runs)
 
 2. **Customize the workflow:**
 
@@ -99,14 +97,6 @@ Your task list with priority and completion status. Tasks can be:
 - Detailed descriptions with acceptance criteria
 - Broken down into subtasks
 
-**`.ralph/progress.md`**
-
-Auto-updated log of completed work. Each entry includes:
-
-- What was changed
-- Why it was changed
-- Commit information
-
 **`.ralph/events.log`**
 
 Machine-readable log of all Claude interactions (JSON). Use for debugging or replay.
@@ -161,7 +151,6 @@ claude auth
 ## Tips
 
 - **Start with small iteration counts** (3-5) to verify the workflow before running longer sessions
-- **Review progress.md** between runs to understand what changed
 - **Customize prompt.md** for your project's specific needs (build commands, test frameworks, etc.)
 - **Break down complex tasks** into smaller subtasks in todo.md
 - **Let Claude prioritize** by not ordering tasks strictly - Claude will choose what makes sense

@@ -12,7 +12,7 @@ const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
 
 const checkRequiredFiles = (): { missing: string[]; exists: boolean } => {
-  const requiredFiles = ["prompt.md", "todo.md", "progress.md"]
+  const requiredFiles = ["prompt.md", "todo.md"]
   const missing = requiredFiles.filter(file => !existsSync(join(ralphDir, file)))
   return { missing, exists: missing.length === 0 }
 }
@@ -101,7 +101,6 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
         "-p",
         "@.ralph/prompt.md",
         "@.ralph/todo.md",
-        "@.ralph/progress.md",
         "--output-format",
         "stream-json",
         "--include-partial-messages",

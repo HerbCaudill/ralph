@@ -54,7 +54,6 @@ describe("Ralph E2E Tests", () => {
       expect(result.exitCode).toBe(0)
       expect(existsSync(join(workspacePath, ".ralph/prompt.md"))).toBe(true)
       expect(existsSync(join(workspacePath, ".ralph/todo.md"))).toBe(true)
-      expect(existsSync(join(workspacePath, ".ralph/progress.md"))).toBe(true)
     })
 
     it("creates missing files in incomplete setup", async () => {
@@ -75,7 +74,6 @@ describe("Ralph E2E Tests", () => {
       expect(promptContent).toContain("only has prompt.md")
       // Should create missing files
       expect(existsSync(join(workspacePath, ".ralph/todo.md"))).toBe(true)
-      expect(existsSync(join(workspacePath, ".ralph/progress.md"))).toBe(true)
     })
 
     it("does not overwrite existing complete setup", async () => {

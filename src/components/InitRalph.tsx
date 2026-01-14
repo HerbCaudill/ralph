@@ -15,7 +15,7 @@ export const InitRalph = () => {
     const initialize = async () => {
       const ralphDir = join(process.cwd(), ".ralph")
       const templatesDir = join(__dirname, "..", "..", "templates")
-      const templates = ["prompt.md", "todo.md", "progress.md"]
+      const templates = ["prompt.md", "todo.md"]
 
       // Check if .ralph exists and all files are present
       if (existsSync(ralphDir)) {

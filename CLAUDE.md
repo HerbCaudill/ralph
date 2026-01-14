@@ -1,6 +1,6 @@
 ## Project Overview
 
-Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iterative development workflows. It spawns Claude CLI processes with a custom prompt, todo list, and progress log, captures streaming JSON output, displays it in a formatted terminal UI using Ink (React for CLIs), and orchestrates multiple iterations.
+Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iterative development workflows. It spawns Claude CLI processes with a custom prompt and todo list, captures streaming JSON output, displays it in a formatted terminal UI using Ink (React for CLIs), and orchestrates multiple iterations.
 
 ## Key Architecture
 
@@ -12,7 +12,7 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
    - Replay mode: Replay events from log (`ralph --replay [file]`)
 
 2. **Iteration Runner** (`IterationRunner.tsx`) → Core orchestration:
-   - Checks for required files (`.ralph/prompt.md`, `todo.md`, `progress.md`)
+   - Checks for required files (`.ralph/prompt.md`, `todo.md`)
    - Spawns `claude` CLI with `--output-format stream-json`
    - Parses streaming JSON events line-by-line
    - Appends events to `.ralph/events.log`
@@ -33,8 +33,7 @@ Ralph initializes projects with template files in `.ralph/`:
 
 - `prompt.md` - Instructions given to Claude each iteration (build commands, workflow)
 - `todo.md` - Task list in markdown checkbox format
-- `progress.md` - Auto-updated log of completed work
-- `events.log` - JSON event stream for debugging/replay
+- `events.log` - JSON event stream for debugging/replay (auto-generated during runs)
 
 Templates are copied from `templates/` directory on `ralph init`.
 
@@ -42,7 +41,7 @@ Templates are copied from `templates/` directory on `ralph init`.
 
 Ralph expects Claude CLI to:
 
-- Accept `@.ralph/prompt.md`, `@.ralph/todo.md`, `@.ralph/progress.md` as context files
+- Accept `@.ralph/prompt.md`, `@.ralph/todo.md` as context files
 - Output `--output-format stream-json` with `--include-partial-messages`
 - Exit with code 0 on success
 - Output `<promise>COMPLETE</promise>` when todo list is complete
@@ -51,7 +50,7 @@ Claude is instructed (via `prompt.md`) to:
 
 - Check build/tests first, fix errors if found
 - Select one high-priority task from todo.md
-- Complete the task, update todo.md and progress.md
+- Complete the task, update todo.md
 - Commit changes with git
 - Output `<promise>COMPLETE</promise>` if todo list is empty
 
