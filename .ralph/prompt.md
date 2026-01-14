@@ -1,4 +1,4 @@
-Before doing anything, check that the project builds successfully. Run your project's build/typecheck commands and tests.
+Before doing anything, run `pnpm test:all`.
 
 If there are build errors or test failures: YOUR ONLY TASK IS TO FIX THEM.
 
@@ -10,7 +10,7 @@ ONLY WORK ON A SINGLE TASK. If the task you choose is especially complex, then y
 
 When you complete a task, before committing:
 
-- Check that the project builds successfully and tests pass
+- Run `pnpm test:all`
 - Where applicable, add tests to validate your changes and confirm that they pass
 - Update the todo list by checking off the completed task and moving it to the "Done" section
 
