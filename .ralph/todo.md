@@ -1,6 +1,19 @@
 ### To do
 
 - [ ] While it's working, let's allow the user to type ctrl-T to add a new todo
+- [ ] Fix spacing weirdness and missing characters
+      In this output:
+  ```bash
+  │ This is a substantial refactor. Given the complexity, I should break this task into subtasks as instructed. Let me       │
+  │  pdate the todo file:                                                                                                    │
+  │   Read .ralph/todo.md                                                                                                    │
+  │                                                                                                                          │
+  │ Found it. The default iterations is set in src/cli.ts line 15. The default is currently 10. Let me read the file and     │
+  │  hange it to 30:                                                                                                         │
+  │   Read src/cli.ts                                                                                                        │
+  ```
+      the `u` in "update" is missing and so is the `c` in "change". Also there should be a blank line after "...todo file:" and
+      also after "(c)hange it to 30:"
 
 ### Done
 
