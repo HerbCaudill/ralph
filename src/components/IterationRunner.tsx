@@ -453,10 +453,10 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
 
       {/* Todo input (shown when Ctrl-T is pressed) */}
       {isAddingTodo && (
-        <Box marginTop={1}>
-          <Text color="yellow">Todo: </Text>
+        <Box flexDirection="column" marginTop={1}>
+          <Text color="yellow">Todo:</Text>
           <TextInput value={todoText} onChange={setTodoText} onSubmit={handleTodoSubmit} />
-          <Text dimColor> (Enter to add, Esc to cancel)</Text>
+          <Text dimColor>(Enter to add, Esc to cancel)</Text>
         </Box>
       )}
 
