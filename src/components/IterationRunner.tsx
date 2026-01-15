@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp, Static, useInput } from "ink"
-import TextInput from "ink-text-input"
 import Spinner from "ink-spinner"
+import { EnhancedTextInput } from "./EnhancedTextInput.js"
 import SelectInput from "ink-select-input"
 import { execSync } from "child_process"
 import { appendFileSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "fs"
@@ -455,7 +455,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       {isAddingTodo && (
         <Box flexDirection="column" marginTop={1}>
           <Text color="yellow">Todo:</Text>
-          <TextInput value={todoText} onChange={setTodoText} onSubmit={handleTodoSubmit} />
+          <EnhancedTextInput value={todoText} onChange={setTodoText} onSubmit={handleTodoSubmit} />
           <Text dimColor>(Enter to add, Esc to cancel)</Text>
         </Box>
       )}
