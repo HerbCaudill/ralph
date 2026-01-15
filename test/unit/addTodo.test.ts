@@ -114,4 +114,38 @@ describe("insertTodo", () => {
 
 ### Done`)
   })
+
+  it("handles tasks with double quotes", () => {
+    const content = `### To do
+
+- [ ] Existing task
+
+### Done`
+
+    const result = insertTodo(content, 'Task with "quoted" text')
+
+    expect(result).toBe(`### To do
+
+- [ ] Task with "quoted" text
+- [ ] Existing task
+
+### Done`)
+  })
+
+  it("handles tasks with backslashes", () => {
+    const content = `### To do
+
+- [ ] Existing task
+
+### Done`
+
+    const result = insertTodo(content, "Task with \\ backslash")
+
+    expect(result).toBe(`### To do
+
+- [ ] Task with \\ backslash
+- [ ] Existing task
+
+### Done`)
+  })
 })

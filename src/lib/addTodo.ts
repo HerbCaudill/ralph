@@ -39,8 +39,9 @@ export const addTodo = (description: string, cwd: string = process.cwd()): void 
     stdio: "pipe",
   })
 
-  // Commit just the staged change
-  execSync(`git commit -m "todo: ${description}"`, { cwd, stdio: "pipe" })
+  // Commit just the staged change - escape double quotes and backslashes in description
+  const escapedDescription = description.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  execSync(`git commit -m "todo: ${escapedDescription}"`, { cwd, stdio: "pipe" })
 
   console.log(`✅ added`)
 }
