@@ -2,7 +2,7 @@
 
 Autonomous AI iteration engine for Claude CLI. Ralph runs Claude in a loop to systematically work through your codebase's task list, enabling Claude to tackle work items iteratively.
 
-https://github.com/HerbCaudill/ralph/raw/main/docs/ralph%20demo.mp4
+<video src="https://github.com/HerbCaudill/ralph/raw/main/docs/ralph%20demo.mp4" controls width="100%"></video>
 
 ## Overview
 
