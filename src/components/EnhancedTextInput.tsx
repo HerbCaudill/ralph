@@ -91,9 +91,9 @@ export const EnhancedTextInput = ({
 
   if (showCursor && focus) {
     renderedPlaceholder =
-      placeholder.length > 0
-        ? chalk.inverse(placeholder[0]) + chalk.grey(placeholder.slice(1))
-        : chalk.inverse(" ")
+      placeholder.length > 0 ?
+        chalk.inverse(placeholder[0]) + chalk.grey(placeholder.slice(1))
+      : chalk.inverse(" ")
 
     renderedValue = originalValue.length > 0 ? "" : chalk.inverse(" ")
 
@@ -175,15 +175,13 @@ export const EnhancedTextInput = ({
       // Backspace
       else if (key.backspace || key.delete) {
         if (cursorOffset > 0) {
-          nextValue =
-            originalValue.slice(0, cursorOffset - 1) + originalValue.slice(cursorOffset)
+          nextValue = originalValue.slice(0, cursorOffset - 1) + originalValue.slice(cursorOffset)
           nextCursorOffset = cursorOffset - 1
         }
       }
       // Regular character input
       else if (input && !key.ctrl && !key.meta) {
-        nextValue =
-          originalValue.slice(0, cursorOffset) + input + originalValue.slice(cursorOffset)
+        nextValue = originalValue.slice(0, cursorOffset) + input + originalValue.slice(cursorOffset)
         nextCursorOffset = cursorOffset + input.length
       }
 
@@ -196,16 +194,16 @@ export const EnhancedTextInput = ({
         onChange(nextValue)
       }
     },
-    { isActive: focus }
+    { isActive: focus },
   )
 
   return (
     <Text>
-      {placeholder
-        ? originalValue.length > 0
-          ? renderedValue
-          : renderedPlaceholder
-        : renderedValue}
+      {placeholder ?
+        originalValue.length > 0 ?
+          renderedValue
+        : renderedPlaceholder
+      : renderedValue}
     </Text>
   )
 }

@@ -64,9 +64,7 @@ const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] =
               // This is longer, remove the old one and add this
               seenBlocks.delete(seenKey)
               // Also remove from uniqueContent
-              const idx = uniqueContent.findIndex(
-                b => b.type === "text" && b.text === seenText,
-              )
+              const idx = uniqueContent.findIndex(b => b.type === "text" && b.text === seenText)
               if (idx >= 0) uniqueContent.splice(idx, 1)
               break
             }

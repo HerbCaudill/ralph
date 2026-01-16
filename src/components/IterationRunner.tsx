@@ -92,9 +92,7 @@ const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] =
               // This is longer, remove the old one and add this
               seenBlocks.delete(seenKey)
               // Also remove from uniqueContent
-              const idx = uniqueContent.findIndex(
-                b => b.type === "text" && b.text === seenText,
-              )
+              const idx = uniqueContent.findIndex(b => b.type === "text" && b.text === seenText)
               if (idx >= 0) uniqueContent.splice(idx, 1)
               break
             }
@@ -142,9 +140,10 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   const [isRunning, setIsRunning] = useState(false)
   const [isAddingTodo, setIsAddingTodo] = useState(false)
   const [todoText, setTodoText] = useState("")
-  const [todoMessage, setTodoMessage] = useState<{ type: "success" | "error"; text: string } | null>(
-    null,
-  )
+  const [todoMessage, setTodoMessage] = useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
