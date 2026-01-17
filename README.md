@@ -157,6 +157,16 @@ claude auth
 - **Break down complex tasks** into smaller subtasks in todo.md
 - **Let Claude prioritize** by not ordering tasks strictly - Claude will choose what makes sense
 
+## Haiku
+
+> Code loops through the night
+> Claude works while I dream softly
+> Tasks done by morning
+
+> コードは夜を巡る
+> 私が夢見る間にクロードは働く
+> 朝には完了
+
 ## License
 
 MIT
