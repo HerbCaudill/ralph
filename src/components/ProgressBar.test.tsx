@@ -9,39 +9,39 @@ describe("ProgressBar", () => {
     expect(lastFrame()).toBe("")
   })
 
-  it("shows 0% when all tasks remain", () => {
+  it("shows empty bar when all tasks remain", () => {
     const { lastFrame } = render(<ProgressBar remaining={10} total={10} width={10} />)
     const output = lastFrame()!
-    expect(output).toContain("0%")
-    expect(output).toContain("░░░░░░░░░░")
+    expect(output).toContain("▱▱▱▱▱▱▱▱▱▱")
+    expect(output).toContain("0/10")
   })
 
-  it("shows 100% when no tasks remain", () => {
+  it("shows full bar when no tasks remain", () => {
     const { lastFrame } = render(<ProgressBar remaining={0} total={10} width={10} />)
     const output = lastFrame()!
-    expect(output).toContain("100%")
-    expect(output).toContain("██████████")
+    expect(output).toContain("▰▰▰▰▰▰▰▰▰▰")
+    expect(output).toContain("10/10")
   })
 
-  it("shows 50% when half remain", () => {
+  it("shows half bar when half remain", () => {
     const { lastFrame } = render(<ProgressBar remaining={5} total={10} width={10} />)
     const output = lastFrame()!
-    expect(output).toContain("50%")
-    expect(output).toContain("█████")
-    expect(output).toContain("░░░░░")
+    expect(output).toContain("▰▰▰▰▰")
+    expect(output).toContain("▱▱▱▱▱")
+    expect(output).toContain("5/10")
   })
 
   it("respects custom width", () => {
     const { lastFrame } = render(<ProgressBar remaining={0} total={10} width={5} />)
     const output = lastFrame()!
     // Should have 5 filled blocks
-    expect(output).toMatch(/█{5}/)
+    expect(output).toMatch(/▰{5}/)
   })
 
   it("clamps progress to 0-100%", () => {
     // More remaining than total (shouldn't happen, but handle gracefully)
     const { lastFrame } = render(<ProgressBar remaining={15} total={10} width={10} />)
     const output = lastFrame()!
-    expect(output).toContain("0%")
+    expect(output).toContain("▱▱▱▱▱▱▱▱▱▱")
   })
 })

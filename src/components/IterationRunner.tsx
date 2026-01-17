@@ -488,7 +488,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       )}
 
       {/* Dynamic footer with spinner and progress bar */}
-      <Box marginTop={1} flexDirection="column">
+      <Box marginTop={1} justifyContent="space-between">
         {isRunning ?
           <Text color="cyan">
             <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
@@ -496,14 +496,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
           </Text>
         : <Text dimColor>Ready</Text>}
         {progressData.type !== "none" && progressData.total > 0 && (
-          <Box>
-            <ProgressBar remaining={progressData.remaining} total={progressData.total} />
-            <Text dimColor>
-              {" "}
-              ({progressData.total - progressData.remaining}/{progressData.total}{" "}
-              {progressData.type === "beads" ? "issues" : "tasks"})
-            </Text>
-          </Box>
+          <ProgressBar remaining={progressData.remaining} total={progressData.total} />
         )}
       </Box>
     </Box>

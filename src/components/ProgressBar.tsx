@@ -5,7 +5,7 @@ import { Text } from "ink"
  * A simple progress bar component using Unicode block characters.
  * Shows completion progress: (total - remaining) / total
  */
-export const ProgressBar = ({ remaining, total, width = 20 }: Props) => {
+export const ProgressBar = ({ remaining, total, width = 12 }: Props) => {
   if (total === 0) {
     return null
   }
@@ -15,16 +15,19 @@ export const ProgressBar = ({ remaining, total, width = 20 }: Props) => {
   const filledWidth = Math.round(progress * width)
   const emptyWidth = width - filledWidth
 
-  const filled = "█".repeat(filledWidth)
-  const empty = "░".repeat(emptyWidth)
+  const filled = "▰".repeat(filledWidth)
+  const empty = "▱".repeat(emptyWidth)
 
-  const percent = Math.round(progress * 100)
+  const completed = total - remaining
 
   return (
     <Text>
       <Text color="yellow">{filled}</Text>
       <Text dimColor>{empty}</Text>
-      <Text dimColor> {percent}%</Text>
+      <Text dimColor>
+        {" "}
+        {completed}/{total}
+      </Text>
     </Text>
   )
 }
@@ -34,6 +37,6 @@ type Props = {
   remaining: number
   /** Total number of items at the start */
   total: number
-  /** Width of the progress bar in characters (default: 20) */
+  /** Width of the progress bar in characters (default: 12) */
   width?: number
 }
