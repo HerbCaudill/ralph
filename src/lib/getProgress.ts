@@ -34,17 +34,22 @@ export const getProgress = (initialOpen?: number): ProgressData => {
 
 const getBeadsProgress = (initialOpen?: number): ProgressData => {
   try {
-    // Get open issues count using bd list
-    const output = execSync("bd list --status=open,in_progress --format='{{.ID}}'", {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    })
-
-    const openIssues = output
-      .trim()
-      .split("\n")
-      .filter(line => line.trim().length > 0)
-    const remaining = openIssues.length
+    // Get open + in_progress issues count using bd count
+    const openCount = parseInt(
+      execSync("bd count --status=open", {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim(),
+      10,
+    )
+    const inProgressCount = parseInt(
+      execSync("bd count --status=in_progress", {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim(),
+      10,
+    )
+    const remaining = openCount + inProgressCount
 
     // Total is the initial count (baseline) when provided, otherwise current remaining
     // If more issues are opened during the run (remaining > initialOpen), use the larger value
@@ -87,16 +92,21 @@ export const getInitialBeadsCount = (): number | undefined => {
   }
 
   try {
-    const output = execSync("bd list --status=open,in_progress --format='{{.ID}}'", {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    })
-
-    const openIssues = output
-      .trim()
-      .split("\n")
-      .filter(line => line.trim().length > 0)
-    return openIssues.length
+    const openCount = parseInt(
+      execSync("bd count --status=open", {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim(),
+      10,
+    )
+    const inProgressCount = parseInt(
+      execSync("bd count --status=in_progress", {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim(),
+      10,
+    )
+    return openCount + inProgressCount
   } catch {
     return undefined
   }

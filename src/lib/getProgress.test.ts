@@ -25,7 +25,8 @@ describe("getProgress", () => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
-      mockExecSync.mockReturnValue("beads-1\nbeads-2\nbeads-3\n")
+      // First call returns open count, second returns in_progress count
+      mockExecSync.mockReturnValueOnce("2").mockReturnValueOnce("1")
 
       const result = getProgress(5)
 
@@ -39,7 +40,7 @@ describe("getProgress", () => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
-      mockExecSync.mockReturnValue("")
+      mockExecSync.mockReturnValueOnce("0").mockReturnValueOnce("0")
 
       const result = getProgress(5)
 
@@ -53,7 +54,7 @@ describe("getProgress", () => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
-      mockExecSync.mockReturnValue("beads-1\nbeads-2\n")
+      mockExecSync.mockReturnValueOnce("2").mockReturnValueOnce("0")
 
       const result = getProgress()
 
@@ -177,7 +178,7 @@ describe("getInitialBeadsCount", () => {
       if (typeof path === "string" && path.endsWith(".beads")) return true
       return false
     })
-    mockExecSync.mockReturnValue("beads-1\nbeads-2\nbeads-3\n")
+    mockExecSync.mockReturnValueOnce("2").mockReturnValueOnce("1")
 
     const result = getInitialBeadsCount()
 
