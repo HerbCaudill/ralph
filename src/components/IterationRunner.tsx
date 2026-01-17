@@ -431,7 +431,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       return (
         <Box flexDirection="column" marginTop={1}>
           <Gradient colors={["#30A6E4", "#EBC635"]}>
-            <BigText text={String(item.iteration)} />
+            <BigText text={`Round ${item.iteration}`} font="tiny" />
           </Gradient>
         </Box>
       )
@@ -478,7 +478,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       <Box marginTop={1}>
         {isRunning ?
           <Text color="cyan">
-            <Spinner type="dots" /> Running iteration {currentIteration} (max {totalIterations})
+            <Spinner type="dots" /> Running round {currentIteration} (max {totalIterations})
           </Text>
         : <Text dimColor>Ready</Text>}
       </Box>

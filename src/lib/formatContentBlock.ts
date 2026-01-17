@@ -59,8 +59,8 @@ export const formatContentBlock = (block: ContentBlock): string[] => {
 }
 
 /**
- * Format an iteration header
+ * Format a round header
  */
 export const formatIterationHeader = (iteration: number): string => {
-  return chalk.cyan.bold(`─── Iteration ${iteration} ───`)
+  return chalk.cyan.bold(`─── Round ${iteration} ───`)
 }

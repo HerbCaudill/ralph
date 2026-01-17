@@ -256,7 +256,7 @@ describe("EventDisplay", () => {
 
     // The text content should be on one line (after the header)
     const output = lastFrame() ?? ""
-    // Filter out header lines (containing box border characters or "Iteration")
+    // Filter out header lines (containing box border characters or "Round")
     const contentLines = output
       .split("\n")
       .filter(l => l.trim())
@@ -264,7 +264,7 @@ describe("EventDisplay", () => {
     expect(contentLines.length).toBe(1)
   })
 
-  it("displays completed iterations before current iteration", async () => {
+  it("displays completed rounds before current round", async () => {
     const completedIterations = [
       {
         iteration: 1,
@@ -273,7 +273,7 @@ describe("EventDisplay", () => {
             type: "assistant",
             message: {
               id: "msg_iter1",
-              content: [{ type: "text", text: "First iteration work" }],
+              content: [{ type: "text", text: "First round work" }],
             },
           },
         ],
@@ -285,7 +285,7 @@ describe("EventDisplay", () => {
             type: "assistant",
             message: {
               id: "msg_iter2",
-              content: [{ type: "text", text: "Second iteration work" }],
+              content: [{ type: "text", text: "Second round work" }],
             },
           },
         ],
@@ -297,7 +297,7 @@ describe("EventDisplay", () => {
         type: "assistant",
         message: {
           id: "msg_iter3",
-          content: [{ type: "text", text: "Third iteration work" }],
+          content: [{ type: "text", text: "Third round work" }],
         },
       },
     ]
@@ -312,32 +312,32 @@ describe("EventDisplay", () => {
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
-      // Should show all 3 iterations
-      expect(output).toContain("Iteration 1")
-      expect(output).toContain("First iteration work")
-      expect(output).toContain("Iteration 2")
-      expect(output).toContain("Second iteration work")
-      expect(output).toContain("Iteration 3")
-      expect(output).toContain("Third iteration work")
+      // Should show all 3 rounds
+      expect(output).toContain("Round 1")
+      expect(output).toContain("First round work")
+      expect(output).toContain("Round 2")
+      expect(output).toContain("Second round work")
+      expect(output).toContain("Round 3")
+      expect(output).toContain("Third round work")
     })
 
-    // Verify order: iteration 1 before 2, iteration 2 before 3
+    // Verify order: round 1 before 2, round 2 before 3
     const output = lastFrame() ?? ""
-    const iter1Pos = output.indexOf("Iteration 1")
-    const iter2Pos = output.indexOf("Iteration 2")
-    const iter3Pos = output.indexOf("Iteration 3")
+    const iter1Pos = output.indexOf("Round 1")
+    const iter2Pos = output.indexOf("Round 2")
+    const iter3Pos = output.indexOf("Round 3")
     expect(iter1Pos).toBeLessThan(iter2Pos)
     expect(iter2Pos).toBeLessThan(iter3Pos)
   })
 
-  it("shows new iteration header when transitioning between iterations", async () => {
-    // Start with iteration 1
+  it("shows new round header when transitioning between rounds", async () => {
+    // Start with round 1
     const iter1Events = [
       {
         type: "assistant",
         message: {
           id: "msg_iter1",
-          content: [{ type: "text", text: "First iteration" }],
+          content: [{ type: "text", text: "First round" }],
         },
       },
     ]
@@ -348,17 +348,17 @@ describe("EventDisplay", () => {
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
-      expect(output).toContain("Iteration 1")
-      expect(output).toContain("First iteration")
+      expect(output).toContain("Round 1")
+      expect(output).toContain("First round")
     })
 
-    // Transition to iteration 2 (iteration 1 moves to completedIterations)
+    // Transition to round 2 (round 1 moves to completedIterations)
     const iter2Events = [
       {
         type: "assistant",
         message: {
           id: "msg_iter2",
-          content: [{ type: "text", text: "Second iteration" }],
+          content: [{ type: "text", text: "Second round" }],
         },
       },
     ]
@@ -373,11 +373,11 @@ describe("EventDisplay", () => {
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
-      // Should show both iterations
-      expect(output).toContain("Iteration 1")
-      expect(output).toContain("First iteration")
-      expect(output).toContain("Iteration 2")
-      expect(output).toContain("Second iteration")
+      // Should show both rounds
+      expect(output).toContain("Round 1")
+      expect(output).toContain("First round")
+      expect(output).toContain("Round 2")
+      expect(output).toContain("Second round")
     })
   })
 })
