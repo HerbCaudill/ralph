@@ -1,4 +1,5 @@
 import { Text, Box } from "ink"
+import SelectInput from "ink-select-input"
 import React, { useEffect, useState } from "react"
 import { existsSync, mkdirSync, copyFileSync } from "fs"
 import { join, dirname } from "path"
@@ -6,27 +7,43 @@ import { fileURLToPath } from "url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
+type TaskMode = "todo" | "beads"
+
 export const InitRalph = () => {
-  const [status, setStatus] = useState<"checking" | "exists" | "creating" | "done">("checking")
+  const [status, setStatus] = useState<"checking" | "exists" | "selecting" | "creating" | "done">(
+    "checking",
+  )
+  const [taskMode, setTaskMode] = useState<TaskMode | null>(null)
   const [createdFiles, setCreatedFiles] = useState<string[]>([])
   const [errors, setErrors] = useState<string[]>([])
 
+  // Check if .ralph already exists
   useEffect(() => {
+    const ralphDir = join(process.cwd(), ".ralph")
+
+    if (existsSync(ralphDir) && existsSync(join(ralphDir, "prompt.md"))) {
+      setStatus("exists")
+    } else {
+      setStatus("selecting")
+    }
+  }, [])
+
+  // Run initialization when task mode is selected
+  useEffect(() => {
+    if (!taskMode) return
+
     const initialize = async () => {
       const ralphDir = join(process.cwd(), ".ralph")
       const templatesDir = join(__dirname, "..", "..", "templates")
-      const templates = ["prompt.md", "todo.md"]
 
-      // Check if .ralph exists and all files are present
-      if (existsSync(ralphDir)) {
-        const allFilesExist = templates.every(template => existsSync(join(ralphDir, template)))
-
-        if (allFilesExist) {
-          setStatus("exists")
-          return
-        }
-        // If not all files exist, continue to create missing ones
-      }
+      // Select templates based on task mode
+      const templates: Array<{ src: string; dest: string }> =
+        taskMode === "beads" ?
+          [{ src: "prompt-beads.md", dest: "prompt.md" }]
+        : [
+            { src: "prompt.md", dest: "prompt.md" },
+            { src: "todo.md", dest: "todo.md" },
+          ]
 
       setStatus("creating")
 
@@ -37,16 +54,16 @@ export const InitRalph = () => {
         const failed: string[] = []
 
         for (const template of templates) {
-          const src = join(templatesDir, template)
-          const dest = join(ralphDir, template)
+          const src = join(templatesDir, template.src)
+          const dest = join(ralphDir, template.dest)
 
           // Only copy if the destination doesn't exist
           if (!existsSync(dest)) {
             if (existsSync(src)) {
               copyFileSync(src, dest)
-              created.push(template)
+              created.push(template.dest)
             } else {
-              failed.push(`Template not found: ${template}`)
+              failed.push(`Template not found: ${template.src}`)
             }
           }
         }
@@ -65,7 +82,11 @@ export const InitRalph = () => {
     }
 
     initialize()
-  }, [])
+  }, [taskMode])
+
+  const handleModeSelect = (item: { value: string }) => {
+    setTaskMode(item.value as TaskMode)
+  }
 
   if (status === "checking") {
     return <Text>Checking .ralph directory...</Text>
@@ -76,6 +97,23 @@ export const InitRalph = () => {
       <Box flexDirection="column">
         <Text color="yellow">⚠️ .ralph directory already exists</Text>
         <Text dimColor>To reinitialize, remove the directory first: rm -rf .ralph</Text>
+      </Box>
+    )
+  }
+
+  if (status === "selecting") {
+    return (
+      <Box flexDirection="column">
+        <Text bold>How will you manage tasks?</Text>
+        <Box marginTop={1}>
+          <SelectInput
+            items={[
+              { label: "todo.md - Simple markdown checklist", value: "todo" },
+              { label: "beads - Git-backed issue tracker", value: "beads" },
+            ]}
+            onSelect={handleModeSelect}
+          />
+        </Box>
       </Box>
     )
   }
@@ -99,15 +137,34 @@ export const InitRalph = () => {
       {errors.length === 0 && (
         <>
           <Text color="green">{"\n"}✓ Ralph initialized successfully!</Text>
-          <Text bold>{"\n"}Before running ralph, you need to:</Text>
-          <Text>
-            <Text color="cyan"> 1. Edit .ralph/prompt.md</Text>
-            <Text dimColor> - Add your project context and workflow instructions</Text>
-          </Text>
-          <Text>
-            <Text color="cyan"> 2. Edit .ralph/todo.md</Text>
-            <Text dimColor> - Add the tasks you want Ralph to work on</Text>
-          </Text>
+          {taskMode === "todo" ?
+            <>
+              <Text bold>{"\n"}Before running ralph, you need to:</Text>
+              <Text>
+                <Text color="cyan"> 1. Edit .ralph/prompt.md</Text>
+                <Text dimColor> - Add your project context and workflow instructions</Text>
+              </Text>
+              <Text>
+                <Text color="cyan"> 2. Edit .ralph/todo.md</Text>
+                <Text dimColor> - Add the tasks you want Ralph to work on</Text>
+              </Text>
+            </>
+          : <>
+              <Text bold>{"\n"}Before running ralph, you need to:</Text>
+              <Text>
+                <Text color="cyan"> 1. Edit .ralph/prompt.md</Text>
+                <Text dimColor> - Customize build commands and workflow for your project</Text>
+              </Text>
+              <Text>
+                <Text color="cyan"> 2. Initialize beads</Text>
+                <Text dimColor> - Run `bd init` to set up the issue tracker</Text>
+              </Text>
+              <Text>
+                <Text color="cyan"> 3. Create issues</Text>
+                <Text dimColor> - Run `bd create --title="..." --type=task` to add work</Text>
+              </Text>
+            </>
+          }
           <Text>
             <Text bold>{"\n"}Then run: </Text>
             <Text color="cyan">ralph</Text>
