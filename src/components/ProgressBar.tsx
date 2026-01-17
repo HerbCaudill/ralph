@@ -26,7 +26,7 @@ export const ProgressBar = ({ remaining, total, width = 12 }: Props) => {
       <Text dimColor>{empty}</Text>
       <Text dimColor>
         {" "}
-        {completed}/{total}
+        {completed}/{total}{" "}
       </Text>
     </Text>
   )
