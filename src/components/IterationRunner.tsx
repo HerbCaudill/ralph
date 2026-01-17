@@ -478,7 +478,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       <Box marginTop={1}>
         {isRunning ?
           <Text color="cyan">
-            <Spinner type="dots" /> Running round {currentIteration} (max {totalIterations})
+            <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
+            (max {totalIterations})
           </Text>
         : <Text dimColor>Ready</Text>}
       </Box>
