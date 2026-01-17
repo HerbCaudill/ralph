@@ -13,6 +13,8 @@ import { Header } from "./Header.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
 import { formatContentBlock } from "../lib/formatContentBlock.js"
 import { addTodo } from "../lib/addTodo.js"
+import { getProgress, getInitialBeadsCount, type ProgressData } from "../lib/getProgress.js"
+import { ProgressBar } from "./ProgressBar.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -147,6 +149,10 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     text: string
   } | null>(null)
   const [hasTodoFile, setHasTodoFile] = useState(false)
+  const [initialBeadsCount] = useState(() => getInitialBeadsCount())
+  const [progressData, setProgressData] = useState<ProgressData>(() =>
+    getProgress(getInitialBeadsCount()),
+  )
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -233,6 +239,13 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   useEffect(() => {
     eventsRef.current = events
   }, [events])
+
+  // Update progress data when iteration changes or running stops
+  useEffect(() => {
+    if (!isRunning) {
+      setProgressData(getProgress(initialBeadsCount))
+    }
+  }, [currentIteration, isRunning, initialBeadsCount])
 
   // Convert events to static items as they arrive
   useEffect(() => {
@@ -474,14 +487,26 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
         </Box>
       )}
 
-      {/* Dynamic footer with spinner */}
-      <Box marginTop={1}>
-        {isRunning ?
-          <Text color="cyan">
-            <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
-            (max {totalIterations})
-          </Text>
-        : <Text dimColor>Ready</Text>}
+      {/* Dynamic footer with spinner and progress bar */}
+      <Box marginTop={1} flexDirection="column" gap={0}>
+        <Box>
+          {isRunning ?
+            <Text color="cyan">
+              <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
+              (max {totalIterations})
+            </Text>
+          : <Text dimColor>Ready</Text>}
+        </Box>
+        {progressData.type !== "none" && progressData.total > 0 && (
+          <Box>
+            <ProgressBar remaining={progressData.remaining} total={progressData.total} />
+            <Text dimColor>
+              {" "}
+              ({progressData.total - progressData.remaining}/{progressData.total}{" "}
+              {progressData.type === "beads" ? "issues" : "tasks"})
+            </Text>
+          </Box>
+        )}
       </Box>
     </Box>
   )
