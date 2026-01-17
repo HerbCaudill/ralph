@@ -1,7 +1,14 @@
 import { Text, Box } from "ink"
 import SelectInput from "ink-select-input"
 import React, { useEffect, useState } from "react"
-import { existsSync, mkdirSync, copyFileSync } from "fs"
+import {
+  existsSync,
+  mkdirSync,
+  copyFileSync,
+  readFileSync,
+  appendFileSync,
+  writeFileSync,
+} from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 
@@ -66,6 +73,21 @@ export const InitRalph = () => {
               failed.push(`Template not found: ${template.src}`)
             }
           }
+        }
+
+        // Add events.log to .gitignore
+        const gitignorePath = join(process.cwd(), ".gitignore")
+        const eventsLogEntry = ".ralph/events.log"
+        if (existsSync(gitignorePath)) {
+          const content = readFileSync(gitignorePath, "utf-8")
+          if (!content.includes(eventsLogEntry)) {
+            const newline = content.endsWith("\n") ? "" : "\n"
+            appendFileSync(gitignorePath, `${newline}${eventsLogEntry}\n`)
+            created.push("(added .ralph/events.log to .gitignore)")
+          }
+        } else {
+          writeFileSync(gitignorePath, `${eventsLogEntry}\n`)
+          created.push("(created .gitignore with .ralph/events.log)")
         }
 
         setCreatedFiles(created)
