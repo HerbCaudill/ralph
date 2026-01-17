@@ -48,7 +48,7 @@ describe("EventDisplay replay tests", () => {
     expect(await replay("1.txt")).toMatchInlineSnapshot(`
       "
 
-      ─── Iteration 1 ───
+      ─── Round 1 ───
 
       I'll start by checking the types, unit tests, and end-to-end tests as instructed.
 
@@ -84,7 +84,7 @@ describe("EventDisplay replay tests", () => {
     expect(await replay("2.txt")).toMatchInlineSnapshot(`
       "
 
-      ─── Iteration 1 ───
+      ─── Round 1 ───
 
       I'll start by checking that the project builds successfully and running tests.
 
