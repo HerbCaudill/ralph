@@ -429,9 +429,9 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     }
     if (item.type === "iteration") {
       return (
-        <Box flexDirection="column" marginTop={1} alignItems="flex-end">
+        <Box flexDirection="column" marginTop={1}>
           <Gradient colors={["#30A6E4", "#EBC635"]}>
-            <BigText text={`Round ${item.iteration}`} font="tiny" />
+            <BigText text={`Round ${item.iteration}`} font="tiny" align="right" />
           </Gradient>
         </Box>
       )
