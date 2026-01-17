@@ -12,7 +12,7 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
    - Replay mode: Replay events from log (`ralph --replay [file]`)
 
 2. **Iteration Runner** (`IterationRunner.tsx`) → Core orchestration:
-   - Checks for required files (`.ralph/prompt.md`, `todo.md`)
+   - Checks for required file `.ralph/prompt.md` (`.ralph/todo.md` is optional)
    - Spawns `claude` CLI with `--output-format stream-json`
    - Parses streaming JSON events line-by-line
    - Appends events to `.ralph/events.log`
@@ -31,8 +31,8 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
 
 Ralph initializes projects with template files in `.ralph/`:
 
-- `prompt.md` - Instructions given to Claude each iteration (build commands, workflow)
-- `todo.md` - Task list in markdown checkbox format
+- `prompt.md` - Instructions given to Claude each iteration (build commands, workflow) **(required)**
+- `todo.md` - Task list in markdown checkbox format **(optional)**
 - `events.log` - JSON event stream for debugging/replay (auto-generated during runs)
 
 Templates are copied from `templates/` directory on `ralph init`.

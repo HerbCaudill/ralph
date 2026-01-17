@@ -30,8 +30,8 @@ describe("IterationRunner file checking", () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
     mockExistsSync.mockReturnValue(true)
 
-    // Simulate the logic from checkRequiredFiles
-    const requiredFiles = ["prompt.md", "todo.md"]
+    // Simulate the logic from checkRequiredFiles (only prompt.md is required)
+    const requiredFiles = ["prompt.md"]
     const missing = requiredFiles.filter(file => !existsSync(file))
     const exists = missing.length === 0
 
@@ -45,7 +45,8 @@ describe("IterationRunner file checking", () => {
       return !path.includes("prompt.md")
     })
 
-    const requiredFiles = ["prompt.md", "todo.md"]
+    // Only prompt.md is required now
+    const requiredFiles = ["prompt.md"]
     const missing = requiredFiles.filter(file => !existsSync(file))
     const exists = missing.length === 0
 
@@ -53,31 +54,19 @@ describe("IterationRunner file checking", () => {
     expect(missing).toContain("prompt.md")
   })
 
-  it("detects multiple missing files", () => {
-    const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
-    mockExistsSync.mockReturnValue(false)
-
-    const requiredFiles = ["prompt.md", "todo.md"]
-    const missing = requiredFiles.filter(file => !existsSync(file))
-    const exists = missing.length === 0
-
-    expect(exists).toBe(false)
-    expect(missing).toEqual(["prompt.md", "todo.md"])
-  })
-
-  it("detects only todo.md exists", () => {
+  it("succeeds when only prompt.md exists (todo.md is optional)", () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
     mockExistsSync.mockImplementation((path: string) => {
-      return path.includes("todo.md")
+      return path.includes("prompt.md")
     })
 
-    const requiredFiles = ["prompt.md", "todo.md"]
+    // Only prompt.md is required now
+    const requiredFiles = ["prompt.md"]
     const missing = requiredFiles.filter(file => !existsSync(file))
     const exists = missing.length === 0
 
-    expect(exists).toBe(false)
-    expect(missing).toEqual(["prompt.md"])
-    expect(missing).not.toContain("todo.md")
+    expect(exists).toBe(true)
+    expect(missing).toEqual([])
   })
 })
 

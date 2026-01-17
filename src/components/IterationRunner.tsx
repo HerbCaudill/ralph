@@ -18,7 +18,7 @@ const promptFile = join(ralphDir, "prompt.md")
 const todoFile = join(ralphDir, "todo.md")
 
 const checkRequiredFiles = (): { missing: string[]; exists: boolean } => {
-  const requiredFiles = ["prompt.md", "todo.md"]
+  const requiredFiles = ["prompt.md"]
   const missing = requiredFiles.filter(file => !existsSync(join(ralphDir, file)))
   return { missing, exists: missing.length === 0 }
 }
@@ -144,6 +144,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     type: "success" | "error"
     text: string
   } | null>(null)
+  const [hasTodoFile, setHasTodoFile] = useState(false)
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -211,8 +212,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   // Handle keyboard input for Ctrl-T
   useInput(
     (input, key) => {
-      // Ctrl-T to start adding a todo
-      if (key.ctrl && input === "t") {
+      // Ctrl-T to start adding a todo (only if todo.md exists)
+      if (key.ctrl && input === "t" && hasTodoFile) {
         setIsAddingTodo(true)
         setTodoText("")
         setTodoMessage(null)
@@ -290,10 +291,13 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     writeFileSync(logFile, "")
     setEvents([])
 
-    // Read prompt and todo files
+    // Read prompt and optional todo file
     const promptContent = readFileSync(promptFile, "utf-8")
-    const todoContent = readFileSync(todoFile, "utf-8")
-    const fullPrompt = `${promptContent}\n\n## Current Todo List\n\n${todoContent}`
+    const todoExists = existsSync(todoFile)
+    setHasTodoFile(todoExists)
+    const todoContent = todoExists ? readFileSync(todoFile, "utf-8") : ""
+    const fullPrompt =
+      todoContent ? `${promptContent}\n\n## Current Todo List\n\n${todoContent}` : promptContent
 
     const abortController = new AbortController()
     setIsRunning(true)
