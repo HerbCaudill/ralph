@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp, Static, useInput } from "ink"
 import Spinner from "ink-spinner"
+import BigText from "ink-big-text"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
 import SelectInput from "ink-select-input"
 import { execSync } from "child_process"
@@ -9,7 +10,7 @@ import { join, dirname } from "path"
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { Header } from "./Header.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
-import { formatContentBlock, formatIterationHeader } from "../lib/formatContentBlock.js"
+import { formatContentBlock } from "../lib/formatContentBlock.js"
 import { addTodo } from "../lib/addTodo.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
@@ -428,7 +429,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     if (item.type === "iteration") {
       return (
         <Box flexDirection="column" marginTop={1}>
-          <Text>{formatIterationHeader(item.iteration)}</Text>
+          <BigText text={String(item.iteration)} font="tiny" />
         </Box>
       )
     }
