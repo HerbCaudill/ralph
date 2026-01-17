@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp, Static, useInput } from "ink"
 import Spinner from "ink-spinner"
 import BigText from "ink-big-text"
+import Gradient from "ink-gradient"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
 import SelectInput from "ink-select-input"
 import { execSync } from "child_process"
@@ -429,7 +430,9 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
     if (item.type === "iteration") {
       return (
         <Box flexDirection="column" marginTop={1}>
-          <BigText text={String(item.iteration)} font="tiny" />
+          <Gradient colors={["#30A6E4", "#EBC635"]}>
+            <BigText text={String(item.iteration)} />
+          </Gradient>
         </Box>
       )
     }
