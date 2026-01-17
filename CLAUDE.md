@@ -64,8 +64,8 @@ pnpm build
 pnpm ralph
 
 # Run tests
-pnpm test              # Run all tests (E2E tests skipped by default)
-pnpm test:unit         # Run only unit tests
+pnpm test:all          # Run all tests (E2E tests skipped by default)
+pnpm test              # Run only unit tests
 pnpm test:e2e          # Run E2E tests (requires Claude CLI with API key)
 pnpm test:watch        # Run tests in watch mode
 pnpm test:ui           # Open Vitest UI
