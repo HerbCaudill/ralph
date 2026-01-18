@@ -3,22 +3,20 @@ import { Text } from "ink"
 
 /**
  * A simple progress bar component using Unicode block characters.
- * Shows completion progress: (total - remaining) / total
+ * Shows completion progress: completed / total
  */
-export const ProgressBar = ({ remaining, total, width = 12, repoName }: Props) => {
+export const ProgressBar = ({ completed, total, width = 12, repoName }: Props) => {
   if (total === 0) {
     return null
   }
 
-  // Progress is how much is done: 1 - (remaining / total)
-  const progress = Math.min(1, Math.max(0, 1 - remaining / total))
+  // Progress is how much is done: completed / total
+  const progress = Math.min(1, Math.max(0, completed / total))
   const filledWidth = Math.round(progress * width)
   const emptyWidth = width - filledWidth
 
   const filled = "▰".repeat(filledWidth)
   const empty = "▱".repeat(emptyWidth)
-
-  const completed = total - remaining
 
   return (
     <Text>
@@ -39,9 +37,9 @@ export const ProgressBar = ({ remaining, total, width = 12, repoName }: Props) =
 }
 
 type Props = {
-  /** Number of items remaining (open issues or unchecked tasks) */
-  remaining: number
-  /** Total number of items at the start */
+  /** Number of items completed (closed issues or checked tasks) */
+  completed: number
+  /** Total number of items seen since startup */
   total: number
   /** Width of the progress bar in characters (default: 12) */
   width?: number

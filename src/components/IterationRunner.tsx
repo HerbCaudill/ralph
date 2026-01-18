@@ -14,7 +14,12 @@ import { Header } from "./Header.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
 import { formatContentBlock } from "../lib/formatContentBlock.js"
 import { addTodo } from "../lib/addTodo.js"
-import { getProgress, getInitialBeadsCount, type ProgressData } from "../lib/getProgress.js"
+import {
+  getProgress,
+  captureStartupSnapshot,
+  type ProgressData,
+  type StartupSnapshot,
+} from "../lib/getProgress.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { watchForNewIssues, BeadsClient, type MutationEvent } from "../lib/beadsClient.js"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
@@ -212,10 +217,12 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     text: string
   } | null>(null)
   const [hasTodoFile, setHasTodoFile] = useState(false)
-  const [initialBeadsCount] = useState(() => getInitialBeadsCount())
-  const [progressData, setProgressData] = useState<ProgressData>(() =>
-    getProgress(getInitialBeadsCount()),
-  )
+  const [startupSnapshot] = useState<StartupSnapshot | undefined>(() => captureStartupSnapshot())
+  const [progressData, setProgressData] = useState<ProgressData>(() => {
+    const snapshot = captureStartupSnapshot()
+    if (!snapshot) return { type: "none", completed: 0, total: 0 }
+    return { type: snapshot.type, completed: 0, total: snapshot.initialCount }
+  })
   const [isWatching, setIsWatching] = useState(false)
   const [detectedIssue, setDetectedIssue] = useState<MutationEvent | null>(null)
   const watchCleanupRef = useRef<(() => void) | null>(null)
@@ -326,10 +333,21 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
 
   // Update progress data when iteration changes or running stops
   useEffect(() => {
-    if (!isRunning) {
-      setProgressData(getProgress(initialBeadsCount))
+    if (!isRunning && startupSnapshot) {
+      setProgressData(getProgress(startupSnapshot.initialCount, startupSnapshot.timestamp))
     }
-  }, [currentIteration, isRunning, initialBeadsCount])
+  }, [currentIteration, isRunning, startupSnapshot])
+
+  // Poll progress data periodically while running to catch newly created/closed issues
+  useEffect(() => {
+    if (!isRunning || !startupSnapshot) return
+
+    const pollInterval = setInterval(() => {
+      setProgressData(getProgress(startupSnapshot.initialCount, startupSnapshot.timestamp))
+    }, 5000) // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [isRunning, startupSnapshot])
 
   // Watch for new issues when in watch mode
   useEffect(() => {
@@ -338,12 +356,11 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     // Start watching for new issues
     const cleanup = watchForNewIssues(issue => {
       setDetectedIssue(issue)
-      // Increment the remaining count in progressData when a new issue is created
-      setProgressData(prev => ({
-        ...prev,
-        remaining: prev.remaining + 1,
-        total: Math.max(prev.total, prev.remaining + 1),
-      }))
+      // Refresh progress data to pick up the new issue
+      // The timestamp-based counting will automatically include it
+      if (startupSnapshot) {
+        setProgressData(getProgress(startupSnapshot.initialCount, startupSnapshot.timestamp))
+      }
       // Brief pause to show the detected issue, then resume
       setTimeout(() => {
         setIsWatching(false)
@@ -362,7 +379,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       cleanup()
       watchCleanupRef.current = null
     }
-  }, [isWatching])
+  }, [isWatching, startupSnapshot])
 
   // Convert events to static items as they arrive
   useEffect(() => {
@@ -406,8 +423,12 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
 
     // Check if there are any tasks available before starting a round
     // This avoids running Claude unnecessarily when there's no work to do
-    const currentProgress = getProgress(initialBeadsCount)
-    if (currentProgress.remaining === 0 && currentProgress.type !== "none") {
+    const currentProgress =
+      startupSnapshot ?
+        getProgress(startupSnapshot.initialCount, startupSnapshot.timestamp)
+      : { type: "none" as const, completed: 0, total: 0 }
+    // All tasks are complete when completed equals total
+    if (currentProgress.completed >= currentProgress.total && currentProgress.type !== "none") {
       // No tasks available - go straight to watching if enabled
       if (watch) {
         setIsWatching(true)
@@ -655,7 +676,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         }
         {progressData.type !== "none" && progressData.total > 0 && (
           <ProgressBar
-            remaining={progressData.remaining}
+            completed={progressData.completed}
             total={progressData.total}
             repoName={repoName}
           />

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { getProgress, getInitialBeadsCount } from "./getProgress.js"
+import { getProgress, captureStartupSnapshot } from "./getProgress.js"
 import * as fs from "fs"
 import * as child_process from "child_process"
 
@@ -20,47 +20,47 @@ describe("getProgress", () => {
   })
 
   describe("with beads workspace", () => {
-    it("returns beads progress when .beads directory exists", () => {
+    it("returns beads progress with timestamp-based counting", () => {
       mockExistsSync.mockImplementation(path => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
-      // First call returns open count, second returns in_progress count
+      // First call: closed-after count, second call: created-after count
       mockExecSync.mockReturnValueOnce("2").mockReturnValueOnce("1")
 
-      const result = getProgress(5)
+      const result = getProgress(5, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("beads")
-      expect(result.remaining).toBe(3)
-      expect(result.total).toBe(5)
+      expect(result.completed).toBe(2) // 2 closed since startup
+      expect(result.total).toBe(6) // 5 initial + 1 created
     })
 
-    it("handles empty beads list", () => {
+    it("handles no progress (0 closed, 0 created)", () => {
       mockExistsSync.mockImplementation(path => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
       mockExecSync.mockReturnValueOnce("0").mockReturnValueOnce("0")
 
-      const result = getProgress(5)
+      const result = getProgress(5, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("beads")
-      expect(result.remaining).toBe(0)
+      expect(result.completed).toBe(0)
       expect(result.total).toBe(5)
     })
 
-    it("uses remaining as total when no initial provided", () => {
+    it("handles all closed", () => {
       mockExistsSync.mockImplementation(path => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
-      mockExecSync.mockReturnValueOnce("2").mockReturnValueOnce("0")
+      mockExecSync.mockReturnValueOnce("5").mockReturnValueOnce("0")
 
-      const result = getProgress()
+      const result = getProgress(5, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("beads")
-      expect(result.remaining).toBe(2)
-      expect(result.total).toBe(2)
+      expect(result.completed).toBe(5)
+      expect(result.total).toBe(5)
     })
 
     it("returns none when bd command fails", () => {
@@ -72,7 +72,7 @@ describe("getProgress", () => {
         throw new Error("Command failed")
       })
 
-      const result = getProgress()
+      const result = getProgress(5, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("none")
     })
@@ -95,10 +95,10 @@ describe("getProgress", () => {
 ### Done
 `)
 
-      const result = getProgress()
+      const result = getProgress(4, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("todo")
-      expect(result.remaining).toBe(2)
+      expect(result.completed).toBe(2) // 2 checked
       expect(result.total).toBe(4)
     })
 
@@ -114,10 +114,10 @@ describe("getProgress", () => {
 - [ ] Task 3
 `)
 
-      const result = getProgress()
+      const result = getProgress(3, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("todo")
-      expect(result.remaining).toBe(3)
+      expect(result.completed).toBe(0)
       expect(result.total).toBe(3)
     })
 
@@ -132,10 +132,10 @@ describe("getProgress", () => {
 - [X] Task 2
 `)
 
-      const result = getProgress()
+      const result = getProgress(2, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("todo")
-      expect(result.remaining).toBe(0)
+      expect(result.completed).toBe(2)
       expect(result.total).toBe(2)
     })
 
@@ -147,10 +147,10 @@ describe("getProgress", () => {
       })
       mockReadFileSync.mockReturnValue("")
 
-      const result = getProgress()
+      const result = getProgress(0, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("todo")
-      expect(result.remaining).toBe(0)
+      expect(result.completed).toBe(0)
       expect(result.total).toBe(0)
     })
   })
@@ -159,36 +159,67 @@ describe("getProgress", () => {
     it("returns none when neither .beads nor todo.md exists", () => {
       mockExistsSync.mockReturnValue(false)
 
-      const result = getProgress()
+      const result = getProgress(0, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("none")
-      expect(result.remaining).toBe(0)
+      expect(result.completed).toBe(0)
       expect(result.total).toBe(0)
     })
   })
 })
 
-describe("getInitialBeadsCount", () => {
+describe("captureStartupSnapshot", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2024-06-15T10:30:00.000Z"))
   })
 
-  it("returns count when .beads exists", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it("returns snapshot when .beads exists", () => {
     mockExistsSync.mockImplementation(path => {
       if (typeof path === "string" && path.endsWith(".beads")) return true
       return false
     })
     mockExecSync.mockReturnValueOnce("2").mockReturnValueOnce("1")
 
-    const result = getInitialBeadsCount()
+    const result = captureStartupSnapshot()
 
-    expect(result).toBe(3)
+    expect(result).toEqual({
+      initialCount: 3,
+      timestamp: "2024-06-15T10:30:00.000Z",
+      type: "beads",
+    })
   })
 
-  it("returns undefined when .beads does not exist", () => {
+  it("returns snapshot for todo.md workspace", () => {
+    mockExistsSync.mockImplementation(path => {
+      if (typeof path === "string" && path.endsWith(".beads")) return false
+      if (typeof path === "string" && path.endsWith("todo.md")) return true
+      return false
+    })
+    mockReadFileSync.mockReturnValue(`
+- [ ] Task 1
+- [x] Task 2
+`)
+
+    const result = captureStartupSnapshot()
+
+    expect(result).toEqual({
+      initialCount: 2,
+      timestamp: "2024-06-15T10:30:00.000Z",
+      type: "todo",
+    })
+  })
+
+  it("returns undefined when neither .beads nor todo.md exists", () => {
     mockExistsSync.mockReturnValue(false)
 
-    const result = getInitialBeadsCount()
+    const result = captureStartupSnapshot()
 
     expect(result).toBeUndefined()
   })
@@ -202,7 +233,7 @@ describe("getInitialBeadsCount", () => {
       throw new Error("Command failed")
     })
 
-    const result = getInitialBeadsCount()
+    const result = captureStartupSnapshot()
 
     expect(result).toBeUndefined()
   })

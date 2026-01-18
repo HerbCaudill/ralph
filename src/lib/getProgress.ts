@@ -4,7 +4,9 @@ import { execSync } from "child_process"
 
 export type ProgressData = {
   type: "beads" | "todo" | "none"
-  remaining: number
+  /** Number of issues/tasks completed since startup */
+  completed: number
+  /** Total issues/tasks seen since startup (initial + created since) */
   total: number
 }
 
@@ -15,13 +17,14 @@ const todoFile = join(ralphDir, "todo.md")
 /**
  * Get progress data from the workspace.
  *
- * For beads workspaces: remaining = open issues, total = provided initialOpen or calculated
- * For todo.md workspaces: remaining = unchecked items, total = all items
+ * For beads workspaces: Uses timestamp-based counting to accurately track
+ * issues closed and created since startup.
+ * For todo.md workspaces: completed = checked items, total = all items
  */
-export const getProgress = (initialOpen?: number): ProgressData => {
+export const getProgress = (initialCount: number, startupTimestamp: string): ProgressData => {
   // Check for beads workspace first
   if (existsSync(beadsDir)) {
-    return getBeadsProgress(initialOpen)
+    return getBeadsProgress(initialCount, startupTimestamp)
   }
 
   // Check for todo.md
@@ -29,36 +32,38 @@ export const getProgress = (initialOpen?: number): ProgressData => {
     return getTodoProgress()
   }
 
-  return { type: "none", remaining: 0, total: 0 }
+  return { type: "none", completed: 0, total: 0 }
 }
 
-const getBeadsProgress = (initialOpen?: number): ProgressData => {
+const getBeadsProgress = (initialCount: number, startupTimestamp: string): ProgressData => {
   try {
-    // Get open + in_progress issues count using bd count
-    const openCount = parseInt(
-      execSync("bd count --status=open", {
+    // Count issues closed since startup
+    const closedSinceStartup = parseInt(
+      execSync(`bd count --closed-after="${startupTimestamp}"`, {
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
       }).trim(),
       10,
     )
-    const inProgressCount = parseInt(
-      execSync("bd count --status=in_progress", {
+
+    // Count issues created since startup
+    const createdSinceStartup = parseInt(
+      execSync(`bd count --created-after="${startupTimestamp}"`, {
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
       }).trim(),
       10,
     )
-    const remaining = openCount + inProgressCount
 
-    // Total is the initial count (baseline) when provided, otherwise current remaining
-    // If more issues are opened during the run (remaining > initialOpen), use the larger value
-    const total = initialOpen !== undefined ? Math.max(initialOpen, remaining) : remaining
+    // Total = initial open+in_progress + any new issues created
+    const total = initialCount + createdSinceStartup
+    // Completed = issues closed since startup
+    const completed = closedSinceStartup
 
-    return { type: "beads", remaining, total }
+    return { type: "beads", completed, total }
   } catch {
     // If bd command fails, return no progress
-    return { type: "none", remaining: 0, total: 0 }
+    return { type: "none", completed: 0, total: 0 }
   }
 }
 
@@ -76,22 +81,44 @@ const getTodoProgress = (): ProgressData => {
 
     const total = unchecked + checked
 
-    return { type: "todo", remaining: unchecked, total }
+    return { type: "todo", completed: checked, total }
   } catch {
-    return { type: "none", remaining: 0, total: 0 }
+    return { type: "none", completed: 0, total: 0 }
   }
 }
 
+export type StartupSnapshot = {
+  /** Initial count of open + in_progress issues */
+  initialCount: number
+  /** RFC3339 timestamp of when the snapshot was taken */
+  timestamp: string
+  /** Type of workspace (beads or todo) */
+  type: "beads" | "todo"
+}
+
 /**
- * Get the initial open issue count for beads workspaces.
- * Call this once at startup to capture the baseline.
+ * Capture a startup snapshot for beads workspaces.
+ * Call this once at startup to capture the baseline count and timestamp.
+ * Returns undefined if not a beads workspace.
  */
-export const getInitialBeadsCount = (): number | undefined => {
-  if (!existsSync(beadsDir)) {
-    return undefined
+export const captureStartupSnapshot = (): StartupSnapshot | undefined => {
+  // Check for beads workspace
+  if (existsSync(beadsDir)) {
+    return captureBeadsSnapshot()
   }
 
+  // Check for todo.md workspace
+  if (existsSync(todoFile)) {
+    return captureTodoSnapshot()
+  }
+
+  return undefined
+}
+
+const captureBeadsSnapshot = (): StartupSnapshot | undefined => {
   try {
+    const timestamp = new Date().toISOString()
+
     const openCount = parseInt(
       execSync("bd count --status=open", {
         encoding: "utf-8",
@@ -106,8 +133,42 @@ export const getInitialBeadsCount = (): number | undefined => {
       }).trim(),
       10,
     )
-    return openCount + inProgressCount
+
+    return {
+      initialCount: openCount + inProgressCount,
+      timestamp,
+      type: "beads",
+    }
   } catch {
     return undefined
   }
+}
+
+const captureTodoSnapshot = (): StartupSnapshot | undefined => {
+  try {
+    const content = readFileSync(todoFile, "utf-8")
+
+    // Count all items (checked + unchecked)
+    const uncheckedMatches = content.match(/- \[ \]/g)
+    const unchecked = uncheckedMatches ? uncheckedMatches.length : 0
+
+    const checkedMatches = content.match(/- \[[xX]\]/g)
+    const checked = checkedMatches ? checkedMatches.length : 0
+
+    return {
+      initialCount: unchecked + checked,
+      timestamp: new Date().toISOString(),
+      type: "todo",
+    }
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * @deprecated Use captureStartupSnapshot instead
+ */
+export const getInitialBeadsCount = (): number | undefined => {
+  const snapshot = captureStartupSnapshot()
+  return snapshot?.initialCount
 }
