@@ -41,6 +41,30 @@ describe("parseStdinCommand", () => {
     })
   })
 
+  describe("pause command", () => {
+    it("parses valid pause command", () => {
+      const result = parseStdinCommand('{"type": "pause"}')
+      expect(result).toEqual({ type: "pause" })
+    })
+
+    it("ignores extra fields on pause command", () => {
+      const result = parseStdinCommand('{"type": "pause", "extra": "ignored"}')
+      expect(result).toEqual({ type: "pause" })
+    })
+  })
+
+  describe("resume command", () => {
+    it("parses valid resume command", () => {
+      const result = parseStdinCommand('{"type": "resume"}')
+      expect(result).toEqual({ type: "resume" })
+    })
+
+    it("ignores extra fields on resume command", () => {
+      const result = parseStdinCommand('{"type": "resume", "extra": "ignored"}')
+      expect(result).toEqual({ type: "resume" })
+    })
+  })
+
   describe("invalid input", () => {
     it("returns null for empty string", () => {
       const result = parseStdinCommand("")

@@ -45,8 +45,19 @@ Ralph supports sending user messages to Claude while it's working:
 
 - **Escape** - Opens a text input to send a message to Claude (only while running; press again to cancel)
 - **Ctrl+T** - Opens a text input to add a todo item (only if todo.md exists)
+- **Ctrl+S** - Stop gracefully after the current iteration completes
+- **Ctrl+P** - Pause/resume: pause after current iteration completes, press again to resume
 
 User-injected messages appear in the output stream with a 📨 prefix and green color, so users know their message was received and processed.
+
+### Stdin Commands (JSON Mode)
+
+When running in JSON mode (`ralph --json`), commands can be sent via stdin as JSON:
+
+- `{"type": "message", "text": "..."}` - Send a message to Claude
+- `{"type": "stop"}` - Stop gracefully after current iteration
+- `{"type": "pause"}` - Pause after current iteration completes
+- `{"type": "resume"}` - Resume from paused state
 
 ### Implementation Details
 

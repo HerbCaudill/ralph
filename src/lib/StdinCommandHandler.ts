@@ -8,8 +8,14 @@ const log = createDebugLogger("stdin-command")
  * Stdin command types:
  * - {"type": "message", "text": "..."} - Send a message to Claude
  * - {"type": "stop"} - Request graceful stop after current iteration
+ * - {"type": "pause"} - Pause after current iteration completes
+ * - {"type": "resume"} - Resume from paused state
  */
-export type StdinCommand = { type: "message"; text: string } | { type: "stop" }
+export type StdinCommand =
+  | { type: "message"; text: string }
+  | { type: "stop" }
+  | { type: "pause" }
+  | { type: "resume" }
 
 /**
  * Parse a JSON string into a StdinCommand.
@@ -39,6 +45,14 @@ export const parseStdinCommand = (line: string): StdinCommand | null => {
       return { type: "stop" }
     }
 
+    if (parsed.type === "pause") {
+      return { type: "pause" }
+    }
+
+    if (parsed.type === "resume") {
+      return { type: "resume" }
+    }
+
     log(`Unknown command type: ${parsed.type}`)
     return null
   } catch (err) {
@@ -50,6 +64,8 @@ export const parseStdinCommand = (line: string): StdinCommand | null => {
 export type StdinCommandHandlerOptions = {
   messageQueue: MessageQueue | null
   onStop: () => void
+  onPause?: () => void
+  onResume?: () => void
   onMessage?: (text: string) => void
 }
 
@@ -60,6 +76,8 @@ export type StdinCommandHandlerOptions = {
  * Commands:
  * - {"type": "message", "text": "..."} - Send a message to Claude
  * - {"type": "stop"} - Request graceful stop after current iteration
+ * - {"type": "pause"} - Pause after current iteration completes
+ * - {"type": "resume"} - Resume from paused state
  */
 export const createStdinCommandHandler = (
   getOptions: () => StdinCommandHandlerOptions,
@@ -97,6 +115,12 @@ export const createStdinCommandHandler = (
     } else if (command.type === "stop") {
       log(`Stop command received`)
       options.onStop()
+    } else if (command.type === "pause") {
+      log(`Pause command received`)
+      options.onPause?.()
+    } else if (command.type === "resume") {
+      log(`Resume command received`)
+      options.onResume?.()
     }
   }
 

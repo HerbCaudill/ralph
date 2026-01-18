@@ -229,6 +229,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
   const [watchCycle, setWatchCycle] = useState(0) // Increments to force useEffect re-run
   const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current iteration
   const stopAfterCurrentRef = useRef(false) // Ref to access in async callbacks
+  const [isPaused, setIsPaused] = useState(false) // Pause after current iteration completes
+  const isPausedRef = useRef(false) // Ref to access in async callbacks
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -322,6 +324,19 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       if (key.ctrl && input === "s" && isRunning && !stopAfterCurrent) {
         setStopAfterCurrent(true)
       }
+      // Ctrl-P to toggle pause state
+      if (key.ctrl && input === "p") {
+        if (isPaused) {
+          // Resume - if we were paused between iterations, trigger next iteration
+          setIsPaused(false)
+          if (!isRunning) {
+            setTimeout(() => setCurrentIteration(i => i + 1), 100)
+          }
+        } else if (isRunning) {
+          // Request pause after current iteration
+          setIsPaused(true)
+        }
+      }
       // Escape to cancel todo input
       if (key.escape) {
         if (isAddingTodo) {
@@ -343,6 +358,11 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
   useEffect(() => {
     stopAfterCurrentRef.current = stopAfterCurrent
   }, [stopAfterCurrent])
+
+  // Keep isPaused ref in sync with state for access in async callbacks
+  useEffect(() => {
+    isPausedRef.current = isPaused
+  }, [isPaused])
 
   // Update progress data when iteration changes or running stops
   useEffect(() => {
@@ -559,6 +579,13 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
           return
         }
 
+        // Check for pause request - if paused, we wait for resume via Ctrl-P
+        if (isPausedRef.current) {
+          log(`Paused after iteration ${currentIteration}`)
+          // Don't move to next iteration - the resume handler (Ctrl-P) will trigger it
+          return
+        }
+
         // Move to next iteration
         setTimeout(() => setCurrentIteration(i => i + 1), 500)
       } catch (err) {
@@ -693,12 +720,23 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
               Waiting for new issues <Spinner type="simpleDotsScrolling" />
             </Text>
 
+        : isPaused && !isRunning ?
+          <Text color="magenta">
+            ⏸ Paused after round <Text color="yellow">{currentIteration}</Text>{" "}
+            <Text dimColor>(Ctrl-P to resume)</Text>
+          </Text>
         : isRunning ?
           stopAfterCurrent ?
             <Text color="yellow">
               <Spinner type="dots" /> Stopping after round{" "}
               <Text color="yellow">{currentIteration}</Text> completes...{" "}
               <Text dimColor>(Ctrl-S pressed)</Text>
+            </Text>
+          : isPaused ?
+            <Text color="magenta">
+              <Spinner type="dots" /> Pausing after round{" "}
+              <Text color="yellow">{currentIteration}</Text> completes...{" "}
+              <Text dimColor>(Ctrl-P pressed)</Text>
             </Text>
           : <Text color="cyan">
               <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}

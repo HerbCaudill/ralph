@@ -61,12 +61,19 @@ export const JsonOutput = ({ totalIterations }: Props) => {
   const logFileRef = useRef<string | null>(null)
   const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current iteration
   const stopAfterCurrentRef = useRef(false) // Ref to access in async callbacks
+  const [isPaused, setIsPaused] = useState(false) // Pause after current iteration completes
+  const isPausedRef = useRef(false) // Ref to access in async callbacks
   const stdinCleanupRef = useRef<(() => void) | null>(null)
 
   // Keep stopAfterCurrent ref in sync with state
   useEffect(() => {
     stopAfterCurrentRef.current = stopAfterCurrent
   }, [stopAfterCurrent])
+
+  // Keep isPaused ref in sync with state
+  useEffect(() => {
+    isPausedRef.current = isPaused
+  }, [isPaused])
 
   // Set up stdin command handler for receiving commands via piped input
   useEffect(() => {
@@ -75,6 +82,19 @@ export const JsonOutput = ({ totalIterations }: Props) => {
       onStop: () => {
         setStopAfterCurrent(true)
         outputEvent({ type: "ralph_stop_requested" })
+      },
+      onPause: () => {
+        setIsPaused(true)
+        outputEvent({ type: "ralph_pause_requested" })
+      },
+      onResume: () => {
+        const wasPaused = isPausedRef.current
+        setIsPaused(false)
+        outputEvent({ type: "ralph_resumed" })
+        // If we were paused between iterations, trigger the next iteration
+        if (wasPaused && !isRunning) {
+          setTimeout(() => setCurrentIteration(i => i + 1), 100)
+        }
       },
       onMessage: (text: string) => {
         // Output event showing we received a message command
@@ -210,6 +230,14 @@ export const JsonOutput = ({ totalIterations }: Props) => {
           outputEvent({ type: "ralph_exit", reason: "task_complete" })
           exit()
           process.exit(0)
+          return
+        }
+
+        // Check for pause request - if paused, we wait for resume via stdin
+        if (isPausedRef.current) {
+          log(`Paused after iteration ${currentIteration}`)
+          outputEvent({ type: "ralph_paused", iteration: currentIteration })
+          // Don't move to next iteration - the resume handler will trigger it
           return
         }
 
