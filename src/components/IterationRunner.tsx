@@ -635,7 +635,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
               {detectedIssue.Title ? ` - ${detectedIssue.Title}` : ""}
             </Text>
           : <Text color="cyan">
-              <Spinner type="simpleDotsScrolling" /> Waiting for new issues...
+              Waiting for new issues <Spinner type="simpleDotsScrolling" />
             </Text>
 
         : isRunning ?
