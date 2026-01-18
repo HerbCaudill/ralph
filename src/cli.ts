@@ -12,7 +12,7 @@ export const program = new Command()
   .name("ralph")
   .description("Autonomous AI iteration engine for Claude CLI")
   .version(packageJson.version)
-  .argument("[iterations]", "number of iterations to run", val => parseInt(val, 10), 30)
+  .argument("[iterations]", "number of iterations to run", val => parseInt(val, 10), 50)
   .option("--replay [file]", "replay events from log file")
   .option("--watch", "watch for new beads issues after completion")
   .action((iterations, options) => {
