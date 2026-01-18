@@ -1,23 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { existsSync } from "fs"
+import { existsSync, readFileSync } from "fs"
 
 // Note: Full integration testing of IterationRunner would require:
 // 1. Mocking child_process.spawn to simulate Claude CLI
 // 2. Mocking file system operations
 // 3. Testing React component rendering with ink-testing-library
 //
-// These tests focus on the checkRequiredFiles logic which is the
+// These tests focus on the getPromptContent logic which is the
 // most testable pure function in the module.
 
 // We'll test the logic by importing and mocking fs
 vi.mock("fs", () => ({
   existsSync: vi.fn(),
+  readFileSync: vi.fn(),
   appendFileSync: vi.fn(),
   writeFileSync: vi.fn(),
   mkdirSync: vi.fn(),
 }))
 
-describe("IterationRunner file checking", () => {
+describe("IterationRunner prompt content", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -26,47 +27,71 @@ describe("IterationRunner file checking", () => {
     vi.restoreAllMocks()
   })
 
-  it("detects all files exist", () => {
+  // Import the function after mocking fs
+  const getGetPromptContent = async () => {
+    // Reset module cache to get fresh import with mocks
+    vi.resetModules()
+    const module = await import("./IterationRunner.js")
+    return module.getPromptContent
+  }
+
+  it("returns content from .ralph/prompt.md when it exists", async () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
-    mockExistsSync.mockReturnValue(true)
+    const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>
 
-    // Simulate the logic from checkRequiredFiles (only prompt.md is required)
-    const requiredFiles = ["prompt.md"]
-    const missing = requiredFiles.filter(file => !existsSync(file))
-    const exists = missing.length === 0
+    mockExistsSync.mockImplementation((path: string) => {
+      return path.includes(".ralph/prompt.md") || path.includes(".ralph\\prompt.md")
+    })
+    mockReadFileSync.mockReturnValue("Custom prompt content")
 
-    expect(exists).toBe(true)
-    expect(missing).toEqual([])
+    const getPromptContent = await getGetPromptContent()
+    const content = getPromptContent()
+
+    expect(content).toBe("Custom prompt content")
   })
 
-  it("detects missing prompt.md", () => {
+  it("falls back to prompt-beads.md when .beads directory exists", async () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
+    const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>
+
     mockExistsSync.mockImplementation((path: string) => {
-      return !path.includes("prompt.md")
+      // .ralph/prompt.md doesn't exist
+      if (path.includes("prompt.md") && path.includes(".ralph")) return false
+      // .beads directory exists
+      if (path.includes(".beads")) return true
+      // Template file exists
+      if (path.includes("prompt-beads.md")) return true
+      return false
     })
+    mockReadFileSync.mockReturnValue("Beads template content")
 
-    // Only prompt.md is required now
-    const requiredFiles = ["prompt.md"]
-    const missing = requiredFiles.filter(file => !existsSync(file))
-    const exists = missing.length === 0
+    const getPromptContent = await getGetPromptContent()
+    const content = getPromptContent()
 
-    expect(exists).toBe(false)
-    expect(missing).toContain("prompt.md")
+    expect(content).toBe("Beads template content")
   })
 
-  it("succeeds when only prompt.md exists (todo.md is optional)", () => {
+  it("falls back to prompt.md template when .ralph/todo.md exists", async () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
+    const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>
+
     mockExistsSync.mockImplementation((path: string) => {
-      return path.includes("prompt.md")
+      // .ralph/prompt.md doesn't exist
+      if (path.includes("prompt.md") && path.includes(".ralph")) return false
+      // .beads directory doesn't exist
+      if (path.includes(".beads")) return false
+      // .ralph/todo.md exists
+      if (path.includes("todo.md") && path.includes(".ralph")) return true
+      // Template files exist
+      if (path.includes("templates") && path.includes("prompt.md")) return true
+      return false
     })
+    mockReadFileSync.mockReturnValue("Todo template content")
 
-    // Only prompt.md is required now
-    const requiredFiles = ["prompt.md"]
-    const missing = requiredFiles.filter(file => !existsSync(file))
-    const exists = missing.length === 0
+    const getPromptContent = await getGetPromptContent()
+    const content = getPromptContent()
 
-    expect(exists).toBe(true)
-    expect(missing).toEqual([])
+    expect(content).toBe("Todo template content")
   })
 })
 

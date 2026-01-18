@@ -4,10 +4,11 @@ import Spinner from "ink-spinner"
 import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
-import SelectInput from "ink-select-input"
-import { execSync } from "child_process"
 import { appendFileSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "fs"
 import { join, dirname } from "path"
+import { fileURLToPath } from "url"
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { Header } from "./Header.js"
 import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
@@ -22,11 +23,32 @@ const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
 const promptFile = join(ralphDir, "prompt.md")
 const todoFile = join(ralphDir, "todo.md")
+const beadsDir = join(process.cwd(), ".beads")
+const templatesDir = join(__dirname, "..", "..", "templates")
 
-const checkRequiredFiles = (): { missing: string[]; exists: boolean } => {
-  const requiredFiles = ["prompt.md"]
-  const missing = requiredFiles.filter(file => !existsSync(join(ralphDir, file)))
-  return { missing, exists: missing.length === 0 }
+/**
+ * Get the prompt content, falling back to templates if .ralph/prompt.md doesn't exist.
+ * Uses the appropriate template based on the project setup:
+ * - If .beads directory exists OR no .ralph/todo.md: use prompt-beads.md
+ * - If .ralph/todo.md exists: use prompt.md (todo-based workflow)
+ */
+export const getPromptContent = (): string => {
+  // First, try to read from .ralph/prompt.md
+  if (existsSync(promptFile)) {
+    return readFileSync(promptFile, "utf-8")
+  }
+
+  // Fall back to templates based on project setup
+  const useBeadsTemplate = existsSync(beadsDir) || !existsSync(todoFile)
+  const templateFile = useBeadsTemplate ? "prompt-beads.md" : "prompt.md"
+  const templatePath = join(templatesDir, templateFile)
+
+  if (existsSync(templatePath)) {
+    return readFileSync(templatePath, "utf-8")
+  }
+
+  // Last resort: return a minimal prompt
+  return "Work on the highest-priority task."
 }
 
 // Convert SDK message to event format for display
@@ -141,8 +163,6 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const eventsRef = useRef<Array<Record<string, unknown>>>([])
   const [error, setError] = useState<string>()
-  const [needsInit, setNeedsInit] = useState<string[] | null>(null)
-  const [initializing, setInitializing] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [isAddingTodo, setIsAddingTodo] = useState(false)
   const [todoText, setTodoText] = useState("")
@@ -177,31 +197,6 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
 
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
-
-  const handleInitSelection = (item: { value: string }) => {
-    if (item.value === "yes") {
-      setInitializing(true)
-      try {
-        // Run ralph init in a separate process
-        execSync("pnpm ralph init", { stdio: "inherit" })
-        setTimeout(() => {
-          exit()
-          process.exit(0)
-        }, 100)
-      } catch (err) {
-        setError(`Failed to initialize: ${err instanceof Error ? err.message : String(err)}`)
-        setTimeout(() => {
-          exit()
-          process.exit(1)
-        }, 100)
-      }
-    } else {
-      setTimeout(() => {
-        exit()
-        process.exit(1)
-      }, 100)
-    }
-  }
 
   // Handle Ctrl-T to add a new todo
   const handleTodoSubmit = (text: string) => {
@@ -295,7 +290,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         setUserMessageText("")
       }
     },
-    { isActive: stdinSupportsRawMode && !needsInit },
+    { isActive: stdinSupportsRawMode },
   )
 
   // Keep ref in sync with events state for access in callbacks
@@ -377,27 +372,13 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       return
     }
 
-    // Check if required files exist
-    const { missing, exists } = checkRequiredFiles()
-    if (!exists) {
-      setNeedsInit(missing)
-      // If stdin doesn't support raw mode, exit after showing the message
-      if (!stdinSupportsRawMode) {
-        setTimeout(() => {
-          exit()
-          process.exit(1)
-        }, 100)
-      }
-      return
-    }
-
     // Ensure .ralph directory exists and clear log file at start of each iteration
     mkdirSync(dirname(logFile), { recursive: true })
     writeFileSync(logFile, "")
     setEvents([])
 
-    // Read prompt and optional todo file
-    const promptContent = readFileSync(promptFile, "utf-8")
+    // Read prompt (from .ralph/prompt.md or falling back to templates)
+    const promptContent = getPromptContent()
     const todoExists = existsSync(todoFile)
     setHasTodoFile(todoExists)
     const todoContent = todoExists ? readFileSync(todoFile, "utf-8") : ""
@@ -493,48 +474,6 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       messageQueueRef.current = null
     }
   }, [currentIteration, totalIterations, exit, watch, watchCycle])
-
-  if (needsInit) {
-    if (initializing) {
-      return (
-        <Box flexDirection="column" paddingY={1}>
-          <Text color="cyan">Initializing ralph...</Text>
-        </Box>
-      )
-    }
-
-    return (
-      <Box flexDirection="column" paddingY={1}>
-        <Text color="yellow">Missing required files in .ralph directory:</Text>
-        <Box flexDirection="column" paddingLeft={2} paddingY={1}>
-          {needsInit.map(file => (
-            <Text key={file} dimColor>
-              • {file}
-            </Text>
-          ))}
-        </Box>
-        <Box marginTop={1}>
-          {stdinSupportsRawMode ?
-            <>
-              <Text>Initialize now?</Text>
-              <Box marginTop={1}>
-                <SelectInput
-                  items={[
-                    { label: "Yes, initialize the project", value: "yes" },
-                    { label: "No, exit", value: "no" },
-                  ]}
-                  onSelect={handleInitSelection}
-                />
-              </Box>
-            </>
-          : <Text>
-              Run <Text color="cyan">ralph init</Text> to initialize the project.
-            </Text>
-          }
-        </Box>
-      </Box>
-    )
-  }
 
   if (error) {
     return (

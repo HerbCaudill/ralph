@@ -82,7 +82,7 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
    - Replay mode: Replay events from log (`ralph --replay [file]`)
 
 2. **Iteration Runner** (`IterationRunner.tsx`) → Core orchestration:
-   - Checks for required file `.ralph/prompt.md` (`.ralph/todo.md` is optional)
+   - Reads prompt from `.ralph/prompt.md` or falls back to bundled templates
    - Spawns `claude` CLI with `--output-format stream-json`
    - Parses streaming JSON events line-by-line
    - Appends events to `.ralph/events.log`
@@ -102,11 +102,17 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
 
 Ralph initializes projects with template files in `.ralph/`:
 
-- `prompt.md` - Instructions given to Claude each iteration (build commands, workflow) **(required)**
+- `prompt.md` - Instructions given to Claude each iteration (build commands, workflow) **(optional - falls back to bundled templates)**
 - `todo.md` - Task list in markdown checkbox format **(optional)**
 - `events.log` - JSON event stream for debugging/replay (auto-generated during runs)
 
 Templates are copied from `templates/` directory on `ralph init`.
+
+If no `.ralph/prompt.md` exists, Ralph automatically uses the appropriate bundled template:
+
+- If `.beads` directory exists → uses `prompt-beads.md` (beads workflow)
+- If `.ralph/todo.md` exists → uses `prompt.md` (todo-based workflow)
+- Otherwise → uses `prompt-beads.md` (default)
 
 ### The Contract with Claude CLI
 
@@ -206,11 +212,7 @@ An iteration ends when:
 
 ### Initialization Detection
 
-On startup, `IterationRunner` checks for required files. If missing:
-
-- In TTY environments: Shows interactive prompt to run `ralph init`
-- In non-TTY environments: Shows message and exits
-- User can press Y to run init, N/Esc to cancel
+On startup, `IterationRunner` reads the prompt from `.ralph/prompt.md` if it exists. If the file is missing, it automatically falls back to the bundled templates based on project setup (beads vs todo-based workflow). This allows Ralph to run without requiring `ralph init` first.
 
 ## Testing
 
