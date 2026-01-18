@@ -15,6 +15,7 @@ export const program = new Command()
   .argument("[iterations]", "number of iterations to run", val => parseInt(val, 10), 50)
   .option("--replay [file]", "replay events from log file")
   .option("--watch", "watch for new beads issues after completion")
+  .option("--json", "output events as newline-delimited JSON to stdout")
   .action((iterations, options) => {
     const replayFile =
       options.replay !== undefined ?
@@ -26,11 +27,23 @@ export const program = new Command()
     const claudeVersion = getClaudeVersion()
     const ralphVersion = packageJson.version
     const watch = options.watch === true
+    const json = options.json === true
 
-    // Clear the screen on startup
-    process.stdout.write("\x1B[2J\x1B[H")
+    // Clear the screen on startup (skip in JSON mode)
+    if (!json) {
+      process.stdout.write("\x1B[2J\x1B[H")
+    }
 
-    render(React.createElement(App, { iterations, replayFile, claudeVersion, ralphVersion, watch }))
+    render(
+      React.createElement(App, {
+        iterations,
+        replayFile,
+        claudeVersion,
+        ralphVersion,
+        watch,
+        json,
+      }),
+    )
   })
 
 program
