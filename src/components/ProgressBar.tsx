@@ -5,7 +5,7 @@ import { Text } from "ink"
  * A simple progress bar component using Unicode block characters.
  * Shows completion progress: (total - remaining) / total
  */
-export const ProgressBar = ({ remaining, total, width = 12 }: Props) => {
+export const ProgressBar = ({ remaining, total, width = 12, repoName }: Props) => {
   if (total === 0) {
     return null
   }
@@ -22,6 +22,12 @@ export const ProgressBar = ({ remaining, total, width = 12 }: Props) => {
 
   return (
     <Text>
+      {repoName && (
+        <>
+          <Text color="cyan">{repoName}</Text>
+          <Text dimColor> │ </Text>
+        </>
+      )}
       <Text color="yellow">{filled}</Text>
       <Text dimColor>{empty}</Text>
       <Text dimColor>
@@ -39,4 +45,6 @@ type Props = {
   total: number
   /** Width of the progress bar in characters (default: 12) */
   width?: number
+  /** Repository name to display before the progress bar */
+  repoName?: string
 }

@@ -44,4 +44,21 @@ describe("ProgressBar", () => {
     const output = lastFrame()!
     expect(output).toContain("▱▱▱▱▱▱▱▱▱▱")
   })
+
+  it("displays repo name when provided", () => {
+    const { lastFrame } = render(
+      <ProgressBar remaining={5} total={10} width={10} repoName="my-repo" />,
+    )
+    const output = lastFrame()!
+    expect(output).toContain("my-repo")
+    expect(output).toContain("│")
+    expect(output).toContain("5/10")
+  })
+
+  it("does not display repo name when not provided", () => {
+    const { lastFrame } = render(<ProgressBar remaining={5} total={10} width={10} />)
+    const output = lastFrame()!
+    expect(output).not.toContain("│")
+    expect(output).toContain("5/10")
+  })
 })

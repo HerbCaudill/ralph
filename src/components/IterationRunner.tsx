@@ -5,7 +5,7 @@ import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
 import { appendFileSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "fs"
-import { join, dirname } from "path"
+import { join, dirname, basename } from "path"
 import { fileURLToPath } from "url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -28,6 +28,7 @@ const promptFile = join(ralphDir, "prompt.md")
 const todoFile = join(ralphDir, "todo.md")
 const beadsDir = join(process.cwd(), ".beads")
 const templatesDir = join(__dirname, "..", "..", "templates")
+const repoName = basename(process.cwd())
 
 /**
  * Get the prompt content, falling back to templates if .ralph/prompt.md doesn't exist.
@@ -635,7 +636,11 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
           </Text>
         }
         {progressData.type !== "none" && progressData.total > 0 && (
-          <ProgressBar remaining={progressData.remaining} total={progressData.total} />
+          <ProgressBar
+            remaining={progressData.remaining}
+            total={progressData.total}
+            repoName={repoName}
+          />
         )}
       </Box>
     </Box>
