@@ -85,20 +85,20 @@ npx @herbcaudill/ralph
 4. **Run ralph:**
 
    ```bash
-   npx ralph          # Run 50 iterations (default)
+   npx ralph          # Run with dynamic default (120% of open issues)
    npx ralph 5        # Run 5 iterations
    npx ralph --watch  # Run and watch for new issues
    ```
 
 ## Commands
 
-| Command         | Description                                |
-| --------------- | ------------------------------------------ |
-| `ralph`         | Run 50 iterations (default)                |
-| `ralph <n>`     | Run specified number of iterations         |
-| `ralph init`    | Initialize .ralph directory with templates |
-| `ralph --watch` | Watch for new issues after completion      |
-| `ralph --help`  | Show help                                  |
+| Command         | Description                                                    |
+| --------------- | -------------------------------------------------------------- |
+| `ralph`         | Run with dynamic default (120% of open issues, min 10 max 100) |
+| `ralph <n>`     | Run specified number of iterations                             |
+| `ralph init`    | Initialize .ralph directory with templates                     |
+| `ralph --watch` | Watch for new issues after completion                          |
+| `ralph --help`  | Show help                                                      |
 
 ## Watch mode
 

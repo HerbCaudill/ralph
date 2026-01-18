@@ -5,6 +5,7 @@ import React from "react"
 import { App } from "./components/App.js"
 import { InitRalph } from "./components/InitRalph.js"
 import { getClaudeVersion } from "./lib/getClaudeVersion.js"
+import { getDefaultIterations } from "./lib/getOpenIssueCount.js"
 import { addTodo } from "./lib/addTodo.js"
 import packageJson from "../package.json" with { type: "json" }
 
@@ -12,11 +13,17 @@ export const program = new Command()
   .name("ralph")
   .description("Autonomous AI iteration engine for Claude CLI")
   .version(packageJson.version)
-  .argument("[iterations]", "number of iterations to run", val => parseInt(val, 10), 50)
+  .argument(
+    "[iterations]",
+    "number of iterations (default: 120% of open issues, min 10, max 100)",
+    val => parseInt(val, 10),
+  )
   .option("--replay [file]", "replay events from log file")
   .option("--watch", "watch for new beads issues after completion")
   .option("--json", "output events as newline-delimited JSON to stdout")
-  .action((iterations, options) => {
+  .action((iterationsArg: number | undefined, options) => {
+    // Use dynamic default if no iterations specified
+    const iterations = iterationsArg ?? getDefaultIterations()
     const replayFile =
       options.replay !== undefined ?
         typeof options.replay === "string" ?
