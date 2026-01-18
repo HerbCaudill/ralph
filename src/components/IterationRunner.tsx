@@ -227,6 +227,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
   const [detectedIssue, setDetectedIssue] = useState<MutationEvent | null>(null)
   const watchCleanupRef = useRef<(() => void) | null>(null)
   const [watchCycle, setWatchCycle] = useState(0) // Increments to force useEffect re-run
+  const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current iteration
+  const stopAfterCurrentRef = useRef(false) // Ref to access in async callbacks
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -307,7 +309,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     setTimeout(() => setUserMessageStatus(null), 3000)
   }
 
-  // Handle keyboard input for Ctrl-T (todo) and Escape (cancel todo input)
+  // Handle keyboard input for Ctrl-T (todo), Ctrl-S (stop), and Escape (cancel todo input)
   useInput(
     (input, key) => {
       // Ctrl-T to start adding a todo (only if todo.md exists)
@@ -315,6 +317,10 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         setIsAddingTodo(true)
         setTodoText("")
         setTodoMessage(null)
+      }
+      // Ctrl-S to request stop after current iteration
+      if (key.ctrl && input === "s" && isRunning && !stopAfterCurrent) {
+        setStopAfterCurrent(true)
       }
       // Escape to cancel todo input
       if (key.escape) {
@@ -332,6 +338,11 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
   useEffect(() => {
     eventsRef.current = events
   }, [events])
+
+  // Keep stopAfterCurrent ref in sync with state for access in async callbacks
+  useEffect(() => {
+    stopAfterCurrentRef.current = stopAfterCurrent
+  }, [stopAfterCurrent])
 
   // Update progress data when iteration changes or running stops
   useEffect(() => {
@@ -525,6 +536,14 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         messageQueue.close()
         messageQueueRef.current = null
 
+        // Check for stop-after-current request
+        if (stopAfterCurrentRef.current) {
+          log(`Stop after current requested - exiting gracefully`)
+          exit()
+          process.exit(0)
+          return
+        }
+
         // Check for completion
         if (finalResult.includes("<promise>COMPLETE</promise>")) {
           if (watch) {
@@ -672,10 +691,17 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
             </Text>
 
         : isRunning ?
-          <Text color="cyan">
-            <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
-            (max {totalIterations})
-          </Text>
+          stopAfterCurrent ?
+            <Text color="yellow">
+              <Spinner type="dots" /> Stopping after round{" "}
+              <Text color="yellow">{currentIteration}</Text> completes...{" "}
+              <Text dimColor>(Ctrl-S pressed)</Text>
+            </Text>
+          : <Text color="cyan">
+              <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
+              (max {totalIterations})
+            </Text>
+
         : <Text color="cyan">
             <Spinner type="simpleDotsScrolling" /> Waiting for Ralph to start...
           </Text>
