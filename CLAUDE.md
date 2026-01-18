@@ -46,6 +46,8 @@ Ralph supports sending user messages to Claude while it's working:
 - **Ctrl+M** - Opens a text input to send a message to Claude (only while running)
 - **Ctrl+T** - Opens a text input to add a todo item (only if todo.md exists)
 
+User-injected messages appear in the output stream with a 📨 prefix and green color, so users know their message was received and processed.
+
 ### Implementation Details
 
 The feature uses the Claude Agent SDK's streaming input mode. Instead of passing a string prompt to `query()`, we pass a `MessageQueue` (an async iterable) that:
@@ -54,7 +56,14 @@ The feature uses the Claude Agent SDK's streaming input mode. Instead of passing
 2. Can receive additional messages pushed via `push()` from the UI
 3. Uses promises to block iteration until new messages arrive
 
-See `src/lib/MessageQueue.ts` for the implementation.
+When a user sends a message via Ctrl+M:
+
+1. The message is pushed to the MessageQueue for the SDK
+2. A display event is added to the events state for visual feedback
+3. The `eventToBlocks.ts` parser handles `user` type events and creates `user` content blocks
+4. The `formatContentBlock.ts` formats user blocks with a distinctive style
+
+See `src/lib/MessageQueue.ts` for the queue implementation.
 
 ---
 

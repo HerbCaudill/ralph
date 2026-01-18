@@ -432,4 +432,62 @@ describe("eventToBlocks", () => {
     const result = eventToBlocks(event)
     expect(result[0].id).toBe("unknown-0")
   })
+
+  it("extracts user message text", () => {
+    const event = {
+      type: "user",
+      message: {
+        id: "user-msg-123",
+        role: "user",
+        content: [{ type: "text", text: "Hello Claude" }],
+      },
+    }
+    const result = eventToBlocks(event)
+    expect(result).toEqual([{ type: "user", content: "Hello Claude", id: "user-msg-123" }])
+  })
+
+  it("returns empty array for user message without content", () => {
+    const event = {
+      type: "user",
+      message: {
+        id: "user-msg-123",
+        role: "user",
+      },
+    }
+    const result = eventToBlocks(event)
+    expect(result).toEqual([])
+  })
+
+  it("concatenates multiple text blocks in user message", () => {
+    const event = {
+      type: "user",
+      message: {
+        id: "user-msg-123",
+        role: "user",
+        content: [
+          { type: "text", text: "First part " },
+          { type: "text", text: "second part" },
+        ],
+      },
+    }
+    const result = eventToBlocks(event)
+    expect(result).toEqual([
+      { type: "user", content: "First part second part", id: "user-msg-123" },
+    ])
+  })
+
+  it("generates timestamp-based ID for user message without ID", () => {
+    const event = {
+      type: "user",
+      message: {
+        role: "user",
+        content: [{ type: "text", text: "Hello" }],
+      },
+    }
+    const result = eventToBlocks(event)
+    expect(result.length).toBe(1)
+    expect(result[0].type).toBe("user")
+    expect(result[0]).toHaveProperty("content", "Hello")
+    expect(result[0].id).toMatch(/^user-\d+$/)
+  })
 })

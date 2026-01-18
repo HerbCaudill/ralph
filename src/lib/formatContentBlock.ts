@@ -46,6 +46,13 @@ const formatToolUse = (name: string, arg?: string): string => {
 }
 
 /**
+ * Format a user message
+ */
+const formatUserMessage = (content: string): string => {
+  return chalk.green(`📨 You: ${content}`)
+}
+
+/**
  * Convert a content block to formatted string lines
  */
 export const formatContentBlock = (block: ContentBlock): string[] => {
@@ -53,6 +60,10 @@ export const formatContentBlock = (block: ContentBlock): string[] => {
     const formatted = formatText(block.content)
     // Split into lines, preserving empty lines for paragraph breaks
     return formatted.split("\n")
+  }
+
+  if (block.type === "user") {
+    return [formatUserMessage(block.content)]
   }
 
   return [formatToolUse(block.name, block.arg)]

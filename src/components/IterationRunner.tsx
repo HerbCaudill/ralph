@@ -244,6 +244,18 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     if (messageQueueRef.current && isRunning) {
       const userMessage = createUserMessage(trimmed)
       messageQueueRef.current.push(userMessage)
+
+      // Also add the user message to events for display
+      const displayEvent = {
+        type: "user",
+        message: {
+          id: `user-injected-${Date.now()}`,
+          role: "user",
+          content: [{ type: "text", text: trimmed }],
+        },
+      }
+      setEvents(prev => [...prev, displayEvent])
+
       setUserMessageStatus({ type: "success", text: `📨 Sent: "${trimmed}"` })
     } else {
       setUserMessageStatus({

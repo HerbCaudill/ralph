@@ -4,8 +4,31 @@ import { shortenTempPaths } from "../lib/shortenTempPaths.js"
 export type ContentBlock =
   | { type: "text"; content: string; id: string }
   | { type: "tool"; name: string; arg?: string; id: string }
+  | { type: "user"; content: string; id: string }
 
 export const eventToBlocks = (event: Record<string, unknown>): ContentBlock[] => {
+  // Handle user messages
+  if (event.type === "user") {
+    const message = event.message as Record<string, unknown> | undefined
+    const content = message?.content as Array<Record<string, unknown>> | undefined
+    const messageId = (message?.id as string | undefined) ?? `user-${Date.now()}`
+
+    if (!content) {
+      return []
+    }
+
+    // Extract text from user message content
+    const textContent = content
+      .filter(block => block.type === "text")
+      .map(block => block.text as string)
+      .join("")
+
+    if (textContent) {
+      return [{ type: "user", content: textContent, id: messageId }]
+    }
+    return []
+  }
+
   if (event.type !== "assistant") {
     return []
   }
