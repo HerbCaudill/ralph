@@ -19,6 +19,7 @@ import { ProgressBar } from "./ProgressBar.js"
 import { watchForNewIssues, BeadsClient, type MutationEvent } from "../lib/beadsClient.js"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { createDebugLogger } from "../lib/debug.js"
+import { useTerminalSize } from "../lib/useTerminalSize.js"
 
 const log = createDebugLogger("iteration")
 
@@ -193,6 +194,7 @@ type StaticItem =
 
 export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, watch }: Props) => {
   const { exit } = useApp()
+  const { columns } = useTerminalSize()
   const [currentIteration, setCurrentIteration] = useState(1)
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const eventsRef = useRef<Array<Record<string, unknown>>>([])
@@ -581,9 +583,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       {/* User message input - visible when running, hidden when watching for new issues */}
       {!isWatching && (
         <Box flexDirection="column" marginTop={1}>
-          <Text dimColor>
-            ───────────────────────────────────────────────────────────────────────────────
-          </Text>
+          <Text dimColor>{"─".repeat(columns)}</Text>
           <Box>
             <Text color={isRunning ? "yellow" : "gray"}>❯ </Text>
             <EnhancedTextInput
@@ -608,9 +608,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
               {userMessageStatus.text}
             </Text>
           )}
-          <Text dimColor>
-            ───────────────────────────────────────────────────────────────────────────────
-          </Text>
+          <Text dimColor>{"─".repeat(columns)}</Text>
         </Box>
       )}
 
