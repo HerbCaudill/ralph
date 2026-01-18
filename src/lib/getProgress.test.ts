@@ -25,13 +25,14 @@ describe("getProgress", () => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
-      // First call: closed-after count, second call: created-after count
-      mockExecSync.mockReturnValueOnce("2").mockReturnValueOnce("1")
+      // Calls: created-after, status=open, status=in_progress
+      // 1 created, 3 open, 1 in_progress → completed = (5+1) - (3+1) = 2
+      mockExecSync.mockReturnValueOnce("1").mockReturnValueOnce("3").mockReturnValueOnce("1")
 
       const result = getProgress(5, "2024-01-01T00:00:00.000Z")
 
       expect(result.type).toBe("beads")
-      expect(result.completed).toBe(2) // 2 closed since startup
+      expect(result.completed).toBe(2) // total(6) - remaining(4) = 2
       expect(result.total).toBe(6) // 5 initial + 1 created
     })
 
@@ -40,7 +41,9 @@ describe("getProgress", () => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
-      mockExecSync.mockReturnValueOnce("0").mockReturnValueOnce("0")
+      // Calls: created-after, status=open, status=in_progress
+      // 0 created, 3 open, 2 in_progress → completed = 5 - 5 = 0
+      mockExecSync.mockReturnValueOnce("0").mockReturnValueOnce("3").mockReturnValueOnce("2")
 
       const result = getProgress(5, "2024-01-01T00:00:00.000Z")
 
@@ -54,7 +57,9 @@ describe("getProgress", () => {
         if (typeof path === "string" && path.endsWith(".beads")) return true
         return false
       })
-      mockExecSync.mockReturnValueOnce("5").mockReturnValueOnce("0")
+      // Calls: created-after, status=open, status=in_progress
+      // 0 created, 0 open, 0 in_progress → completed = 5 - 0 = 5
+      mockExecSync.mockReturnValueOnce("0").mockReturnValueOnce("0").mockReturnValueOnce("0")
 
       const result = getProgress(5, "2024-01-01T00:00:00.000Z")
 
