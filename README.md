@@ -85,7 +85,7 @@ npx @herbcaudill/ralph
 4. **Run ralph:**
 
    ```bash
-   npx ralph          # Run 10 iterations (default)
+   npx ralph          # Run 50 iterations (default)
    npx ralph 5        # Run 5 iterations
    npx ralph --watch  # Run and watch for new issues
    ```
@@ -94,7 +94,7 @@ npx @herbcaudill/ralph
 
 | Command         | Description                                |
 | --------------- | ------------------------------------------ |
-| `ralph`         | Run 10 iterations (default)                |
+| `ralph`         | Run 50 iterations (default)                |
 | `ralph <n>`     | Run specified number of iterations         |
 | `ralph init`    | Initialize .ralph directory with templates |
 | `ralph --watch` | Watch for new issues after completion      |
