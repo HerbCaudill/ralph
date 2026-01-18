@@ -1,4 +1,7 @@
-# Ralph
+```
+█▀█ ▄▀█ █   █▀█ █ █
+█▀▄ █▀█ █▄▄ █▀▀ █▀█
+```
 
 Autonomous AI iteration engine for Claude CLI. Ralph runs Claude in a loop to systematically work through your codebase's task list, enabling Claude to tackle work items iteratively.
 
