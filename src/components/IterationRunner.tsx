@@ -265,10 +265,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         setDetectedIssue(null)
         // Reset rendered blocks for new cycle
         renderedBlocksRef.current.clear()
-        // Reset iteration ref so new header is shown
-        lastIterationRef.current = 0
-        // Start fresh iteration cycle - increment watchCycle to force useEffect re-run
-        setCurrentIteration(1)
+        // Increment round number when picking up new issue
+        setCurrentIteration(i => i + 1)
         setWatchCycle(c => c + 1)
       }, 1500)
     })
