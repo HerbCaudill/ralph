@@ -226,7 +226,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     }
   }
 
-  // Handle Ctrl+M to send a message to Claude
+  // Handle Escape to send a message to Claude
   const handleUserMessageSubmit = (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) {
@@ -265,7 +265,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     setTimeout(() => setUserMessageStatus(null), 3000)
   }
 
-  // Handle keyboard input for Ctrl-T (todo) and Ctrl-M (message)
+  // Handle keyboard input for Ctrl-T (todo) and Escape (message)
   useInput(
     (input, key) => {
       // Ctrl-T to start adding a todo (only if todo.md exists)
@@ -274,20 +274,22 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         setTodoText("")
         setTodoMessage(null)
       }
-      // Ctrl-M to start adding a message to Claude (only while running)
-      if (key.ctrl && input === "m" && isRunning && !isAddingTodo) {
-        setIsAddingUserMessage(true)
-        setUserMessageText("")
-        setUserMessageStatus(null)
-      }
-      // Escape to cancel adding a todo or message
-      if (key.escape && isAddingTodo) {
-        setIsAddingTodo(false)
-        setTodoText("")
-      }
-      if (key.escape && isAddingUserMessage) {
-        setIsAddingUserMessage(false)
-        setUserMessageText("")
+      // Escape to toggle message input or cancel todo input
+      if (key.escape) {
+        if (isAddingTodo) {
+          // Cancel todo input
+          setIsAddingTodo(false)
+          setTodoText("")
+        } else if (isAddingUserMessage) {
+          // Cancel message input
+          setIsAddingUserMessage(false)
+          setUserMessageText("")
+        } else if (isRunning) {
+          // Open message input (only while running)
+          setIsAddingUserMessage(true)
+          setUserMessageText("")
+          setUserMessageStatus(null)
+        }
       }
     },
     { isActive: stdinSupportsRawMode },
