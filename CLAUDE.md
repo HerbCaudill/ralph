@@ -39,87 +39,22 @@ bd sync               # Sync with git
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 
-## SDK Reference: Streaming Input for User Messages
+## User Input During Runtime
 
-The Claude Agent SDK supports two input modes:
+Ralph supports sending user messages to Claude while it's working:
 
-### Single Message Mode (current ralph implementation)
+- **Ctrl+M** - Opens a text input to send a message to Claude (only while running)
+- **Ctrl+T** - Opens a text input to add a todo item (only if todo.md exists)
 
-```typescript
-query({ prompt: "string prompt", options: {...} })
-```
+### Implementation Details
 
-### Streaming Input Mode (for runtime user input)
+The feature uses the Claude Agent SDK's streaming input mode. Instead of passing a string prompt to `query()`, we pass a `MessageQueue` (an async iterable) that:
 
-```typescript
-query({ prompt: asyncGenerator(), options: {...} })
-```
+1. Yields the initial prompt message
+2. Can receive additional messages pushed via `push()` from the UI
+3. Uses promises to block iteration until new messages arrive
 
-To send user messages while Claude is working, use streaming input mode:
-
-1. **Create an async generator** that yields `SDKUserMessage` objects
-2. **Pass it to `query()`** as the `prompt` parameter
-3. **Yield additional messages** from outside the generator when the user types
-
-**SDKUserMessage structure:**
-
-```typescript
-type SDKUserMessage = {
-  type: "user"
-  message: MessageParam // { role: 'user', content: string | ContentBlock[] }
-  parent_tool_use_id: string | null
-  session_id: string
-  isSynthetic?: boolean
-  uuid?: UUID
-}
-```
-
-**Example pattern:**
-
-```typescript
-// Create a message queue that can be pushed to from UI
-const messageQueue: SDKUserMessage[] = []
-let resolveWaiting: (() => void) | null = null
-
-async function* messageGenerator(): AsyncGenerator<SDKUserMessage> {
-  // Yield initial prompt
-  yield {
-    type: "user",
-    message: { role: "user", content: initialPrompt },
-    parent_tool_use_id: null,
-    session_id: "", // SDK fills this in
-  }
-
-  // Wait for and yield additional messages
-  while (true) {
-    if (messageQueue.length > 0) {
-      yield messageQueue.shift()!
-    } else {
-      await new Promise<void>(resolve => {
-        resolveWaiting = resolve
-      })
-    }
-  }
-}
-
-// Push message from UI handler
-function sendUserMessage(text: string) {
-  messageQueue.push({
-    type: "user",
-    message: { role: "user", content: text },
-    parent_tool_use_id: null,
-    session_id: "",
-  })
-  resolveWaiting?.()
-}
-
-// Start the query
-for await (const message of query({ prompt: messageGenerator() })) {
-  // Process messages
-}
-```
-
-**Note:** The `Query.streamInput()` method exists but is marked as "used internally for multi-turn conversations." The documented approach is to pass an async generator to `query()` directly.
+See `src/lib/MessageQueue.ts` for the implementation.
 
 ---
 
@@ -223,6 +158,7 @@ src/
     StreamingText.tsx      # Streaming text display
   lib/
     beadsClient.ts         # Unix socket RPC client for beads daemon
+    MessageQueue.ts        # Async iterable message queue for SDK streamInput
     rel.ts                 # Convert absolute → relative paths
     shortenTempPaths.ts    # Shorten temp paths in commands
 test/
@@ -271,7 +207,7 @@ On startup, `IterationRunner` checks for required files. If missing:
 
 Ralph has comprehensive test coverage at multiple levels:
 
-### Unit Tests (124 tests)
+### Unit Tests (124+ tests)
 
 **Utility Functions:**
 
@@ -289,7 +225,7 @@ Ralph has comprehensive test coverage at multiple levels:
 
 - `IterationRunner.tsx` - File checking logic with mocked fs
 
-All unit tests run automatically with `pnpm test` (124 tests).
+All unit tests run automatically with `pnpm test`.
 
 ### E2E Tests
 

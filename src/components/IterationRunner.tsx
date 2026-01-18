@@ -16,6 +16,7 @@ import { addTodo } from "../lib/addTodo.js"
 import { getProgress, getInitialBeadsCount, type ProgressData } from "../lib/getProgress.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { watchForNewIssues, BeadsClient, type MutationEvent } from "../lib/beadsClient.js"
+import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -171,6 +172,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
   ])
   const renderedBlocksRef = useRef<Set<string>>(new Set())
   const lastIterationRef = useRef<number>(0)
+  // Message queue for sending user messages to Claude while running
+  const messageQueueRef = useRef<MessageQueue | null>(null)
 
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
@@ -237,8 +240,18 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       return
     }
 
-    // For now, just show a pending message - actual SDK integration is in r-jwk.4
-    setUserMessageStatus({ type: "pending", text: `📨 "${trimmed}" (queued)` })
+    // Send the message to Claude via the SDK's streamInput
+    if (messageQueueRef.current && isRunning) {
+      const userMessage = createUserMessage(trimmed)
+      messageQueueRef.current.push(userMessage)
+      setUserMessageStatus({ type: "success", text: `📨 Sent: "${trimmed}"` })
+    } else {
+      setUserMessageStatus({
+        type: "error",
+        text: "Unable to send message - Claude is not running",
+      })
+    }
+
     setUserMessageText("")
     setIsAddingUserMessage(false)
     // Clear status message after 3 seconds
@@ -382,12 +395,20 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     const abortController = new AbortController()
     setIsRunning(true)
 
+    // Create a message queue for this iteration
+    // This allows us to send user messages to Claude while it's running
+    const messageQueue = new MessageQueue()
+    messageQueueRef.current = messageQueue
+
+    // Push the initial prompt as the first message
+    messageQueue.push(createUserMessage(fullPrompt))
+
     const runQuery = async () => {
       let finalResult = ""
 
       try {
         for await (const message of query({
-          prompt: fullPrompt,
+          prompt: messageQueue,
           options: {
             abortController,
             permissionMode: "bypassPermissions",
@@ -420,6 +441,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         }
 
         setIsRunning(false)
+        messageQueue.close()
+        messageQueueRef.current = null
 
         // Check for completion
         if (finalResult.includes("<promise>COMPLETE</promise>")) {
@@ -437,6 +460,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         setTimeout(() => setCurrentIteration(i => i + 1), 500)
       } catch (err) {
         setIsRunning(false)
+        messageQueue.close()
+        messageQueueRef.current = null
         if (abortController.signal.aborted) {
           return // Intentionally aborted
         }
@@ -452,6 +477,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
 
     return () => {
       abortController.abort()
+      messageQueue.close()
+      messageQueueRef.current = null
     }
   }, [currentIteration, totalIterations, exit, watch, watchCycle])
 
