@@ -1,5 +1,4 @@
 import { Command } from "commander"
-import { join } from "path"
 import { render } from "ink"
 import React from "react"
 import { App } from "./components/App.js"
@@ -7,6 +6,7 @@ import { InitRalph } from "./components/InitRalph.js"
 import { getClaudeVersion } from "./lib/getClaudeVersion.js"
 import { getDefaultIterations } from "./lib/getOpenIssueCount.js"
 import { addTodo } from "./lib/addTodo.js"
+import { getLatestLogFile } from "./lib/getNextLogFile.js"
 import packageJson from "../package.json" with { type: "json" }
 
 export const program = new Command()
@@ -28,7 +28,7 @@ export const program = new Command()
       options.replay !== undefined ?
         typeof options.replay === "string" ?
           options.replay
-        : join(process.cwd(), ".ralph", "events.jsonl")
+        : getLatestLogFile()
       : undefined
 
     const claudeVersion = getClaudeVersion()

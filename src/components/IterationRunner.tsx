@@ -4,7 +4,7 @@ import Spinner from "ink-spinner"
 import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
-import { appendFileSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "fs"
+import { appendFileSync, writeFileSync, readFileSync, existsSync } from "fs"
 import { join, dirname, basename } from "path"
 import { fileURLToPath } from "url"
 
@@ -25,10 +25,10 @@ import { watchForNewIssues, BeadsClient, type MutationEvent } from "../lib/beads
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { createDebugLogger } from "../lib/debug.js"
 import { useTerminalSize } from "../lib/useTerminalSize.js"
+import { getNextLogFile } from "../lib/getNextLogFile.js"
 
 const log = createDebugLogger("iteration")
 
-const logFile = join(process.cwd(), ".ralph", "events.jsonl")
 const ralphDir = join(process.cwd(), ".ralph")
 const promptFile = join(ralphDir, "prompt.md")
 const todoFile = join(ralphDir, "todo.md")
@@ -236,6 +236,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
   const lastIterationRef = useRef<number>(0)
   // Message queue for sending user messages to Claude while running
   const messageQueueRef = useRef<MessageQueue | null>(null)
+  // Log file path for this run (set once at startup, persisted across iterations)
+  const logFileRef = useRef<string | null>(null)
 
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
@@ -439,9 +441,13 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       return
     }
 
-    // Ensure .ralph directory exists and clear log file at start of each iteration
-    mkdirSync(dirname(logFile), { recursive: true })
-    writeFileSync(logFile, "")
+    // Get or create the log file path for this run
+    // Only create a new sequential log file on the first iteration
+    if (!logFileRef.current) {
+      logFileRef.current = getNextLogFile()
+      writeFileSync(logFileRef.current, "")
+    }
+    const logFile = logFileRef.current
     setEvents([])
 
     // Read prompt (from .ralph/prompt.md or falling back to templates)

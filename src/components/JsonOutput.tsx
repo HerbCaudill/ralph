@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useApp, Text } from "ink"
-import { writeFileSync, readFileSync, mkdirSync, existsSync } from "fs"
+import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join, dirname, basename } from "path"
 import { fileURLToPath } from "url"
 
@@ -9,10 +9,9 @@ import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { getProgress, captureStartupSnapshot, type StartupSnapshot } from "../lib/getProgress.js"
 import { createDebugLogger } from "../lib/debug.js"
+import { getNextLogFile } from "../lib/getNextLogFile.js"
 
 const log = createDebugLogger("iteration")
-
-const logFile = join(process.cwd(), ".ralph", "events.jsonl")
 const ralphDir = join(process.cwd(), ".ralph")
 const promptFile = join(ralphDir, "prompt.md")
 const todoFile = join(ralphDir, "todo.md")
@@ -57,6 +56,8 @@ export const JsonOutput = ({ totalIterations }: Props) => {
   const [isRunning, setIsRunning] = useState(false)
   const [startupSnapshot] = useState<StartupSnapshot | undefined>(() => captureStartupSnapshot())
   const messageQueueRef = useRef<MessageQueue | null>(null)
+  // Log file path for this run (set once at startup, persisted across iterations)
+  const logFileRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (currentIteration > totalIterations) {
@@ -79,9 +80,12 @@ export const JsonOutput = ({ totalIterations }: Props) => {
       return
     }
 
-    // Ensure .ralph directory exists and clear log file at start of each iteration
-    mkdirSync(dirname(logFile), { recursive: true })
-    writeFileSync(logFile, "")
+    // Get or create the log file path for this run
+    // Only create a new sequential log file on the first iteration
+    if (!logFileRef.current) {
+      logFileRef.current = getNextLogFile()
+      writeFileSync(logFileRef.current, "")
+    }
 
     // Read prompt (from .ralph/prompt.md or falling back to templates)
     const promptContent = getPromptContent()
