@@ -163,6 +163,25 @@ npx ralph --watch                        # Runs and watches for new issues
 npx ralph 5
 ```
 
+## Watch mode
+
+Watch mode (`--watch`) keeps ralph running after completing all tasks, waiting for new issues to be added:
+
+```bash
+npx ralph --watch
+```
+
+When ralph finishes all available work and Claude outputs the completion signal, instead of exiting, it enters a waiting state. When you add a new issue via `bd create` or `bd q`, ralph automatically detects it and starts a new iteration to work on it.
+
+This enables a "continuous integration" style workflow:
+
+1. Start ralph in watch mode: `npx ralph --watch`
+2. Add tasks as you think of them: `bd q "Fix header alignment"`
+3. Ralph automatically picks up and works on new tasks
+4. Keep adding tasks while ralph works
+
+Watch mode requires **bd** (beads) for issue tracking—it watches for mutations to the beads database.
+
 ## Configuration
 
 ### Template files
