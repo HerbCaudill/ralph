@@ -590,7 +590,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
           <EnhancedTextInput
             value={userMessageText}
             placeholder={
-              isRunning ? "Type a message to Claude..." : "Waiting for Claude to start..."
+              isRunning ? "Type a message for Ralph..." : "Waiting for Ralph to start..."
             }
             onChange={setUserMessageText}
             onSubmit={handleUserMessageSubmit}
