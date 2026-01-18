@@ -65,6 +65,24 @@ When a user sends a message via Escape:
 
 See `src/lib/MessageQueue.ts` for the queue implementation.
 
+## Debug Logging
+
+Ralph has built-in debug logging to help diagnose issues like hangs. Enable it with the `RALPH_DEBUG` environment variable:
+
+```bash
+# Enable all debug logging
+RALPH_DEBUG=1 ralph
+
+# Enable specific namespace
+RALPH_DEBUG=messagequeue ralph    # MessageQueue push/next/close operations
+RALPH_DEBUG=iteration ralph       # Iteration lifecycle events
+
+# Enable multiple namespaces
+RALPH_DEBUG=messagequeue,iteration ralph
+```
+
+Debug logs are written to stderr with timestamps, so they don't interfere with the normal output.
+
 ---
 
 ## Project Overview

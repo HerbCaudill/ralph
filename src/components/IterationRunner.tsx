@@ -18,6 +18,9 @@ import { getProgress, getInitialBeadsCount, type ProgressData } from "../lib/get
 import { ProgressBar } from "./ProgressBar.js"
 import { watchForNewIssues, BeadsClient, type MutationEvent } from "../lib/beadsClient.js"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
+import { createDebugLogger } from "../lib/debug.js"
+
+const log = createDebugLogger("iteration")
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -400,8 +403,10 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
 
     const runQuery = async () => {
       let finalResult = ""
+      log(`Starting iteration ${currentIteration}`)
 
       try {
+        log(`Beginning query() loop`)
         for await (const message of query({
           prompt: messageQueue,
           options: {
@@ -416,6 +421,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
             },
           },
         })) {
+          log(`Received message type: ${message.type}`)
           // Log raw message to file
           appendFileSync(logFile, JSON.stringify(message, null, 2) + "\n\n")
 
@@ -431,11 +437,14 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
             "result" in message &&
             typeof message.result === "string"
           ) {
+            log(`Received result message`)
             finalResult = message.result
           }
         }
 
+        log(`query() loop completed normally`)
         setIsRunning(false)
+        log(`Closing message queue`)
         messageQueue.close()
         messageQueueRef.current = null
 
@@ -454,10 +463,13 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         // Move to next iteration
         setTimeout(() => setCurrentIteration(i => i + 1), 500)
       } catch (err) {
+        log(`query() loop error: ${err instanceof Error ? err.message : String(err)}`)
         setIsRunning(false)
+        log(`Closing message queue after error`)
         messageQueue.close()
         messageQueueRef.current = null
         if (abortController.signal.aborted) {
+          log(`Abort signal detected`)
           return // Intentionally aborted
         }
         setError(`Error running Claude: ${err instanceof Error ? err.message : String(err)}`)
@@ -471,6 +483,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     runQuery()
 
     return () => {
+      log(`Cleanup: aborting and closing queue for iteration ${currentIteration}`)
       abortController.abort()
       messageQueue.close()
       messageQueueRef.current = null
