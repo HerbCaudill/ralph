@@ -22,7 +22,7 @@ If there are open issues:
 - Work only on that task. Only work on a single issue in a single turn. If the issue you choose is complex, your task is to break it into sub-issues and then end your turn.
 - While you're working, if you notice something else that needs to be done - follow-up tasks, other things that don't seem to be working right - open new issues.
 - Where applicable, add tests to validate your changes and confirm that they pass.
-- Update AGENTS.md with any relevant changes.
+- Update CLAUDE.md with any relevant changes.
 
 When you complete a task:
 

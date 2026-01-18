@@ -13,7 +13,7 @@ Mark the issue as in progress with `bd update <id> --status=in_progress`
 When you complete a task:
 
 - Where applicable, add tests to validate your changes and confirm that they pass
-- Update AGENTS.md with any relevant changes
+- Update CLAUDE.md with any relevant changes
 - Run `pnpm build && pnpm test:all`
 - Run `pnpm format`
 - Close the issue: `bd close <id>`
