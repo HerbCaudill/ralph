@@ -80,6 +80,25 @@ describe("MessageQueue", () => {
     const result = await promise
     expect(result.done).toBe(true)
   })
+
+  it("should be idempotent when close() is called multiple times", async () => {
+    const queue = new MessageQueue()
+    const msg = createUserMessage("test")
+    queue.push(msg)
+
+    const iterator = queue[Symbol.asyncIterator]()
+    const result1 = await iterator.next()
+    expect(result1.value).toEqual(msg)
+
+    // Close multiple times - should not throw or cause issues
+    queue.close()
+    queue.close()
+    queue.close()
+
+    // Iterator should still work correctly
+    const result2 = await iterator.next()
+    expect(result2.done).toBe(true)
+  })
 })
 
 describe("createUserMessage", () => {

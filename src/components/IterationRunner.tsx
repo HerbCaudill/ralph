@@ -439,12 +439,21 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
           ) {
             log(`Received result message`)
             finalResult = message.result
+            // Close the message queue immediately when we get the result.
+            // This is critical to prevent hangs: the SDK's streamInput() needs
+            // to complete iterating our queue before it can call endInput(),
+            // which signals EOF to the CLI. If we wait until after the for-await
+            // loop exits, we create a circular dependency that can cause hangs.
+            log(`Closing message queue on result`)
+            messageQueue.close()
           }
         }
 
         log(`query() loop completed normally`)
         setIsRunning(false)
-        log(`Closing message queue`)
+        // MessageQueue should already be closed when we received the result message.
+        // We ensure it's closed here as a safety measure (close() is idempotent).
+        log(`Ensuring message queue is closed`)
         messageQueue.close()
         messageQueueRef.current = null
 

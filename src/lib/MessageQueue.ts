@@ -33,6 +33,10 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
   }
 
   close(): void {
+    if (this.closed) {
+      log(`close() called but already closed - no-op`)
+      return
+    }
     log(`close() called - resolving ${this.resolvers.length} pending resolvers`)
     this.closed = true
     // Resolve any pending iterators
