@@ -630,7 +630,10 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
             <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
             (max {totalIterations})
           </Text>
-        : <Text dimColor>Ready</Text>}
+        : <Text color="cyan">
+            <Spinner type="simpleDotsScrolling" /> Waiting for Ralph to start...
+          </Text>
+        }
         {progressData.type !== "none" && progressData.total > 0 && (
           <ProgressBar remaining={progressData.remaining} total={progressData.total} />
         )}
