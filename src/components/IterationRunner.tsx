@@ -529,9 +529,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         {isWatching ?
           detectedIssue ?
             <Text color="green">
-              <Spinner type="dots" /> New issue:{" "}
-              <Text color="yellow">{detectedIssue.issue_id}</Text>
-              {detectedIssue.title ? ` - ${detectedIssue.title}` : ""}
+              <Spinner type="dots" /> New issue: <Text color="yellow">{detectedIssue.IssueID}</Text>
+              {detectedIssue.Title ? ` - ${detectedIssue.Title}` : ""}
             </Text>
           : <Text color="magenta">
               <Spinner type="dots" /> Watching for new issues...

@@ -4,15 +4,16 @@ import { existsSync } from "fs"
 
 const SOCKET_PATH = join(process.cwd(), ".beads", "bd.sock")
 
+// Note: Daemon returns PascalCase JSON keys
 export type MutationEvent = {
-  timestamp: string
-  type: "create" | "update" | "delete" | "comment" | "status" | "bonded" | "squashed" | "burned"
-  issue_id: string
-  title?: string
+  Timestamp: string
+  Type: "create" | "update" | "delete" | "comment" | "status" | "bonded" | "squashed" | "burned"
+  IssueID: string
+  Title?: string
   old_status?: string
   new_status?: string
   parent_id?: string
-  actor?: string
+  Actor?: string
 }
 
 type RPCRequest = {
@@ -187,11 +188,11 @@ export function watchForNewIssues(
       const mutations = await client.getMutations(lastTimestamp)
 
       for (const mutation of mutations) {
-        if (mutation.type === "create") {
+        if (mutation.Type === "create") {
           onNewIssue(mutation)
         }
         // Update timestamp to avoid re-processing
-        const mutationTime = new Date(mutation.timestamp).getTime()
+        const mutationTime = new Date(mutation.Timestamp).getTime()
         if (mutationTime > lastTimestamp) {
           lastTimestamp = mutationTime
         }
