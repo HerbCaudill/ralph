@@ -398,6 +398,20 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       return
     }
 
+    // Check if there are any tasks available before starting a round
+    // This avoids running Claude unnecessarily when there's no work to do
+    const currentProgress = getProgress(initialBeadsCount)
+    if (currentProgress.remaining === 0 && currentProgress.type !== "none") {
+      // No tasks available - go straight to watching if enabled
+      if (watch) {
+        setIsWatching(true)
+      } else {
+        exit()
+        process.exit(0)
+      }
+      return
+    }
+
     // Ensure .ralph directory exists and clear log file at start of each iteration
     mkdirSync(dirname(logFile), { recursive: true })
     writeFileSync(logFile, "")
