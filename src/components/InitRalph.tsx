@@ -48,7 +48,7 @@ export const InitRalph = () => {
         taskMode === "beads" ?
           [{ src: "prompt-beads.md", dest: "prompt.md" }]
         : [
-            { src: "prompt.md", dest: "prompt.md" },
+            { src: "prompt-todos.md", dest: "prompt.md" },
             { src: "todo.md", dest: "todo.md" },
           ]
 

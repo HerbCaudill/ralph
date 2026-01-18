@@ -71,7 +71,7 @@ describe("IterationRunner prompt content", () => {
     expect(content).toBe("Beads template content")
   })
 
-  it("falls back to prompt.md template when .ralph/todo.md exists", async () => {
+  it("falls back to prompt-todos.md template when .ralph/todo.md exists", async () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
     const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>
 
@@ -83,7 +83,7 @@ describe("IterationRunner prompt content", () => {
       // .ralph/todo.md exists
       if (path.includes("todo.md") && path.includes(".ralph")) return true
       // Template files exist
-      if (path.includes("templates") && path.includes("prompt.md")) return true
+      if (path.includes("templates") && path.includes("prompt-todos.md")) return true
       return false
     })
     mockReadFileSync.mockReturnValue("Todo template content")

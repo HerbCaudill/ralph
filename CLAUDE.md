@@ -129,7 +129,7 @@ Templates are copied from `templates/` directory on `ralph init`.
 If no `.ralph/prompt.md` exists, Ralph automatically uses the appropriate bundled template:
 
 - If `.beads` directory exists → uses `prompt-beads.md` (beads workflow)
-- If `.ralph/todo.md` exists → uses `prompt.md` (todo-based workflow)
+- If `.ralph/todo.md` exists → uses `prompt-todos.md` (todo-based workflow)
 - Otherwise → uses `prompt-beads.md` (default)
 
 ### The Contract with Claude CLI

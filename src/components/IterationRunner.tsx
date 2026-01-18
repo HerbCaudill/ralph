@@ -33,7 +33,7 @@ const templatesDir = join(__dirname, "..", "..", "templates")
  * Get the prompt content, falling back to templates if .ralph/prompt.md doesn't exist.
  * Uses the appropriate template based on the project setup:
  * - If .beads directory exists OR no .ralph/todo.md: use prompt-beads.md
- * - If .ralph/todo.md exists: use prompt.md (todo-based workflow)
+ * - If .ralph/todo.md exists: use prompt-todos.md (todo-based workflow)
  */
 export const getPromptContent = (): string => {
   // First, try to read from .ralph/prompt.md
@@ -43,7 +43,7 @@ export const getPromptContent = (): string => {
 
   // Fall back to templates based on project setup
   const useBeadsTemplate = existsSync(beadsDir) || !existsSync(todoFile)
-  const templateFile = useBeadsTemplate ? "prompt-beads.md" : "prompt.md"
+  const templateFile = useBeadsTemplate ? "prompt-beads.md" : "prompt-todos.md"
   const templatePath = join(templatesDir, templateFile)
 
   if (existsSync(templatePath)) {
