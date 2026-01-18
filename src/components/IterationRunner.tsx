@@ -579,15 +579,12 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
 
       {/* User message input - visible when running, hidden when watching for new issues */}
       {!isWatching && (
-        <Box
-          flexDirection="column"
-          marginTop={1}
-          borderStyle="round"
-          borderColor={isRunning ? "yellow" : "gray"}
-          paddingX={1}
-        >
+        <Box flexDirection="column" marginTop={1}>
+          <Text dimColor>
+            ───────────────────────────────────────────────────────────────────────────────
+          </Text>
           <Box>
-            <Text color={isRunning ? "yellow" : "gray"}>▸ </Text>
+            <Text color={isRunning ? "yellow" : "gray"}>❯ </Text>
             <EnhancedTextInput
               value={userMessageText}
               placeholder={
@@ -610,6 +607,9 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
               {userMessageStatus.text}
             </Text>
           )}
+          <Text dimColor>
+            ───────────────────────────────────────────────────────────────────────────────
+          </Text>
         </Box>
       )}
 
