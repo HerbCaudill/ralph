@@ -33,53 +33,135 @@ npx @herbcaudill/ralph
 
 1. **Initialize ralph in your project:**
 
-```bash
-npx @herbcaudill/ralph init
-```
+   ```bash
+   npx @herbcaudill/ralph init
+   ```
 
-This creates a `.ralph/` directory with template files:
-
-- `prompt.md` - Instructions for Claude during each iteration
-- `todo.md` - Your task list
-- `events.log` - Event log (auto-generated during runs)
+   This creates a `.ralph/` directory with template files:
+   - `prompt.md` - Instructions for Claude during each iteration
+   - `todo.md` - Your task list (optional if using bd)
+   - `events.log` - Event log (auto-generated during runs)
 
 2. **Customize the workflow:**
 
-Edit `.ralph/prompt.md` to match your project's workflow (build commands, test commands, etc.).
+   Edit `.ralph/prompt.md` to match your project's workflow (build commands, test commands, etc.).
 
 3. **Add tasks:**
 
-Edit `.ralph/todo.md` and add tasks for Claude to work on:
+   You can manage tasks using either a markdown file or **bd** (beads), a lightweight issue tracker.
 
-```markdown
-### To do
+   **Option A: Using `.ralph/todo.md`**
 
-- [ ] Add user authentication
-- [ ] Fix login form validation
-- [ ] Write tests for auth flow
+   ```markdown
+   ### To do
 
----
+   - [ ] Add user authentication
+   - [ ] Fix login form validation
+   - [ ] Write tests for auth flow
 
-### Done
-```
+   ---
+
+   ### Done
+   ```
+
+   **Option B: Using bd (recommended)**
+
+   ```bash
+   # Install bd
+   brew install herbcaudill/tap/bd
+
+   # Initialize in your project
+   bd init
+
+   # Create issues
+   bd create "Add user authentication"
+   bd create "Fix login form validation"
+   bd create "Write tests for auth flow"
+
+   # View ready work
+   bd ready
+   ```
 
 4. **Run ralph:**
 
-```bash
-npx ralph          # Run 10 iterations (default)
-npx ralph 5        # Run 5 iterations
-```
+   ```bash
+   npx ralph          # Run 10 iterations (default)
+   npx ralph 5        # Run 5 iterations
+   npx ralph --watch  # Run and watch for new issues
+   ```
 
 ## Commands
 
-| Command                 | Description                                |
-| ----------------------- | ------------------------------------------ |
-| `ralph`                 | Run 10 iterations (default)                |
-| `ralph <n>`             | Run specified number of iterations         |
-| `ralph init`            | Initialize .ralph directory with templates |
-| `ralph --replay`        | Replay events from `.ralph/events.log`     |
-| `ralph --replay <file>` | Replay events from custom log file         |
-| `ralph --help`          | Show help                                  |
+| Command         | Description                                |
+| --------------- | ------------------------------------------ |
+| `ralph`         | Run 10 iterations (default)                |
+| `ralph <n>`     | Run specified number of iterations         |
+| `ralph init`    | Initialize .ralph directory with templates |
+| `ralph --watch` | Watch for new issues after completion      |
+| `ralph --help`  | Show help                                  |
+
+## Using bd for Issue Tracking
+
+Ralph works great with **bd** (beads), a lightweight issue tracker with first-class dependency support.
+
+### Setup
+
+```bash
+# Install bd
+brew install herbcaudill/tap/bd
+
+# Initialize in your project
+bd init
+```
+
+### Common bd Commands
+
+```bash
+# Create issues
+bd create "Add user authentication"
+bd q "Quick issue capture"              # Creates issue, outputs only ID
+
+# View issues
+bd ready                                 # Show issues ready to work on
+bd show <id>                             # View issue details
+bd list                                  # List all issues
+
+# Update issues
+bd update <id> --status=in_progress      # Mark as in progress
+bd close <id>                            # Close an issue
+
+# Dependencies
+bd dep <id> --on <other-id>              # Add dependency
+bd graph                                 # View dependency graph
+
+# Sync with git
+bd sync                                  # Sync issues with remote
+```
+
+### Example Workflow with bd
+
+```bash
+# Create a few issues
+bd create "Implement login form"
+bd create "Add form validation"
+bd create "Write login tests"
+
+# Add dependencies
+bd dep r-002 --on r-001                  # Validation depends on login form
+bd dep r-003 --on r-002                  # Tests depend on validation
+
+# See what's ready to work on
+bd ready
+
+# Start working on an issue
+bd update r-001 --status=in_progress
+
+# Run ralph to work through issues
+npx ralph --watch                        # Runs and watches for new issues
+
+# Or run a fixed number of iterations
+npx ralph 5
+```
 
 ## Configuration
 
