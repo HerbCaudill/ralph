@@ -12,7 +12,7 @@ import { createDebugLogger } from "../lib/debug.js"
 
 const log = createDebugLogger("iteration")
 
-const logFile = join(process.cwd(), ".ralph", "events.log")
+const logFile = join(process.cwd(), ".ralph", "events.jsonl")
 const ralphDir = join(process.cwd(), ".ralph")
 const promptFile = join(ralphDir, "prompt.md")
 const todoFile = join(ralphDir, "todo.md")

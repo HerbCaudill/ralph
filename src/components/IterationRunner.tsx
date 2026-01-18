@@ -28,7 +28,7 @@ import { useTerminalSize } from "../lib/useTerminalSize.js"
 
 const log = createDebugLogger("iteration")
 
-const logFile = join(process.cwd(), ".ralph", "events.log")
+const logFile = join(process.cwd(), ".ralph", "events.jsonl")
 const ralphDir = join(process.cwd(), ".ralph")
 const promptFile = join(ralphDir, "prompt.md")
 const todoFile = join(ralphDir, "todo.md")
@@ -484,8 +484,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
           },
         })) {
           log(`Received message type: ${message.type}`)
-          // Log raw message to file
-          appendFileSync(logFile, JSON.stringify(message, null, 2) + "\n\n")
+          // Log raw message to file (JSONL format - one JSON object per line)
+          appendFileSync(logFile, JSON.stringify(message) + "\n")
 
           // Convert to event format for display
           const event = sdkMessageToEvent(message)

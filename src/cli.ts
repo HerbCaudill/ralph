@@ -28,7 +28,7 @@ export const program = new Command()
       options.replay !== undefined ?
         typeof options.replay === "string" ?
           options.replay
-        : join(process.cwd(), ".ralph", "events.log")
+        : join(process.cwd(), ".ralph", "events.jsonl")
       : undefined
 
     const claudeVersion = getClaudeVersion()

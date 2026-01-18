@@ -103,7 +103,7 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
    - Reads prompt from `.ralph/prompt.md` or falls back to bundled templates
    - Spawns `claude` CLI with `--output-format stream-json`
    - Parses streaming JSON events line-by-line
-   - Appends events to `.ralph/events.log`
+   - Appends events to `.ralph/events.jsonl`
    - Detects `<promise>COMPLETE</promise>` to exit early (or enter watch mode if `--watch`)
    - Recursively runs next iteration after completion
    - In watch mode: polls beads daemon for new issues via Unix socket RPC
@@ -122,7 +122,7 @@ Ralph initializes projects with template files in `.ralph/`:
 
 - `prompt.md` - Instructions given to Claude each iteration (build commands, workflow) **(optional - falls back to bundled templates)**
 - `todo.md` - Task list in markdown checkbox format **(optional)**
-- `events.log` - JSON event stream for debugging/replay (auto-generated during runs)
+- `events.jsonl` - JSONL event stream for debugging/replay (auto-generated during runs)
 
 Templates are copied from `templates/` directory on `ralph init`.
 
@@ -186,7 +186,7 @@ src/
     EventDisplay.tsx        # Renders event stream
     eventToBlocks.ts        # Parses events → display blocks
     ToolUse.tsx            # Renders individual tool calls
-    ReplayLog.tsx          # Replays events.log files
+    ReplayLog.tsx          # Replays events.jsonl files
     Header.tsx             # Title banner
     StreamingText.tsx      # Streaming text display
   lib/

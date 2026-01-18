@@ -130,7 +130,7 @@ describe("Ralph E2E Tests", () => {
 
       // May exit with 0 (if COMPLETE) or continue (normal iteration end)
       expect(result.exitCode === 0 || result.exitCode === null).toBe(true)
-      expect(existsSync(join(workspacePath, ".ralph/events.log"))).toBe(true)
+      expect(existsSync(join(workspacePath, ".ralph/events.jsonl"))).toBe(true)
     }, 120000)
 
     it("runs multiple iterations", async () => {
@@ -145,7 +145,7 @@ describe("Ralph E2E Tests", () => {
         testName: "ralph-three-iterations",
       })
 
-      expect(existsSync(join(workspacePath, ".ralph/events.log"))).toBe(true)
+      expect(existsSync(join(workspacePath, ".ralph/events.jsonl"))).toBe(true)
 
       // Check if todo.md was modified
       const todoContent = readFileSync(join(workspacePath, ".ralph/todo.md"), "utf-8")

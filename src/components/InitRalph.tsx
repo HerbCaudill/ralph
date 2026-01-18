@@ -75,19 +75,19 @@ export const InitRalph = () => {
           }
         }
 
-        // Add events.log to .gitignore
+        // Add events.jsonl to .gitignore
         const gitignorePath = join(process.cwd(), ".gitignore")
-        const eventsLogEntry = ".ralph/events.log"
+        const eventsLogEntry = ".ralph/events.jsonl"
         if (existsSync(gitignorePath)) {
           const content = readFileSync(gitignorePath, "utf-8")
           if (!content.includes(eventsLogEntry)) {
             const newline = content.endsWith("\n") ? "" : "\n"
             appendFileSync(gitignorePath, `${newline}${eventsLogEntry}\n`)
-            created.push("(added .ralph/events.log to .gitignore)")
+            created.push("(added .ralph/events.jsonl to .gitignore)")
           }
         } else {
           writeFileSync(gitignorePath, `${eventsLogEntry}\n`)
-          created.push("(created .gitignore with .ralph/events.log)")
+          created.push("(created .gitignore with .ralph/events.jsonl)")
         }
 
         setCreatedFiles(created)

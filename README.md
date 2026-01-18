@@ -40,7 +40,7 @@ npx @herbcaudill/ralph
    This creates a `.ralph/` directory with template files:
    - `prompt.md` - Instructions for Claude during each iteration
    - `todo.md` - Your task list (optional if using bd)
-   - `events.log` - Event log (auto-generated during runs)
+   - `events.jsonl` - Event log in JSONL format (auto-generated during runs)
 
 2. **Customize the workflow:**
 
@@ -141,7 +141,7 @@ Ralph is a thin wrapper around the Claude CLI that:
 1. **Spawns Claude CLI** with your project context (prompt, todo, progress files)
 2. **Captures output** as streaming JSON events
 3. **Processes events** to display tool usage (Read, Edit, Bash, etc.) in a readable format
-4. **Logs everything** to `events.log` for debugging
+4. **Logs everything** to `events.jsonl` for debugging
 5. **Detects completion** when Claude outputs `<promise>COMPLETE</promise>`
 6. **Recursively runs** next iteration until count reached or todo list complete
 
