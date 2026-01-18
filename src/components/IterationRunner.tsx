@@ -466,8 +466,11 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     const todoExists = existsSync(todoFile)
     setHasTodoFile(todoExists)
     const todoContent = todoExists ? readFileSync(todoFile, "utf-8") : ""
+    const roundHeader = `# Ralph, round ${currentIteration}\n\n`
     const fullPrompt =
-      todoContent ? `${promptContent}\n\n## Current Todo List\n\n${todoContent}` : promptContent
+      todoContent ?
+        `${roundHeader}${promptContent}\n\n## Current Todo List\n\n${todoContent}`
+      : `${roundHeader}${promptContent}`
 
     const abortController = new AbortController()
     setIsRunning(true)
