@@ -577,39 +577,41 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         </Box>
       )}
 
-      {/* User message input - always visible above footer */}
-      <Box
-        flexDirection="column"
-        marginTop={1}
-        borderStyle="round"
-        borderColor={isRunning ? "yellow" : "gray"}
-        paddingX={1}
-      >
-        <Box>
-          <Text color={isRunning ? "yellow" : "gray"}>▸ </Text>
-          <EnhancedTextInput
-            value={userMessageText}
-            placeholder={
-              isRunning ? "Type a message for Ralph..." : "Waiting for Ralph to start..."
-            }
-            onChange={setUserMessageText}
-            onSubmit={handleUserMessageSubmit}
-            focus={isRunning && !isAddingTodo}
-          />
+      {/* User message input - visible when running, hidden when watching for new issues */}
+      {!isWatching && (
+        <Box
+          flexDirection="column"
+          marginTop={1}
+          borderStyle="round"
+          borderColor={isRunning ? "yellow" : "gray"}
+          paddingX={1}
+        >
+          <Box>
+            <Text color={isRunning ? "yellow" : "gray"}>▸ </Text>
+            <EnhancedTextInput
+              value={userMessageText}
+              placeholder={
+                isRunning ? "Type a message for Ralph..." : "Waiting for Ralph to start..."
+              }
+              onChange={setUserMessageText}
+              onSubmit={handleUserMessageSubmit}
+              focus={isRunning && !isAddingTodo}
+            />
+          </Box>
+          {userMessageStatus && (
+            <Text
+              color={
+                userMessageStatus.type === "success" ? "green"
+                : userMessageStatus.type === "error" ?
+                  "red"
+                : "yellow"
+              }
+            >
+              {userMessageStatus.text}
+            </Text>
+          )}
         </Box>
-        {userMessageStatus && (
-          <Text
-            color={
-              userMessageStatus.type === "success" ? "green"
-              : userMessageStatus.type === "error" ?
-                "red"
-              : "yellow"
-            }
-          >
-            {userMessageStatus.text}
-          </Text>
-        )}
-      </Box>
+      )}
 
       {/* Dynamic footer with spinner and progress bar */}
       <Box marginTop={1} justifyContent="space-between">
