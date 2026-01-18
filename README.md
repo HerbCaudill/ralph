@@ -48,7 +48,7 @@ npx @herbcaudill/ralph
 
 3. **Add tasks:**
 
-   You can manage tasks using either a markdown file or **bd** (beads), a lightweight issue tracker.
+   You can manage tasks using either a markdown file or [beads](https://github.com/steveyegge/beads), a lightweight issue tracker.
 
    **Option A: Using `.ralph/todo.md`**
 
@@ -64,7 +64,7 @@ npx @herbcaudill/ralph
    ### Done
    ```
 
-   **Option B: Using bd (recommended)**
+   **Option B: Using beads (recommended)**
 
    ```bash
    # Install bd
@@ -100,69 +100,6 @@ npx @herbcaudill/ralph
 | `ralph --watch` | Watch for new issues after completion      |
 | `ralph --help`  | Show help                                  |
 
-## Using bd for Issue Tracking
-
-Ralph works great with **bd** (beads), a lightweight issue tracker with first-class dependency support.
-
-### Setup
-
-```bash
-# Install bd
-brew install herbcaudill/tap/bd
-
-# Initialize in your project
-bd init
-```
-
-### Common bd Commands
-
-```bash
-# Create issues
-bd create "Add user authentication"
-bd q "Quick issue capture"              # Creates issue, outputs only ID
-
-# View issues
-bd ready                                 # Show issues ready to work on
-bd show <id>                             # View issue details
-bd list                                  # List all issues
-
-# Update issues
-bd update <id> --status=in_progress      # Mark as in progress
-bd close <id>                            # Close an issue
-
-# Dependencies
-bd dep <id> --on <other-id>              # Add dependency
-bd graph                                 # View dependency graph
-
-# Sync with git
-bd sync                                  # Sync issues with remote
-```
-
-### Example Workflow with bd
-
-```bash
-# Create a few issues
-bd create "Implement login form"
-bd create "Add form validation"
-bd create "Write login tests"
-
-# Add dependencies
-bd dep r-002 --on r-001                  # Validation depends on login form
-bd dep r-003 --on r-002                  # Tests depend on validation
-
-# See what's ready to work on
-bd ready
-
-# Start working on an issue
-bd update r-001 --status=in_progress
-
-# Run ralph to work through issues
-npx ralph --watch                        # Runs and watches for new issues
-
-# Or run a fixed number of iterations
-npx ralph 5
-```
-
 ## Watch mode
 
 Watch mode (`--watch`) keeps ralph running after completing all tasks, waiting for new issues to be added:
@@ -184,8 +121,6 @@ Watch mode requires **bd** (beads) for issue tracking—it watches for mutations
 
 ## Configuration
 
-### Template files
-
 **`.ralph/prompt.md`**
 
 Instructions for Claude's workflow. Customize this for your project:
@@ -194,18 +129,6 @@ Instructions for Claude's workflow. Customize this for your project:
 - Test commands
 - Project-specific conventions
 - Commit message style
-
-**`.ralph/todo.md`**
-
-Your task list with priority and completion status. Tasks can be:
-
-- Simple one-liners: `- [ ] Fix header alignment`
-- Detailed descriptions with acceptance criteria
-- Broken down into subtasks
-
-**`.ralph/events.log`**
-
-Machine-readable log of all Claude interactions (JSON). Use for debugging.
 
 ### Customizing the prompt
 
