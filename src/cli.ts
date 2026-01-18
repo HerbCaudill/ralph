@@ -27,6 +27,9 @@ export const program = new Command()
     const ralphVersion = packageJson.version
     const watch = options.watch === true
 
+    // Clear the screen on startup
+    process.stdout.write("\x1B[2J\x1B[H")
+
     render(React.createElement(App, { iterations, replayFile, claudeVersion, ralphVersion, watch }))
   })
 
