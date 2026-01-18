@@ -9,7 +9,7 @@ https://github.com/user-attachments/assets/e8d89a33-8db5-4d72-9c97-927558f92516
 
 ## Overview
 
-Ralph spawns multiple Claude CLI sessions that:
+Ralph spawns individual Claude CLI sessions that:
 
 1. Check project health (build, tests)
 2. Select and work on the highest-priority task
