@@ -74,6 +74,9 @@ type IterationEvents = {
 // as it builds up. Each snapshot may contain different parts of the message content,
 // so we need to merge them and deduplicate.
 const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] => {
+  const blocks: ContentBlock[] = []
+
+  // First pass: collect all assistant message content and track message order
   const assistantEvents = events.filter(event => event.type === "assistant")
 
   // Collect all content blocks from all snapshots of the same message
@@ -151,7 +154,34 @@ const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] =
     }
   })
 
-  return mergedEvents.flatMap(event => eventToBlocks(event))
+  const assistantBlocks = mergedEvents.flatMap(event => eventToBlocks(event))
+
+  // Second pass: process events in order, including user messages
+  // Track which user messages and assistant messages we've already seen
+  const processedUserIds = new Set<string>()
+  const processedAssistantIds = new Set<string>()
+
+  for (const event of events) {
+    if (event.type === "user") {
+      const message = event.message as Record<string, unknown> | undefined
+      const messageId = (message?.id as string | undefined) ?? `user-${Date.now()}`
+      if (!processedUserIds.has(messageId)) {
+        processedUserIds.add(messageId)
+        blocks.push(...eventToBlocks(event))
+      }
+    } else if (event.type === "assistant") {
+      const message = event.message as Record<string, unknown> | undefined
+      const messageId = message?.id as string | undefined
+      if (messageId && !processedAssistantIds.has(messageId)) {
+        processedAssistantIds.add(messageId)
+        // Find the merged version of this message
+        const merged = assistantBlocks.filter(b => b.id.startsWith(messageId))
+        blocks.push(...merged)
+      }
+    }
+  }
+
+  return blocks
 }
 
 // Static item representing either header, iteration header, or content block
