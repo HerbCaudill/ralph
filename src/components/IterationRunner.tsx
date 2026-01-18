@@ -338,6 +338,12 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     // Start watching for new issues
     const cleanup = watchForNewIssues(issue => {
       setDetectedIssue(issue)
+      // Increment the remaining count in progressData when a new issue is created
+      setProgressData(prev => ({
+        ...prev,
+        remaining: prev.remaining + 1,
+        total: Math.max(prev.total, prev.remaining + 1),
+      }))
       // Brief pause to show the detected issue, then resume
       setTimeout(() => {
         setIsWatching(false)
