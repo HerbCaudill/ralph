@@ -165,4 +165,106 @@ describe("MessageQueue hang scenarios", () => {
     // Clean up
     queue.close()
   })
+
+  it("should close queue when abort signal is triggered", async () => {
+    const queue = new MessageQueue()
+    const msg = createUserMessage("test")
+    queue.push(msg)
+
+    const abortController = new AbortController()
+
+    // Set up abort listener to close queue
+    abortController.signal.addEventListener("abort", () => {
+      queue.close()
+    })
+
+    const iterator = queue[Symbol.asyncIterator]()
+
+    // Get the first message
+    const result1 = await iterator.next()
+    expect(result1.value).toEqual(msg)
+
+    // Start waiting for next (which would hang)
+    const nextPromise = iterator.next()
+    let resolved = false
+    nextPromise.then(() => {
+      resolved = true
+    })
+
+    // Abort should close the queue and resolve pending iterators
+    abortController.abort()
+
+    const result2 = await nextPromise
+    expect(result2.done).toBe(true)
+    expect(resolved).toBe(true)
+  })
+
+  it("should work with AbortSignal.timeout pattern", async () => {
+    const queue = new MessageQueue()
+    const msg = createUserMessage("test")
+    queue.push(msg)
+
+    // Create an abort signal that times out after 50ms
+    const signal = AbortSignal.timeout(50)
+
+    // Set up abort listener to close queue
+    signal.addEventListener("abort", () => {
+      queue.close()
+    })
+
+    const iterator = queue[Symbol.asyncIterator]()
+
+    // Get the first message
+    const result1 = await iterator.next()
+    expect(result1.value).toEqual(msg)
+
+    // Start waiting for next (which would hang without timeout)
+    const result2 = await iterator.next()
+
+    // The timeout should have triggered, closing the queue
+    expect(result2.done).toBe(true)
+  })
+
+  it("should handle multiple pending resolvers with abort", async () => {
+    const queue = new MessageQueue()
+    const abortController = new AbortController()
+
+    abortController.signal.addEventListener("abort", () => {
+      queue.close()
+    })
+
+    const iterator = queue[Symbol.asyncIterator]()
+
+    // Start multiple pending next() calls
+    const promise1 = iterator.next()
+    const promise2 = iterator.next()
+    const promise3 = iterator.next()
+
+    // All should be pending
+    let resolved1 = false,
+      resolved2 = false,
+      resolved3 = false
+    promise1.then(() => {
+      resolved1 = true
+    })
+    promise2.then(() => {
+      resolved2 = true
+    })
+    promise3.then(() => {
+      resolved3 = true
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(resolved1).toBe(false)
+    expect(resolved2).toBe(false)
+    expect(resolved3).toBe(false)
+
+    // Abort should resolve all pending promises
+    abortController.abort()
+
+    const [result1, result2, result3] = await Promise.all([promise1, promise2, promise3])
+    expect(result1.done).toBe(true)
+    expect(result2.done).toBe(true)
+    expect(result3.done).toBe(true)
+  })
 })
