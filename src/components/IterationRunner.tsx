@@ -203,7 +203,6 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     type: "success" | "error"
     text: string
   } | null>(null)
-  const [isAddingUserMessage, setIsAddingUserMessage] = useState(false)
   const [userMessageText, setUserMessageText] = useState("")
   const [userMessageStatus, setUserMessageStatus] = useState<{
     type: "success" | "error" | "pending"
@@ -259,11 +258,10 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     }
   }
 
-  // Handle Escape to send a message to Claude
+  // Handle submitting a user message to Claude
   const handleUserMessageSubmit = (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) {
-      setIsAddingUserMessage(false)
       setUserMessageText("")
       return
     }
@@ -293,35 +291,25 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     }
 
     setUserMessageText("")
-    setIsAddingUserMessage(false)
     // Clear status message after 3 seconds
     setTimeout(() => setUserMessageStatus(null), 3000)
   }
 
-  // Handle keyboard input for Ctrl-T (todo) and Escape (message)
+  // Handle keyboard input for Ctrl-T (todo) and Escape (cancel todo input)
   useInput(
     (input, key) => {
       // Ctrl-T to start adding a todo (only if todo.md exists)
-      if (key.ctrl && input === "t" && hasTodoFile && !isAddingUserMessage) {
+      if (key.ctrl && input === "t" && hasTodoFile) {
         setIsAddingTodo(true)
         setTodoText("")
         setTodoMessage(null)
       }
-      // Escape to toggle message input or cancel todo input
+      // Escape to cancel todo input
       if (key.escape) {
         if (isAddingTodo) {
           // Cancel todo input
           setIsAddingTodo(false)
           setTodoText("")
-        } else if (isAddingUserMessage) {
-          // Cancel message input
-          setIsAddingUserMessage(false)
-          setUserMessageText("")
-        } else if (isRunning) {
-          // Open message input (only while running)
-          setIsAddingUserMessage(true)
-          setUserMessageText("")
-          setUserMessageStatus(null)
         }
       }
     },
@@ -589,22 +577,27 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         </Box>
       )}
 
-      {/* User message input (shown when Ctrl-M is pressed) */}
-      {isAddingUserMessage && (
-        <Box flexDirection="column" marginTop={1}>
-          <Text color="cyan">Message to Claude:</Text>
+      {/* User message input - always visible above footer */}
+      <Box
+        flexDirection="column"
+        marginTop={1}
+        borderStyle="round"
+        borderColor={isRunning ? "cyan" : "gray"}
+        paddingX={1}
+      >
+        <Box>
+          <Text color={isRunning ? "cyan" : "gray"}>📝 </Text>
           <EnhancedTextInput
             value={userMessageText}
+            placeholder={
+              isRunning ? "Type a message to Claude..." : "Waiting for Claude to start..."
+            }
             onChange={setUserMessageText}
             onSubmit={handleUserMessageSubmit}
+            focus={isRunning && !isAddingTodo}
           />
-          <Text dimColor>(Enter to send, Esc to cancel)</Text>
         </Box>
-      )}
-
-      {/* User message status */}
-      {userMessageStatus && (
-        <Box marginTop={1}>
+        {userMessageStatus && (
           <Text
             color={
               userMessageStatus.type === "success" ? "green"
@@ -615,8 +608,8 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
           >
             {userMessageStatus.text}
           </Text>
-        </Box>
-      )}
+        )}
+      </Box>
 
       {/* Dynamic footer with spinner and progress bar */}
       <Box marginTop={1} justifyContent="space-between">
