@@ -15,6 +15,7 @@ import { formatContentBlock } from "../lib/formatContentBlock.js"
 import { addTodo } from "../lib/addTodo.js"
 import { getProgress, getInitialBeadsCount, type ProgressData } from "../lib/getProgress.js"
 import { ProgressBar } from "./ProgressBar.js"
+import { watchForNewIssues, BeadsClient, type MutationEvent } from "../lib/beadsClient.js"
 
 const logFile = join(process.cwd(), ".ralph", "events.log")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -133,7 +134,7 @@ type StaticItem =
   | { type: "iteration"; iteration: number; key: string }
   | { type: "block"; block: ContentBlock; key: string }
 
-export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }: Props) => {
+export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, watch }: Props) => {
   const { exit } = useApp()
   const [currentIteration, setCurrentIteration] = useState(1)
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
@@ -153,6 +154,9 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
   const [progressData, setProgressData] = useState<ProgressData>(() =>
     getProgress(getInitialBeadsCount()),
   )
+  const [isWatching, setIsWatching] = useState(false)
+  const [detectedIssue, setDetectedIssue] = useState<MutationEvent | null>(null)
+  const watchCleanupRef = useRef<(() => void) | null>(null)
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -246,6 +250,34 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
       setProgressData(getProgress(initialBeadsCount))
     }
   }, [currentIteration, isRunning, initialBeadsCount])
+
+  // Watch for new issues when in watch mode
+  useEffect(() => {
+    if (!isWatching) return
+
+    // Start watching for new issues
+    const cleanup = watchForNewIssues(issue => {
+      setDetectedIssue(issue)
+      // Brief pause to show the detected issue, then resume
+      setTimeout(() => {
+        setIsWatching(false)
+        setDetectedIssue(null)
+        // Reset rendered blocks for new cycle
+        renderedBlocksRef.current.clear()
+        // Reset iteration ref so new header is shown
+        lastIterationRef.current = 0
+        // Start fresh iteration cycle
+        setCurrentIteration(1)
+      }, 1500)
+    })
+
+    watchCleanupRef.current = cleanup
+
+    return () => {
+      cleanup()
+      watchCleanupRef.current = null
+    }
+  }, [isWatching])
 
   // Convert events to static items as they arrive
   useEffect(() => {
@@ -358,8 +390,13 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
 
         // Check for completion
         if (finalResult.includes("<promise>COMPLETE</promise>")) {
-          exit()
-          process.exit(0)
+          if (watch) {
+            // Enter watch mode instead of exiting
+            setIsWatching(true)
+          } else {
+            exit()
+            process.exit(0)
+          }
           return
         }
 
@@ -489,7 +526,18 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion }
 
       {/* Dynamic footer with spinner and progress bar */}
       <Box marginTop={1} justifyContent="space-between">
-        {isRunning ?
+        {isWatching ?
+          detectedIssue ?
+            <Text color="green">
+              <Spinner type="dots" /> New issue:{" "}
+              <Text color="yellow">{detectedIssue.issue_id}</Text>
+              {detectedIssue.title ? ` - ${detectedIssue.title}` : ""}
+            </Text>
+          : <Text color="magenta">
+              <Spinner type="dots" /> Watching for new issues...
+            </Text>
+
+        : isRunning ?
           <Text color="cyan">
             <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
             (max {totalIterations})
@@ -507,4 +555,5 @@ type Props = {
   totalIterations: number
   claudeVersion: string
   ralphVersion: string
+  watch?: boolean
 }

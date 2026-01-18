@@ -2,7 +2,7 @@ import React from "react"
 import { IterationRunner } from "./IterationRunner.js"
 import { ReplayLog } from "./ReplayLog.js"
 
-export const App = ({ iterations, replayFile, claudeVersion, ralphVersion }: Props) => {
+export const App = ({ iterations, replayFile, claudeVersion, ralphVersion, watch }: Props) => {
   if (replayFile) {
     return <ReplayLog filePath={replayFile} />
   }
@@ -12,6 +12,7 @@ export const App = ({ iterations, replayFile, claudeVersion, ralphVersion }: Pro
       totalIterations={iterations}
       claudeVersion={claudeVersion}
       ralphVersion={ralphVersion}
+      watch={watch}
     />
   )
 }
@@ -21,4 +22,5 @@ type Props = {
   replayFile?: string
   claudeVersion: string
   ralphVersion: string
+  watch?: boolean
 }

@@ -6,8 +6,9 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
 
 ### Core Flow
 
-1. **CLI Entry** (`cli.ts`) → Defines Commander.js program with two modes:
+1. **CLI Entry** (`cli.ts`) → Defines Commander.js program with modes:
    - Main mode: Run N iterations (`ralph [iterations]`)
+   - Watch mode: Watch for new beads issues after completion (`ralph --watch`)
    - Init mode: Set up `.ralph/` directory (`ralph init`)
    - Replay mode: Replay events from log (`ralph --replay [file]`)
 
@@ -16,8 +17,9 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
    - Spawns `claude` CLI with `--output-format stream-json`
    - Parses streaming JSON events line-by-line
    - Appends events to `.ralph/events.log`
-   - Detects `<promise>COMPLETE</promise>` to exit early
+   - Detects `<promise>COMPLETE</promise>` to exit early (or enter watch mode if `--watch`)
    - Recursively runs next iteration after completion
+   - In watch mode: polls beads daemon for new issues via Unix socket RPC
 
 3. **Event Processing** (`eventToBlocks.ts`) → Transforms raw JSON events into display blocks:
    - Extracts tool calls (Read, Edit, Bash, Grep, Glob, TodoWrite, etc.)
@@ -95,6 +97,7 @@ src/
     Header.tsx             # Title banner
     StreamingText.tsx      # Streaming text display
   lib/
+    beadsClient.ts         # Unix socket RPC client for beads daemon
     rel.ts                 # Convert absolute → relative paths
     shortenTempPaths.ts    # Shorten temp paths in commands
 test/

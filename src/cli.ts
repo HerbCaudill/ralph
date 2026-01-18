@@ -14,6 +14,7 @@ export const program = new Command()
   .version(packageJson.version)
   .argument("[iterations]", "number of iterations to run", val => parseInt(val, 10), 30)
   .option("--replay [file]", "replay events from log file")
+  .option("--watch", "watch for new beads issues after completion")
   .action((iterations, options) => {
     const replayFile =
       options.replay !== undefined ?
@@ -24,8 +25,9 @@ export const program = new Command()
 
     const claudeVersion = getClaudeVersion()
     const ralphVersion = packageJson.version
+    const watch = options.watch === true
 
-    render(React.createElement(App, { iterations, replayFile, claudeVersion, ralphVersion }))
+    render(React.createElement(App, { iterations, replayFile, claudeVersion, ralphVersion, watch }))
   })
 
 program
