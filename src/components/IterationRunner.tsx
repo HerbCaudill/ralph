@@ -149,6 +149,12 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     type: "success" | "error"
     text: string
   } | null>(null)
+  const [isAddingUserMessage, setIsAddingUserMessage] = useState(false)
+  const [userMessageText, setUserMessageText] = useState("")
+  const [userMessageStatus, setUserMessageStatus] = useState<{
+    type: "success" | "error" | "pending"
+    text: string
+  } | null>(null)
   const [hasTodoFile, setHasTodoFile] = useState(false)
   const [initialBeadsCount] = useState(() => getInitialBeadsCount())
   const [progressData, setProgressData] = useState<ProgressData>(() =>
@@ -222,19 +228,46 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     }
   }
 
-  // Handle keyboard input for Ctrl-T
+  // Handle Ctrl+M to send a message to Claude
+  const handleUserMessageSubmit = (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) {
+      setIsAddingUserMessage(false)
+      setUserMessageText("")
+      return
+    }
+
+    // For now, just show a pending message - actual SDK integration is in r-jwk.4
+    setUserMessageStatus({ type: "pending", text: `📨 "${trimmed}" (queued)` })
+    setUserMessageText("")
+    setIsAddingUserMessage(false)
+    // Clear status message after 3 seconds
+    setTimeout(() => setUserMessageStatus(null), 3000)
+  }
+
+  // Handle keyboard input for Ctrl-T (todo) and Ctrl-M (message)
   useInput(
     (input, key) => {
       // Ctrl-T to start adding a todo (only if todo.md exists)
-      if (key.ctrl && input === "t" && hasTodoFile) {
+      if (key.ctrl && input === "t" && hasTodoFile && !isAddingUserMessage) {
         setIsAddingTodo(true)
         setTodoText("")
         setTodoMessage(null)
       }
-      // Escape to cancel adding a todo
+      // Ctrl-M to start adding a message to Claude (only while running)
+      if (key.ctrl && input === "m" && isRunning && !isAddingTodo) {
+        setIsAddingUserMessage(true)
+        setUserMessageText("")
+        setUserMessageStatus(null)
+      }
+      // Escape to cancel adding a todo or message
       if (key.escape && isAddingTodo) {
         setIsAddingTodo(false)
         setTodoText("")
+      }
+      if (key.escape && isAddingUserMessage) {
+        setIsAddingUserMessage(false)
+        setUserMessageText("")
       }
     },
     { isActive: stdinSupportsRawMode && !needsInit },
@@ -521,6 +554,35 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       {todoMessage && (
         <Box marginTop={1}>
           <Text color={todoMessage.type === "success" ? "green" : "red"}>{todoMessage.text}</Text>
+        </Box>
+      )}
+
+      {/* User message input (shown when Ctrl-M is pressed) */}
+      {isAddingUserMessage && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text color="cyan">Message to Claude:</Text>
+          <EnhancedTextInput
+            value={userMessageText}
+            onChange={setUserMessageText}
+            onSubmit={handleUserMessageSubmit}
+          />
+          <Text dimColor>(Enter to send, Esc to cancel)</Text>
+        </Box>
+      )}
+
+      {/* User message status */}
+      {userMessageStatus && (
+        <Box marginTop={1}>
+          <Text
+            color={
+              userMessageStatus.type === "success" ? "green"
+              : userMessageStatus.type === "error" ?
+                "red"
+              : "yellow"
+            }
+          >
+            {userMessageStatus.text}
+          </Text>
         </Box>
       )}
 
