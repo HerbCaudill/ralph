@@ -282,7 +282,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
       }
       setEvents(prev => [...prev, displayEvent])
 
-      setUserMessageStatus({ type: "success", text: `📨 Sent: "${trimmed}"` })
+      // No confirmation message - the user message appears directly in the stream
     } else {
       setUserMessageStatus({
         type: "error",
@@ -582,11 +582,11 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         flexDirection="column"
         marginTop={1}
         borderStyle="round"
-        borderColor={isRunning ? "cyan" : "gray"}
+        borderColor={isRunning ? "yellow" : "gray"}
         paddingX={1}
       >
         <Box>
-          <Text color={isRunning ? "cyan" : "gray"}>📝 </Text>
+          <Text color={isRunning ? "yellow" : "gray"}>▸ </Text>
           <EnhancedTextInput
             value={userMessageText}
             placeholder={

@@ -49,7 +49,7 @@ const formatToolUse = (name: string, arg?: string): string => {
  * Format a user message
  */
 const formatUserMessage = (content: string): string => {
-  return chalk.green(`📨 You: ${content}`)
+  return chalk.green(content)
 }
 
 /**
