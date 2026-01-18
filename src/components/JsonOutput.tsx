@@ -10,6 +10,7 @@ import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { getProgress, captureStartupSnapshot, type StartupSnapshot } from "../lib/getProgress.js"
 import { createDebugLogger } from "../lib/debug.js"
 import { getNextLogFile } from "../lib/getNextLogFile.js"
+import { createStdinCommandHandler } from "../lib/StdinCommandHandler.js"
 
 const log = createDebugLogger("iteration")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -58,6 +59,38 @@ export const JsonOutput = ({ totalIterations }: Props) => {
   const messageQueueRef = useRef<MessageQueue | null>(null)
   // Log file path for this run (set once at startup, persisted across iterations)
   const logFileRef = useRef<string | null>(null)
+  const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current iteration
+  const stopAfterCurrentRef = useRef(false) // Ref to access in async callbacks
+  const stdinCleanupRef = useRef<(() => void) | null>(null)
+
+  // Keep stopAfterCurrent ref in sync with state
+  useEffect(() => {
+    stopAfterCurrentRef.current = stopAfterCurrent
+  }, [stopAfterCurrent])
+
+  // Set up stdin command handler for receiving commands via piped input
+  useEffect(() => {
+    const cleanup = createStdinCommandHandler(() => ({
+      messageQueue: messageQueueRef.current,
+      onStop: () => {
+        setStopAfterCurrent(true)
+        outputEvent({ type: "ralph_stop_requested" })
+      },
+      onMessage: (text: string) => {
+        // Output event showing we received a message command
+        outputEvent({
+          type: "ralph_message_received",
+          text: text.slice(0, 100) + (text.length > 100 ? "..." : ""),
+        })
+      },
+    }))
+    stdinCleanupRef.current = cleanup
+
+    return () => {
+      cleanup()
+      stdinCleanupRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (currentIteration > totalIterations) {
@@ -162,6 +195,15 @@ export const JsonOutput = ({ totalIterations }: Props) => {
           type: "ralph_iteration_end",
           iteration: currentIteration,
         })
+
+        // Check for stop-after-current request
+        if (stopAfterCurrentRef.current) {
+          log(`Stop after current requested - exiting gracefully`)
+          outputEvent({ type: "ralph_exit", reason: "stop_requested" })
+          exit()
+          process.exit(0)
+          return
+        }
 
         // Check for completion
         if (finalResult.includes("<promise>COMPLETE</promise>")) {

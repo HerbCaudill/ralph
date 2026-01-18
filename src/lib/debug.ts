@@ -6,7 +6,7 @@
  * Set RALPH_DEBUG=all or RALPH_DEBUG=* to enable all debug logging.
  */
 
-type DebugNamespace = "messagequeue" | "iteration" | "sdk"
+type DebugNamespace = "messagequeue" | "iteration" | "sdk" | "stdin-command"
 
 const isDebugEnabled = (namespace?: DebugNamespace): boolean => {
   const debugEnv = process.env.RALPH_DEBUG
