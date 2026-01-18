@@ -132,17 +132,7 @@ Instructions for Claude's workflow. Customize this for your project:
 
 ### Customizing the prompt
 
-The default prompt template checks for build errors and tests, but you should customize it for your project:
-
-```markdown
-Before doing anything, run `npm run typecheck` and `npm test`.
-
-If there are errors: YOUR ONLY TASK IS TO FIX THEM.
-
-If no errors, work on the highest-priority task from @.ralph/todo.md.
-```
-
-Replace with your actual build/test commands (e.g., `pnpm build`, `cargo test`, `pytest`, etc.).
+The default prompt ([for beads](./templates/prompt-beads.md) or [for TODO.md](./templates/prompt.md)) works for my , but you should customize it for your project. Replace with your actual build/test commands (e.g., `pnpm build`, `cargo test`, `pytest`, etc.).
 
 ## How it works
 
