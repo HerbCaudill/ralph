@@ -157,6 +157,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
   const [isWatching, setIsWatching] = useState(false)
   const [detectedIssue, setDetectedIssue] = useState<MutationEvent | null>(null)
   const watchCleanupRef = useRef<(() => void) | null>(null)
+  const [watchCycle, setWatchCycle] = useState(0) // Increments to force useEffect re-run
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -266,8 +267,9 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
         renderedBlocksRef.current.clear()
         // Reset iteration ref so new header is shown
         lastIterationRef.current = 0
-        // Start fresh iteration cycle
+        // Start fresh iteration cycle - increment watchCycle to force useEffect re-run
         setCurrentIteration(1)
+        setWatchCycle(c => c + 1)
       }, 1500)
     })
 
@@ -420,7 +422,7 @@ export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, 
     return () => {
       abortController.abort()
     }
-  }, [currentIteration, totalIterations, exit])
+  }, [currentIteration, totalIterations, exit, watch, watchCycle])
 
   if (needsInit) {
     if (initializing) {
