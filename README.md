@@ -205,7 +205,7 @@ Your task list with priority and completion status. Tasks can be:
 
 **`.ralph/events.log`**
 
-Machine-readable log of all Claude interactions (JSON). Use for debugging or replay.
+Machine-readable log of all Claude interactions (JSON). Use for debugging.
 
 ### Customizing the prompt
 
@@ -228,7 +228,7 @@ Ralph is a thin wrapper around the Claude CLI that:
 1. **Spawns Claude CLI** with your project context (prompt, todo, progress files)
 2. **Captures output** as streaming JSON events
 3. **Processes events** to display tool usage (Read, Edit, Bash, etc.) in a readable format
-4. **Logs everything** to `events.log` for replay and debugging
+4. **Logs everything** to `events.log` for debugging
 5. **Detects completion** when Claude outputs `<promise>COMPLETE</promise>`
 6. **Recursively runs** next iteration until count reached or todo list complete
 
