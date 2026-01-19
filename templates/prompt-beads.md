@@ -23,7 +23,7 @@ Select the highest-priority issue to work on. Use your best judgement.
 
 ### Step 4: Work on a single task
 
-- Output "✨ Starting `<task name>`"
+- Output `✨ Starting **<task id> <task name>**`
 - Mark the issue as in progress with `bd update <id> --status=in_progress`
 - Work only on that task. Only work on a single issue in a single turn.
 - If the issue you choose is complex enough that it will take you more than a minute or two, your task is to break it into sub-issues and then end your turn.
@@ -40,5 +40,5 @@ When you complete a task:
 - Commit and push your work. Only commit the files you've changed.
 - Record a summary of the changes you made as a comment in the issue with `bd comments add <id> "...markdown summary of changes"`.
 - Close the issue: `bd close <id>`.
-- Output "✅ Completed `<task name>`".
+- Output `✅ Completed  **<task id> <task name>**`
 - End your turn.
