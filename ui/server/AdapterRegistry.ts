@@ -9,9 +9,7 @@ import { AgentAdapter, type AgentInfo } from "./AgentAdapter.js"
 import { ClaudeAdapter, type ClaudeAdapterOptions } from "./ClaudeAdapter.js"
 import { CodexAdapter, type CodexAdapterOptions } from "./CodexAdapter.js"
 
-// =============================================================================
 // Types
-// =============================================================================
 
 /**
  * A factory function that creates an adapter instance.
@@ -48,9 +46,7 @@ export interface AdapterAvailability {
   info?: AgentInfo
 }
 
-// =============================================================================
 // Registry Implementation
-// =============================================================================
 
 /**
  * Map of registered adapters.
@@ -121,9 +117,7 @@ export function getAdapterRegistration(id: string): AdapterRegistration | undefi
   return adapters.get(id)
 }
 
-// =============================================================================
 // Factory Function
-// =============================================================================
 
 /**
  * Create an adapter instance by ID.
@@ -154,9 +148,7 @@ export function createAdapter<T extends AgentAdapter = AgentAdapter>(
   return registration.factory(options) as T
 }
 
-// =============================================================================
 // Availability Checking
-// =============================================================================
 
 /**
  * Check if a specific adapter is available (installed and working).
@@ -257,9 +249,7 @@ export async function getFirstAvailableAdapter(
   return undefined
 }
 
-// =============================================================================
 // Default Adapter Registration
-// =============================================================================
 
 /**
  * Register the built-in adapters.

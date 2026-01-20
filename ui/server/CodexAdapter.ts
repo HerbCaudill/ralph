@@ -18,9 +18,7 @@ import {
   type AgentErrorEvent,
 } from "./AgentAdapter.js"
 
-// =============================================================================
 // Types
-// =============================================================================
 
 export type SpawnFn = (command: string, args: string[], options: SpawnOptions) => ChildProcess
 
@@ -57,9 +55,7 @@ interface CodexUsage {
   output_tokens?: number
 }
 
-// =============================================================================
 // CodexAdapter
-// =============================================================================
 
 /**
  * AgentAdapter implementation for the Codex CLI.

@@ -19,9 +19,7 @@ import type {
 import type { AssistantTextEvent } from "@/components/events/AssistantText"
 import type { ToolUseEvent, ToolName } from "@/components/events/ToolUseCard"
 
-// =============================================================================
 // Display Block Types
-// =============================================================================
 
 /**
  * A text message from the assistant (rendered as markdown)
@@ -71,9 +69,7 @@ export interface StatusBlock {
  */
 export type DisplayBlock = TextBlock | ToolUseBlock | ErrorBlock | StatusBlock
 
-// =============================================================================
 // Conversion State
-// =============================================================================
 
 interface ConversionState {
   /** Map of tool use ID to pending tool use info */
@@ -92,9 +88,7 @@ function createInitialState(): ConversionState {
   }
 }
 
-// =============================================================================
 // Event Type Guards
-// =============================================================================
 
 export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
   return event.type === "message"
@@ -120,9 +114,7 @@ export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent
   return event.type === "status"
 }
 
-// =============================================================================
 // Main Conversion Function
-// =============================================================================
 
 /**
  * Convert a stream of AgentEvents to display blocks.
@@ -264,9 +256,7 @@ function processEvent(
   return blocks
 }
 
-// =============================================================================
 // Conversion to Legacy Event Types
-// =============================================================================
 
 /**
  * Convert a TextBlock to AssistantTextEvent for existing component compatibility
@@ -294,9 +284,7 @@ export function toToolUseEvent(block: ToolUseBlock): ToolUseEvent {
   }
 }
 
-// =============================================================================
 // Streaming State Helper
-// =============================================================================
 
 /**
  * State for incremental event processing (useful for real-time updates)
@@ -357,9 +345,7 @@ export class EventBlockConverter {
   }
 }
 
-// =============================================================================
 // Merging Helper for Tool Results
-// =============================================================================
 
 /**
  * Merge tool results into existing blocks (for UI that keeps blocks in state)

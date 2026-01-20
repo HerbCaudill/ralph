@@ -9,9 +9,7 @@
 
 import { EventEmitter } from "node:events"
 
-// =============================================================================
 // Normalized Agent Event Types
-// =============================================================================
 
 /**
  * Base properties for all agent events.
@@ -112,18 +110,14 @@ export type AgentEvent =
   | AgentErrorEvent
   | AgentStatusEvent
 
-// =============================================================================
 // Agent Status
-// =============================================================================
 
 /**
  * Possible agent statuses.
  */
 export type AgentStatus = "idle" | "starting" | "running" | "paused" | "stopping" | "stopped"
 
-// =============================================================================
 // Agent Adapter Interface
-// =============================================================================
 
 /**
  * Configuration options for starting an agent.
@@ -298,9 +292,7 @@ export abstract class AgentAdapter extends EventEmitter {
   }
 }
 
-// =============================================================================
 // Type Guards
-// =============================================================================
 
 /**
  * Check if an event is a message event.

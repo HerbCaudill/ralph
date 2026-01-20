@@ -20,9 +20,7 @@ import {
   type AgentMessage,
 } from "./AgentAdapter"
 
-// =============================================================================
 // Mock Adapter for Testing
-// =============================================================================
 
 class MockAdapter extends AgentAdapter {
   private _available: boolean
@@ -68,9 +66,7 @@ class MockAdapter extends AgentAdapter {
   }
 }
 
-// =============================================================================
 // Tests
-// =============================================================================
 
 describe("AdapterRegistry", () => {
   beforeEach(() => {

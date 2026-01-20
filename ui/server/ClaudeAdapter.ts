@@ -18,9 +18,7 @@ import {
   type AgentErrorEvent,
 } from "./AgentAdapter.js"
 
-// =============================================================================
 // Types
-// =============================================================================
 
 export type SpawnFn = (command: string, args: string[], options: SpawnOptions) => ChildProcess
 
@@ -41,9 +39,7 @@ interface ClaudeNativeEvent {
   [key: string]: unknown
 }
 
-// =============================================================================
 // ClaudeAdapter
-// =============================================================================
 
 /**
  * AgentAdapter implementation for the Claude CLI.
