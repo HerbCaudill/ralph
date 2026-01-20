@@ -18,4 +18,4 @@ Create a new workspace package for shared code and migrate the highest-value ove
 
 ## Unresolved Questions
 
-- Should the shared package be published or kept internal-only?
+- Shared package will be internal-only (workspace private).
