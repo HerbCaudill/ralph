@@ -41,3 +41,5 @@ export {
   type ThemeDetailResponse,
   type UseVSCodeThemeReturn,
 } from "./useVSCodeTheme"
+
+export { useWorkspaces, type UseWorkspacesReturn } from "./useWorkspaces"

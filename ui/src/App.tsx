@@ -30,6 +30,7 @@ import {
   useTasks,
   useTaskDialog,
   useEventLogRouter,
+  useWorkspaces,
 } from "./hooks"
 import { TaskDialogProvider } from "./contexts"
 
@@ -176,6 +177,9 @@ export function App() {
 
   // Event log URL routing - handles #eventlog={id} hash parsing and navigation
   useEventLogRouter()
+
+  // Workspace navigation
+  const { goToPreviousWorkspace, goToNextWorkspace } = useWorkspaces()
 
   // Hotkeys dialog state
   const [hotkeysDialogOpen, setHotkeysDialogOpen] = useState(false)
@@ -359,6 +363,8 @@ export function App() {
       nextIteration: goToNextIteration,
       latestIteration: goToLatestIteration,
       focusSearch: handleFocusSearch,
+      previousWorkspace: goToPreviousWorkspace,
+      nextWorkspace: goToNextWorkspace,
     },
   })
 

@@ -183,6 +183,8 @@ export function useHotkeys({ handlers, enabled = true }: UseHotkeysOptions): Use
               "nextIteration",
               "latestIteration",
               "focusSearch",
+              "previousWorkspace",
+              "nextWorkspace",
             ]
 
             if (isInput && !allowedInInput.includes(action)) {

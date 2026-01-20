@@ -30,6 +30,8 @@ export type HotkeyAction =
   | "nextIteration"
   | "latestIteration"
   | "focusSearch"
+  | "previousWorkspace"
+  | "nextWorkspace"
 
 export type HotkeysConfig = Record<HotkeyAction, HotkeyConfig>
 

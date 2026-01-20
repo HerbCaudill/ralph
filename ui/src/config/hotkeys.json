@@ -95,6 +95,16 @@
       "key": "f",
       "modifiers": ["cmd"],
       "description": "Focus task search"
+    },
+    "previousWorkspace": {
+      "key": "[",
+      "modifiers": ["cmd", "shift"],
+      "description": "Switch to previous workspace"
+    },
+    "nextWorkspace": {
+      "key": "]",
+      "modifiers": ["cmd", "shift"],
+      "description": "Switch to next workspace"
     }
   }
 }
