@@ -209,6 +209,7 @@ Web app with integrated Express server and React frontend:
   - Task sidebar with beads integration
   - Workspace switcher for multiple projects
   - Theme support (VS Code theme integration)
+  - ToolUseCard renders Bash output as plain text after stripping ANSI codes
   - Bash tool output strips ANSI color codes before display
 
 Run with `npx @herbcaudill/ralph-ui` after installing.

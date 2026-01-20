@@ -1,4 +1,4 @@
-import { cn, toRelativePath, ansiToHtml, hasAnsiCodes, stripAnsi } from "@/lib/utils"
+import { cn, toRelativePath, stripAnsi } from "@/lib/utils"
 import { useState, useEffect, useMemo } from "react"
 import { useAppStore, selectWorkspace } from "@/store"
 import { TaskIdLink } from "@/components/ui/TaskIdLink"
@@ -358,104 +358,6 @@ function getLanguageFromFilePath(filePath: string): string {
   return ext ? EXTENSION_TO_LANGUAGE[ext] || "text" : "text"
 }
 
-/**
- * HighlightedCodeOutput component for displaying syntax-highlighted code
- * with expand/collapse functionality
- */
-function HighlightedCodeOutput({
-  code,
-  language,
-  isExpanded,
-  onExpand,
-  className,
-}: {
-  code: string
-  language: string
-  isExpanded: boolean
-  onExpand?: () => void
-  className?: string
-}) {
-  const [html, setHtml] = useState<string>("")
-  const [isLoading, setIsLoading] = useState(true)
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
-
-  const { preview, remainingLines } = useMemo(() => getPreviewInfo(code), [code])
-  const displayCode = isExpanded ? code : preview
-  const shouldTruncate = !isExpanded && remainingLines > 0
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function doHighlight() {
-      try {
-        const themeName = getCurrentCustomThemeName()
-        const result = await highlight(displayCode, language, {
-          theme: themeName ?? undefined,
-          isDark,
-        })
-        if (!cancelled) {
-          setHtml(result)
-          setIsLoading(false)
-        }
-      } catch {
-        // Fallback to plain text on error
-        if (!cancelled) {
-          setHtml("")
-          setIsLoading(false)
-        }
-      }
-    }
-
-    doHighlight()
-
-    return () => {
-      cancelled = true
-    }
-  }, [displayCode, language, isDark])
-
-  // Fallback for loading state or highlight failure
-  if (isLoading || !html) {
-    return (
-      <pre
-        onClick={shouldTruncate ? onExpand : undefined}
-        className={cn(
-          "bg-muted/30 text-foreground/80 mt-1 overflow-auto rounded border p-2 font-mono text-xs whitespace-pre-wrap",
-          shouldTruncate && "cursor-pointer",
-          className,
-        )}
-      >
-        <TaskIdLink>{displayCode}</TaskIdLink>
-        {shouldTruncate && (
-          <>
-            {"\n"}
-            <span className="text-muted-foreground">... +{remainingLines} lines</span>
-          </>
-        )}
-      </pre>
-    )
-  }
-
-  return (
-    <div
-      onClick={shouldTruncate ? onExpand : undefined}
-      className={cn(
-        "mt-1 overflow-hidden rounded border",
-        "[&_pre]:!m-0 [&_pre]:overflow-auto [&_pre]:!p-2 [&_pre]:text-xs",
-        shouldTruncate && "cursor-pointer",
-        className,
-      )}
-    >
-      <div dangerouslySetInnerHTML={{ __html: html }} />
-      {shouldTruncate && (
-        <div className="text-muted-foreground bg-muted/30 border-t px-2 py-1 text-xs">
-          ... +{remainingLines} lines
-        </div>
-      )}
-    </div>
-  )
-}
-
 function getPreviewInfo(content: string): { preview: string; remainingLines: number } {
   const lines = content.split("\n")
   if (lines.length <= PREVIEW_LINES) {
@@ -482,20 +384,11 @@ function AnsiOutput({
   onExpand?: () => void
   className?: string
 }) {
-  const containsAnsi = useMemo(() => hasAnsiCodes(code), [code])
-
-  // For line counting, strip ANSI codes first
-  const strippedCode = useMemo(() => (containsAnsi ? stripAnsi(code) : code), [code, containsAnsi])
-  const { remainingLines } = useMemo(() => getPreviewInfo(strippedCode), [strippedCode])
-
-  // Get preview that preserves ANSI codes
-  const { preview: rawPreview } = useMemo(() => getPreviewInfo(code), [code])
-  const displayCode = isExpanded ? code : rawPreview
+  const strippedCode = useMemo(() => stripAnsi(code), [code])
+  const { preview, remainingLines } = useMemo(() => getPreviewInfo(strippedCode), [strippedCode])
+  const displayCode = isExpanded ? strippedCode : preview
 
   const shouldTruncate = !isExpanded && remainingLines > 0
-
-  // Strip ANSI codes from the display
-  const plainText = useMemo(() => stripAnsi(displayCode), [displayCode])
 
   return (
     <div
@@ -506,7 +399,7 @@ function AnsiOutput({
         className,
       )}
     >
-      <pre className="overflow-auto p-2 font-mono text-xs whitespace-pre-wrap">{plainText}</pre>
+      <pre className="overflow-auto p-2 font-mono text-xs whitespace-pre-wrap">{displayCode}</pre>
       {shouldTruncate && (
         <div className="text-muted-foreground border-t px-2 py-1 text-xs">
           ... +{remainingLines} lines
@@ -601,7 +494,7 @@ export function ToolUseCard({ event, className, defaultExpanded = false }: ToolU
               {/* Output summary for Read */}
               {outputSummary && <span>{outputSummary}</span>}
 
-              {/* Bash output - supports ANSI color codes */}
+              {/* Bash output - strip ANSI color codes */}
               {event.tool === "Bash" && event.output && (
                 <AnsiOutput
                   code={event.output}

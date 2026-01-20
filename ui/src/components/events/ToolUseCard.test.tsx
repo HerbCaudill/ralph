@@ -441,7 +441,7 @@ describe("ToolUseCard", () => {
   })
 
   describe("ANSI color output for Bash tool", () => {
-    it("renders ANSI colored output as styled HTML", () => {
+    it("strips ANSI color codes from output", () => {
       const ansiOutput = "\x1b[32m✓ test passed\x1b[0m"
       const { container } = render(
         <ToolUseCard
@@ -451,13 +451,11 @@ describe("ToolUseCard", () => {
           })}
         />,
       )
-      // Check that the output contains the styled span with green color
-      const span = container.querySelector('span[style*="color:#00cd00"]')
-      expect(span).toBeInTheDocument()
-      expect(span).toHaveTextContent("✓ test passed")
+      expect(screen.getByText("✓ test passed")).toBeInTheDocument()
+      expect(container.textContent).not.toContain("\x1b[")
     })
 
-    it("renders red ANSI color for errors", () => {
+    it("strips ANSI color codes for errors", () => {
       const ansiOutput = "\x1b[31mERROR: Something went wrong\x1b[0m"
       const { container } = render(
         <ToolUseCard
@@ -467,12 +465,11 @@ describe("ToolUseCard", () => {
           })}
         />,
       )
-      const span = container.querySelector('span[style*="color:#cd0000"]')
-      expect(span).toBeInTheDocument()
-      expect(span).toHaveTextContent("ERROR: Something went wrong")
+      expect(screen.getByText("ERROR: Something went wrong")).toBeInTheDocument()
+      expect(container.textContent).not.toContain("\x1b[")
     })
 
-    it("handles multiple ANSI colors in output", () => {
+    it("strips multiple ANSI colors in output", () => {
       const ansiOutput = "\x1b[32m✓ passed\x1b[0m \x1b[31m✗ failed\x1b[0m"
       const { container } = render(
         <ToolUseCard
@@ -482,13 +479,11 @@ describe("ToolUseCard", () => {
           })}
         />,
       )
-      const greenSpan = container.querySelector('span[style*="color:#00cd00"]')
-      const redSpan = container.querySelector('span[style*="color:#cd0000"]')
-      expect(greenSpan).toBeInTheDocument()
-      expect(redSpan).toBeInTheDocument()
+      expect(screen.getByText("✓ passed ✗ failed")).toBeInTheDocument()
+      expect(container.textContent).not.toContain("\x1b[")
     })
 
-    it("handles bold ANSI styling", () => {
+    it("strips ANSI styling like bold", () => {
       const ansiOutput = "\x1b[1mbold text\x1b[0m"
       const { container } = render(
         <ToolUseCard
@@ -498,13 +493,11 @@ describe("ToolUseCard", () => {
           })}
         />,
       )
-      const boldSpan = container.querySelector('span[style*="font-weight:bold"]')
-      expect(boldSpan).toBeInTheDocument()
-      expect(boldSpan).toHaveTextContent("bold text")
+      expect(screen.getByText("bold text")).toBeInTheDocument()
+      expect(container.textContent).not.toContain("\x1b[")
     })
 
-    it("falls back to syntax highlighting for non-ANSI output", () => {
-      // Output without ANSI codes - should use syntax highlighting
+    it("renders non-ANSI output as plain text", () => {
       const plainOutput = "simple output"
       render(
         <ToolUseCard
@@ -518,7 +511,6 @@ describe("ToolUseCard", () => {
     })
 
     it("truncates long ANSI output and expands on click", () => {
-      // Create output with ANSI codes that exceeds 5 lines
       const lines = Array.from({ length: 10 }, (_, i) => `\x1b[32m✓\x1b[0m test ${i + 1}`).join(
         "\n",
       )
