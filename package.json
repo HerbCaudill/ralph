@@ -1,72 +1,25 @@
 {
-  "name": "@herbcaudill/ralph",
-  "version": "0.7.0",
-  "description": "Autonomous AI iteration engine for Claude CLI",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "ralph": "./bin/ralph.js"
-  },
-  "files": [
-    "dist",
-    "bin",
-    "templates"
-  ],
+  "name": "ralph-monorepo",
+  "private": true,
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit",
-    "ralph": "tsx src/index.ts",
-    "test:all": "pnpm typecheck && pnpm test",
-    "test": "vitest run",
-    "test:e2e": "vitest --config vitest.e2e.config.ts",
-    "test:watch": "vitest --watch",
-    "test:ui": "vitest --ui",
-    "format": "prettier --write .",
-    "prepublishOnly": "pnpm build",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:all": "pnpm --filter @herbcaudill/ralph test:all && pnpm --filter @herbcaudill/ralph-server test && pnpm --filter @herbcaudill/ralph-ui test:all",
+    "format": "pnpm -r format",
+    "cli": "pnpm --filter @herbcaudill/ralph ralph",
+    "cli:build": "pnpm --filter @herbcaudill/ralph build",
+    "cli:test": "pnpm --filter @herbcaudill/ralph test",
+    "server": "pnpm --filter @herbcaudill/ralph-server dev",
+    "server:build": "pnpm --filter @herbcaudill/ralph-server build",
+    "server:test": "pnpm --filter @herbcaudill/ralph-server test",
     "ui": "pnpm --filter @herbcaudill/ralph-ui dev",
     "ui:build": "pnpm --filter @herbcaudill/ralph-ui build",
-    "ui:test": "pnpm --filter @herbcaudill/ralph-ui test"
-  },
-  "keywords": [
-    "claude",
-    "ai",
-    "automation",
-    "cli",
-    "iteration",
-    "autonomous"
-  ],
-  "author": "Herb Caudill",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/HerbCaudill/ralph.git"
-  },
-  "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.7",
-    "chalk": "^5.6.2",
-    "commander": "^14.0.2",
-    "ink": "^6.6.0",
-    "ink-big-text": "^2.0.0",
-    "ink-gradient": "^3.0.0",
-    "ink-select-input": "^6.2.0",
-    "ink-spinner": "^5.0.0",
-    "ink-text-input": "^6.0.0",
-    "react": "^19.2.3"
+    "ui:test": "pnpm --filter @herbcaudill/ralph-ui test",
+    "dev": "concurrently -n server,ui -c blue,green \"pnpm server\" \"pnpm ui\"",
+    "storybook": "pnpm --filter @herbcaudill/ralph-ui storybook"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.8",
-    "@vitest/ui": "^4.0.17",
-    "execa": "^9.6.1",
-    "ink-testing-library": "^4.0.0",
-    "prettier": "^3.5.3",
-    "tsx": "^4.21.0",
-    "typescript": "~5.9.3",
-    "vitest": "^4.0.17"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "concurrently": "^9.2.1",
+    "prettier": "^3.5.3"
   }
 }

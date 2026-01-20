@@ -4,10 +4,10 @@ import { mkdir, writeFile, rm } from "node:fs/promises"
 import path from "node:path"
 import express, { type Express, type Request, type Response } from "express"
 import { ThemeDiscovery, resetThemeDiscovery } from "./ThemeDiscovery.js"
-import { parseThemeObject } from "../src/lib/theme/parser.js"
-import { mapThemeToCSSVariables, createAppTheme } from "../src/lib/theme/mapper.js"
-import type { ThemeMeta, AppTheme } from "../src/lib/theme/types.js"
-import type { CSSVariables } from "../src/lib/theme/mapper.js"
+import { parseThemeObject } from "./lib/theme/parser.js"
+import { mapThemeToCSSVariables, createAppTheme } from "./lib/theme/mapper.js"
+import type { ThemeMeta, AppTheme } from "./lib/theme/types.js"
+import type { CSSVariables } from "./lib/theme/mapper.js"
 
 // Response types for the theme API
 interface ThemeListResponse {
@@ -204,7 +204,7 @@ describe("Theme API endpoints", () => {
 
   let server: Server
   let mockDiscovery: MockThemeDiscovery
-  const port = 3099 // Use a unique port for theme API tests
+  const port = 3199 // Use a unique port for theme API tests
 
   beforeAll(async () => {
     // Create test directory structure
@@ -419,7 +419,7 @@ describe("Theme API with uninitialized discovery", () => {
 
   let server: Server
   let mockDiscovery: MockThemeDiscovery
-  const port = 3100 // Use a different port
+  const port = 3200 // Use a different port
 
   beforeAll(async () => {
     await mkdir(testDir, { recursive: true })

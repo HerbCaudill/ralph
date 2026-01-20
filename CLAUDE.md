@@ -163,49 +163,70 @@ Claude is instructed (via `prompt.md`) to:
 ## Development Commands
 
 ```bash
-# Build TypeScript to dist/
+# Build all packages
 pnpm build
 
-# Run in development (uses tsx, no build needed)
-pnpm ralph
+# Run all tests across packages
+pnpm test:all          # Run all tests (CLI + server + UI)
+pnpm test              # Run tests in each package
 
-# Run tests
-pnpm test:all          # Run all tests (E2E tests skipped by default)
-pnpm test              # Run only unit tests
-pnpm test:e2e          # Run E2E tests (requires Claude CLI with API key)
-pnpm test:watch        # Run tests in watch mode
-pnpm test:ui           # Open Vitest UI
+# Run the CLI
+pnpm cli               # Run ralph CLI in development
+pnpm cli:build         # Build CLI package
+pnpm cli:test          # Run CLI tests
+
+# Run the server
+pnpm server            # Start server in development
+pnpm server:build      # Build server package
+pnpm server:test       # Run server tests
+
+# Run the UI
+pnpm ui                # Start UI dev server (Vite)
+pnpm ui:build          # Build UI for production
+pnpm ui:test           # Run UI tests
+
+# Run server + UI together
+pnpm dev               # Start both server and UI concurrently
+
+# Storybook
+pnpm storybook         # Start Storybook for UI components
 
 # Format code with Prettier
 pnpm format
-
-# Run ralph locally during development
-tsx src/index.ts [iterations]
-tsx src/index.ts init
-
-# UI development (web interface)
-pnpm ui                # Start UI dev server (frontend + backend)
-pnpm ui:build          # Build UI for production
-pnpm ui:test           # Run UI tests
 ```
 
 ## Workspace Structure
 
-This is a pnpm workspace with two packages:
+This is a pnpm workspace with three packages:
 
-- **Root package** (`@herbcaudill/ralph`) - The CLI tool
-- **`ui/`** (`@herbcaudill/ralph-ui`) - Web interface (Express server + React client)
+- **`cli/`** (`@herbcaudill/ralph`) - The CLI tool (published to npm)
+- **`server/`** (`@herbcaudill/ralph-server`) - Express backend that spawns Ralph CLI
+- **`ui/`** (`@herbcaudill/ralph-ui`) - React frontend with real-time event display
 
-The UI depends on the CLI via `workspace:*`, so changes to the CLI are immediately available to the UI during development.
+The server and UI depend on the CLI via `workspace:*`, so changes to the CLI are immediately available during development.
 
-### UI Package
+### CLI Package (`cli/`)
 
-The `ui/` directory contains a web interface for Ralph:
+The autonomous AI iteration engine that wraps Claude CLI:
 
-- **`ui/server/`** - Express backend that spawns Ralph CLI and streams events via WebSocket
-- **`ui/src/`** - React frontend with real-time event display, task management, and multi-workspace support
+- Spawns Claude CLI with custom prompts
+- Captures streaming JSON output
+- Displays formatted terminal UI using Ink (React for CLIs)
+- Orchestrates multiple iterations
 
-Key features:
+### Server Package (`server/`)
+
+Express backend that manages Ralph processes:
+
+- REST API for workspace management
+- WebSocket server for real-time event streaming
+- `RalphManager` - Spawns and manages Ralph CLI processes
+- `BdProxy` - Proxy for beads CLI commands
+- Theme discovery from VS Code installations
+
+### UI Package (`ui/`)
+
+React frontend for web-based interaction:
 
 - Real-time event stream viewer
 - Task sidebar with beads integration
@@ -215,42 +236,43 @@ Key features:
 ## Project Structure
 
 ```
-src/                       # CLI source code
-  cli.ts                    # Commander program definition
-  index.ts                  # Entry point
-  components/
-    App.tsx                 # Root component (router)
-    IterationRunner.tsx     # Spawns Claude CLI, handles iterations
-    InitRalph.tsx           # Initialization flow
-    EventDisplay.tsx        # Renders event stream
-    eventToBlocks.ts        # Parses events → display blocks
-    ToolUse.tsx            # Renders individual tool calls
-    ReplayLog.tsx          # Replays events.jsonl files
-    Header.tsx             # Title banner
-    StreamingText.tsx      # Streaming text display
+cli/                       # CLI package (@herbcaudill/ralph)
+  src/
+    cli.ts                  # Commander program definition
+    index.ts                # Entry point
+    components/
+      App.tsx               # Root component (router)
+      IterationRunner.tsx   # Spawns Claude CLI, handles iterations
+      InitRalph.tsx         # Initialization flow
+      EventDisplay.tsx      # Renders event stream
+      eventToBlocks.ts      # Parses events → display blocks
+      ToolUse.tsx           # Renders individual tool calls
+    lib/
+      beadsClient.ts        # Unix socket RPC client for beads daemon
+      MessageQueue.ts       # Async iterable message queue
+      rel.ts                # Convert absolute → relative paths
+  test/
+    e2e/                    # E2E tests (skipped by default)
+    fixtures/               # Test fixtures
+  templates/                # Template files for ralph init
+  bin/ralph.js              # Published executable
+
+server/                    # Server package (@herbcaudill/ralph-server)
+  index.ts                  # Server entry point with REST API + WebSocket
+  RalphManager.ts           # Spawns and manages Ralph CLI process
+  BdProxy.ts                # Proxy for beads CLI commands
+  ThemeDiscovery.ts         # Discovers VS Code themes
   lib/
-    beadsClient.ts         # Unix socket RPC client for beads daemon
-    MessageQueue.ts        # Async iterable message queue for SDK streamInput
-    rel.ts                 # Convert absolute → relative paths
-    shortenTempPaths.ts    # Shorten temp paths in commands
-test/
-  e2e/
-    ralph.test.ts          # E2E tests for ralph CLI (skipped by default)
-  fixtures/                # Test fixtures for E2E tests
-  helpers/
-    runRalph.ts            # Helper to run ralph binary in tests
-templates/                 # Template files for ralph init
-bin/ralph.js              # Published executable
-ui/                        # Web interface (separate workspace package)
-  server/                   # Express backend
-    index.ts               # Server entry point with REST API + WebSocket
-    RalphManager.ts        # Spawns and manages Ralph CLI process
-    BdProxy.ts             # Proxy for beads CLI commands
-  src/                      # React frontend
-    components/            # UI components (chat, events, tasks, layout)
-    store/                 # Zustand global state
-    hooks/                 # Custom React hooks
-    lib/                   # Utilities and theme management
+    theme/                  # Theme parsing and mapping utilities
+
+ui/                        # UI package (@herbcaudill/ralph-ui)
+  src/
+    components/             # React components (chat, events, tasks, layout)
+    store/                  # Zustand global state
+    hooks/                  # Custom React hooks
+    lib/                    # Utilities and theme management
+  public/                   # Static assets
+  .storybook/               # Storybook configuration
 ```
 
 ## Important Implementation Details
@@ -279,61 +301,29 @@ On startup, `IterationRunner` reads the prompt from `.ralph/prompt.md` if it exi
 
 ## Testing
 
-Ralph has comprehensive test coverage at multiple levels:
-
-### Unit Tests (124+ tests)
-
-**Utility Functions:**
-
-- `rel.ts` - Path conversion (absolute to relative, temp path handling)
-- `shortenTempPaths.ts` - Temp path shortening in command strings
-- `eventToBlocks.ts` - JSON event parsing and transformation (23 test cases covering all tool types)
-
-**React Components** (using `ink-testing-library`):
-
-- `Header.tsx` - Title and version display
-- `ToolUse.tsx` - Tool call rendering with various arguments
-- `StreamingText.tsx` - Markdown formatting (bold, code)
-
-**Integration:**
-
-- `IterationRunner.tsx` - File checking logic with mocked fs
-
-All unit tests run automatically with `pnpm test`.
-
-### E2E Tests
-
-End-to-end tests are in `test/e2e/` and use real test fixtures to verify the full CLI workflow.
-
-**Test Fixtures:**
-
-- `empty/` - Empty project with no `.ralph` directory
-- `valid-setup/` - Complete `.ralph` setup ready to run
-- `incomplete-setup/` - Partial `.ralph` (only prompt.md)
-- `realistic-workflow/` - Realistic todo list with workflow prompt
-
-**Running E2E Tests:**
-
-E2E tests are skipped by default (marked with `describe.skip`) because they require:
-
-1. A working `claude` CLI in PATH
-2. Claude CLI configured with API key
-3. Network access to Claude API
-
-To run E2E tests:
+Ralph has comprehensive test coverage across all three packages:
 
 ```bash
-# Ensure Claude CLI is installed and configured
-claude --version
-
-# Run E2E tests
-pnpm test:e2e
+pnpm test:all          # Run all tests (CLI: 169, Server: 309, UI: 996+)
+pnpm cli:test          # Run CLI tests only
+pnpm server:test       # Run server tests only
+pnpm ui:test           # Run UI tests only
 ```
 
-The E2E tests verify:
+### CLI Tests (`cli/test/`)
 
-- `ralph init` creates required files
-- Missing file detection and error handling
-- Multiple iteration execution
-- COMPLETE promise detection
-- Todo list updates across iterations
+- Utility functions: `rel.ts`, `shortenTempPaths.ts`, `eventToBlocks.ts`
+- React components (using `ink-testing-library`): `Header.tsx`, `ToolUse.tsx`, `StreamingText.tsx`
+- E2E tests (skipped by default, require Claude CLI with API key)
+
+### Server Tests (`server/`)
+
+- Theme discovery and parsing
+- Theme API endpoints
+- WebSocket communication
+
+### UI Tests (`ui/src/`)
+
+- React component tests
+- Store tests
+- E2E tests with Playwright

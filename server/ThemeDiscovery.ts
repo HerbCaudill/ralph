@@ -10,7 +10,7 @@
 import { readdir, readFile, stat } from "node:fs/promises"
 import path from "node:path"
 import os from "node:os"
-import type { ThemeMeta } from "../src/lib/theme/types.js"
+import type { ThemeMeta } from "./lib/theme/types.js"
 
 /**
  * VS Code extension package.json structure for theme contributions.

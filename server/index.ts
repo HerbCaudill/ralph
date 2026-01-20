@@ -11,8 +11,8 @@ import { getAliveWorkspaces } from "./registry.js"
 import { getEventLogStore, type EventLogMetadata } from "./EventLogStore.js"
 import { TaskChatManager, type TaskChatMessage, type TaskChatStatus } from "./TaskChatManager.js"
 import { getThemeDiscovery } from "./ThemeDiscovery.js"
-import { parseThemeObject } from "../src/lib/theme/parser.js"
-import { mapThemeToCSSVariables, createAppTheme } from "../src/lib/theme/mapper.js"
+import { parseThemeObject } from "./lib/theme/parser.js"
+import { mapThemeToCSSVariables, createAppTheme } from "./lib/theme/mapper.js"
 
 const execFileAsync = promisify(execFile)
 
