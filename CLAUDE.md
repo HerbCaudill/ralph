@@ -192,6 +192,9 @@ pnpm format
 
 # Publish CLI + UI packages
 pnpm pub
+
+# UI package publishes as public
+pnpm --filter @herbcaudill/ralph-ui publish --access public
 ```
 
 ## Workspace Structure

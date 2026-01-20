@@ -181,6 +181,7 @@ pnpm pub
 ```
 
 Publishes both `@herbcaudill/ralph` (CLI) and `@herbcaudill/ralph-ui` (UI).
+The UI package is configured to publish as public via `publishConfig`.
 
 ## License
 

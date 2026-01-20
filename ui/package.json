@@ -8,6 +8,9 @@
   "bin": {
     "ralph-ui": "./bin/ralph-ui.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist",
     "bin"
