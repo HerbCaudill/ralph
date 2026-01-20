@@ -1,5 +1,12 @@
 import "@testing-library/jest-dom/vitest"
 
+// Suppress React act() warnings (mostly from Radix UI internals)
+const originalError = console.error
+console.error = (...args: unknown[]) => {
+  if (typeof args[0] === "string" && args[0].includes("not wrapped in act")) return
+  originalError(...args)
+}
+
 // Mock matchMedia for tests that use useTheme
 Object.defineProperty(window, "matchMedia", {
   writable: true,
