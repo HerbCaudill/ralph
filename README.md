@@ -174,6 +174,14 @@ claude auth
 - **Break down complex tasks** into smaller subtasks in todo.md
 - **Let Claude prioritize** by not ordering tasks strictly - Claude will choose what makes sense
 
+## Publishing
+
+```bash
+pnpm pub
+```
+
+Publishes both `@herbcaudill/ralph` (CLI) and `@herbcaudill/ralph-ui` (UI).
+
 ## License
 
 MIT

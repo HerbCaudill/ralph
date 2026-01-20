@@ -189,6 +189,9 @@ pnpm storybook         # Start Storybook for UI components
 
 # Format code with Prettier
 pnpm format
+
+# Publish CLI + UI packages
+pnpm pub
 ```
 
 ## Workspace Structure

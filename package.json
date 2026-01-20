@@ -13,6 +13,7 @@
     "cli": "pnpm --filter @herbcaudill/ralph ralph",
     "cli:build": "pnpm --filter @herbcaudill/ralph build",
     "cli:test": "pnpm --filter @herbcaudill/ralph test",
+    "pub": "pnpm --filter @herbcaudill/ralph publish && pnpm --filter @herbcaudill/ralph-ui publish",
     "serve": "pnpm --filter @herbcaudill/ralph-ui dev:server",
     "ui": "pnpm --filter @herbcaudill/ralph-ui dev",
     "ui:build": "pnpm --filter @herbcaudill/ralph-ui build",
