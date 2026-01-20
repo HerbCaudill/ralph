@@ -17,7 +17,7 @@
     "dev:server": "tsx server/main.ts",
     "dev": "vite --open",
     "build-storybook": "storybook build",
-    "build": "tsc -b && tsc -p tsconfig.server.json && vite build"
+    "build": "tsc -b && vite build && tsc -p tsconfig.server.json && cp -r server/prompts dist/server/"
   },
   "repository": {
     "url": "https://github.com/HerbCaudill/ralph.git",
