@@ -87,7 +87,7 @@ export function TaskProgressBar({ className }: TaskProgressBarProps) {
     >
       <div className="flex items-center gap-3">
         {/* Progress bar */}
-        <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/30">
           <div
             className="h-full transition-all duration-300"
             style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: progressColor }}
