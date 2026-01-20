@@ -61,7 +61,7 @@ export interface TaskUpdateData {
   description?: string
   status?: TaskStatus
   priority?: number
-  issue_type?: string
+  type?: string
   parent?: string | null
 }
 
@@ -373,7 +373,7 @@ export function TaskDetailsDialog({
     if (description !== (task.description ?? "")) updates.description = description
     if (status !== task.status) updates.status = status
     if (priority !== (task.priority ?? 2)) updates.priority = priority
-    if (issueType !== ((task.issue_type as IssueType) ?? "task")) updates.issue_type = issueType
+    if (issueType !== ((task.issue_type as IssueType) ?? "task")) updates.type = issueType
     if (parent !== (task.parent ?? null)) updates.parent = parent
 
     if (Object.keys(updates).length === 0) {

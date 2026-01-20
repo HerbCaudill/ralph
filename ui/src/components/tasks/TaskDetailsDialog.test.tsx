@@ -340,7 +340,7 @@ describe("TaskDetailsDialog", () => {
         fireEvent.click(saveButton)
       })
 
-      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { issue_type: "bug" })
+      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { type: "bug" })
     })
 
     it("allows editing parent via selector", async () => {
