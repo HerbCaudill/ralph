@@ -23,9 +23,9 @@ export interface TaskChatEvent {
 export type GetBdProxyFn = () => BdProxy
 
 export interface TaskChatManagerOptions {
-  /** Working directory for the process */
+  /** Working directory for SDK query execution */
   cwd?: string
-  /** Additional environment variables */
+  /** Additional environment variables for SDK query execution */
   env?: Record<string, string>
   /** Model to use (default: "haiku" for fast, cheap responses) */
   model?: string
