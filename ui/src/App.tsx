@@ -402,13 +402,16 @@ export function App() {
         rightPanelOpen={isViewingEventLog}
         rightPanelWidth={taskChatWidth}
         onRightPanelWidthChange={handleTaskChatWidthChange}
-      />
-      <TaskDetailsDialog
-        task={taskDialog.selectedTask}
-        open={taskDialog.isOpen}
-        onClose={taskDialog.closeDialog}
-        onSave={taskDialog.saveTask}
-        onDelete={taskDialog.deleteTask}
+        detailPanel={
+          <TaskDetailsDialog
+            task={taskDialog.selectedTask}
+            open={taskDialog.isOpen}
+            onClose={taskDialog.closeDialog}
+            onSave={taskDialog.saveTask}
+            onDelete={taskDialog.deleteTask}
+          />
+        }
+        detailPanelOpen={taskDialog.isOpen}
       />
       <HotkeysDialog open={hotkeysDialogOpen} onClose={handleCloseHotkeysDialog} />
       <CommandPalette

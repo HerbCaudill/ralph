@@ -10,14 +10,6 @@ import {
   IconTrash,
   type TablerIcon,
 } from "@tabler/icons-react"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-  SheetDescription,
-} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -471,359 +463,366 @@ export function TaskDetailsDialog({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [open, readOnly, hasChanges, isSaving, handleSave])
 
-  if (!task) return null
+  // Don't render anything if there's no task or it's not open
+  if (!task || !open) return null
 
   const StatusIcon = statusConfig[status].icon
 
   return (
-    <Sheet open={open} onOpenChange={isOpen => !isOpen && handleClose()}>
-      <SheetContent side="right" size="xl" className="flex flex-col overflow-hidden">
-        <SheetHeader className="shrink-0">
-          <SheetTitle className="flex items-center gap-2">
-            <StatusIcon className={cn("h-5 w-5", statusConfig[status].color)} />
-            <span className="text-muted-foreground font-mono text-sm">
-              {stripTaskPrefix(task.id, issuePrefix)}
-            </span>
-          </SheetTitle>
-          <SheetDescription className="sr-only">Edit task details</SheetDescription>
-        </SheetHeader>
+    <div
+      className="bg-background border-border flex h-full flex-col border-l shadow-lg"
+      role="dialog"
+      aria-modal="false"
+      aria-label="Task details"
+    >
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between border-b p-4">
+        <div className="flex items-center gap-2">
+          <StatusIcon className={cn("h-5 w-5", statusConfig[status].color)} />
+          <span className="text-muted-foreground font-mono text-sm">
+            {stripTaskPrefix(task.id, issuePrefix)}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleClose}
+          className="ring-offset-background focus:ring-ring rounded-sm p-1 opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+          aria-label="Close panel"
+        >
+          <IconX className="h-4 w-4" />
+        </button>
+      </div>
 
-        <div className="flex-1 space-y-6 overflow-y-auto py-4">
-          {/* Title */}
-          <div className="grid gap-2">
-            <Label htmlFor="task-title">Title</Label>
-            {readOnly ?
-              <p className="text-sm">{title}</p>
-            : <Input
-                id="task-title"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Task title"
-              />
-            }
-          </div>
-
-          {/* Description - larger area */}
-          <div className="grid gap-2">
-            <Label htmlFor="task-description">Description</Label>
-            {readOnly ?
-              description ?
-                <MarkdownContent className="text-muted-foreground">{description}</MarkdownContent>
-              : <p className="text-muted-foreground text-sm">No description</p>
-            : isEditingDescription ?
-              <Textarea
-                ref={descriptionTextareaRef}
-                id="task-description"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                onBlur={handleDescriptionBlur}
-                onKeyDown={handleDescriptionKeyDown}
-                placeholder="Task description (optional)"
-                rows={6}
-              />
-            : <div
-                onClick={() => setIsEditingDescription(true)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    setIsEditingDescription(true)
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                className={cn(
-                  "border-input hover:border-ring focus-visible:ring-ring min-h-[120px] cursor-text rounded-md border px-3 py-2 text-sm transition-colors focus-visible:ring-1 focus-visible:outline-none",
-                  !description && "text-muted-foreground",
-                )}
-              >
-                {description ?
-                  <MarkdownContent>{description}</MarkdownContent>
-                : "Click to add description..."}
-              </div>
-            }
-          </div>
-
-          {/* Metadata Grid - 2x2 layout */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-            {/* Status */}
-            <div className="grid gap-2">
-              <Label htmlFor="task-status">Status</Label>
-              {readOnly ?
-                <div className="flex items-center gap-2">
-                  <StatusIcon className={cn("h-4 w-4", statusConfig[status].color)} />
-                  <span className="text-sm">{statusConfig[status].label}</span>
-                </div>
-              : <Select value={status} onValueChange={value => setStatus(value as TaskStatus)}>
-                  <SelectTrigger id="task-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(s => {
-                      const config = statusConfig[s]
-                      const Icon = config.icon
-                      return (
-                        <SelectItem key={s} value={s}>
-                          <div className="flex items-center gap-2">
-                            <Icon className={cn("h-4 w-4", config.color)} />
-                            <span>{config.label}</span>
-                          </div>
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
-              }
-            </div>
-
-            {/* Priority */}
-            <div className="grid gap-2">
-              <Label htmlFor="task-priority">Priority</Label>
-              {readOnly ?
-                <span className="text-sm">
-                  {priorityOptions.find(p => p.value === priority)?.label ?? `P${priority}`}
-                </span>
-              : <Select
-                  value={String(priority)}
-                  onValueChange={value => setPriority(Number(value))}
-                >
-                  <SelectTrigger id="task-priority">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {priorityOptions.map(p => (
-                      <SelectItem key={p.value} value={String(p.value)}>
-                        {p.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              }
-            </div>
-
-            {/* Type */}
-            <div className="grid gap-2">
-              <Label>Type</Label>
-              {readOnly ?
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const typeOption = issueTypeOptions.find(t => t.value === issueType)
-                    const TypeIcon = typeOption?.icon ?? IconCheckbox
-                    return (
-                      <>
-                        <TypeIcon className={cn("h-4 w-4", typeOption?.color ?? "text-gray-500")} />
-                        <span className="text-sm capitalize">{issueType}</span>
-                      </>
-                    )
-                  })()}
-                </div>
-              : <div className="border-input bg-background flex rounded-md border" role="group">
-                  {issueTypeOptions.map(t => {
-                    const Icon = t.icon
-                    const isSelected = issueType === t.value
-                    return (
-                      <button
-                        key={t.value}
-                        type="button"
-                        onClick={() => setIssueType(t.value)}
-                        className={cn(
-                          "flex flex-1 items-center justify-center gap-1.5 px-2 py-1.5 text-sm transition-colors first:rounded-l-md last:rounded-r-md",
-                          isSelected ?
-                            "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
-                        )}
-                        aria-pressed={isSelected}
-                      >
-                        <Icon className={cn("h-4 w-4", isSelected ? t.color : "")} />
-                        <span>{t.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              }
-            </div>
-
-            {/* Parent */}
-            <div className="grid gap-2">
-              <Label htmlFor="task-parent">Parent</Label>
-              {readOnly ?
-                <span className="text-muted-foreground text-sm">
-                  {task.parent ?
-                    <span className="text-foreground font-mono">
-                      {stripTaskPrefix(task.parent, issuePrefix)}
-                    </span>
-                  : <span>None</span>}
-                </span>
-              : (() => {
-                  // Filter valid parent candidates (exclude self and direct children)
-                  const validParents = allTasks.filter(
-                    t => t.id !== task.id && t.parent !== task.id,
-                  )
-                  // Check if current parent is in the list of valid parents
-                  const currentParentInList = parent && validParents.some(t => t.id === parent)
-                  return (
-                    <Select
-                      value={parent ?? "__none__"}
-                      onValueChange={value => setParent(value === "__none__" ? null : value)}
-                    >
-                      <SelectTrigger id="task-parent">
-                        <SelectValue placeholder="None" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">None</SelectItem>
-                        {/* If current parent isn't in list, show it as an option */}
-                        {parent && !currentParentInList && (
-                          <SelectItem value={parent}>
-                            <span className="font-mono text-xs">
-                              {stripTaskPrefix(parent, issuePrefix)}
-                            </span>
-                          </SelectItem>
-                        )}
-                        {validParents.map(t => (
-                          <SelectItem key={t.id} value={t.id}>
-                            <span className="font-mono text-xs">
-                              {stripTaskPrefix(t.id, issuePrefix)}
-                            </span>
-                            <span className="ml-2 truncate">{t.title}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )
-                })()
-              }
-            </div>
-          </div>
-
-          {/* Labels - full width */}
-          <div className="grid gap-2">
-            <Label>Labels</Label>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {labels.map(label => (
-                <span
-                  key={label}
-                  className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                >
-                  {label}
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveLabel(label)}
-                      className="hover:text-foreground -mr-0.5 ml-0.5 rounded-full p-0.5 transition-colors"
-                      aria-label={`Remove ${label} label`}
-                    >
-                      <IconX className="h-3 w-3" />
-                    </button>
-                  )}
-                </span>
-              ))}
-              {labels.length === 0 && readOnly && (
-                <span className="text-muted-foreground text-sm">No labels</span>
-              )}
-              {!readOnly && !showLabelInput && (
-                <button
-                  type="button"
-                  onClick={() => setShowLabelInput(true)}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-xs transition-colors"
-                >
-                  <IconPlus className="h-3 w-3" />
-                  Add label
-                </button>
-              )}
-              {!readOnly && showLabelInput && (
-                <div className="flex items-center gap-1">
-                  <Input
-                    ref={labelInputRef}
-                    value={newLabel}
-                    onChange={e => setNewLabel(e.target.value)}
-                    onKeyDown={handleLabelInputKeyDown}
-                    onBlur={() => {
-                      if (!newLabel.trim()) {
-                        setShowLabelInput(false)
-                      }
-                    }}
-                    placeholder="Label name"
-                    className="h-6 w-24 px-2 text-xs"
-                    disabled={isAddingLabel}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2"
-                    onClick={handleAddLabel}
-                    disabled={!newLabel.trim() || isAddingLabel}
-                  >
-                    Add
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Related Tasks (children and blockers) */}
-          <RelatedTasks taskId={task.id} />
-
-          {/* Comments Section - more space */}
-          <CommentsSection taskId={task.id} readOnly={readOnly} />
+      <div className="flex-1 space-y-6 overflow-y-auto p-6">
+        {/* Title */}
+        <div className="grid gap-2">
+          <Label htmlFor="task-title">Title</Label>
+          {readOnly ?
+            <p className="text-sm">{title}</p>
+          : <Input
+              id="task-title"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Task title"
+            />
+          }
         </div>
 
-        {!readOnly && (
-          <SheetFooter className="shrink-0 flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-between">
-            {/* Delete section - left side */}
-            {onDelete && (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  {isConfirmingDelete ?
+        {/* Description - larger area */}
+        <div className="grid gap-2">
+          <Label htmlFor="task-description">Description</Label>
+          {readOnly ?
+            description ?
+              <MarkdownContent className="text-muted-foreground">{description}</MarkdownContent>
+            : <p className="text-muted-foreground text-sm">No description</p>
+          : isEditingDescription ?
+            <Textarea
+              ref={descriptionTextareaRef}
+              id="task-description"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              onBlur={handleDescriptionBlur}
+              onKeyDown={handleDescriptionKeyDown}
+              placeholder="Task description (optional)"
+              rows={6}
+            />
+          : <div
+              onClick={() => setIsEditingDescription(true)}
+              onKeyDown={e => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  setIsEditingDescription(true)
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              className={cn(
+                "border-input hover:border-ring focus-visible:ring-ring min-h-[120px] cursor-text rounded-md border px-3 py-2 text-sm transition-colors focus-visible:ring-1 focus-visible:outline-none",
+                !description && "text-muted-foreground",
+              )}
+            >
+              {description ?
+                <MarkdownContent>{description}</MarkdownContent>
+              : "Click to add description..."}
+            </div>
+          }
+        </div>
+
+        {/* Metadata Grid - 2x2 layout */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+          {/* Status */}
+          <div className="grid gap-2">
+            <Label htmlFor="task-status">Status</Label>
+            {readOnly ?
+              <div className="flex items-center gap-2">
+                <StatusIcon className={cn("h-4 w-4", statusConfig[status].color)} />
+                <span className="text-sm">{statusConfig[status].label}</span>
+              </div>
+            : <Select value={status} onValueChange={value => setStatus(value as TaskStatus)}>
+                <SelectTrigger id="task-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map(s => {
+                    const config = statusConfig[s]
+                    const Icon = config.icon
+                    return (
+                      <SelectItem key={s} value={s}>
+                        <div className="flex items-center gap-2">
+                          <Icon className={cn("h-4 w-4", config.color)} />
+                          <span>{config.label}</span>
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            }
+          </div>
+
+          {/* Priority */}
+          <div className="grid gap-2">
+            <Label htmlFor="task-priority">Priority</Label>
+            {readOnly ?
+              <span className="text-sm">
+                {priorityOptions.find(p => p.value === priority)?.label ?? `P${priority}`}
+              </span>
+            : <Select value={String(priority)} onValueChange={value => setPriority(Number(value))}>
+                <SelectTrigger id="task-priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {priorityOptions.map(p => (
+                    <SelectItem key={p.value} value={String(p.value)}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            }
+          </div>
+
+          {/* Type */}
+          <div className="grid gap-2">
+            <Label>Type</Label>
+            {readOnly ?
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const typeOption = issueTypeOptions.find(t => t.value === issueType)
+                  const TypeIcon = typeOption?.icon ?? IconCheckbox
+                  return (
                     <>
-                      <span className="text-destructive text-sm">Delete this task?</span>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? "Deleting..." : "Yes, delete"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsConfirmingDelete(false)}
-                        disabled={isDeleting}
-                      >
-                        Cancel
-                      </Button>
+                      <TypeIcon className={cn("h-4 w-4", typeOption?.color ?? "text-gray-500")} />
+                      <span className="text-sm capitalize">{issueType}</span>
                     </>
-                  : <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setDeleteError(null)
-                        setIsConfirmingDelete(true)
-                      }}
-                      disabled={isSaving}
-                      className="text-muted-foreground hover:text-destructive"
+                  )
+                })()}
+              </div>
+            : <div className="border-input bg-background flex rounded-md border" role="group">
+                {issueTypeOptions.map(t => {
+                  const Icon = t.icon
+                  const isSelected = issueType === t.value
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setIssueType(t.value)}
+                      className={cn(
+                        "flex flex-1 items-center justify-center gap-1.5 px-2 py-1.5 text-sm transition-colors first:rounded-l-md last:rounded-r-md",
+                        isSelected ?
+                          "bg-accent text-accent-foreground"
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
+                      )}
+                      aria-pressed={isSelected}
                     >
-                      <IconTrash className="mr-1 h-4 w-4" />
-                      Delete
-                    </Button>
-                  }
-                </div>
-                {deleteError && <span className="text-destructive text-xs">{deleteError}</span>}
+                      <Icon className={cn("h-4 w-4", isSelected ? t.color : "")} />
+                      <span>{t.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            }
+          </div>
+
+          {/* Parent */}
+          <div className="grid gap-2">
+            <Label htmlFor="task-parent">Parent</Label>
+            {readOnly ?
+              <span className="text-muted-foreground text-sm">
+                {task.parent ?
+                  <span className="text-foreground font-mono">
+                    {stripTaskPrefix(task.parent, issuePrefix)}
+                  </span>
+                : <span>None</span>}
+              </span>
+            : (() => {
+                // Filter valid parent candidates (exclude self and direct children)
+                const validParents = allTasks.filter(t => t.id !== task.id && t.parent !== task.id)
+                // Check if current parent is in the list of valid parents
+                const currentParentInList = parent && validParents.some(t => t.id === parent)
+                return (
+                  <Select
+                    value={parent ?? "__none__"}
+                    onValueChange={value => setParent(value === "__none__" ? null : value)}
+                  >
+                    <SelectTrigger id="task-parent">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {/* If current parent isn't in list, show it as an option */}
+                      {parent && !currentParentInList && (
+                        <SelectItem value={parent}>
+                          <span className="font-mono text-xs">
+                            {stripTaskPrefix(parent, issuePrefix)}
+                          </span>
+                        </SelectItem>
+                      )}
+                      {validParents.map(t => (
+                        <SelectItem key={t.id} value={t.id}>
+                          <span className="font-mono text-xs">
+                            {stripTaskPrefix(t.id, issuePrefix)}
+                          </span>
+                          <span className="ml-2 truncate">{t.title}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
+              })()
+            }
+          </div>
+        </div>
+
+        {/* Labels - full width */}
+        <div className="grid gap-2">
+          <Label>Labels</Label>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {labels.map(label => (
+              <span
+                key={label}
+                className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+              >
+                {label}
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveLabel(label)}
+                    className="hover:text-foreground -mr-0.5 ml-0.5 rounded-full p-0.5 transition-colors"
+                    aria-label={`Remove ${label} label`}
+                  >
+                    <IconX className="h-3 w-3" />
+                  </button>
+                )}
+              </span>
+            ))}
+            {labels.length === 0 && readOnly && (
+              <span className="text-muted-foreground text-sm">No labels</span>
+            )}
+            {!readOnly && !showLabelInput && (
+              <button
+                type="button"
+                onClick={() => setShowLabelInput(true)}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-xs transition-colors"
+              >
+                <IconPlus className="h-3 w-3" />
+                Add label
+              </button>
+            )}
+            {!readOnly && showLabelInput && (
+              <div className="flex items-center gap-1">
+                <Input
+                  ref={labelInputRef}
+                  value={newLabel}
+                  onChange={e => setNewLabel(e.target.value)}
+                  onKeyDown={handleLabelInputKeyDown}
+                  onBlur={() => {
+                    if (!newLabel.trim()) {
+                      setShowLabelInput(false)
+                    }
+                  }}
+                  placeholder="Label name"
+                  className="h-6 w-24 px-2 text-xs"
+                  disabled={isAddingLabel}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
+                  onClick={handleAddLabel}
+                  disabled={!newLabel.trim() || isAddingLabel}
+                >
+                  Add
+                </Button>
               </div>
             )}
+          </div>
+        </div>
 
-            {/* Save/Cancel section - right side */}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleClose} disabled={isSaving || isDeleting}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving || isDeleting || !hasChanges}>
-                {isSaving ? "Saving..." : "Save changes"}
-              </Button>
+        {/* Related Tasks (children and blockers) */}
+        <RelatedTasks taskId={task.id} />
+
+        {/* Comments Section - more space */}
+        <CommentsSection taskId={task.id} readOnly={readOnly} />
+      </div>
+
+      {!readOnly && (
+        <div className="flex shrink-0 flex-col gap-2 border-t p-4 sm:flex-row sm:justify-between">
+          {/* Delete section - left side */}
+          {onDelete && (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                {isConfirmingDelete ?
+                  <>
+                    <span className="text-destructive text-sm">Delete this task?</span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? "Deleting..." : "Yes, delete"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsConfirmingDelete(false)}
+                      disabled={isDeleting}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                : <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDeleteError(null)
+                      setIsConfirmingDelete(true)
+                    }}
+                    disabled={isSaving}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <IconTrash className="mr-1 h-4 w-4" />
+                    Delete
+                  </Button>
+                }
+              </div>
+              {deleteError && <span className="text-destructive text-xs">{deleteError}</span>}
             </div>
-          </SheetFooter>
-        )}
-      </SheetContent>
-    </Sheet>
+          )}
+
+          {/* Save/Cancel section - right side */}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleClose} disabled={isSaving || isDeleting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving || isDeleting || !hasChanges}>
+              {isSaving ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
