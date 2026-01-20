@@ -354,7 +354,8 @@ function createApp(config: ServerConfig): Express {
       }
 
       const bdProxy = getBdProxy()
-      const issues = await bdProxy.list({
+      // Use listWithParents to derive parent field from dependency relationships
+      const issues = await bdProxy.listWithParents({
         status: status as "open" | "in_progress" | "blocked" | "deferred" | "closed" | undefined,
         ready: ready === "true",
         all: all === "true",

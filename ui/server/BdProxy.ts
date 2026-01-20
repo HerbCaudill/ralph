@@ -183,6 +183,53 @@ export class BdProxy {
   }
 
   /**
+   * List issues with parent field derived from dependency relationships.
+   *
+   * This method fetches all issues matching the filters and then enriches them
+   * with the `parent` field by looking at each issue's dependents. If an issue
+   * has an epic as a dependent (with dependency_type "blocks"), that epic's ID
+   * is set as the parent.
+   */
+  async listWithParents(options: BdListOptions = {}): Promise<BdIssue[]> {
+    // First, get the filtered list of issues
+    const issues = await this.list(options)
+
+    if (issues.length === 0) {
+      return issues
+    }
+
+    // Get full details for all issues to access their dependents
+    const ids = issues.map(issue => issue.id)
+    const detailedIssues = await this.show(ids)
+
+    // Create a map for quick lookup
+    const detailsMap = new Map<string, BdIssue>()
+    for (const issue of detailedIssues) {
+      detailsMap.set(issue.id, issue)
+    }
+
+    // Enrich each issue with parent field derived from dependents
+    return issues.map(issue => {
+      const details = detailsMap.get(issue.id)
+      if (!details?.dependents?.length) {
+        return issue
+      }
+
+      // Find an epic dependent with "blocks" relationship
+      // This means the current issue "blocks" the epic (is a child of the epic)
+      const parentEpic = details.dependents.find(
+        dep => dep.issue_type === "epic" && dep.dependency_type === "blocks",
+      )
+
+      if (parentEpic) {
+        return { ...issue, parent: parentEpic.id }
+      }
+
+      return issue
+    })
+  }
+
+  /**
    * Create a new issue.
    *
    * @returns The created issue

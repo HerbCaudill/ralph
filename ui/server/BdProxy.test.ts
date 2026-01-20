@@ -862,4 +862,212 @@ describe("BdProxy", () => {
       )
     })
   })
+
+  describe("listWithParents", () => {
+    it("returns empty array when no issues", async () => {
+      const listPromise = proxy.listWithParents()
+
+      mockProcess.stdout.emit("data", Buffer.from("[]"))
+      mockProcess.emit("close", 0)
+
+      const result = await listPromise
+      expect(result).toEqual([])
+    })
+
+    it("derives parent from epic dependent with blocks relationship", async () => {
+      // First call: list returns tasks
+      const listIssue: BdIssue = {
+        id: "rui-task",
+        title: "Test Task",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+        created_at: "2026-01-18T12:00:00Z",
+        updated_at: "2026-01-18T12:00:00Z",
+      }
+
+      // Second call: show returns details with dependents
+      const showIssue: BdIssue = {
+        ...listIssue,
+        dependents: [
+          {
+            id: "rui-epic",
+            title: "Parent Epic",
+            status: "open",
+            priority: 2,
+            issue_type: "epic",
+            created_at: "2026-01-18T12:00:00Z",
+            updated_at: "2026-01-18T12:00:00Z",
+            dependency_type: "blocks",
+          },
+        ],
+      }
+
+      const listPromise = proxy.listWithParents()
+
+      // First spawn: list command
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
+      mockProcess.emit("close", 0)
+
+      // Create new mock process for second command
+      const secondMockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(secondMockProcess)
+
+      // Give time for second spawn
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      // Second spawn: show command
+      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
+      secondMockProcess.emit("close", 0)
+
+      const result = await listPromise
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("rui-task")
+      expect(result[0].parent).toBe("rui-epic")
+    })
+
+    it("does not set parent for non-epic dependents", async () => {
+      const listIssue: BdIssue = {
+        id: "rui-task",
+        title: "Test Task",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+        created_at: "2026-01-18T12:00:00Z",
+        updated_at: "2026-01-18T12:00:00Z",
+      }
+
+      const showIssue: BdIssue = {
+        ...listIssue,
+        dependents: [
+          {
+            id: "rui-other-task",
+            title: "Other Task",
+            status: "open",
+            priority: 2,
+            issue_type: "task", // Not an epic
+            created_at: "2026-01-18T12:00:00Z",
+            updated_at: "2026-01-18T12:00:00Z",
+            dependency_type: "blocks",
+          },
+        ],
+      }
+
+      const listPromise = proxy.listWithParents()
+
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
+      mockProcess.emit("close", 0)
+
+      const secondMockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(secondMockProcess)
+
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
+      secondMockProcess.emit("close", 0)
+
+      const result = await listPromise
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("rui-task")
+      expect(result[0].parent).toBeUndefined()
+    })
+
+    it("does not set parent for epic dependent with non-blocks relationship", async () => {
+      const listIssue: BdIssue = {
+        id: "rui-task",
+        title: "Test Task",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+        created_at: "2026-01-18T12:00:00Z",
+        updated_at: "2026-01-18T12:00:00Z",
+      }
+
+      const showIssue: BdIssue = {
+        ...listIssue,
+        dependents: [
+          {
+            id: "rui-epic",
+            title: "Some Epic",
+            status: "open",
+            priority: 2,
+            issue_type: "epic",
+            created_at: "2026-01-18T12:00:00Z",
+            updated_at: "2026-01-18T12:00:00Z",
+            dependency_type: "relates_to", // Not "blocks"
+          },
+        ],
+      }
+
+      const listPromise = proxy.listWithParents()
+
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
+      mockProcess.emit("close", 0)
+
+      const secondMockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(secondMockProcess)
+
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
+      secondMockProcess.emit("close", 0)
+
+      const result = await listPromise
+
+      expect(result).toHaveLength(1)
+      expect(result[0].parent).toBeUndefined()
+    })
+
+    it("handles tasks without any dependents", async () => {
+      const listIssue: BdIssue = {
+        id: "rui-task",
+        title: "Test Task",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+        created_at: "2026-01-18T12:00:00Z",
+        updated_at: "2026-01-18T12:00:00Z",
+      }
+
+      const showIssue: BdIssue = {
+        ...listIssue,
+        // No dependents array
+      }
+
+      const listPromise = proxy.listWithParents()
+
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
+      mockProcess.emit("close", 0)
+
+      const secondMockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(secondMockProcess)
+
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
+      secondMockProcess.emit("close", 0)
+
+      const result = await listPromise
+
+      expect(result).toHaveLength(1)
+      expect(result[0].parent).toBeUndefined()
+    })
+
+    it("passes filter options to list", async () => {
+      const listPromise = proxy.listWithParents({ status: "open", ready: true })
+
+      mockProcess.stdout.emit("data", Buffer.from("[]"))
+      mockProcess.emit("close", 0)
+
+      await listPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "bd",
+        ["list", "--json", "--status", "open", "--ready"],
+        expect.anything(),
+      )
+    })
+  })
 })
