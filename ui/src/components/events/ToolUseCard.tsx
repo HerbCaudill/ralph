@@ -468,8 +468,8 @@ function getPreviewInfo(content: string): { preview: string; remainingLines: num
 }
 
 /**
- * AnsiOutput component for displaying terminal output with ANSI color codes.
- * Falls back to syntax highlighting if no ANSI codes are present.
+ * AnsiOutput component for displaying terminal output.
+ * Strips ANSI color codes from the output for clean display.
  */
 function AnsiOutput({
   code,
@@ -494,21 +494,8 @@ function AnsiOutput({
 
   const shouldTruncate = !isExpanded && remainingLines > 0
 
-  // If no ANSI codes, fall back to syntax highlighting
-  if (!containsAnsi) {
-    return (
-      <HighlightedCodeOutput
-        code={code}
-        language="bash"
-        isExpanded={isExpanded}
-        onExpand={onExpand}
-        className={className}
-      />
-    )
-  }
-
-  // Convert ANSI to HTML
-  const html = useMemo(() => ansiToHtml(displayCode), [displayCode])
+  // Strip ANSI codes from the display
+  const plainText = useMemo(() => stripAnsi(displayCode), [displayCode])
 
   return (
     <div
@@ -519,10 +506,7 @@ function AnsiOutput({
         className,
       )}
     >
-      <pre
-        className="overflow-auto p-2 font-mono text-xs whitespace-pre-wrap"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <pre className="overflow-auto p-2 font-mono text-xs whitespace-pre-wrap">{plainText}</pre>
       {shouldTruncate && (
         <div className="text-muted-foreground border-t px-2 py-1 text-xs">
           ... +{remainingLines} lines
