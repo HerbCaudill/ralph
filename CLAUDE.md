@@ -176,7 +176,7 @@ pnpm cli:build         # Build CLI package
 pnpm cli:test          # Run CLI tests
 
 # Run the server
-pnpm server            # Start server in development
+pnpm serve             # Start server in development
 pnpm server:build      # Build server package
 pnpm server:test       # Run server tests
 

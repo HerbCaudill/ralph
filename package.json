@@ -9,13 +9,13 @@
     "cli": "pnpm --filter @herbcaudill/ralph ralph",
     "cli:build": "pnpm --filter @herbcaudill/ralph build",
     "cli:test": "pnpm --filter @herbcaudill/ralph test",
-    "server": "pnpm --filter @herbcaudill/ralph-server dev",
+    "serve": "pnpm --filter @herbcaudill/ralph-server dev",
     "server:build": "pnpm --filter @herbcaudill/ralph-server build",
     "server:test": "pnpm --filter @herbcaudill/ralph-server test",
     "ui": "pnpm --filter @herbcaudill/ralph-ui dev",
     "ui:build": "pnpm --filter @herbcaudill/ralph-ui build",
     "ui:test": "pnpm --filter @herbcaudill/ralph-ui test",
-    "dev": "concurrently -n server,ui -c blue,green \"pnpm server\" \"pnpm ui\"",
+    "dev": "concurrently -n server,ui -c blue,green \"pnpm serve\" \"pnpm ui\"",
     "storybook": "pnpm --filter @herbcaudill/ralph-ui storybook"
   },
   "devDependencies": {
