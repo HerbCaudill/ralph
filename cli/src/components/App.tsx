@@ -10,13 +10,14 @@ export const App = ({
   ralphVersion,
   watch,
   json,
+  agent,
 }: Props) => {
   if (replayFile) {
     return <ReplayLog filePath={replayFile} />
   }
 
   if (json) {
-    return <JsonOutput totalIterations={iterations} />
+    return <JsonOutput totalIterations={iterations} agent={agent} />
   }
 
   return (
@@ -25,6 +26,7 @@ export const App = ({
       claudeVersion={claudeVersion}
       ralphVersion={ralphVersion}
       watch={watch}
+      agent={agent}
     />
   )
 }
@@ -36,4 +38,5 @@ type Props = {
   ralphVersion: string
   watch?: boolean
   json?: boolean
+  agent: string
 }

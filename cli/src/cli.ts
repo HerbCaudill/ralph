@@ -21,6 +21,7 @@ export const program = new Command()
   .option("--replay [file]", "replay events from log file")
   .option("--watch", "watch for new beads issues after completion")
   .option("--json", "output events as newline-delimited JSON to stdout")
+  .option("--agent <name>", "agent to use (e.g., claude, codex)", "claude")
   .action((iterationsArg: number | undefined, options) => {
     // Use dynamic default if no iterations specified
     const iterations = iterationsArg ?? getDefaultIterations()
@@ -35,6 +36,14 @@ export const program = new Command()
     const ralphVersion = packageJson.version
     const watch = options.watch === true
     const json = options.json === true
+    const agent = options.agent as string
+
+    // Validate agent selection
+    const validAgents = ["claude", "codex"]
+    if (!validAgents.includes(agent)) {
+      console.error(`Error: Invalid agent "${agent}". Available agents: ${validAgents.join(", ")}`)
+      process.exit(1)
+    }
 
     // Clear the screen on startup (skip in JSON mode)
     if (!json) {
@@ -49,6 +58,7 @@ export const program = new Command()
         ralphVersion,
         watch,
         json,
+        agent,
       }),
     )
   })

@@ -197,7 +197,13 @@ type StaticItem =
   | { type: "iteration"; iteration: number; key: string }
   | { type: "block"; block: ContentBlock; key: string }
 
-export const IterationRunner = ({ totalIterations, claudeVersion, ralphVersion, watch }: Props) => {
+export const IterationRunner = ({
+  totalIterations,
+  claudeVersion,
+  ralphVersion,
+  watch,
+  agent,
+}: Props) => {
   const { exit } = useApp()
   const { columns } = useTerminalSize()
   const [currentIteration, setCurrentIteration] = useState(1)
@@ -764,4 +770,5 @@ type Props = {
   claudeVersion: string
   ralphVersion: string
   watch?: boolean
+  agent: string
 }

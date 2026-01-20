@@ -50,7 +50,7 @@ const outputEvent = (event: Record<string, unknown>) => {
   process.stdout.write(JSON.stringify(event) + "\n")
 }
 
-export const JsonOutput = ({ totalIterations }: Props) => {
+export const JsonOutput = ({ totalIterations, agent }: Props) => {
   const { exit } = useApp()
   const [currentIteration, setCurrentIteration] = useState(1)
   const [error, setError] = useState<string>()
@@ -284,4 +284,5 @@ export const JsonOutput = ({ totalIterations }: Props) => {
 
 type Props = {
   totalIterations: number
+  agent: string
 }

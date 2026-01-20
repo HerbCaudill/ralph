@@ -107,6 +107,7 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
 1. **CLI Entry** (`cli.ts`) → Defines Commander.js program with modes:
    - Main mode: Run N iterations (`ralph [iterations]`)
    - Watch mode: Watch for new beads issues after completion (`ralph --watch`)
+   - Agent selection: Select AI agent to use (`ralph --agent <name>`, defaults to `claude`)
    - Init mode: Set up `.ralph/` directory (`ralph init`)
    - Replay mode: Replay events from log (`ralph --replay [file]`)
 

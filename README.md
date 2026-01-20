@@ -94,13 +94,14 @@ npx @herbcaudill/ralph
 
 ## Commands
 
-| Command         | Description                                                    |
-| --------------- | -------------------------------------------------------------- |
-| `ralph`         | Run with dynamic default (120% of open issues, min 10 max 100) |
-| `ralph <n>`     | Run specified number of iterations                             |
-| `ralph init`    | Initialize .ralph directory with templates                     |
-| `ralph --watch` | Watch for new issues after completion                          |
-| `ralph --help`  | Show help                                                      |
+| Command                  | Description                                                    |
+| ------------------------ | -------------------------------------------------------------- |
+| `ralph`                  | Run with dynamic default (120% of open issues, min 10 max 100) |
+| `ralph <n>`              | Run specified number of iterations                             |
+| `ralph init`             | Initialize .ralph directory with templates                     |
+| `ralph --watch`          | Watch for new issues after completion                          |
+| `ralph --agent <name>`   | Select AI agent (e.g., claude, codex) - defaults to claude    |
+| `ralph --help`           | Show help                                                      |
 
 ## Watch mode
 
