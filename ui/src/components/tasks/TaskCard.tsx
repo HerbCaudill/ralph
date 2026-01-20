@@ -1,6 +1,6 @@
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { forwardRef, useCallback, useState, useEffect } from "react"
-import { useAppStore, selectIssuePrefix } from "@/store"
+import { useAppStore, selectIssuePrefix, selectSelectedTaskId } from "@/store"
 import {
   IconCircle,
   IconCircleDot,
@@ -192,6 +192,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false)
   const [shouldAnimate, setShouldAnimate] = useState(isNew)
   const issuePrefix = useAppStore(selectIssuePrefix)
+  const selectedTaskId = useAppStore(selectSelectedTaskId)
+  const isSelected = selectedTaskId === task.id
 
   // Remove animation class after animation completes
   useEffect(() => {
@@ -270,6 +272,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
         "border-border hover:bg-muted/50 group border-b transition-colors",
         task.status === "closed" && "opacity-60",
         shouldAnimate && "animate-bounceIn",
+        isSelected && "bg-primary/10 ring-primary/50 ring-2 ring-inset",
         className,
       )}
       {...props}

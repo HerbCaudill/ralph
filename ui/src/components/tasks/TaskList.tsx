@@ -268,6 +268,7 @@ export function TaskList({
   const searchQuery = useAppStore(selectTaskSearchQuery)
   const closedTimeFilter = useAppStore(selectClosedTimeFilter)
   const setClosedTimeFilter = useAppStore(state => state.setClosedTimeFilter)
+  const setVisibleTaskIds = useAppStore(state => state.setVisibleTaskIds)
 
   // Track newly added task IDs to highlight them
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set())
@@ -506,6 +507,36 @@ export function TaskList({
   const visibleStatusGroups = useMemo(() => {
     return statusGroups.filter(group => showEmptyGroups || group.totalCount > 0)
   }, [statusGroups, showEmptyGroups])
+
+  // Compute visible task IDs in display order (for keyboard navigation)
+  const visibleTaskIds = useMemo(() => {
+    const ids: string[] = []
+    for (const { config, parentSubGroups } of visibleStatusGroups) {
+      const isStatusCollapsed = statusCollapsedState[config.key]
+      if (!isStatusCollapsed) {
+        for (const { parent, tasks: childTasks } of parentSubGroups) {
+          if (parent) {
+            // Add parent task
+            ids.push(parent.id)
+            // Add child tasks if not collapsed
+            const isParentCollapsed = parentCollapsedState[parent.id] ?? false
+            if (!isParentCollapsed) {
+              ids.push(...childTasks.map(t => t.id))
+            }
+          } else {
+            // Add ungrouped tasks
+            ids.push(...childTasks.map(t => t.id))
+          }
+        }
+      }
+    }
+    return ids
+  }, [visibleStatusGroups, statusCollapsedState, parentCollapsedState])
+
+  // Update visible task IDs in store for keyboard navigation
+  useEffect(() => {
+    setVisibleTaskIds(visibleTaskIds)
+  }, [visibleTaskIds, setVisibleTaskIds])
 
   // Check if we have any content to show
   const hasTasks = statusGroups.some(g => g.totalCount > 0)

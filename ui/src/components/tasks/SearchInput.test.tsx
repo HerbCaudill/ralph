@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { SearchInput, type SearchInputHandle } from "./SearchInput"
 import { useAppStore } from "@/store"
 import { createRef } from "react"
@@ -10,11 +10,15 @@ describe("SearchInput", () => {
   beforeEach(() => {
     // Reset the store before each test
     useAppStore.getState().clearTaskSearchQuery()
+    useAppStore.getState().clearSelectedTaskId()
+    useAppStore.getState().setVisibleTaskIds([])
   })
 
   afterEach(() => {
     // Clean up
     useAppStore.getState().clearTaskSearchQuery()
+    useAppStore.getState().clearSelectedTaskId()
+    useAppStore.getState().setVisibleTaskIds([])
   })
 
   describe("rendering", () => {
@@ -92,6 +96,113 @@ describe("SearchInput", () => {
       fireEvent.keyDown(input, { key: "Escape" })
 
       expect(useAppStore.getState().taskSearchQuery).toBe("")
+    })
+  })
+
+  describe("keyboard navigation", () => {
+    beforeEach(() => {
+      // Set up some visible task IDs
+      useAppStore.getState().setVisibleTaskIds(["task-1", "task-2", "task-3"])
+    })
+
+    it("selects first task on ArrowDown when no task is selected", () => {
+      render(<SearchInput />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+
+      expect(useAppStore.getState().selectedTaskId).toBe("task-1")
+    })
+
+    it("selects next task on ArrowDown", () => {
+      useAppStore.getState().setSelectedTaskId("task-1")
+      render(<SearchInput />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+
+      expect(useAppStore.getState().selectedTaskId).toBe("task-2")
+    })
+
+    it("stays on last task when ArrowDown at end of list", () => {
+      useAppStore.getState().setSelectedTaskId("task-3")
+      render(<SearchInput />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+
+      expect(useAppStore.getState().selectedTaskId).toBe("task-3")
+    })
+
+    it("selects last task on ArrowUp when no task is selected", () => {
+      render(<SearchInput />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+
+      expect(useAppStore.getState().selectedTaskId).toBe("task-3")
+    })
+
+    it("selects previous task on ArrowUp", () => {
+      useAppStore.getState().setSelectedTaskId("task-2")
+      render(<SearchInput />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+
+      expect(useAppStore.getState().selectedTaskId).toBe("task-1")
+    })
+
+    it("stays on first task when ArrowUp at beginning of list", () => {
+      useAppStore.getState().setSelectedTaskId("task-1")
+      render(<SearchInput />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+
+      expect(useAppStore.getState().selectedTaskId).toBe("task-1")
+    })
+
+    it("calls onOpenTask when Enter is pressed with selected task", () => {
+      const onOpenTask = vi.fn()
+      useAppStore.getState().setSelectedTaskId("task-2")
+      render(<SearchInput onOpenTask={onOpenTask} />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      expect(onOpenTask).toHaveBeenCalledWith("task-2")
+      expect(useAppStore.getState().selectedTaskId).toBe(null)
+    })
+
+    it("does not call onOpenTask when Enter is pressed without selected task", () => {
+      const onOpenTask = vi.fn()
+      render(<SearchInput onOpenTask={onOpenTask} />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      expect(onOpenTask).not.toHaveBeenCalled()
+    })
+
+    it("clears selection on Escape", () => {
+      useAppStore.getState().setSelectedTaskId("task-2")
+      render(<SearchInput />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "Escape" })
+
+      expect(useAppStore.getState().selectedTaskId).toBe(null)
+    })
+
+    it("handles empty visible task list gracefully", () => {
+      useAppStore.getState().setVisibleTaskIds([])
+      render(<SearchInput />)
+      const input = screen.getByRole("textbox")
+
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+
+      expect(useAppStore.getState().selectedTaskId).toBe(null)
     })
   })
 

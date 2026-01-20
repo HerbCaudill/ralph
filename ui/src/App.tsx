@@ -103,6 +103,7 @@ interface TasksSidebarPanelProps {
   quickInputRef?: React.RefObject<QuickTaskInputHandle | null>
   searchInputRef?: React.RefObject<SearchInputHandle | null>
   onTaskClick?: (taskId: string) => void
+  onOpenTask?: (taskId: string) => void
   onTaskCreated?: () => void
 }
 
@@ -110,6 +111,7 @@ function TasksSidebarPanel({
   quickInputRef,
   searchInputRef,
   onTaskClick,
+  onOpenTask,
   onTaskCreated,
 }: TasksSidebarPanelProps) {
   const { tasks, refresh } = useTasks({ all: true })
@@ -124,6 +126,7 @@ function TasksSidebarPanel({
       quickInput={<QuickTaskInput ref={quickInputRef} onTaskCreated={handleTaskCreated} />}
       taskList={<TaskList tasks={tasks} onTaskClick={onTaskClick} />}
       searchInputRef={searchInputRef}
+      onOpenTask={onOpenTask}
     />
   )
 }
@@ -397,6 +400,7 @@ export function App() {
             quickInputRef={quickTaskInputRef}
             searchInputRef={searchInputRef}
             onTaskClick={handleTaskClick}
+            onOpenTask={handleTaskClick}
           />
         }
         main={<AgentView chatInputRef={chatInputRef} />}

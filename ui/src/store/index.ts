@@ -278,6 +278,12 @@ export interface AppState {
   // Task search filter
   taskSearchQuery: string
 
+  // Selected task for keyboard navigation
+  selectedTaskId: string | null
+
+  // Visible task IDs (for keyboard navigation through filtered/sorted tasks)
+  visibleTaskIds: string[]
+
   // Closed tasks time filter
   closedTimeFilter: ClosedTasksTimeFilter
 
@@ -366,6 +372,11 @@ export interface AppActions {
   // Task search
   setTaskSearchQuery: (query: string) => void
   clearTaskSearchQuery: () => void
+
+  // Task selection (for keyboard navigation)
+  setSelectedTaskId: (id: string | null) => void
+  clearSelectedTaskId: () => void
+  setVisibleTaskIds: (ids: string[]) => void
 
   // Closed time filter
   setClosedTimeFilter: (filter: ClosedTasksTimeFilter) => void
@@ -487,6 +498,8 @@ const initialState: AppState = {
   taskChatStreamingText: "",
   viewingIterationIndex: null,
   taskSearchQuery: "",
+  selectedTaskId: null,
+  visibleTaskIds: [],
   closedTimeFilter: "past_day",
   showToolOutput: false,
 }
@@ -699,6 +712,11 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   setTaskSearchQuery: query => set({ taskSearchQuery: query }),
   clearTaskSearchQuery: () => set({ taskSearchQuery: "" }),
 
+  // Task selection (for keyboard navigation)
+  setSelectedTaskId: id => set({ selectedTaskId: id }),
+  clearSelectedTaskId: () => set({ selectedTaskId: null }),
+  setVisibleTaskIds: ids => set({ visibleTaskIds: ids }),
+
   // Closed time filter
   setClosedTimeFilter: filter => {
     saveClosedTimeFilter(filter)
@@ -759,6 +777,8 @@ export const selectCurrentIterationEvents = (state: AppState) =>
 export const selectIsViewingLatestIteration = (state: AppState) =>
   state.viewingIterationIndex === null
 export const selectTaskSearchQuery = (state: AppState) => state.taskSearchQuery
+export const selectSelectedTaskId = (state: AppState) => state.selectedTaskId
+export const selectVisibleTaskIds = (state: AppState) => state.visibleTaskIds
 export const selectClosedTimeFilter = (state: AppState) => state.closedTimeFilter
 export const selectIterationTask = (state: AppState) => {
   const iterationEvents = getEventsForIteration(state.events, state.viewingIterationIndex)

@@ -22,6 +22,11 @@ export interface TaskSidebarProps {
   searchInputRef?: RefObject<SearchInputHandle | null>
 
   /**
+   * Callback when a task should be opened (triggered by Enter key in search).
+   */
+  onOpenTask?: (taskId: string) => void
+
+  /**
    * Additional CSS classes.
    */
   className?: string
@@ -33,7 +38,13 @@ export interface TaskSidebarProps {
  * Sidebar container for task management.
  * Contains quick task input at top and task list below.
  */
-export function TaskSidebar({ quickInput, taskList, searchInputRef, className }: TaskSidebarProps) {
+export function TaskSidebar({
+  quickInput,
+  taskList,
+  searchInputRef,
+  onOpenTask,
+  className,
+}: TaskSidebarProps) {
   return (
     <div
       className={cn("flex h-full flex-col", className)}
@@ -45,7 +56,7 @@ export function TaskSidebar({ quickInput, taskList, searchInputRef, className }:
 
       {/* Search Input */}
       <div className="border-border shrink-0 border-b px-3 py-2">
-        <SearchInput ref={searchInputRef} />
+        <SearchInput ref={searchInputRef} onOpenTask={onOpenTask} />
       </div>
 
       {/* Task List Area - scrolling is handled by TaskList sections */}

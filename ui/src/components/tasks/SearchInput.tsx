@@ -1,5 +1,10 @@
 import { cn } from "@/lib/utils"
-import { useAppStore, selectTaskSearchQuery } from "@/store"
+import {
+  useAppStore,
+  selectTaskSearchQuery,
+  selectSelectedTaskId,
+  selectVisibleTaskIds,
+} from "@/store"
 import {
   forwardRef,
   useImperativeHandle,
@@ -29,6 +34,11 @@ export interface SearchInputProps {
    * Additional CSS classes.
    */
   className?: string
+
+  /**
+   * Callback when a task should be opened (triggered by Enter key).
+   */
+  onOpenTask?: (taskId: string) => void
 }
 
 export interface SearchInputHandle {
@@ -43,13 +53,17 @@ export interface SearchInputHandle {
  * Uses Zustand store for state management to enable live filtering.
  */
 export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(function SearchInput(
-  { placeholder = "Search tasks...", disabled = false, className },
+  { placeholder = "Search tasks...", disabled = false, className, onOpenTask },
   ref,
 ) {
   const inputRef = useRef<HTMLInputElement>(null)
   const query = useAppStore(selectTaskSearchQuery)
   const setQuery = useAppStore(state => state.setTaskSearchQuery)
   const clearQuery = useAppStore(state => state.clearTaskSearchQuery)
+  const selectedTaskId = useAppStore(selectSelectedTaskId)
+  const setSelectedTaskId = useAppStore(state => state.setSelectedTaskId)
+  const clearSelectedTaskId = useAppStore(state => state.clearSelectedTaskId)
+  const visibleTaskIds = useAppStore(selectVisibleTaskIds)
   const [isFocused, setIsFocused] = useState(false)
 
   useImperativeHandle(ref, () => ({
@@ -76,13 +90,68 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
-      // Escape clears the search
+      // Escape clears the search and selection
       if (e.key === "Escape") {
         e.preventDefault()
         clearQuery()
+        clearSelectedTaskId()
+        return
+      }
+
+      // Arrow down - select next task
+      if (e.key === "ArrowDown") {
+        e.preventDefault()
+        if (visibleTaskIds.length === 0) return
+
+        if (!selectedTaskId) {
+          // Select first task
+          setSelectedTaskId(visibleTaskIds[0])
+        } else {
+          // Select next task
+          const currentIndex = visibleTaskIds.indexOf(selectedTaskId)
+          if (currentIndex < visibleTaskIds.length - 1) {
+            setSelectedTaskId(visibleTaskIds[currentIndex + 1])
+          }
+        }
+        return
+      }
+
+      // Arrow up - select previous task
+      if (e.key === "ArrowUp") {
+        e.preventDefault()
+        if (visibleTaskIds.length === 0) return
+
+        if (!selectedTaskId) {
+          // Select last task
+          setSelectedTaskId(visibleTaskIds[visibleTaskIds.length - 1])
+        } else {
+          // Select previous task
+          const currentIndex = visibleTaskIds.indexOf(selectedTaskId)
+          if (currentIndex > 0) {
+            setSelectedTaskId(visibleTaskIds[currentIndex - 1])
+          }
+        }
+        return
+      }
+
+      // Enter - open selected task
+      if (e.key === "Enter") {
+        e.preventDefault()
+        if (selectedTaskId && onOpenTask) {
+          onOpenTask(selectedTaskId)
+          clearSelectedTaskId()
+        }
+        return
       }
     },
-    [clearQuery],
+    [
+      clearQuery,
+      clearSelectedTaskId,
+      visibleTaskIds,
+      selectedTaskId,
+      setSelectedTaskId,
+      onOpenTask,
+    ],
   )
 
   const handleFocus = useCallback(() => {
