@@ -22,8 +22,8 @@ const MAX_LEFT_PANEL_WIDTH = 600
 
 // Constants for detail panel width constraints
 const MIN_DETAIL_PANEL_WIDTH = 400
-const MAX_DETAIL_PANEL_WIDTH = 900
-const DEFAULT_DETAIL_PANEL_WIDTH = 600
+const MAX_DETAIL_PANEL_WIDTH = 1800
+const DEFAULT_DETAIL_PANEL_WIDTH = 1200
 
 // Types
 
