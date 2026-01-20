@@ -42,7 +42,7 @@ describe("HotkeysDialog", () => {
       const onClose = vi.fn()
       render(<HotkeysDialog open={true} onClose={onClose} />)
 
-      expect(screen.getByText("Toggle task chat panel")).toBeInTheDocument()
+      expect(screen.getByText("Toggle task chat panel and focus input")).toBeInTheDocument()
       expect(screen.getByText("Focus task chat input")).toBeInTheDocument()
     })
 

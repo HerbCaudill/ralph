@@ -306,7 +306,17 @@ export function App() {
   }, [])
 
   const handleToggleTaskChat = useCallback(() => {
+    const isCurrentlyOpen = useAppStore.getState().taskChatOpen
     toggleTaskChat()
+    // If we're opening the panel, focus the input
+    if (!isCurrentlyOpen) {
+      setTimeout(() => {
+        const taskChatInput = document.querySelector(
+          '[aria-label="Task chat input"]',
+        ) as HTMLElement
+        taskChatInput?.focus()
+      }, 50)
+    }
   }, [toggleTaskChat])
 
   const handleFocusTaskChatInput = useCallback(() => {

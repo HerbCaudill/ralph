@@ -64,7 +64,7 @@
     "toggleTaskChat": {
       "key": "j",
       "modifiers": ["cmd"],
-      "description": "Toggle task chat panel"
+      "description": "Toggle task chat panel and focus input"
     },
     "focusTaskChatInput": {
       "key": "3",
