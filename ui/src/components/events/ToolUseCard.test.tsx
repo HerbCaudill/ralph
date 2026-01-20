@@ -16,6 +16,7 @@ function createToolEvent(tool: ToolName, overrides?: Partial<ToolUseEvent>): Too
 describe("ToolUseCard", () => {
   beforeEach(() => {
     useAppStore.getState().reset()
+    useAppStore.getState().setShowToolOutput(true)
   })
 
   describe("rendering", () => {

@@ -18,6 +18,7 @@ describe("EventStream", () => {
   beforeEach(() => {
     // Reset store state before each test
     useAppStore.getState().reset()
+    useAppStore.getState().setShowToolOutput(true)
   })
 
   describe("Task lifecycle events", () => {

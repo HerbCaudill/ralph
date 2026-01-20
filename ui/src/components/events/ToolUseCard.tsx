@@ -537,6 +537,7 @@ function AnsiOutput({
 export function ToolUseCard({ event, className, defaultExpanded = false }: ToolUseCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const workspace = useAppStore(selectWorkspace)
+  const showToolOutput = useAppStore(state => state.showToolOutput)
 
   const summary = getToolSummary(event.tool, event.input, workspace)
   const outputSummary = getOutputSummary(event.tool, event.output)
@@ -591,7 +592,7 @@ export function ToolUseCard({ event, className, defaultExpanded = false }: ToolU
       </div>
 
       {/* Output content */}
-      {hasExpandableContent && (
+      {showToolOutput && hasExpandableContent && (
         <div className="border-muted-foreground/30 mt-1 ml-1 border-l pl-3">
           <div className="text-muted-foreground flex items-start gap-1 text-xs">
             <span>└</span>
