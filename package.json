@@ -1,7 +1,7 @@
 {
   "name": "ralph-monorepo",
   "private": true,
-  "version": "0.8.3",
+  "version": "0.8.4",
   "scripts": {
     "build": "pnpm -r build",
     "patch": "pnpm version patch --no-git-tag-version && pnpm -r exec pnpm version patch --no-git-tag-version",
