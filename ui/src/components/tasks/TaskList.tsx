@@ -290,10 +290,10 @@ export function TaskList({
     if (addedTaskIds.size > 0) {
       setNewTaskIds(addedTaskIds)
 
-      // Clear the new task IDs after animation duration
+      // Clear the new task IDs after animation duration (600ms for bounceIn)
       const timer = setTimeout(() => {
         setNewTaskIds(new Set())
-      }, 2000)
+      }, 600)
 
       // Update the previous task IDs reference
       previousTaskIdsRef.current = currentTaskIds

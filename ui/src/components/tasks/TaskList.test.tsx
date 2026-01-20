@@ -1071,7 +1071,7 @@ describe("TaskList", () => {
       rerender(<TaskList tasks={updatedTasks} />)
 
       // The new task should have the animation class
-      const newTaskElement = screen.getByText("New task").closest(".animate-pulse")
+      const newTaskElement = screen.getByText("New task").closest(".animate-bounceIn")
       expect(newTaskElement).toBeInTheDocument()
     })
 
@@ -1084,7 +1084,7 @@ describe("TaskList", () => {
       const { container } = render(<TaskList tasks={tasks} />)
 
       // No tasks should have animation class on initial render
-      const animatedElements = container.querySelectorAll(".animate-pulse")
+      const animatedElements = container.querySelectorAll(".animate-bounceIn")
       expect(animatedElements).toHaveLength(0)
     })
 
@@ -1105,8 +1105,8 @@ describe("TaskList", () => {
       rerender(<TaskList tasks={updatedTasks} />)
 
       // Both new tasks should have animation class
-      const newTask1Element = screen.getByText("New task 1").closest(".animate-pulse")
-      const newTask2Element = screen.getByText("New task 2").closest(".animate-pulse")
+      const newTask1Element = screen.getByText("New task 1").closest(".animate-bounceIn")
+      const newTask2Element = screen.getByText("New task 2").closest(".animate-bounceIn")
       expect(newTask1Element).toBeInTheDocument()
       expect(newTask2Element).toBeInTheDocument()
     })

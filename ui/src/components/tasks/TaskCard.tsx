@@ -197,10 +197,10 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   useEffect(() => {
     if (isNew) {
       setShouldAnimate(true)
-      // Duration should match the animation duration (pulse is typically 2s)
+      // Remove animation after 600ms (bounceIn animation duration)
       const timer = setTimeout(() => {
         setShouldAnimate(false)
-      }, 2000)
+      }, 600)
       return () => clearTimeout(timer)
     }
   }, [isNew])
@@ -269,7 +269,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
       className={cn(
         "border-border hover:bg-muted/50 group border-b transition-colors",
         task.status === "closed" && "opacity-60",
-        shouldAnimate && "animate-pulse",
+        shouldAnimate && "animate-bounceIn",
         className,
       )}
       {...props}
