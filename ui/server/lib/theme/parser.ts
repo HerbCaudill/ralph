@@ -12,7 +12,7 @@ import type {
   VSCodeTokenColor,
   VSCodeTokenSettings,
   VSCodeEditorColors,
-} from "./types"
+} from "./types.js"
 
 /**
  * Result of parsing a theme file.
@@ -358,12 +358,12 @@ export function getColor(theme: VSCodeTheme, key: string): string | undefined {
  * @returns Array of matching token colors (most specific first)
  */
 export function getTokenColorsForScope(theme: VSCodeTheme, scope: string): VSCodeTokenColor[] {
-  return theme.tokenColors.filter(tc => {
+  return theme.tokenColors.filter((tc: VSCodeTokenColor) => {
     if (tc.scope === undefined) return false
     if (typeof tc.scope === "string") {
       return scopeMatches(scope, tc.scope)
     }
-    return tc.scope.some(s => scopeMatches(scope, s))
+    return tc.scope.some((s: string) => scopeMatches(scope, s))
   })
 }
 

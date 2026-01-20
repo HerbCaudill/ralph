@@ -7,16 +7,16 @@ export type {
   StatusColors,
   ThemeMeta,
   AppTheme,
-} from "./types"
+} from "./types.js"
 
 export {
   DEFAULT_STATUS_COLORS,
   DEFAULT_DARK_STATUS_COLORS,
   DEFAULT_LIGHT_STATUS_COLORS,
-} from "./types"
+} from "./types.js"
 
 // Re-export parser functions and types
-export type { ParseResult, ValidationResult } from "./parser"
+export type { ParseResult, ValidationResult } from "./parser.js"
 export {
   parseThemeJson,
   parseThemeObject,
@@ -28,10 +28,10 @@ export {
   isLightTheme,
   isHighContrastTheme,
   getEssentialColors,
-} from "./parser"
+} from "./parser.js"
 
 // Re-export mapper functions and types
-export type { CSSVariables } from "./mapper"
+export type { CSSVariables } from "./mapper.js"
 export {
   extractStatusColors,
   mapThemeToCSSVariables,
@@ -40,4 +40,4 @@ export {
   applyThemeToElement,
   isValidHexColor,
   normalizeHexColor,
-} from "./mapper"
+} from "./mapper.js"

@@ -9,6 +9,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/vitest-setup.ts"],
     exclude: ["node_modules", "e2e"],
+    // Use node environment for server tests
+    environmentMatchGlobs: [["server/**/*.test.ts", "node"]],
   },
   resolve: {
     alias: {

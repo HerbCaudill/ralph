@@ -167,7 +167,7 @@ Claude is instructed (via `prompt.md`) to:
 pnpm build
 
 # Run all tests across packages
-pnpm test:all          # Run all tests (CLI + server + UI)
+pnpm test:all          # Run all tests (CLI + UI)
 pnpm test              # Run tests in each package
 
 # Run the CLI
@@ -175,13 +175,9 @@ pnpm cli               # Run ralph CLI in development
 pnpm cli:build         # Build CLI package
 pnpm cli:test          # Run CLI tests
 
-# Run the server
-pnpm serve             # Start server in development
-pnpm server:build      # Build server package
-pnpm server:test       # Run server tests
-
 # Run the UI
 pnpm ui                # Start UI dev server (Vite)
+pnpm serve             # Start server only
 pnpm ui:build          # Build UI for production
 pnpm ui:test           # Run UI tests
 
@@ -197,13 +193,10 @@ pnpm format
 
 ## Workspace Structure
 
-This is a pnpm workspace with three packages:
+This is a pnpm workspace with two packages:
 
 - **`cli/`** (`@herbcaudill/ralph`) - The CLI tool (published to npm)
-- **`server/`** (`@herbcaudill/ralph-server`) - Express backend that spawns Ralph CLI
-- **`ui/`** (`@herbcaudill/ralph-ui`) - React frontend with real-time event display
-
-The server and UI depend on the CLI via `workspace:*`, so changes to the CLI are immediately available during development.
+- **`ui/`** (`@herbcaudill/ralph-ui`) - Web app with server and React frontend (published to npm)
 
 ### CLI Package (`cli/`)
 
@@ -214,24 +207,23 @@ The autonomous AI iteration engine that wraps Claude CLI:
 - Displays formatted terminal UI using Ink (React for CLIs)
 - Orchestrates multiple iterations
 
-### Server Package (`server/`)
-
-Express backend that manages Ralph processes:
-
-- REST API for workspace management
-- WebSocket server for real-time event streaming
-- `RalphManager` - Spawns and manages Ralph CLI processes
-- `BdProxy` - Proxy for beads CLI commands
-- Theme discovery from VS Code installations
-
 ### UI Package (`ui/`)
 
-React frontend for web-based interaction:
+Web app with integrated Express server and React frontend:
 
-- Real-time event stream viewer
-- Task sidebar with beads integration
-- Workspace switcher for multiple projects
-- Theme support (VS Code theme integration)
+- **Server** (`ui/server/`):
+  - REST API for workspace management
+  - WebSocket server for real-time event streaming
+  - `RalphManager` - Spawns and manages Ralph CLI processes
+  - `BdProxy` - Proxy for beads CLI commands
+  - Theme discovery from VS Code installations
+- **Frontend** (`ui/src/`):
+  - Real-time event stream viewer
+  - Task sidebar with beads integration
+  - Workspace switcher for multiple projects
+  - Theme support (VS Code theme integration)
+
+Run with `npx @herbcaudill/ralph-ui` after installing.
 
 ## Project Structure
 
@@ -257,20 +249,21 @@ cli/                       # CLI package (@herbcaudill/ralph)
   templates/                # Template files for ralph init
   bin/ralph.js              # Published executable
 
-server/                    # Server package (@herbcaudill/ralph-server)
-  index.ts                  # Server entry point with REST API + WebSocket
-  RalphManager.ts           # Spawns and manages Ralph CLI process
-  BdProxy.ts                # Proxy for beads CLI commands
-  ThemeDiscovery.ts         # Discovers VS Code themes
-  lib/
-    theme/                  # Theme parsing and mapping utilities
-
 ui/                        # UI package (@herbcaudill/ralph-ui)
-  src/
+  server/                   # Express backend
+    index.ts                # Server entry point with REST API + WebSocket
+    main.ts                 # Development entry point
+    RalphManager.ts         # Spawns and manages Ralph CLI process
+    BdProxy.ts              # Proxy for beads CLI commands
+    ThemeDiscovery.ts       # Discovers VS Code themes
+    lib/
+      theme/                # Theme parsing and mapping utilities
+  src/                      # React frontend
     components/             # React components (chat, events, tasks, layout)
     store/                  # Zustand global state
     hooks/                  # Custom React hooks
     lib/                    # Utilities and theme management
+  bin/ralph-ui.js           # Published executable
   public/                   # Static assets
   .storybook/               # Storybook configuration
 ```

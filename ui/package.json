@@ -1,11 +1,21 @@
 {
   "name": "@herbcaudill/ralph-ui",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.7.0",
+  "description": "Web UI for Ralph - React frontend and server for the autonomous AI iteration engine",
   "type": "module",
+  "main": "./dist/server/index.js",
+  "types": "./dist/server/index.d.ts",
+  "bin": {
+    "ralph-ui": "./bin/ralph-ui.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
   "scripts": {
     "dev": "vite --open",
-    "build": "tsc -b && vite build",
+    "dev:server": "tsx server/main.ts",
+    "build": "tsc -b && tsc -p tsconfig.server.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest --watch",
@@ -16,9 +26,26 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "claude",
+    "ai",
+    "automation",
+    "ui",
+    "web",
+    "iteration",
+    "autonomous"
+  ],
+  "author": "Herb Caudill",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HerbCaudill/ralph.git"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.7",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-hover-card": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
@@ -29,6 +56,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "express": "^5.2.1",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -36,6 +64,7 @@
     "remark-gfm": "^4.0.1",
     "shiki": "^3.21.0",
     "tailwind-merge": "^3.4.0",
+    "ws": "^8.19.0",
     "zustand": "^5.0.10"
   },
   "devDependencies": {
@@ -48,9 +77,11 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
+    "@types/express": "^5.0.6",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.1.1",
     "jsdom": "^27.4.0",
     "prettier": "^3.8.0",
@@ -63,5 +94,8 @@
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.17"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

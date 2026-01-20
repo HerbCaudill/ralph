@@ -60,7 +60,7 @@ export interface ServerConfig {
   appDir: string
 }
 
-function getConfig(): ServerConfig {
+export function getConfig(): ServerConfig {
   return {
     host: process.env.HOST || "localhost",
     port: parseInt(process.env.PORT || "3000", 10),
@@ -1149,7 +1149,7 @@ export function resetTaskChatManager(): void {
 
 // Port availability check
 
-async function findAvailablePort(
+export async function findAvailablePort(
   host: string,
   startPort: number,
   maxAttempts = 10,
@@ -1183,7 +1183,7 @@ function checkPortAvailable(host: string, port: number): Promise<boolean> {
 
 // Main entry point
 
-async function startServer(config: ServerConfig): Promise<void> {
+export async function startServer(config: ServerConfig): Promise<void> {
   const app = createApp(config)
   const server = createServer(app)
 
@@ -1199,19 +1199,3 @@ async function startServer(config: ServerConfig): Promise<void> {
     console.log(`[server] WebSocket available at ws://${config.host}:${config.port}/ws`)
   })
 }
-
-// Main
-;(async () => {
-  try {
-    const config = getConfig()
-    const availablePort = await findAvailablePort(config.host, config.port)
-    if (availablePort !== config.port) {
-      process.env.PORT = String(availablePort)
-      config.port = availablePort
-    }
-    await startServer(config)
-  } catch (err) {
-    console.error("[server] startup error:", err)
-    process.exitCode = 1
-  }
-})()

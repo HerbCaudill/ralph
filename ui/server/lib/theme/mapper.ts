@@ -10,9 +10,9 @@
  * - Component-specific colors (sidebar, card, popover, etc.)
  */
 
-import type { VSCodeTheme, StatusColors, AppTheme, ThemeMeta } from "./types"
-import { DEFAULT_DARK_STATUS_COLORS, DEFAULT_LIGHT_STATUS_COLORS } from "./types"
-import { isDarkTheme, getEssentialColors } from "./parser"
+import type { VSCodeTheme, StatusColors, AppTheme, ThemeMeta } from "./types.js"
+import { DEFAULT_DARK_STATUS_COLORS, DEFAULT_LIGHT_STATUS_COLORS } from "./types.js"
+import { isDarkTheme, getEssentialColors } from "./parser.js"
 
 /**
  * CSS variable names used by the application.
@@ -400,7 +400,10 @@ export function generateThemeCSS(theme: VSCodeTheme, selector: string = ":root")
  * @param element - The DOM element to apply to
  * @param theme - The VS Code theme
  */
-export function applyThemeToElement(element: HTMLElement, theme: VSCodeTheme): void {
+export function applyThemeToElement(
+  element: { style: { setProperty: (name: string, value: string) => void } },
+  theme: VSCodeTheme,
+): void {
   const variables = mapThemeToCSSVariables(theme)
   for (const [name, value] of Object.entries(variables)) {
     element.style.setProperty(name, value)
