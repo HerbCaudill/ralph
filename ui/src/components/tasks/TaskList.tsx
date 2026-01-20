@@ -2,7 +2,6 @@ import { cn } from "@/lib/utils"
 import { useState, useCallback, useMemo, useEffect } from "react"
 import { IconChevronDown, IconStack2 } from "@tabler/icons-react"
 import { TaskCard, type TaskCardTask, type TaskStatus } from "./TaskCard"
-import { TaskHoverCard } from "./TaskHoverCard"
 import {
   useAppStore,
   selectTaskSearchQuery,
@@ -564,14 +563,13 @@ export function TaskList({
                           {!isEpicCollapsed && (
                             <div role="group" aria-label={`${epic.title} tasks`}>
                               {epicTasks.map(task => (
-                                <TaskHoverCard key={task.id} task={task}>
-                                  <TaskCard
-                                    task={task}
-                                    onStatusChange={onStatusChange}
-                                    onClick={onTaskClick}
-                                    className="pl-5"
-                                  />
-                                </TaskHoverCard>
+                                <TaskCard
+                                  key={task.id}
+                                  task={task}
+                                  onStatusChange={onStatusChange}
+                                  onClick={onTaskClick}
+                                  className="pl-5"
+                                />
                               ))}
                             </div>
                           )}
@@ -580,13 +578,12 @@ export function TaskList({
                     } else {
                       // Ungrouped tasks (no epic parent)
                       return epicTasks.map(task => (
-                        <TaskHoverCard key={task.id} task={task}>
-                          <TaskCard
-                            task={task}
-                            onStatusChange={onStatusChange}
-                            onClick={onTaskClick}
-                          />
-                        </TaskHoverCard>
+                        <TaskCard
+                          key={task.id}
+                          task={task}
+                          onStatusChange={onStatusChange}
+                          onClick={onTaskClick}
+                        />
                       ))
                     }
                   })
