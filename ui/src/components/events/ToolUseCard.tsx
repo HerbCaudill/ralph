@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useAppStore, selectWorkspace } from "@/store"
 import { TaskIdLink } from "@/components/ui/TaskIdLink"
 import { highlight, getCurrentCustomThemeName } from "@/lib/theme/highlighter"
+import { useTheme } from "@/hooks/useTheme"
 
 // Types
 
@@ -175,6 +176,8 @@ function HighlightedLine({
   className?: string
 }) {
   const [html, setHtml] = useState<string>("")
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
 
   useEffect(() => {
     let cancelled = false
@@ -184,7 +187,7 @@ function HighlightedLine({
         const themeName = getCurrentCustomThemeName()
         const result = await highlight(content, language, {
           theme: themeName ?? undefined,
-          isDark: true,
+          isDark,
         })
         if (!cancelled) {
           // Extract just the inner content from Shiki's output
@@ -204,7 +207,7 @@ function HighlightedLine({
     return () => {
       cancelled = true
     }
-  }, [content, language])
+  }, [content, language, isDark])
 
   if (!html) {
     return <span className={cn("whitespace-pre", className)}>{content}</span>
@@ -374,6 +377,8 @@ function HighlightedCodeOutput({
 }) {
   const [html, setHtml] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
 
   const { preview, remainingLines } = useMemo(() => getPreviewInfo(code), [code])
   const displayCode = isExpanded ? code : preview
@@ -387,7 +392,7 @@ function HighlightedCodeOutput({
         const themeName = getCurrentCustomThemeName()
         const result = await highlight(displayCode, language, {
           theme: themeName ?? undefined,
-          isDark: true,
+          isDark,
         })
         if (!cancelled) {
           setHtml(result)
@@ -407,7 +412,7 @@ function HighlightedCodeOutput({
     return () => {
       cancelled = true
     }
-  }, [displayCode, language])
+  }, [displayCode, language, isDark])
 
   // Fallback for loading state or highlight failure
   if (isLoading || !html) {

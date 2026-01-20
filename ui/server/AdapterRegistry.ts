@@ -7,6 +7,7 @@
 
 import { AgentAdapter, type AgentInfo } from "./AgentAdapter.js"
 import { ClaudeAdapter, type ClaudeAdapterOptions } from "./ClaudeAdapter.js"
+import { CodexAdapter, type CodexAdapterOptions } from "./CodexAdapter.js"
 
 // =============================================================================
 // Types
@@ -277,15 +278,15 @@ export function registerDefaultAdapters(): void {
     })
   }
 
-  // Future: Register Codex adapter when available
-  // if (!adapters.has("codex")) {
-  //   registerAdapter({
-  //     id: "codex",
-  //     name: "Codex",
-  //     description: "OpenAI Codex via CLI",
-  //     factory: (options?: CodexAdapterOptions) => new CodexAdapter(options),
-  //   })
-  // }
+  // Register Codex adapter
+  if (!adapters.has("codex")) {
+    registerAdapter({
+      id: "codex",
+      name: "Codex",
+      description: "OpenAI Codex via CLI",
+      factory: options => new CodexAdapter(options as CodexAdapterOptions | undefined),
+    })
+  }
 }
 
 /**
