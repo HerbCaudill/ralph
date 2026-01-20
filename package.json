@@ -9,6 +9,7 @@
     "minor": "pnpm version minor --no-git-tag-version && pnpm -r exec pnpm version minor --no-git-tag-version",
     "major": "pnpm version major --no-git-tag-version && pnpm -r exec pnpm version major --no-git-tag-version",
     "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
     "test:all": "pnpm --filter @herbcaudill/ralph test:all && pnpm --filter @herbcaudill/ralph-ui test:all",
     "format": "pnpm -r format",
     "cli": "pnpm --filter @herbcaudill/ralph ralph",

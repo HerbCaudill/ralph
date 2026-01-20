@@ -166,6 +166,9 @@ Claude is instructed (via `prompt.md`) to:
 # Build all packages
 pnpm build
 
+# Typecheck all packages
+pnpm typecheck
+
 # Run all tests across packages
 pnpm test:all          # Run all tests (CLI + UI)
 pnpm test              # Run tests in each package
