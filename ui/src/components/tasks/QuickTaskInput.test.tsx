@@ -107,6 +107,39 @@ describe("QuickTaskInput", () => {
     })
   })
 
+  describe("auto-resize", () => {
+    it("has overflow hidden for auto-resize", () => {
+      render(<QuickTaskInput />)
+      const textarea = screen.getByRole("textbox")
+      expect(textarea).toHaveClass("overflow-hidden")
+    })
+
+    it("adjusts height when content changes", () => {
+      render(<QuickTaskInput />)
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement
+
+      // Type multiline content
+      typeInInput(textarea, "Line 1\nLine 2\nLine 3")
+
+      // Height should be set dynamically via style
+      expect(textarea.style.height).toBeTruthy()
+    })
+
+    it("resets height when content is cleared", () => {
+      render(<QuickTaskInput />)
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement
+
+      // Add content
+      typeInInput(textarea, "Line 1\nLine 2\nLine 3")
+
+      // Clear content
+      typeInInput(textarea, "")
+
+      // Height should still be set (reset to auto then scrollHeight)
+      expect(textarea.style.height).toBeTruthy()
+    })
+  })
+
   describe("form submission", () => {
     it("submits on Enter", async () => {
       const onTaskCreated = vi.fn()
