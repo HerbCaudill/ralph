@@ -64,7 +64,7 @@ const issueTypeOptions: {
   icon: typeof IconCheckbox
   color: string
 }[] = [
-  { value: "task", label: "Task", icon: IconCheckbox, color: "text-gray-500" },
+  { value: "task", label: "Task", icon: IconCheckbox, color: "text-status-success" },
   { value: "bug", label: "Bug", icon: IconBug, color: "text-red-500" },
   { value: "epic", label: "Epic", icon: IconStack2, color: "text-indigo-500" },
 ]

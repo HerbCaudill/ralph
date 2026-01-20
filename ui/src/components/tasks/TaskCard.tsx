@@ -10,6 +10,7 @@ import {
   IconBug,
   IconSparkles,
   IconStack2,
+  IconCheckbox,
   type TablerIcon,
 } from "@tabler/icons-react"
 
@@ -104,6 +105,11 @@ interface TypeConfig {
 }
 
 const typeConfig: Record<string, TypeConfig> = {
+  task: {
+    icon: IconCheckbox,
+    label: "Task",
+    color: "text-status-success",
+  },
   bug: {
     icon: IconBug,
     label: "Bug",
@@ -295,8 +301,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
 
           {/* Type and Priority indicators (right side) */}
           <div className="flex shrink-0 items-center gap-1.5">
-            {/* Issue type icon (only for non-task types) */}
-            {task.issue_type && task.issue_type !== "task" && typeConfig[task.issue_type] && (
+            {/* Issue type icon */}
+            {task.issue_type && typeConfig[task.issue_type] && (
               <span
                 className={cn("flex items-center", typeConfig[task.issue_type].color)}
                 title={typeConfig[task.issue_type].label}

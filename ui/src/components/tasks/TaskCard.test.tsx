@@ -102,9 +102,11 @@ describe("TaskCard", () => {
       expect(screen.getByLabelText("Type: Epic")).toBeInTheDocument()
     })
 
-    it("does not render type icon for task type (default)", () => {
+    it("renders type icon for task type with success color", () => {
       render(<TaskCard task={{ ...baseTask, issue_type: "task" }} />)
-      expect(screen.queryByLabelText(/Type:/)).not.toBeInTheDocument()
+      const typeIndicator = screen.getByLabelText("Type: Task")
+      expect(typeIndicator).toBeInTheDocument()
+      expect(typeIndicator).toHaveClass("text-status-success")
     })
 
     it("applies reduced opacity for closed tasks", () => {
@@ -294,9 +296,11 @@ describe("TaskCard", () => {
       expect(typeIndicator).toHaveClass("text-primary")
     })
 
-    it("does not display type icon for task type", () => {
+    it("displays task icon with success color", () => {
       render(<TaskCard task={{ ...baseTask, issue_type: "task" }} />)
-      expect(screen.queryByLabelText(/Type:/)).not.toBeInTheDocument()
+      const typeIndicator = screen.getByLabelText("Type: Task")
+      expect(typeIndicator).toBeInTheDocument()
+      expect(typeIndicator).toHaveClass("text-status-success")
     })
 
     it("does not display type icon when issue_type is undefined", () => {
