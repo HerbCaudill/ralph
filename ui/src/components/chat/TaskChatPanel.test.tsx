@@ -427,5 +427,36 @@ describe("TaskChatPanel", () => {
 
       clearTimeoutSpy.mockRestore()
     })
+
+    it("re-sets timeout when request already in progress error is received", async () => {
+      const setTimeoutSpy = vi.spyOn(global, "setTimeout")
+
+      // Return "already in progress" error (simulates a retry when server is busy)
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: false, error: "A request is already in progress" }),
+      })
+
+      render(<TaskChatPanel />)
+      const input = screen.getByRole("textbox")
+
+      // Send message
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "Hello" } })
+        fireEvent.submit(input.closest("form")!)
+      })
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledTimes(1)
+      })
+
+      // The timeout should be called twice: once initially, and once after "already in progress"
+      // (the first one is cleared and a new one is set)
+      const timeoutCalls = setTimeoutSpy.mock.calls.filter(call => call[1] === 60000)
+
+      // Should have at least 2 timeout calls (initial + re-set after "already in progress")
+      expect(timeoutCalls.length).toBeGreaterThanOrEqual(2)
+
+      setTimeoutSpy.mockRestore()
+    })
   })
 })

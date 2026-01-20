@@ -315,6 +315,20 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
           useAppStore.getState().removeTaskChatMessage(messageId)
           // Keep loading state true - server is still processing
           setLoading(true)
+          // Re-set the timeout since we cleared it above and are still waiting
+          loadingTimeoutRef.current = setTimeout(() => {
+            if (useAppStore.getState().taskChatLoading) {
+              setLoading(false)
+              setStreamingText("")
+              const timeoutMessage: TaskChatMessage = {
+                id: `error-${Date.now()}`,
+                role: "assistant",
+                content: "Error: Request timed out. Please try again.",
+                timestamp: Date.now(),
+              }
+              addMessage(timeoutMessage)
+            }
+          }, 60000)
           return
         }
 
