@@ -445,23 +445,38 @@ export function TaskDetailsDialog({
     [task],
   )
 
-  // Handle Cmd+Enter / Ctrl+Enter to save
+  // Handle keyboard shortcuts: Cmd+Enter to save, Escape to close
   useEffect(() => {
-    if (!open || readOnly) return
+    if (!open) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-      const modifierPressed = isMac ? event.metaKey : event.ctrlKey
+      // Don't handle escape if user is typing in an input, textarea, or select
+      const target = event.target as HTMLElement
+      const isInFormElement =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT"
 
-      if (modifierPressed && event.key === "Enter" && hasChanges && !isSaving) {
+      // Escape to close (unless in a form element where escape has other meaning)
+      if (event.key === "Escape" && !isInFormElement) {
         event.preventDefault()
-        handleSave()
+        handleClose()
+        return
+      }
+
+      // Cmd+Enter / Ctrl+Enter to save
+      if (!readOnly) {
+        const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+        const modifierPressed = isMac ? event.metaKey : event.ctrlKey
+
+        if (modifierPressed && event.key === "Enter" && hasChanges && !isSaving) {
+          event.preventDefault()
+          handleSave()
+        }
       }
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [open, readOnly, hasChanges, isSaving, handleSave])
+  }, [open, readOnly, hasChanges, isSaving, handleSave, handleClose])
 
   // Don't render anything if there's no task or it's not open
   if (!task || !open) return null

@@ -896,6 +896,75 @@ describe("TaskDetailsDialog", () => {
 
       expect(mockOnSave).not.toHaveBeenCalled()
     })
+
+    it("closes on Escape key", async () => {
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      // Press Escape
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "Escape" })
+      })
+
+      expect(mockOnClose).toHaveBeenCalled()
+    })
+
+    it("closes on Escape key in read-only mode", async () => {
+      await renderAndWait(
+        <TaskDetailsDialog
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+          readOnly={true}
+        />,
+      )
+
+      // Press Escape
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "Escape" })
+      })
+
+      expect(mockOnClose).toHaveBeenCalled()
+    })
+
+    it("does not close on Escape when focus is in title input", async () => {
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      const titleInput = screen.getByLabelText(/title/i)
+
+      // Press Escape while focused on input
+      await act(async () => {
+        fireEvent.keyDown(titleInput, { key: "Escape" })
+      })
+
+      // Should NOT close because focus is in an input
+      expect(mockOnClose).not.toHaveBeenCalled()
+    })
+
+    it("does not close on Escape when focus is in description textarea", async () => {
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      // Click on the description to enter edit mode
+      act(() => {
+        fireEvent.click(screen.getByText("This is a test description"))
+      })
+
+      const descInput = await screen.findByRole("textbox", { name: /description/i })
+
+      // Press Escape while focused on textarea
+      await act(async () => {
+        fireEvent.keyDown(descInput, { key: "Escape" })
+      })
+
+      // Should NOT close because focus is in a textarea (it should exit edit mode instead)
+      expect(mockOnClose).not.toHaveBeenCalled()
+    })
   })
 
   describe("labels", () => {
