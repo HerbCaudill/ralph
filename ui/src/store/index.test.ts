@@ -4,6 +4,7 @@ import {
   selectCurrentTask,
   SIDEBAR_WIDTH_STORAGE_KEY,
   TASK_CHAT_WIDTH_STORAGE_KEY,
+  TASK_CHAT_OPEN_STORAGE_KEY,
   isIterationBoundary,
   getIterationBoundaries,
   countIterations,
@@ -812,6 +813,30 @@ describe("useAppStore", () => {
       expect(localStorage.getItem(TASK_CHAT_WIDTH_STORAGE_KEY)).toBe("550")
     })
 
+    it("persists task chat open state to localStorage", () => {
+      useAppStore.getState().setTaskChatOpen(false)
+      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("false")
+
+      useAppStore.getState().setTaskChatOpen(true)
+      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("true")
+    })
+
+    it("persists task chat open state when toggling", () => {
+      // Start with true
+      useAppStore.getState().setTaskChatOpen(true)
+      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("true")
+
+      // Toggle to false
+      useAppStore.getState().toggleTaskChat()
+      expect(useAppStore.getState().taskChatOpen).toBe(false)
+      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("false")
+
+      // Toggle back to true
+      useAppStore.getState().toggleTaskChat()
+      expect(useAppStore.getState().taskChatOpen).toBe(true)
+      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("true")
+    })
+
     it("adds task chat messages", () => {
       const message: TaskChatMessage = {
         id: "msg-1",
@@ -1012,6 +1037,52 @@ describe("useAppStore", () => {
       const { useAppStore: freshStore } = await import("./index")
 
       expect(freshStore.getState().taskChatWidth).toBe(400)
+    })
+  })
+
+  describe("task chat open state localStorage persistence", () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    it("loads task chat open state from localStorage on store creation", async () => {
+      localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, "false")
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import("./index")
+
+      expect(freshStore.getState().taskChatOpen).toBe(false)
+    })
+
+    it("loads true state from localStorage on store creation", async () => {
+      localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, "true")
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import("./index")
+
+      expect(freshStore.getState().taskChatOpen).toBe(true)
+    })
+
+    it("uses default open state (true) when localStorage is empty", async () => {
+      localStorage.clear()
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import("./index")
+
+      expect(freshStore.getState().taskChatOpen).toBe(true)
+    })
+
+    it("uses default open state when localStorage value is invalid", async () => {
+      localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, "invalid")
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import("./index")
+
+      expect(freshStore.getState().taskChatOpen).toBe(true)
     })
   })
 

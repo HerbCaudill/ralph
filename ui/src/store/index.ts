@@ -4,6 +4,7 @@ import type { ConnectionStatus } from "../hooks/useWebSocket"
 // localStorage keys
 export const SIDEBAR_WIDTH_STORAGE_KEY = "ralph-ui-sidebar-width"
 export const TASK_CHAT_WIDTH_STORAGE_KEY = "ralph-ui-task-chat-width"
+export const TASK_CHAT_OPEN_STORAGE_KEY = "ralph-ui-task-chat-open"
 export const CLOSED_FILTER_STORAGE_KEY = "ralph-ui-task-list-closed-filter"
 export const SHOW_TOOL_OUTPUT_STORAGE_KEY = "ralph-ui-show-tool-output"
 
@@ -50,6 +51,26 @@ function loadTaskChatWidth(): number {
 function saveTaskChatWidth(width: number): void {
   try {
     localStorage.setItem(TASK_CHAT_WIDTH_STORAGE_KEY, String(width))
+  } catch {
+    // localStorage may not be available
+  }
+}
+
+// Task chat open/closed state localStorage persistence
+function loadTaskChatOpen(): boolean {
+  try {
+    const stored = localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)
+    if (stored === "true") return true
+    if (stored === "false") return false
+  } catch {
+    // localStorage may not be available (SSR, private mode, etc.)
+  }
+  return true // default - open
+}
+
+function saveTaskChatOpen(open: boolean): void {
+  try {
+    localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, String(open))
   } catch {
     // localStorage may not be available
   }
@@ -509,6 +530,7 @@ const getInitialStateWithPersistence = (): AppState => ({
   ...initialState,
   sidebarWidth: loadSidebarWidth(),
   taskChatWidth: loadTaskChatWidth(),
+  taskChatOpen: loadTaskChatOpen(),
   closedTimeFilter: loadClosedTimeFilter(),
   showToolOutput: loadShowToolOutput(),
 })
@@ -653,8 +675,16 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     }),
 
   // Task chat panel
-  setTaskChatOpen: open => set({ taskChatOpen: open }),
-  toggleTaskChat: () => set(state => ({ taskChatOpen: !state.taskChatOpen })),
+  setTaskChatOpen: open => {
+    saveTaskChatOpen(open)
+    set({ taskChatOpen: open })
+  },
+  toggleTaskChat: () =>
+    set(state => {
+      const newValue = !state.taskChatOpen
+      saveTaskChatOpen(newValue)
+      return { taskChatOpen: newValue }
+    }),
   setTaskChatWidth: width => {
     saveTaskChatWidth(width)
     set({ taskChatWidth: width })
