@@ -423,6 +423,7 @@ export function App() {
           />
         }
         detailPanelOpen={taskDialog.isOpen}
+        onDetailPanelClose={taskDialog.closeDialog}
       />
       <HotkeysDialog open={hotkeysDialogOpen} onClose={handleCloseHotkeysDialog} />
       <CommandPalette

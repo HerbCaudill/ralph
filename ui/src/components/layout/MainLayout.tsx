@@ -54,6 +54,8 @@ export interface MainLayoutProps {
   detailPanel?: React.ReactNode
   /** Whether the detail panel is open (defaults to false) */
   detailPanelOpen?: boolean
+  /** Callback when detail panel should close (e.g., from clicking outside) */
+  onDetailPanelClose?: () => void
 }
 
 export interface MainLayoutHandle {
@@ -88,6 +90,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     onRightPanelWidthChange,
     detailPanel,
     detailPanelOpen = false,
+    onDetailPanelClose,
   },
   ref,
 ) {
@@ -314,6 +317,31 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     e.preventDefault()
     setIsResizingDetailPanel(true)
   }, [])
+
+  // Handle click outside detail panel to close it
+  useEffect(() => {
+    if (!detailPanelOpen || !onDetailPanelClose) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      // Don't close if clicking on the detail panel itself
+      if (detailPanelRef.current?.contains(event.target as Node)) {
+        return
+      }
+
+      // Close the detail panel
+      onDetailPanelClose()
+    }
+
+    // Add listener with a small delay to avoid closing immediately on open
+    const timeoutId = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside)
+    }, 100)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [detailPanelOpen, onDetailPanelClose])
 
   // Expose focus methods via ref
   useImperativeHandle(ref, () => ({

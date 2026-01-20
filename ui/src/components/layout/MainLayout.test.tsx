@@ -530,4 +530,134 @@ describe("MainLayout", () => {
       })
     })
   })
+
+  describe("detail panel", () => {
+    it("renders detail panel content when open", async () => {
+      render(<MainLayout detailPanel={<div>Detail Panel Content</div>} detailPanelOpen={true} />)
+      expect(screen.getByText("Detail Panel Content")).toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(screen.getByText("workspace")).toBeInTheDocument()
+      })
+    })
+
+    it("does not render detail panel content when closed", async () => {
+      render(<MainLayout detailPanel={<div>Detail Panel Content</div>} detailPanelOpen={false} />)
+      expect(screen.queryByText("Detail Panel Content")).not.toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(screen.getByText("workspace")).toBeInTheDocument()
+      })
+    })
+
+    it("calls onDetailPanelClose when clicking outside the detail panel", async () => {
+      const onDetailPanelClose = vi.fn()
+
+      render(
+        <MainLayout
+          main={<div>Main Content</div>}
+          detailPanel={<div>Detail Panel Content</div>}
+          detailPanelOpen={true}
+          onDetailPanelClose={onDetailPanelClose}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText("workspace")).toBeInTheDocument()
+      })
+
+      // Wait for the event listener to be attached (100ms delay in implementation)
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150))
+      })
+
+      // Click on the main content (outside the detail panel)
+      const mainContent = screen.getByText("Main Content")
+      fireEvent.mouseDown(mainContent)
+
+      // The callback should be called
+      expect(onDetailPanelClose).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not call onDetailPanelClose when clicking inside the detail panel", async () => {
+      const onDetailPanelClose = vi.fn()
+
+      render(
+        <MainLayout
+          main={<div>Main Content</div>}
+          detailPanel={<div>Detail Panel Content</div>}
+          detailPanelOpen={true}
+          onDetailPanelClose={onDetailPanelClose}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText("workspace")).toBeInTheDocument()
+      })
+
+      // Wait for the event listener to be attached (100ms delay in implementation)
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150))
+      })
+
+      // Click inside the detail panel
+      const detailContent = screen.getByText("Detail Panel Content")
+      fireEvent.mouseDown(detailContent)
+
+      // The callback should NOT be called
+      expect(onDetailPanelClose).not.toHaveBeenCalled()
+    })
+
+    it("does not attach click listener when panel is closed", async () => {
+      const onDetailPanelClose = vi.fn()
+
+      render(
+        <MainLayout
+          main={<div>Main Content</div>}
+          detailPanel={<div>Detail Panel Content</div>}
+          detailPanelOpen={false}
+          onDetailPanelClose={onDetailPanelClose}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText("workspace")).toBeInTheDocument()
+      })
+
+      // Wait for potential event listener attachment
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150))
+      })
+
+      // Click on the main content
+      const mainContent = screen.getByText("Main Content")
+      fireEvent.mouseDown(mainContent)
+
+      // The callback should NOT be called since panel is closed
+      expect(onDetailPanelClose).not.toHaveBeenCalled()
+    })
+
+    it("does not attach click listener when onDetailPanelClose is not provided", async () => {
+      render(
+        <MainLayout
+          main={<div>Main Content</div>}
+          detailPanel={<div>Detail Panel Content</div>}
+          detailPanelOpen={true}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText("workspace")).toBeInTheDocument()
+      })
+
+      // Wait for potential event listener attachment
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150))
+      })
+
+      // Click on the main content - should not throw
+      const mainContent = screen.getByText("Main Content")
+      expect(() => fireEvent.mouseDown(mainContent)).not.toThrow()
+    })
+  })
 })
