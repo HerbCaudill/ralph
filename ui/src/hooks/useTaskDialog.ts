@@ -46,6 +46,13 @@ interface TaskResponse {
 async function fetchTask(id: string): Promise<TaskResponse> {
   try {
     const response = await fetch(`/api/tasks/${id}`)
+
+    // Check Content-Type to ensure we got JSON back
+    const contentType = response.headers.get("content-type")
+    if (!contentType?.includes("application/json")) {
+      return { ok: false, error: `Server error: ${response.status} ${response.statusText}` }
+    }
+
     return (await response.json()) as TaskResponse
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to fetch task" }
@@ -59,6 +66,13 @@ async function updateTask(id: string, updates: TaskUpdateData): Promise<TaskResp
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     })
+
+    // Check Content-Type to ensure we got JSON back
+    const contentType = response.headers.get("content-type")
+    if (!contentType?.includes("application/json")) {
+      return { ok: false, error: `Server error: ${response.status} ${response.statusText}` }
+    }
+
     return (await response.json()) as TaskResponse
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to update task" }
@@ -75,6 +89,14 @@ async function deleteTaskApi(id: string): Promise<DeleteResponse> {
     const response = await fetch(`/api/tasks/${id}`, {
       method: "DELETE",
     })
+
+    // Check Content-Type to ensure we got JSON back
+    const contentType = response.headers.get("content-type")
+    if (!contentType?.includes("application/json")) {
+      // Server returned non-JSON (likely HTML error page)
+      return { ok: false, error: `Server error: ${response.status} ${response.statusText}` }
+    }
+
     return (await response.json()) as DeleteResponse
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to delete task" }

@@ -51,6 +51,13 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         // Exclude API routes from navigation fallback
         navigateFallbackDenylist: [/^\/api\//],
+        // Ensure API routes are not handled by the service worker at all
+        runtimeCaching: [
+          {
+            urlPattern: /^\/api\//,
+            handler: "NetworkOnly",
+          },
+        ],
       },
     }),
   ],
