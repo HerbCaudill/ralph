@@ -736,7 +736,7 @@ export function TaskDetailsDialog({
                 })()}
               </div>
             : <div className="border-input bg-background flex h-8 rounded-md border" role="group">
-                {issueTypeOptions.map(t => {
+                {issueTypeOptions.map((t, index) => {
                   const Icon = t.icon
                   const isSelected = issueType === t.value
                   return (
@@ -744,6 +744,25 @@ export function TaskDetailsDialog({
                       key={t.value}
                       type="button"
                       onClick={() => setIssueType(t.value)}
+                      tabIndex={index === 0 || isSelected ? 0 : -1}
+                      onKeyDown={e => {
+                        if (e.key === "ArrowLeft") {
+                          e.preventDefault()
+                          const currentIndex = issueTypeOptions.findIndex(
+                            opt => opt.value === t.value,
+                          )
+                          const prevIndex =
+                            (currentIndex - 1 + issueTypeOptions.length) % issueTypeOptions.length
+                          setIssueType(issueTypeOptions[prevIndex].value)
+                        } else if (e.key === "ArrowRight") {
+                          e.preventDefault()
+                          const currentIndex = issueTypeOptions.findIndex(
+                            opt => opt.value === t.value,
+                          )
+                          const nextIndex = (currentIndex + 1) % issueTypeOptions.length
+                          setIssueType(issueTypeOptions[nextIndex].value)
+                        }
+                      }}
                       className={cn(
                         "flex flex-1 items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
                         isSelected ?

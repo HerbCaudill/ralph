@@ -1153,6 +1153,87 @@ describe("TaskDetailsDialog", () => {
     })
   })
 
+  describe("keyboard navigation", () => {
+    it("allows tab navigation between fields", async () => {
+      globalThis.fetch = createMockFetch()
+
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      // Get all focusable elements in the expected tab order
+      const titleInput = screen.getByDisplayValue("Test Task")
+      const statusSelect = screen.getByRole("combobox", { name: /status/i })
+      const prioritySelect = screen.getByRole("combobox", { name: /priority/i })
+
+      // Get the type buttons - the selected one (Task) should be tabbable
+      const selectedTypeButton = screen.getByRole("button", { pressed: true, name: /task/i })
+      const parentButton = screen.getByRole("combobox", { name: /parent/i })
+
+      // Verify title is focusable
+      titleInput.focus()
+      expect(document.activeElement).toBe(titleInput)
+
+      // Tab to status
+      fireEvent.keyDown(titleInput, { key: "Tab" })
+      // Note: actual tab navigation is handled by the browser, we're just checking elements are tabbable
+
+      // Verify all interactive elements have appropriate tabIndex
+      expect(titleInput).not.toHaveAttribute("tabindex", "-1")
+      expect(statusSelect).not.toHaveAttribute("tabindex", "-1")
+      expect(prioritySelect).not.toHaveAttribute("tabindex", "-1")
+      // Only the selected type button should be tabbable (tabindex 0)
+      expect(selectedTypeButton).toHaveAttribute("tabindex", "0")
+      expect(parentButton).not.toHaveAttribute("tabindex", "-1")
+    })
+
+    it("allows arrow key navigation within type button group", async () => {
+      globalThis.fetch = createMockFetch()
+
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      // Get the type buttons
+      const taskButton = screen
+        .getAllByRole("button")
+        .find(
+          btn => btn.textContent?.includes("Task") && btn.getAttribute("aria-pressed") === "true",
+        )
+      expect(taskButton).toBeInTheDocument()
+
+      // Press ArrowRight to move to Bug
+      fireEvent.keyDown(taskButton!, { key: "ArrowRight" })
+
+      // Wait for state update
+      await waitFor(() => {
+        const bugButton = screen
+          .getAllByRole("button")
+          .find(
+            btn => btn.textContent?.includes("Bug") && btn.getAttribute("aria-pressed") === "true",
+          )
+        expect(bugButton).toBeInTheDocument()
+      })
+
+      // Press ArrowLeft to move back to Task
+      const bugButton = screen
+        .getAllByRole("button")
+        .find(
+          btn => btn.textContent?.includes("Bug") && btn.getAttribute("aria-pressed") === "true",
+        )
+      fireEvent.keyDown(bugButton!, { key: "ArrowLeft" })
+
+      await waitFor(() => {
+        const taskButton = screen
+          .getAllByRole("button")
+          .find(
+            btn => btn.textContent?.includes("Task") && btn.getAttribute("aria-pressed") === "true",
+          )
+        expect(taskButton).toBeInTheDocument()
+      })
+    })
+  })
+
   describe("event log capture on close", () => {
     it("does not save event log when task is already closed", async () => {
       // Track calls to eventlogs endpoint
