@@ -1,5 +1,11 @@
 import { cn } from "@/lib/utils"
-import { useAppStore, selectWorkspace, selectAccentColor, selectBranch } from "@/store"
+import {
+  useAppStore,
+  selectWorkspace,
+  selectAccentColor,
+  selectBranch,
+  selectIssuePrefix,
+} from "@/store"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { IconFolderFilled, IconChevronDown, IconCheck, IconRefresh } from "@tabler/icons-react"
 
@@ -13,6 +19,7 @@ export interface WorkspaceInfo {
   daemonStatus?: string
   accentColor?: string | null
   branch?: string | null
+  issuePrefix?: string | null
 }
 
 export interface WorkspaceListEntry {
@@ -49,9 +56,11 @@ export function WorkspacePicker({
   const workspace = useAppStore(selectWorkspace)
   const accentColor = useAppStore(selectAccentColor)
   const branch = useAppStore(selectBranch)
+  const issuePrefix = useAppStore(selectIssuePrefix)
   const setWorkspace = useAppStore(state => state.setWorkspace)
   const setAccentColor = useAppStore(state => state.setAccentColor)
   const setBranch = useAppStore(state => state.setBranch)
+  const setIssuePrefix = useAppStore(state => state.setIssuePrefix)
   const clearWorkspaceData = useAppStore(state => state.clearWorkspaceData)
   const refreshTasks = useAppStore(state => state.refreshTasks)
   const [isOpen, setIsOpen] = useState(false)
@@ -86,6 +95,10 @@ export function WorkspacePicker({
         if (data.workspace.branch !== branch) {
           setBranch(data.workspace.branch ?? null)
         }
+        // Update the store with the issue prefix
+        if (data.workspace.issuePrefix !== issuePrefix) {
+          setIssuePrefix(data.workspace.issuePrefix ?? null)
+        }
       } else {
         throw new Error(data.error || "Unknown error")
       }
@@ -98,7 +111,16 @@ export function WorkspacePicker({
     } finally {
       setIsLoading(false)
     }
-  }, [workspace, accentColor, branch, setWorkspace, setAccentColor, setBranch])
+  }, [
+    workspace,
+    accentColor,
+    branch,
+    issuePrefix,
+    setWorkspace,
+    setAccentColor,
+    setBranch,
+    setIssuePrefix,
+  ])
 
   // Fetch all available workspaces from the registry
   const fetchAllWorkspaces = useCallback(async () => {
@@ -141,6 +163,7 @@ export function WorkspacePicker({
           setWorkspace(data.workspace.path)
           setAccentColor(data.workspace.accentColor ?? null)
           setBranch(data.workspace.branch ?? null)
+          setIssuePrefix(data.workspace.issuePrefix ?? null)
           // Update the list to reflect new active state
           setAllWorkspaces(prev =>
             prev.map(ws => ({
@@ -161,7 +184,7 @@ export function WorkspacePicker({
         setIsOpen(false)
       }
     },
-    [setWorkspace, setAccentColor, setBranch, clearWorkspaceData, refreshTasks],
+    [setWorkspace, setAccentColor, setBranch, setIssuePrefix, clearWorkspaceData, refreshTasks],
   )
 
   // Fetch workspace info on mount (only once)

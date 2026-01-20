@@ -221,6 +221,9 @@ function createApp(config: ServerConfig): Express {
         // If we can't get issue count, leave it undefined
       }
 
+      // Extract issue prefix from config
+      const issuePrefix = info.config?.issue_prefix ?? null
+
       res.status(200).json({
         ok: true,
         workspace: {
@@ -231,6 +234,7 @@ function createApp(config: ServerConfig): Express {
           daemonStatus: info.daemon_status,
           accentColor,
           branch,
+          issuePrefix,
         },
       })
     } catch (err) {
@@ -326,6 +330,9 @@ function createApp(config: ServerConfig): Express {
         // If we can't get issue count, leave it undefined
       }
 
+      // Extract issue prefix from config
+      const issuePrefix = info.config?.issue_prefix ?? null
+
       res.status(200).json({
         ok: true,
         workspace: {
@@ -336,6 +343,7 @@ function createApp(config: ServerConfig): Express {
           daemonStatus: info.daemon_status,
           accentColor,
           branch,
+          issuePrefix,
         },
       })
     } catch (err) {
