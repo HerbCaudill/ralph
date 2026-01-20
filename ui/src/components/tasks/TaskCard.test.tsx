@@ -333,4 +333,21 @@ describe("TaskCard", () => {
       expect(listbox).toHaveAttribute("aria-label", "Select status")
     })
   })
+
+  describe("new task animation", () => {
+    it("applies animation class when isNew is true", () => {
+      const { container } = render(<TaskCard task={baseTask} isNew={true} />)
+      expect(container.firstChild).toHaveClass("animate-pulse")
+    })
+
+    it("does not apply animation class when isNew is false", () => {
+      const { container } = render(<TaskCard task={baseTask} isNew={false} />)
+      expect(container.firstChild).not.toHaveClass("animate-pulse")
+    })
+
+    it("does not apply animation class by default", () => {
+      const { container } = render(<TaskCard task={baseTask} />)
+      expect(container.firstChild).not.toHaveClass("animate-pulse")
+    })
+  })
 })

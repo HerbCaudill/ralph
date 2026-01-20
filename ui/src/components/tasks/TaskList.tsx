@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { IconChevronDown, IconStack2 } from "@tabler/icons-react"
 import { TaskCard, type TaskCardTask, type TaskStatus } from "./TaskCard"
 import {
@@ -343,6 +343,42 @@ export function TaskList({
   const closedTimeFilter = useAppStore(selectClosedTimeFilter)
   const setClosedTimeFilter = useAppStore(state => state.setClosedTimeFilter)
 
+  // Track newly added task IDs to highlight them
+  const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set())
+  const previousTaskIdsRef = useRef<Set<string> | null>(null)
+
+  // Detect newly added tasks by comparing current tasks with previous tasks
+  useEffect(() => {
+    const currentTaskIds = new Set(tasks.map(t => t.id))
+    const previousTaskIds = previousTaskIdsRef.current
+
+    // On first render, just initialize the ref without marking anything as new
+    if (previousTaskIds === null) {
+      previousTaskIdsRef.current = currentTaskIds
+      return
+    }
+
+    // Find tasks that are in current but not in previous (newly added)
+    const addedTaskIds = new Set([...currentTaskIds].filter(id => !previousTaskIds.has(id)))
+
+    if (addedTaskIds.size > 0) {
+      setNewTaskIds(addedTaskIds)
+
+      // Clear the new task IDs after animation duration
+      const timer = setTimeout(() => {
+        setNewTaskIds(new Set())
+      }, 2000)
+
+      // Update the previous task IDs reference
+      previousTaskIdsRef.current = currentTaskIds
+
+      return () => clearTimeout(timer)
+    } else {
+      // Update the previous task IDs reference even when no new tasks
+      previousTaskIdsRef.current = currentTaskIds
+    }
+  }, [tasks])
+
   // Initialize status collapsed state: props override -> localStorage -> defaults
   const [statusCollapsedState, setStatusCollapsedState] = useState<Record<TaskGroup, boolean>>(
     () => {
@@ -568,6 +604,7 @@ export function TaskList({
                                   task={task}
                                   onStatusChange={onStatusChange}
                                   onClick={onTaskClick}
+                                  isNew={newTaskIds.has(task.id)}
                                   className="pl-5"
                                 />
                               ))}
@@ -583,6 +620,7 @@ export function TaskList({
                           task={task}
                           onStatusChange={onStatusChange}
                           onClick={onTaskClick}
+                          isNew={newTaskIds.has(task.id)}
                         />
                       ))
                     }

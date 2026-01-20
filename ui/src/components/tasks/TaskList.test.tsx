@@ -982,4 +982,62 @@ describe("TaskList", () => {
       expect(screen.queryByText("Blocked other task")).not.toBeInTheDocument()
     })
   })
+
+  describe("new task animation", () => {
+    it("marks newly added tasks with isNew prop", () => {
+      const initialTasks: TaskCardTask[] = [
+        { id: "task-1", title: "Existing task", status: "open" },
+      ]
+
+      const { rerender, container } = render(<TaskList tasks={initialTasks} />)
+
+      // Add a new task
+      const updatedTasks: TaskCardTask[] = [
+        { id: "task-1", title: "Existing task", status: "open" },
+        { id: "task-2", title: "New task", status: "open" },
+      ]
+
+      rerender(<TaskList tasks={updatedTasks} />)
+
+      // The new task should have the animation class
+      const newTaskElement = screen.getByText("New task").closest(".animate-pulse")
+      expect(newTaskElement).toBeInTheDocument()
+    })
+
+    it("does not mark existing tasks as new", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "task-1", title: "Task 1", status: "open" },
+        { id: "task-2", title: "Task 2", status: "open" },
+      ]
+
+      const { container } = render(<TaskList tasks={tasks} />)
+
+      // No tasks should have animation class on initial render
+      const animatedElements = container.querySelectorAll(".animate-pulse")
+      expect(animatedElements).toHaveLength(0)
+    })
+
+    it("handles multiple new tasks at once", () => {
+      const initialTasks: TaskCardTask[] = [
+        { id: "task-1", title: "Existing task", status: "open" },
+      ]
+
+      const { rerender } = render(<TaskList tasks={initialTasks} />)
+
+      // Add multiple new tasks
+      const updatedTasks: TaskCardTask[] = [
+        { id: "task-1", title: "Existing task", status: "open" },
+        { id: "task-2", title: "New task 1", status: "open" },
+        { id: "task-3", title: "New task 2", status: "open" },
+      ]
+
+      rerender(<TaskList tasks={updatedTasks} />)
+
+      // Both new tasks should have animation class
+      const newTask1Element = screen.getByText("New task 1").closest(".animate-pulse")
+      const newTask2Element = screen.getByText("New task 2").closest(".animate-pulse")
+      expect(newTask1Element).toBeInTheDocument()
+      expect(newTask2Element).toBeInTheDocument()
+    })
+  })
 })

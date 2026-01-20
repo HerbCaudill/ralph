@@ -1,5 +1,5 @@
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { forwardRef, useCallback, useState } from "react"
+import { forwardRef, useCallback, useState, useEffect } from "react"
 import { useAppStore, selectIssuePrefix } from "@/store"
 import {
   IconCircle,
@@ -48,6 +48,8 @@ export interface TaskCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>
   onStatusChange?: (id: string, status: TaskStatus) => void
   /** Callback when task is clicked */
   onClick?: (id: string) => void
+  /** Whether this is a newly added task that should be highlighted */
+  isNew?: boolean
 }
 
 // Status Configuration
@@ -167,11 +169,24 @@ const priorityConfig: Record<number, PriorityConfig> = {
  * Supports inline status changes via dropdown.
  */
 export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskCard(
-  { task, className, onStatusChange, onClick, ...props },
+  { task, className, onStatusChange, onClick, isNew = false, ...props },
   ref,
 ) {
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false)
+  const [shouldAnimate, setShouldAnimate] = useState(isNew)
   const issuePrefix = useAppStore(selectIssuePrefix)
+
+  // Remove animation class after animation completes
+  useEffect(() => {
+    if (isNew) {
+      setShouldAnimate(true)
+      // Duration should match the animation duration (pulse is typically 2s)
+      const timer = setTimeout(() => {
+        setShouldAnimate(false)
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isNew])
 
   const config = statusConfig[task.status]
   const StatusIcon = config.icon
@@ -215,6 +230,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
       className={cn(
         "border-border hover:bg-muted/50 group border-b transition-colors",
         task.status === "closed" && "opacity-60",
+        shouldAnimate && "animate-pulse",
         className,
       )}
       {...props}
