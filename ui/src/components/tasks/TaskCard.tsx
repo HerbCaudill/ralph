@@ -11,6 +11,7 @@ import {
   IconSparkles,
   IconStack2,
   IconCheckbox,
+  IconChevronDown,
   type TablerIcon,
 } from "@tabler/icons-react"
 
@@ -50,6 +51,12 @@ export interface TaskCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>
   onClick?: (id: string) => void
   /** Whether this is a newly added task that should be highlighted */
   isNew?: boolean
+  /** For epics with subtasks: whether the subtasks are collapsed */
+  isCollapsed?: boolean
+  /** For epics with subtasks: callback when collapse/expand is toggled */
+  onToggleCollapse?: () => void
+  /** For epics: number of subtasks */
+  subtaskCount?: number
 }
 
 // Status Configuration
@@ -169,7 +176,17 @@ const priorityConfig: Record<number, PriorityConfig> = {
  * Supports inline status changes via dropdown.
  */
 export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskCard(
-  { task, className, onStatusChange, onClick, isNew = false, ...props },
+  {
+    task,
+    className,
+    onStatusChange,
+    onClick,
+    isNew = false,
+    isCollapsed,
+    onToggleCollapse,
+    subtaskCount = 0,
+    ...props
+  },
   ref,
 ) {
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false)
@@ -224,6 +241,28 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     [handleClick],
   )
 
+  const handleChevronClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onToggleCollapse?.()
+    },
+    [onToggleCollapse],
+  )
+
+  const handleChevronKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault()
+        e.stopPropagation()
+        onToggleCollapse?.()
+      }
+    },
+    [onToggleCollapse],
+  )
+
+  const hasSubtasks = task.issue_type === "epic" && subtaskCount > 0
+  const showChevron = hasSubtasks && onToggleCollapse
+
   return (
     <div
       ref={ref}
@@ -237,6 +276,25 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     >
       {/* Main row */}
       <div className="flex w-full items-center gap-2 px-2 py-1.5">
+        {/* Chevron for epics with subtasks */}
+        {showChevron && (
+          <button
+            type="button"
+            onClick={handleChevronClick}
+            onKeyDown={handleChevronKeyDown}
+            className={cn("hover:bg-muted shrink-0 cursor-pointer rounded p-0.5 transition-colors")}
+            aria-label={isCollapsed ? "Expand subtasks" : "Collapse subtasks"}
+            aria-expanded={!isCollapsed}
+          >
+            <IconChevronDown
+              className={cn(
+                "text-muted-foreground size-3.5 transition-transform",
+                isCollapsed && "-rotate-90",
+              )}
+            />
+          </button>
+        )}
+
         {/* Status indicator button */}
         <button
           type="button"
@@ -317,6 +375,17 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
 
           {/* Type and Priority indicators (right side) */}
           <div className="flex shrink-0 items-center gap-1.5">
+            {/* Subtask count for epics */}
+            {hasSubtasks && (
+              <span
+                className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px] leading-none"
+                title={`${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`}
+                aria-label={`${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`}
+              >
+                {subtaskCount}
+              </span>
+            )}
+
             {/* Issue type icon (only for non-task types) */}
             {task.issue_type && task.issue_type !== "task" && typeConfig[task.issue_type] && (
               <span

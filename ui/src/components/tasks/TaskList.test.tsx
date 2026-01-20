@@ -596,47 +596,53 @@ describe("TaskList", () => {
 
     it("renders epic sub-header within status group", () => {
       render(<TaskList tasks={tasksWithEpic} persistCollapsedState={false} />)
-      // Should have Ready status group with 2 tasks from epic
-      expect(screen.getByLabelText("Ready section, 2 tasks")).toBeInTheDocument()
+      // Should have Ready status group with epic + 2 subtasks = 3 tasks
+      expect(screen.getByLabelText("Ready section, 3 tasks")).toBeInTheDocument()
       // Should have In Progress status group with 1 task from epic
       expect(screen.getByLabelText("In progress section, 1 task")).toBeInTheDocument()
-      // Should show epic sub-header within Ready group
-      expect(screen.getByLabelText("Epic with tasks epic, 2 tasks")).toBeInTheDocument()
+      // Should show epic task card within Ready group
+      expect(screen.getByText("Epic with tasks")).toBeInTheDocument()
     })
 
     it("groups tasks by epic within each status", () => {
       render(<TaskList tasks={tasksWithMultipleEpics} persistCollapsedState={false} />)
-      // Should have one Ready group with all 3 tasks
-      expect(screen.getByLabelText("Ready section, 3 tasks")).toBeInTheDocument()
-      // Should show epic sub-headers
-      expect(screen.getByLabelText("Epic A epic, 1 task")).toBeInTheDocument()
-      expect(screen.getByLabelText("Epic B epic, 1 task")).toBeInTheDocument()
+      // Should have one Ready group with 2 epics + 1 child each + 1 ungrouped = 5 tasks
+      expect(screen.getByLabelText("Ready section, 5 tasks")).toBeInTheDocument()
+      // Should show epic task cards
+      expect(screen.getByText("Epic A")).toBeInTheDocument()
+      expect(screen.getByText("Epic B")).toBeInTheDocument()
+      // Should show children
+      expect(screen.getByText("Child of A")).toBeInTheDocument()
+      expect(screen.getByText("Child of B")).toBeInTheDocument()
       // Ungrouped task should be visible directly (no epic header)
       expect(screen.getByText("Ungrouped task")).toBeInTheDocument()
     })
 
     it("allows toggling epic sub-group within status", () => {
       render(<TaskList tasks={tasksWithEpic} persistCollapsedState={false} />)
-      const epicHeader = screen.getByLabelText("Epic with tasks epic, 2 tasks")
+      // Find the collapse button by aria-label
+      const collapseButton = screen.getByLabelText("Collapse subtasks")
 
       // Initially expanded
       expect(screen.getByText("Child task 1")).toBeInTheDocument()
       expect(screen.getByText("Child task 2")).toBeInTheDocument()
 
-      // Click to collapse
-      fireEvent.click(epicHeader)
+      // Click chevron to collapse
+      fireEvent.click(collapseButton)
       expect(screen.queryByText("Child task 1")).not.toBeInTheDocument()
       expect(screen.queryByText("Child task 2")).not.toBeInTheDocument()
 
-      // Click to expand
-      fireEvent.click(epicHeader)
+      // Click chevron to expand
+      const expandButton = screen.getByLabelText("Expand subtasks")
+      fireEvent.click(expandButton)
       expect(screen.getByText("Child task 1")).toBeInTheDocument()
     })
 
     it("shows empty state when epic has no subtasks", () => {
       render(<TaskList tasks={epicWithoutSubtasks} persistCollapsedState={false} />)
-      // No tasks to display (epic itself is not shown as a task)
-      expect(screen.getByRole("status", { name: "No tasks" })).toBeInTheDocument()
+      // Epic itself should be shown as a task card (1 task)
+      expect(screen.getByLabelText("Ready section, 1 task")).toBeInTheDocument()
+      expect(screen.getByText("Empty epic")).toBeInTheDocument()
     })
 
     it("does not show 'No tasks in this epic' message for empty epics", () => {
@@ -665,12 +671,16 @@ describe("TaskList", () => {
       ]
       render(<TaskList tasks={tasks} persistCollapsedState={false} />)
 
-      // Get all epic headers within the Ready group
-      const epicHeaders = screen.getAllByLabelText(/epic, 1 task/)
-      expect(epicHeaders).toHaveLength(2)
+      // Get all tasks within the list
+      const readyGroup = screen.getByLabelText("Ready group")
+      const taskTitles = Array.from(readyGroup.querySelectorAll("[role='button']"))
+        .map(el => el.textContent)
+        .filter(text => text?.includes("Epic"))
+
+      expect(taskTitles).toHaveLength(2)
       // High priority epic should come first
-      expect(epicHeaders[0]).toHaveTextContent("High Priority Epic")
-      expect(epicHeaders[1]).toHaveTextContent("Low Priority Epic")
+      expect(taskTitles[0]).toContain("High Priority Epic")
+      expect(taskTitles[1]).toContain("Low Priority Epic")
     })
   })
 

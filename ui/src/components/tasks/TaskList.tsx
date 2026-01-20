@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 import { useState, useCallback, useMemo, useEffect, useRef } from "react"
-import { IconChevronDown, IconStack2 } from "@tabler/icons-react"
+import { IconChevronDown } from "@tabler/icons-react"
 import { TaskCard, type TaskCardTask, type TaskStatus } from "./TaskCard"
 import {
   useAppStore,
@@ -159,80 +159,6 @@ function TaskGroupHeader({
         </select>
       )}
       <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-xs">{count}</span>
-    </div>
-  )
-}
-
-// EpicGroupHeader Component
-
-interface EpicGroupHeaderProps {
-  epicId: string
-  epicTitle: string
-  taskCount: number
-  isCollapsed: boolean
-  onToggle: () => void
-}
-
-function EpicGroupHeader({
-  epicId,
-  epicTitle,
-  taskCount,
-  isCollapsed,
-  onToggle,
-}: EpicGroupHeaderProps) {
-  const hasSubtasks = taskCount > 0
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!hasSubtasks) return
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault()
-        onToggle()
-      }
-    },
-    [onToggle, hasSubtasks],
-  )
-
-  const handleClick = useCallback(() => {
-    if (hasSubtasks) {
-      onToggle()
-    }
-  }, [hasSubtasks, onToggle])
-
-  return (
-    <div
-      role={hasSubtasks ? "button" : undefined}
-      tabIndex={hasSubtasks ? 0 : undefined}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      className={cn(
-        "bg-muted/30 border-border flex items-center gap-2 border-b px-2 py-1.5",
-        "transition-colors",
-        hasSubtasks && "hover:bg-muted/50 cursor-pointer",
-      )}
-      aria-expanded={hasSubtasks ? !isCollapsed : undefined}
-      aria-label={
-        hasSubtasks ?
-          `${epicTitle} epic, ${taskCount} task${taskCount === 1 ? "" : "s"}`
-        : `${epicTitle} epic`
-      }
-    >
-      {hasSubtasks && (
-        <IconChevronDown
-          className={cn(
-            "text-muted-foreground size-3.5 shrink-0 transition-transform",
-            isCollapsed && "-rotate-90",
-          )}
-        />
-      )}
-      <IconStack2 className="text-primary size-3.5 shrink-0" />
-      <span className="text-muted-foreground shrink-0 font-mono text-xs">{epicId}</span>
-      <span className="min-w-0 truncate text-xs font-medium">{epicTitle}</span>
-      {hasSubtasks && (
-        <span className="text-muted-foreground bg-muted ml-1.5 shrink-0 rounded px-1.5 py-0.5 text-xs">
-          {taskCount}
-        </span>
-      )}
     </div>
   )
 }
@@ -448,8 +374,6 @@ export function TaskList({
     }
 
     for (const task of tasks) {
-      if (task.issue_type === "epic") continue // Don't show epics as tasks
-
       // Apply search filter
       if (!matchesSearchQuery(task, searchQuery)) continue
 
@@ -466,12 +390,22 @@ export function TaskList({
       }
 
       const epicTasksMap = statusToEpicTasks.get(config.key)!
-      const epicId = task.parent && epicMap.has(task.parent) ? task.parent : null
 
-      if (!epicTasksMap.has(epicId)) {
-        epicTasksMap.set(epicId, [])
+      // For epics, add them directly without a parent group
+      // For non-epics, group by their parent epic
+      if (task.issue_type === "epic") {
+        // Add epic to its own group (using its own ID as the key)
+        if (!epicTasksMap.has(task.id)) {
+          epicTasksMap.set(task.id, [])
+        }
+        // Don't add the epic to the array - it will be rendered separately
+      } else {
+        const epicId = task.parent && epicMap.has(task.parent) ? task.parent : null
+        if (!epicTasksMap.has(epicId)) {
+          epicTasksMap.set(epicId, [])
+        }
+        epicTasksMap.get(epicId)!.push(task)
       }
-      epicTasksMap.get(epicId)!.push(task)
     }
 
     // Build status groups with epic sub-groups
@@ -502,11 +436,12 @@ export function TaskList({
       const epicTasksMap = statusToEpicTasks.get(config.key)!
       const epicSubGroups: EpicSubGroup[] = []
 
-      // Get all epics that have tasks in this status, sorted by epic priority then created_at
+      // Get all epics that belong to this status group
       const epicsInStatus = Array.from(epicTasksMap.keys())
         .filter((id): id is string => id !== null)
         .map(id => epicMap.get(id)!)
         .filter(Boolean)
+        .filter(epic => config.statusFilter(epic.status))
         .sort((a, b) => {
           const priorityDiff = (a.priority ?? 4) - (b.priority ?? 4)
           if (priorityDiff !== 0) return priorityDiff
@@ -515,21 +450,33 @@ export function TaskList({
           return aTime - bTime
         })
 
-      // Add epic sub-groups
+      // Add epic sub-groups with their subtasks
       for (const epic of epicsInStatus) {
         const epicTasks = sortTasks(epicTasksMap.get(epic.id) ?? [], config.key)
-        if (epicTasks.length > 0) {
-          epicSubGroups.push({ epic, tasks: epicTasks })
-        }
+        epicSubGroups.push({ epic, tasks: epicTasks })
       }
 
       // Add ungrouped tasks (null epic) at the end
+      // Also include tasks whose parent epic is in a different status group
       const ungroupedTasks = sortTasks(epicTasksMap.get(null) ?? [], config.key)
-      if (ungroupedTasks.length > 0) {
-        epicSubGroups.push({ epic: null, tasks: ungroupedTasks })
+      const orphanedTasks: TaskCardTask[] = []
+
+      // Find tasks whose parent epic is not in this status group
+      for (const [epicId, tasks] of epicTasksMap.entries()) {
+        if (epicId !== null && !epicsInStatus.find(e => e.id === epicId)) {
+          orphanedTasks.push(...tasks)
+        }
       }
 
-      const totalCount = epicSubGroups.reduce((sum, g) => sum + g.tasks.length, 0)
+      const allUngroupedTasks = sortTasks([...ungroupedTasks, ...orphanedTasks], config.key)
+      if (allUngroupedTasks.length > 0) {
+        epicSubGroups.push({ epic: null, tasks: allUngroupedTasks })
+      }
+
+      const totalCount = epicSubGroups.reduce((sum, g) => {
+        // Count the epic itself plus its tasks
+        return sum + (g.epic ? 1 : 0) + g.tasks.length
+      }, 0)
 
       result.push({
         config,
@@ -585,18 +532,22 @@ export function TaskList({
                 {epicSubGroups.length > 0 ?
                   epicSubGroups.map(({ epic, tasks: epicTasks }) => {
                     if (epic) {
-                      // Epic sub-group
+                      // Epic task with subtasks
                       const isEpicCollapsed = epicCollapsedState[epic.id] ?? false
                       return (
                         <div key={epic.id} role="group" aria-label={`${epic.title} epic sub-group`}>
-                          <EpicGroupHeader
-                            epicId={epic.id}
-                            epicTitle={epic.title}
-                            taskCount={epicTasks.length}
+                          {/* Epic task card */}
+                          <TaskCard
+                            task={epic}
+                            onStatusChange={onStatusChange}
+                            onClick={onTaskClick}
+                            isNew={newTaskIds.has(epic.id)}
                             isCollapsed={isEpicCollapsed}
-                            onToggle={() => toggleEpicGroup(epic.id)}
+                            onToggleCollapse={() => toggleEpicGroup(epic.id)}
+                            subtaskCount={epicTasks.length}
                           />
-                          {!isEpicCollapsed && (
+                          {/* Subtasks (indented) */}
+                          {!isEpicCollapsed && epicTasks.length > 0 && (
                             <div role="group" aria-label={`${epic.title} tasks`}>
                               {epicTasks.map(task => (
                                 <TaskCard
