@@ -5,6 +5,7 @@ import type { ConnectionStatus } from "../hooks/useWebSocket"
 export const SIDEBAR_WIDTH_STORAGE_KEY = "ralph-ui-sidebar-width"
 export const TASK_CHAT_WIDTH_STORAGE_KEY = "ralph-ui-task-chat-width"
 export const CLOSED_FILTER_STORAGE_KEY = "ralph-ui-task-list-closed-filter"
+export const SHOW_TOOL_OUTPUT_STORAGE_KEY = "ralph-ui-show-tool-output"
 
 // Helper functions for localStorage
 function loadSidebarWidth(): number {
@@ -79,6 +80,27 @@ function loadClosedTimeFilter(): ClosedTasksTimeFilter {
 function saveClosedTimeFilter(filter: ClosedTasksTimeFilter): void {
   try {
     localStorage.setItem(CLOSED_FILTER_STORAGE_KEY, filter)
+  } catch {
+    // localStorage may not be available
+  }
+}
+
+// Show tool output localStorage persistence
+function loadShowToolOutput(): boolean {
+  try {
+    const stored = localStorage.getItem(SHOW_TOOL_OUTPUT_STORAGE_KEY)
+    if (stored !== null) {
+      return stored === "true"
+    }
+  } catch {
+    // localStorage may not be available (SSR, private mode, etc.)
+  }
+  return false // default - collapsed
+}
+
+function saveShowToolOutput(show: boolean): void {
+  try {
+    localStorage.setItem(SHOW_TOOL_OUTPUT_STORAGE_KEY, String(show))
   } catch {
     // localStorage may not be available
   }
@@ -257,6 +279,9 @@ export interface AppState {
 
   // Closed tasks time filter
   closedTimeFilter: ClosedTasksTimeFilter
+
+  // Tool output visibility (global setting for all ToolUseCards)
+  showToolOutput: boolean
 }
 
 // Store Actions
@@ -343,6 +368,10 @@ export interface AppActions {
 
   // Closed time filter
   setClosedTimeFilter: (filter: ClosedTasksTimeFilter) => void
+
+  // Tool output visibility
+  setShowToolOutput: (show: boolean) => void
+  toggleToolOutput: () => void
 
   // Reset
   reset: () => void
@@ -439,6 +468,7 @@ const initialState: AppState = {
   viewingIterationIndex: null,
   taskSearchQuery: "",
   closedTimeFilter: "past_day",
+  showToolOutput: false,
 }
 
 // Create the store with localStorage initialization
@@ -447,6 +477,7 @@ const getInitialStateWithPersistence = (): AppState => ({
   sidebarWidth: loadSidebarWidth(),
   taskChatWidth: loadTaskChatWidth(),
   closedTimeFilter: loadClosedTimeFilter(),
+  showToolOutput: loadShowToolOutput(),
 })
 
 // Store
@@ -653,6 +684,18 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     saveClosedTimeFilter(filter)
     set({ closedTimeFilter: filter })
   },
+
+  // Tool output visibility
+  setShowToolOutput: show => {
+    saveShowToolOutput(show)
+    set({ showToolOutput: show })
+  },
+  toggleToolOutput: () =>
+    set(state => {
+      const newValue = !state.showToolOutput
+      saveShowToolOutput(newValue)
+      return { showToolOutput: newValue }
+    }),
 
   // Reset
   reset: () => set(initialState),

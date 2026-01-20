@@ -431,5 +431,82 @@ describe("EventStream", () => {
       expect(screen.getByText("No events yet")).toBeInTheDocument()
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
     })
+
+    it("does not show spinner when viewing a completed iteration", () => {
+      // Add two iteration boundaries
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000500,
+        message: "First iteration message",
+      })
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600001000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600001500,
+        message: "Second iteration message",
+      })
+
+      // Set Ralph as running
+      useAppStore.getState().setRalphStatus("running")
+
+      // Navigate to the first (completed) iteration
+      useAppStore.getState().setViewingIterationIndex(0)
+
+      render(<EventStream />)
+
+      // Should show the first iteration's message
+      expect(screen.getByText("First iteration message")).toBeInTheDocument()
+      expect(screen.queryByText("Second iteration message")).not.toBeInTheDocument()
+
+      // Should NOT show spinner because we're viewing a completed iteration
+      expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
+    })
+
+    it("shows spinner when viewing latest iteration and Ralph is running", () => {
+      // Add two iteration boundaries
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000500,
+        message: "First iteration message",
+      })
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600001000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600001500,
+        message: "Second iteration message",
+      })
+
+      // Set Ralph as running
+      useAppStore.getState().setRalphStatus("running")
+
+      // Keep viewing the latest iteration (default)
+      // viewingIterationIndex should be null (latest)
+
+      render(<EventStream />)
+
+      // Should show the second iteration's message
+      expect(screen.getByText("Second iteration message")).toBeInTheDocument()
+
+      // Should show spinner because we're viewing latest and Ralph is running
+      expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
+    })
   })
 })

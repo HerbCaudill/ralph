@@ -483,8 +483,8 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
               />
             ))}
             {streamingMessage && <StreamingContentRenderer message={streamingMessage} />}
-            {/* Spinner shown when Ralph is running */}
-            {isRunning && (
+            {/* Spinner shown when Ralph is running and viewing latest iteration */}
+            {isRunning && isViewingLatest && (
               <div
                 className="flex items-center justify-start px-4 py-4"
                 aria-label="Ralph is running"
