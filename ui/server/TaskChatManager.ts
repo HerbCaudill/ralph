@@ -134,13 +134,39 @@ export class TaskChatManager extends EventEmitter {
     this._messages.push(userMsg)
     this.emit("message", userMsg)
 
-    // Build system prompt with current task context
-    const systemPrompt = await this.buildSystemPrompt()
+    let systemPrompt: string
+    let conversationPrompt: string
 
-    // Build conversation for Claude
-    const conversationPrompt = this.buildConversationPrompt(userMessage)
+    try {
+      // Build system prompt with current task context
+      systemPrompt = await this.buildSystemPrompt()
+
+      // Build conversation for Claude
+      conversationPrompt = this.buildConversationPrompt(userMessage)
+    } catch (err) {
+      // If building prompts fails, reset status and re-throw
+      this.setStatus("idle")
+      throw err
+    }
 
     return new Promise((resolve, reject) => {
+      // Set up a timeout to prevent getting stuck in "processing" state
+      // If the process doesn't complete within 2 minutes, force cleanup
+      const timeout = setTimeout(() => {
+        if (this.process) {
+          this.process.kill("SIGKILL")
+          this.process = null
+        }
+        const err = new Error("Request timed out after 2 minutes")
+        this.setStatus("idle")
+        this.emit("error", err)
+        reject(err)
+      }, 120000) // 2 minute timeout
+
+      const cleanup = () => {
+        clearTimeout(timeout)
+      }
+
       try {
         // Spawn Claude CLI in print mode with streaming JSON output
         // Note: --verbose is required for stream-json output to work with --print
@@ -169,6 +195,7 @@ export class TaskChatManager extends EventEmitter {
         this.currentResponse = ""
 
         this.process.on("error", err => {
+          cleanup()
           this.process = null
           this.setStatus("error")
           this.emit("error", err)
@@ -176,6 +203,7 @@ export class TaskChatManager extends EventEmitter {
         })
 
         this.process.on("exit", (code, signal) => {
+          cleanup()
           this.process = null
 
           // If cancelled, resolve with whatever response we have (might be empty)
@@ -223,8 +251,9 @@ export class TaskChatManager extends EventEmitter {
           }
         })
       } catch (err) {
+        cleanup()
         this.process = null
-        this.setStatus("error")
+        this.setStatus("idle")
         reject(err)
       }
     })
