@@ -11,13 +11,13 @@ import {
   type TablerIcon,
 } from "@tabler/icons-react"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+  SheetDescription,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -476,17 +476,17 @@ export function TaskDetailsDialog({
   const StatusIcon = statusConfig[status].icon
 
   return (
-    <Dialog open={open} onOpenChange={isOpen => !isOpen && handleClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Sheet open={open} onOpenChange={isOpen => !isOpen && handleClose()}>
+      <SheetContent side="right" size="lg" className="overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
             <StatusIcon className={cn("h-5 w-5", statusConfig[status].color)} />
             <span className="text-muted-foreground font-mono text-sm">
               {stripTaskPrefix(task.id, issuePrefix)}
             </span>
-          </DialogTitle>
-          <DialogDescription className="sr-only">Edit task details</DialogDescription>
-        </DialogHeader>
+          </SheetTitle>
+          <SheetDescription className="sr-only">Edit task details</SheetDescription>
+        </SheetHeader>
 
         <div className="grid gap-4 py-4">
           {/* Title */}
@@ -771,7 +771,7 @@ export function TaskDetailsDialog({
         </div>
 
         {!readOnly && (
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          <SheetFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
             {/* Delete section - left side */}
             {onDelete && (
               <div className="flex flex-col gap-1">
@@ -824,9 +824,9 @@ export function TaskDetailsDialog({
                 {isSaving ? "Saving..." : "Save changes"}
               </Button>
             </div>
-          </DialogFooter>
+          </SheetFooter>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
