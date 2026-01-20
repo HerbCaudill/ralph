@@ -20,67 +20,32 @@ export interface TaskLifecycleEventProps {
  * Returns TaskLifecycleEventData if the text matches the pattern, null otherwise.
  *
  * Patterns recognized:
- * - "✨ Starting **task-id task title**" or "✨ Starting **task-id: task title**"
- * - "✅ Completed **task-id task title**" or "✅ Completed **task-id: task title**"
+ * - "<start_task>task-id</start_task>"
+ * - "<end_task>task-id</end_task>"
  */
 export function parseTaskLifecycleEvent(
   text: string,
   timestamp: number,
 ): TaskLifecycleEventData | null {
-  // Trim whitespace for matching
-  const trimmed = text.trim()
-
-  // Match starting pattern: ✨ Starting **task-id task title**
-  const startingMatch = trimmed.match(
-    /^✨\s*Starting\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)[:\s]+(.+?)\*\*$/i,
-  )
+  // Match starting pattern: <start_task>task-id</start_task>
+  const startingMatch = text.match(/<start_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/start_task>/i)
   if (startingMatch) {
     return {
       type: "task_lifecycle",
       timestamp,
       action: "starting",
       taskId: startingMatch[1],
-      taskTitle: startingMatch[2].trim(),
     }
   }
 
-  // Also match simpler pattern without title: ✨ Starting **task-id**
-  const startingSimpleMatch = trimmed.match(
-    /^✨\s*Starting\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)\*\*$/i,
-  )
-  if (startingSimpleMatch) {
-    return {
-      type: "task_lifecycle",
-      timestamp,
-      action: "starting",
-      taskId: startingSimpleMatch[1],
-    }
-  }
-
-  // Match completed pattern: ✅ Completed **task-id task title**
-  const completedMatch = trimmed.match(
-    /^✅\s*Completed\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)[:\s]+(.+?)\*\*$/i,
-  )
+  // Match completed pattern: <end_task>task-id</end_task>
+  const completedMatch = text.match(/<end_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/end_task>/i)
   if (completedMatch) {
     return {
       type: "task_lifecycle",
       timestamp,
       action: "completed",
       taskId: completedMatch[1],
-      taskTitle: completedMatch[2].trim(),
-    }
-  }
-
-  // Also match simpler pattern without title: ✅ Completed **task-id**
-  const completedSimpleMatch = trimmed.match(
-    /^✅\s*Completed\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)\*\*$/i,
-  )
-  if (completedSimpleMatch) {
-    return {
-      type: "task_lifecycle",
-      timestamp,
-      action: "completed",
-      taskId: completedSimpleMatch[1],
     }
   }
 

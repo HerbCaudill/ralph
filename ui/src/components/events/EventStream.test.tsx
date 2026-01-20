@@ -31,7 +31,7 @@ describe("EventStream", () => {
           content: [
             {
               type: "text",
-              text: "✨ Starting **r-abc1: Implement new feature**",
+              text: "<start_task>r-abc1</start_task>",
             },
           ],
         },
@@ -45,11 +45,9 @@ describe("EventStream", () => {
       // Should show the structured elements
       expect(screen.getByText("Starting")).toBeInTheDocument() // The label
       expect(screen.getByText("r-abc1")).toBeInTheDocument() // The task ID
-      expect(screen.getByText("Implement new feature")).toBeInTheDocument() // The title
 
-      // Should NOT render the raw markdown text "✨ Starting **r-abc1: Implement new feature**"
-      // Note: We can't easily test for absence of the emoji/bold text since MarkdownContent would parse it
-      // But the structured block should be the primary rendering
+      // Should NOT render the raw XML text
+      // The structured block should be the primary rendering
     })
 
     it("handles streaming task lifecycle events - WHILE streaming shows as text", () => {
@@ -82,7 +80,7 @@ describe("EventStream", () => {
           type: "content_block_delta",
           delta: {
             type: "text_delta",
-            text: "✨ Starting **r-xyz2: Fix the bug**",
+            text: "<start_task>r-xyz2</start_task>",
           },
         },
       })
@@ -102,7 +100,6 @@ describe("EventStream", () => {
       expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
       expect(screen.getByText("Starting")).toBeInTheDocument()
       expect(screen.getByText("r-xyz2")).toBeInTheDocument()
-      expect(screen.getByText("Fix the bug")).toBeInTheDocument()
     })
 
     it("renders ralph_task_started events as structured blocks", () => {
@@ -159,7 +156,7 @@ describe("EventStream", () => {
           content: [
             {
               type: "text",
-              text: "✨ Starting **r-abc1: Implement new feature**",
+              text: "<start_task>r-abc1</start_task>",
             },
           ],
         },
@@ -218,7 +215,7 @@ describe("EventStream", () => {
           type: "content_block_delta",
           delta: {
             type: "text_delta",
-            text: "✨ Starting **r-xyz2: Fix the bug**",
+            text: "<start_task>r-xyz2</start_task>",
           },
         },
       })
@@ -245,7 +242,6 @@ describe("EventStream", () => {
       expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
       expect(screen.getByText("Starting")).toBeInTheDocument()
       expect(screen.getByText("r-xyz2")).toBeInTheDocument()
-      expect(screen.getByText("Fix the bug")).toBeInTheDocument()
     })
   })
 

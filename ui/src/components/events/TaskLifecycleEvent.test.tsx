@@ -11,8 +11,8 @@ function renderWithContext(ui: React.ReactNode, openTaskById = vi.fn()) {
 
 describe("parseTaskLifecycleEvent", () => {
   describe("starting events", () => {
-    it("parses starting event with colon separator", () => {
-      const text = "✨ Starting **r-abc1: Add new feature**"
+    it("parses start_task XML tag", () => {
+      const text = "<start_task>r-abc1</start_task>"
       const result = parseTaskLifecycleEvent(text, 1234567890)
 
       expect(result).toEqual({
@@ -20,12 +20,38 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "starting",
         taskId: "r-abc1",
-        taskTitle: "Add new feature",
+        taskTitle: undefined,
       })
     })
 
-    it("parses starting event with space separator", () => {
-      const text = "✨ Starting **r-xyz9 Fix the bug**"
+    it("parses start_task with sub-task ID", () => {
+      const text = "<start_task>r-abc1.2</start_task>"
+      const result = parseTaskLifecycleEvent(text, 1234567890)
+
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "starting",
+        taskId: "r-abc1.2",
+        taskTitle: undefined,
+      })
+    })
+
+    it("parses start_task with complex task ID", () => {
+      const text = "<start_task>rui-4rt.5.a2</start_task>"
+      const result = parseTaskLifecycleEvent(text, 1234567890)
+
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "starting",
+        taskId: "rui-4rt.5.a2",
+        taskTitle: undefined,
+      })
+    })
+
+    it("parses start_task within surrounding text", () => {
+      const text = "Some text before <start_task>r-xyz9</start_task> and after"
       const result = parseTaskLifecycleEvent(text, 1234567890)
 
       expect(result).toEqual({
@@ -33,12 +59,25 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "starting",
         taskId: "r-xyz9",
-        taskTitle: "Fix the bug",
+        taskTitle: undefined,
       })
     })
 
-    it("parses starting event without title", () => {
-      const text = "✨ Starting **r-def3**"
+    it("parses start_task with whitespace in surrounding text", () => {
+      const text = "  <start_task>r-abc1</start_task>  "
+      const result = parseTaskLifecycleEvent(text, 1234567890)
+
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "starting",
+        taskId: "r-abc1",
+        taskTitle: undefined,
+      })
+    })
+
+    it("parses start_task in multi-line text", () => {
+      const text = "Some text\n<start_task>r-def3</start_task>\nMore content"
       const result = parseTaskLifecycleEvent(text, 1234567890)
 
       expect(result).toEqual({
@@ -49,50 +88,11 @@ describe("parseTaskLifecycleEvent", () => {
         taskTitle: undefined,
       })
     })
-
-    it("parses starting event with sub-task ID", () => {
-      const text = "✨ Starting **r-abc1.2: Sub-task title**"
-      const result = parseTaskLifecycleEvent(text, 1234567890)
-
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "starting",
-        taskId: "r-abc1.2",
-        taskTitle: "Sub-task title",
-      })
-    })
-
-    it("parses starting event with whitespace", () => {
-      const text = "  ✨ Starting **r-abc1: Title**  "
-      const result = parseTaskLifecycleEvent(text, 1234567890)
-
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "starting",
-        taskId: "r-abc1",
-        taskTitle: "Title",
-      })
-    })
-
-    it("parses starting event with complex task ID", () => {
-      const text = "✨ Starting **rui-4rt.5.a2: Nested task**"
-      const result = parseTaskLifecycleEvent(text, 1234567890)
-
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "starting",
-        taskId: "rui-4rt.5.a2",
-        taskTitle: "Nested task",
-      })
-    })
   })
 
   describe("completed events", () => {
-    it("parses completed event with colon separator", () => {
-      const text = "✅ Completed **r-abc1: Add new feature**"
+    it("parses end_task XML tag", () => {
+      const text = "<end_task>r-abc1</end_task>"
       const result = parseTaskLifecycleEvent(text, 1234567890)
 
       expect(result).toEqual({
@@ -100,12 +100,25 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "completed",
         taskId: "r-abc1",
-        taskTitle: "Add new feature",
+        taskTitle: undefined,
       })
     })
 
-    it("parses completed event with space separator", () => {
-      const text = "✅ Completed **r-xyz9 Fix the bug**"
+    it("parses end_task with sub-task ID", () => {
+      const text = "<end_task>r-abc1.2</end_task>"
+      const result = parseTaskLifecycleEvent(text, 1234567890)
+
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "completed",
+        taskId: "r-abc1.2",
+        taskTitle: undefined,
+      })
+    })
+
+    it("parses end_task within surrounding text", () => {
+      const text = "Task completed: <end_task>r-xyz9</end_task>"
       const result = parseTaskLifecycleEvent(text, 1234567890)
 
       expect(result).toEqual({
@@ -113,19 +126,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "completed",
         taskId: "r-xyz9",
-        taskTitle: "Fix the bug",
-      })
-    })
-
-    it("parses completed event without title", () => {
-      const text = "✅ Completed **r-def3**"
-      const result = parseTaskLifecycleEvent(text, 1234567890)
-
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "completed",
-        taskId: "r-def3",
         taskTitle: undefined,
       })
     })
@@ -138,24 +138,21 @@ describe("parseTaskLifecycleEvent", () => {
     })
 
     it("returns null for partial matches", () => {
-      expect(parseTaskLifecycleEvent("✨ Starting task-123", 1234567890)).toBeNull()
-      expect(parseTaskLifecycleEvent("Starting **r-abc1**", 1234567890)).toBeNull()
-      expect(parseTaskLifecycleEvent("✅ Completed task-123", 1234567890)).toBeNull()
+      expect(parseTaskLifecycleEvent("<start_task>task-123", 1234567890)).toBeNull()
+      expect(parseTaskLifecycleEvent("r-abc1</start_task>", 1234567890)).toBeNull()
+      expect(parseTaskLifecycleEvent("<end_task>", 1234567890)).toBeNull()
     })
 
-    it("returns null for multi-line text", () => {
-      const text = "✨ Starting **r-abc1: Title**\n\nSome other content"
-      expect(parseTaskLifecycleEvent(text, 1234567890)).toBeNull()
+    it("returns null for invalid task ID format", () => {
+      // Task IDs must start with letters, not numbers
+      expect(parseTaskLifecycleEvent("<start_task>123</start_task>", 1234567890)).toBeNull()
+      // Task IDs must have at least one hyphen
+      expect(parseTaskLifecycleEvent("<start_task>invalidid</start_task>", 1234567890)).toBeNull()
     })
 
-    it("returns null for text with content before emoji", () => {
-      const text = "I am ✨ Starting **r-abc1: Title**"
-      expect(parseTaskLifecycleEvent(text, 1234567890)).toBeNull()
-    })
-
-    it("returns null for text with content after bold", () => {
-      const text = "✨ Starting **r-abc1: Title** now"
-      expect(parseTaskLifecycleEvent(text, 1234567890)).toBeNull()
+    it("returns null for old emoji format", () => {
+      expect(parseTaskLifecycleEvent("✨ Starting **r-abc1**", 1234567890)).toBeNull()
+      expect(parseTaskLifecycleEvent("✅ Completed **r-abc1**", 1234567890)).toBeNull()
     })
   })
 })
