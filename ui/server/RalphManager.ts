@@ -32,6 +32,8 @@ export interface RalphManagerOptions {
   spawn?: SpawnFn
   /** Run in watch mode (adds --watch flag) */
   watch?: boolean
+  /** Agent to use (adds --agent flag, default: "claude") */
+  agent?: string
 }
 
 // RalphManager
@@ -60,6 +62,7 @@ export class RalphManager extends EventEmitter {
     env: Record<string, string>
     spawn: SpawnFn
     watch: boolean
+    agent: string
   }
 
   constructor(options: RalphManagerOptions = {}) {
@@ -71,6 +74,7 @@ export class RalphManager extends EventEmitter {
       env: options.env ?? {},
       spawn: options.spawn ?? spawn,
       watch: options.watch ?? false,
+      agent: options.agent ?? "claude",
     }
   }
 
@@ -102,6 +106,9 @@ export class RalphManager extends EventEmitter {
     this.setStatus("starting")
 
     const args = [...this.options.args]
+    if (this.options.agent !== "claude") {
+      args.push("--agent", this.options.agent)
+    }
     if (this.options.watch) {
       args.push("--watch")
     }

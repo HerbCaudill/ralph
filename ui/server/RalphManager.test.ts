@@ -111,6 +111,58 @@ describe("RalphManager", () => {
       )
     })
 
+    it("includes --agent flag when agent is not 'claude'", async () => {
+      const codexManager = new RalphManager({
+        spawn: mockSpawn as unknown as SpawnFn,
+        agent: "codex",
+      })
+
+      const startPromise = codexManager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "npx",
+        ["@herbcaudill/ralph", "--json", "--agent", "codex"],
+        expect.anything(),
+      )
+    })
+
+    it("does not include --agent flag when agent is 'claude' (default)", async () => {
+      const defaultManager = new RalphManager({
+        spawn: mockSpawn as unknown as SpawnFn,
+        agent: "claude",
+      })
+
+      const startPromise = defaultManager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "npx",
+        ["@herbcaudill/ralph", "--json"],
+        expect.anything(),
+      )
+    })
+
+    it("includes --agent flag with watch and iterations", async () => {
+      const codexManager = new RalphManager({
+        spawn: mockSpawn as unknown as SpawnFn,
+        agent: "codex",
+        watch: true,
+      })
+
+      const startPromise = codexManager.start(30)
+      mockProcess.emit("spawn")
+      await startPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "npx",
+        ["@herbcaudill/ralph", "--json", "--agent", "codex", "--watch", "30"],
+        expect.anything(),
+      )
+    })
+
     it("transitions to running status", async () => {
       const statusChanges: string[] = []
       manager.on("status", status => statusChanges.push(status))
