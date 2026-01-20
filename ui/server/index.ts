@@ -64,7 +64,7 @@ export function getConfig(): ServerConfig {
   return {
     host: process.env.HOST || "localhost",
     port: parseInt(process.env.PORT || "3000", 10),
-    appDir: path.resolve(import.meta.dirname, "..", "dist"),
+    appDir: path.resolve(import.meta.dirname, ".."),
   }
 }
 
