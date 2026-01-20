@@ -374,10 +374,12 @@ export function App() {
         }
         main={<AgentView chatInputRef={chatInputRef} />}
         statusBar={<StatusBar />}
-        rightPanel={
-          isViewingEventLog ? <EventLogViewer /> : <TaskChatPanel onClose={handleTaskChatClose} />
-        }
-        rightPanelOpen={isViewingEventLog || taskChatOpen}
+        leftPanel={<TaskChatPanel onClose={handleTaskChatClose} />}
+        leftPanelOpen={taskChatOpen}
+        leftPanelWidth={taskChatWidth}
+        onLeftPanelWidthChange={handleTaskChatWidthChange}
+        rightPanel={<EventLogViewer />}
+        rightPanelOpen={isViewingEventLog}
         rightPanelWidth={taskChatWidth}
         onRightPanelWidthChange={handleTaskChatWidthChange}
       />

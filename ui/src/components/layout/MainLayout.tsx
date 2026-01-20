@@ -16,6 +16,10 @@ const MAX_SIDEBAR_WIDTH = 600
 const MIN_RIGHT_PANEL_WIDTH = 300
 const MAX_RIGHT_PANEL_WIDTH = 800
 
+// Constants for left panel width constraints
+const MIN_LEFT_PANEL_WIDTH = 300
+const MAX_LEFT_PANEL_WIDTH = 600
+
 // Types
 
 export interface MainLayoutProps {
@@ -25,7 +29,15 @@ export interface MainLayoutProps {
   header?: React.ReactNode
   showHeader?: boolean
   className?: string
-  /** Optional right panel content (e.g., task chat panel) */
+  /** Optional left panel content (e.g., task chat panel) */
+  leftPanel?: React.ReactNode
+  /** Whether the left panel is open (defaults to false) */
+  leftPanelOpen?: boolean
+  /** Width of the left panel in pixels */
+  leftPanelWidth?: number
+  /** Callback when left panel width changes (for resize) */
+  onLeftPanelWidthChange?: (width: number) => void
+  /** Optional right panel content (e.g., event log viewer) */
   rightPanel?: React.ReactNode
   /** Whether the right panel is open (defaults to false) */
   rightPanelOpen?: boolean
@@ -38,6 +50,7 @@ export interface MainLayoutProps {
 export interface MainLayoutHandle {
   focusSidebar: () => void
   focusMain: () => void
+  focusLeftPanel: () => void
   focusRightPanel: () => void
 }
 
@@ -55,6 +68,10 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     header,
     showHeader = true,
     className,
+    leftPanel,
+    leftPanelOpen = false,
+    leftPanelWidth = 400,
+    onLeftPanelWidthChange,
     rightPanel,
     rightPanelOpen = false,
     rightPanelWidth = 400,
@@ -69,20 +86,37 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   const borderColor = accentColor ?? DEFAULT_ACCENT_COLOR
   const sidebarRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLDivElement>(null)
+  const leftPanelRef = useRef<HTMLDivElement>(null)
   const rightPanelRef = useRef<HTMLDivElement>(null)
 
-  // Drag state for resizing (sidebar and right panel)
+  // Drag state for resizing (sidebar, left panel, and right panel)
   const [isResizing, setIsResizing] = useState(false)
+  const [isResizingLeftPanel, setIsResizingLeftPanel] = useState(false)
   const [isResizingRightPanel, setIsResizingRightPanel] = useState(false)
 
   // Handle mouse move during sidebar resize
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isResizing) return
-      const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, e.clientX))
+      // Account for left panel width when calculating sidebar position
+      const leftOffset = leftPanelOpen ? leftPanelWidth : 0
+      const newWidth = Math.min(
+        MAX_SIDEBAR_WIDTH,
+        Math.max(MIN_SIDEBAR_WIDTH, e.clientX - leftOffset),
+      )
       setSidebarWidth(newWidth)
     },
-    [isResizing, setSidebarWidth],
+    [isResizing, setSidebarWidth, leftPanelOpen, leftPanelWidth],
+  )
+
+  // Handle mouse move during left panel resize
+  const handleLeftPanelMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isResizingLeftPanel || !onLeftPanelWidthChange) return
+      const newWidth = Math.min(MAX_LEFT_PANEL_WIDTH, Math.max(MIN_LEFT_PANEL_WIDTH, e.clientX))
+      onLeftPanelWidthChange(newWidth)
+    },
+    [isResizingLeftPanel, onLeftPanelWidthChange],
   )
 
   // Handle mouse move during right panel resize
@@ -102,6 +136,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   // Handle mouse up to stop resizing
   const handleMouseUp = useCallback(() => {
     setIsResizing(false)
+    setIsResizingLeftPanel(false)
     setIsResizingRightPanel(false)
   }, [])
 
@@ -113,7 +148,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
       // Prevent text selection during resize
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
-    } else if (!isResizingRightPanel) {
+    } else if (!isResizingLeftPanel && !isResizingRightPanel) {
       document.body.style.userSelect = ""
       document.body.style.cursor = ""
     }
@@ -121,12 +156,41 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     return () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizingRightPanel) {
+      if (!isResizingLeftPanel && !isResizingRightPanel) {
         document.body.style.userSelect = ""
         document.body.style.cursor = ""
       }
     }
-  }, [isResizing, isResizingRightPanel, handleMouseMove, handleMouseUp])
+  }, [isResizing, isResizingLeftPanel, isResizingRightPanel, handleMouseMove, handleMouseUp])
+
+  // Add/remove global mouse event listeners during left panel resize
+  useEffect(() => {
+    if (isResizingLeftPanel) {
+      document.addEventListener("mousemove", handleLeftPanelMouseMove)
+      document.addEventListener("mouseup", handleMouseUp)
+      // Prevent text selection during resize
+      document.body.style.userSelect = "none"
+      document.body.style.cursor = "col-resize"
+    } else if (!isResizing && !isResizingRightPanel) {
+      document.body.style.userSelect = ""
+      document.body.style.cursor = ""
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleLeftPanelMouseMove)
+      document.removeEventListener("mouseup", handleMouseUp)
+      if (!isResizing && !isResizingRightPanel) {
+        document.body.style.userSelect = ""
+        document.body.style.cursor = ""
+      }
+    }
+  }, [
+    isResizingLeftPanel,
+    isResizing,
+    isResizingRightPanel,
+    handleLeftPanelMouseMove,
+    handleMouseUp,
+  ])
 
   // Add/remove global mouse event listeners during right panel resize
   useEffect(() => {
@@ -136,7 +200,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
       // Prevent text selection during resize
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
-    } else if (!isResizing) {
+    } else if (!isResizing && !isResizingLeftPanel) {
       document.body.style.userSelect = ""
       document.body.style.cursor = ""
     }
@@ -144,17 +208,29 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     return () => {
       document.removeEventListener("mousemove", handleRightPanelMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizing) {
+      if (!isResizing && !isResizingLeftPanel) {
         document.body.style.userSelect = ""
         document.body.style.cursor = ""
       }
     }
-  }, [isResizingRightPanel, isResizing, handleRightPanelMouseMove, handleMouseUp])
+  }, [
+    isResizingRightPanel,
+    isResizing,
+    isResizingLeftPanel,
+    handleRightPanelMouseMove,
+    handleMouseUp,
+  ])
 
   // Start sidebar resizing on mouse down
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     setIsResizing(true)
+  }, [])
+
+  // Start left panel resizing on mouse down
+  const handleLeftPanelResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizingLeftPanel(true)
   }, [])
 
   // Start right panel resizing on mouse down
@@ -183,6 +259,15 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
         focusable?.focus()
       }
     },
+    focusLeftPanel: () => {
+      if (leftPanelRef.current) {
+        // Find the first focusable element in the left panel
+        const focusable = leftPanelRef.current.querySelector<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        )
+        focusable?.focus()
+      }
+    },
     focusRightPanel: () => {
       if (rightPanelRef.current) {
         // Find the first focusable element in the right panel
@@ -204,6 +289,41 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Left panel (e.g., task chat panel) */}
+        <aside
+          ref={leftPanelRef}
+          className={cn(
+            "border-sidebar-border bg-sidebar relative flex flex-col border-r",
+            !isResizingLeftPanel && "transition-all duration-200",
+          )}
+          style={{ width: leftPanelOpen ? leftPanelWidth : 0 }}
+          data-testid="left-panel"
+        >
+          {leftPanelOpen && (
+            <div className="flex h-full flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto">{leftPanel}</div>
+            </div>
+          )}
+
+          {/* Resize handle for left panel */}
+          {leftPanelOpen && onLeftPanelWidthChange && (
+            <div
+              className={cn(
+                "absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize transition-colors",
+                "hover:bg-primary/20",
+                isResizingLeftPanel && "bg-primary/30",
+              )}
+              onMouseDown={handleLeftPanelResizeStart}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize left panel"
+              aria-valuenow={leftPanelWidth}
+              aria-valuemin={MIN_LEFT_PANEL_WIDTH}
+              aria-valuemax={MAX_LEFT_PANEL_WIDTH}
+            />
+          )}
+        </aside>
+
         {/* Sidebar */}
         <aside
           ref={sidebarRef}
@@ -247,7 +367,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           )}
         </main>
 
-        {/* Right panel (e.g., task chat panel) */}
+        {/* Right panel (e.g., event log viewer) */}
         <aside
           ref={rightPanelRef}
           className={cn(
