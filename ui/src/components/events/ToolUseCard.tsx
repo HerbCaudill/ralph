@@ -1,7 +1,8 @@
 import { cn, toRelativePath } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useAppStore, selectWorkspace } from "@/store"
 import { TaskIdLink } from "@/components/ui/TaskIdLink"
+import { highlight, getCurrentCustomThemeName } from "@/lib/theme/highlighter"
 
 // Types
 
@@ -161,14 +162,69 @@ interface DiffLine {
   content: string
 }
 
+/**
+ * HighlightedLine component for displaying a single line with syntax highlighting
+ */
+function HighlightedLine({
+  content,
+  language,
+  className,
+}: {
+  content: string
+  language: string
+  className?: string
+}) {
+  const [html, setHtml] = useState<string>("")
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function doHighlight() {
+      try {
+        const themeName = getCurrentCustomThemeName()
+        const result = await highlight(content, language, {
+          theme: themeName ?? undefined,
+          isDark: true,
+        })
+        if (!cancelled) {
+          // Extract just the inner content from Shiki's output
+          // Shiki wraps in <pre><code>...</code></pre>
+          const match = result.match(/<code[^>]*>([\s\S]*?)<\/code>/)
+          setHtml(match ? match[1] : content)
+        }
+      } catch {
+        if (!cancelled) {
+          setHtml("")
+        }
+      }
+    }
+
+    doHighlight()
+
+    return () => {
+      cancelled = true
+    }
+  }, [content, language])
+
+  if (!html) {
+    return <span className={cn("whitespace-pre", className)}>{content}</span>
+  }
+
+  return (
+    <span className={cn("whitespace-pre", className)} dangerouslySetInnerHTML={{ __html: html }} />
+  )
+}
+
 function DiffView({
   oldString,
   newString,
+  language = "text",
   isExpanded,
   onExpand,
 }: {
   oldString: string
   newString: string
+  language?: string
   isExpanded: boolean
   onExpand?: () => void
 }) {
@@ -207,7 +263,9 @@ function DiffView({
               <span className="text-status-error">-</span>
             : ""}
           </span>
-          <span className="flex-1 px-2 whitespace-pre">{line.content}</span>
+          <span className="flex-1 px-2">
+            <HighlightedLine content={line.content} language={language} />
+          </span>
         </div>
       ))}
       {shouldTruncate && (
@@ -259,6 +317,140 @@ function TodoList({
 // Helper to get preview lines and remaining count
 const PREVIEW_LINES = 5
 
+// Map file extensions to Shiki language identifiers
+const EXTENSION_TO_LANGUAGE: Record<string, string> = {
+  ts: "typescript",
+  tsx: "tsx",
+  js: "javascript",
+  jsx: "jsx",
+  json: "json",
+  html: "html",
+  css: "css",
+  scss: "css",
+  less: "css",
+  md: "markdown",
+  py: "python",
+  rs: "rust",
+  go: "go",
+  rb: "ruby",
+  java: "java",
+  c: "c",
+  cpp: "cpp",
+  h: "c",
+  hpp: "cpp",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  yml: "yaml",
+  yaml: "yaml",
+  toml: "toml",
+  xml: "xml",
+  sql: "sql",
+  graphql: "graphql",
+  gql: "graphql",
+}
+
+function getLanguageFromFilePath(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase()
+  return ext ? EXTENSION_TO_LANGUAGE[ext] || "text" : "text"
+}
+
+/**
+ * HighlightedCodeOutput component for displaying syntax-highlighted code
+ * with expand/collapse functionality
+ */
+function HighlightedCodeOutput({
+  code,
+  language,
+  isExpanded,
+  onExpand,
+  className,
+}: {
+  code: string
+  language: string
+  isExpanded: boolean
+  onExpand?: () => void
+  className?: string
+}) {
+  const [html, setHtml] = useState<string>("")
+  const [isLoading, setIsLoading] = useState(true)
+
+  const { preview, remainingLines } = useMemo(() => getPreviewInfo(code), [code])
+  const displayCode = isExpanded ? code : preview
+  const shouldTruncate = !isExpanded && remainingLines > 0
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function doHighlight() {
+      try {
+        const themeName = getCurrentCustomThemeName()
+        const result = await highlight(displayCode, language, {
+          theme: themeName ?? undefined,
+          isDark: true,
+        })
+        if (!cancelled) {
+          setHtml(result)
+          setIsLoading(false)
+        }
+      } catch {
+        // Fallback to plain text on error
+        if (!cancelled) {
+          setHtml("")
+          setIsLoading(false)
+        }
+      }
+    }
+
+    doHighlight()
+
+    return () => {
+      cancelled = true
+    }
+  }, [displayCode, language])
+
+  // Fallback for loading state or highlight failure
+  if (isLoading || !html) {
+    return (
+      <pre
+        onClick={shouldTruncate ? onExpand : undefined}
+        className={cn(
+          "bg-muted/30 text-foreground/80 mt-1 overflow-auto rounded border p-2 font-mono text-xs whitespace-pre-wrap",
+          shouldTruncate && "cursor-pointer",
+          className,
+        )}
+      >
+        <TaskIdLink>{displayCode}</TaskIdLink>
+        {shouldTruncate && (
+          <>
+            {"\n"}
+            <span className="text-muted-foreground">... +{remainingLines} lines</span>
+          </>
+        )}
+      </pre>
+    )
+  }
+
+  return (
+    <div
+      onClick={shouldTruncate ? onExpand : undefined}
+      className={cn(
+        "mt-1 overflow-hidden rounded border",
+        "[&_pre]:!m-0 [&_pre]:overflow-auto [&_pre]:!p-2 [&_pre]:text-xs",
+        shouldTruncate && "cursor-pointer",
+        className,
+      )}
+    >
+      <div dangerouslySetInnerHTML={{ __html: html }} />
+      {shouldTruncate && (
+        <div className="text-muted-foreground bg-muted/30 border-t px-2 py-1 text-xs">
+          ... +{remainingLines} lines
+        </div>
+      )}
+    </div>
+  )
+}
+
 function getPreviewInfo(content: string): { preview: string; remainingLines: number } {
   const lines = content.split("\n")
   if (lines.length <= PREVIEW_LINES) {
@@ -304,10 +496,6 @@ export function ToolUseCard({ event, className, defaultExpanded = false }: ToolU
     )
   }
 
-  // Calculate preview info for bash output
-  const bashPreviewInfo =
-    event.tool === "Bash" && event.output ? getPreviewInfo(event.output) : null
-
   return (
     <div className={cn("py-1.5 pr-4 pl-4", className)}>
       {/* Main row */}
@@ -345,6 +533,11 @@ export function ToolUseCard({ event, className, defaultExpanded = false }: ToolU
                   <DiffView
                     oldString={event.input.old_string}
                     newString={event.input.new_string}
+                    language={
+                      typeof event.input?.file_path === "string" ?
+                        getLanguageFromFilePath(event.input.file_path)
+                      : "text"
+                    }
                     isExpanded={isExpanded}
                     onExpand={() => setIsExpanded(true)}
                   />
@@ -354,36 +547,19 @@ export function ToolUseCard({ event, className, defaultExpanded = false }: ToolU
               {outputSummary && <span>{outputSummary}</span>}
 
               {/* Bash output */}
-              {bashPreviewInfo && (
-                <pre
-                  onClick={
-                    !isExpanded && bashPreviewInfo.remainingLines > 0 ?
-                      () => setIsExpanded(true)
-                    : undefined
-                  }
-                  className={cn(
-                    "bg-muted/30 text-foreground/80 mt-1 overflow-auto rounded border p-2 font-mono text-xs whitespace-pre-wrap",
-                    !isExpanded && bashPreviewInfo.remainingLines > 0 && "cursor-pointer",
-                  )}
-                >
-                  <TaskIdLink>
-                    {isExpanded ? (event.output ?? "") : bashPreviewInfo.preview}
-                  </TaskIdLink>
-                  {!isExpanded && bashPreviewInfo.remainingLines > 0 && (
-                    <>
-                      {"\n"}
-                      <span className="text-muted-foreground">
-                        ... +{bashPreviewInfo.remainingLines} lines
-                      </span>
-                    </>
-                  )}
-                </pre>
+              {event.tool === "Bash" && event.output && (
+                <HighlightedCodeOutput
+                  code={event.output}
+                  language="bash"
+                  isExpanded={isExpanded}
+                  onExpand={() => setIsExpanded(true)}
+                />
               )}
 
               {/* Generic output for Glob, Grep, WebSearch, WebFetch, etc. */}
               {event.output &&
                 !outputSummary &&
-                !bashPreviewInfo &&
+                event.tool !== "Bash" &&
                 event.tool !== "Edit" &&
                 (() => {
                   const { preview, remainingLines } = getPreviewInfo(event.output)
