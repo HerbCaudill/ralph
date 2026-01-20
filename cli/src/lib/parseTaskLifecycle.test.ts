@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { parseTaskLifecycleEvent } from "./parseTaskLifecycle"
+import { parseTaskLifecycleEvent } from "./parseTaskLifecycle.js"
 
 describe("parseTaskLifecycleEvent", () => {
   describe("starting events", () => {

@@ -26,6 +26,7 @@ import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { createDebugLogger } from "../lib/debug.js"
 import { useTerminalSize } from "../lib/useTerminalSize.js"
 import { getNextLogFile } from "../lib/getNextLogFile.js"
+import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
 
 const log = createDebugLogger("iteration")
 
@@ -237,6 +238,8 @@ export const IterationRunner = ({
   const stopAfterCurrentRef = useRef(false) // Ref to access in async callbacks
   const [isPaused, setIsPaused] = useState(false) // Pause after current iteration completes
   const isPausedRef = useRef(false) // Ref to access in async callbacks
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+  const [currentTaskTitle, setCurrentTaskTitle] = useState<string | null>(null)
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -537,6 +540,49 @@ export const IterationRunner = ({
           const event = sdkMessageToEvent(message)
           if (event) {
             setEvents(prev => [...prev, event])
+          }
+
+          // Check for task lifecycle events in assistant messages
+          if (message.type === "assistant") {
+            const assistantMessage = message.message as Record<string, unknown> | undefined
+            const content = assistantMessage?.content as Array<Record<string, unknown>> | undefined
+            if (content) {
+              for (const block of content) {
+                if (block.type === "text" && typeof block.text === "string") {
+                  const taskInfo = parseTaskLifecycleEvent(block.text)
+                  if (taskInfo) {
+                    if (taskInfo.action === "starting") {
+                      setCurrentTaskId(taskInfo.taskId)
+                      setCurrentTaskTitle(taskInfo.taskTitle ?? null)
+                      log(
+                        `Task started: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,
+                      )
+                      // Emit ralph_task_started event to log file
+                      const taskStartedEvent = {
+                        type: "ralph_task_started",
+                        taskId: taskInfo.taskId,
+                        taskTitle: taskInfo.taskTitle,
+                        iteration: currentIteration,
+                      }
+                      appendFileSync(logFile, JSON.stringify(taskStartedEvent) + "\n")
+                    } else if (taskInfo.action === "completed") {
+                      log(
+                        `Task completed: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,
+                      )
+                      // Emit ralph_task_completed event to log file
+                      const taskCompletedEvent = {
+                        type: "ralph_task_completed",
+                        taskId: taskInfo.taskId,
+                        taskTitle: taskInfo.taskTitle,
+                        iteration: currentIteration,
+                      }
+                      appendFileSync(logFile, JSON.stringify(taskCompletedEvent) + "\n")
+                      // Keep tracking the same task until a new one starts
+                    }
+                  }
+                }
+              }
+            }
           }
 
           // Capture the final result message

@@ -11,6 +11,7 @@ import { getProgress, captureStartupSnapshot, type StartupSnapshot } from "../li
 import { createDebugLogger } from "../lib/debug.js"
 import { getNextLogFile } from "../lib/getNextLogFile.js"
 import { createStdinCommandHandler } from "../lib/StdinCommandHandler.js"
+import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
 
 const log = createDebugLogger("iteration")
 const ralphDir = join(process.cwd(), ".ralph")
@@ -64,6 +65,8 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
   const [isPaused, setIsPaused] = useState(false) // Pause after current iteration completes
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const stdinCleanupRef = useRef<(() => void) | null>(null)
+  const currentTaskIdRef = useRef<string | null>(null)
+  const currentTaskTitleRef = useRef<string | null>(null)
 
   // Keep stopAfterCurrent ref in sync with state
   useEffect(() => {
@@ -190,6 +193,46 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
           // Output the raw SDK message as JSON
           outputEvent(message as unknown as Record<string, unknown>)
 
+          // Check for task lifecycle events in assistant messages
+          if (message.type === "assistant") {
+            const assistantMessage = message.message as Record<string, unknown> | undefined
+            const content = assistantMessage?.content as Array<Record<string, unknown>> | undefined
+            if (content) {
+              for (const block of content) {
+                if (block.type === "text" && typeof block.text === "string") {
+                  const taskInfo = parseTaskLifecycleEvent(block.text)
+                  if (taskInfo) {
+                    if (taskInfo.action === "starting") {
+                      currentTaskIdRef.current = taskInfo.taskId
+                      currentTaskTitleRef.current = taskInfo.taskTitle ?? null
+                      log(
+                        `Task started: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,
+                      )
+                      // Emit ralph_task_started event
+                      outputEvent({
+                        type: "ralph_task_started",
+                        taskId: taskInfo.taskId,
+                        taskTitle: taskInfo.taskTitle,
+                        iteration: currentIteration,
+                      })
+                    } else if (taskInfo.action === "completed") {
+                      log(
+                        `Task completed: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,
+                      )
+                      // Emit ralph_task_completed event
+                      outputEvent({
+                        type: "ralph_task_completed",
+                        taskId: taskInfo.taskId,
+                        taskTitle: taskInfo.taskTitle,
+                        iteration: currentIteration,
+                      })
+                    }
+                  }
+                }
+              }
+            }
+          }
+
           // Capture the final result message
           if (
             message.type === "result" &&
@@ -214,6 +257,8 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
         outputEvent({
           type: "ralph_iteration_end",
           iteration: currentIteration,
+          taskId: currentTaskIdRef.current,
+          taskTitle: currentTaskTitleRef.current,
         })
 
         // Check for stop-after-current request
