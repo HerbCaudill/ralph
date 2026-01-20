@@ -275,6 +275,14 @@ export class RalphManager extends EventEmitter {
   /**
    * Send a message to the ralph process via stdin.
    *
+   * For user messages during an iteration, send:
+   * { type: "message", text: "your message here" }
+   *
+   * For control commands:
+   * - { type: "pause" } - Pause after current iteration
+   * - { type: "resume" } - Resume from paused state
+   * - { type: "stop" } - Stop after current iteration
+   *
    * @param message - Message to send (will be JSON stringified if object)
    */
   send(message: string | object): void {

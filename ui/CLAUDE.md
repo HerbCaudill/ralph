@@ -90,6 +90,24 @@ This normalization allows the UI to work with any agent without knowing its spec
 
 ## Event Handling
 
+### User Messages During Iterations
+
+Users can send messages to Ralph during an active iteration via the UI. The message format expected by the Ralph CLI is:
+
+```json
+{ "type": "message", "text": "your message here" }
+```
+
+**Important:** The server automatically wraps user messages in this format before sending them to the Ralph CLI process via stdin. Both the HTTP API (`/api/message`) and WebSocket handler (`chat_message`) handle this conversion.
+
+Other supported stdin commands:
+
+- `{ "type": "pause" }` - Pause after current iteration
+- `{ "type": "resume" }` - Resume from paused state
+- `{ "type": "stop" }` - Stop after current iteration
+
+See `server/index.ts` and `server/RalphManager.ts` for the implementation.
+
 ### Task Lifecycle Events
 
 The Ralph CLI emits structured task lifecycle events that the UI renders as visual blocks:
