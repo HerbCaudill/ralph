@@ -134,6 +134,13 @@ function getButtonStates(status: RalphStatus, isConnected: boolean) {
         stop: true,
         stopAfterCurrent: true,
       }
+    case "pausing":
+      return {
+        start: false,
+        pause: false, // Disable pause button while pausing
+        stop: true,
+        stopAfterCurrent: true,
+      }
     case "paused":
       return {
         start: false,

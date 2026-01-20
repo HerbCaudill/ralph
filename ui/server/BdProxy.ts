@@ -187,8 +187,9 @@ export class BdProxy {
    *
    * This method fetches all issues matching the filters and then enriches them
    * with the `parent` field by looking at each issue's dependents. If an issue
-   * has an epic as a dependent (with dependency_type "blocks"), that epic's ID
-   * is set as the parent.
+   * has a dependent with dependency_type "blocks", that dependent's ID is set
+   * as the parent. This supports hierarchical task structures for both epics
+   * and regular tasks with subtasks.
    */
   async listWithParents(options: BdListOptions = {}): Promise<BdIssue[]> {
     // First, get the filtered list of issues
@@ -215,14 +216,12 @@ export class BdProxy {
         return issue
       }
 
-      // Find an epic dependent with "blocks" relationship
-      // This means the current issue "blocks" the epic (is a child of the epic)
-      const parentEpic = details.dependents.find(
-        dep => dep.issue_type === "epic" && dep.dependency_type === "blocks",
-      )
+      // Find a parent task (any task that this issue blocks)
+      // This means the current issue "blocks" the parent (is a child of the parent)
+      const parentTask = details.dependents.find(dep => dep.dependency_type === "blocks")
 
-      if (parentEpic) {
-        return { ...issue, parent: parentEpic.id }
+      if (parentTask) {
+        return { ...issue, parent: parentTask.id }
       }
 
       return issue

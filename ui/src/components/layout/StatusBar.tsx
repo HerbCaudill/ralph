@@ -79,6 +79,10 @@ function StatusIndicator() {
       color: "bg-status-success",
       label: "Running",
     },
+    pausing: {
+      color: "bg-status-warning animate-pulse",
+      label: "Pausing",
+    },
     paused: {
       color: "bg-status-warning",
       label: "Paused",

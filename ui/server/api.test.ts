@@ -163,15 +163,15 @@ describe("REST API endpoints", () => {
   })
 
   beforeEach(async () => {
-    // Ensure manager is stopped before each test (also check paused state)
-    if (manager.isRunning || manager.status === "paused") {
+    // Ensure manager is stopped before each test (also check paused/pausing state)
+    if (manager.isRunning || manager.status === "paused" || manager.status === "pausing") {
       await manager.stop()
     }
   })
 
   afterEach(async () => {
-    // Clean up after each test (also check paused state)
-    if (manager.isRunning || manager.status === "paused") {
+    // Clean up after each test (also check paused/pausing state)
+    if (manager.isRunning || manager.status === "paused" || manager.status === "pausing") {
       await manager.stop()
     }
   })
@@ -329,7 +329,7 @@ describe("REST API endpoints", () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data).toEqual({ ok: true, status: "paused" })
+      expect(data).toEqual({ ok: true, status: "pausing" })
     })
 
     it("returns 500 when not running", async () => {
@@ -348,6 +348,11 @@ describe("REST API endpoints", () => {
     it("resumes ralph successfully when paused", async () => {
       await manager.start()
       manager.pause()
+
+      // We need to manually transition to "paused" status for this test
+      // In real usage, Ralph would emit ralph_paused event
+      // @ts-expect-error - accessing private method for testing
+      manager.setStatus("paused")
 
       const response = await fetch(`http://localhost:${port}/api/resume`, {
         method: "POST",

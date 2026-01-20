@@ -126,6 +126,7 @@ export const RALPH_STATUSES = [
   "stopped",
   "starting",
   "running",
+  "pausing",
   "paused",
   "stopping",
   "stopping_after_current",

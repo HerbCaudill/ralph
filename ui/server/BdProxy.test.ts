@@ -874,7 +874,7 @@ describe("BdProxy", () => {
       expect(result).toEqual([])
     })
 
-    it("derives parent from epic dependent with blocks relationship", async () => {
+    it("derives parent from dependent with blocks relationship", async () => {
       // First call: list returns tasks
       const listIssue: BdIssue = {
         id: "rui-task",
@@ -927,7 +927,7 @@ describe("BdProxy", () => {
       expect(result[0].parent).toBe("rui-epic")
     })
 
-    it("does not set parent for non-epic dependents", async () => {
+    it("sets parent for non-epic dependents with blocks relationship", async () => {
       const listIssue: BdIssue = {
         id: "rui-task",
         title: "Test Task",
@@ -946,7 +946,7 @@ describe("BdProxy", () => {
             title: "Other Task",
             status: "open",
             priority: 2,
-            issue_type: "task", // Not an epic
+            issue_type: "task", // Not an epic, but still a valid parent
             created_at: "2026-01-18T12:00:00Z",
             updated_at: "2026-01-18T12:00:00Z",
             dependency_type: "blocks",
@@ -971,10 +971,10 @@ describe("BdProxy", () => {
 
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe("rui-task")
-      expect(result[0].parent).toBeUndefined()
+      expect(result[0].parent).toBe("rui-other-task")
     })
 
-    it("does not set parent for epic dependent with non-blocks relationship", async () => {
+    it("does not set parent for dependent with non-blocks relationship", async () => {
       const listIssue: BdIssue = {
         id: "rui-task",
         title: "Test Task",

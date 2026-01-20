@@ -114,6 +114,33 @@ describe("ControlBar", () => {
     })
   })
 
+  describe("button states when pausing", () => {
+    beforeEach(() => {
+      useAppStore.getState().setConnectionStatus("connected")
+      useAppStore.getState().setRalphStatus("pausing")
+    })
+
+    it("disables Start button when pausing", () => {
+      render(<ControlBar />)
+      expect(screen.getByRole("button", { name: "Start" })).toBeDisabled()
+    })
+
+    it("disables Pause button when pausing", () => {
+      render(<ControlBar />)
+      expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled()
+    })
+
+    it("enables Stop button when pausing", () => {
+      render(<ControlBar />)
+      expect(screen.getByRole("button", { name: "Stop" })).not.toBeDisabled()
+    })
+
+    it("enables Stop after current button when pausing", () => {
+      render(<ControlBar />)
+      expect(screen.getByRole("button", { name: "Stop after current" })).not.toBeDisabled()
+    })
+  })
+
   describe("button states when paused", () => {
     beforeEach(() => {
       useAppStore.getState().setConnectionStatus("connected")
