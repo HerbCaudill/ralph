@@ -84,7 +84,6 @@ interface CodexUsage {
 export class CodexAdapter extends AgentAdapter {
   private process: ChildProcess | null = null
   private buffer = ""
-  private currentTurnUsage: CodexUsage | null = null
   private accumulatedMessage = ""
   private options: {
     command: string
@@ -147,7 +146,6 @@ export class CodexAdapter extends AgentAdapter {
     this.setStatus("starting")
     this.buffer = ""
     this.accumulatedMessage = ""
-    this.currentTurnUsage = null
 
     // Build CLI arguments
     const args = this.buildArgs(options)
@@ -315,14 +313,12 @@ export class CodexAdapter extends AgentAdapter {
       case "turn.started": {
         // New turn started - reset accumulated message
         this.accumulatedMessage = ""
-        this.currentTurnUsage = null
         break
       }
 
       case "turn.completed": {
         // Turn completed - emit result if we have accumulated content
         const usage = nativeEvent.usage as CodexUsage | undefined
-        this.currentTurnUsage = usage ?? null
 
         if (this.accumulatedMessage) {
           const event: AgentResultEvent = {
@@ -332,8 +328,7 @@ export class CodexAdapter extends AgentAdapter {
             usage:
               usage ?
                 {
-                  inputTokens:
-                    (usage.input_tokens ?? 0) + (usage.cached_input_tokens ?? 0),
+                  inputTokens: (usage.input_tokens ?? 0) + (usage.cached_input_tokens ?? 0),
                   outputTokens: usage.output_tokens,
                   totalTokens:
                     (usage.input_tokens ?? 0) +

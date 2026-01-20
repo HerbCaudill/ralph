@@ -434,7 +434,10 @@ describe("CodexAdapter", () => {
         adapter.on("event", e => events.push(e))
 
         // First send a turn.started
-        mockProcess.stdout.emit("data", Buffer.from(JSON.stringify({ type: "turn.started" }) + "\n"))
+        mockProcess.stdout.emit(
+          "data",
+          Buffer.from(JSON.stringify({ type: "turn.started" }) + "\n"),
+        )
 
         // Then send a message
         const messageEvent = {
@@ -528,7 +531,8 @@ describe("CodexAdapter", () => {
         const events: AgentEvent[] = []
         adapter.on("event", e => events.push(e))
 
-        const fullJson = '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Hello"}}\n'
+        const fullJson =
+          '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Hello"}}\n'
         const part1 = fullJson.slice(0, 40)
         const part2 = fullJson.slice(40)
 
