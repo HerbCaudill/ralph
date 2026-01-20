@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { EventEmitter } from "node:events"
-import { TaskChatManager, type SpawnFn, type TaskChatMessage } from "./TaskChatManager"
+import { TaskChatManager, type TaskChatMessage } from "./TaskChatManager"
 import type { BdProxy, BdIssue } from "./BdProxy"
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 
@@ -33,21 +33,6 @@ async function* createMockSDKResponse(text: string): AsyncGenerator<SDKMessage> 
   } as SDKMessage
 }
 
-// Create a mock process helper
-function createMockProcess() {
-  const proc = new EventEmitter() as EventEmitter & {
-    stdin: { writable: boolean; write: ReturnType<typeof vi.fn> }
-    stdout: EventEmitter
-    stderr: EventEmitter
-    kill: ReturnType<typeof vi.fn>
-  }
-  proc.stdin = { writable: true, write: vi.fn() }
-  proc.stdout = new EventEmitter()
-  proc.stderr = new EventEmitter()
-  proc.kill = vi.fn()
-  return proc
-}
-
 // Create a mock BdProxy
 function createMockBdProxy(issues: BdIssue[] = []): BdProxy {
   return {
@@ -62,16 +47,11 @@ function createMockBdProxy(issues: BdIssue[] = []): BdProxy {
 
 describe("TaskChatManager", () => {
   let manager: TaskChatManager
-  let mockProcess: ReturnType<typeof createMockProcess>
-  let mockSpawn: ReturnType<typeof vi.fn>
   let mockBdProxy: BdProxy
 
   beforeEach(() => {
-    mockProcess = createMockProcess()
-    mockSpawn = vi.fn().mockReturnValue(mockProcess)
     mockBdProxy = createMockBdProxy()
     manager = new TaskChatManager({
-      spawn: mockSpawn as unknown as SpawnFn,
       getBdProxy: () => mockBdProxy,
     })
   })
@@ -81,11 +61,7 @@ describe("TaskChatManager", () => {
   })
 
   // Helper to send a message and simulate response
-  async function sendAndRespond(
-    userMessage: string,
-    response: string,
-    proc = mockProcess,
-  ): Promise<string> {
+  async function sendAndRespond(userMessage: string, response: string): Promise<string> {
     // Mock the SDK query function to return our mock response
     vi.mocked(mockQuery).mockReturnValueOnce(createMockSDKResponse(response) as any)
 
@@ -109,11 +85,9 @@ describe("TaskChatManager", () => {
 
     it("accepts custom options", () => {
       const customManager = new TaskChatManager({
-        command: "custom-claude",
         cwd: "/custom/path",
         env: { CUSTOM_VAR: "value" },
         model: "opus",
-        spawn: mockSpawn as unknown as SpawnFn,
       })
       expect(customManager.status).toBe("idle")
     })
@@ -232,8 +206,7 @@ describe("TaskChatManager", () => {
       async function* errorResultGenerator(): AsyncGenerator<SDKMessage> {
         yield {
           type: "result",
-          subtype: "error",
-          errors: ["Query failed with error"],
+          subtype: "error_during_execution",
         } as SDKMessage
       }
       vi.mocked(mockQuery).mockReturnValueOnce(errorResultGenerator() as any)
@@ -245,7 +218,7 @@ describe("TaskChatManager", () => {
       // Wait for the result
       const result = await resultPromise
       expect(result).toHaveProperty("error")
-      expect((result as { error: Error }).error.message).toContain("Query failed with error")
+      expect((result as { error: Error }).error.message).toContain("Query failed:")
       expect(errors).toHaveLength(1)
     })
   })
@@ -362,8 +335,7 @@ describe("TaskChatManager", () => {
       async function* errorResponse(): AsyncGenerator<SDKMessage> {
         yield {
           type: "result",
-          subtype: "error",
-          errors: ["Rate limited"],
+          subtype: "error_during_execution",
         } as SDKMessage
       }
       vi.mocked(mockQuery).mockReturnValueOnce(errorResponse() as any)
@@ -374,7 +346,7 @@ describe("TaskChatManager", () => {
       await promise.catch(() => {})
 
       expect(errors).toHaveLength(1)
-      expect(errors[0].message).toBe("Rate limited")
+      expect(errors[0].message).toContain("Query failed:")
     })
   })
 
@@ -515,7 +487,6 @@ describe("TaskChatManager", () => {
       })
 
       manager = new TaskChatManager({
-        spawn: mockSpawn as unknown as SpawnFn,
         getBdProxy: () => mockBdProxy,
       })
 
@@ -537,7 +508,6 @@ describe("TaskChatManager", () => {
       vi.mocked(mockBdProxy.list).mockRejectedValue(new Error("DB error"))
 
       manager = new TaskChatManager({
-        spawn: mockSpawn as unknown as SpawnFn,
         getBdProxy: () => mockBdProxy,
       })
 
@@ -554,7 +524,6 @@ describe("TaskChatManager", () => {
 
     it("works without getBdProxy function", async () => {
       manager = new TaskChatManager({
-        spawn: mockSpawn as unknown as SpawnFn,
         // No getBdProxy provided
       })
 
@@ -640,7 +609,6 @@ describe("TaskChatManager", () => {
 
     it("accepts custom timeout option", async () => {
       const customManager = new TaskChatManager({
-        spawn: mockSpawn as unknown as SpawnFn,
         getBdProxy: () => mockBdProxy,
         timeout: 60000, // 1 minute
       })

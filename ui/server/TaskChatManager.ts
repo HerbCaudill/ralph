@@ -1,4 +1,3 @@
-import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
 import { EventEmitter } from "node:events"
 import { loadSystemPrompt } from "./systemPrompt.js"
 import type { BdProxy } from "./BdProxy.js"
@@ -20,20 +19,14 @@ export interface TaskChatEvent {
   [key: string]: unknown
 }
 
-export type SpawnFn = (command: string, args: string[], options: SpawnOptions) => ChildProcess
-
 /** Function to get the BdProxy instance (avoids circular dependency) */
 export type GetBdProxyFn = () => BdProxy
 
 export interface TaskChatManagerOptions {
-  /** Command to spawn (default: "claude") */
-  command?: string
   /** Working directory for the process */
   cwd?: string
   /** Additional environment variables */
   env?: Record<string, string>
-  /** Custom spawn function (for testing) */
-  spawn?: SpawnFn
   /** Model to use (default: "haiku" for fast, cheap responses) */
   model?: string
   /** Function to get the BdProxy instance */
@@ -45,32 +38,26 @@ export interface TaskChatManagerOptions {
 // TaskChatManager
 
 /**
- * Manages task chat conversations with Claude CLI.
+ * Manages task chat conversations with Claude Agent SDK.
  *
- * Uses Claude CLI in print mode with streaming JSON output to handle
- * task management conversations. Each message spawns a new Claude process
- * to maintain conversation history.
+ * Uses Claude Agent SDK to handle task management conversations.
  *
  * Events emitted:
  * - "message" - New message (user or assistant)
  * - "chunk" - Streaming text chunk from Claude
  * - "status" - Status changed
- * - "error" - Error from process or parsing
+ * - "error" - Error from SDK
  */
 export class TaskChatManager extends EventEmitter {
-  private process: ChildProcess | null = null
   private _status: TaskChatStatus = "idle"
   private _messages: TaskChatMessage[] = []
-  private buffer = ""
   private currentResponse = ""
   private cancelled = false
   private abortController: AbortController | null = null
   private getBdProxy: GetBdProxyFn | undefined
   private options: {
-    command: string
     cwd: string
     env: Record<string, string>
-    spawn: SpawnFn
     model: string
     timeout: number
   }
@@ -79,10 +66,8 @@ export class TaskChatManager extends EventEmitter {
     super()
     this.getBdProxy = options.getBdProxy
     this.options = {
-      command: options.command ?? "claude",
       cwd: options.cwd ?? process.cwd(),
       env: options.env ?? {},
-      spawn: options.spawn ?? spawn,
       model: options.model ?? "haiku",
       timeout: options.timeout ?? 600000, // 10 minute default
     }
@@ -204,9 +189,9 @@ export class TaskChatManager extends EventEmitter {
             }
 
             // Check if this is an error result
-            if (message.type === "result" && message.subtype === "error") {
+            if (message.type === "result" && message.subtype !== "success") {
               hasError = true
-              errorMessage = message.errors?.join(", ") || "Unknown error"
+              errorMessage = `Query failed: ${message.subtype}`
             }
 
             // Handle different SDK message types
@@ -254,11 +239,6 @@ export class TaskChatManager extends EventEmitter {
     if (this.abortController) {
       this.cancelled = true
       this.abortController.abort()
-      this.setStatus("idle")
-    } else if (this.process) {
-      // Fallback for legacy process-based implementation
-      this.cancelled = true
-      this.process.kill("SIGTERM")
       this.setStatus("idle")
     }
   }
@@ -321,10 +301,6 @@ export class TaskChatManager extends EventEmitter {
    * Build the conversation prompt from history.
    */
   private buildConversationPrompt(currentMessage: string): string {
-    // For now, just use the current message
-    // In the future, we could include conversation history
-    // but Claude CLI doesn't have built-in multi-turn support in print mode
-
     // Build a prompt that includes recent conversation context
     if (this._messages.length <= 1) {
       // First message - just use it directly
@@ -343,82 +319,6 @@ export class TaskChatManager extends EventEmitter {
     conversationContext += `User: ${currentMessage}\n\nAssistant:`
 
     return conversationContext
-  }
-
-  /**
-   * Handle stdout data, parsing streaming JSON.
-   */
-  private handleStdout(data: Buffer): void {
-    this.buffer += data.toString()
-
-    // Process complete lines (stream-json outputs newline-delimited JSON)
-    let newlineIndex: number
-    while ((newlineIndex = this.buffer.indexOf("\n")) !== -1) {
-      const line = this.buffer.slice(0, newlineIndex).trim()
-      this.buffer = this.buffer.slice(newlineIndex + 1)
-
-      if (line) {
-        this.parseStreamLine(line)
-      }
-    }
-  }
-
-  /**
-   * Parse a streaming JSON line from Claude CLI.
-   */
-  private parseStreamLine(line: string): void {
-    try {
-      const event = JSON.parse(line) as TaskChatEvent
-
-      // Handle different event types from Claude CLI stream-json output
-      switch (event.type) {
-        case "assistant":
-          // Assistant message with content
-          if (event.message && typeof event.message === "object") {
-            const message = event.message as { content?: Array<{ type: string; text?: string }> }
-            if (message.content) {
-              for (const block of message.content) {
-                if (block.type === "text" && block.text) {
-                  this.currentResponse = block.text
-                  this.emit("chunk", block.text)
-                }
-              }
-            }
-          }
-          break
-
-        case "content_block_delta":
-          // Streaming text delta
-          if (event.delta && typeof event.delta === "object") {
-            const delta = event.delta as { type?: string; text?: string }
-            if (delta.type === "text_delta" && delta.text) {
-              this.currentResponse += delta.text
-              this.emit("chunk", delta.text)
-            }
-          }
-          break
-
-        case "result":
-          // Final result - extract full response
-          if (event.result && typeof event.result === "string") {
-            this.currentResponse = event.result
-          }
-          break
-
-        case "error":
-          // Error from Claude
-          const errorMsg =
-            typeof event.error === "string" ? event.error
-            : typeof event.message === "string" ? event.message
-            : "Unknown error"
-          this.emit("error", new Error(errorMsg))
-          break
-      }
-
-      this.emit("event", event)
-    } catch {
-      // Not valid JSON - might be raw output, ignore
-    }
   }
 
   /**
@@ -472,16 +372,15 @@ export class TaskChatManager extends EventEmitter {
           type: "result",
           timestamp: Date.now(),
           result: message.subtype === "success" ? message.result : undefined,
-          error: message.subtype === "error" ? message.errors?.join(", ") : undefined,
+          error: message.subtype !== "success" ? message.subtype : undefined,
         })
         break
 
       default:
         // Emit other message types as events
         this.emit("event", {
-          type: message.type,
-          timestamp: Date.now(),
           ...message,
+          timestamp: Date.now(),
         })
         break
     }
