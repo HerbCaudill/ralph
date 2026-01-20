@@ -19,7 +19,7 @@ If there are none:
 
 ### Step 3: Select a task
 
-Select the highest-priority issue to work on. Use your best judgement.
+Select the highest-priority issue to work on. Finish in-progress tasks first. Bugs take priority. Otherwise use your best judgement.
 
 ### Step 4: Work on a single task
 
