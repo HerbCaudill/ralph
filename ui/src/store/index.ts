@@ -325,6 +325,7 @@ export interface AppActions {
   toggleTaskChat: () => void
   setTaskChatWidth: (width: number) => void
   addTaskChatMessage: (message: TaskChatMessage) => void
+  removeTaskChatMessage: (id: string) => void
   clearTaskChatMessages: () => void
   setTaskChatLoading: (loading: boolean) => void
   setTaskChatStreamingText: (text: string) => void
@@ -597,6 +598,10 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   addTaskChatMessage: message =>
     set(state => ({
       taskChatMessages: [...state.taskChatMessages, message],
+    })),
+  removeTaskChatMessage: id =>
+    set(state => ({
+      taskChatMessages: state.taskChatMessages.filter(m => m.id !== id),
     })),
   clearTaskChatMessages: () => set({ taskChatMessages: [] }),
   setTaskChatLoading: loading => set({ taskChatLoading: loading }),

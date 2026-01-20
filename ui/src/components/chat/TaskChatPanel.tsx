@@ -261,9 +261,12 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   // Handle sending a message
   const handleSendMessage = useCallback(
     async (message: string) => {
-      // Add user message to local state immediately
+      // Generate a unique ID for this message so we can remove it if needed
+      const messageId = `user-${Date.now()}`
+
+      // Add user message to local state immediately (optimistic update)
       const userMessage: TaskChatMessage = {
-        id: `user-${Date.now()}`,
+        id: messageId,
         role: "user",
         content: message,
         timestamp: Date.now(),
@@ -298,12 +301,24 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       const result = await sendTaskChatMessage(message)
 
       if (!result.ok) {
-        // API request itself failed (network error, etc.)
-        // Server errors come via WebSocket task-chat:error event
+        // Clear the timeout since we're handling the error now
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current)
           loadingTimeoutRef.current = null
         }
+
+        // Check if this is a "request already in progress" error
+        // In this case, the server is still processing a previous request
+        // We should sync state with the server and wait, not show an error
+        if (result.error?.includes("request is already in progress")) {
+          // Remove the optimistically added user message since it wasn't accepted
+          useAppStore.getState().removeTaskChatMessage(messageId)
+          // Keep loading state true - server is still processing
+          setLoading(true)
+          return
+        }
+
+        // For other errors, show the error message
         setLoading(false)
         const errorMessage: TaskChatMessage = {
           id: `error-${Date.now()}`,

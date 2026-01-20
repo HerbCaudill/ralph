@@ -741,6 +741,31 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().taskChatMessages).toEqual([])
     })
 
+    it("removes a specific task chat message by id", () => {
+      const { addTaskChatMessage, removeTaskChatMessage } = useAppStore.getState()
+
+      addTaskChatMessage({ id: "1", role: "user", content: "First", timestamp: 1 })
+      addTaskChatMessage({ id: "2", role: "assistant", content: "Second", timestamp: 2 })
+      addTaskChatMessage({ id: "3", role: "user", content: "Third", timestamp: 3 })
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(3)
+
+      removeTaskChatMessage("2")
+      const messages = useAppStore.getState().taskChatMessages
+      expect(messages).toHaveLength(2)
+      expect(messages[0].id).toBe("1")
+      expect(messages[1].id).toBe("3")
+    })
+
+    it("does nothing when removing non-existent message id", () => {
+      const { addTaskChatMessage, removeTaskChatMessage } = useAppStore.getState()
+
+      addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+
+      removeTaskChatMessage("non-existent")
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+    })
+
     it("sets task chat loading state", () => {
       useAppStore.getState().setTaskChatLoading(true)
       expect(useAppStore.getState().taskChatLoading).toBe(true)

@@ -228,6 +228,33 @@ describe("TaskChatPanel", () => {
       })
     })
 
+    it("removes optimistic message and syncs loading state on 'request already in progress' error", async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: false, error: "A request is already in progress" }),
+      })
+
+      render(<TaskChatPanel />)
+      const input = screen.getByRole("textbox")
+
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "Hello" } })
+        fireEvent.submit(input.closest("form")!)
+      })
+
+      // Wait for the response to be processed
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled()
+      })
+
+      // The user message should be removed (not visible)
+      // and no error message should be shown
+      expect(screen.queryByText("Hello")).not.toBeInTheDocument()
+      expect(screen.queryByText(/Error:/)).not.toBeInTheDocument()
+
+      // Loading state should stay true (synced with server)
+      expect(useAppStore.getState().taskChatLoading).toBe(true)
+    })
+
     it("clears input after sending", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, status: "processing" }),
