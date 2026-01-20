@@ -86,7 +86,19 @@ export function TaskHoverCard({ task, children, disabled = false }: TaskHoverCar
   return (
     <HoverCard openDelay={400} closeDelay={100}>
       <HoverCardTrigger asChild>{children}</HoverCardTrigger>
-      <HoverCardContent className="w-72 p-0" side="right" align="start" sideOffset={8}>
+      <HoverCardContent
+        // Position the card to overlay the trigger:
+        // - side="top" places the card's bottom edge at trigger's top
+        // - translateY pushes card down so title row aligns with trigger
+        // - Title row is 2nd row (~36px from bottom if no description, but we want it
+        //   to overlay the trigger regardless of description length)
+        // - Use calc to position: we want the title row at trigger position
+        // - From top position, push down by (title_row_height) = ~36px
+        className="w-72 translate-y-[36px] transform p-0"
+        side="top"
+        align="start"
+        sideOffset={0}
+      >
         <div className="flex flex-col">
           {/* Metadata row - above the title */}
           <div className="border-border flex items-center gap-2 border-b px-3 py-2">
