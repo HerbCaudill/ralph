@@ -227,9 +227,9 @@ function EpicGroupHeader({
       )}
       <IconStack2 className="text-primary size-3.5 shrink-0" />
       <span className="text-muted-foreground shrink-0 font-mono text-xs">{epicId}</span>
-      <span className="min-w-0 flex-1 truncate text-xs font-medium">{epicTitle}</span>
+      <span className="min-w-0 truncate text-xs font-medium">{epicTitle}</span>
       {hasSubtasks && (
-        <span className="text-muted-foreground bg-muted shrink-0 rounded px-1.5 py-0.5 text-xs">
+        <span className="text-muted-foreground bg-muted ml-1.5 shrink-0 rounded px-1.5 py-0.5 text-xs">
           {taskCount}
         </span>
       )}
