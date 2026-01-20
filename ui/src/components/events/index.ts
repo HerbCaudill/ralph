@@ -12,3 +12,6 @@ export type { ToolUseCardProps, ToolUseEvent, ToolName } from "./ToolUseCard"
 
 export { EventLogViewer } from "./EventLogViewer"
 export type { EventLogViewerProps } from "./EventLogViewer"
+
+export { TaskLifecycleEvent, parseTaskLifecycleEvent } from "./TaskLifecycleEvent"
+export type { TaskLifecycleEventData, TaskLifecycleEventProps } from "./TaskLifecycleEvent"

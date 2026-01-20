@@ -11,6 +11,7 @@ import { IconChevronDown, IconX, IconHistory, IconCopy, IconCheck } from "@table
 import { UserMessage, type UserMessageEvent } from "./UserMessage"
 import { AssistantText, type AssistantTextEvent } from "./AssistantText"
 import { ToolUseCard, type ToolUseEvent } from "./ToolUseCard"
+import { TaskLifecycleEvent, parseTaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { useEventLogRouter } from "@/hooks"
 
 // Types
@@ -57,6 +58,12 @@ function renderContentBlock(
   toolResults: Map<string, { output?: string; error?: string }>,
 ) {
   if (block.type === "text") {
+    // Check if this is a task lifecycle event
+    const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
+    if (lifecycleEvent) {
+      return <TaskLifecycleEvent key={`lifecycle-${index}`} event={lifecycleEvent} />
+    }
+
     const textEvent: AssistantTextEvent = {
       type: "text",
       timestamp,

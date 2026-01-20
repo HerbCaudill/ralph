@@ -1,0 +1,138 @@
+import { cn } from "@/lib/utils"
+import { IconPlayerPlay, IconCheck } from "@tabler/icons-react"
+import { TaskIdLink } from "@/components/ui/TaskIdLink"
+
+export interface TaskLifecycleEventData {
+  type: "task_lifecycle"
+  timestamp: number
+  action: "starting" | "completed"
+  taskId: string
+  taskTitle?: string
+}
+
+export interface TaskLifecycleEventProps {
+  event: TaskLifecycleEventData
+  className?: string
+}
+
+/**
+ * Parse a text message to detect task lifecycle events.
+ * Returns TaskLifecycleEventData if the text matches the pattern, null otherwise.
+ *
+ * Patterns recognized:
+ * - "✨ Starting **task-id task title**" or "✨ Starting **task-id: task title**"
+ * - "✅ Completed **task-id task title**" or "✅ Completed **task-id: task title**"
+ */
+export function parseTaskLifecycleEvent(
+  text: string,
+  timestamp: number,
+): TaskLifecycleEventData | null {
+  // Trim whitespace for matching
+  const trimmed = text.trim()
+
+  // Match starting pattern: ✨ Starting **task-id task title**
+  const startingMatch = trimmed.match(
+    /^✨\s*Starting\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)[:\s]+(.+?)\*\*$/i,
+  )
+  if (startingMatch) {
+    return {
+      type: "task_lifecycle",
+      timestamp,
+      action: "starting",
+      taskId: startingMatch[1],
+      taskTitle: startingMatch[2].trim(),
+    }
+  }
+
+  // Also match simpler pattern without title: ✨ Starting **task-id**
+  const startingSimpleMatch = trimmed.match(
+    /^✨\s*Starting\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)\*\*$/i,
+  )
+  if (startingSimpleMatch) {
+    return {
+      type: "task_lifecycle",
+      timestamp,
+      action: "starting",
+      taskId: startingSimpleMatch[1],
+    }
+  }
+
+  // Match completed pattern: ✅ Completed **task-id task title**
+  const completedMatch = trimmed.match(
+    /^✅\s*Completed\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)[:\s]+(.+?)\*\*$/i,
+  )
+  if (completedMatch) {
+    return {
+      type: "task_lifecycle",
+      timestamp,
+      action: "completed",
+      taskId: completedMatch[1],
+      taskTitle: completedMatch[2].trim(),
+    }
+  }
+
+  // Also match simpler pattern without title: ✅ Completed **task-id**
+  const completedSimpleMatch = trimmed.match(
+    /^✅\s*Completed\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)\*\*$/i,
+  )
+  if (completedSimpleMatch) {
+    return {
+      type: "task_lifecycle",
+      timestamp,
+      action: "completed",
+      taskId: completedSimpleMatch[1],
+    }
+  }
+
+  return null
+}
+
+/**
+ * Renders a task lifecycle event (starting or completing a task) with special styling.
+ */
+export function TaskLifecycleEvent({ event, className }: TaskLifecycleEventProps) {
+  const isStarting = event.action === "starting"
+  const Icon = isStarting ? IconPlayerPlay : IconCheck
+
+  return (
+    <div
+      className={cn(
+        "mx-4 my-2 flex items-center gap-3 rounded-lg border px-4 py-3",
+        isStarting ?
+          "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50"
+        : "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50",
+        className,
+      )}
+      data-testid="task-lifecycle-event"
+      data-action={event.action}
+    >
+      <div
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-full",
+          isStarting ?
+            "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400"
+          : "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400",
+        )}
+      >
+        <Icon className="size-4" />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span
+          className={cn(
+            "text-xs font-medium tracking-wide uppercase",
+            isStarting ? "text-blue-600 dark:text-blue-400" : "text-green-600 dark:text-green-400",
+          )}
+        >
+          {isStarting ? "Starting" : "Completed"}
+        </span>
+        <div className="flex items-baseline gap-2">
+          {/* TaskIdLink expects a string that may contain task IDs - pass the ID as text */}
+          <TaskIdLink className="font-mono text-sm font-medium">{event.taskId}</TaskIdLink>
+          {event.taskTitle && (
+            <span className="text-muted-foreground truncate text-sm">{event.taskTitle}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
