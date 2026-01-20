@@ -80,35 +80,36 @@ function getHotkeyDisplayString(config: HotkeyConfig): string {
 // Hotkey categories for better organization
 interface HotkeyCategory {
   name: string
-  actions: HotkeyAction[]
+  hotkeys: Array<{ action: HotkeyAction; config: HotkeyConfig }>
 }
 
-const hotkeyCategories: HotkeyCategory[] = [
-  {
-    name: "Agent Control",
-    actions: ["agentStart", "agentStop", "agentPause", "agentStopAfterCurrent"],
-  },
-  {
-    name: "Navigation",
-    actions: [
-      "toggleSidebar",
-      "focusSidebar",
-      "focusMain",
-      "focusTaskInput",
-      "focusChatInput",
-      "toggleTaskChat",
-      "focusTaskChatInput",
-    ],
-  },
-  {
-    name: "Appearance",
-    actions: ["cycleTheme"],
-  },
-  {
-    name: "Help",
-    actions: ["showCommandPalette", "showHotkeys"],
-  },
-]
+/**
+ * Build hotkey categories dynamically from the hotkeys configuration.
+ * Groups hotkeys by their category field and preserves the order they appear in the config.
+ */
+function buildHotkeyCategories(): HotkeyCategory[] {
+  const categoryMap = new Map<string, Array<{ action: HotkeyAction; config: HotkeyConfig }>>()
+  const categoryOrder: string[] = []
+
+  // Group hotkeys by category, preserving order
+  Object.entries(hotkeys).forEach(([action, config]) => {
+    const category = config.category
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, [])
+      categoryOrder.push(category)
+    }
+    categoryMap.get(category)!.push({
+      action: action as HotkeyAction,
+      config,
+    })
+  })
+
+  // Convert map to array of categories in order they first appeared
+  return categoryOrder.map(name => ({
+    name,
+    hotkeys: categoryMap.get(name)!,
+  }))
+}
 
 // HotkeyRow Component
 
@@ -137,18 +138,8 @@ function HotkeyRow({ config }: HotkeyRowProps) {
  * Organized by category for easy reference.
  */
 export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
-  // Build the hotkey list grouped by category
-  const groupedHotkeys = useMemo(() => {
-    return hotkeyCategories.map(category => ({
-      ...category,
-      hotkeys: category.actions
-        .filter(action => hotkeys[action])
-        .map(action => ({
-          action,
-          config: hotkeys[action],
-        })),
-    }))
-  }, [])
+  // Build the hotkey list grouped by category from the JSON config
+  const groupedHotkeys = useMemo(() => buildHotkeyCategories(), [])
 
   return (
     <Dialog open={open} onOpenChange={isOpen => !isOpen && onClose()}>

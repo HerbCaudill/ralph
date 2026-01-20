@@ -4,112 +4,134 @@
     "agentStart": {
       "key": "Enter",
       "modifiers": ["cmd"],
-      "description": "Start Ralph agent"
+      "description": "Start Ralph agent",
+      "category": "Agent Control"
     },
     "agentStop": {
       "key": ".",
       "modifiers": ["cmd"],
-      "description": "Stop Ralph agent"
+      "description": "Stop Ralph agent",
+      "category": "Agent Control"
     },
     "agentPause": {
       "key": "p",
       "modifiers": ["cmd", "shift"],
-      "description": "Pause/Resume Ralph agent"
+      "description": "Pause/Resume Ralph agent",
+      "category": "Agent Control"
     },
     "agentStopAfterCurrent": {
       "key": ".",
       "modifiers": ["cmd", "shift"],
-      "description": "Stop after current task"
+      "description": "Stop after current task",
+      "category": "Agent Control"
     },
     "toggleSidebar": {
       "key": "b",
       "modifiers": ["cmd"],
-      "description": "Toggle sidebar visibility"
+      "description": "Toggle sidebar visibility",
+      "category": "Navigation"
     },
     "focusSidebar": {
       "key": "1",
       "modifiers": ["cmd"],
-      "description": "Focus sidebar"
+      "description": "Focus sidebar",
+      "category": "Navigation"
     },
     "focusMain": {
       "key": "2",
       "modifiers": ["cmd"],
-      "description": "Focus main content"
+      "description": "Focus main content",
+      "category": "Navigation"
     },
     "focusTaskInput": {
       "key": "k",
       "modifiers": ["cmd"],
-      "description": "Focus quick task input"
+      "description": "Focus quick task input",
+      "category": "Navigation"
     },
     "focusChatInput": {
       "key": "l",
       "modifiers": ["cmd"],
-      "description": "Focus chat input"
+      "description": "Focus chat input",
+      "category": "Navigation"
     },
     "cycleTheme": {
       "key": "t",
       "modifiers": ["cmd", "shift"],
-      "description": "Cycle theme (system → light → dark)"
+      "description": "Cycle theme (system → light → dark)",
+      "category": "Appearance"
     },
     "showHotkeys": {
       "key": "/",
       "modifiers": ["cmd"],
-      "description": "Show keyboard shortcuts"
+      "description": "Show keyboard shortcuts",
+      "category": "Help"
     },
     "toggleInputFocus": {
       "key": "Tab",
       "modifiers": [],
-      "description": "Toggle focus between task and chat input"
+      "description": "Toggle focus between task and chat input",
+      "category": "Navigation"
     },
     "toggleTaskChat": {
       "key": "j",
       "modifiers": ["cmd"],
-      "description": "Toggle task chat panel and focus input"
+      "description": "Toggle task chat panel and focus input",
+      "category": "Navigation"
     },
     "focusTaskChatInput": {
       "key": "3",
       "modifiers": ["cmd"],
-      "description": "Focus task chat input"
+      "description": "Focus task chat input",
+      "category": "Navigation"
     },
     "showCommandPalette": {
       "key": ";",
       "modifiers": ["cmd"],
-      "description": "Open command palette"
+      "description": "Open command palette",
+      "category": "Help"
     },
     "previousIteration": {
       "key": "[",
       "modifiers": ["cmd"],
-      "description": "Go to previous iteration"
+      "description": "Go to previous iteration",
+      "category": "Navigation"
     },
     "nextIteration": {
       "key": "]",
       "modifiers": ["cmd"],
-      "description": "Go to next iteration"
+      "description": "Go to next iteration",
+      "category": "Navigation"
     },
     "latestIteration": {
       "key": "\\",
       "modifiers": ["cmd"],
-      "description": "Go to latest iteration"
+      "description": "Go to latest iteration",
+      "category": "Navigation"
     },
     "focusSearch": {
       "key": "f",
       "modifiers": ["cmd"],
-      "description": "Focus task search"
+      "description": "Focus task search",
+      "category": "Navigation"
     },
     "previousWorkspace": {
       "key": "[",
       "modifiers": ["cmd", "shift"],
-      "description": "Switch to previous workspace"
+      "description": "Switch to previous workspace",
+      "category": "Navigation"
     },
     "nextWorkspace": {
       "key": "]",
       "modifiers": ["cmd", "shift"],
-      "description": "Switch to next workspace"
+      "description": "Switch to next workspace",
+      "category": "Navigation"
     },
     "toggleToolOutput": {
       "key": "o",
       "modifiers": ["ctrl"],
-      "description": "Toggle tool output visibility"
+      "description": "Toggle tool output visibility",
+      "category": "Navigation"
     }
   }
 }

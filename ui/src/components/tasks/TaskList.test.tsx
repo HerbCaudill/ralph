@@ -989,7 +989,7 @@ describe("TaskList", () => {
         { id: "task-1", title: "Existing task", status: "open" },
       ]
 
-      const { rerender, container } = render(<TaskList tasks={initialTasks} />)
+      const { rerender } = render(<TaskList tasks={initialTasks} />)
 
       // Add a new task
       const updatedTasks: TaskCardTask[] = [

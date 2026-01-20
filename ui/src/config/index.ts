@@ -8,6 +8,7 @@ export interface HotkeyConfig {
   key: string
   modifiers: HotkeyModifier[]
   description: string
+  category: string
 }
 
 export type HotkeyAction =
