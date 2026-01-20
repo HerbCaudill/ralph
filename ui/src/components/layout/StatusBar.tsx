@@ -9,7 +9,6 @@ import {
   selectContextWindow,
   selectIteration,
   selectRunStartedAt,
-  selectCurrentTask,
 } from "@/store"
 import { ControlBar } from "@/components/controls/ControlBar"
 import { IconGitBranch, IconClock } from "@tabler/icons-react"
@@ -250,38 +249,19 @@ function RunDuration() {
   )
 }
 
-// CurrentTask Component
-
-function CurrentTask() {
-  const currentTask = useAppStore(selectCurrentTask)
-
-  if (!currentTask) return null
-
-  return (
-    <div
-      className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"
-      title="Current task"
-    >
-      <span className="shrink-0 font-mono opacity-70">{currentTask.id}</span>
-      <span className="truncate">{currentTask.title}</span>
-    </div>
-  )
-}
-
 // StatusBar Component
 
 /**
- * Bottom status bar showing run status, control buttons, current task, repo/branch, token usage, and iteration progress.
+ * Bottom status bar showing run status, control buttons, repo/branch, token usage, and iteration progress.
  */
 export function StatusBar({ className }: StatusBarProps) {
   return (
     <div className={cn("flex items-center justify-between gap-4 text-sm", className)}>
-      {/* Left section: Control buttons, status, run duration, current task */}
+      {/* Left section: Control buttons, status, run duration */}
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <ControlBar />
         <StatusIndicator />
         <RunDuration />
-        <CurrentTask />
       </div>
 
       {/* Right section: Repo/branch, token usage, context window, and iteration */}

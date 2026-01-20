@@ -9,6 +9,137 @@ describe("EventStream", () => {
     useAppStore.getState().reset()
   })
 
+  describe("IterationBar", () => {
+    it("is always visible", () => {
+      render(<EventStream />)
+      expect(screen.getByTestId("iteration-bar")).toBeInTheDocument()
+    })
+
+    it("shows 'No active task' when no task is in progress and no iterations", () => {
+      render(<EventStream />)
+      expect(screen.getByText("No active task")).toBeInTheDocument()
+    })
+
+    it("shows current task when a task is in progress", () => {
+      useAppStore
+        .getState()
+        .setTasks([{ id: "rui-123", title: "Fix the bug", status: "in_progress" }])
+      render(<EventStream />)
+      expect(screen.getByText("rui-123")).toBeInTheDocument()
+      expect(screen.getByText("Fix the bug")).toBeInTheDocument()
+    })
+
+    it("shows iteration navigation when multiple iterations exist", () => {
+      // Add two iteration boundaries (system init events)
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600001000,
+        subtype: "init",
+      })
+      render(<EventStream />)
+      expect(screen.getByLabelText("Previous iteration")).toBeInTheDocument()
+      expect(screen.getByLabelText("Next iteration")).toBeInTheDocument()
+    })
+
+    it("hides navigation buttons when only one iteration", () => {
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      render(<EventStream />)
+      expect(screen.queryByLabelText("Previous iteration")).not.toBeInTheDocument()
+      expect(screen.queryByLabelText("Next iteration")).not.toBeInTheDocument()
+    })
+
+    it("navigates to previous iteration when Previous button is clicked", () => {
+      // Add two iteration boundaries
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600001000,
+        subtype: "init",
+      })
+      render(<EventStream />)
+
+      // Click previous
+      fireEvent.click(screen.getByLabelText("Previous iteration"))
+
+      // Should show "Iteration 1 of 2"
+      expect(screen.getByText("Iteration 1 of 2")).toBeInTheDocument()
+    })
+
+    it("shows Latest button when viewing past iteration", () => {
+      // Add two iteration boundaries
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600001000,
+        subtype: "init",
+      })
+
+      // Go to first iteration
+      useAppStore.getState().setViewingIterationIndex(0)
+
+      render(<EventStream />)
+      expect(screen.getByText("Latest")).toBeInTheDocument()
+    })
+
+    it("displays current task instead of iteration info when task exists", () => {
+      // Add two iterations
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600001000,
+        subtype: "init",
+      })
+      // Add in-progress task
+      useAppStore
+        .getState()
+        .setTasks([{ id: "rui-abc", title: "Current work", status: "in_progress" }])
+
+      render(<EventStream />)
+
+      // Should show task, not iteration info
+      expect(screen.getByText("rui-abc")).toBeInTheDocument()
+      expect(screen.getByText("Current work")).toBeInTheDocument()
+      expect(screen.queryByText(/Iteration \d+ of \d+/)).not.toBeInTheDocument()
+    })
+
+    it("truncates long task titles", () => {
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-456",
+          title: "This is a very long task description that should be truncated",
+          status: "in_progress",
+        },
+      ])
+      render(<EventStream />)
+      expect(screen.getByText("rui-456")).toBeInTheDocument()
+      const taskTitle = screen.getByText(
+        "This is a very long task description that should be truncated",
+      )
+      expect(taskTitle).toHaveClass("truncate")
+    })
+  })
+
   describe("empty state", () => {
     it("shows empty message when no events", () => {
       render(<EventStream />)

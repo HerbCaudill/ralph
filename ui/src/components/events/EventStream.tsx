@@ -4,6 +4,7 @@ import {
   selectEvents,
   selectRalphStatus,
   selectViewingIterationIndex,
+  selectCurrentTask,
   getEventsForIteration,
   countIterations,
   type RalphEvent,
@@ -224,6 +225,96 @@ function EventItem({ event, toolResults }: EventItemProps) {
   return null
 }
 
+// IterationBar Component - always visible at top of event panel
+
+interface IterationBarProps {
+  iterationCount: number
+  displayedIteration: number
+  isViewingLatest: boolean
+  viewingIterationIndex: number | null
+  currentTask: { id: string; title: string } | null
+  onPrevious: () => void
+  onNext: () => void
+  onLatest: () => void
+}
+
+function IterationBar({
+  iterationCount,
+  displayedIteration,
+  isViewingLatest,
+  viewingIterationIndex,
+  currentTask,
+  onPrevious,
+  onNext,
+  onLatest,
+}: IterationBarProps) {
+  const hasMultipleIterations = iterationCount > 1
+
+  return (
+    <div
+      className="bg-muted/50 border-border flex items-center justify-between border-b px-3 py-1.5"
+      data-testid="iteration-bar"
+    >
+      {/* Left: Previous button (only when multiple iterations) */}
+      <div className="flex w-20 items-center">
+        {hasMultipleIterations && (
+          <button
+            onClick={onPrevious}
+            disabled={viewingIterationIndex === 0}
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="Previous iteration"
+          >
+            <IconChevronLeft className="size-4" />
+            <span className="hidden sm:inline">Previous</span>
+          </button>
+        )}
+      </div>
+
+      {/* Center: Current task or iteration info */}
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+        {currentTask ?
+          <div
+            className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"
+            title="Current task"
+          >
+            <span className="shrink-0 font-mono opacity-70">{currentTask.id}</span>
+            <span className="truncate">{currentTask.title}</span>
+          </div>
+        : hasMultipleIterations ?
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-xs">
+              Iteration {displayedIteration} of {iterationCount}
+            </span>
+            {!isViewingLatest && (
+              <button
+                onClick={onLatest}
+                className="bg-primary text-primary-foreground rounded px-2 py-0.5 text-xs font-medium hover:opacity-90"
+              >
+                Latest
+              </button>
+            )}
+          </div>
+        : <span className="text-muted-foreground text-xs">No active task</span>}
+      </div>
+
+      {/* Right: Next button (only when multiple iterations) */}
+      <div className="flex w-20 items-center justify-end">
+        {hasMultipleIterations && (
+          <button
+            onClick={onNext}
+            disabled={isViewingLatest}
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="Next iteration"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <IconChevronRight className="size-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // EventStream Component
 
 /**
@@ -237,6 +328,7 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
   const goToNextIteration = useAppStore(state => state.goToNextIteration)
   const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
   const ralphStatus = useAppStore(selectRalphStatus)
+  const currentTask = useAppStore(selectCurrentTask)
   const isRunning = ralphStatus === "running" || ralphStatus === "starting"
   const containerRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
@@ -338,48 +430,20 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
   // Calculate displayed iteration number (1-based for UI)
   const displayedIteration =
     viewingIterationIndex !== null ? viewingIterationIndex + 1 : iterationCount
-  const showIterationNav = iterationCount > 1
 
   return (
     <div className={cn("relative flex h-full flex-col", className)}>
-      {/* Iteration navigation header */}
-      {showIterationNav && (
-        <div className="bg-muted/50 border-border flex items-center justify-between border-b px-3 py-1.5">
-          <button
-            onClick={goToPreviousIteration}
-            disabled={viewingIterationIndex === 0}
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Previous iteration"
-          >
-            <IconChevronLeft className="size-4" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs">
-              Iteration {displayedIteration} of {iterationCount}
-            </span>
-            {!isViewingLatest && (
-              <button
-                onClick={goToLatestIteration}
-                className="bg-primary text-primary-foreground rounded px-2 py-0.5 text-xs font-medium hover:opacity-90"
-              >
-                Latest
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={goToNextIteration}
-            disabled={isViewingLatest}
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Next iteration"
-          >
-            <span className="hidden sm:inline">Next</span>
-            <IconChevronRight className="size-4" />
-          </button>
-        </div>
-      )}
+      {/* Iteration bar - always visible */}
+      <IterationBar
+        iterationCount={iterationCount}
+        displayedIteration={displayedIteration}
+        isViewingLatest={isViewingLatest}
+        viewingIterationIndex={viewingIterationIndex}
+        currentTask={currentTask}
+        onPrevious={goToPreviousIteration}
+        onNext={goToNextIteration}
+        onLatest={goToLatestIteration}
+      />
 
       {/* Events container */}
       <div
