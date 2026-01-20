@@ -63,6 +63,10 @@ function handleMessage(event: MessageEvent): void {
         if (isRalphStatus(data.ralphStatus)) {
           store.setRalphStatus(data.ralphStatus)
         }
+        // Restore event history from server (for page reloads)
+        if (Array.isArray(data.events) && data.events.length > 0) {
+          store.setEvents(data.events)
+        }
         break
 
       case "ralph:event":

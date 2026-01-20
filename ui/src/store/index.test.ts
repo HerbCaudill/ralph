@@ -170,6 +170,38 @@ describe("useAppStore", () => {
       clearEvents()
       expect(useAppStore.getState().events).toEqual([])
     })
+
+    it("sets events array directly (for restoring from server)", () => {
+      const events: RalphEvent[] = [
+        { type: "first", timestamp: 1 },
+        { type: "second", timestamp: 2 },
+        { type: "third", timestamp: 3 },
+      ]
+
+      useAppStore.getState().setEvents(events)
+
+      const storedEvents = useAppStore.getState().events
+      expect(storedEvents).toHaveLength(3)
+      expect(storedEvents).toEqual(events)
+    })
+
+    it("setEvents replaces existing events", () => {
+      // Add initial events
+      useAppStore.getState().addEvent({ type: "old", timestamp: 1 })
+      expect(useAppStore.getState().events).toHaveLength(1)
+
+      // Set new events (should replace)
+      const newEvents: RalphEvent[] = [
+        { type: "new1", timestamp: 2 },
+        { type: "new2", timestamp: 3 },
+      ]
+      useAppStore.getState().setEvents(newEvents)
+
+      const storedEvents = useAppStore.getState().events
+      expect(storedEvents).toHaveLength(2)
+      expect(storedEvents[0].type).toBe("new1")
+      expect(storedEvents[1].type).toBe("new2")
+    })
   })
 
   describe("tasks", () => {

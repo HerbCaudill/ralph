@@ -267,6 +267,7 @@ export interface AppActions {
 
   // Events
   addEvent: (event: RalphEvent) => void
+  setEvents: (events: RalphEvent[]) => void
   clearEvents: () => void
 
   // Tasks
@@ -473,6 +474,8 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     set(state => ({
       events: [...state.events, event],
     })),
+
+  setEvents: events => set({ events }),
 
   clearEvents: () => set({ events: [] }),
 

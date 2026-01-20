@@ -863,13 +863,14 @@ function attachWsServer(httpServer: Server): WebSocketServer {
       clients.delete(client)
     })
 
-    // Send welcome message with current Ralph status
+    // Send welcome message with current Ralph status and event history
     const manager = getRalphManager()
     ws.send(
       JSON.stringify({
         type: "connected",
         timestamp: Date.now(),
         ralphStatus: manager.status,
+        events: getEventHistory(),
       }),
     )
   })
@@ -970,6 +971,9 @@ export async function switchWorkspace(workspacePath: string): Promise<void> {
     await ralphManager.stop()
   }
 
+  // Clear event history for the old workspace
+  clearEventHistory()
+
   // Switch the BdProxy to the new workspace
   bdProxy = new BdProxy({ cwd: workspacePath })
 
@@ -996,6 +1000,35 @@ export async function switchWorkspace(workspacePath: string): Promise<void> {
 
 // RalphManager Integration
 
+// Event history buffer - stores recent events for clients that connect/reconnect
+const MAX_EVENT_HISTORY = 1000
+let eventHistory: RalphEvent[] = []
+
+/**
+ * Get the current event history.
+ */
+export function getEventHistory(): RalphEvent[] {
+  return eventHistory
+}
+
+/**
+ * Clear the event history (e.g., on workspace switch).
+ */
+export function clearEventHistory(): void {
+  eventHistory = []
+}
+
+/**
+ * Add an event to the history buffer.
+ */
+function addEventToHistory(event: RalphEvent): void {
+  eventHistory.push(event)
+  // Trim to max size
+  if (eventHistory.length > MAX_EVENT_HISTORY) {
+    eventHistory = eventHistory.slice(-MAX_EVENT_HISTORY)
+  }
+}
+
 // Singleton RalphManager instance
 let ralphManager: RalphManager | null = null
 
@@ -1015,8 +1048,9 @@ export function getRalphManager(): RalphManager {
 function createRalphManager(options?: { cwd?: string; watch?: boolean }): RalphManager {
   const manager = new RalphManager(options)
 
-  // Broadcast ralph events to all WebSocket clients
+  // Broadcast ralph events to all WebSocket clients and store in history
   manager.on("event", (event: RalphEvent) => {
+    addEventToHistory(event)
     broadcast({
       type: "ralph:event",
       event,
