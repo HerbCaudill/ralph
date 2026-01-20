@@ -578,11 +578,7 @@ export function TaskList({
                           {!isEpicCollapsed && (
                             <div role="group" aria-label={`${epic.title} tasks`}>
                               {epicTasks.map(task => (
-                                <TaskHoverCard
-                                  key={task.id}
-                                  task={task}
-                                  onOpenDetails={onTaskClick}
-                                >
+                                <TaskHoverCard key={task.id} task={task}>
                                   <TaskCard
                                     task={task}
                                     onStatusChange={onStatusChange}
@@ -598,7 +594,7 @@ export function TaskList({
                     } else {
                       // Ungrouped tasks (no epic parent)
                       return epicTasks.map(task => (
-                        <TaskHoverCard key={task.id} task={task} onOpenDetails={onTaskClick}>
+                        <TaskHoverCard key={task.id} task={task}>
                           <TaskCard
                             task={task}
                             onStatusChange={onStatusChange}

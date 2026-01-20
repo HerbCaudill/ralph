@@ -64,7 +64,6 @@ export const WithFullDetails: Story = {
   args: {
     task: fullTask,
     children: <TaskCard task={fullTask} />,
-    onOpenDetails: id => alert(`Open details for ${id}`),
   },
 }
 
@@ -72,7 +71,6 @@ export const ClosedTask: Story = {
   args: {
     task: closedTask,
     children: <TaskCard task={closedTask} />,
-    onOpenDetails: id => alert(`Open details for ${id}`),
   },
 }
 
@@ -80,7 +78,6 @@ export const BlockedTask: Story = {
   args: {
     task: blockedTask,
     children: <TaskCard task={blockedTask} />,
-    onOpenDetails: id => alert(`Open details for ${id}`),
   },
 }
 
@@ -89,13 +86,6 @@ export const Disabled: Story = {
     task: fullTask,
     children: <TaskCard task={fullTask} />,
     disabled: true,
-  },
-}
-
-export const WithoutOpenDetails: Story = {
-  args: {
-    task: fullTask,
-    children: <TaskCard task={fullTask} />,
   },
 }
 
@@ -130,7 +120,7 @@ export const AllPriorities: Story = {
   render: () => (
     <div className="flex flex-col gap-1">
       {[p0Task, p1Task, p2Task, p3Task, p4Task].map(task => (
-        <TaskHoverCard key={task.id} task={task} onOpenDetails={id => alert(`Open ${id}`)}>
+        <TaskHoverCard key={task.id} task={task}>
           <TaskCard task={task} />
         </TaskHoverCard>
       ))}

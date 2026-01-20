@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react"
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { TaskHoverCard } from "./TaskHoverCard"
 import type { TaskCardTask } from "./TaskCard"
 
@@ -68,13 +68,6 @@ describe("TaskHoverCard", () => {
       )
       expect(screen.getByTestId("custom-child")).toBeInTheDocument()
       expect(screen.getByText("Custom child content")).toBeInTheDocument()
-    })
-
-    it("accepts onOpenDetails callback", () => {
-      const onOpenDetails = vi.fn()
-      renderHoverCard(baseTask, { onOpenDetails })
-      // Just verify it renders without error - callback would be tested in integration/e2e
-      expect(screen.getByText("Hover trigger")).toBeInTheDocument()
     })
 
     it("handles undefined description gracefully", () => {

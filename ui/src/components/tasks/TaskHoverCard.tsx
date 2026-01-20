@@ -5,11 +5,9 @@ import {
   IconCircleCheck,
   IconBan,
   IconClock,
-  IconExternalLink,
   type TablerIcon,
 } from "@tabler/icons-react"
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
-import { Button } from "@/components/ui/button"
 import { useAppStore, selectIssuePrefix } from "@/store"
 import type { TaskCardTask, TaskStatus } from "./TaskCard"
 
@@ -22,8 +20,6 @@ export interface TaskHoverCardProps {
   children: React.ReactNode
   /** Whether hover card is disabled */
   disabled?: boolean
-  /** Callback when "Open details" is clicked */
-  onOpenDetails?: (id: string) => void
 }
 
 // Status Configuration
@@ -78,12 +74,7 @@ const priorityLabels: Record<number, string> = {
  * Hover card that displays task details when hovering over a task.
  * Designed so that the status icon and title align with the underlying task card.
  */
-export function TaskHoverCard({
-  task,
-  children,
-  disabled = false,
-  onOpenDetails,
-}: TaskHoverCardProps) {
+export function TaskHoverCard({ task, children, disabled = false }: TaskHoverCardProps) {
   const config = statusConfig[task.status]
   const StatusIcon = config.icon
   const issuePrefix = useAppStore(selectIssuePrefix)
@@ -150,24 +141,6 @@ export function TaskHoverCard({
                 Parent:{" "}
                 <span className="font-mono">{stripTaskPrefix(task.parent, issuePrefix)}</span>
               </span>
-            </div>
-          )}
-
-          {/* Open details button */}
-          {onOpenDetails && (
-            <div className="border-border border-t px-3 py-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full gap-2"
-                onClick={e => {
-                  e.stopPropagation()
-                  onOpenDetails(task.id)
-                }}
-              >
-                <IconExternalLink className="size-3.5" />
-                Open details
-              </Button>
             </div>
           )}
         </div>
