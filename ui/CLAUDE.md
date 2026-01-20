@@ -77,7 +77,7 @@ This normalization allows the UI to work with any agent without knowing its spec
 - `/server` - Express server with WebSocket support
 - Agent adapters for multi-agent support
 - Event log storage and management
-- Task lifecycle tracking
+- Task lifecycle tracking via `ralph_task_started` and `ralph_task_completed` events
 
 ### Key Files
 
@@ -87,6 +87,29 @@ This normalization allows the UI to work with any agent without knowing its spec
 - `server/CodexAdapter.ts` - Codex SDK implementation
 - `server/RalphManager.ts` - Ralph CLI process management
 - `server/IterationRunner.ts` - Iteration execution using agents
+
+## Event Handling
+
+### Task Lifecycle Events
+
+The Ralph CLI emits structured task lifecycle events that the UI renders as visual blocks:
+
+- `ralph_task_started` - When Claude begins working on a task (e.g., "✨ Starting **r-abc1: Fix bug**")
+- `ralph_task_completed` - When Claude completes a task (e.g., "✅ Completed **r-abc1: Fix bug**")
+
+These events are:
+
+1. Emitted by the CLI's `JsonOutput` component when it detects task lifecycle patterns in assistant messages
+2. Received by the UI via WebSocket
+3. Rendered as `TaskLifecycleEvent` components with special styling
+
+**Deduplication:** To avoid showing both the raw text ("✨ Starting...") and the structured block, the UI:
+
+- Checks if any `ralph_task_started` or `ralph_task_completed` events are present in the event stream
+- If so, suppresses rendering of text blocks that match task lifecycle patterns
+- Falls back to parsing text blocks for backward compatibility when structured events aren't available
+
+See `src/components/events/EventStream.tsx` for the implementation.
 
 ## Development
 

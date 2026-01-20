@@ -15,7 +15,11 @@ import { TopologySpinner } from "@/components/ui/TopologySpinner"
 import { UserMessage, type UserMessageEvent } from "./UserMessage"
 import { AssistantText, type AssistantTextEvent } from "./AssistantText"
 import { ToolUseCard, type ToolUseEvent } from "./ToolUseCard"
-import { TaskLifecycleEvent, parseTaskLifecycleEvent } from "./TaskLifecycleEvent"
+import {
+  TaskLifecycleEvent,
+  parseTaskLifecycleEvent,
+  type TaskLifecycleEventData,
+} from "./TaskLifecycleEvent"
 import {
   useStreamingState,
   type StreamingMessage,
@@ -47,6 +51,14 @@ function isToolResultEvent(event: RalphEvent): boolean {
   return event.type === "user" && typeof (event as any).tool_use_result !== "undefined"
 }
 
+function isRalphTaskStartedEvent(event: RalphEvent): boolean {
+  return event.type === "ralph_task_started"
+}
+
+function isRalphTaskCompletedEvent(event: RalphEvent): boolean {
+  return event.type === "ralph_task_completed"
+}
+
 // Content block types from Ralph's assistant messages
 interface TextContentBlock {
   type: "text"
@@ -69,11 +81,17 @@ function renderContentBlock(
   index: number,
   timestamp: number,
   toolResults: Map<string, { output?: string; error?: string }>,
+  hasStructuredLifecycleEvents: boolean,
 ) {
   if (block.type === "text") {
     // Check if this is a task lifecycle event
     const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
     if (lifecycleEvent) {
+      // If we have structured lifecycle events from the CLI, skip rendering this text block
+      // to avoid duplication (the structured event will be rendered separately)
+      if (hasStructuredLifecycleEvents) {
+        return null
+      }
       return <TaskLifecycleEvent key={`lifecycle-${index}`} event={lifecycleEvent} />
     }
 
@@ -196,12 +214,39 @@ function StreamingBlockRenderer({
 interface EventItemProps {
   event: RalphEvent
   toolResults: Map<string, { output?: string; error?: string }>
+  hasStructuredLifecycleEvents: boolean
 }
 
-function EventItem({ event, toolResults }: EventItemProps) {
+function EventItem({ event, toolResults, hasStructuredLifecycleEvents }: EventItemProps) {
   // User message from chat input
   if (isUserMessageEvent(event)) {
     return <UserMessage event={event as unknown as UserMessageEvent} />
+  }
+
+  // Ralph task started event - render as structured block
+  if (isRalphTaskStartedEvent(event)) {
+    const taskEvent = event as any
+    const lifecycleEvent: TaskLifecycleEventData = {
+      type: "task_lifecycle",
+      timestamp: event.timestamp,
+      action: "starting",
+      taskId: taskEvent.taskId,
+      taskTitle: taskEvent.taskTitle,
+    }
+    return <TaskLifecycleEvent event={lifecycleEvent} />
+  }
+
+  // Ralph task completed event - render as structured block
+  if (isRalphTaskCompletedEvent(event)) {
+    const taskEvent = event as any
+    const lifecycleEvent: TaskLifecycleEventData = {
+      type: "task_lifecycle",
+      timestamp: event.timestamp,
+      action: "completed",
+      taskId: taskEvent.taskId,
+      taskTitle: taskEvent.taskTitle,
+    }
+    return <TaskLifecycleEvent event={lifecycleEvent} />
   }
 
   // Assistant message with content blocks (text and/or tool_use)
@@ -214,7 +259,13 @@ function EventItem({ event, toolResults }: EventItemProps) {
     return (
       <>
         {content.map((block, index) =>
-          renderContentBlock(block, index, event.timestamp, toolResults),
+          renderContentBlock(
+            block,
+            index,
+            event.timestamp,
+            toolResults,
+            hasStructuredLifecycleEvents,
+          ),
         )}
       </>
     )
@@ -367,6 +418,8 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
 
   // Build a map of tool_use_id -> result for matching tool uses with their results
   const toolResults = new Map<string, { output?: string; error?: string }>()
+  // Check if we have any structured lifecycle events (ralph_task_started/completed)
+  let hasStructuredLifecycleEvents = false
   for (const event of displayedEvents) {
     if (isToolResultEvent(event)) {
       const content = (event as any).message?.content
@@ -385,6 +438,9 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
           }
         }
       }
+    }
+    if (isRalphTaskStartedEvent(event) || isRalphTaskCompletedEvent(event)) {
+      hasStructuredLifecycleEvents = true
     }
   }
 
@@ -480,6 +536,7 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
                 key={`${event.timestamp}-${index}`}
                 event={event}
                 toolResults={toolResults}
+                hasStructuredLifecycleEvents={hasStructuredLifecycleEvents}
               />
             ))}
             {streamingMessage && <StreamingContentRenderer message={streamingMessage} />}

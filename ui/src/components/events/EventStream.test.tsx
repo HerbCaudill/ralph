@@ -9,6 +9,232 @@ describe("EventStream", () => {
     useAppStore.getState().reset()
   })
 
+  describe("Task lifecycle events", () => {
+    it("renders task lifecycle event as structured block, not plain text", () => {
+      // Add an assistant message with a task lifecycle event
+      useAppStore.getState().addEvent({
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "✨ Starting **r-abc1: Implement new feature**",
+            },
+          ],
+        },
+      })
+
+      render(<EventStream />)
+
+      // Should render as TaskLifecycleEvent (with data-testid="task-lifecycle-event")
+      expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
+
+      // Should show the structured elements
+      expect(screen.getByText("Starting")).toBeInTheDocument() // The label
+      expect(screen.getByText("r-abc1")).toBeInTheDocument() // The task ID
+      expect(screen.getByText("Implement new feature")).toBeInTheDocument() // The title
+
+      // Should NOT render the raw markdown text "✨ Starting **r-abc1: Implement new feature**"
+      // Note: We can't easily test for absence of the emoji/bold text since MarkdownContent would parse it
+      // But the structured block should be the primary rendering
+    })
+
+    it("handles streaming task lifecycle events - WHILE streaming shows as text", () => {
+      // Simulate streaming a task lifecycle event
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "message_start",
+        },
+      })
+
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "content_block_start",
+          content_block: {
+            type: "text",
+            text: "",
+          },
+        },
+      })
+
+      // Stream the task lifecycle text incrementally
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "content_block_delta",
+          delta: {
+            type: "text_delta",
+            text: "✨ Starting **r-xyz2: Fix the bug**",
+          },
+        },
+      })
+
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "content_block_stop",
+        },
+      })
+
+      render(<EventStream />)
+
+      // WHILE streaming (before message_stop), should render as TaskLifecycleEvent
+      // because the text is complete even though the message isn't stopped yet
+      expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
+      expect(screen.getByText("Starting")).toBeInTheDocument()
+      expect(screen.getByText("r-xyz2")).toBeInTheDocument()
+      expect(screen.getByText("Fix the bug")).toBeInTheDocument()
+    })
+
+    it("renders ralph_task_started events as structured blocks", () => {
+      // Add a ralph_task_started event (emitted by CLI)
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: Date.now(),
+        taskId: "r-abc1",
+        taskTitle: "Implement new feature",
+        iteration: 1,
+      })
+
+      render(<EventStream />)
+
+      // Should render as TaskLifecycleEvent
+      expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
+      expect(screen.getByText("Starting")).toBeInTheDocument()
+      expect(screen.getByText("r-abc1")).toBeInTheDocument()
+      expect(screen.getByText("Implement new feature")).toBeInTheDocument()
+    })
+
+    it("renders ralph_task_completed events as structured blocks", () => {
+      // Add a ralph_task_completed event (emitted by CLI)
+      useAppStore.getState().addEvent({
+        type: "ralph_task_completed",
+        timestamp: Date.now(),
+        taskId: "r-xyz9",
+        taskTitle: "Fix the bug",
+        iteration: 1,
+      })
+
+      render(<EventStream />)
+
+      // Should render as TaskLifecycleEvent with "completed" action
+      const lifecycleEvent = screen.getByTestId("task-lifecycle-event")
+      expect(lifecycleEvent).toBeInTheDocument()
+      expect(lifecycleEvent).toHaveAttribute("data-action", "completed")
+      expect(screen.getByText("Completed")).toBeInTheDocument()
+      expect(screen.getByText("r-xyz9")).toBeInTheDocument()
+      expect(screen.getByText("Fix the bug")).toBeInTheDocument()
+    })
+
+    it("does not duplicate task lifecycle rendering when both text and structured event are present", () => {
+      // Simulate the scenario where CLI emits both:
+      // 1. The assistant message with text
+      // 2. The structured ralph_task_started event
+
+      // First, the assistant message with task lifecycle text
+      useAppStore.getState().addEvent({
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "✨ Starting **r-abc1: Implement new feature**",
+            },
+          ],
+        },
+      })
+
+      // Then, the structured event
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: Date.now(),
+        taskId: "r-abc1",
+        taskTitle: "Implement new feature",
+        iteration: 1,
+      })
+
+      render(<EventStream />)
+
+      // Should render only ONE TaskLifecycleEvent block (from the structured event)
+      // The text block should be skipped to avoid duplication
+      const lifecycleEvents = screen.getAllByTestId("task-lifecycle-event")
+      expect(lifecycleEvents).toHaveLength(1)
+
+      // Verify it's the structured event that's rendered
+      expect(screen.getByText("Starting")).toBeInTheDocument()
+      expect(screen.getByText("r-abc1")).toBeInTheDocument()
+      expect(screen.getByText("Implement new feature")).toBeInTheDocument()
+    })
+
+    it("handles streaming task lifecycle events - after message_stop renders properly", () => {
+      // Simulate streaming a task lifecycle event
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "message_start",
+        },
+      })
+
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "content_block_start",
+          content_block: {
+            type: "text",
+            text: "",
+          },
+        },
+      })
+
+      // Stream the task lifecycle text incrementally
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "content_block_delta",
+          delta: {
+            type: "text_delta",
+            text: "✨ Starting **r-xyz2: Fix the bug**",
+          },
+        },
+      })
+
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "content_block_stop",
+        },
+      })
+
+      useAppStore.getState().addEvent({
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: {
+          type: "message_stop",
+        },
+      })
+
+      render(<EventStream />)
+
+      // After message_stop, should still render as TaskLifecycleEvent
+      expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
+      expect(screen.getByText("Starting")).toBeInTheDocument()
+      expect(screen.getByText("r-xyz2")).toBeInTheDocument()
+      expect(screen.getByText("Fix the bug")).toBeInTheDocument()
+    })
+  })
+
   describe("IterationBar", () => {
     it("is always visible", () => {
       render(<EventStream />)
