@@ -221,14 +221,18 @@ describe("EventLogStore API endpoints", () => {
       }
     })
 
-    // Find available port using a more unique random port
-    port = 4100 + Math.floor(Math.random() * 1000)
+    // Use port 0 to let the OS assign an available port
     server = http.createServer(app)
 
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject)
-      server.listen(port, "localhost", () => {
+      server.listen(0, "localhost", () => {
         server.removeListener("error", reject)
+        // Get the actual port assigned by the OS
+        const address = server.address()
+        if (address && typeof address === "object") {
+          port = address.port
+        }
         resolve()
       })
     })
