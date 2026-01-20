@@ -206,6 +206,9 @@ export function App() {
   const goToNextIteration = useAppStore(state => state.goToNextIteration)
   const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
 
+  // Tool output visibility
+  const toggleToolOutput = useAppStore(state => state.toggleToolOutput)
+
   // Task chat panel state
   const taskChatOpen = useAppStore(selectTaskChatOpen)
   const taskChatWidth = useAppStore(selectTaskChatWidth)
@@ -365,6 +368,7 @@ export function App() {
       focusSearch: handleFocusSearch,
       previousWorkspace: goToPreviousWorkspace,
       nextWorkspace: goToNextWorkspace,
+      toggleToolOutput: toggleToolOutput,
     },
   })
 

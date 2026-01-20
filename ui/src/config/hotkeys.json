@@ -105,6 +105,11 @@
       "key": "]",
       "modifiers": ["cmd", "shift"],
       "description": "Switch to next workspace"
+    },
+    "toggleToolOutput": {
+      "key": "o",
+      "modifiers": ["ctrl"],
+      "description": "Toggle tool output visibility"
     }
   }
 }

@@ -185,6 +185,7 @@ export function useHotkeys({ handlers, enabled = true }: UseHotkeysOptions): Use
               "focusSearch",
               "previousWorkspace",
               "nextWorkspace",
+              "toggleToolOutput",
             ]
 
             if (isInput && !allowedInInput.includes(action)) {

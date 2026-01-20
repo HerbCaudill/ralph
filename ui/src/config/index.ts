@@ -32,6 +32,7 @@ export type HotkeyAction =
   | "focusSearch"
   | "previousWorkspace"
   | "nextWorkspace"
+  | "toggleToolOutput"
 
 export type HotkeysConfig = Record<HotkeyAction, HotkeyConfig>
 
