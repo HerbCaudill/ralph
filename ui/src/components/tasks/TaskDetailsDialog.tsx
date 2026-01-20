@@ -477,8 +477,8 @@ export function TaskDetailsDialog({
 
   return (
     <Sheet open={open} onOpenChange={isOpen => !isOpen && handleClose()}>
-      <SheetContent side="right" size="lg" className="overflow-y-auto">
-        <SheetHeader>
+      <SheetContent side="right" size="xl" className="flex flex-col overflow-hidden">
+        <SheetHeader className="shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <StatusIcon className={cn("h-5 w-5", statusConfig[status].color)} />
             <span className="text-muted-foreground font-mono text-sm">
@@ -488,7 +488,7 @@ export function TaskDetailsDialog({
           <SheetDescription className="sr-only">Edit task details</SheetDescription>
         </SheetHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="flex-1 space-y-6 overflow-y-auto py-4">
           {/* Title */}
           <div className="grid gap-2">
             <Label htmlFor="task-title">Title</Label>
@@ -503,7 +503,7 @@ export function TaskDetailsDialog({
             }
           </div>
 
-          {/* Description */}
+          {/* Description - larger area */}
           <div className="grid gap-2">
             <Label htmlFor="task-description">Description</Label>
             {readOnly ?
@@ -519,7 +519,7 @@ export function TaskDetailsDialog({
                 onBlur={handleDescriptionBlur}
                 onKeyDown={handleDescriptionKeyDown}
                 placeholder="Task description (optional)"
-                rows={4}
+                rows={6}
               />
             : <div
                 onClick={() => setIsEditingDescription(true)}
@@ -532,7 +532,7 @@ export function TaskDetailsDialog({
                 role="button"
                 tabIndex={0}
                 className={cn(
-                  "border-input hover:border-ring focus-visible:ring-ring min-h-[100px] cursor-text rounded-md border px-3 py-2 text-sm transition-colors focus-visible:ring-1 focus-visible:outline-none",
+                  "border-input hover:border-ring focus-visible:ring-ring min-h-[120px] cursor-text rounded-md border px-3 py-2 text-sm transition-colors focus-visible:ring-1 focus-visible:outline-none",
                   !description && "text-muted-foreground",
                 )}
               >
@@ -543,8 +543,8 @@ export function TaskDetailsDialog({
             }
           </div>
 
-          {/* Status and Priority row */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Metadata Grid - 2x2 layout */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             {/* Status */}
             <div className="grid gap-2">
               <Label htmlFor="task-status">Status</Label>
@@ -599,76 +599,7 @@ export function TaskDetailsDialog({
                 </Select>
               }
             </div>
-          </div>
 
-          {/* Labels */}
-          <div className="grid gap-2">
-            <Label>Labels</Label>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {labels.map(label => (
-                <span
-                  key={label}
-                  className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                >
-                  {label}
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveLabel(label)}
-                      className="hover:text-foreground -mr-0.5 ml-0.5 rounded-full p-0.5 transition-colors"
-                      aria-label={`Remove ${label} label`}
-                    >
-                      <IconX className="h-3 w-3" />
-                    </button>
-                  )}
-                </span>
-              ))}
-              {labels.length === 0 && readOnly && (
-                <span className="text-muted-foreground text-sm">No labels</span>
-              )}
-              {!readOnly && !showLabelInput && (
-                <button
-                  type="button"
-                  onClick={() => setShowLabelInput(true)}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-xs transition-colors"
-                >
-                  <IconPlus className="h-3 w-3" />
-                  Add label
-                </button>
-              )}
-              {!readOnly && showLabelInput && (
-                <div className="flex items-center gap-1">
-                  <Input
-                    ref={labelInputRef}
-                    value={newLabel}
-                    onChange={e => setNewLabel(e.target.value)}
-                    onKeyDown={handleLabelInputKeyDown}
-                    onBlur={() => {
-                      if (!newLabel.trim()) {
-                        setShowLabelInput(false)
-                      }
-                    }}
-                    placeholder="Label name"
-                    className="h-6 w-24 px-2 text-xs"
-                    disabled={isAddingLabel}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2"
-                    onClick={handleAddLabel}
-                    disabled={!newLabel.trim() || isAddingLabel}
-                  >
-                    Add
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Type and Parent row */}
-          <div className="grid grid-cols-2 gap-4">
             {/* Type */}
             <div className="grid gap-2">
               <Label>Type</Label>
@@ -763,15 +694,81 @@ export function TaskDetailsDialog({
             </div>
           </div>
 
+          {/* Labels - full width */}
+          <div className="grid gap-2">
+            <Label>Labels</Label>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {labels.map(label => (
+                <span
+                  key={label}
+                  className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                >
+                  {label}
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLabel(label)}
+                      className="hover:text-foreground -mr-0.5 ml-0.5 rounded-full p-0.5 transition-colors"
+                      aria-label={`Remove ${label} label`}
+                    >
+                      <IconX className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
+              ))}
+              {labels.length === 0 && readOnly && (
+                <span className="text-muted-foreground text-sm">No labels</span>
+              )}
+              {!readOnly && !showLabelInput && (
+                <button
+                  type="button"
+                  onClick={() => setShowLabelInput(true)}
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-xs transition-colors"
+                >
+                  <IconPlus className="h-3 w-3" />
+                  Add label
+                </button>
+              )}
+              {!readOnly && showLabelInput && (
+                <div className="flex items-center gap-1">
+                  <Input
+                    ref={labelInputRef}
+                    value={newLabel}
+                    onChange={e => setNewLabel(e.target.value)}
+                    onKeyDown={handleLabelInputKeyDown}
+                    onBlur={() => {
+                      if (!newLabel.trim()) {
+                        setShowLabelInput(false)
+                      }
+                    }}
+                    placeholder="Label name"
+                    className="h-6 w-24 px-2 text-xs"
+                    disabled={isAddingLabel}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={handleAddLabel}
+                    disabled={!newLabel.trim() || isAddingLabel}
+                  >
+                    Add
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Related Tasks (children and blockers) */}
           <RelatedTasks taskId={task.id} />
 
-          {/* Comments Section */}
+          {/* Comments Section - more space */}
           <CommentsSection taskId={task.id} readOnly={readOnly} />
         </div>
 
         {!readOnly && (
-          <SheetFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          <SheetFooter className="shrink-0 flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-between">
             {/* Delete section - left side */}
             {onDelete && (
               <div className="flex flex-col gap-1">
