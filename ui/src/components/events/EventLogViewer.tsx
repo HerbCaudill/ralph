@@ -1,9 +1,10 @@
-import { cn } from "@/lib/utils"
+import { cn, stripTaskPrefix } from "@/lib/utils"
 import {
   useAppStore,
   selectViewingEventLog,
   selectEventLogLoading,
   selectEventLogError,
+  selectIssuePrefix,
   type RalphEvent,
 } from "@/store"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -165,6 +166,7 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
   const isLoading = useAppStore(selectEventLogLoading)
   const error = useAppStore(selectEventLogError)
   const viewingEventLogId = useAppStore(state => state.viewingEventLogId)
+  const issuePrefix = useAppStore(selectIssuePrefix)
   const { closeEventLogViewer } = useEventLogRouter()
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -359,7 +361,10 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
           </span>
           {eventLog.metadata?.taskId && (
             <span className="text-muted-foreground">
-              Task: <span className="text-foreground font-mono">{eventLog.metadata.taskId}</span>
+              Task:{" "}
+              <span className="text-foreground font-mono">
+                {stripTaskPrefix(eventLog.metadata.taskId, issuePrefix)}
+              </span>
             </span>
           )}
           {eventLog.metadata?.title && (

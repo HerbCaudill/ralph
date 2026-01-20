@@ -65,7 +65,7 @@ function createTestEventLog(overrides: Partial<EventLog> = {}): EventLog {
     createdAt: "2024-01-15T10:30:00Z",
     events: [],
     metadata: {
-      taskId: "TASK-123",
+      taskId: "test-123",
       title: "Test Task",
     },
     ...overrides,
@@ -78,6 +78,8 @@ describe("EventLogViewer", () => {
   beforeEach(() => {
     // Reset store state before each test
     useAppStore.getState().clearEventLogViewer()
+    // Set a default issue prefix for tests
+    useAppStore.setState({ issuePrefix: "test" })
 
     // Mock clipboard API
     Object.assign(navigator, {
@@ -167,7 +169,7 @@ describe("EventLogViewer", () => {
 
     it("displays task ID when available", () => {
       const eventLog = createTestEventLog({
-        metadata: { taskId: "TASK-456" },
+        metadata: { taskId: "test-456" },
       })
       useAppStore.getState().setViewingEventLogId(eventLog.id)
       useAppStore.getState().setViewingEventLog(eventLog)
@@ -175,7 +177,10 @@ describe("EventLogViewer", () => {
       render(<EventLogViewer />)
 
       expect(screen.getByText(/Task:/)).toBeInTheDocument()
-      expect(screen.getByText("TASK-456")).toBeInTheDocument()
+      // Should display without prefix
+      expect(screen.getByText("456")).toBeInTheDocument()
+      // Should not display with prefix
+      expect(screen.queryByText("test-456")).not.toBeInTheDocument()
     })
 
     it("displays title when available", () => {
