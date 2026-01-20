@@ -244,7 +244,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
       expect(titleInput).toHaveValue("Updated Title")
@@ -261,8 +261,8 @@ describe("TaskDetailsDialog", () => {
         fireEvent.click(descriptionText)
       })
 
-      // Now the textarea should appear
-      const descInput = await screen.findByRole("textbox", { name: /description/i })
+      // Now the textarea should appear (it's a plain textarea now, not with aria-label)
+      const descInput = await screen.findByPlaceholderText("Add description...")
       typeInInput(descInput, "Updated description")
 
       expect(descInput).toHaveValue("Updated description")
@@ -276,7 +276,7 @@ describe("TaskDetailsDialog", () => {
       const saveButton = screen.getByRole("button", { name: /save/i })
       expect(saveButton).toBeDisabled()
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "New Title")
 
       await waitFor(() => {
@@ -290,7 +290,7 @@ describe("TaskDetailsDialog", () => {
       )
 
       const saveButton = screen.getByRole("button", { name: /save/i })
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
 
       typeInInput(titleInput, "New Title")
       await waitFor(() => {
@@ -357,18 +357,22 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      // Click on the parent selector
-      const parentSelect = screen.getByLabelText(/parent/i)
+      // Click on the parent combobox
+      const parentCombobox = screen.getByRole("combobox", { name: /parent/i })
       act(() => {
-        fireEvent.click(parentSelect)
+        fireEvent.click(parentCombobox)
       })
 
-      // Select "Other Task" from the dropdown
+      // Select "Other Task" from the dropdown (cmdk uses data-selected)
       await waitFor(() => {
-        expect(screen.getByRole("option", { name: /other-789/i })).toBeInTheDocument()
+        expect(screen.getByText("other-789")).toBeInTheDocument()
       })
       act(() => {
-        fireEvent.click(screen.getByRole("option", { name: /other-789/i }))
+        // Find the command item with the other-789 text
+        const otherOption = screen.getByText("other-789").closest("[cmdk-item]")
+        if (otherOption) {
+          fireEvent.click(otherOption)
+        }
       })
 
       // Save button should now be enabled
@@ -391,18 +395,21 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      // Click on the parent selector
-      const parentSelect = screen.getByLabelText(/parent/i)
+      // Click on the parent combobox
+      const parentCombobox = screen.getByRole("combobox", { name: /parent/i })
       act(() => {
-        fireEvent.click(parentSelect)
+        fireEvent.click(parentCombobox)
       })
 
       // Select "Other Task" from the dropdown
       await waitFor(() => {
-        expect(screen.getByRole("option", { name: /other-789/i })).toBeInTheDocument()
+        expect(screen.getByText("other-789")).toBeInTheDocument()
       })
       act(() => {
-        fireEvent.click(screen.getByRole("option", { name: /other-789/i }))
+        const otherOption = screen.getByText("other-789").closest("[cmdk-item]")
+        if (otherOption) {
+          fireEvent.click(otherOption)
+        }
       })
 
       // Click save
@@ -430,18 +437,29 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      // Click on the parent selector
-      const parentSelect = screen.getByLabelText(/parent/i)
+      // Click on the parent combobox
+      const parentCombobox = screen.getByRole("combobox", { name: /parent/i })
       act(() => {
-        fireEvent.click(parentSelect)
+        fireEvent.click(parentCombobox)
       })
 
-      // Select "None" from the dropdown
+      // Select "None" from the dropdown - find inside the popover content
       await waitFor(() => {
-        expect(screen.getByRole("option", { name: /^None$/i })).toBeInTheDocument()
+        // The "None" option is inside the command list
+        const noneOptions = screen.getAllByText("None")
+        // Get the one inside the cmdk list (not the button trigger)
+        const noneInList = noneOptions.find(el => el.closest("[cmdk-item]"))
+        expect(noneInList).toBeInTheDocument()
       })
       act(() => {
-        fireEvent.click(screen.getByRole("option", { name: /^None$/i }))
+        const noneOptions = screen.getAllByText("None")
+        const noneInList = noneOptions.find(el => el.closest("[cmdk-item]"))
+        if (noneInList) {
+          const noneItem = noneInList.closest("[cmdk-item]")
+          if (noneItem) {
+            fireEvent.click(noneItem)
+          }
+        }
       })
 
       // Click save
@@ -470,24 +488,25 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      // Click on the parent selector
-      const parentSelect = screen.getByLabelText(/parent/i)
+      // Click on the parent combobox
+      const parentCombobox = screen.getByRole("combobox", { name: /parent/i })
       act(() => {
-        fireEvent.click(parentSelect)
+        fireEvent.click(parentCombobox)
       })
 
       // Valid parent should be in the dropdown
       await waitFor(() => {
-        expect(screen.getByRole("option", { name: /valid-parent/i })).toBeInTheDocument()
+        expect(screen.getByText("valid-parent")).toBeInTheDocument()
       })
 
-      // Self should not be in the dropdown
-      expect(screen.queryByRole("option", { name: /test-123.*Test Task/i })).not.toBeInTheDocument()
+      // Self should not be in the dropdown (test-123 with "Test Task" title)
+      // The trigger shows "None" initially, but inside the list there should be no test-123 option
+      const testTaskItems = screen.queryAllByText("test-123")
+      const testTaskInList = testTaskItems.filter(el => el.closest("[cmdk-item]"))
+      expect(testTaskInList.length).toBe(0)
 
       // Child (which has test-123 as parent) should not be in the dropdown
-      expect(
-        screen.queryByRole("option", { name: /child-task.*Child Task/i }),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText("child-task")).not.toBeInTheDocument()
     })
   })
 
@@ -497,7 +516,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
       await waitFor(() => {
@@ -517,7 +536,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
       await waitFor(() => {
@@ -540,7 +559,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
       await waitFor(() => {
@@ -570,7 +589,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
       await waitFor(() => {
@@ -683,7 +702,7 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      expect(screen.getByText("Click to add description...")).toBeInTheDocument()
+      expect(screen.getByText("Add description...")).toBeInTheDocument()
     })
 
     it("switches to edit mode when description is clicked", async () => {
@@ -697,7 +716,7 @@ describe("TaskDetailsDialog", () => {
       })
 
       // Now the textarea should appear
-      const descInput = await screen.findByRole("textbox", { name: /description/i })
+      const descInput = await screen.findByPlaceholderText("Add description...")
       expect(descInput).toBeInTheDocument()
       expect(descInput).toHaveValue("This is a test description")
     })
@@ -712,7 +731,7 @@ describe("TaskDetailsDialog", () => {
         fireEvent.click(screen.getByText("This is a test description"))
       })
 
-      const descInput = await screen.findByRole("textbox", { name: /description/i })
+      const descInput = await screen.findByPlaceholderText("Add description...")
       expect(descInput).toBeInTheDocument()
 
       // Blur the textarea
@@ -722,7 +741,7 @@ describe("TaskDetailsDialog", () => {
 
       // Should exit edit mode and show text again
       await waitFor(() => {
-        expect(screen.queryByRole("textbox", { name: /description/i })).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText("Add description...")).not.toBeInTheDocument()
       })
       expect(screen.getByText("This is a test description")).toBeInTheDocument()
     })
@@ -737,7 +756,7 @@ describe("TaskDetailsDialog", () => {
         fireEvent.click(screen.getByText("This is a test description"))
       })
 
-      const descInput = await screen.findByRole("textbox", { name: /description/i })
+      const descInput = await screen.findByPlaceholderText("Add description...")
       typeInInput(descInput, "Changed description")
       expect(descInput).toHaveValue("Changed description")
 
@@ -748,7 +767,7 @@ describe("TaskDetailsDialog", () => {
 
       // Should exit edit mode and show original text
       await waitFor(() => {
-        expect(screen.queryByRole("textbox", { name: /description/i })).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText("Add description...")).not.toBeInTheDocument()
       })
       expect(screen.getByText("This is a test description")).toBeInTheDocument()
     })
@@ -763,7 +782,7 @@ describe("TaskDetailsDialog", () => {
         fireEvent.click(screen.getByText("This is a test description"))
       })
 
-      const descInput = await screen.findByRole("textbox", { name: /description/i })
+      const descInput = await screen.findByPlaceholderText("Add description...")
       typeInInput(descInput, "Updated description")
 
       // Blur the textarea
@@ -773,7 +792,7 @@ describe("TaskDetailsDialog", () => {
 
       // Should exit edit mode and show updated text
       await waitFor(() => {
-        expect(screen.queryByRole("textbox", { name: /description/i })).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText("Add description...")).not.toBeInTheDocument()
       })
       expect(screen.getByText("Updated description")).toBeInTheDocument()
 
@@ -781,7 +800,7 @@ describe("TaskDetailsDialog", () => {
       expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
     })
 
-    it("shows 'No description' in read-only mode when description is empty", async () => {
+    it("shows nothing in read-only mode when description is empty", async () => {
       const taskWithoutDescription: TaskCardTask = {
         id: "test-123",
         title: "Test Task",
@@ -798,7 +817,9 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      expect(screen.getByText("No description")).toBeInTheDocument()
+      // Should not show "No description" or "Add description..." in read-only mode
+      expect(screen.queryByText("No description")).not.toBeInTheDocument()
+      expect(screen.queryByText("Add description...")).not.toBeInTheDocument()
     })
   })
 
@@ -814,7 +835,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
       await waitFor(() => {
@@ -845,7 +866,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
       await waitFor(() => {
@@ -934,7 +955,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Test Task")
 
       // Press Escape while focused on input
       await act(async () => {
@@ -955,7 +976,7 @@ describe("TaskDetailsDialog", () => {
         fireEvent.click(screen.getByText("This is a test description"))
       })
 
-      const descInput = await screen.findByRole("textbox", { name: /description/i })
+      const descInput = await screen.findByPlaceholderText("Add description...")
 
       // Press Escape while focused on textarea
       await act(async () => {
@@ -1149,7 +1170,7 @@ describe("TaskDetailsDialog", () => {
       )
 
       // Change the title (not the status)
-      const titleInput = screen.getByLabelText(/title/i)
+      const titleInput = screen.getByDisplayValue("Already closed task")
       typeInInput(titleInput, "Updated title")
 
       await waitFor(() => {

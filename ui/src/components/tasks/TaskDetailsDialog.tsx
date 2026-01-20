@@ -8,11 +8,12 @@ import {
   IconX,
   IconPlus,
   IconTrash,
+  IconCheck,
+  IconSelector,
   type TablerIcon,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -21,6 +22,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { useAppStore, selectIssuePrefix, selectTasks } from "@/store"
 import type { TaskCardTask, TaskStatus } from "./TaskCard"
@@ -114,6 +124,85 @@ const priorityOptions = [
   { value: 3, label: "P3 - Low" },
   { value: 4, label: "P4 - Lowest" },
 ]
+
+// ParentCombobox Component
+
+interface ParentComboboxProps {
+  task: TaskCardTask
+  allTasks: TaskCardTask[]
+  issuePrefix: string | null
+  value: string | null
+  onChange: (value: string | null) => void
+}
+
+function ParentCombobox({ task, allTasks, issuePrefix, value, onChange }: ParentComboboxProps) {
+  const [open, setOpen] = useState(false)
+
+  // Filter valid parent candidates (exclude self and direct children)
+  const validParents = allTasks.filter(t => t.id !== task.id && t.parent !== task.id)
+
+  // Find current selection
+  const selectedTask = value ? validParents.find(t => t.id === value) : null
+  const displayValue =
+    value && selectedTask ? `${stripTaskPrefix(value, issuePrefix)} ${selectedTask.title}`
+    : value ? stripTaskPrefix(value, issuePrefix)
+    : "None"
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          aria-label="Parent"
+          className="h-8 w-full justify-between px-3 text-sm font-normal"
+        >
+          <span className="truncate">{displayValue}</span>
+          <IconSelector className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search tasks..." />
+          <CommandList>
+            <CommandEmpty>No task found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__none__"
+                onSelect={() => {
+                  onChange(null)
+                  setOpen(false)
+                }}
+              >
+                <IconCheck
+                  className={cn("mr-2 h-4 w-4", value === null ? "opacity-100" : "opacity-0")}
+                />
+                None
+              </CommandItem>
+              {validParents.map(t => (
+                <CommandItem
+                  key={t.id}
+                  value={`${stripTaskPrefix(t.id, issuePrefix)} ${t.title}`}
+                  onSelect={() => {
+                    onChange(t.id)
+                    setOpen(false)
+                  }}
+                >
+                  <IconCheck
+                    className={cn("mr-2 h-4 w-4", value === t.id ? "opacity-100" : "opacity-0")}
+                  />
+                  <span className="font-mono text-xs">{stripTaskPrefix(t.id, issuePrefix)}</span>
+                  <span className="ml-2 truncate">{t.title}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 // TaskDetailsDialog Component
 
@@ -510,36 +599,44 @@ export function TaskDetailsDialog({
 
       <div className="flex-1 space-y-6 overflow-y-auto p-6">
         {/* Title */}
-        <div className="grid gap-2">
-          <Label htmlFor="task-title">Title</Label>
+        <div>
           {readOnly ?
-            <p className="text-sm">{title}</p>
-          : <Input
+            <p className="text-lg font-semibold">{title}</p>
+          : <input
               id="task-title"
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="Task title"
+              className="text-foreground placeholder:text-muted-foreground w-full bg-transparent text-lg font-semibold focus:outline-none"
             />
           }
         </div>
 
-        {/* Description - larger area */}
-        <div className="grid gap-2">
-          <Label htmlFor="task-description">Description</Label>
+        {/* Description */}
+        <div>
           {readOnly ?
             description ?
-              <MarkdownContent className="text-muted-foreground">{description}</MarkdownContent>
-            : <p className="text-muted-foreground text-sm">No description</p>
+              <MarkdownContent className="text-muted-foreground text-sm">
+                {description}
+              </MarkdownContent>
+            : null
           : isEditingDescription ?
-            <Textarea
+            <textarea
               ref={descriptionTextareaRef}
               id="task-description"
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={e => {
+                setDescription(e.target.value)
+                // Auto-grow textarea
+                const target = e.target
+                target.style.height = "auto"
+                target.style.height = `${target.scrollHeight}px`
+              }}
               onBlur={handleDescriptionBlur}
               onKeyDown={handleDescriptionKeyDown}
-              placeholder="Task description (optional)"
-              rows={6}
+              placeholder="Add description..."
+              className="text-muted-foreground placeholder:text-muted-foreground w-full resize-none overflow-hidden bg-transparent text-sm focus:outline-none"
+              style={{ minHeight: "1.5rem" }}
             />
           : <div
               onClick={() => setIsEditingDescription(true)}
@@ -552,29 +649,30 @@ export function TaskDetailsDialog({
               role="button"
               tabIndex={0}
               className={cn(
-                "border-input hover:border-ring focus-visible:ring-ring min-h-[120px] cursor-text rounded-md border px-3 py-2 text-sm transition-colors focus-visible:ring-1 focus-visible:outline-none",
-                !description && "text-muted-foreground",
+                "text-muted-foreground min-h-[1.5rem] cursor-text text-sm transition-colors hover:opacity-80",
               )}
             >
               {description ?
-                <MarkdownContent>{description}</MarkdownContent>
-              : "Click to add description..."}
+                <MarkdownContent className="text-muted-foreground">{description}</MarkdownContent>
+              : "Add description..."}
             </div>
           }
         </div>
 
         {/* Metadata Grid - 2x2 layout */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
           {/* Status */}
-          <div className="grid gap-2">
-            <Label htmlFor="task-status">Status</Label>
+          <div className="grid gap-1">
+            <Label htmlFor="task-status" className="text-muted-foreground text-xs">
+              Status
+            </Label>
             {readOnly ?
               <div className="flex items-center gap-2">
-                <StatusIcon className={cn("h-4 w-4", statusConfig[status].color)} />
+                <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[status].color)} />
                 <span className="text-sm">{statusConfig[status].label}</span>
               </div>
             : <Select value={status} onValueChange={value => setStatus(value as TaskStatus)}>
-                <SelectTrigger id="task-status">
+                <SelectTrigger id="task-status" className="h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -584,7 +682,7 @@ export function TaskDetailsDialog({
                     return (
                       <SelectItem key={s} value={s}>
                         <div className="flex items-center gap-2">
-                          <Icon className={cn("h-4 w-4", config.color)} />
+                          <Icon className={cn("h-3.5 w-3.5", config.color)} />
                           <span>{config.label}</span>
                         </div>
                       </SelectItem>
@@ -596,14 +694,16 @@ export function TaskDetailsDialog({
           </div>
 
           {/* Priority */}
-          <div className="grid gap-2">
-            <Label htmlFor="task-priority">Priority</Label>
+          <div className="grid gap-1">
+            <Label htmlFor="task-priority" className="text-muted-foreground text-xs">
+              Priority
+            </Label>
             {readOnly ?
               <span className="text-sm">
                 {priorityOptions.find(p => p.value === priority)?.label ?? `P${priority}`}
               </span>
             : <Select value={String(priority)} onValueChange={value => setPriority(Number(value))}>
-                <SelectTrigger id="task-priority">
+                <SelectTrigger id="task-priority" className="h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -618,8 +718,8 @@ export function TaskDetailsDialog({
           </div>
 
           {/* Type */}
-          <div className="grid gap-2">
-            <Label>Type</Label>
+          <div className="grid gap-1">
+            <Label className="text-muted-foreground text-xs">Type</Label>
             {readOnly ?
               <div className="flex items-center gap-2">
                 {(() => {
@@ -627,13 +727,15 @@ export function TaskDetailsDialog({
                   const TypeIcon = typeOption?.icon ?? IconCheckbox
                   return (
                     <>
-                      <TypeIcon className={cn("h-4 w-4", typeOption?.color ?? "text-gray-500")} />
+                      <TypeIcon
+                        className={cn("h-3.5 w-3.5", typeOption?.color ?? "text-gray-500")}
+                      />
                       <span className="text-sm capitalize">{issueType}</span>
                     </>
                   )
                 })()}
               </div>
-            : <div className="border-input bg-background flex rounded-md border" role="group">
+            : <div className="border-input bg-background flex h-8 rounded-md border" role="group">
                 {issueTypeOptions.map(t => {
                   const Icon = t.icon
                   const isSelected = issueType === t.value
@@ -643,14 +745,14 @@ export function TaskDetailsDialog({
                       type="button"
                       onClick={() => setIssueType(t.value)}
                       className={cn(
-                        "flex flex-1 items-center justify-center gap-1.5 px-2 py-1.5 text-sm transition-colors first:rounded-l-md last:rounded-r-md",
+                        "flex flex-1 items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
                         isSelected ?
                           "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
                       )}
                       aria-pressed={isSelected}
                     >
-                      <Icon className={cn("h-4 w-4", isSelected ? t.color : "")} />
+                      <Icon className={cn("h-3.5 w-3.5", isSelected ? t.color : "")} />
                       <span>{t.label}</span>
                     </button>
                   )
@@ -660,8 +762,10 @@ export function TaskDetailsDialog({
           </div>
 
           {/* Parent */}
-          <div className="grid gap-2">
-            <Label htmlFor="task-parent">Parent</Label>
+          <div className="grid gap-1">
+            <Label htmlFor="task-parent" className="text-muted-foreground text-xs">
+              Parent
+            </Label>
             {readOnly ?
               <span className="text-muted-foreground text-sm">
                 {task.parent ?
@@ -670,41 +774,13 @@ export function TaskDetailsDialog({
                   </span>
                 : <span>None</span>}
               </span>
-            : (() => {
-                // Filter valid parent candidates (exclude self and direct children)
-                const validParents = allTasks.filter(t => t.id !== task.id && t.parent !== task.id)
-                // Check if current parent is in the list of valid parents
-                const currentParentInList = parent && validParents.some(t => t.id === parent)
-                return (
-                  <Select
-                    value={parent ?? "__none__"}
-                    onValueChange={value => setParent(value === "__none__" ? null : value)}
-                  >
-                    <SelectTrigger id="task-parent">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {/* If current parent isn't in list, show it as an option */}
-                      {parent && !currentParentInList && (
-                        <SelectItem value={parent}>
-                          <span className="font-mono text-xs">
-                            {stripTaskPrefix(parent, issuePrefix)}
-                          </span>
-                        </SelectItem>
-                      )}
-                      {validParents.map(t => (
-                        <SelectItem key={t.id} value={t.id}>
-                          <span className="font-mono text-xs">
-                            {stripTaskPrefix(t.id, issuePrefix)}
-                          </span>
-                          <span className="ml-2 truncate">{t.title}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )
-              })()
+            : <ParentCombobox
+                task={task}
+                allTasks={allTasks}
+                issuePrefix={issuePrefix}
+                value={parent}
+                onChange={setParent}
+              />
             }
           </div>
         </div>

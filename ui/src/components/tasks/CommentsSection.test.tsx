@@ -79,14 +79,18 @@ describe("CommentsSection", () => {
       expect(screen.getByText("Bob")).toBeInTheDocument()
     })
 
-    it("shows no comments message when empty", async () => {
+    it("shows no message when empty", async () => {
       mockFetch.mockResolvedValueOnce(createMockResponse({ ok: true, comments: [] }))
 
       render(<CommentsSection taskId="rui-123" />)
 
+      // Wait for loading to complete
       await waitFor(() => {
-        expect(screen.getByText("No comments yet")).toBeInTheDocument()
+        expect(screen.queryByText("Loading comments...")).not.toBeInTheDocument()
       })
+
+      // Should not show "No comments yet" message - it just shows nothing
+      expect(screen.queryByText("No comments yet")).not.toBeInTheDocument()
     })
 
     it("renders markdown in comments", async () => {

@@ -175,11 +175,11 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
       {error && !isLoading && <div className="text-destructive py-2 text-sm">{error}</div>}
 
       {/* Comments list */}
-      {!isLoading && !error && (
+      {!isLoading && !error && comments.length > 0 && (
         <div className="space-y-3">
-          {comments.length === 0 ?
-            <p className="text-muted-foreground py-2 text-sm">No comments yet</p>
-          : comments.map(comment => <CommentItem key={comment.id} comment={comment} />)}
+          {comments.map(comment => (
+            <CommentItem key={comment.id} comment={comment} />
+          ))}
         </div>
       )}
 
