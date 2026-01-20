@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/ralph-ui",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Web UI for Ralph - React frontend and server for the autonomous AI iteration engine",
   "type": "module",
   "main": "./dist/server/index.js",
