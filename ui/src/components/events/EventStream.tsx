@@ -4,7 +4,6 @@ import {
   selectEvents,
   selectRalphStatus,
   selectViewingIterationIndex,
-  selectCurrentTask,
   getEventsForIteration,
   countIterations,
   type RalphEvent,
@@ -25,6 +24,7 @@ import {
   type StreamingMessage,
   type StreamingContentBlock,
 } from "@/hooks/useStreamingState"
+import { useTaskDialogContext } from "@/contexts"
 
 // Types
 
@@ -314,6 +314,13 @@ function IterationBar({
   onLatest,
 }: IterationBarProps) {
   const hasMultipleIterations = iterationCount > 1
+  const taskDialogContext = useTaskDialogContext()
+
+  const handleTaskClick = (taskId: string) => {
+    if (taskDialogContext) {
+      taskDialogContext.openTaskById(taskId)
+    }
+  }
 
   return (
     <div
@@ -342,7 +349,13 @@ function IterationBar({
             className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"
             title="Current task"
           >
-            <span className="shrink-0 font-mono opacity-70">{currentTask.id}</span>
+            <button
+              onClick={() => handleTaskClick(currentTask.id)}
+              className="hover:text-foreground shrink-0 font-mono opacity-70 transition-opacity hover:underline hover:opacity-100"
+              aria-label={`View task ${currentTask.id}`}
+            >
+              {currentTask.id}
+            </button>
             <span className="truncate">{currentTask.title}</span>
           </div>
         : hasMultipleIterations ?
@@ -393,7 +406,6 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
   const goToNextIteration = useAppStore(state => state.goToNextIteration)
   const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
   const ralphStatus = useAppStore(selectRalphStatus)
-  const currentTask = useAppStore(selectCurrentTask)
   const isRunning = ralphStatus === "running" || ralphStatus === "starting"
   const containerRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
@@ -406,6 +418,21 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
     [allEvents, viewingIterationIndex],
   )
   const isViewingLatest = viewingIterationIndex === null
+
+  // Get task for current iteration
+  const iterationTask = useMemo(() => {
+    // Extract task from iteration events
+    for (const event of iterationEvents) {
+      if (event.type === "ralph_task_started") {
+        const taskId = (event as any).taskId
+        const taskTitle = (event as any).taskTitle
+        if (taskId && taskTitle) {
+          return { id: taskId, title: taskTitle }
+        }
+      }
+    }
+    return null
+  }, [iterationEvents])
 
   // Use iteration-filtered events
   const events = iterationEvents
@@ -509,7 +536,7 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
         displayedIteration={displayedIteration}
         isViewingLatest={isViewingLatest}
         viewingIterationIndex={viewingIterationIndex}
-        currentTask={currentTask}
+        currentTask={iterationTask}
         onPrevious={goToPreviousIteration}
         onNext={goToNextIteration}
         onLatest={goToLatestIteration}

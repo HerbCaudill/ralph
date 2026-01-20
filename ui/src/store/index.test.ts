@@ -8,10 +8,12 @@ import {
   getIterationBoundaries,
   countIterations,
   getEventsForIteration,
+  getTaskFromIterationEvents,
   selectIterationCount,
   selectCurrentIterationEvents,
   selectViewingIterationIndex,
   selectIsViewingLatestIteration,
+  selectIterationTask,
 } from "./index"
 import type { RalphEvent, Task, TaskChatMessage } from "./index"
 
@@ -518,6 +520,114 @@ describe("useAppStore", () => {
         const events = createEventsWithIterations()
         expect(getEventsForIteration(events, -1)).toEqual(events)
         expect(getEventsForIteration(events, 10)).toEqual(events)
+      })
+    })
+
+    describe("getTaskFromIterationEvents", () => {
+      it("returns null when no ralph_task_started events exist", () => {
+        const events = [
+          { type: "assistant", timestamp: 1000 },
+          { type: "user_message", timestamp: 1001 },
+        ] as RalphEvent[]
+        expect(getTaskFromIterationEvents(events)).toBeNull()
+      })
+
+      it("extracts task from ralph_task_started event", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-123",
+            taskTitle: "Fix the bug",
+          },
+          { type: "assistant", timestamp: 1002 },
+        ] as RalphEvent[]
+        const task = getTaskFromIterationEvents(events)
+        expect(task).toEqual({ id: "rui-123", title: "Fix the bug" })
+      })
+
+      it("returns null if ralph_task_started event is missing taskId or taskTitle", () => {
+        const events = [
+          { type: "ralph_task_started", timestamp: 1000, taskId: "rui-123" },
+        ] as RalphEvent[]
+        expect(getTaskFromIterationEvents(events)).toBeNull()
+      })
+
+      it("returns the first task when multiple ralph_task_started events exist", () => {
+        const events = [
+          {
+            type: "ralph_task_started",
+            timestamp: 1000,
+            taskId: "rui-111",
+            taskTitle: "First task",
+          },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-222",
+            taskTitle: "Second task",
+          },
+        ] as RalphEvent[]
+        const task = getTaskFromIterationEvents(events)
+        expect(task).toEqual({ id: "rui-111", title: "First task" })
+      })
+    })
+
+    describe("selectIterationTask", () => {
+      it("returns null when no events", () => {
+        const task = selectIterationTask(useAppStore.getState())
+        expect(task).toBeNull()
+      })
+
+      it("returns task from latest iteration by default", () => {
+        useAppStore.getState().addEvent({
+          type: "system",
+          timestamp: 1000,
+          subtype: "init",
+        })
+        useAppStore.getState().addEvent({
+          type: "ralph_task_started",
+          timestamp: 1001,
+          taskId: "rui-999",
+          taskTitle: "Latest task",
+        })
+        const task = selectIterationTask(useAppStore.getState())
+        expect(task).toEqual({ id: "rui-999", title: "Latest task" })
+      })
+
+      it("returns task from specific iteration when viewingIterationIndex is set", () => {
+        // First iteration
+        useAppStore.getState().addEvent({
+          type: "system",
+          timestamp: 1000,
+          subtype: "init",
+        })
+        useAppStore.getState().addEvent({
+          type: "ralph_task_started",
+          timestamp: 1001,
+          taskId: "rui-111",
+          taskTitle: "First task",
+        })
+
+        // Second iteration
+        useAppStore.getState().addEvent({
+          type: "system",
+          timestamp: 2000,
+          subtype: "init",
+        })
+        useAppStore.getState().addEvent({
+          type: "ralph_task_started",
+          timestamp: 2001,
+          taskId: "rui-222",
+          taskTitle: "Second task",
+        })
+
+        // View first iteration
+        useAppStore.getState().setViewingIterationIndex(0)
+
+        const task = selectIterationTask(useAppStore.getState())
+        expect(task).toEqual({ id: "rui-111", title: "First task" })
       })
     })
 

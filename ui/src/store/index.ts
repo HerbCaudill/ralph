@@ -434,6 +434,25 @@ export function getEventsForIteration(
   return events.slice(startIndex, endIndex)
 }
 
+/**
+ * Extracts task information from iteration events.
+ * Looks for ralph_task_started events to get the task being worked on.
+ */
+export function getTaskFromIterationEvents(
+  events: RalphEvent[],
+): { id: string; title: string } | null {
+  for (const event of events) {
+    if (event.type === "ralph_task_started") {
+      const taskId = (event as any).taskId
+      const taskTitle = (event as any).taskTitle
+      if (taskId && taskTitle) {
+        return { id: taskId, title: taskTitle }
+      }
+    }
+  }
+  return null
+}
+
 // Initial State
 
 const defaultSidebarWidth = 320
@@ -740,3 +759,7 @@ export const selectIsViewingLatestIteration = (state: AppState) =>
   state.viewingIterationIndex === null
 export const selectTaskSearchQuery = (state: AppState) => state.taskSearchQuery
 export const selectClosedTimeFilter = (state: AppState) => state.closedTimeFilter
+export const selectIterationTask = (state: AppState) => {
+  const iterationEvents = getEventsForIteration(state.events, state.viewingIterationIndex)
+  return getTaskFromIterationEvents(iterationEvents)
+}

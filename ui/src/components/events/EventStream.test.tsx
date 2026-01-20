@@ -1,7 +1,18 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { EventStream } from "./EventStream"
 import { useAppStore } from "@/store"
+import { TaskDialogProvider } from "@/contexts"
+
+// Helper to render EventStream with required providers
+function renderEventStream() {
+  const openTaskById = vi.fn()
+  return render(
+    <TaskDialogProvider openTaskById={openTaskById}>
+      <EventStream />
+    </TaskDialogProvider>,
+  )
+}
 
 describe("EventStream", () => {
   beforeEach(() => {
@@ -25,7 +36,7 @@ describe("EventStream", () => {
         },
       })
 
-      render(<EventStream />)
+      renderEventStream()
 
       // Should render as TaskLifecycleEvent (with data-testid="task-lifecycle-event")
       expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
@@ -83,7 +94,7 @@ describe("EventStream", () => {
         },
       })
 
-      render(<EventStream />)
+      renderEventStream()
 
       // WHILE streaming (before message_stop), should render as TaskLifecycleEvent
       // because the text is complete even though the message isn't stopped yet
@@ -103,13 +114,14 @@ describe("EventStream", () => {
         iteration: 1,
       })
 
-      render(<EventStream />)
+      renderEventStream()
 
       // Should render as TaskLifecycleEvent
-      expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
-      expect(screen.getByText("Starting")).toBeInTheDocument()
-      expect(screen.getByText("r-abc1")).toBeInTheDocument()
-      expect(screen.getByText("Implement new feature")).toBeInTheDocument()
+      const lifecycleEvent = screen.getByTestId("task-lifecycle-event")
+      expect(lifecycleEvent).toBeInTheDocument()
+      expect(lifecycleEvent).toHaveTextContent("Starting")
+      expect(lifecycleEvent).toHaveTextContent("r-abc1")
+      expect(lifecycleEvent).toHaveTextContent("Implement new feature")
     })
 
     it("renders ralph_task_completed events as structured blocks", () => {
@@ -122,7 +134,7 @@ describe("EventStream", () => {
         iteration: 1,
       })
 
-      render(<EventStream />)
+      renderEventStream()
 
       // Should render as TaskLifecycleEvent with "completed" action
       const lifecycleEvent = screen.getByTestId("task-lifecycle-event")
@@ -161,7 +173,7 @@ describe("EventStream", () => {
         iteration: 1,
       })
 
-      render(<EventStream />)
+      renderEventStream()
 
       // Should render only ONE TaskLifecycleEvent block (from the structured event)
       // The text block should be skipped to avoid duplication
@@ -169,9 +181,10 @@ describe("EventStream", () => {
       expect(lifecycleEvents).toHaveLength(1)
 
       // Verify it's the structured event that's rendered
-      expect(screen.getByText("Starting")).toBeInTheDocument()
-      expect(screen.getByText("r-abc1")).toBeInTheDocument()
-      expect(screen.getByText("Implement new feature")).toBeInTheDocument()
+      const lifecycleEvent = lifecycleEvents[0]
+      expect(lifecycleEvent).toHaveTextContent("Starting")
+      expect(lifecycleEvent).toHaveTextContent("r-abc1")
+      expect(lifecycleEvent).toHaveTextContent("Implement new feature")
     })
 
     it("handles streaming task lifecycle events - after message_stop renders properly", () => {
@@ -225,7 +238,7 @@ describe("EventStream", () => {
         },
       })
 
-      render(<EventStream />)
+      renderEventStream()
 
       // After message_stop, should still render as TaskLifecycleEvent
       expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
@@ -237,22 +250,34 @@ describe("EventStream", () => {
 
   describe("IterationBar", () => {
     it("is always visible", () => {
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByTestId("iteration-bar")).toBeInTheDocument()
     })
 
     it("shows 'No active task' when no task is in progress and no iterations", () => {
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByText("No active task")).toBeInTheDocument()
     })
 
-    it("shows current task when a task is in progress", () => {
-      useAppStore
-        .getState()
-        .setTasks([{ id: "rui-123", title: "Fix the bug", status: "in_progress" }])
-      render(<EventStream />)
-      expect(screen.getByText("rui-123")).toBeInTheDocument()
-      expect(screen.getByText("Fix the bug")).toBeInTheDocument()
+    it("shows task from iteration events when ralph_task_started event exists", () => {
+      // Add iteration boundary
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      // Add ralph_task_started event
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600001000,
+        taskId: "rui-123",
+        taskTitle: "Fix the bug",
+      })
+      renderEventStream()
+      // Check that task is shown in iteration bar
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-123")
+      expect(iterationBar).toHaveTextContent("Fix the bug")
     })
 
     it("shows iteration navigation when multiple iterations exist", () => {
@@ -267,7 +292,7 @@ describe("EventStream", () => {
         timestamp: 1705600001000,
         subtype: "init",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByLabelText("Previous iteration")).toBeInTheDocument()
       expect(screen.getByLabelText("Next iteration")).toBeInTheDocument()
     })
@@ -278,7 +303,7 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         subtype: "init",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.queryByLabelText("Previous iteration")).not.toBeInTheDocument()
       expect(screen.queryByLabelText("Next iteration")).not.toBeInTheDocument()
     })
@@ -295,7 +320,7 @@ describe("EventStream", () => {
         timestamp: 1705600001000,
         subtype: "init",
       })
-      render(<EventStream />)
+      renderEventStream()
 
       // Click previous
       fireEvent.click(screen.getByLabelText("Previous iteration"))
@@ -320,7 +345,7 @@ describe("EventStream", () => {
       // Go to first iteration
       useAppStore.getState().setViewingIterationIndex(0)
 
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByText("Latest")).toBeInTheDocument()
     })
 
@@ -332,48 +357,107 @@ describe("EventStream", () => {
         subtype: "init",
       })
       useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000500,
+        taskId: "rui-abc",
+        taskTitle: "Current work",
+      })
+      useAppStore.getState().addEvent({
         type: "system",
         timestamp: 1705600001000,
         subtype: "init",
       })
-      // Add in-progress task
-      useAppStore
-        .getState()
-        .setTasks([{ id: "rui-abc", title: "Current work", status: "in_progress" }])
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600001500,
+        taskId: "rui-def",
+        taskTitle: "Latest work",
+      })
 
-      render(<EventStream />)
+      renderEventStream()
 
-      // Should show task, not iteration info
-      expect(screen.getByText("rui-abc")).toBeInTheDocument()
-      expect(screen.getByText("Current work")).toBeInTheDocument()
+      // Should show task from latest iteration, not iteration info
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-def")
+      expect(iterationBar).toHaveTextContent("Latest work")
       expect(screen.queryByText(/Iteration \d+ of \d+/)).not.toBeInTheDocument()
     })
 
     it("truncates long task titles", () => {
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-456",
-          title: "This is a very long task description that should be truncated",
-          status: "in_progress",
-        },
-      ])
-      render(<EventStream />)
-      expect(screen.getByText("rui-456")).toBeInTheDocument()
-      const taskTitle = screen.getByText(
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000500,
+        taskId: "rui-456",
+        taskTitle: "This is a very long task description that should be truncated",
+      })
+      renderEventStream()
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-456")
+      // Find the title within the iteration bar specifically
+      const taskTitleInBar = iterationBar.querySelector(".truncate")
+      expect(taskTitleInBar).toBeInTheDocument()
+      expect(taskTitleInBar).toHaveTextContent(
         "This is a very long task description that should be truncated",
       )
-      expect(taskTitle).toHaveClass("truncate")
+    })
+
+    it("shows task from specific iteration when navigating to past iteration", () => {
+      // Add first iteration with task A
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600000000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000500,
+        taskId: "rui-111",
+        taskTitle: "First task",
+      })
+
+      // Add second iteration with task B
+      useAppStore.getState().addEvent({
+        type: "system",
+        timestamp: 1705600001000,
+        subtype: "init",
+      })
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600001500,
+        taskId: "rui-222",
+        taskTitle: "Second task",
+      })
+
+      renderEventStream()
+
+      // Initially should show latest task in iteration bar
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-222")
+      expect(iterationBar).toHaveTextContent("Second task")
+
+      // Navigate to first iteration
+      fireEvent.click(screen.getByLabelText("Previous iteration"))
+
+      // Should now show first task in iteration bar
+      expect(iterationBar).toHaveTextContent("rui-111")
+      expect(iterationBar).toHaveTextContent("First task")
+      expect(iterationBar).not.toHaveTextContent("rui-222")
     })
   })
 
   describe("empty state", () => {
     it("shows empty message when no events", () => {
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByText("No events yet")).toBeInTheDocument()
     })
 
     it("has correct ARIA attributes", () => {
-      render(<EventStream />)
+      renderEventStream()
       const container = screen.getByRole("log")
       expect(container).toHaveAttribute("aria-label", "Event stream")
       expect(container).toHaveAttribute("aria-live", "polite")
@@ -387,7 +471,7 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         message: "Hello, can you help me?",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByText("Hello, can you help me?")).toBeInTheDocument()
     })
 
@@ -402,7 +486,7 @@ describe("EventStream", () => {
         timestamp: 1705600001000,
         message: "Second message",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByText("First message")).toBeInTheDocument()
       expect(screen.getByText("Second message")).toBeInTheDocument()
     })
@@ -422,7 +506,7 @@ describe("EventStream", () => {
           ],
         },
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByText("I can help you with that.")).toBeInTheDocument()
     })
 
@@ -441,7 +525,7 @@ describe("EventStream", () => {
           ],
         },
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByText("Read")).toBeInTheDocument()
       expect(screen.getByText("/test/file.ts")).toBeInTheDocument()
     })
@@ -465,7 +549,7 @@ describe("EventStream", () => {
           ],
         },
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByText("Let me read that file.")).toBeInTheDocument()
       expect(screen.getByText("Read")).toBeInTheDocument()
     })
@@ -504,7 +588,7 @@ describe("EventStream", () => {
           ],
         },
       })
-      render(<EventStream />)
+      renderEventStream()
       // Should show line count for Read tool
       expect(screen.getByText(/Read 3 lines/)).toBeInTheDocument()
     })
@@ -517,7 +601,7 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         event: { type: "content_block_delta" },
       })
-      render(<EventStream />)
+      renderEventStream()
       // Stream events render nothing, but the container has events so empty state doesn't show
       const container = screen.getByRole("log")
       // Should have no visible content (just the container)
@@ -530,7 +614,7 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         subtype: "init",
       })
-      render(<EventStream />)
+      renderEventStream()
       // System events render nothing
       const container = screen.getByRole("log")
       expect(container.textContent?.trim()).toBe("")
@@ -564,7 +648,7 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         message: "Test message",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.queryByLabelText("Scroll to latest events")).not.toBeInTheDocument()
     })
 
@@ -577,7 +661,7 @@ describe("EventStream", () => {
           message: `Message ${i}`,
         })
       }
-      render(<EventStream />)
+      renderEventStream()
 
       // Get the scroll container
       const container = screen.getByRole("log")
@@ -612,7 +696,7 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         message: "Test message",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
       expect(screen.getByLabelText("Ralph is running")).toBeInTheDocument()
     })
@@ -624,7 +708,7 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         message: "Test message",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
     })
 
@@ -635,7 +719,7 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         message: "Test message",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
     })
 
@@ -646,13 +730,13 @@ describe("EventStream", () => {
         timestamp: 1705600000000,
         message: "Test message",
       })
-      render(<EventStream />)
+      renderEventStream()
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
     })
 
     it("does not show spinner when there are no events (empty state)", () => {
       useAppStore.getState().setRalphStatus("running")
-      render(<EventStream />)
+      renderEventStream()
       // Empty state shows "No events yet" instead
       expect(screen.getByText("No events yet")).toBeInTheDocument()
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
@@ -687,7 +771,7 @@ describe("EventStream", () => {
       // Navigate to the first (completed) iteration
       useAppStore.getState().setViewingIterationIndex(0)
 
-      render(<EventStream />)
+      renderEventStream()
 
       // Should show the first iteration's message
       expect(screen.getByText("First iteration message")).toBeInTheDocument()
@@ -726,7 +810,7 @@ describe("EventStream", () => {
       // Keep viewing the latest iteration (default)
       // viewingIterationIndex should be null (latest)
 
-      render(<EventStream />)
+      renderEventStream()
 
       // Should show the second iteration's message
       expect(screen.getByText("Second iteration message")).toBeInTheDocument()
