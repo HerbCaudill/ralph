@@ -4,10 +4,29 @@ import { TaskDetailsDialog } from "./TaskDetailsDialog"
 import { useAppStore } from "@/store"
 import type { TaskCardTask } from "./TaskCard"
 
+// Mock child components to avoid their async behavior
+vi.mock("./RelatedTasks", () => ({
+  RelatedTasks: () => null,
+}))
+
+vi.mock("./CommentsSection", () => ({
+  CommentsSection: () => null,
+}))
+
 // Helper functions
 
 function typeInInput(input: HTMLElement, value: string) {
   fireEvent.change(input, { target: { value } })
+}
+
+// Helper to render and wait for async operations to complete
+async function renderAndWait(ui: React.ReactElement) {
+  const result = render(ui)
+  // Wait for labels fetch to complete (triggered by useEffect)
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
+  return result
 }
 
 // Mock fetch for event log tests
@@ -53,7 +72,14 @@ function createMockFetch(overrides: Record<string, unknown> = {}) {
     if (typeof url === "string" && url.includes("/comments")) {
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ ok: true }),
+        json: () => Promise.resolve({ ok: true, comments: [] }),
+      })
+    }
+    // Handle task fetch (used by RelatedTasks component)
+    if (typeof url === "string" && url.match(/\/api\/tasks\/[^/]+$/)) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ ok: true, issue: { dependencies: [], dependents: [] } }),
       })
     }
     // Default response
@@ -94,8 +120,8 @@ describe("TaskDetailsDialog", () => {
   })
 
   describe("rendering", () => {
-    it("renders task details when open", () => {
-      render(
+    it("renders task details when open", async () => {
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -105,16 +131,16 @@ describe("TaskDetailsDialog", () => {
       expect(screen.getByText("This is a test description")).toBeInTheDocument()
     })
 
-    it("does not render when task is null", () => {
-      render(
+    it("does not render when task is null", async () => {
+      await renderAndWait(
         <TaskDetailsDialog task={null} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     })
 
-    it("does not render when open is false", () => {
-      render(
+    it("does not render when open is false", async () => {
+      await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
           open={false}
@@ -126,16 +152,16 @@ describe("TaskDetailsDialog", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     })
 
-    it("shows task ID in header", () => {
-      render(
+    it("shows task ID in header", async () => {
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       expect(screen.getByText("test-123")).toBeInTheDocument()
     })
 
-    it("shows task type and parent in dialog", () => {
-      render(
+    it("shows task type and parent in dialog", async () => {
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -144,14 +170,14 @@ describe("TaskDetailsDialog", () => {
       expect(screen.getByText("parent-456")).toBeInTheDocument()
     })
 
-    it("shows type selector with task default when no type is set", () => {
+    it("shows type selector with task default when no type is set", async () => {
       const taskWithoutMetadata: TaskCardTask = {
         id: "test-123",
         title: "Test Task",
         status: "open",
       }
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={taskWithoutMetadata}
           open={true}
@@ -167,8 +193,8 @@ describe("TaskDetailsDialog", () => {
   })
 
   describe("read-only mode", () => {
-    it("displays values as text instead of inputs when readOnly", () => {
-      render(
+    it("displays values as text instead of inputs when readOnly", async () => {
+      await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
           open={true}
@@ -183,8 +209,8 @@ describe("TaskDetailsDialog", () => {
       expect(screen.getByText("Test Task")).toBeInTheDocument()
     })
 
-    it("does not show save button in read-only mode", () => {
-      render(
+    it("does not show save button in read-only mode", async () => {
+      await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
           open={true}
@@ -197,8 +223,8 @@ describe("TaskDetailsDialog", () => {
       expect(screen.queryByRole("button", { name: /save/i })).not.toBeInTheDocument()
     })
 
-    it("does not show cancel button in read-only mode", () => {
-      render(
+    it("does not show cancel button in read-only mode", async () => {
+      await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
           open={true}
@@ -214,7 +240,7 @@ describe("TaskDetailsDialog", () => {
 
   describe("editing", () => {
     it("allows editing title", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -225,13 +251,15 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("allows editing description via click-to-edit", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Description is initially shown as text, click to edit
       const descriptionText = screen.getByText("This is a test description")
-      fireEvent.click(descriptionText)
+      act(() => {
+        fireEvent.click(descriptionText)
+      })
 
       // Now the textarea should appear
       const descInput = await screen.findByRole("textbox", { name: /description/i })
@@ -241,7 +269,7 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("enables save button when changes are made", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -257,7 +285,7 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("disables save button when changes are reverted", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -276,13 +304,15 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("allows editing type via button bar", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Find and click the "Bug" button in the type button bar
       const bugButton = screen.getByRole("button", { name: /bug/i })
-      fireEvent.click(bugButton)
+      act(() => {
+        fireEvent.click(bugButton)
+      })
 
       // Save button should now be enabled
       await waitFor(() => {
@@ -291,13 +321,15 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("saves issue_type when type is changed", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Find and click the "Bug" button in the type button bar
       const bugButton = screen.getByRole("button", { name: /bug/i })
-      fireEvent.click(bugButton)
+      act(() => {
+        fireEvent.click(bugButton)
+      })
 
       // Click save
       await waitFor(() => {
@@ -321,19 +353,23 @@ describe("TaskDetailsDialog", () => {
         ],
       })
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Click on the parent selector
       const parentSelect = screen.getByLabelText(/parent/i)
-      fireEvent.click(parentSelect)
+      act(() => {
+        fireEvent.click(parentSelect)
+      })
 
       // Select "Other Task" from the dropdown
       await waitFor(() => {
         expect(screen.getByRole("option", { name: /other-789/i })).toBeInTheDocument()
       })
-      fireEvent.click(screen.getByRole("option", { name: /other-789/i }))
+      act(() => {
+        fireEvent.click(screen.getByRole("option", { name: /other-789/i }))
+      })
 
       // Save button should now be enabled
       await waitFor(() => {
@@ -351,19 +387,23 @@ describe("TaskDetailsDialog", () => {
         ],
       })
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Click on the parent selector
       const parentSelect = screen.getByLabelText(/parent/i)
-      fireEvent.click(parentSelect)
+      act(() => {
+        fireEvent.click(parentSelect)
+      })
 
       // Select "Other Task" from the dropdown
       await waitFor(() => {
         expect(screen.getByRole("option", { name: /other-789/i })).toBeInTheDocument()
       })
-      fireEvent.click(screen.getByRole("option", { name: /other-789/i }))
+      act(() => {
+        fireEvent.click(screen.getByRole("option", { name: /other-789/i }))
+      })
 
       // Click save
       await waitFor(() => {
@@ -386,19 +426,23 @@ describe("TaskDetailsDialog", () => {
         ],
       })
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Click on the parent selector
       const parentSelect = screen.getByLabelText(/parent/i)
-      fireEvent.click(parentSelect)
+      act(() => {
+        fireEvent.click(parentSelect)
+      })
 
       // Select "None" from the dropdown
       await waitFor(() => {
         expect(screen.getByRole("option", { name: /^None$/i })).toBeInTheDocument()
       })
-      fireEvent.click(screen.getByRole("option", { name: /^None$/i }))
+      act(() => {
+        fireEvent.click(screen.getByRole("option", { name: /^None$/i }))
+      })
 
       // Click save
       await waitFor(() => {
@@ -422,13 +466,15 @@ describe("TaskDetailsDialog", () => {
         ],
       })
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Click on the parent selector
       const parentSelect = screen.getByLabelText(/parent/i)
-      fireEvent.click(parentSelect)
+      act(() => {
+        fireEvent.click(parentSelect)
+      })
 
       // Valid parent should be in the dropdown
       await waitFor(() => {
@@ -447,7 +493,7 @@ describe("TaskDetailsDialog", () => {
 
   describe("saving", () => {
     it("calls onSave with updated fields when save is clicked", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -467,7 +513,7 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("only includes changed fields in save payload", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -490,7 +536,7 @@ describe("TaskDetailsDialog", () => {
     it("calls onClose after successful save", async () => {
       mockOnSave.mockResolvedValue(undefined)
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -520,7 +566,7 @@ describe("TaskDetailsDialog", () => {
           }),
       )
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -550,7 +596,7 @@ describe("TaskDetailsDialog", () => {
 
   describe("closing", () => {
     it("calls onClose when cancel is clicked", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -563,7 +609,7 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("calls onClose when X button is clicked", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -577,8 +623,8 @@ describe("TaskDetailsDialog", () => {
   })
 
   describe("state reset", () => {
-    it("resets form when task changes", () => {
-      const { rerender } = render(
+    it("resets form when task changes", async () => {
+      const { rerender } = await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -592,9 +638,17 @@ describe("TaskDetailsDialog", () => {
         priority: 1,
       }
 
-      rerender(
-        <TaskDetailsDialog task={newTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
+      await act(async () => {
+        rerender(
+          <TaskDetailsDialog
+            task={newTask}
+            open={true}
+            onClose={mockOnClose}
+            onSave={mockOnSave}
+          />,
+        )
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
 
       expect(screen.getByDisplayValue("New Task")).toBeInTheDocument()
       // Description is rendered as markdown in click-to-edit mode
@@ -603,8 +657,8 @@ describe("TaskDetailsDialog", () => {
   })
 
   describe("click-to-edit description", () => {
-    it("shows description as markdown text by default", () => {
-      render(
+    it("shows description as markdown text by default", async () => {
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -613,14 +667,14 @@ describe("TaskDetailsDialog", () => {
       expect(screen.queryByRole("textbox", { name: /description/i })).not.toBeInTheDocument()
     })
 
-    it("shows placeholder text when description is empty", () => {
+    it("shows placeholder text when description is empty", async () => {
       const taskWithoutDescription: TaskCardTask = {
         id: "test-123",
         title: "Test Task",
         status: "open",
       }
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={taskWithoutDescription}
           open={true}
@@ -633,12 +687,14 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("switches to edit mode when description is clicked", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Click on the description
-      fireEvent.click(screen.getByText("This is a test description"))
+      act(() => {
+        fireEvent.click(screen.getByText("This is a test description"))
+      })
 
       // Now the textarea should appear
       const descInput = await screen.findByRole("textbox", { name: /description/i })
@@ -647,18 +703,22 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("exits edit mode on blur", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Click on the description to enter edit mode
-      fireEvent.click(screen.getByText("This is a test description"))
+      act(() => {
+        fireEvent.click(screen.getByText("This is a test description"))
+      })
 
       const descInput = await screen.findByRole("textbox", { name: /description/i })
       expect(descInput).toBeInTheDocument()
 
       // Blur the textarea
-      fireEvent.blur(descInput)
+      act(() => {
+        fireEvent.blur(descInput)
+      })
 
       // Should exit edit mode and show text again
       await waitFor(() => {
@@ -668,19 +728,23 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("reverts changes on Escape key", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Click on the description to enter edit mode
-      fireEvent.click(screen.getByText("This is a test description"))
+      act(() => {
+        fireEvent.click(screen.getByText("This is a test description"))
+      })
 
       const descInput = await screen.findByRole("textbox", { name: /description/i })
       typeInInput(descInput, "Changed description")
       expect(descInput).toHaveValue("Changed description")
 
       // Press Escape
-      fireEvent.keyDown(descInput, { key: "Escape" })
+      act(() => {
+        fireEvent.keyDown(descInput, { key: "Escape" })
+      })
 
       // Should exit edit mode and show original text
       await waitFor(() => {
@@ -690,18 +754,22 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("preserves changes on blur", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Click on the description to enter edit mode
-      fireEvent.click(screen.getByText("This is a test description"))
+      act(() => {
+        fireEvent.click(screen.getByText("This is a test description"))
+      })
 
       const descInput = await screen.findByRole("textbox", { name: /description/i })
       typeInInput(descInput, "Updated description")
 
       // Blur the textarea
-      fireEvent.blur(descInput)
+      act(() => {
+        fireEvent.blur(descInput)
+      })
 
       // Should exit edit mode and show updated text
       await waitFor(() => {
@@ -713,14 +781,14 @@ describe("TaskDetailsDialog", () => {
       expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
     })
 
-    it("shows 'No description' in read-only mode when description is empty", () => {
+    it("shows 'No description' in read-only mode when description is empty", async () => {
       const taskWithoutDescription: TaskCardTask = {
         id: "test-123",
         title: "Test Task",
         status: "open",
       }
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={taskWithoutDescription}
           open={true}
@@ -742,7 +810,7 @@ describe("TaskDetailsDialog", () => {
 
       mockOnSave.mockResolvedValue(undefined)
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -773,7 +841,7 @@ describe("TaskDetailsDialog", () => {
 
       mockOnSave.mockResolvedValue(undefined)
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -798,7 +866,7 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("does not save on Cmd+Enter when no changes", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -811,7 +879,7 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("does not save on Cmd+Enter in read-only mode", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
           open={true}
@@ -832,7 +900,7 @@ describe("TaskDetailsDialog", () => {
 
   describe("labels", () => {
     it("shows labels section with 'No labels' when task has no labels", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
           open={true}
@@ -868,7 +936,7 @@ describe("TaskDetailsDialog", () => {
         labels: ["urgent", "frontend"],
       }
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={taskWithLabels}
           open={true}
@@ -884,8 +952,8 @@ describe("TaskDetailsDialog", () => {
       })
     })
 
-    it("shows Add label button when not in read-only mode", () => {
-      render(
+    it("shows Add label button when not in read-only mode", async () => {
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
@@ -893,7 +961,7 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("does not show Add label button in read-only mode", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
           open={true}
@@ -912,12 +980,14 @@ describe("TaskDetailsDialog", () => {
     })
 
     it("shows label input when Add label is clicked", async () => {
-      render(
+      await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       const addButton = screen.getByText("Add label")
-      fireEvent.click(addButton)
+      act(() => {
+        fireEvent.click(addButton)
+      })
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText("Label name")).toBeInTheDocument()
@@ -943,7 +1013,7 @@ describe("TaskDetailsDialog", () => {
         labels: ["urgent"],
       }
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={taskWithLabel}
           open={true}
@@ -1000,7 +1070,7 @@ describe("TaskDetailsDialog", () => {
         status: "closed",
       }
 
-      render(
+      await renderAndWait(
         <TaskDetailsDialog
           task={closedTask}
           open={true}

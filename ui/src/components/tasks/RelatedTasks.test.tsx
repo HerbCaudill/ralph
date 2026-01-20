@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { RelatedTasks } from "./RelatedTasks"
 import { TaskDialogProvider } from "@/contexts"
@@ -211,7 +211,9 @@ describe("RelatedTasks", () => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText("Child task"))
+      act(() => {
+        fireEvent.click(screen.getByText("Child task"))
+      })
 
       expect(mockOpenTaskById).toHaveBeenCalledWith("rui-123.1")
     })
@@ -232,7 +234,9 @@ describe("RelatedTasks", () => {
       })
 
       // Click the header to collapse
-      fireEvent.click(screen.getByText("Children (1)"))
+      act(() => {
+        fireEvent.click(screen.getByText("Children (1)"))
+      })
 
       // Task should be hidden after collapse
       expect(screen.queryByText("Child task")).not.toBeInTheDocument()
@@ -252,11 +256,15 @@ describe("RelatedTasks", () => {
       })
 
       // Click to collapse
-      fireEvent.click(screen.getByText("Children (1)"))
+      act(() => {
+        fireEvent.click(screen.getByText("Children (1)"))
+      })
       expect(screen.queryByText("Child task")).not.toBeInTheDocument()
 
       // Click to expand
-      fireEvent.click(screen.getByText("Children (1)"))
+      act(() => {
+        fireEvent.click(screen.getByText("Children (1)"))
+      })
       expect(screen.getByText("Child task")).toBeInTheDocument()
     })
   })

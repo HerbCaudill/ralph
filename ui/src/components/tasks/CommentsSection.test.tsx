@@ -1,10 +1,20 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { CommentsSection, type Comment } from "./CommentsSection"
 
 // Mock fetch
 const mockFetch = vi.fn()
 global.fetch = mockFetch
+
+// Helper to render and wait for async operations to complete
+async function renderAndWait(ui: React.ReactElement) {
+  const result = render(ui)
+  // Wait for fetch to complete (triggered by useEffect)
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
+  return result
+}
 
 // Helper to create mock response with proper headers
 function createMockResponse(data: object, options?: { ok?: boolean; status?: number }) {
@@ -95,7 +105,7 @@ describe("CommentsSection", () => {
     it("shows Comments label", async () => {
       mockFetch.mockResolvedValueOnce(createMockResponse({ ok: true, comments: [] }))
 
-      render(<CommentsSection taskId="rui-123" />)
+      await renderAndWait(<CommentsSection taskId="rui-123" />)
 
       expect(screen.getByText("Comments")).toBeInTheDocument()
     })
@@ -186,8 +196,10 @@ describe("CommentsSection", () => {
         expect(screen.getByPlaceholderText("Add a comment...")).toBeInTheDocument()
       })
 
-      fireEvent.change(screen.getByPlaceholderText("Add a comment..."), {
-        target: { value: "New comment" },
+      act(() => {
+        fireEvent.change(screen.getByPlaceholderText("Add a comment..."), {
+          target: { value: "New comment" },
+        })
       })
 
       expect(screen.getByRole("button", { name: "Add comment" })).not.toBeDisabled()
@@ -220,10 +232,12 @@ describe("CommentsSection", () => {
         }),
       )
 
-      fireEvent.change(screen.getByPlaceholderText("Add a comment..."), {
-        target: { value: "New comment" },
+      act(() => {
+        fireEvent.change(screen.getByPlaceholderText("Add a comment..."), {
+          target: { value: "New comment" },
+        })
+        fireEvent.click(screen.getByRole("button", { name: "Add comment" }))
       })
-      fireEvent.click(screen.getByRole("button", { name: "Add comment" }))
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-123/comments", {
