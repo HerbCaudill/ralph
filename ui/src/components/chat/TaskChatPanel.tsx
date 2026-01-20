@@ -237,6 +237,27 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     wasLoadingRef.current = isLoading
   }, [isLoading])
 
+  // Track timeout for loading state recovery
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clear loading timeout when component unmounts or loading state changes
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+    }
+  }, [])
+
+  // Clear timeout when loading completes
+  useEffect(() => {
+    if (!isLoading && loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current)
+      loadingTimeoutRef.current = null
+    }
+  }, [isLoading])
+
   // Handle sending a message
   const handleSendMessage = useCallback(
     async (message: string) => {
@@ -251,12 +272,38 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       setLoading(true)
       setStreamingText("")
 
+      // Clear any existing timeout
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+      }
+
+      // Set a timeout to recover from stuck loading state
+      // If we don't receive a response within 60 seconds, clear loading state
+      loadingTimeoutRef.current = setTimeout(() => {
+        // Only clear if still loading (check store state directly)
+        if (useAppStore.getState().taskChatLoading) {
+          setLoading(false)
+          setStreamingText("")
+          const timeoutMessage: TaskChatMessage = {
+            id: `error-${Date.now()}`,
+            role: "assistant",
+            content: "Error: Request timed out. Please try again.",
+            timestamp: Date.now(),
+          }
+          addMessage(timeoutMessage)
+        }
+      }, 60000) // 60 second timeout
+
       // Send to server - loading state and response handled via WebSocket events
       const result = await sendTaskChatMessage(message)
 
       if (!result.ok) {
         // API request itself failed (network error, etc.)
         // Server errors come via WebSocket task-chat:error event
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current)
+          loadingTimeoutRef.current = null
+        }
         setLoading(false)
         const errorMessage: TaskChatMessage = {
           id: `error-${Date.now()}`,

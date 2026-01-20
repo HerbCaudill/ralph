@@ -349,4 +349,56 @@ describe("TaskChatPanel", () => {
       expect(screen.getByLabelText("Task chat input")).toBeInTheDocument()
     })
   })
+
+  describe("timeout recovery", () => {
+    it("sets up a timeout when sending a message", async () => {
+      const setTimeoutSpy = vi.spyOn(global, "setTimeout")
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: true, status: "processing" }),
+      })
+
+      render(<TaskChatPanel />)
+      const input = screen.getByRole("textbox")
+
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "Hello" } })
+        fireEvent.submit(input.closest("form")!)
+      })
+
+      // Wait for fetch to complete
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled()
+      })
+
+      // Should have set a 60 second timeout
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60000)
+
+      setTimeoutSpy.mockRestore()
+    })
+
+    it("clears timeout when API returns error", async () => {
+      const clearTimeoutSpy = vi.spyOn(global, "clearTimeout")
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: false, error: "Failed to process" }),
+      })
+
+      render(<TaskChatPanel />)
+      const input = screen.getByRole("textbox")
+
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "Hello" } })
+        fireEvent.submit(input.closest("form")!)
+      })
+
+      // Wait for error to appear
+      await waitFor(() => {
+        expect(screen.getByText(/Error: Failed to process/)).toBeInTheDocument()
+      })
+
+      // Timeout should have been cleared
+      expect(clearTimeoutSpy).toHaveBeenCalled()
+
+      clearTimeoutSpy.mockRestore()
+    })
+  })
 })
