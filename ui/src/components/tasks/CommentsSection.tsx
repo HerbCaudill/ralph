@@ -63,7 +63,9 @@ function CommentItem({ comment }: CommentItemProps) {
           {formatRelativeTime(comment.created_at)}
         </span>
       </div>
-      <MarkdownContent withCodeBlocks={false}>{comment.text}</MarkdownContent>
+      <MarkdownContent className="text-xs" withCodeBlocks={false}>
+        {comment.text}
+      </MarkdownContent>
     </div>
   )
 }
