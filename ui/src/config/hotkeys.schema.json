@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hotkeys Configuration",
+  "description": "Keyboard hotkeys configuration for ralph-ui",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "hotkeys": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/hotkey"
+      }
+    }
+  },
+  "required": ["hotkeys"],
+  "definitions": {
+    "hotkey": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The key to press (e.g., 'Enter', 'a', '1', '.')"
+        },
+        "modifiers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["cmd", "ctrl", "alt", "shift"]
+          },
+          "description": "Modifier keys required. 'cmd' maps to Cmd on Mac and Ctrl on Windows/Linux."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the hotkey action"
+        }
+      },
+      "required": ["key", "modifiers", "description"]
+    }
+  }
+}

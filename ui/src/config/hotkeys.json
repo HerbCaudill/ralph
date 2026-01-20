@@ -1,0 +1,100 @@
+{
+  "$schema": "./hotkeys.schema.json",
+  "hotkeys": {
+    "agentStart": {
+      "key": "Enter",
+      "modifiers": ["cmd"],
+      "description": "Start Ralph agent"
+    },
+    "agentStop": {
+      "key": ".",
+      "modifiers": ["cmd"],
+      "description": "Stop Ralph agent"
+    },
+    "agentPause": {
+      "key": "p",
+      "modifiers": ["cmd", "shift"],
+      "description": "Pause/Resume Ralph agent"
+    },
+    "agentStopAfterCurrent": {
+      "key": ".",
+      "modifiers": ["cmd", "shift"],
+      "description": "Stop after current task"
+    },
+    "toggleSidebar": {
+      "key": "b",
+      "modifiers": ["cmd"],
+      "description": "Toggle sidebar visibility"
+    },
+    "focusSidebar": {
+      "key": "1",
+      "modifiers": ["cmd"],
+      "description": "Focus sidebar"
+    },
+    "focusMain": {
+      "key": "2",
+      "modifiers": ["cmd"],
+      "description": "Focus main content"
+    },
+    "focusTaskInput": {
+      "key": "k",
+      "modifiers": ["cmd"],
+      "description": "Focus quick task input"
+    },
+    "focusChatInput": {
+      "key": "l",
+      "modifiers": ["cmd"],
+      "description": "Focus chat input"
+    },
+    "cycleTheme": {
+      "key": "t",
+      "modifiers": ["cmd", "shift"],
+      "description": "Cycle theme (system → light → dark)"
+    },
+    "showHotkeys": {
+      "key": "/",
+      "modifiers": ["cmd"],
+      "description": "Show keyboard shortcuts"
+    },
+    "toggleInputFocus": {
+      "key": "Tab",
+      "modifiers": [],
+      "description": "Toggle focus between task and chat input"
+    },
+    "toggleTaskChat": {
+      "key": "j",
+      "modifiers": ["cmd"],
+      "description": "Toggle task chat panel"
+    },
+    "focusTaskChatInput": {
+      "key": "3",
+      "modifiers": ["cmd"],
+      "description": "Focus task chat input"
+    },
+    "showCommandPalette": {
+      "key": ";",
+      "modifiers": ["cmd"],
+      "description": "Open command palette"
+    },
+    "previousIteration": {
+      "key": "[",
+      "modifiers": ["cmd"],
+      "description": "Go to previous iteration"
+    },
+    "nextIteration": {
+      "key": "]",
+      "modifiers": ["cmd"],
+      "description": "Go to next iteration"
+    },
+    "latestIteration": {
+      "key": "\\",
+      "modifiers": ["cmd"],
+      "description": "Go to latest iteration"
+    },
+    "focusSearch": {
+      "key": "f",
+      "modifiers": ["cmd"],
+      "description": "Focus task search"
+    }
+  }
+}

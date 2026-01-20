@@ -182,12 +182,40 @@ pnpm format
 # Run ralph locally during development
 tsx src/index.ts [iterations]
 tsx src/index.ts init
+
+# UI development (web interface)
+pnpm ui                # Start UI dev server (frontend + backend)
+pnpm ui:build          # Build UI for production
+pnpm ui:test           # Run UI tests
 ```
+
+## Workspace Structure
+
+This is a pnpm workspace with two packages:
+
+- **Root package** (`@herbcaudill/ralph`) - The CLI tool
+- **`ui/`** (`@herbcaudill/ralph-ui`) - Web interface (Express server + React client)
+
+The UI depends on the CLI via `workspace:*`, so changes to the CLI are immediately available to the UI during development.
+
+### UI Package
+
+The `ui/` directory contains a web interface for Ralph:
+
+- **`ui/server/`** - Express backend that spawns Ralph CLI and streams events via WebSocket
+- **`ui/src/`** - React frontend with real-time event display, task management, and multi-workspace support
+
+Key features:
+
+- Real-time event stream viewer
+- Task sidebar with beads integration
+- Workspace switcher for multiple projects
+- Theme support (VS Code theme integration)
 
 ## Project Structure
 
 ```
-src/
+src/                       # CLI source code
   cli.ts                    # Commander program definition
   index.ts                  # Entry point
   components/
@@ -209,14 +237,20 @@ test/
   e2e/
     ralph.test.ts          # E2E tests for ralph CLI (skipped by default)
   fixtures/                # Test fixtures for E2E tests
-    empty/                 # Empty project (no .ralph)
-    valid-setup/           # Complete .ralph setup
-    incomplete-setup/      # Partial .ralph setup
-    realistic-workflow/    # Realistic todo workflow
   helpers/
     runRalph.ts            # Helper to run ralph binary in tests
 templates/                 # Template files for ralph init
 bin/ralph.js              # Published executable
+ui/                        # Web interface (separate workspace package)
+  server/                   # Express backend
+    index.ts               # Server entry point with REST API + WebSocket
+    RalphManager.ts        # Spawns and manages Ralph CLI process
+    BdProxy.ts             # Proxy for beads CLI commands
+  src/                      # React frontend
+    components/            # UI components (chat, events, tasks, layout)
+    store/                 # Zustand global state
+    hooks/                 # Custom React hooks
+    lib/                   # Utilities and theme management
 ```
 
 ## Important Implementation Details

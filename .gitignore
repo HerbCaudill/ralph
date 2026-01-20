@@ -5,3 +5,10 @@ dist
 .ralph/events.jsonl
 .test-results
 .test-workspace
+
+# UI-specific
+ui/dist
+ui/test-results
+ui/playwright-report
+ui/storybook-static
+ui/.ralph/*.jsonl
