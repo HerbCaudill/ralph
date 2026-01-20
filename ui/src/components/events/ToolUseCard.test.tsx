@@ -439,6 +439,129 @@ describe("ToolUseCard", () => {
     })
   })
 
+  describe("ANSI color output for Bash tool", () => {
+    it("renders ANSI colored output as styled HTML", () => {
+      const ansiOutput = "\x1b[32m✓ test passed\x1b[0m"
+      const { container } = render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "npm test" },
+            output: ansiOutput,
+          })}
+        />,
+      )
+      // Check that the output contains the styled span with green color
+      const span = container.querySelector('span[style*="color:#00cd00"]')
+      expect(span).toBeInTheDocument()
+      expect(span).toHaveTextContent("✓ test passed")
+    })
+
+    it("renders red ANSI color for errors", () => {
+      const ansiOutput = "\x1b[31mERROR: Something went wrong\x1b[0m"
+      const { container } = render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "npm test" },
+            output: ansiOutput,
+          })}
+        />,
+      )
+      const span = container.querySelector('span[style*="color:#cd0000"]')
+      expect(span).toBeInTheDocument()
+      expect(span).toHaveTextContent("ERROR: Something went wrong")
+    })
+
+    it("handles multiple ANSI colors in output", () => {
+      const ansiOutput = "\x1b[32m✓ passed\x1b[0m \x1b[31m✗ failed\x1b[0m"
+      const { container } = render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "npm test" },
+            output: ansiOutput,
+          })}
+        />,
+      )
+      const greenSpan = container.querySelector('span[style*="color:#00cd00"]')
+      const redSpan = container.querySelector('span[style*="color:#cd0000"]')
+      expect(greenSpan).toBeInTheDocument()
+      expect(redSpan).toBeInTheDocument()
+    })
+
+    it("handles bold ANSI styling", () => {
+      const ansiOutput = "\x1b[1mbold text\x1b[0m"
+      const { container } = render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "npm test" },
+            output: ansiOutput,
+          })}
+        />,
+      )
+      const boldSpan = container.querySelector('span[style*="font-weight:bold"]')
+      expect(boldSpan).toBeInTheDocument()
+      expect(boldSpan).toHaveTextContent("bold text")
+    })
+
+    it("falls back to syntax highlighting for non-ANSI output", () => {
+      // Output without ANSI codes - should use syntax highlighting
+      const plainOutput = "simple output"
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: plainOutput,
+          })}
+        />,
+      )
+      expect(screen.getByText("simple output")).toBeInTheDocument()
+    })
+
+    it("truncates long ANSI output and expands on click", () => {
+      // Create output with ANSI codes that exceeds 5 lines
+      const lines = Array.from({ length: 10 }, (_, i) => `\x1b[32m✓\x1b[0m test ${i + 1}`).join(
+        "\n",
+      )
+      const { container } = render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "npm test" },
+            output: lines,
+          })}
+        />,
+      )
+
+      // Should show truncation indicator
+      expect(screen.getByText(/\.\.\. \+5 lines/)).toBeInTheDocument()
+
+      // First few lines should be visible
+      expect(screen.getByText(/test 1/)).toBeInTheDocument()
+
+      // Line 10 should not be visible
+      expect(screen.queryByText(/test 10/)).not.toBeInTheDocument()
+
+      // Click to expand
+      const pre = container.querySelector("pre")
+      fireEvent.click(pre!)
+
+      // All lines should now be visible
+      expect(screen.getByText(/test 10/)).toBeInTheDocument()
+    })
+
+    it("escapes HTML in ANSI output to prevent XSS", () => {
+      const ansiOutput = "\x1b[32m<script>alert('xss')</script>\x1b[0m"
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "test" },
+            output: ansiOutput,
+          })}
+        />,
+      )
+      // Should show escaped HTML, not render as script
+      expect(screen.getByText("<script>alert('xss')</script>")).toBeInTheDocument()
+    })
+  })
+
   describe("relative path display", () => {
     it("shows relative path when file is within workspace", () => {
       useAppStore.getState().setWorkspace("/Users/herbcaudill/Code/HerbCaudill/ralph-ui")

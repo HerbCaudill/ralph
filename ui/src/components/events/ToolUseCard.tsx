@@ -1,4 +1,4 @@
-import { cn, toRelativePath } from "@/lib/utils"
+import { cn, toRelativePath, ansiToHtml, hasAnsiCodes, stripAnsi } from "@/lib/utils"
 import { useState, useEffect, useMemo } from "react"
 import { useAppStore, selectWorkspace } from "@/store"
 import { TaskIdLink } from "@/components/ui/TaskIdLink"
@@ -462,6 +462,71 @@ function getPreviewInfo(content: string): { preview: string; remainingLines: num
   }
 }
 
+/**
+ * AnsiOutput component for displaying terminal output with ANSI color codes.
+ * Falls back to syntax highlighting if no ANSI codes are present.
+ */
+function AnsiOutput({
+  code,
+  isExpanded,
+  onExpand,
+  className,
+}: {
+  code: string
+  isExpanded: boolean
+  onExpand?: () => void
+  className?: string
+}) {
+  const containsAnsi = useMemo(() => hasAnsiCodes(code), [code])
+
+  // For line counting, strip ANSI codes first
+  const strippedCode = useMemo(() => (containsAnsi ? stripAnsi(code) : code), [code, containsAnsi])
+  const { remainingLines } = useMemo(() => getPreviewInfo(strippedCode), [strippedCode])
+
+  // Get preview that preserves ANSI codes
+  const { preview: rawPreview } = useMemo(() => getPreviewInfo(code), [code])
+  const displayCode = isExpanded ? code : rawPreview
+
+  const shouldTruncate = !isExpanded && remainingLines > 0
+
+  // If no ANSI codes, fall back to syntax highlighting
+  if (!containsAnsi) {
+    return (
+      <HighlightedCodeOutput
+        code={code}
+        language="bash"
+        isExpanded={isExpanded}
+        onExpand={onExpand}
+        className={className}
+      />
+    )
+  }
+
+  // Convert ANSI to HTML
+  const html = useMemo(() => ansiToHtml(displayCode), [displayCode])
+
+  return (
+    <div
+      onClick={shouldTruncate ? onExpand : undefined}
+      className={cn(
+        "bg-muted/30 mt-1 overflow-hidden rounded border",
+        shouldTruncate && "cursor-pointer",
+        className,
+      )}
+    >
+      <pre
+        className="overflow-auto p-2 font-mono text-xs whitespace-pre-wrap"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      {shouldTruncate && (
+        <div className="text-muted-foreground border-t px-2 py-1 text-xs">
+          ... +{remainingLines} lines
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ToolUseCard Component
 
 export function ToolUseCard({ event, className, defaultExpanded = false }: ToolUseCardProps) {
@@ -546,11 +611,10 @@ export function ToolUseCard({ event, className, defaultExpanded = false }: ToolU
               {/* Output summary for Read */}
               {outputSummary && <span>{outputSummary}</span>}
 
-              {/* Bash output */}
+              {/* Bash output - supports ANSI color codes */}
               {event.tool === "Bash" && event.output && (
-                <HighlightedCodeOutput
+                <AnsiOutput
                   code={event.output}
-                  language="bash"
                   isExpanded={isExpanded}
                   onExpand={() => setIsExpanded(true)}
                 />
