@@ -2,6 +2,7 @@ import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
 import { EventEmitter } from "node:events"
 import { loadSystemPrompt } from "./systemPrompt.js"
 import type { BdProxy } from "./BdProxy.js"
+import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 
 // Types
 
@@ -63,6 +64,7 @@ export class TaskChatManager extends EventEmitter {
   private buffer = ""
   private currentResponse = ""
   private cancelled = false
+  private abortController: AbortController | null = null
   private getBdProxy: GetBdProxyFn | undefined
   private options: {
     command: string
@@ -128,6 +130,7 @@ export class TaskChatManager extends EventEmitter {
 
     this.setStatus("processing")
     this.cancelled = false
+    this.currentResponse = ""
 
     // Add user message to history
     const userMsg: TaskChatMessage = {
@@ -158,9 +161,9 @@ export class TaskChatManager extends EventEmitter {
       const timeoutMs = this.options.timeout
       const timeoutMinutes = Math.round(timeoutMs / 60000)
       const timeoutTimer = setTimeout(() => {
-        if (this.process) {
-          this.process.kill("SIGKILL")
-          this.process = null
+        if (this.abortController) {
+          this.abortController.abort()
+          this.abortController = null
         }
         const err = new Error(`Request timed out after ${timeoutMinutes} minutes`)
         this.setStatus("idle")
@@ -170,64 +173,57 @@ export class TaskChatManager extends EventEmitter {
 
       const cleanup = () => {
         clearTimeout(timeoutTimer)
+        this.abortController = null
       }
 
-      try {
-        // Spawn Claude CLI in print mode with streaming JSON output
-        // Note: --verbose is required for stream-json output to work with --print
-        const args = [
-          "--print",
-          "--verbose",
-          "--output-format",
-          "stream-json",
-          "--model",
-          this.options.model,
-          "--system-prompt",
-          systemPrompt,
-          // Disable tools for task chat - it should only provide information and guidance
-          "--tools",
-          "",
-          conversationPrompt,
-        ]
+      // Use SDK query() instead of spawning CLI
+      ;(async () => {
+        try {
+          this.abortController = new AbortController()
+          let hasError = false
+          let errorMessage = ""
 
-        this.process = this.options.spawn(this.options.command, args, {
-          cwd: this.options.cwd,
-          env: { ...process.env, ...this.options.env },
-          stdio: ["pipe", "pipe", "pipe"],
-        })
+          for await (const message of query({
+            prompt: conversationPrompt,
+            options: {
+              model: this.options.model,
+              cwd: this.options.cwd,
+              env: this.options.env,
+              systemPrompt,
+              tools: [], // No tools for task chat
+              permissionMode: "bypassPermissions",
+              allowDangerouslySkipPermissions: true,
+              includePartialMessages: true, // Enable streaming
+              maxTurns: 1, // Single turn for task chat
+              abortController: this.abortController,
+            },
+          })) {
+            // If cancelled, stop processing
+            if (this.cancelled) {
+              break
+            }
 
-        this.buffer = ""
-        this.currentResponse = ""
+            // Check if this is an error result
+            if (message.type === "result" && message.subtype === "error") {
+              hasError = true
+              errorMessage = message.errors?.join(", ") || "Unknown error"
+            }
 
-        this.process.on("error", err => {
-          cleanup()
-          this.process = null
-          this.setStatus("error")
-          this.emit("error", err)
-          reject(err)
-        })
-
-        this.process.on("exit", (code, signal) => {
-          cleanup()
-          this.process = null
-
-          // If cancelled, resolve with whatever response we have (might be empty)
-          if (this.cancelled) {
-            this.setStatus("idle")
-            resolve(this.currentResponse)
-            return
+            // Handle different SDK message types
+            this.handleSDKMessage(message)
           }
 
-          // If exited with non-zero code and no response, treat as error
-          if (code !== null && code !== 0 && !this.currentResponse) {
-            const err = new Error(`Claude exited with code ${code}, signal ${signal}`)
+          // If we got an error result, reject
+          if (hasError) {
+            cleanup()
             this.setStatus("error")
+            const err = new Error(errorMessage)
             this.emit("error", err)
             reject(err)
             return
           }
 
-          // Add assistant message to history
+          // After iteration completes, add assistant message to history
           if (this.currentResponse) {
             const assistantMsg: TaskChatMessage = {
               role: "assistant",
@@ -238,29 +234,16 @@ export class TaskChatManager extends EventEmitter {
             this.emit("message", assistantMsg)
           }
 
+          cleanup()
           this.setStatus("idle")
           resolve(this.currentResponse)
-        })
-
-        // Handle stdout - parse streaming JSON
-        this.process.stdout?.on("data", (data: Buffer) => {
-          this.handleStdout(data)
-        })
-
-        // Handle stderr - emit as errors (but don't fail)
-        this.process.stderr?.on("data", (data: Buffer) => {
-          const message = data.toString().trim()
-          if (message) {
-            // Log but don't fail - stderr often has warnings
-            console.error("[task-chat] stderr:", message)
-          }
-        })
-      } catch (err) {
-        cleanup()
-        this.process = null
-        this.setStatus("idle")
-        reject(err)
-      }
+        } catch (err) {
+          cleanup()
+          this.setStatus("error")
+          this.emit("error", err)
+          reject(err)
+        }
+      })()
     })
   }
 
@@ -268,10 +251,14 @@ export class TaskChatManager extends EventEmitter {
    * Cancel the current request if one is in progress.
    */
   cancel(): void {
-    if (this.process) {
+    if (this.abortController) {
+      this.cancelled = true
+      this.abortController.abort()
+      this.setStatus("idle")
+    } else if (this.process) {
+      // Fallback for legacy process-based implementation
       this.cancelled = true
       this.process.kill("SIGTERM")
-      // Note: process will be set to null by the exit handler
       this.setStatus("idle")
     }
   }
@@ -431,6 +418,72 @@ export class TaskChatManager extends EventEmitter {
       this.emit("event", event)
     } catch {
       // Not valid JSON - might be raw output, ignore
+    }
+  }
+
+  /**
+   * Handle SDK message from query() and emit appropriate events.
+   */
+  private handleSDKMessage(message: SDKMessage): void {
+    switch (message.type) {
+      case "stream_event":
+        // Handle streaming chunks
+        if (message.event.type === "content_block_delta") {
+          const delta = message.event.delta
+          if (delta.type === "text_delta" && delta.text) {
+            this.currentResponse += delta.text
+            this.emit("chunk", delta.text)
+          }
+        }
+        // Emit the event as a task chat event for compatibility
+        this.emit("event", {
+          type: message.event.type,
+          timestamp: Date.now(),
+          ...message.event,
+        })
+        break
+
+      case "assistant":
+        // Complete assistant message
+        if (message.message?.content) {
+          for (const block of message.message.content) {
+            if (block.type === "text" && block.text) {
+              this.currentResponse = block.text
+              this.emit("chunk", block.text)
+            }
+          }
+        }
+        // Emit as task chat event
+        this.emit("event", {
+          type: "assistant",
+          timestamp: Date.now(),
+          message: message.message,
+        })
+        break
+
+      case "result":
+        // Final result
+        if (message.subtype === "success" && message.result) {
+          this.currentResponse = message.result
+        }
+        // Note: error results are handled in sendMessage() to properly reject the promise
+        // Emit as task chat event
+        this.emit("event", {
+          type: "result",
+          timestamp: Date.now(),
+          result: message.subtype === "success" ? message.result : undefined,
+          error: message.subtype === "error" ? message.errors?.join(", ") : undefined,
+        })
+        break
+
+      default:
+        // Emit other message types as events
+        this.emit("event", {
+          type: message.type,
+          timestamp: Date.now(),
+          ...message,
+        })
+        break
     }
   }
 
