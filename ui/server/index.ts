@@ -10,6 +10,7 @@ import { BdProxy, type BdCreateOptions } from "./BdProxy.js"
 import { getAliveWorkspaces } from "./registry.js"
 import { getEventLogStore, type EventLogMetadata } from "./EventLogStore.js"
 import { TaskChatManager, type TaskChatMessage, type TaskChatStatus } from "./TaskChatManager.js"
+import { TaskTitlingService } from "./TaskTitlingService.js"
 import { getThemeDiscovery } from "./ThemeDiscovery.js"
 import { parseThemeObject } from "./lib/theme/parser.js"
 import { mapThemeToCSSVariables, createAppTheme } from "./lib/theme/mapper.js"
@@ -403,6 +404,17 @@ function createApp(config: ServerConfig): Express {
       if (labels) options.labels = labels
 
       const issue = await bdProxy.create(options)
+
+      // Only auto-title if this was created via quick input (title-only, no description)
+      // and the title is long enough to potentially benefit from parsing
+      const isQuickInput = !description && !priority && !type && !assignee && !parent && !labels
+      if (isQuickInput && title.trim().length > 0) {
+        // Fire and forget - don't block the response
+        autoTitleTask(issue.id, title.trim()).catch(err => {
+          console.error("[task-titling] Error auto-titling task:", err)
+        })
+      }
+
       res.status(201).json({ ok: true, issue })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create task"
@@ -1230,6 +1242,80 @@ export function resetTaskChatManager(): void {
   if (taskChatManager) {
     taskChatManager.removeAllListeners()
     taskChatManager = null
+  }
+}
+
+// TaskTitlingService Integration
+
+// Singleton TaskTitlingService instance
+let taskTitlingService: TaskTitlingService | null = null
+
+/**
+ * Get the singleton TaskTitlingService instance, creating it if needed.
+ */
+export function getTaskTitlingService(): TaskTitlingService {
+  if (!taskTitlingService) {
+    taskTitlingService = new TaskTitlingService({
+      model: "haiku", // Fast and cheap for title extraction
+      timeout: 30000, // 30 second timeout
+    })
+  }
+  return taskTitlingService
+}
+
+/**
+ * Reset the TaskTitlingService singleton (for testing).
+ */
+export function resetTaskTitlingService(): void {
+  if (taskTitlingService) {
+    taskTitlingService.removeAllListeners()
+    taskTitlingService = null
+  }
+}
+
+/**
+ * Auto-title a task in the background using Claude.
+ * Parses the task text to extract a concise title and detailed description.
+ * Updates the task via bd proxy and broadcasts the update via WebSocket.
+ */
+async function autoTitleTask(taskId: string, taskText: string): Promise<void> {
+  try {
+    const titlingService = getTaskTitlingService()
+    const result = await titlingService.parseTask(taskText)
+
+    // Only update if the title or description changed
+    const titleChanged = result.title !== taskText
+    const hasDescription = result.description.length > 0
+
+    if (!titleChanged && !hasDescription) {
+      // No changes needed
+      return
+    }
+
+    // Update the task with refined title and description
+    const bdProxy = getBdProxy()
+    const updateOptions: { title?: string; description?: string } = {}
+
+    if (titleChanged) {
+      updateOptions.title = result.title
+    }
+    if (hasDescription) {
+      updateOptions.description = result.description
+    }
+
+    const updatedIssues = await bdProxy.update(taskId, updateOptions)
+
+    if (updatedIssues.length > 0) {
+      // Broadcast the update via WebSocket so the UI updates in real-time
+      broadcast({
+        type: "task:updated",
+        issue: updatedIssues[0],
+        timestamp: Date.now(),
+      })
+    }
+  } catch (err) {
+    // Log but don't throw - this is a background operation
+    console.error(`[task-titling] Failed to auto-title task ${taskId}:`, err)
   }
 }
 

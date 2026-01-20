@@ -155,6 +155,15 @@ function handleMessage(event: MessageEvent): void {
         // Ping response, ignore
         break
 
+      // Task update events
+      case "task:updated":
+        // Task was updated (e.g., via auto-titling) - update in store
+        if (data.issue && typeof data.issue === "object") {
+          const task = data.issue as { id: string; [key: string]: unknown }
+          store.updateTask(task.id, task)
+        }
+        break
+
       // Task chat events
       case "task-chat:message":
         // Complete assistant message received
