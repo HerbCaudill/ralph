@@ -508,10 +508,10 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
     }
   }, [events, autoScroll, isViewingLatest])
 
-  // Scroll to top when navigating to a different iteration
+  // Scroll to bottom when navigating to a different iteration
   useEffect(() => {
     if (!isViewingLatest && containerRef.current) {
-      containerRef.current.scrollTop = 0
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [viewingIterationIndex, isViewingLatest])
 
