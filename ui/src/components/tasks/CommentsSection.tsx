@@ -148,10 +148,8 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-      const modifierPressed = isMac ? e.metaKey : e.ctrlKey
-
-      if (modifierPressed && e.key === "Enter" && newComment.trim() && !isSubmitting) {
+      // Enter submits, Shift+Enter adds a line break
+      if (e.key === "Enter" && !e.shiftKey && newComment.trim() && !isSubmitting) {
         e.preventDefault()
         handleAddComment()
       }
@@ -191,7 +189,7 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
             value={newComment}
             onChange={e => setNewComment(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Add a comment..."
+            placeholder="Add a comment (Enter to submit, Shift+Enter for new line)..."
             rows={2}
             disabled={isSubmitting}
             className="resize-none"

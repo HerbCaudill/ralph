@@ -164,7 +164,11 @@ describe("CommentsSection", () => {
         expect(screen.getByText("Alice")).toBeInTheDocument()
       })
 
-      expect(screen.queryByPlaceholderText("Add a comment...")).not.toBeInTheDocument()
+      expect(
+        screen.queryByPlaceholderText(
+          "Add a comment (Enter to submit, Shift+Enter for new line)...",
+        ),
+      ).not.toBeInTheDocument()
       expect(screen.queryByRole("button", { name: "Add comment" })).not.toBeInTheDocument()
     })
   })
@@ -176,7 +180,11 @@ describe("CommentsSection", () => {
       render(<CommentsSection taskId="rui-123" />)
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText("Add a comment...")).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText(
+            "Add a comment (Enter to submit, Shift+Enter for new line)...",
+          ),
+        ).toBeInTheDocument()
       })
       expect(screen.getByRole("button", { name: "Add comment" })).toBeInTheDocument()
     })
@@ -197,13 +205,22 @@ describe("CommentsSection", () => {
       render(<CommentsSection taskId="rui-123" />)
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText("Add a comment...")).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText(
+            "Add a comment (Enter to submit, Shift+Enter for new line)...",
+          ),
+        ).toBeInTheDocument()
       })
 
       act(() => {
-        fireEvent.change(screen.getByPlaceholderText("Add a comment..."), {
-          target: { value: "New comment" },
-        })
+        fireEvent.change(
+          screen.getByPlaceholderText(
+            "Add a comment (Enter to submit, Shift+Enter for new line)...",
+          ),
+          {
+            target: { value: "New comment" },
+          },
+        )
       })
 
       expect(screen.getByRole("button", { name: "Add comment" })).not.toBeDisabled()
@@ -216,7 +233,11 @@ describe("CommentsSection", () => {
       render(<CommentsSection taskId="rui-123" />)
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText("Add a comment...")).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText(
+            "Add a comment (Enter to submit, Shift+Enter for new line)...",
+          ),
+        ).toBeInTheDocument()
       })
 
       // Setup mock for POST and subsequent GET
@@ -237,9 +258,14 @@ describe("CommentsSection", () => {
       )
 
       act(() => {
-        fireEvent.change(screen.getByPlaceholderText("Add a comment..."), {
-          target: { value: "New comment" },
-        })
+        fireEvent.change(
+          screen.getByPlaceholderText(
+            "Add a comment (Enter to submit, Shift+Enter for new line)...",
+          ),
+          {
+            target: { value: "New comment" },
+          },
+        )
         fireEvent.click(screen.getByRole("button", { name: "Add comment" }))
       })
 
@@ -282,6 +308,123 @@ describe("CommentsSection", () => {
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-456/comments")
       })
+    })
+  })
+
+  describe("keyboard shortcuts", () => {
+    it("submits comment when Enter is pressed", async () => {
+      mockFetch.mockResolvedValueOnce(createMockResponse({ ok: true, comments: [] }))
+
+      render(<CommentsSection taskId="rui-123" />)
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText(
+            "Add a comment (Enter to submit, Shift+Enter for new line)...",
+          ),
+        ).toBeInTheDocument()
+      })
+
+      const textarea = screen.getByPlaceholderText(
+        "Add a comment (Enter to submit, Shift+Enter for new line)...",
+      )
+
+      // Setup mock for POST and subsequent GET
+      mockFetch.mockResolvedValueOnce(createMockResponse({ ok: true }))
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          comments: [
+            {
+              id: 3,
+              issue_id: "rui-123",
+              author: "Test User",
+              text: "New comment",
+              created_at: new Date().toISOString(),
+            },
+          ],
+        }),
+      )
+
+      act(() => {
+        fireEvent.change(textarea, { target: { value: "New comment" } })
+        fireEvent.keyDown(textarea, { key: "Enter", code: "Enter", shiftKey: false })
+      })
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-123/comments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ comment: "New comment" }),
+        })
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText("New comment")).toBeInTheDocument()
+      })
+    })
+
+    it("does not submit comment when Shift+Enter is pressed", async () => {
+      mockFetch.mockResolvedValueOnce(createMockResponse({ ok: true, comments: [] }))
+
+      render(<CommentsSection taskId="rui-123" />)
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText(
+            "Add a comment (Enter to submit, Shift+Enter for new line)...",
+          ),
+        ).toBeInTheDocument()
+      })
+
+      const textarea = screen.getByPlaceholderText(
+        "Add a comment (Enter to submit, Shift+Enter for new line)...",
+      )
+
+      act(() => {
+        fireEvent.change(textarea, { target: { value: "New comment" } })
+        fireEvent.keyDown(textarea, { key: "Enter", code: "Enter", shiftKey: true })
+      })
+
+      // Wait a bit to ensure no POST request is made
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      })
+
+      // Should not have made a POST request (only the initial GET)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-123/comments")
+    })
+
+    it("does not submit empty comment when Enter is pressed", async () => {
+      mockFetch.mockResolvedValueOnce(createMockResponse({ ok: true, comments: [] }))
+
+      render(<CommentsSection taskId="rui-123" />)
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText(
+            "Add a comment (Enter to submit, Shift+Enter for new line)...",
+          ),
+        ).toBeInTheDocument()
+      })
+
+      const textarea = screen.getByPlaceholderText(
+        "Add a comment (Enter to submit, Shift+Enter for new line)...",
+      )
+
+      act(() => {
+        fireEvent.keyDown(textarea, { key: "Enter", code: "Enter", shiftKey: false })
+      })
+
+      // Wait a bit to ensure no POST request is made
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      })
+
+      // Should not have made a POST request (only the initial GET)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-123/comments")
     })
   })
 })
