@@ -348,4 +348,144 @@ describe("TaskCard", () => {
       expect(container.firstChild).not.toHaveClass("animate-pulse")
     })
   })
+
+  describe("epic with subtasks", () => {
+    const epicTask: TaskCardTask = {
+      ...baseTask,
+      issue_type: "epic",
+      title: "Epic task with subtasks",
+    }
+
+    it("displays chevron button when epic has subtasks and onToggleCollapse is provided", () => {
+      const onToggleCollapse = vi.fn()
+      render(<TaskCard task={epicTask} onToggleCollapse={onToggleCollapse} subtaskCount={3} />)
+
+      expect(screen.getByLabelText("Collapse subtasks")).toBeInTheDocument()
+    })
+
+    it("does not display chevron when epic has no subtasks", () => {
+      const onToggleCollapse = vi.fn()
+      render(<TaskCard task={epicTask} onToggleCollapse={onToggleCollapse} subtaskCount={0} />)
+
+      expect(screen.queryByLabelText("Collapse subtasks")).not.toBeInTheDocument()
+      expect(screen.queryByLabelText("Expand subtasks")).not.toBeInTheDocument()
+    })
+
+    it("does not display chevron when onToggleCollapse is not provided", () => {
+      render(<TaskCard task={epicTask} subtaskCount={3} />)
+
+      expect(screen.queryByLabelText("Collapse subtasks")).not.toBeInTheDocument()
+      expect(screen.queryByLabelText("Expand subtasks")).not.toBeInTheDocument()
+    })
+
+    it("displays subtask count badge", () => {
+      const onToggleCollapse = vi.fn()
+      render(<TaskCard task={epicTask} onToggleCollapse={onToggleCollapse} subtaskCount={5} />)
+
+      expect(screen.getByLabelText("5 subtasks")).toBeInTheDocument()
+      expect(screen.getByText("5")).toBeInTheDocument()
+    })
+
+    it("calls onToggleCollapse when chevron is clicked", () => {
+      const onToggleCollapse = vi.fn()
+      render(<TaskCard task={epicTask} onToggleCollapse={onToggleCollapse} subtaskCount={3} />)
+
+      const chevron = screen.getByLabelText("Collapse subtasks")
+      fireEvent.click(chevron)
+
+      expect(onToggleCollapse).toHaveBeenCalledTimes(1)
+    })
+
+    it("calls onClick when epic content area is clicked, not onToggleCollapse", () => {
+      const onClick = vi.fn()
+      const onToggleCollapse = vi.fn()
+      render(
+        <TaskCard
+          task={epicTask}
+          onClick={onClick}
+          onToggleCollapse={onToggleCollapse}
+          subtaskCount={3}
+        />,
+      )
+
+      // Click on the content area (not the chevron)
+      const contentButton = screen.getByRole("button", { name: epicTask.title })
+      fireEvent.click(contentButton)
+
+      // Should call onClick to open details dialog
+      expect(onClick).toHaveBeenCalledWith(epicTask.id)
+      // Should NOT call onToggleCollapse
+      expect(onToggleCollapse).not.toHaveBeenCalled()
+    })
+
+    it("chevron click does not trigger onClick", () => {
+      const onClick = vi.fn()
+      const onToggleCollapse = vi.fn()
+      render(
+        <TaskCard
+          task={epicTask}
+          onClick={onClick}
+          onToggleCollapse={onToggleCollapse}
+          subtaskCount={3}
+        />,
+      )
+
+      // Click on the chevron
+      const chevron = screen.getByLabelText("Collapse subtasks")
+      fireEvent.click(chevron)
+
+      // Should call onToggleCollapse
+      expect(onToggleCollapse).toHaveBeenCalledTimes(1)
+      // Should NOT call onClick
+      expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it("changes chevron aria-label and rotation when collapsed", () => {
+      const onToggleCollapse = vi.fn()
+      const { rerender } = render(
+        <TaskCard
+          task={epicTask}
+          onToggleCollapse={onToggleCollapse}
+          subtaskCount={3}
+          isCollapsed={false}
+        />,
+      )
+
+      let chevron = screen.getByLabelText("Collapse subtasks")
+      expect(chevron).toHaveAttribute("aria-expanded", "true")
+
+      // Rerender with collapsed state
+      rerender(
+        <TaskCard
+          task={epicTask}
+          onToggleCollapse={onToggleCollapse}
+          subtaskCount={3}
+          isCollapsed={true}
+        />,
+      )
+
+      chevron = screen.getByLabelText("Expand subtasks")
+      expect(chevron).toHaveAttribute("aria-expanded", "false")
+    })
+
+    it("supports keyboard navigation on chevron with Enter", () => {
+      const onToggleCollapse = vi.fn()
+      render(<TaskCard task={epicTask} onToggleCollapse={onToggleCollapse} subtaskCount={3} />)
+
+      const chevron = screen.getByLabelText("Collapse subtasks")
+      fireEvent.keyDown(chevron, { key: "Enter" })
+
+      expect(onToggleCollapse).toHaveBeenCalledTimes(1)
+    })
+
+    it("supports keyboard navigation on chevron with Space", () => {
+      const onToggleCollapse = vi.fn()
+      render(<TaskCard task={epicTask} onToggleCollapse={onToggleCollapse} subtaskCount={3} />)
+
+      const chevron = screen.getByLabelText("Collapse subtasks")
+      fireEvent.keyDown(chevron, { key: " " })
+
+      expect(onToggleCollapse).toHaveBeenCalledTimes(1)
+    })
+  })
 })

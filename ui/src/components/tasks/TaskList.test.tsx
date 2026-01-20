@@ -682,6 +682,67 @@ describe("TaskList", () => {
       expect(taskTitles[0]).toContain("High Priority Epic")
       expect(taskTitles[1]).toContain("Low Priority Epic")
     })
+
+    it("calls onTaskClick when epic card content is clicked", () => {
+      const onTaskClick = vi.fn()
+      render(
+        <TaskList tasks={tasksWithEpic} onTaskClick={onTaskClick} persistCollapsedState={false} />,
+      )
+
+      // Click on the epic card content (not the chevron)
+      const epicButton = screen.getByRole("button", { name: "Epic with tasks" })
+      fireEvent.click(epicButton)
+
+      // Should call onTaskClick with epic ID
+      expect(onTaskClick).toHaveBeenCalledWith("epic-1")
+      expect(onTaskClick).toHaveBeenCalledTimes(1)
+    })
+
+    it("clicking chevron does not call onTaskClick", () => {
+      const onTaskClick = vi.fn()
+      render(
+        <TaskList tasks={tasksWithEpic} onTaskClick={onTaskClick} persistCollapsedState={false} />,
+      )
+
+      // Click on the chevron button
+      const chevronButton = screen.getByLabelText("Collapse subtasks")
+      fireEvent.click(chevronButton)
+
+      // Should NOT call onTaskClick
+      expect(onTaskClick).not.toHaveBeenCalled()
+
+      // But should collapse the subtasks
+      expect(screen.queryByText("Child task 1")).not.toBeInTheDocument()
+    })
+
+    it("allows clicking epic to open details and chevron to toggle subtasks independently", () => {
+      const onTaskClick = vi.fn()
+      render(
+        <TaskList tasks={tasksWithEpic} onTaskClick={onTaskClick} persistCollapsedState={false} />,
+      )
+
+      // First, click the epic content to open details
+      const epicButton = screen.getByRole("button", { name: "Epic with tasks" })
+      fireEvent.click(epicButton)
+      expect(onTaskClick).toHaveBeenCalledWith("epic-1")
+      expect(onTaskClick).toHaveBeenCalledTimes(1)
+
+      // Subtasks should still be visible (clicking epic doesn't collapse them)
+      expect(screen.getByText("Child task 1")).toBeInTheDocument()
+
+      // Reset the mock
+      onTaskClick.mockClear()
+
+      // Now click the chevron to collapse subtasks
+      const chevronButton = screen.getByLabelText("Collapse subtasks")
+      fireEvent.click(chevronButton)
+
+      // Should NOT call onTaskClick again
+      expect(onTaskClick).not.toHaveBeenCalled()
+
+      // But should collapse the subtasks
+      expect(screen.queryByText("Child task 1")).not.toBeInTheDocument()
+    })
   })
 
   describe("closed tasks time filter", () => {

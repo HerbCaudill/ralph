@@ -178,6 +178,66 @@ export const LongTitle: Story = {
   },
 }
 
+export const EpicWithSubtasks: Story = {
+  args: {
+    task: {
+      id: "rui-epic-1",
+      title: "User authentication epic",
+      status: "in_progress",
+      priority: 1,
+      issue_type: "epic",
+    },
+    onToggleCollapse: fn(),
+    subtaskCount: 5,
+    isCollapsed: false,
+  },
+}
+
+export const EpicWithSubtasksCollapsed: Story = {
+  args: {
+    task: {
+      id: "rui-epic-1",
+      title: "User authentication epic",
+      status: "in_progress",
+      priority: 1,
+      issue_type: "epic",
+    },
+    onToggleCollapse: fn(),
+    subtaskCount: 5,
+    isCollapsed: true,
+  },
+}
+
+export const BugType: Story = {
+  args: {
+    task: {
+      ...baseTask,
+      issue_type: "bug",
+      title: "Fix login redirect bug",
+    },
+  },
+}
+
+export const FeatureType: Story = {
+  args: {
+    task: {
+      ...baseTask,
+      issue_type: "feature",
+      title: "Add dark mode support",
+    },
+  },
+}
+
+export const EpicType: Story = {
+  args: {
+    task: {
+      ...baseTask,
+      issue_type: "epic",
+      title: "Redesign user interface",
+    },
+  },
+}
+
 export const AllStatuses: Story = {
   render: () => (
     <div className="space-y-0">
