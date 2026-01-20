@@ -53,9 +53,9 @@ export interface TaskCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>
   isNew?: boolean
   /** For epics with subtasks: whether the subtasks are collapsed */
   isCollapsed?: boolean
-  /** For epics with subtasks: callback when collapse/expand is toggled */
+  /** For parent tasks with subtasks: callback when collapse/expand is toggled */
   onToggleCollapse?: () => void
-  /** For epics: number of subtasks */
+  /** For parent tasks: number of subtasks */
   subtaskCount?: number
 }
 
@@ -260,7 +260,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     [onToggleCollapse],
   )
 
-  const hasSubtasks = task.issue_type === "epic" && subtaskCount > 0
+  const hasSubtasks = subtaskCount > 0
   const showChevron = hasSubtasks && onToggleCollapse
 
   return (

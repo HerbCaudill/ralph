@@ -1111,4 +1111,76 @@ describe("TaskList", () => {
       expect(newTask2Element).toBeInTheDocument()
     })
   })
+
+  describe("non-epic parent tasks", () => {
+    it("groups regular tasks with children under parent in same status", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "parent-1", title: "Parent task", status: "open", issue_type: "task" },
+        { id: "parent-1.1", title: "Subtask 1", status: "open", parent: "parent-1" },
+        { id: "parent-1.2", title: "Subtask 2", status: "open", parent: "parent-1" },
+      ]
+
+      render(<TaskList tasks={tasks} />)
+
+      // All should be in Ready group (parent + 2 subtasks = 3 tasks)
+      expect(screen.getByText("Ready")).toBeInTheDocument()
+      expect(screen.getByText("Parent task")).toBeInTheDocument()
+      expect(screen.getByText("Subtask 1")).toBeInTheDocument()
+      expect(screen.getByText("Subtask 2")).toBeInTheDocument()
+    })
+
+    it("allows toggling non-epic parent tasks", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "parent-1", title: "Parent task", status: "open", issue_type: "task" },
+        { id: "parent-1.1", title: "Child 1", status: "open", parent: "parent-1" },
+        { id: "parent-1.2", title: "Child 2", status: "open", parent: "parent-1" },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // Parent should be visible
+      expect(screen.getByText("Parent task")).toBeInTheDocument()
+
+      // Children should be visible initially
+      expect(screen.getByText("Child 1")).toBeInTheDocument()
+      expect(screen.getByText("Child 2")).toBeInTheDocument()
+
+      // Find the collapse button by aria-label
+      const collapseButton = screen.getByLabelText("Collapse subtasks")
+
+      // Click chevron to collapse
+      fireEvent.click(collapseButton)
+
+      // Children should be hidden
+      expect(screen.queryByText("Child 1")).not.toBeInTheDocument()
+      expect(screen.queryByText("Child 2")).not.toBeInTheDocument()
+
+      // Click again to expand
+      const expandButton = screen.getByLabelText("Expand subtasks")
+      fireEvent.click(expandButton)
+
+      // Children should be visible again
+      expect(screen.getByText("Child 1")).toBeInTheDocument()
+      expect(screen.getByText("Child 2")).toBeInTheDocument()
+    })
+
+    it("shows subtask count badge for non-epic parent tasks", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "parent-1", title: "Parent with 3 children", status: "open", issue_type: "task" },
+        { id: "parent-1.1", title: "Child 1", status: "open", parent: "parent-1" },
+        { id: "parent-1.2", title: "Child 2", status: "open", parent: "parent-1" },
+        { id: "parent-1.3", title: "Child 3", status: "open", parent: "parent-1" },
+      ]
+
+      render(<TaskList tasks={tasks} />)
+
+      // Find the parent task card
+      expect(screen.getByText("Parent with 3 children")).toBeInTheDocument()
+
+      // The subtask count should be visible via aria-label
+      const subtaskBadge = screen.getByLabelText("3 subtasks")
+      expect(subtaskBadge).toBeInTheDocument()
+      expect(subtaskBadge.textContent).toBe("3")
+    })
+  })
 })

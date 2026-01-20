@@ -13,7 +13,7 @@ import {
 // Constants
 
 const STATUS_STORAGE_KEY = "ralph-ui-task-list-collapsed-state"
-const EPIC_STORAGE_KEY = "ralph-ui-task-list-epic-collapsed-state"
+const PARENT_STORAGE_KEY = "ralph-ui-task-list-parent-collapsed-state"
 
 /** Human-readable labels for time filter options */
 const closedTimeFilterLabels: Record<ClosedTasksTimeFilter, string> = {
@@ -166,12 +166,12 @@ function TaskGroupHeader({
 // TaskList Component
 
 /**
- * List component for displaying tasks grouped by status and epic.
+ * List component for displaying tasks grouped by status and parent.
  * - Primary grouping is by status (Ready, In Progress, Blocked, Closed)
- * - Within each status group, tasks are sub-grouped by their parent epic
- * - Tasks without an epic are shown at the end of each status group
+ * - Within each status group, tasks are sub-grouped by their parent task (epic or regular task)
+ * - Tasks without a parent are shown at the end of each status group
  * - Each status group is collapsible
- * - Each epic sub-group is also collapsible independently
+ * - Each parent task sub-group is also collapsible independently
  */
 
 // Default collapsed state: Ready + In Progress expanded, Blocked + Closed collapsed
@@ -206,11 +206,11 @@ function saveStatusCollapsedState(state: Record<TaskGroup, boolean>): void {
   }
 }
 
-/** Load epic collapsed state from localStorage */
-function loadEpicCollapsedState(): Record<string, boolean> | null {
+/** Load parent collapsed state from localStorage */
+function loadParentCollapsedState(): Record<string, boolean> | null {
   if (typeof window === "undefined") return null
   try {
-    const stored = localStorage.getItem(EPIC_STORAGE_KEY)
+    const stored = localStorage.getItem(PARENT_STORAGE_KEY)
     if (stored) {
       return JSON.parse(stored) as Record<string, boolean>
     }
@@ -220,26 +220,26 @@ function loadEpicCollapsedState(): Record<string, boolean> | null {
   return null
 }
 
-/** Save epic collapsed state to localStorage */
-function saveEpicCollapsedState(state: Record<string, boolean>): void {
+/** Save parent collapsed state to localStorage */
+function saveParentCollapsedState(state: Record<string, boolean>): void {
   if (typeof window === "undefined") return
   try {
-    localStorage.setItem(EPIC_STORAGE_KEY, JSON.stringify(state))
+    localStorage.setItem(PARENT_STORAGE_KEY, JSON.stringify(state))
   } catch {
     // Ignore storage errors
   }
 }
 
-/** Structure for an epic sub-group within a status group */
-interface EpicSubGroup {
-  epic: TaskCardTask | null // null for ungrouped tasks
+/** Structure for a parent task sub-group within a status group */
+interface ParentSubGroup {
+  parent: TaskCardTask | null // null for ungrouped tasks
   tasks: TaskCardTask[]
 }
 
-/** Structure for a status group with its epic sub-groups */
+/** Structure for a status group with its parent task sub-groups */
 interface StatusGroupData {
   config: GroupConfig
-  epicSubGroups: EpicSubGroup[]
+  parentSubGroups: ParentSubGroup[]
   totalCount: number
 }
 
@@ -319,9 +319,9 @@ export function TaskList({
     },
   )
 
-  // Initialize epic collapsed state from localStorage
-  const [epicCollapsedState, setEpicCollapsedState] = useState<Record<string, boolean>>(() => {
-    return persistCollapsedState ? (loadEpicCollapsedState() ?? {}) : {}
+  // Initialize parent collapsed state from localStorage
+  const [parentCollapsedState, setParentCollapsedState] = useState<Record<string, boolean>>(() => {
+    return persistCollapsedState ? (loadParentCollapsedState() ?? {}) : {}
   })
 
   // Persist status collapsed state to localStorage when it changes
@@ -331,12 +331,12 @@ export function TaskList({
     }
   }, [statusCollapsedState, persistCollapsedState])
 
-  // Persist epic collapsed state to localStorage when it changes
+  // Persist parent collapsed state to localStorage when it changes
   useEffect(() => {
     if (persistCollapsedState) {
-      saveEpicCollapsedState(epicCollapsedState)
+      saveParentCollapsedState(parentCollapsedState)
     }
-  }, [epicCollapsedState, persistCollapsedState])
+  }, [parentCollapsedState, persistCollapsedState])
 
   const toggleStatusGroup = useCallback((group: TaskGroup) => {
     setStatusCollapsedState(prev => ({
@@ -345,32 +345,40 @@ export function TaskList({
     }))
   }, [])
 
-  const toggleEpicGroup = useCallback((epicId: string) => {
-    setEpicCollapsedState(prev => ({
+  const toggleParentGroup = useCallback((parentId: string) => {
+    setParentCollapsedState(prev => ({
       ...prev,
-      [epicId]: !prev[epicId],
+      [parentId]: !prev[parentId],
     }))
   }, [])
 
-  // Group tasks by status first, then by epic within each status
+  // Group tasks by status first, then by parent within each status
   const statusGroups = useMemo(() => {
     // Get the time cutoff for closed tasks filtering
     const closedCutoff = getTimeFilterCutoff(closedTimeFilter)
 
-    // First, identify all epics and create a map
-    const epicMap = new Map<string, TaskCardTask>()
+    // First, identify all parent tasks (tasks that have children)
+    const parentTaskMap = new Map<string, TaskCardTask>()
+    const childTaskIds = new Set<string>()
+
+    // Identify parent-child relationships
     for (const task of tasks) {
-      if (task.issue_type === "epic") {
-        epicMap.set(task.id, task)
+      if (task.parent) {
+        childTaskIds.add(task.id)
+        // Find the parent task
+        const parentTask = tasks.find(t => t.id === task.parent)
+        if (parentTask && !parentTaskMap.has(parentTask.id)) {
+          parentTaskMap.set(parentTask.id, parentTask)
+        }
       }
     }
 
-    // Group non-epic tasks by status, then by parent epic
-    const statusToEpicTasks = new Map<TaskGroup, Map<string | null, TaskCardTask[]>>()
+    // Group tasks by status, then by parent
+    const statusToParentTasks = new Map<TaskGroup, Map<string | null, TaskCardTask[]>>()
 
     // Initialize status groups
     for (const config of groupConfigs) {
-      statusToEpicTasks.set(config.key, new Map())
+      statusToParentTasks.set(config.key, new Map())
     }
 
     for (const task of tasks) {
@@ -389,26 +397,32 @@ export function TaskList({
         }
       }
 
-      const epicTasksMap = statusToEpicTasks.get(config.key)!
+      const parentTasksMap = statusToParentTasks.get(config.key)!
 
-      // For epics, add them directly without a parent group
-      // For non-epics, group by their parent epic
-      if (task.issue_type === "epic") {
-        // Add epic to its own group (using its own ID as the key)
-        if (!epicTasksMap.has(task.id)) {
-          epicTasksMap.set(task.id, [])
+      // For parent tasks, add them to their own group
+      // For child tasks, group by their parent
+      if (parentTaskMap.has(task.id)) {
+        // This task is a parent - add it to its own group (using its own ID as the key)
+        if (!parentTasksMap.has(task.id)) {
+          parentTasksMap.set(task.id, [])
         }
-        // Don't add the epic to the array - it will be rendered separately
+        // Don't add the parent to the array - it will be rendered separately
+      } else if (task.parent && parentTaskMap.has(task.parent)) {
+        // This is a child task with a valid parent
+        if (!parentTasksMap.has(task.parent)) {
+          parentTasksMap.set(task.parent, [])
+        }
+        parentTasksMap.get(task.parent)!.push(task)
       } else {
-        const epicId = task.parent && epicMap.has(task.parent) ? task.parent : null
-        if (!epicTasksMap.has(epicId)) {
-          epicTasksMap.set(epicId, [])
+        // This is a standalone task (no parent, not a parent)
+        if (!parentTasksMap.has(null)) {
+          parentTasksMap.set(null, [])
         }
-        epicTasksMap.get(epicId)!.push(task)
+        parentTasksMap.get(null)!.push(task)
       }
     }
 
-    // Build status groups with epic sub-groups
+    // Build status groups with parent-child sub-groups
     const result: StatusGroupData[] = []
 
     // Sort function for tasks: closed tasks by closed_at (most recent first), others by priority then created_at
@@ -433,15 +447,15 @@ export function TaskList({
     }
 
     for (const config of groupConfigs) {
-      const epicTasksMap = statusToEpicTasks.get(config.key)!
-      const epicSubGroups: EpicSubGroup[] = []
+      const parentTasksMap = statusToParentTasks.get(config.key)!
+      const parentSubGroups: ParentSubGroup[] = []
 
-      // Get all epics that belong to this status group
-      const epicsInStatus = Array.from(epicTasksMap.keys())
+      // Get all parent tasks that belong to this status group
+      const parentsInStatus = Array.from(parentTasksMap.keys())
         .filter((id): id is string => id !== null)
-        .map(id => epicMap.get(id)!)
+        .map(id => parentTaskMap.get(id)!)
         .filter(Boolean)
-        .filter(epic => config.statusFilter(epic.status))
+        .filter(parent => config.statusFilter(parent.status))
         .sort((a, b) => {
           const priorityDiff = (a.priority ?? 4) - (b.priority ?? 4)
           if (priorityDiff !== 0) return priorityDiff
@@ -450,37 +464,37 @@ export function TaskList({
           return aTime - bTime
         })
 
-      // Add epic sub-groups with their subtasks
-      for (const epic of epicsInStatus) {
-        const epicTasks = sortTasks(epicTasksMap.get(epic.id) ?? [], config.key)
-        epicSubGroups.push({ epic, tasks: epicTasks })
+      // Add parent task sub-groups with their children
+      for (const parent of parentsInStatus) {
+        const childTasks = sortTasks(parentTasksMap.get(parent.id) ?? [], config.key)
+        parentSubGroups.push({ parent, tasks: childTasks })
       }
 
-      // Add ungrouped tasks (null epic) at the end
-      // Also include tasks whose parent epic is in a different status group
-      const ungroupedTasks = sortTasks(epicTasksMap.get(null) ?? [], config.key)
+      // Add ungrouped tasks (no parent) at the end
+      // Also include tasks whose parent is in a different status group
+      const ungroupedTasks = sortTasks(parentTasksMap.get(null) ?? [], config.key)
       const orphanedTasks: TaskCardTask[] = []
 
-      // Find tasks whose parent epic is not in this status group
-      for (const [epicId, tasks] of epicTasksMap.entries()) {
-        if (epicId !== null && !epicsInStatus.find(e => e.id === epicId)) {
+      // Find tasks whose parent is not in this status group
+      for (const [parentId, tasks] of parentTasksMap.entries()) {
+        if (parentId !== null && !parentsInStatus.find(p => p.id === parentId)) {
           orphanedTasks.push(...tasks)
         }
       }
 
       const allUngroupedTasks = sortTasks([...ungroupedTasks, ...orphanedTasks], config.key)
       if (allUngroupedTasks.length > 0) {
-        epicSubGroups.push({ epic: null, tasks: allUngroupedTasks })
+        parentSubGroups.push({ parent: null, tasks: allUngroupedTasks })
       }
 
-      const totalCount = epicSubGroups.reduce((sum, g) => {
-        // Count the epic itself plus its tasks
-        return sum + (g.epic ? 1 : 0) + g.tasks.length
+      const totalCount = parentSubGroups.reduce((sum, g) => {
+        // Count the parent itself plus its child tasks
+        return sum + (g.parent ? 1 : 0) + g.tasks.length
       }, 0)
 
       result.push({
         config,
-        epicSubGroups,
+        parentSubGroups,
         totalCount,
       })
     }
@@ -513,8 +527,8 @@ export function TaskList({
 
   return (
     <div className={cn("h-full overflow-y-auto", className)} role="list" aria-label="Task list">
-      {/* Status groups with epic sub-groups - sections shrink to fit content */}
-      {visibleStatusGroups.map(({ config, epicSubGroups, totalCount }) => {
+      {/* Status groups with parent task sub-groups - sections shrink to fit content */}
+      {visibleStatusGroups.map(({ config, parentSubGroups, totalCount }) => {
         const isStatusCollapsed = statusCollapsedState[config.key]
 
         return (
@@ -529,27 +543,27 @@ export function TaskList({
             />
             {!isStatusCollapsed && (
               <div role="group" aria-label={`${config.label} tasks`}>
-                {epicSubGroups.length > 0 ?
-                  epicSubGroups.map(({ epic, tasks: epicTasks }) => {
-                    if (epic) {
-                      // Epic task with subtasks
-                      const isEpicCollapsed = epicCollapsedState[epic.id] ?? false
+                {parentSubGroups.length > 0 ?
+                  parentSubGroups.map(({ parent, tasks: childTasks }) => {
+                    if (parent) {
+                      // Parent task with subtasks
+                      const isParentCollapsed = parentCollapsedState[parent.id] ?? false
                       return (
-                        <div key={epic.id} role="group" aria-label={`${epic.title} epic sub-group`}>
-                          {/* Epic task card */}
+                        <div key={parent.id} role="group" aria-label={`${parent.title} sub-group`}>
+                          {/* Parent task card */}
                           <TaskCard
-                            task={epic}
+                            task={parent}
                             onStatusChange={onStatusChange}
                             onClick={onTaskClick}
-                            isNew={newTaskIds.has(epic.id)}
-                            isCollapsed={isEpicCollapsed}
-                            onToggleCollapse={() => toggleEpicGroup(epic.id)}
-                            subtaskCount={epicTasks.length}
+                            isNew={newTaskIds.has(parent.id)}
+                            isCollapsed={isParentCollapsed}
+                            onToggleCollapse={() => toggleParentGroup(parent.id)}
+                            subtaskCount={childTasks.length}
                           />
                           {/* Subtasks (indented) */}
-                          {!isEpicCollapsed && epicTasks.length > 0 && (
-                            <div role="group" aria-label={`${epic.title} tasks`}>
-                              {epicTasks.map(task => (
+                          {!isParentCollapsed && childTasks.length > 0 && (
+                            <div role="group" aria-label={`${parent.title} tasks`}>
+                              {childTasks.map(task => (
                                 <TaskCard
                                   key={task.id}
                                   task={task}
@@ -564,8 +578,8 @@ export function TaskList({
                         </div>
                       )
                     } else {
-                      // Ungrouped tasks (no epic parent)
-                      return epicTasks.map(task => (
+                      // Ungrouped tasks (no parent)
+                      return childTasks.map(task => (
                         <TaskCard
                           key={task.id}
                           task={task}
