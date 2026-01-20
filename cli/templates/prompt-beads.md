@@ -23,8 +23,8 @@ Select the highest-priority issue to work on. Finish in-progress tasks first. Bu
 
 ### Step 4: Work on a single task
 
-- Output `✨ Starting **<task id> <task name>**`
-- Mark the issue as in progress with `bd update <id> --status=in_progress`
+- Output `<start_task>{id}</start_task>`
+- Mark the issue as in progress with `bd update {id} --status=in_progress`
 - Work only on that task. Only work on a single issue in a single turn.
 - If the issue you choose is complex enough that it will take you more than a minute or two, your task is to break it into sub-issues and then end your turn.
 - While you're working, if you notice something else that needs to be done - follow-up tasks, other things that don't seem to be working right - open new issues.
@@ -38,9 +38,9 @@ When you complete a task:
 - Run `ppnpm format`.
 - Run `pnpm test:all && pnpm build`.
 - Commit and push your work. Only commit the files you've changed.
-- Record a summary of the changes you made as a comment in the issue with `bd comments add <id> "...markdown summary of changes"`.
-- Close the issue: `bd close <id>`.
-- Output `✅ Completed  **<task id> <task name>**`
+- Record a summary of the changes you made as a comment in the issue with `bd comments add {id} "...markdown summary of changes"`.
+- Close the issue: `bd close {id}`.
+- Output `<end_task>{id}</end_task>`
 - End your turn.
 
 ---
@@ -58,24 +58,24 @@ When you complete a task:
 - `bd ready` - Show issues ready to work (no blockers)
 - `bd list --status=open` - All open issues
 - `bd list --status=in_progress` - Your unfinished work
-- `bd show <id>` - Detailed issue view with dependencies
+- `bd show {id}` - Detailed issue view with dependencies
 
 ### Creating & Updating
 
 - `bd create --title="..." --type=task|bug|epic --priority=2` - New issue
   - Priority: 0-4 or P0-P4 (0=critical, 2=medium, 4=backlog). NOT "high"/"medium"/"low"
-- `bd update <id> --status=in_progress` - Claim work
-- `bd update <id> --assignee=username` - Assign to someone
-- `bd close <id>` - Mark complete
-- `bd close <id1> <id2> ...` - Close multiple issues at once (more efficient)
-- `bd close <id> --reason="explanation"` - Close with reason
+- `bd update {id} --status=in_progress` - Claim work
+- `bd update {id} --assignee=username` - Assign to someone
+- `bd close {id}` - Mark complete
+- `bd close {id1} {id2} ...` - Close multiple issues at once (more efficient)
+- `bd close {id} --reason="explanation"` - Close with reason
 - **Tip**: When creating multiple issues/tasks/epics, use parallel subagents for efficiency
 
 ### Dependencies & Blocking
 
-- `bd dep add <issue> <depends-on>` - Add dependency (issue depends on depends-on)
+- `bd dep add {issue} {depends-on}` - Add dependency (issue depends on depends-on)
 - `bd blocked` - Show all blocked issues
-- `bd show <id>` - See what's blocking/blocked by this issue
+- `bd show {id}` - See what's blocking/blocked by this issue
 
 ### Sync & Collaboration
 
@@ -93,14 +93,14 @@ When you complete a task:
 
 ```bash
 bd ready           # Find available work
-bd show <id>       # Review issue details
-bd update <id> --status=in_progress  # Claim it
+bd show {id}       # Review issue details
+bd update {id} --status=in_progress  # Claim it
 ```
 
 **Completing work:**
 
 ```bash
-bd close <id1> <id2> ...    # Close all completed issues at once
+bd close {id1} {id2} ...    # Close all completed issues at once
 git push                    # Push to remote (beads auto-synced by daemon)
 ```
 
