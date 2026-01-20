@@ -449,6 +449,24 @@ describe("EventStream", () => {
       expect(iterationBar).toHaveTextContent("First task")
       expect(iterationBar).not.toHaveTextContent("rui-222")
     })
+
+    it("shows task without ID when ralph_task_started event has only taskTitle", () => {
+      // Add a ralph_task_started event with only taskTitle (no taskId)
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000500,
+        taskTitle: "Support pausing via stdin",
+      })
+
+      renderEventStream()
+
+      // Should show the task title in the iteration bar
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("Support pausing via stdin")
+
+      // Should not show any task ID link
+      expect(screen.queryByRole("button", { name: /View task/ })).not.toBeInTheDocument()
+    })
   })
 
   describe("empty state", () => {

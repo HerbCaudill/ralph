@@ -297,7 +297,7 @@ interface IterationBarProps {
   displayedIteration: number
   isViewingLatest: boolean
   viewingIterationIndex: number | null
-  currentTask: { id: string; title: string } | null
+  currentTask: { id: string | null; title: string } | null
   onPrevious: () => void
   onNext: () => void
   onLatest: () => void
@@ -349,13 +349,15 @@ function IterationBar({
             className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"
             title="Current task"
           >
-            <button
-              onClick={() => handleTaskClick(currentTask.id)}
-              className="hover:text-foreground shrink-0 font-mono opacity-70 transition-opacity hover:underline hover:opacity-100"
-              aria-label={`View task ${currentTask.id}`}
-            >
-              {currentTask.id}
-            </button>
+            {currentTask.id && (
+              <button
+                onClick={() => handleTaskClick(currentTask.id!)}
+                className="hover:text-foreground shrink-0 font-mono opacity-70 transition-opacity hover:underline hover:opacity-100"
+                aria-label={`View task ${currentTask.id}`}
+              >
+                {currentTask.id}
+              </button>
+            )}
             <span className="truncate">{currentTask.title}</span>
           </div>
         : hasMultipleIterations ?
@@ -426,8 +428,9 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
       if (event.type === "ralph_task_started") {
         const taskId = (event as any).taskId
         const taskTitle = (event as any).taskTitle
-        if (taskId && taskTitle) {
-          return { id: taskId, title: taskTitle }
+        // Accept tasks with at least a title (taskId is optional)
+        if (taskTitle) {
+          return { id: taskId || null, title: taskTitle }
         }
       }
     }
