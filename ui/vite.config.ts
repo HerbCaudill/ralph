@@ -9,11 +9,11 @@ export default defineConfig({
     port: 5179,
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://localhost:4242",
         changeOrigin: true,
       },
       "/ws": {
-        target: "http://localhost:3000",
+        target: "http://localhost:4242",
         ws: true,
         configure: proxy => {
           // Suppress EPIPE and ECONNRESET errors that occur when WebSocket clients disconnect
