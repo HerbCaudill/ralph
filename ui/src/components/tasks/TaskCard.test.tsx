@@ -2,6 +2,21 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
 import { TaskCard, type TaskCardTask, type TaskStatus } from "./TaskCard"
 
+// Mock zustand store
+vi.mock("@/store", async importOriginal => {
+  const actual = (await importOriginal()) as Record<string, unknown>
+  return {
+    ...actual,
+    useAppStore: (selector: (state: unknown) => unknown) => {
+      const mockState = {
+        issuePrefix: "rui",
+      }
+      return selector(mockState)
+    },
+    selectIssuePrefix: (state: { issuePrefix: string | null }) => state.issuePrefix,
+  }
+})
+
 // Test Fixtures
 
 const baseTask: TaskCardTask = {
@@ -29,10 +44,10 @@ describe("TaskCard", () => {
       expect(screen.getByText("Create TaskCard component")).toBeInTheDocument()
     })
 
-    it("does not render task ID in main view", () => {
+    it("renders task ID in main view (stripped of prefix)", () => {
       render(<TaskCard task={baseTask} />)
-      // Task ID should not be visible in the main view
-      expect(screen.queryByText("rui-4rt.5")).not.toBeInTheDocument()
+      // Task ID should be visible, stripped of the prefix for cleaner display
+      expect(screen.getByText("4rt.5")).toBeInTheDocument()
     })
 
     it("renders status icon", () => {

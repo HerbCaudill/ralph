@@ -256,7 +256,7 @@ describe("TaskList", () => {
       render(<TaskList tasks={tasks} />)
 
       // Task without created_at should be treated as oldest (epoch 0) and come first
-      const taskTitles = screen.getAllByText(/date/).map(el => el.textContent)
+      const taskTitles = screen.getAllByText(/^(No|Has) create date$/).map(el => el.textContent)
       expect(taskTitles).toEqual(["No create date", "Has create date"])
     })
 
@@ -323,10 +323,7 @@ describe("TaskList", () => {
       render(<TaskList tasks={tasks} defaultCollapsed={{ closed: false }} />)
 
       // Task with closed_at should come first, undefined should be last
-      const taskTitles = screen
-        .getAllByText(/close|date/i)
-        .filter(el => el.textContent?.includes("date"))
-        .map(el => el.textContent)
+      const taskTitles = screen.getAllByText(/^(Has|No) close date$/).map(el => el.textContent)
       expect(taskTitles).toEqual(["Has close date", "No close date"])
 
       // Reset to default

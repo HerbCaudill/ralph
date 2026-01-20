@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils"
+import { cn, stripTaskPrefix } from "@/lib/utils"
 import { forwardRef, useCallback, useState } from "react"
+import { useAppStore, selectIssuePrefix } from "@/store"
 import {
   IconCircle,
   IconCircleDot,
@@ -164,9 +165,11 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   ref,
 ) {
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false)
+  const issuePrefix = useAppStore(selectIssuePrefix)
 
   const config = statusConfig[task.status]
   const StatusIcon = config.icon
+  const displayId = stripTaskPrefix(task.id, issuePrefix)
 
   const handleClick = useCallback(() => {
     onClick?.(task.id)
@@ -277,6 +280,9 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-2"
           aria-label={task.title}
         >
+          {/* Task ID */}
+          <span className="text-muted-foreground shrink-0 font-mono text-xs">{displayId}</span>
+
           {/* Title */}
           <span
             className={cn(
