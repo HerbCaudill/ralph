@@ -172,8 +172,15 @@ export function App() {
   // Initialize theme management (applies dark class and listens for system changes)
   const { cycleTheme } = useTheme()
 
+  // Task list refresh
+  const { refresh: refreshTaskList } = useTasks({ all: true })
+
   // Task dialog state
-  const taskDialog = useTaskDialog()
+  const taskDialog = useTaskDialog({
+    onTaskUpdated: async () => {
+      await refreshTaskList()
+    },
+  })
 
   // Event log URL routing - handles #eventlog={id} hash parsing and navigation
   useEventLogRouter()

@@ -639,6 +639,38 @@ describe("TaskDetailsDialog", () => {
 
       expect(mockOnClose).toHaveBeenCalled()
     })
+
+    it("calls onClose after successfully saving changes", async () => {
+      mockOnSave.mockResolvedValue(undefined)
+
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      // Make a change to enable save button
+      const titleInput = screen.getByDisplayValue("Test Task")
+      typeInInput(titleInput, "Updated Task")
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
+      })
+
+      // Click save
+      const saveButton = screen.getByRole("button", { name: /save/i })
+      await act(async () => {
+        fireEvent.click(saveButton)
+      })
+
+      // Verify onSave was called
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalled()
+      })
+
+      // Verify onClose was called after save
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled()
+      })
+    })
   })
 
   describe("state reset", () => {
