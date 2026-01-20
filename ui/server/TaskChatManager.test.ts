@@ -551,4 +551,73 @@ describe("TaskChatManager", () => {
       expect(events[1]).toMatchObject({ type: "result", result: "Done" })
     })
   })
+
+  describe("timeout", () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("defaults to 10 minute timeout", async () => {
+      const errors: Error[] = []
+      manager.on("error", err => errors.push(err))
+
+      const promise = manager.sendMessage("Test")
+
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
+
+      // Advance time by 10 minutes
+      vi.advanceTimersByTime(600000)
+
+      await expect(promise).rejects.toThrow("Request timed out after 10 minutes")
+      expect(mockProcess.kill).toHaveBeenCalledWith("SIGKILL")
+      expect(manager.status).toBe("idle")
+    })
+
+    it("accepts custom timeout option", async () => {
+      const customManager = new TaskChatManager({
+        spawn: mockSpawn as unknown as SpawnFn,
+        getBdProxy: () => mockBdProxy,
+        timeout: 60000, // 1 minute
+      })
+
+      const errors: Error[] = []
+      customManager.on("error", err => errors.push(err))
+
+      const promise = customManager.sendMessage("Test")
+
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
+
+      // 30 seconds should not trigger timeout
+      vi.advanceTimersByTime(30000)
+      expect(mockProcess.kill).not.toHaveBeenCalled()
+
+      // 1 minute should trigger timeout
+      vi.advanceTimersByTime(30000)
+
+      await expect(promise).rejects.toThrow("Request timed out after 1 minutes")
+      expect(mockProcess.kill).toHaveBeenCalledWith("SIGKILL")
+    })
+
+    it("clears timeout on successful completion", async () => {
+      const promise = manager.sendMessage("Test")
+
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
+
+      // Complete the request before timeout
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"result","result":"Done"}\n'))
+      mockProcess.emit("exit", 0, null)
+
+      await promise
+
+      // Advance time past the timeout - should not cause issues
+      vi.advanceTimersByTime(700000)
+
+      // Should still be idle, not errored
+      expect(manager.status).toBe("idle")
+    })
+  })
 })

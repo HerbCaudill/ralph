@@ -37,6 +37,8 @@ export interface TaskChatManagerOptions {
   model?: string
   /** Function to get the BdProxy instance */
   getBdProxy?: GetBdProxyFn
+  /** Request timeout in ms (default: 600000 = 10 minutes) */
+  timeout?: number
 }
 
 // TaskChatManager
@@ -68,6 +70,7 @@ export class TaskChatManager extends EventEmitter {
     env: Record<string, string>
     spawn: SpawnFn
     model: string
+    timeout: number
   }
 
   constructor(options: TaskChatManagerOptions = {}) {
@@ -79,6 +82,7 @@ export class TaskChatManager extends EventEmitter {
       env: options.env ?? {},
       spawn: options.spawn ?? spawn,
       model: options.model ?? "haiku",
+      timeout: options.timeout ?? 600000, // 10 minute default
     }
   }
 
@@ -151,20 +155,21 @@ export class TaskChatManager extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       // Set up a timeout to prevent getting stuck in "processing" state
-      // If the process doesn't complete within 2 minutes, force cleanup
-      const timeout = setTimeout(() => {
+      const timeoutMs = this.options.timeout
+      const timeoutMinutes = Math.round(timeoutMs / 60000)
+      const timeoutTimer = setTimeout(() => {
         if (this.process) {
           this.process.kill("SIGKILL")
           this.process = null
         }
-        const err = new Error("Request timed out after 2 minutes")
+        const err = new Error(`Request timed out after ${timeoutMinutes} minutes`)
         this.setStatus("idle")
         this.emit("error", err)
         reject(err)
-      }, 120000) // 2 minute timeout
+      }, timeoutMs)
 
       const cleanup = () => {
-        clearTimeout(timeout)
+        clearTimeout(timeoutTimer)
       }
 
       try {
