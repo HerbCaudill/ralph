@@ -1,6 +1,7 @@
 {
   "name": "ralph-monorepo",
   "private": true,
+  "type": "module",
   "version": "0.8.5",
   "scripts": {
     "build": "pnpm -r build",

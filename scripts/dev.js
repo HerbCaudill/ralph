@@ -39,7 +39,6 @@ async function main() {
   const server = spawn("pnpm", ["serve"], {
     stdio: "inherit",
     env,
-    shell: true,
   })
 
   // Wait a moment for server to start, then start UI
@@ -48,7 +47,6 @@ async function main() {
   const ui = spawn("pnpm", ["ui"], {
     stdio: "inherit",
     env,
-    shell: true,
   })
 
   // Handle cleanup
