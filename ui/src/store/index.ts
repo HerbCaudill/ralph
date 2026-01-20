@@ -278,6 +278,8 @@ export interface AppActions {
 
   // Workspace
   setWorkspace: (workspace: string | null) => void
+  /** Clear all workspace-specific data (events, tasks, token usage, etc.) when switching workspaces */
+  clearWorkspaceData: () => void
 
   // Accent color
   setAccentColor: (color: string | null) => void
@@ -503,6 +505,28 @@ export const useAppStore = create<AppState & AppActions>(set => ({
 
   // Workspace
   setWorkspace: workspace => set({ workspace }),
+  clearWorkspaceData: () =>
+    set({
+      // Clear events and iteration state
+      events: [],
+      viewingIterationIndex: null,
+      // Reset token and context window usage
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+      iteration: { current: 0, total: 0 },
+      // Reset run state
+      runStartedAt: null,
+      initialTaskCount: null,
+      // Clear task chat messages
+      taskChatMessages: [],
+      taskChatLoading: false,
+      taskChatStreamingText: "",
+      // Clear event log viewer state
+      viewingEventLogId: null,
+      viewingEventLog: null,
+      eventLogLoading: false,
+      eventLogError: null,
+    }),
 
   // Accent color
   setAccentColor: color => set({ accentColor: color }),

@@ -270,6 +270,37 @@ describe("useAppStore", () => {
       useAppStore.getState().setWorkspace(null)
       expect(useAppStore.getState().workspace).toBeNull()
     })
+
+    it("clears all workspace-specific data", () => {
+      // Set up various workspace-specific state
+      const { addEvent, setTasks, setTokenUsage, setIteration, addTaskChatMessage } =
+        useAppStore.getState()
+      addEvent({ type: "test", timestamp: 123 })
+      setTasks([{ id: "1", title: "Task 1", status: "open" }])
+      setTokenUsage({ input: 100, output: 50 })
+      setIteration({ current: 2, total: 5 })
+      addTaskChatMessage({ id: "msg-1", role: "user", content: "Hello", timestamp: 123 })
+      useAppStore.getState().setViewingIterationIndex(1)
+
+      // Verify state was set
+      expect(useAppStore.getState().events).toHaveLength(1)
+      expect(useAppStore.getState().tasks).toHaveLength(1)
+      expect(useAppStore.getState().tokenUsage.input).toBe(100)
+      expect(useAppStore.getState().iteration.current).toBe(2)
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+      expect(useAppStore.getState().viewingIterationIndex).toBe(1)
+
+      // Clear workspace data
+      useAppStore.getState().clearWorkspaceData()
+
+      // Verify all workspace-specific state was cleared
+      expect(useAppStore.getState().events).toEqual([])
+      // Note: tasks are NOT cleared by clearWorkspaceData - they're refreshed separately
+      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(useAppStore.getState().iteration).toEqual({ current: 0, total: 0 })
+      expect(useAppStore.getState().taskChatMessages).toEqual([])
+      expect(useAppStore.getState().viewingIterationIndex).toBeNull()
+    })
   })
 
   describe("accent color", () => {

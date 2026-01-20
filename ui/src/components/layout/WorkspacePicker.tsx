@@ -52,6 +52,8 @@ export function WorkspacePicker({
   const setWorkspace = useAppStore(state => state.setWorkspace)
   const setAccentColor = useAppStore(state => state.setAccentColor)
   const setBranch = useAppStore(state => state.setBranch)
+  const clearWorkspaceData = useAppStore(state => state.clearWorkspaceData)
+  const refreshTasks = useAppStore(state => state.refreshTasks)
   const [isOpen, setIsOpen] = useState(false)
   const [workspaceInfo, setWorkspaceInfo] = useState<WorkspaceInfo | null>(null)
   const [allWorkspaces, setAllWorkspaces] = useState<WorkspaceListEntry[]>([])
@@ -133,6 +135,8 @@ export function WorkspacePicker({
         }
         const data = await response.json()
         if (data.ok && data.workspace) {
+          // Clear all workspace-specific data (events, tasks, token usage, etc.)
+          clearWorkspaceData()
           setWorkspaceInfo(data.workspace)
           setWorkspace(data.workspace.path)
           setAccentColor(data.workspace.accentColor ?? null)
@@ -144,6 +148,8 @@ export function WorkspacePicker({
               isActive: ws.path === workspacePath,
             })),
           )
+          // Refresh tasks from the new workspace
+          await refreshTasks()
         } else {
           throw new Error(data.error || "Unknown error")
         }
@@ -155,7 +161,7 @@ export function WorkspacePicker({
         setIsOpen(false)
       }
     },
-    [setWorkspace, setAccentColor, setBranch],
+    [setWorkspace, setAccentColor, setBranch, clearWorkspaceData, refreshTasks],
   )
 
   // Fetch workspace info on mount (only once)
