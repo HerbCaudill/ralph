@@ -17,9 +17,18 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:5179",
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: "PORT=4242 pnpm dev:server",
+      url: "http://localhost:4242/api/workspace",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30000,
+    },
+    {
+      command: "pnpm dev",
+      url: "http://localhost:5179",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30000,
+    },
+  ],
 })
