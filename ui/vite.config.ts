@@ -4,16 +4,19 @@ import tailwindcss from "@tailwindcss/vite"
 import { VitePWA } from "vite-plugin-pwa"
 import path from "path"
 
+// Server port - matches the default in server/index.ts
+const serverPort = process.env.PORT || "4242"
+
 export default defineConfig({
   server: {
     port: 5179,
     proxy: {
       "/api": {
-        target: "http://localhost:4242",
+        target: `http://localhost:${serverPort}`,
         changeOrigin: true,
       },
       "/ws": {
-        target: "http://localhost:4242",
+        target: `http://localhost:${serverPort}`,
         ws: true,
         configure: proxy => {
           // Suppress EPIPE and ECONNRESET errors that occur when WebSocket clients disconnect
