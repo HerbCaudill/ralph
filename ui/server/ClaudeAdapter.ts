@@ -1,11 +1,11 @@
 /**
- * ClaudeAdapter - AgentAdapter implementation for Claude CLI
+ * ClaudeAdapter - AgentAdapter implementation for Claude Agent SDK
  *
- * Wraps the Claude CLI (claude command) and translates its native streaming JSON
- * events into normalized AgentEvent types.
+ * Uses the Claude Agent SDK and translates its streaming events into
+ * normalized AgentEvent types.
  */
 
-import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
+import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import {
   AgentAdapter,
   type AgentInfo,
@@ -20,17 +20,17 @@ import {
 
 // Types
 
-export type SpawnFn = (command: string, args: string[], options: SpawnOptions) => ChildProcess
+export type QueryFn = typeof query
 
 export interface ClaudeAdapterOptions {
-  /** Command to spawn (default: "claude") */
-  command?: string
-  /** Custom spawn function (for testing) */
-  spawn?: SpawnFn
+  /** Override the SDK query function (for testing) */
+  queryFn?: QueryFn
+  /** Override API key (optional) */
+  apiKey?: string
 }
 
 /**
- * Claude CLI native event types from stream-json output.
+ * Claude SDK native event types from stream-json output.
  * These are the raw events before normalization.
  */
 interface ClaudeNativeEvent {
@@ -42,10 +42,10 @@ interface ClaudeNativeEvent {
 // ClaudeAdapter
 
 /**
- * AgentAdapter implementation for the Claude CLI.
+ * AgentAdapter implementation for the Claude Agent SDK.
  *
- * Spawns the Claude CLI with `--output-format stream-json` and translates
- * the native events to normalized AgentEvent types.
+ * Uses the SDK `query()` stream and translates
+ * native events to normalized AgentEvent types.
  *
  * @example
  * ```ts
@@ -62,20 +62,19 @@ interface ClaudeNativeEvent {
  * ```
  */
 export class ClaudeAdapter extends AgentAdapter {
-  private process: ChildProcess | null = null
-  private buffer = ""
   private currentMessageContent = ""
   private pendingToolUses = new Map<string, { tool: string; input: Record<string, unknown> }>()
-  private options: {
-    command: string
-    spawn: SpawnFn
-  }
+  private inFlight: Promise<void> | null = null
+  private abortController: AbortController | null = null
+  private startOptions: AgentStartOptions | undefined
+  private options: Required<Pick<ClaudeAdapterOptions, "queryFn">> &
+    Omit<ClaudeAdapterOptions, "queryFn">
 
   constructor(options: ClaudeAdapterOptions = {}) {
     super()
     this.options = {
-      command: options.command ?? "claude",
-      spawn: options.spawn ?? spawn,
+      queryFn: options.queryFn ?? query,
+      ...options,
     }
   }
 
@@ -86,111 +85,62 @@ export class ClaudeAdapter extends AgentAdapter {
     return {
       id: "claude",
       name: "Claude",
-      description: "Anthropic Claude via CLI",
+      description: "Anthropic Claude via SDK",
       features: {
         streaming: true,
         tools: true,
-        pauseResume: false, // Claude CLI doesn't support pause/resume in this mode
+        pauseResume: false, // Claude SDK doesn't support pause/resume in this mode
         systemPrompt: true,
       },
     }
   }
 
   /**
-   * Check if Claude CLI is available.
+   * Check if Claude SDK is available (API key present).
    */
   async isAvailable(): Promise<boolean> {
-    return new Promise(resolve => {
-      try {
-        const proc = this.options.spawn(this.options.command, ["--version"], {
-          stdio: ["ignore", "pipe", "ignore"],
-        })
-
-        proc.on("error", () => resolve(false))
-        proc.on("exit", code => resolve(code === 0))
-      } catch {
-        resolve(false)
-      }
-    })
+    return Boolean(
+      this.options.apiKey ??
+      process.env.ANTHROPIC_API_KEY ??
+      process.env.CLAUDE_API_KEY ??
+      process.env.CLAUDE_CODE_API_KEY,
+    )
   }
 
   /**
    * Start the Claude agent.
-   *
-   * Spawns the Claude CLI with streaming JSON output.
    */
   async start(options?: AgentStartOptions): Promise<void> {
-    if (this.process) {
+    if (this.startOptions) {
       throw new Error("Claude adapter is already running")
     }
 
     this.setStatus("starting")
-    this.buffer = ""
     this.currentMessageContent = ""
     this.pendingToolUses.clear()
-
-    // Build CLI arguments
-    const args = this.buildArgs(options)
-
-    return new Promise((resolve, reject) => {
-      try {
-        this.process = this.options.spawn(this.options.command, args, {
-          cwd: options?.cwd,
-          env: { ...process.env, ...options?.env },
-          stdio: ["pipe", "pipe", "pipe"],
-        })
-
-        this.process.on("error", err => {
-          this.handleProcessError(err)
-          reject(err)
-        })
-
-        this.process.on("spawn", () => {
-          this.setStatus("running")
-          resolve()
-        })
-
-        this.process.on("exit", (code, signal) => {
-          this.handleProcessExit(code, signal)
-        })
-
-        // Handle stdout - parse streaming JSON
-        this.process.stdout?.on("data", (data: Buffer) => {
-          this.handleStdout(data)
-        })
-
-        // Handle stderr
-        this.process.stderr?.on("data", (data: Buffer) => {
-          const message = data.toString().trim()
-          if (message) {
-            // Log but don't fail - stderr often has warnings
-            console.error("[claude-adapter] stderr:", message)
-          }
-        })
-      } catch (err) {
-        this.setStatus("stopped")
-        this.process = null
-        reject(err)
-      }
-    })
+    this.startOptions = options ?? {}
+    this.setStatus("running")
   }
 
   /**
    * Send a message to Claude.
    */
   send(message: AgentMessage): void {
-    if (!this.process?.stdin?.writable) {
-      throw new Error("Claude adapter is not running or stdin is not writable")
+    if (!this.startOptions) {
+      throw new Error("Claude adapter is not running")
     }
 
     if (message.type === "user_message" && message.content) {
-      // Send user message via stdin
-      this.process.stdin.write(message.content + "\n")
+      if (this.inFlight) {
+        throw new Error("Claude adapter already has a request in flight")
+      }
+
+      this.inFlight = this.runQuery(message.content)
     } else if (message.type === "control") {
       // Handle control commands
       switch (message.command) {
         case "stop":
-          this.stop()
+          void this.stop()
           break
         // pause/resume not supported
       }
@@ -201,89 +151,118 @@ export class ClaudeAdapter extends AgentAdapter {
    * Stop the Claude agent.
    */
   async stop(force?: boolean): Promise<void> {
-    if (!this.process) {
+    if (!this.startOptions) {
       return
     }
 
     this.setStatus("stopping")
 
-    return new Promise(resolve => {
-      const timeout = force ? 1000 : 5000
+    if (this.abortController) {
+      this.abortController.abort()
+    }
 
-      const forceKillTimer = setTimeout(() => {
-        if (this.process) {
-          this.process.kill("SIGKILL")
-        }
-      }, timeout)
+    if (this.inFlight) {
+      await this.inFlight.catch(() => {})
+    }
 
-      const cleanup = () => {
-        clearTimeout(forceKillTimer)
-        resolve()
-      }
+    this.abortController = null
+    this.inFlight = null
+    this.startOptions = undefined
 
-      this.process!.once("exit", cleanup)
-      this.process!.kill(force ? "SIGKILL" : "SIGTERM")
-    })
+    if (force) {
+      this.emit("exit", { code: 1, signal: "SIGKILL" })
+    } else {
+      this.emit("exit", { code: 0 })
+    }
+
+    this.setStatus("stopped")
   }
 
-  /**
-   * Build CLI arguments from start options.
-   */
-  private buildArgs(options?: AgentStartOptions): string[] {
-    const args: string[] = ["--verbose", "--output-format", "stream-json"]
-
-    if (options?.model) {
-      args.push("--model", options.model)
+  private async runQuery(prompt: string): Promise<void> {
+    const options = this.startOptions
+    if (!options) {
+      throw new Error("Claude adapter is not running")
     }
 
-    if (options?.systemPrompt) {
-      args.push("--system-prompt", options.systemPrompt)
-    }
+    this.abortController = new AbortController()
 
-    if (options?.maxIterations !== undefined) {
-      args.push("--max-turns", String(options.maxIterations))
-    }
-
-    // Add any additional CLI arguments from options
-    if (options?.allowedTools && Array.isArray(options.allowedTools)) {
-      args.push("--tools", (options.allowedTools as string[]).join(","))
-    }
-
-    return args
-  }
-
-  /**
-   * Handle stdout data, parsing streaming JSON.
-   */
-  private handleStdout(data: Buffer): void {
-    this.buffer += data.toString()
-
-    // Process complete lines (stream-json outputs newline-delimited JSON)
-    let newlineIndex: number
-    while ((newlineIndex = this.buffer.indexOf("\n")) !== -1) {
-      const line = this.buffer.slice(0, newlineIndex).trim()
-      this.buffer = this.buffer.slice(newlineIndex + 1)
-
-      if (line) {
-        this.parseStreamLine(line)
-      }
-    }
-  }
-
-  /**
-   * Parse a streaming JSON line from Claude CLI and emit normalized events.
-   */
-  private parseStreamLine(line: string): void {
     try {
-      const nativeEvent = JSON.parse(line) as ClaudeNativeEvent
-      this.translateEvent(nativeEvent)
-    } catch {
-      // Not valid JSON - ignore
+      for await (const message of this.options.queryFn({
+        prompt,
+        options: {
+          model: options.model,
+          cwd: options.cwd,
+          env: {
+            ...options.env,
+            ...(this.options.apiKey ? { ANTHROPIC_API_KEY: this.options.apiKey } : {}),
+          },
+          systemPrompt: options.systemPrompt,
+          tools:
+            Array.isArray(options.allowedTools) ? (options.allowedTools as string[]) : undefined,
+          permissionMode: "bypassPermissions",
+          allowDangerouslySkipPermissions: true,
+          includePartialMessages: true,
+          maxTurns: options.maxIterations ?? 1,
+          abortController: this.abortController,
+        },
+      })) {
+        this.handleSDKMessage(message)
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Claude query failed")
+      this.handleProcessError(error)
+    } finally {
+      this.abortController = null
+      this.inFlight = null
     }
   }
 
   /**
-   * Translate a native Claude CLI event to normalized AgentEvent(s).
+   * Handle SDK message from query() and emit appropriate events.
+   */
+  private handleSDKMessage(message: SDKMessage): void {
+    switch (message.type) {
+      case "assistant":
+        this.translateEvent({ type: "assistant", message: message.message })
+        break
+      case "stream_event":
+        this.translateEvent(message.event as ClaudeNativeEvent)
+        break
+      case "result":
+        if (message.subtype === "success") {
+          const usage = message.usage
+          const event: AgentResultEvent = {
+            type: "result",
+            timestamp: this.now(),
+            content: message.result,
+            usage:
+              usage ?
+                {
+                  inputTokens: usage.input_tokens,
+                  outputTokens: usage.output_tokens,
+                  totalTokens: (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0),
+                }
+              : undefined,
+          }
+          this.emit("event", event)
+        } else {
+          const event: AgentErrorEvent = {
+            type: "error",
+            timestamp: this.now(),
+            message: `Query failed: ${message.subtype}`,
+            fatal: true,
+          }
+          this.emit("event", event)
+          this.emit("error", new Error(event.message))
+        }
+        break
+      default:
+        break
+    }
+  }
+
+  /**
+   * Translate a native Claude SDK event to normalized AgentEvent(s).
    */
   private translateEvent(nativeEvent: ClaudeNativeEvent): void {
     const timestamp = this.now()
@@ -445,7 +424,7 @@ export class ClaudeAdapter extends AgentAdapter {
           timestamp,
           message,
           code: nativeEvent.code as string | undefined,
-          fatal: true, // Assume errors from Claude CLI are fatal
+          fatal: true, // Assume errors from Claude SDK are fatal
         }
         this.emit("event", event)
         this.emit("error", new Error(message))
@@ -468,7 +447,6 @@ export class ClaudeAdapter extends AgentAdapter {
    * Handle process error.
    */
   private handleProcessError(err: Error): void {
-    this.process = null
     this.setStatus("stopped")
 
     const errorEvent: AgentErrorEvent = {
@@ -479,14 +457,5 @@ export class ClaudeAdapter extends AgentAdapter {
     }
     this.emit("event", errorEvent)
     this.emit("error", err)
-  }
-
-  /**
-   * Handle process exit.
-   */
-  private handleProcessExit(code: number | null, signal: string | null): void {
-    this.process = null
-    this.setStatus("stopped")
-    this.emit("exit", { code: code ?? undefined, signal: signal ?? undefined })
   }
 }

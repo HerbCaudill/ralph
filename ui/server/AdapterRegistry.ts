@@ -263,7 +263,7 @@ export function registerDefaultAdapters(): void {
     registerAdapter({
       id: "claude",
       name: "Claude",
-      description: "Anthropic Claude via CLI",
+      description: "Anthropic Claude via SDK",
       factory: options => new ClaudeAdapter(options as ClaudeAdapterOptions | undefined),
     })
   }
@@ -273,7 +273,7 @@ export function registerDefaultAdapters(): void {
     registerAdapter({
       id: "codex",
       name: "Codex",
-      description: "OpenAI Codex via CLI",
+      description: "OpenAI Codex via SDK",
       factory: options => new CodexAdapter(options as CodexAdapterOptions | undefined),
     })
   }

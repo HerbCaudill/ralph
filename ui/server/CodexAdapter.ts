@@ -1,11 +1,11 @@
 /**
- * CodexAdapter - AgentAdapter implementation for OpenAI Codex CLI
+ * CodexAdapter - AgentAdapter implementation for OpenAI Codex SDK
  *
- * Wraps the Codex CLI (codex exec --json) and translates its native JSONL
- * events into normalized AgentEvent types.
+ * Uses the Codex SDK to stream thread events and translates them into
+ * normalized AgentEvent types.
  */
 
-import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
+import { Codex, type CodexOptions, type Thread, type ThreadEvent } from "@openai/codex-sdk"
 import {
   AgentAdapter,
   type AgentInfo,
@@ -20,48 +20,31 @@ import {
 
 // Types
 
-export type SpawnFn = (command: string, args: string[], options: SpawnOptions) => ChildProcess
+export type CodexFactory = (options?: CodexOptions) => Codex
 
 export interface CodexAdapterOptions {
-  /** Command to spawn (default: "codex") */
-  command?: string
-  /** Custom spawn function (for testing) */
-  spawn?: SpawnFn
+  /** Codex instance override (for testing) */
+  codex?: Codex
+  /** Custom Codex factory (for testing) */
+  createCodex?: CodexFactory
+  /** Override API key for Codex SDK */
+  apiKey?: string
+  /** Override base URL for Codex SDK */
+  baseUrl?: string
+  /** Override Codex binary path */
+  codexPathOverride?: string
 }
 
-/**
- * Codex CLI native event types from JSONL output.
- * These are the raw events before normalization.
- */
-interface CodexNativeEvent {
-  type: string
-  [key: string]: unknown
-}
-
-interface CodexItem {
-  id: string
-  type: string
-  text?: string
-  command?: string
-  aggregated_output?: string
-  exit_code?: number | null
-  status?: string
-  [key: string]: unknown
-}
-
-interface CodexUsage {
-  input_tokens?: number
-  cached_input_tokens?: number
-  output_tokens?: number
-}
+type CodexNativeEvent = ThreadEvent
+type CodexItem = ThreadEvent extends { item: infer Item } ? Item : never
 
 // CodexAdapter
 
 /**
- * AgentAdapter implementation for the Codex CLI.
+ * AgentAdapter implementation for the Codex SDK.
  *
- * Spawns the Codex CLI with `codex exec --json` and translates
- * the native JSONL events to normalized AgentEvent types.
+ * Uses the Codex SDK to stream thread events and translates
+ * the native events to normalized AgentEvent types.
  *
  * @example
  * ```ts
@@ -78,19 +61,19 @@ interface CodexUsage {
  * ```
  */
 export class CodexAdapter extends AgentAdapter {
-  private process: ChildProcess | null = null
-  private buffer = ""
   private accumulatedMessage = ""
-  private options: {
-    command: string
-    spawn: SpawnFn
-  }
+  private codex: Codex | null = null
+  private thread: Thread | null = null
+  private inFlight: Promise<void> | null = null
+  private abortController: AbortController | null = null
+  private options: Required<Pick<CodexAdapterOptions, "createCodex">> &
+    Omit<CodexAdapterOptions, "createCodex">
 
   constructor(options: CodexAdapterOptions = {}) {
     super()
     this.options = {
-      command: options.command ?? "codex",
-      spawn: options.spawn ?? spawn,
+      createCodex: options.createCodex ?? (opts => new Codex(opts)),
+      ...options,
     }
   }
 
@@ -101,110 +84,60 @@ export class CodexAdapter extends AgentAdapter {
     return {
       id: "codex",
       name: "Codex",
-      description: "OpenAI Codex via CLI",
+      description: "OpenAI Codex via SDK",
       features: {
         streaming: true,
         tools: true,
-        pauseResume: false, // Codex CLI doesn't support pause/resume in exec mode
-        systemPrompt: false, // Codex doesn't support custom system prompts via CLI
+        pauseResume: false, // Codex doesn't support pause/resume per thread
+        systemPrompt: false, // Codex doesn't support custom system prompts
       },
     }
   }
 
   /**
-   * Check if Codex CLI is available.
+   * Check if Codex SDK is available (API key present).
    */
   async isAvailable(): Promise<boolean> {
-    return new Promise(resolve => {
-      try {
-        const proc = this.options.spawn(this.options.command, ["--version"], {
-          stdio: ["ignore", "pipe", "ignore"],
-        })
-
-        proc.on("error", () => resolve(false))
-        proc.on("exit", code => resolve(code === 0))
-      } catch {
-        resolve(false)
-      }
-    })
+    return Boolean(this.options.apiKey ?? process.env.OPENAI_API_KEY ?? process.env.CODEX_API_KEY)
   }
 
   /**
-   * Start the Codex agent.
-   *
-   * Spawns the Codex CLI with JSONL output.
+   * Start the Codex agent and prepare a thread.
    */
   async start(options?: AgentStartOptions): Promise<void> {
-    if (this.process) {
+    if (this.thread) {
       throw new Error("Codex adapter is already running")
     }
 
     this.setStatus("starting")
-    this.buffer = ""
     this.accumulatedMessage = ""
 
-    // Build CLI arguments
-    const args = this.buildArgs(options)
+    const codexOptions = this.buildCodexOptions(options)
+    this.codex = this.options.codex ?? this.options.createCodex(codexOptions)
+    this.thread = this.codex.startThread(this.buildThreadOptions(options))
 
-    return new Promise((resolve, reject) => {
-      try {
-        this.process = this.options.spawn(this.options.command, args, {
-          cwd: options?.cwd,
-          env: { ...process.env, ...options?.env },
-          stdio: ["pipe", "pipe", "pipe"],
-        })
-
-        this.process.on("error", err => {
-          this.handleProcessError(err)
-          reject(err)
-        })
-
-        this.process.on("spawn", () => {
-          this.setStatus("running")
-          resolve()
-        })
-
-        this.process.on("exit", (code, signal) => {
-          this.handleProcessExit(code, signal)
-        })
-
-        // Handle stdout - parse JSONL
-        this.process.stdout?.on("data", (data: Buffer) => {
-          this.handleStdout(data)
-        })
-
-        // Handle stderr
-        this.process.stderr?.on("data", (data: Buffer) => {
-          const message = data.toString().trim()
-          if (message) {
-            // Log but don't fail - stderr often has warnings
-            console.error("[codex-adapter] stderr:", message)
-          }
-        })
-      } catch (err) {
-        this.setStatus("stopped")
-        this.process = null
-        reject(err)
-      }
-    })
+    this.setStatus("running")
   }
 
   /**
    * Send a message to Codex.
    */
   send(message: AgentMessage): void {
-    if (!this.process?.stdin?.writable) {
-      throw new Error("Codex adapter is not running or stdin is not writable")
+    if (!this.thread) {
+      throw new Error("Codex adapter is not running")
     }
 
     if (message.type === "user_message" && message.content) {
-      // Send user message via stdin
-      this.process.stdin.write(message.content + "\n")
+      if (this.inFlight) {
+        throw new Error("Codex adapter already has a request in flight")
+      }
+
+      this.inFlight = this.runTurn(message.content)
     } else if (message.type === "control") {
       // Handle control commands
       switch (message.command) {
         case "stop":
-          this.stop()
+          void this.stop()
           break
         // pause/resume not supported
       }
@@ -215,87 +148,96 @@ export class CodexAdapter extends AgentAdapter {
    * Stop the Codex agent.
    */
   async stop(force?: boolean): Promise<void> {
-    if (!this.process) {
+    if (!this.thread) {
       return
     }
 
     this.setStatus("stopping")
 
-    return new Promise(resolve => {
-      const timeout = force ? 1000 : 5000
+    if (this.abortController) {
+      this.abortController.abort()
+    }
 
-      const forceKillTimer = setTimeout(() => {
-        if (this.process) {
-          this.process.kill("SIGKILL")
-        }
-      }, timeout)
+    if (this.inFlight) {
+      await this.inFlight.catch(() => {})
+    }
 
-      const cleanup = () => {
-        clearTimeout(forceKillTimer)
-        resolve()
-      }
+    this.thread = null
+    this.codex = null
+    this.inFlight = null
+    this.abortController = null
 
-      this.process!.once("exit", cleanup)
-      this.process!.kill(force ? "SIGKILL" : "SIGTERM")
-    })
+    if (force) {
+      this.emit("exit", { code: 1, signal: "SIGKILL" })
+    } else {
+      this.emit("exit", { code: 0 })
+    }
+
+    this.setStatus("stopped")
   }
 
   /**
-   * Build CLI arguments from start options.
+   * Build Codex SDK options from start options.
    */
-  private buildArgs(options?: AgentStartOptions): string[] {
-    const args: string[] = ["exec", "--json"]
-
-    if (options?.model) {
-      args.push("--model", options.model)
-    }
-
-    if (options?.maxIterations !== undefined) {
-      // Codex doesn't have a max iterations flag in the same way
-      // but we could potentially handle this differently
-    }
-
-    // Add --skip-git-repo-check to allow running in any directory
-    args.push("--skip-git-repo-check")
-
-    // Use full-auto mode for automatic execution
-    args.push("--full-auto")
-
-    return args
-  }
-
-  /**
-   * Handle stdout data, parsing JSONL.
-   */
-  private handleStdout(data: Buffer): void {
-    this.buffer += data.toString()
-
-    // Process complete lines (JSONL outputs newline-delimited JSON)
-    let newlineIndex: number
-    while ((newlineIndex = this.buffer.indexOf("\n")) !== -1) {
-      const line = this.buffer.slice(0, newlineIndex).trim()
-      this.buffer = this.buffer.slice(newlineIndex + 1)
-
-      if (line) {
-        this.parseJsonLine(line)
-      }
+  private buildCodexOptions(options?: AgentStartOptions): CodexOptions {
+    return {
+      apiKey: this.options.apiKey,
+      baseUrl: this.options.baseUrl,
+      codexPathOverride: this.options.codexPathOverride,
+      env: { ...process.env, ...options?.env },
     }
   }
 
   /**
-   * Parse a JSONL line from Codex CLI and emit normalized events.
+   * Build thread options from start options.
    */
-  private parseJsonLine(line: string): void {
+  private buildThreadOptions(options?: AgentStartOptions): {
+    model?: string
+    workingDirectory?: string
+    skipGitRepoCheck: boolean
+    sandboxMode: "danger-full-access"
+    approvalPolicy: "never"
+    networkAccessEnabled: boolean
+  } {
+    return {
+      model: options?.model,
+      workingDirectory: options?.cwd,
+      skipGitRepoCheck: true,
+      sandboxMode: "danger-full-access",
+      approvalPolicy: "never",
+      networkAccessEnabled: true,
+    }
+  }
+
+  /**
+   * Run a single turn with the Codex SDK.
+   */
+  private async runTurn(prompt: string): Promise<void> {
+    if (!this.thread) {
+      throw new Error("Codex adapter is not running")
+    }
+
+    this.abortController = new AbortController()
+
     try {
-      const nativeEvent = JSON.parse(line) as CodexNativeEvent
-      this.translateEvent(nativeEvent)
-    } catch {
-      // Not valid JSON - ignore
+      const { events } = await this.thread.runStreamed(prompt, {
+        signal: this.abortController.signal,
+      })
+
+      for await (const event of events) {
+        this.translateEvent(event as CodexNativeEvent)
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Codex run failed")
+      this.handleProcessError(error)
+    } finally {
+      this.abortController = null
+      this.inFlight = null
     }
   }
 
   /**
-   * Translate a native Codex CLI event to normalized AgentEvent(s).
+   * Translate a native Codex SDK event to normalized AgentEvent(s).
    */
   private translateEvent(nativeEvent: CodexNativeEvent): void {
     const timestamp = this.now()
@@ -314,7 +256,7 @@ export class CodexAdapter extends AgentAdapter {
 
       case "turn.completed": {
         // Turn completed - emit result if we have accumulated content
-        const usage = nativeEvent.usage as CodexUsage | undefined
+        const usage = "usage" in nativeEvent ? nativeEvent.usage : undefined
 
         if (this.accumulatedMessage) {
           const event: AgentResultEvent = {
@@ -324,12 +266,12 @@ export class CodexAdapter extends AgentAdapter {
             usage:
               usage ?
                 {
-                  inputTokens: (usage.input_tokens ?? 0) + (usage.cached_input_tokens ?? 0),
-                  outputTokens: usage.output_tokens,
+                  inputTokens: (usage?.input_tokens ?? 0) + (usage?.cached_input_tokens ?? 0),
+                  outputTokens: usage?.output_tokens ?? 0,
                   totalTokens:
-                    (usage.input_tokens ?? 0) +
-                    (usage.cached_input_tokens ?? 0) +
-                    (usage.output_tokens ?? 0),
+                    (usage?.input_tokens ?? 0) +
+                    (usage?.cached_input_tokens ?? 0) +
+                    (usage?.output_tokens ?? 0),
                 }
               : undefined,
           }
@@ -398,19 +340,34 @@ export class CodexAdapter extends AgentAdapter {
         break
       }
 
+      case "turn.failed": {
+        const errorMessage =
+          "error" in nativeEvent && nativeEvent.error?.message ?
+            nativeEvent.error.message
+          : "Codex turn failed"
+
+        const event: AgentErrorEvent = {
+          type: "error",
+          timestamp,
+          message: errorMessage,
+          fatal: true,
+        }
+        this.emit("event", event)
+        this.emit("error", new Error(errorMessage))
+        break
+      }
+
       case "error": {
         // Error event
         const message =
-          typeof nativeEvent.error === "string" ? nativeEvent.error
-          : typeof nativeEvent.message === "string" ? nativeEvent.message
-          : "Unknown error"
+          typeof nativeEvent.message === "string" ? nativeEvent.message : "Unknown error"
 
         const event: AgentErrorEvent = {
           type: "error",
           timestamp,
           message,
           code: nativeEvent.code as string | undefined,
-          fatal: true, // Assume errors from Codex CLI are fatal
+          fatal: true, // Assume errors from Codex SDK are fatal
         }
         this.emit("event", event)
         this.emit("error", new Error(message))
@@ -427,7 +384,8 @@ export class CodexAdapter extends AgentAdapter {
    * Handle process error.
    */
   private handleProcessError(err: Error): void {
-    this.process = null
+    this.thread = null
+    this.codex = null
     this.setStatus("stopped")
 
     const errorEvent: AgentErrorEvent = {
@@ -438,14 +396,5 @@ export class CodexAdapter extends AgentAdapter {
     }
     this.emit("event", errorEvent)
     this.emit("error", err)
-  }
-
-  /**
-   * Handle process exit.
-   */
-  private handleProcessExit(code: number | null, signal: string | null): void {
-    this.process = null
-    this.setStatus("stopped")
-    this.emit("exit", { code: code ?? undefined, signal: signal ?? undefined })
   }
 }

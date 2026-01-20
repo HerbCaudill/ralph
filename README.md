@@ -17,6 +17,8 @@ Ralph spawns individual Claude CLI sessions that:
 4. Commit changes
 5. Repeat
 
+The web UI server uses SDK-backed adapters for Claude and Codex, while the CLI continues to run the Claude CLI directly.
+
 ## Installation
 
 ```bash

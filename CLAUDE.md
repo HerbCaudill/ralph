@@ -222,6 +222,7 @@ Web app with integrated Express server and React frontend:
   - WebSocket server for real-time event streaming
   - `RalphManager` - Spawns and manages Ralph CLI processes
   - `BdProxy` - Proxy for beads CLI commands
+  - `ClaudeAdapter`/`CodexAdapter` - SDK-backed agent adapters for Claude and Codex
   - Theme discovery from VS Code installations
 - **Frontend** (`ui/src/`):
   - Real-time event stream viewer
