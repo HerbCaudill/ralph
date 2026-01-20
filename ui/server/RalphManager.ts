@@ -7,6 +7,7 @@ export type RalphStatus =
   | "stopped"
   | "starting"
   | "running"
+  | "pausing"
   | "paused"
   | "stopping"
   | "stopping_after_current"
@@ -55,6 +56,7 @@ export class RalphManager extends EventEmitter {
   private process: ChildProcess | null = null
   private _status: RalphStatus = "stopped"
   private buffer = ""
+  private pauseTimeout: NodeJS.Timeout | null = null
   private options: {
     command: string
     args: string[]
@@ -138,6 +140,11 @@ export class RalphManager extends EventEmitter {
         this.process.on("exit", (code, signal) => {
           this.process = null
           this.buffer = ""
+          // Clear any pending pause timeout
+          if (this.pauseTimeout) {
+            clearTimeout(this.pauseTimeout)
+            this.pauseTimeout = null
+          }
           this.setStatus("stopped")
           this.emit("exit", { code, signal })
         })
@@ -165,20 +172,32 @@ export class RalphManager extends EventEmitter {
    * Pause the ralph process by sending a pause command via stdin.
    * Ralph will pause after the current iteration completes.
    * The process can be resumed later with resume().
+   *
+   * If Ralph doesn't respond with a ralph_paused event within 10 seconds,
+   * we'll automatically transition to "paused" state to prevent the UI from
+   * getting stuck in "pausing" state.
    */
   pause(): void {
     if (!this.process) {
       throw new Error("Ralph is not running")
     }
-    if (this._status === "paused") {
-      return // Already paused
+    if (this._status === "paused" || this._status === "pausing") {
+      return // Already paused or pausing
     }
     if (this._status !== "running") {
       throw new Error(`Cannot pause ralph in ${this._status} state`)
     }
 
     this.send({ type: "pause" })
-    this.setStatus("paused")
+    this.setStatus("pausing")
+
+    // Set a timeout to force transition to "paused" if Ralph doesn't respond
+    // This prevents the UI from getting stuck in "pausing" state indefinitely
+    this.pauseTimeout = setTimeout(() => {
+      if (this._status === "pausing") {
+        this.setStatus("paused")
+      }
+    }, 10000) // 10 second timeout
   }
 
   /**
@@ -190,6 +209,12 @@ export class RalphManager extends EventEmitter {
     }
     if (this._status !== "paused") {
       throw new Error(`Cannot resume ralph in ${this._status} state`)
+    }
+
+    // Clear any pending pause timeout
+    if (this.pauseTimeout) {
+      clearTimeout(this.pauseTimeout)
+      this.pauseTimeout = null
     }
 
     this.send({ type: "resume" })
@@ -248,6 +273,12 @@ export class RalphManager extends EventEmitter {
   async stop(timeout = 5000): Promise<void> {
     if (!this.process) {
       return
+    }
+
+    // Clear any pending pause timeout
+    if (this.pauseTimeout) {
+      clearTimeout(this.pauseTimeout)
+      this.pauseTimeout = null
     }
 
     this.setStatus("stopping")
@@ -318,6 +349,19 @@ export class RalphManager extends EventEmitter {
   private parseLine(line: string): void {
     try {
       const event = JSON.parse(line) as RalphEvent
+
+      // Handle pause/resume events to update status
+      if (event.type === "ralph_paused") {
+        // Clear the pause timeout since we received the event
+        if (this.pauseTimeout) {
+          clearTimeout(this.pauseTimeout)
+          this.pauseTimeout = null
+        }
+        this.setStatus("paused")
+      } else if (event.type === "ralph_resumed") {
+        this.setStatus("running")
+      }
+
       this.emit("event", event)
     } catch {
       // Not valid JSON - emit as raw output

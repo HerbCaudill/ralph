@@ -377,7 +377,7 @@ describe("RalphManager", () => {
       expect(mockProcess.stdin.write).toHaveBeenCalledWith('{"type":"pause"}\n')
     })
 
-    it("transitions to paused status", async () => {
+    it("transitions to pausing status, then paused when event received", async () => {
       const statusChanges: string[] = []
       manager.on("status", status => statusChanges.push(status))
 
@@ -387,6 +387,12 @@ describe("RalphManager", () => {
 
       manager.pause()
 
+      expect(manager.status).toBe("pausing")
+      expect(statusChanges).toContain("pausing")
+
+      // Simulate Ralph emitting the paused event
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+
       expect(manager.status).toBe("paused")
       expect(statusChanges).toContain("paused")
     })
@@ -395,12 +401,20 @@ describe("RalphManager", () => {
       expect(() => manager.pause()).toThrow("Ralph is not running")
     })
 
-    it("throws if in wrong state", async () => {
+    it("is a no-op if already pausing or paused", async () => {
       const startPromise = manager.start()
       mockProcess.emit("spawn")
       await startPromise
 
       manager.pause()
+
+      // Already pausing - should be a no-op
+      manager.pause()
+      expect(manager.status).toBe("pausing")
+
+      // Simulate Ralph emitting the paused event
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      expect(manager.status).toBe("paused")
 
       // Already paused - should be a no-op
       manager.pause()
@@ -409,6 +423,70 @@ describe("RalphManager", () => {
 
     it("throws if trying to pause while stopped", () => {
       expect(() => manager.pause()).toThrow("Ralph is not running")
+    })
+
+    it("handles ralph_paused event from CLI", async () => {
+      const statusChanges: string[] = []
+      manager.on("status", status => statusChanges.push(status))
+
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      // Simulate Ralph emitting the paused event directly (e.g., from Ctrl-P in TTY mode)
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+
+      expect(manager.status).toBe("paused")
+      expect(statusChanges).toContain("paused")
+    })
+
+    it("automatically transitions to paused after timeout if Ralph doesn't respond", async () => {
+      vi.useFakeTimers()
+
+      const statusChanges: string[] = []
+      manager.on("status", status => statusChanges.push(status))
+
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      manager.pause()
+      expect(manager.status).toBe("pausing")
+
+      // Fast-forward time by 10 seconds (the timeout duration)
+      vi.advanceTimersByTime(10000)
+
+      // Should have automatically transitioned to paused
+      expect(manager.status).toBe("paused")
+      expect(statusChanges).toContain("paused")
+
+      vi.useRealTimers()
+    })
+
+    it("clears timeout when ralph_paused event is received", async () => {
+      vi.useFakeTimers()
+
+      const statusChanges: string[] = []
+      manager.on("status", status => statusChanges.push(status))
+
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      manager.pause()
+      expect(manager.status).toBe("pausing")
+
+      // Receive the ralph_paused event before timeout
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+
+      expect(manager.status).toBe("paused")
+
+      // Fast-forward time - should not change status again since timeout was cleared
+      vi.advanceTimersByTime(10000)
+      expect(manager.status).toBe("paused")
+      expect(statusChanges.filter(s => s === "paused")).toHaveLength(1) // Only one transition to paused
+
+      vi.useRealTimers()
     })
   })
 
@@ -419,6 +497,8 @@ describe("RalphManager", () => {
       await startPromise
 
       manager.pause()
+      // Simulate Ralph emitting the paused event
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
       manager.resume()
 
       expect(mockProcess.stdin.write).toHaveBeenCalledWith('{"type":"resume"}\n')
@@ -433,6 +513,9 @@ describe("RalphManager", () => {
       await startPromise
 
       manager.pause()
+      // Simulate Ralph emitting the paused event
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+
       manager.resume()
 
       expect(manager.status).toBe("running")
@@ -499,6 +582,9 @@ describe("RalphManager", () => {
       await startPromise
 
       manager.pause()
+      // Simulate Ralph emitting the paused event
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+
       manager.stopAfterCurrent()
 
       expect(manager.status).toBe("stopping_after_current")
