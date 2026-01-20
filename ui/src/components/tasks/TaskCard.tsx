@@ -214,7 +214,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
       {...props}
     >
       {/* Main row */}
-      <div className="flex w-full items-center gap-2 px-3 py-2">
+      <div className="flex w-full items-center gap-2 px-2 py-1.5">
         {/* Status indicator button */}
         <button
           type="button"
@@ -228,7 +228,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           aria-haspopup={onStatusChange ? "listbox" : undefined}
           aria-expanded={isStatusMenuOpen}
         >
-          <StatusIcon className={cn("size-4", config.color)} />
+          <StatusIcon className={cn("size-3.5", config.color)} />
 
           {/* Status dropdown menu */}
           {isStatusMenuOpen && (
@@ -286,7 +286,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           {/* Title */}
           <span
             className={cn(
-              "min-w-0 flex-1 truncate text-sm",
+              "min-w-0 flex-1 truncate text-xs",
               task.status === "closed" && "line-through",
             )}
           >

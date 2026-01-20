@@ -127,7 +127,7 @@ function TaskGroupHeader({
       onClick={onToggle}
       onKeyDown={handleKeyDown}
       className={cn(
-        "bg-muted/50 hover:bg-muted border-border flex cursor-pointer items-center gap-2 border-b px-3 py-2",
+        "bg-muted/50 hover:bg-muted border-border flex cursor-pointer items-center gap-2 border-b px-2 py-1.5",
         "transition-colors",
       )}
       aria-expanded={!isCollapsed}
@@ -139,7 +139,7 @@ function TaskGroupHeader({
           isCollapsed && "-rotate-90",
         )}
       />
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-xs font-medium">{label}</span>
       {timeFilter && onTimeFilterChange && (
         <select
           value={timeFilter}
@@ -207,7 +207,7 @@ function EpicGroupHeader({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "bg-muted/30 border-border flex items-center gap-2 border-b px-3 py-2",
+        "bg-muted/30 border-border flex items-center gap-2 border-b px-2 py-1.5",
         "transition-colors",
         hasSubtasks && "hover:bg-muted/50 cursor-pointer",
       )}
@@ -228,7 +228,7 @@ function EpicGroupHeader({
       )}
       <IconStack2 className="text-primary size-3.5 shrink-0" />
       <span className="text-muted-foreground shrink-0 font-mono text-xs">{epicId}</span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">{epicTitle}</span>
+      <span className="min-w-0 flex-1 truncate text-xs font-medium">{epicTitle}</span>
       {hasSubtasks && (
         <span className="text-muted-foreground bg-muted shrink-0 rounded px-1.5 py-0.5 text-xs">
           {taskCount}
@@ -569,7 +569,7 @@ export function TaskList({
                                     task={task}
                                     onStatusChange={onStatusChange}
                                     onClick={onTaskClick}
-                                    className="pl-6"
+                                    className="pl-5"
                                   />
                                 </TaskHoverCard>
                               ))}
