@@ -602,8 +602,22 @@ function createApp(config: ServerConfig): Express {
         return
       }
 
+      // If metadata doesn't include taskId, use the current task being worked on
+      const enrichedMetadata: EventLogMetadata = {
+        ...metadata,
+      }
+
+      // Only set taskId if not already provided and we have a current task
+      if (!enrichedMetadata.taskId && currentTaskId) {
+        enrichedMetadata.taskId = currentTaskId
+        // Also include title if we have it and it's not already set
+        if (!enrichedMetadata.title && currentTaskTitle) {
+          enrichedMetadata.title = currentTaskTitle
+        }
+      }
+
       const eventLogStore = getEventLogStore()
-      const eventLog = await eventLogStore.create(events, metadata)
+      const eventLog = await eventLogStore.create(events, enrichedMetadata)
 
       res.status(201).json({ ok: true, eventlog: eventLog })
     } catch (err) {
@@ -1013,6 +1027,10 @@ export async function switchWorkspace(workspacePath: string): Promise<void> {
 const MAX_EVENT_HISTORY = 1000
 let eventHistory: RalphEvent[] = []
 
+// Track current task per workspace session
+let currentTaskId: string | undefined
+let currentTaskTitle: string | undefined
+
 /**
  * Get the current event history.
  */
@@ -1025,6 +1043,15 @@ export function getEventHistory(): RalphEvent[] {
  */
 export function clearEventHistory(): void {
   eventHistory = []
+  currentTaskId = undefined
+  currentTaskTitle = undefined
+}
+
+/**
+ * Get the current task being worked on.
+ */
+export function getCurrentTask(): { taskId?: string; taskTitle?: string } {
+  return { taskId: currentTaskId, taskTitle: currentTaskTitle }
 }
 
 /**
@@ -1035,6 +1062,20 @@ function addEventToHistory(event: RalphEvent): void {
   // Trim to max size
   if (eventHistory.length > MAX_EVENT_HISTORY) {
     eventHistory = eventHistory.slice(-MAX_EVENT_HISTORY)
+  }
+}
+
+/**
+ * Update the current task based on task lifecycle events.
+ */
+function updateCurrentTask(event: RalphEvent): void {
+  if (event.type === "ralph_task_started") {
+    currentTaskId = event.taskId as string | undefined
+    currentTaskTitle = event.taskTitle as string | undefined
+  } else if (event.type === "ralph_task_completed") {
+    // Clear current task when completed
+    currentTaskId = undefined
+    currentTaskTitle = undefined
   }
 }
 
@@ -1059,6 +1100,9 @@ function createRalphManager(options?: { cwd?: string; watch?: boolean }): RalphM
 
   // Broadcast ralph events to all WebSocket clients and store in history
   manager.on("event", (event: RalphEvent) => {
+    // Update current task tracking based on task lifecycle events
+    updateCurrentTask(event)
+
     addEventToHistory(event)
     broadcast({
       type: "ralph:event",
