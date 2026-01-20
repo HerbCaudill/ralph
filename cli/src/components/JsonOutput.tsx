@@ -159,6 +159,8 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
       iteration: currentIteration,
       totalIterations,
       repo: repoName,
+      taskId: currentTaskIdRef.current,
+      taskTitle: currentTaskTitleRef.current,
     })
 
     // Create a message queue for this iteration
