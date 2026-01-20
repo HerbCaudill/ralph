@@ -5,7 +5,13 @@
  * normalized AgentEvent types.
  */
 
-import { Codex, type CodexOptions, type Thread, type ThreadEvent } from "@openai/codex-sdk"
+import {
+  Codex,
+  type CodexOptions,
+  type Thread,
+  type ThreadEvent,
+  type ThreadItem,
+} from "@openai/codex-sdk"
 import {
   AgentAdapter,
   type AgentInfo,
@@ -36,7 +42,7 @@ export interface CodexAdapterOptions {
 }
 
 type CodexNativeEvent = ThreadEvent
-type CodexItem = ThreadEvent extends { item: infer Item } ? Item : never
+type CodexItem = Extract<ThreadEvent, { item: ThreadItem }>["item"]
 
 // CodexAdapter
 
@@ -180,11 +186,16 @@ export class CodexAdapter extends AgentAdapter {
    * Build Codex SDK options from start options.
    */
   private buildCodexOptions(options?: AgentStartOptions): CodexOptions {
+    const mergedEnv = { ...process.env, ...options?.env }
+    const env = Object.fromEntries(
+      Object.entries(mergedEnv).filter(([, value]) => typeof value === "string"),
+    ) as Record<string, string>
+
     return {
       apiKey: this.options.apiKey,
       baseUrl: this.options.baseUrl,
       codexPathOverride: this.options.codexPathOverride,
-      env: { ...process.env, ...options?.env },
+      env,
     }
   }
 
@@ -366,7 +377,6 @@ export class CodexAdapter extends AgentAdapter {
           type: "error",
           timestamp,
           message,
-          code: nativeEvent.code as string | undefined,
           fatal: true, // Assume errors from Codex SDK are fatal
         }
         this.emit("event", event)

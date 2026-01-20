@@ -175,6 +175,7 @@ claude auth
 - **Customize prompt.md** for your project's specific needs (build commands, test frameworks, etc.)
 - **Break down complex tasks** into smaller subtasks in todo.md
 - **Let Claude prioritize** by not ordering tasks strictly - Claude will choose what makes sense
+- **Editor setup** - For UI server TypeScript files, point your editor at `ui/server/tsconfig.json`
 
 ## Publishing
 

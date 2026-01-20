@@ -193,6 +193,9 @@ pnpm storybook         # Start Storybook for UI components
 # Format code with Prettier
 pnpm format
 
+# Editor config
+# Use ui/server/tsconfig.json when editing UI server TypeScript files
+
 # Publish CLI + UI packages
 pnpm pub
 
