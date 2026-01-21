@@ -385,11 +385,15 @@ export class TaskChatManager extends EventEmitter {
 
       case "assistant":
         // Complete assistant message
+        // Note: Don't emit chunk here - chunks were already emitted during streaming
+        // via content_block_delta events. The complete assistant message arrives AFTER
+        // all streaming deltas, so emitting a chunk here would duplicate the content.
         if (message.message?.content) {
           for (const block of message.message.content) {
             if (block.type === "text" && block.text) {
+              // Always set currentResponse to the final text (ensures consistency)
+              // but don't emit chunk as the content was already streamed
               this.currentResponse = block.text
-              this.emit("chunk", block.text)
             } else if (block.type === "tool_use" && block.id && block.name) {
               // Tool use from complete assistant message - update the pending tool use
               // (the initial tool_use event was already emitted during streaming)
