@@ -9,3 +9,4 @@ export {
 } from "./QuickTaskInput"
 export { TaskProgressBar, type TaskProgressBarProps } from "./TaskProgressBar"
 export { RelatedTasks, type RelatedTasksProps } from "./RelatedTasks"
+export { RelationshipGraph, type RelationshipGraphProps } from "./RelationshipGraph"

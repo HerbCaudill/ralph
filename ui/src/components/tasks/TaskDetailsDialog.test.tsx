@@ -506,7 +506,11 @@ describe("TaskDetailsDialog", () => {
       expect(testTaskInList.length).toBe(0)
 
       // Child (which has test-123 as parent) should not be in the dropdown
-      expect(screen.queryByText("child-task")).not.toBeInTheDocument()
+      // Note: The child task ID may appear elsewhere in the document (e.g., in RelationshipGraph)
+      // so we specifically check that it's not in the command list
+      const childTaskItems = screen.queryAllByText("child-task")
+      const childTaskInList = childTaskItems.filter(el => el.closest("[cmdk-item]"))
+      expect(childTaskInList.length).toBe(0)
     })
   })
 
