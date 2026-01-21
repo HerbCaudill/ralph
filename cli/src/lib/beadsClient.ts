@@ -1,20 +1,12 @@
 import { createConnection, Socket } from "net"
 import { join } from "path"
 import { existsSync } from "fs"
+import type { MutationEvent } from "@herbcaudill/ralph-shared"
+
+// Re-export MutationEvent for backward compatibility
+export type { MutationEvent } from "@herbcaudill/ralph-shared"
 
 const SOCKET_PATH = join(process.cwd(), ".beads", "bd.sock")
-
-// Note: Daemon returns PascalCase JSON keys
-export type MutationEvent = {
-  Timestamp: string
-  Type: "create" | "update" | "delete" | "comment" | "status" | "bonded" | "squashed" | "burned"
-  IssueID: string
-  Title?: string
-  old_status?: string
-  new_status?: string
-  parent_id?: string
-  Actor?: string
-}
 
 type RPCRequest = {
   operation: string

@@ -1,71 +1,30 @@
 import { spawn, type SpawnOptions } from "node:child_process"
+import type {
+  BdIssue,
+  BdListOptions,
+  BdCreateOptions,
+  BdUpdateOptions,
+  BdInfo,
+  BdLabelResult,
+  BdComment,
+} from "@herbcaudill/ralph-shared"
 
-// Types
+// Re-export beads domain types from shared package for backward compatibility
+export type {
+  IssueStatus,
+  BdIssue,
+  BdDependency,
+  BdListOptions,
+  BdCreateOptions,
+  BdUpdateOptions,
+  BdInfo,
+  BdLabelResult,
+  BdComment,
+  MutationType,
+  MutationEvent,
+} from "@herbcaudill/ralph-shared"
 
-export interface BdIssue {
-  id: string
-  title: string
-  description?: string
-  status: "open" | "in_progress" | "blocked" | "deferred" | "closed"
-  priority: number
-  issue_type: string
-  owner?: string
-  created_at: string
-  created_by?: string
-  updated_at: string
-  closed_at?: string
-  parent?: string
-  dependency_count?: number
-  dependent_count?: number
-  dependencies?: BdDependency[]
-  dependents?: BdDependency[]
-}
-
-export interface BdDependency extends BdIssue {
-  dependency_type: string
-}
-
-export interface BdListOptions {
-  /** Maximum number of results (default: 50) */
-  limit?: number
-  /** Filter by status */
-  status?: "open" | "in_progress" | "blocked" | "deferred" | "closed"
-  /** Filter by priority (0-4) */
-  priority?: number
-  /** Filter by type */
-  type?: string
-  /** Filter by assignee */
-  assignee?: string
-  /** Filter by parent issue ID */
-  parent?: string
-  /** Show only ready issues (status=open, unblocked) */
-  ready?: boolean
-  /** Include closed issues */
-  all?: boolean
-}
-
-export interface BdCreateOptions {
-  title: string
-  description?: string
-  priority?: number
-  type?: string
-  assignee?: string
-  parent?: string
-  labels?: string[]
-}
-
-export interface BdUpdateOptions {
-  title?: string
-  description?: string
-  priority?: number
-  status?: "open" | "in_progress" | "blocked" | "deferred" | "closed"
-  type?: string
-  assignee?: string
-  parent?: string
-  addLabels?: string[]
-  removeLabels?: string[]
-}
-
+// Local types specific to BdProxy
 export type SpawnFn = (
   command: string,
   args: string[],
@@ -83,31 +42,6 @@ export interface BdProxyOptions {
   spawn?: SpawnFn
   /** Timeout in ms (default: 30000) */
   timeout?: number
-}
-
-export interface BdInfo {
-  database_path: string
-  issue_count: number
-  mode: string
-  daemon_connected: boolean
-  daemon_status?: string
-  daemon_version?: string
-  socket_path?: string
-  config?: Record<string, string>
-}
-
-export interface BdLabelResult {
-  issue_id: string
-  label: string
-  status: "added" | "removed" | "already_exists" | "not_found"
-}
-
-export interface BdComment {
-  id: number
-  issue_id: string
-  author: string
-  text: string
-  created_at: string
 }
 
 // BdProxy

@@ -9,3 +9,6 @@ export const VERSION = "0.8.5"
 
 // Agent Events
 export * from "./events/index.js"
+
+// Beads Domain Types
+export * from "./beads/index.js"
