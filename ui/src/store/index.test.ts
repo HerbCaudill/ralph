@@ -330,7 +330,7 @@ describe("useAppStore", () => {
 
       // Verify all workspace-specific state was cleared
       expect(useAppStore.getState().events).toEqual([])
-      // Note: tasks are NOT cleared by clearWorkspaceData - they're refreshed separately
+      expect(useAppStore.getState().tasks).toEqual([])
       expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
       expect(useAppStore.getState().iteration).toEqual({ current: 0, total: 0 })
       expect(useAppStore.getState().taskChatMessages).toEqual([])

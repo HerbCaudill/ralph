@@ -555,6 +555,8 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   setWorkspace: workspace => set({ workspace }),
   clearWorkspaceData: () =>
     set({
+      // Clear tasks immediately to avoid showing stale data
+      tasks: [],
       // Clear events and iteration state
       events: [],
       viewingIterationIndex: null,
