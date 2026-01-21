@@ -284,4 +284,229 @@ describe("ClaudeAdapter", () => {
       expect(errors).toHaveLength(1)
     })
   })
+
+  describe("retry mechanism", () => {
+    beforeEach(async () => {
+      vi.useFakeTimers()
+      // Create adapter with fast retry config for testing
+      adapter = new ClaudeAdapter({
+        queryFn: mockQuery as unknown as QueryFn,
+        retryConfig: {
+          maxRetries: 3,
+          initialDelayMs: 100,
+          maxDelayMs: 1000,
+          backoffMultiplier: 2,
+        },
+      })
+      await adapter.start()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("retries on connection error", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+
+      // First call fails with connection error, second succeeds
+      mockQuery
+        .mockImplementationOnce(async function* () {
+          throw new Error("Connection error: failed to fetch")
+        })
+        .mockImplementationOnce(async function* () {
+          yield {
+            type: "result",
+            subtype: "success",
+            result: "Success after retry",
+          } as SDKMessage
+        })
+
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Wait for the first attempt to fail
+      await vi.advanceTimersByTimeAsync(0)
+
+      // Check that a retry event was emitted (non-fatal error)
+      const retryEvents = events.filter(
+        e => e.type === "error" && (e as AgentErrorEvent).code === "RETRY",
+      ) as AgentErrorEvent[]
+      expect(retryEvents).toHaveLength(1)
+      expect(retryEvents[0].fatal).toBe(false)
+      expect(retryEvents[0].message).toContain("Retrying")
+
+      // Advance past the retry delay
+      await vi.advanceTimersByTimeAsync(150)
+
+      // Wait for the in-flight promise to resolve
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // Check that we eventually got a success result
+      const resultEvents = events.filter(e => e.type === "result") as AgentResultEvent[]
+      expect(resultEvents).toHaveLength(1)
+      expect(resultEvents[0].content).toBe("Success after retry")
+    })
+
+    it("retries on rate limit error", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+
+      mockQuery
+        .mockImplementationOnce(async function* () {
+          throw new Error("rate_limit exceeded")
+        })
+        .mockImplementationOnce(async function* () {
+          yield {
+            type: "result",
+            subtype: "success",
+            result: "Success after rate limit",
+          } as SDKMessage
+        })
+
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Advance timers to complete the retry
+      await vi.advanceTimersByTimeAsync(200)
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const retryEvents = events.filter(
+        e => e.type === "error" && (e as AgentErrorEvent).code === "RETRY",
+      ) as AgentErrorEvent[]
+      expect(retryEvents).toHaveLength(1)
+    })
+
+    it("retries on server error (500)", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+
+      mockQuery
+        .mockImplementationOnce(async function* () {
+          throw new Error("500 Internal Server Error")
+        })
+        .mockImplementationOnce(async function* () {
+          yield {
+            type: "result",
+            subtype: "success",
+            result: "Success",
+          } as SDKMessage
+        })
+
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.advanceTimersByTimeAsync(200)
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const retryEvents = events.filter(
+        e => e.type === "error" && (e as AgentErrorEvent).code === "RETRY",
+      )
+      expect(retryEvents).toHaveLength(1)
+    })
+
+    it("does not retry on non-retryable errors", async () => {
+      const events: AgentEvent[] = []
+      const errors: Error[] = []
+      adapter.on("event", e => events.push(e))
+      adapter.on("error", e => errors.push(e))
+
+      mockQuery.mockImplementationOnce(async function* () {
+        throw new Error("Invalid request: bad input")
+      })
+
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.advanceTimersByTimeAsync(0)
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // Should emit fatal error without retry
+      const errorEvents = events.filter(e => e.type === "error") as AgentErrorEvent[]
+      expect(errorEvents).toHaveLength(1)
+      expect(errorEvents[0].fatal).toBe(true)
+      expect(errorEvents[0].code).not.toBe("RETRY")
+      expect(errors).toHaveLength(1)
+
+      // Should only have called query once
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+    })
+
+    it("gives up after max retries", async () => {
+      const events: AgentEvent[] = []
+      const errors: Error[] = []
+      adapter.on("event", e => events.push(e))
+      adapter.on("error", e => errors.push(e))
+
+      // All attempts fail with connection error
+      mockQuery.mockImplementation(async function* () {
+        throw new Error("Connection error: ECONNREFUSED")
+      })
+
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Advance through all retry attempts (3 retries with exponential backoff)
+      // Initial: 100ms, 2nd: 200ms, 3rd: 400ms
+      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(200)
+      await vi.advanceTimersByTimeAsync(400)
+      await vi.advanceTimersByTimeAsync(1000) // Extra time to ensure completion
+
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // Should have 3 retry events (non-fatal) + 1 final fatal error
+      const retryEvents = events.filter(
+        e => e.type === "error" && (e as AgentErrorEvent).code === "RETRY",
+      )
+      const fatalEvents = events.filter(
+        e => e.type === "error" && (e as AgentErrorEvent).fatal === true,
+      )
+
+      expect(retryEvents).toHaveLength(3)
+      expect(fatalEvents).toHaveLength(1)
+      expect(errors).toHaveLength(1)
+
+      // Query should have been called 4 times (initial + 3 retries)
+      expect(mockQuery).toHaveBeenCalledTimes(4)
+    })
+
+    it("uses exponential backoff", async () => {
+      const retryDelays: number[] = []
+      const events: AgentEvent[] = []
+      adapter.on("event", e => {
+        if (e.type === "error" && (e as AgentErrorEvent).code === "RETRY") {
+          const match = (e as AgentErrorEvent).message.match(/Retrying in (\d+) seconds/)
+          if (match) {
+            retryDelays.push(parseInt(match[1], 10))
+          }
+        }
+        events.push(e)
+      })
+      // Suppress error events since we're expecting them
+      adapter.on("error", () => {})
+
+      let callCount = 0
+      mockQuery.mockImplementation(async function* () {
+        callCount++
+        throw new Error("Connection error")
+      })
+
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Advance through all retries - need to wait for each iteration
+      // Initial attempt + 3 retries with delays
+      for (let i = 0; i < 10; i++) {
+        await vi.advanceTimersByTimeAsync(500)
+      }
+
+      // Wait for the in-flight promise to resolve (may be null by now)
+      const inFlight = (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+      if (inFlight) {
+        await inFlight
+      }
+
+      // With maxRetries=3, we should have 3 retry events (non-fatal)
+      // Note: there's jitter, so we check that delays exist
+      expect(retryDelays.length).toBe(3)
+
+      // Verify we made 4 attempts total (initial + 3 retries)
+      expect(callCount).toBe(4)
+    })
+  })
 })

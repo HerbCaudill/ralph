@@ -22,11 +22,33 @@ import {
 
 export type QueryFn = typeof query
 
+/** Retry configuration for API connection errors */
+export interface RetryConfig {
+  /** Maximum number of retry attempts (default: 5) */
+  maxRetries: number
+  /** Initial delay between retries in ms (default: 1000) */
+  initialDelayMs: number
+  /** Maximum delay between retries in ms (default: 30000) */
+  maxDelayMs: number
+  /** Multiplier for exponential backoff (default: 2) */
+  backoffMultiplier: number
+}
+
+/** Default retry configuration */
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 5,
+  initialDelayMs: 1000,
+  maxDelayMs: 30000,
+  backoffMultiplier: 2,
+}
+
 export interface ClaudeAdapterOptions {
   /** Override the SDK query function (for testing) */
   queryFn?: QueryFn
   /** Override API key (optional) */
   apiKey?: string
+  /** Retry configuration for connection errors */
+  retryConfig?: Partial<RetryConfig>
 }
 
 /**
@@ -37,6 +59,68 @@ interface ClaudeNativeEvent {
   type: string
   timestamp?: number
   [key: string]: unknown
+}
+
+/**
+ * Check if an error is retryable (network/connection errors, rate limits, server errors).
+ */
+function isRetryableError(error: Error): boolean {
+  const message = error.message.toLowerCase()
+
+  // Connection/network errors
+  if (
+    message.includes("connection error") ||
+    message.includes("network error") ||
+    message.includes("econnreset") ||
+    message.includes("econnrefused") ||
+    message.includes("etimedout") ||
+    message.includes("socket hang up") ||
+    message.includes("failed to fetch") ||
+    message.includes("getaddrinfo") ||
+    message.includes("enotfound")
+  ) {
+    return true
+  }
+
+  // Rate limit errors
+  if (message.includes("rate limit") || message.includes("rate_limit") || message.includes("429")) {
+    return true
+  }
+
+  // Server errors (5xx)
+  if (
+    message.includes("server error") ||
+    message.includes("server_error") ||
+    message.includes("500") ||
+    message.includes("502") ||
+    message.includes("503") ||
+    message.includes("504")
+  ) {
+    return true
+  }
+
+  // Overloaded error
+  if (message.includes("overloaded")) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Calculate delay for exponential backoff with jitter.
+ */
+function calculateBackoffDelay(
+  attempt: number,
+  initialDelayMs: number,
+  maxDelayMs: number,
+  multiplier: number,
+): number {
+  const exponentialDelay = initialDelayMs * Math.pow(multiplier, attempt)
+  const clampedDelay = Math.min(exponentialDelay, maxDelayMs)
+  // Add jitter (±10%) to prevent thundering herd
+  const jitter = clampedDelay * 0.1 * (Math.random() * 2 - 1)
+  return Math.round(clampedDelay + jitter)
 }
 
 // ClaudeAdapter
@@ -67,6 +151,7 @@ export class ClaudeAdapter extends AgentAdapter {
   private inFlight: Promise<void> | null = null
   private abortController: AbortController | null = null
   private startOptions: AgentStartOptions | undefined
+  private retryConfig: RetryConfig
   private options: Required<Pick<ClaudeAdapterOptions, "queryFn">> &
     Omit<ClaudeAdapterOptions, "queryFn">
 
@@ -75,6 +160,10 @@ export class ClaudeAdapter extends AgentAdapter {
     this.options = {
       queryFn: options.queryFn ?? query,
       ...options,
+    }
+    this.retryConfig = {
+      ...DEFAULT_RETRY_CONFIG,
+      ...options.retryConfig,
     }
   }
 
@@ -184,37 +273,91 @@ export class ClaudeAdapter extends AgentAdapter {
       throw new Error("Claude adapter is not running")
     }
 
-    this.abortController = new AbortController()
+    const { maxRetries, initialDelayMs, maxDelayMs, backoffMultiplier } = this.retryConfig
+    let attempt = 0
+    let lastError: Error | null = null
 
-    try {
-      for await (const message of this.options.queryFn({
-        prompt,
-        options: {
-          model: options.model,
-          cwd: options.cwd,
-          env: {
-            ...options.env,
-            ...(this.options.apiKey ? { ANTHROPIC_API_KEY: this.options.apiKey } : {}),
+    while (attempt <= maxRetries) {
+      this.abortController = new AbortController()
+
+      try {
+        for await (const message of this.options.queryFn({
+          prompt,
+          options: {
+            model: options.model,
+            cwd: options.cwd,
+            env: {
+              ...options.env,
+              ...(this.options.apiKey ? { ANTHROPIC_API_KEY: this.options.apiKey } : {}),
+            },
+            systemPrompt: options.systemPrompt,
+            tools:
+              Array.isArray(options.allowedTools) ? (options.allowedTools as string[]) : undefined,
+            permissionMode: "bypassPermissions",
+            allowDangerouslySkipPermissions: true,
+            includePartialMessages: true,
+            maxTurns: options.maxIterations ?? 1,
+            abortController: this.abortController,
           },
-          systemPrompt: options.systemPrompt,
-          tools:
-            Array.isArray(options.allowedTools) ? (options.allowedTools as string[]) : undefined,
-          permissionMode: "bypassPermissions",
-          allowDangerouslySkipPermissions: true,
-          includePartialMessages: true,
-          maxTurns: options.maxIterations ?? 1,
-          abortController: this.abortController,
-        },
-      })) {
-        this.handleSDKMessage(message)
+        })) {
+          this.handleSDKMessage(message)
+        }
+        // Success - exit the retry loop
+        return
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error("Claude query failed")
+        lastError = error
+
+        // Check if we should abort (request was cancelled)
+        if (this.abortController?.signal.aborted) {
+          // Don't retry if manually aborted
+          break
+        }
+
+        // Check if this error is retryable
+        if (!isRetryableError(error) || attempt >= maxRetries) {
+          // Not retryable or max retries reached
+          break
+        }
+
+        // Calculate backoff delay
+        const delayMs = calculateBackoffDelay(
+          attempt,
+          initialDelayMs,
+          maxDelayMs,
+          backoffMultiplier,
+        )
+
+        // Emit a non-fatal error event to inform the UI about the retry
+        const retryEvent: AgentErrorEvent = {
+          type: "error",
+          timestamp: this.now(),
+          message: `Connection error: ${error.message}. Retrying in ${Math.round(delayMs / 1000)} seconds... (attempt ${attempt + 1}/${maxRetries})`,
+          code: "RETRY",
+          fatal: false, // Non-fatal so the UI shows it as a warning, not a failure
+        }
+        this.emit("event", retryEvent)
+
+        // Wait before retrying
+        await this.sleep(delayMs)
+        attempt++
+      } finally {
+        this.abortController = null
       }
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Claude query failed")
-      this.handleProcessError(error)
-    } finally {
-      this.abortController = null
-      this.inFlight = null
     }
+
+    // All retries exhausted or non-retryable error
+    if (lastError) {
+      this.handleProcessError(lastError)
+    }
+    this.inFlight = null
+  }
+
+  /**
+   * Sleep for a specified duration (allows mocking in tests).
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 
   /**
