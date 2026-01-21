@@ -1,5 +1,15 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, afterEach } from "vitest"
 import { rel } from "./rel.js"
+
+const originalCwd = process.env.RALPH_CWD
+
+afterEach(() => {
+  if (originalCwd === undefined) {
+    delete process.env.RALPH_CWD
+  } else {
+    process.env.RALPH_CWD = originalCwd
+  }
+})
 
 describe("rel", () => {
   it("converts absolute path to relative path", () => {
@@ -24,6 +34,13 @@ describe("rel", () => {
     const relativePath = "src/lib/rel.ts"
     const result = rel(relativePath)
     expect(result).toBe(relativePath)
+  })
+
+  it("uses RALPH_CWD when set", () => {
+    process.env.RALPH_CWD = "/Users/example/ralph"
+    const absolutePath = "/Users/example/ralph/src/lib/rel.ts"
+    const result = rel(absolutePath)
+    expect(result).toBe("src/lib/rel.ts")
   })
 
   it("handles path outside current directory", () => {

@@ -26,6 +26,14 @@ async function replay(logFile: string): Promise<string> {
     }
   }
 
+  const previousCwd = process.env.RALPH_CWD
+  const initEvent = events.find(
+    event => event.type === "system" && event.subtype === "init" && typeof event.cwd === "string",
+  ) as { cwd?: string } | undefined
+  if (initEvent?.cwd) {
+    process.env.RALPH_CWD = initEvent.cwd
+  }
+
   // Render with all events
   const { lastFrame } = render(
     <EventDisplay events={events} iteration={1} completedIterations={[]} />,
@@ -40,7 +48,15 @@ async function replay(logFile: string): Promise<string> {
     { timeout: 1000 },
   )
 
-  return lastFrame() ?? ""
+  const output = lastFrame() ?? ""
+
+  if (previousCwd === undefined) {
+    delete process.env.RALPH_CWD
+  } else {
+    process.env.RALPH_CWD = previousCwd
+  }
+
+  return output
 }
 
 describe("EventDisplay replay tests", () => {
@@ -95,24 +111,24 @@ describe("EventDisplay replay tests", () => {
       Good! The build is successful and all tests pass. Now let me check the todo list to find the
       highest-priority task.
 
-        Read ../.ralph/todo.md
+        Read .ralph/todo.md
 
       Looking at the todo list, I'll prioritize the "Inline code blocks are being put in separate
       paragraphs" issue. This is a functional bug affecting the display quality, whereas the others are
       enhancements. Let me investigate this issue first.
 
-        Read ../src/components/StreamingText.tsx
+        Read src/components/StreamingText.tsx
 
       Let me check the tests to understand the expected behavior and see if there's a failing test case:
 
-        Read ../src/components/StreamingText.test.tsx
+        Read src/components/StreamingText.test.tsx
 
       I need to understand where StreamingText is being used and what the actual problem is. Let me check
       where it's called from and look at some example output:
 
         Grep StreamingText
 
-        Read ../src/components/EventDisplay.tsx
+        Read src/components/EventDisplay.tsx
 
       I see the issue now! In EventDisplay.tsx:70, there's a <Box flexDirection="column" gap={1}> which
       wraps each StreamingText component. Each StreamingText (which represents text blocks) is being
@@ -124,7 +140,7 @@ describe("EventDisplay replay tests", () => {
 
       Let me look at how the events are being split into blocks:
 
-        Read ../src/components/eventToBlocks.ts
+        Read src/components/eventToBlocks.ts
 
       Now I understand the issue. Claude's message content can have multiple text blocks (e.g., "Here's
       the code: ", then a tool_use block, then " and that's it"). Each text block becomes a separate
@@ -134,11 +150,11 @@ describe("EventDisplay replay tests", () => {
       The fix should be to merge consecutive text blocks together. Let me write a test first to
       demonstrate the problem:
 
-        Read ../src/components/EventDisplay.test.tsx
+        Read src/components/EventDisplay.test.tsx
 
       Now let me add a test that demonstrates the inline code block problem and then fix it:
 
-        Edit ../src/components/EventDisplay.test.tsx
+        Edit src/components/EventDisplay.test.tsx
 
       Now let me run the test to confirm it fails (demonstrating the problem):
 
@@ -147,11 +163,11 @@ describe("EventDisplay replay tests", () => {
       Perfect! The test fails as expected, confirming the bug. Now I need to fix it by modifying
       eventToBlocks to merge consecutive text blocks:
 
-        Edit ../src/components/eventToBlocks.ts
+        Edit src/components/eventToBlocks.ts
 
       Now I need to also flush the text buffer at the end of the loop:
 
-        Edit ../src/components/eventToBlocks.ts
+        Edit src/components/eventToBlocks.ts
 
       Now let me run the tests again to verify the fix works:
 
@@ -160,20 +176,20 @@ describe("EventDisplay replay tests", () => {
       The test still fails. This suggests the problem might also be in EventDisplay, not just
       eventToBlocks. Let me debug by adding a simpler test to see what's happening in eventToBlocks:
 
-        Read ../src/components/eventToBlocks.test.ts
+        Read src/components/eventToBlocks.test.ts
 
       I see! The existing test "extracts multiple text blocks" expects them NOT to be merged. I need to
       update this test and add a new one specifically for consecutive text blocks:
 
-        Edit ../src/components/eventToBlocks.test.ts
+        Edit src/components/eventToBlocks.test.ts
 
       Now let me add a test for text blocks separated by tool calls:
 
-        Read ../src/components/eventToBlocks.test.ts
+        Read src/components/eventToBlocks.test.ts
 
       Let me add a test that specifically checks text blocks separated by tool calls:
 
-        Edit ../src/components/eventToBlocks.test.ts
+        Edit src/components/eventToBlocks.test.ts
 
       Now let me run all tests to verify my changes to eventToBlocks work:
 
@@ -181,12 +197,12 @@ describe("EventDisplay replay tests", () => {
 
       I need to look at this failing test:
 
-        Read ../src/components/eventToBlocks.test.ts
+        Read src/components/eventToBlocks.test.ts
 
       This test expects 3 separate IDs for 3 text blocks, but my code now merges them into 1. I need to
       update this test to reflect the new behavior:
 
-        Edit ../src/components/eventToBlocks.test.ts
+        Edit src/components/eventToBlocks.test.ts
 
       Now let me run the eventToBlocks tests again:
 
@@ -200,7 +216,7 @@ describe("EventDisplay replay tests", () => {
       rendered. The issue must be in how EventDisplay merges the events. Let me look more carefully at the
        EventDisplay logic:
 
-        Read ../src/components/EventDisplay.tsx
+        Read src/components/EventDisplay.tsx
 
       I see! The EventDisplay is doing its own deduplication, but it's NOT merging consecutive text
       blocks. The text blocks in the test data remain separate even after eventToBlocks merges them,
@@ -245,13 +261,13 @@ describe("EventDisplay replay tests", () => {
 
       That should work! Let me check if there's an issue with my implementation. Let me re-read the code:
 
-        Read ../src/components/eventToBlocks.ts
+        Read src/components/eventToBlocks.ts
 
       The code looks correct. Let me check if the EventDisplay is receiving the correct merged content. I
       think the issue might be in how EventDisplay deduplicates and merges content before calling
       eventToBlocks. Let me look at that logic again:
 
-        Read ../src/components/EventDisplay.tsx
+        Read src/components/EventDisplay.tsx
 
       Ah! I see the problem now. In the test, we're providing a single event with one message containing 3
        text blocks. EventDisplay keeps the text blocks separate in uniqueContent (lines 36-54), so they
@@ -279,7 +295,7 @@ describe("EventDisplay replay tests", () => {
 
       Let me print what lastFrame() actually returns by modifying the test temporarily:
 
-        Edit ../src/components/EventDisplay.test.tsx
+        Edit src/components/EventDisplay.test.tsx
 
         $ pnpm test EventDisplay.test.tsx 2>&1 | grep -A 20 "merges consecutive"
 
@@ -290,7 +306,7 @@ describe("EventDisplay replay tests", () => {
       This means the EventDisplay deduplication logic is keeping them separate, OR there's a bug in my
       eventToBlocks implementation. Let me add logging to eventToBlocks to see:
 
-        Edit ../src/components/eventToBlocks.ts
+        Edit src/components/eventToBlocks.ts
 
         $ pnpm test EventDisplay.test.tsx 2>&1 | grep -A 30 "eventToBlocks content"
 
@@ -306,9 +322,9 @@ describe("EventDisplay replay tests", () => {
       But the output still shows them on 3 separate lines. This means my merging logic isn't working. Let
       me add more logging to see what's happening in the loop:
 
-        Edit ../src/components/eventToBlocks.ts
+        Edit src/components/eventToBlocks.ts
 
-        Edit ../src/components/eventToBlocks.ts
+        Edit src/components/eventToBlocks.ts
 
         $ pnpm test EventDisplay.test.tsx 2>&1 | grep -A 50 "merges consecutive text blocks to prevent
       unwanted gaps"
@@ -351,7 +367,7 @@ describe("EventDisplay replay tests", () => {
       Let me check if the problem is in how StreamingText uses fragments. When you return a fragment with
       multiple <Text> components in Ink, they might be rendered on separate lines. Let me check:
 
-        Read ../src/components/StreamingText.tsx
+        Read src/components/StreamingText.tsx
 
       The issue is that StreamingText returns a fragment with multiple <Text> components. In Ink, these
       might be rendered as separate blocks. The fix is to wrap them in a single <Text> component or use
@@ -360,17 +376,17 @@ describe("EventDisplay replay tests", () => {
       Let me look at how Ink handles multiple Text components. Actually, the fix is simple - wrap all the
       text parts in a single Box or Text component with inline rendering:
 
-        Edit ../src/components/StreamingText.tsx
+        Edit src/components/StreamingText.tsx
 
-        Edit ../src/components/StreamingText.tsx
+        Edit src/components/StreamingText.tsx
 
       Now let me remove the console.log statements and test:
 
-        Edit ../src/components/eventToBlocks.ts
+        Edit src/components/eventToBlocks.ts
 
-        Edit ../src/components/eventToBlocks.ts
+        Edit src/components/eventToBlocks.ts
 
-        Edit ../src/components/EventDisplay.test.tsx
+        Edit src/components/EventDisplay.test.tsx
 
       Now let me run all tests:
 
@@ -382,13 +398,13 @@ describe("EventDisplay replay tests", () => {
 
       Excellent! Now let me update the todo list and progress file, then commit:
 
-        Read ../.ralph/todo.md
+        Read .ralph/todo.md
 
-        Edit ../.ralph/todo.md
+        Edit .ralph/todo.md
 
-        Read ../.ralph/progress.md
+        Read .ralph/progress.md
 
-        Edit ../.ralph/progress.md
+        Edit .ralph/progress.md
 
       Now let me format the code with Prettier:
 

@@ -299,6 +299,10 @@ The Claude CLI outputs newline-delimited JSON. Each line is a complete JSON obje
 - Appends valid events to state and log file
 - Continues until stdout closes
 
+### Relative Path Rendering
+
+In the CLI UI, tool paths are rendered relative to the current workspace. Set `RALPH_CWD` to override the base path for relative rendering; otherwise it uses `process.cwd()`.
+
 ### Iteration Completion Logic
 
 An iteration ends when:
