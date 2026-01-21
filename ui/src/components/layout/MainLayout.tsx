@@ -323,8 +323,17 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     if (!detailPanelOpen || !onDetailPanelClose) return
 
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+
       // Don't close if clicking on the detail panel itself
-      if (detailPanelRef.current?.contains(event.target as Node)) {
+      if (detailPanelRef.current?.contains(target)) {
+        return
+      }
+
+      // Don't close if clicking inside a Radix UI portal (dropdowns, popovers, etc.)
+      // Radix portals are rendered outside the detail panel DOM but are logically part of it
+      const targetElement = target as Element
+      if (targetElement.closest?.("[data-radix-popper-content-wrapper]")) {
         return
       }
 

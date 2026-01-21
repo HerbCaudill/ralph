@@ -659,5 +659,43 @@ describe("MainLayout", () => {
       const mainContent = screen.getByText("Main Content")
       expect(() => fireEvent.mouseDown(mainContent)).not.toThrow()
     })
+
+    it("does not call onDetailPanelClose when clicking inside a Radix portal", async () => {
+      const onDetailPanelClose = vi.fn()
+
+      // Create a mock Radix portal element outside the detail panel
+      const portalElement = document.createElement("div")
+      portalElement.setAttribute("data-radix-popper-content-wrapper", "")
+      portalElement.innerHTML = "<div>Portal Content</div>"
+      document.body.appendChild(portalElement)
+
+      render(
+        <MainLayout
+          main={<div>Main Content</div>}
+          detailPanel={<div>Detail Panel Content</div>}
+          detailPanelOpen={true}
+          onDetailPanelClose={onDetailPanelClose}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText("workspace")).toBeInTheDocument()
+      })
+
+      // Wait for the event listener to be attached (100ms delay in implementation)
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150))
+      })
+
+      // Click inside the portal element (simulating a dropdown click)
+      const portalContent = portalElement.querySelector("div")!
+      fireEvent.mouseDown(portalContent)
+
+      // The callback should NOT be called
+      expect(onDetailPanelClose).not.toHaveBeenCalled()
+
+      // Cleanup
+      document.body.removeChild(portalElement)
+    })
   })
 })
