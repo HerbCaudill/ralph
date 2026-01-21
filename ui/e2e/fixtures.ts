@@ -478,7 +478,7 @@ export class AppPage {
 
   /** Focus the task search */
   async focusTaskSearch() {
-    await this.page.keyboard.press("/")
+    await this.page.keyboard.press("Meta+f")
   }
 }
 
