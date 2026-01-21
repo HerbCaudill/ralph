@@ -10,13 +10,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react"
 import { IconChevronDown, IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { CodeBlock } from "@/components/ui/code-block"
-import { TaskIdLink } from "@/components/ui/TaskIdLink"
-import { useTheme } from "@/hooks/useTheme"
-import type { Components } from "react-markdown"
-import type { ReactNode } from "react"
+import { MarkdownContent } from "@/components/ui/MarkdownContent"
 
 // Types
 
@@ -76,84 +70,9 @@ interface AssistantMessageProps {
 }
 
 function AssistantMessageBubble({ message, className }: AssistantMessageProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
-
-  // Helper to process children and replace text nodes with TaskIdLink
-  const processChildren = (children: ReactNode): ReactNode => {
-    if (typeof children === "string") {
-      return <TaskIdLink>{children}</TaskIdLink>
-    }
-    return children
-  }
-
-  const components: Components = {
-    // Process text in paragraph elements
-    p(props) {
-      const { children, ...rest } = props
-      return <p {...rest}>{processChildren(children)}</p>
-    },
-    // Process text in list items
-    li(props) {
-      const { children, ...rest } = props
-      return <li {...rest}>{processChildren(children)}</li>
-    },
-    // Process text in strong elements
-    strong(props) {
-      const { children, ...rest } = props
-      return <strong {...rest}>{processChildren(children)}</strong>
-    },
-    // Process text in emphasis elements
-    em(props) {
-      const { children, ...rest } = props
-      return <em {...rest}>{processChildren(children)}</em>
-    },
-    code(props) {
-      const { children, className: codeClassName, ...rest } = props
-      // Check if this is a code block (inside a pre) by looking at the className
-      // react-markdown adds language-xxx class for fenced code blocks
-      const match = /language-(\w+)/.exec(codeClassName || "")
-
-      // If it has a language class, it's a fenced code block
-      if (match) {
-        const language = match[1]
-        const code = String(children).replace(/\n$/, "")
-        return <CodeBlock code={code} language={language} isDark={isDark} />
-      }
-
-      // Otherwise it's inline code - process for task IDs
-      return (
-        <code className={codeClassName} {...rest}>
-          {processChildren(children)}
-        </code>
-      )
-    },
-    pre(props) {
-      const { children } = props
-      // If the child is already a CodeBlock, just render it directly
-      // Otherwise wrap in pre as normal
-      return <>{children}</>
-    },
-  }
-
   return (
     <div className={cn("py-1.5 pr-4 pl-4", className)}>
-      <div
-        className={cn(
-          "prose prose-sm dark:prose-invert max-w-none flex-1 font-serif text-sm",
-          "prose-p:my-1 prose-p:leading-snug",
-          "prose-strong:font-medium",
-          "prose-a:text-cyan-600 dark:prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline",
-          "prose-code:text-muted-foreground prose-code:text-xs prose-code:font-normal prose-code:font-mono",
-          "prose-code:before:content-none prose-code:after:content-none",
-          "prose-pre:my-2 prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0",
-          "prose-ul:my-1 prose-ol:my-1 prose-li:my-0",
-        )}
-      >
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-          {message.content}
-        </ReactMarkdown>
-      </div>
+      <MarkdownContent className="flex-1 font-serif">{message.content}</MarkdownContent>
     </div>
   )
 }
