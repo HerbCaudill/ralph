@@ -101,7 +101,12 @@ describe("TaskChatManager", () => {
         prompt: "Hello",
         options: expect.objectContaining({
           model: "haiku",
-          systemPrompt: expect.any(String),
+          // Uses Claude Code's preset with appended task chat instructions
+          systemPrompt: {
+            type: "preset",
+            preset: "claude_code",
+            append: expect.any(String),
+          },
           tools: ["Read", "Grep", "Glob", "Bash"],
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
@@ -495,12 +500,21 @@ describe("TaskChatManager", () => {
       // Check that SDK query was called with system prompt containing task context
       expect(mockQuery).toHaveBeenCalled()
       const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
-      const systemPrompt = callArgs.options?.systemPrompt
+      const systemPromptConfig = callArgs.options?.systemPrompt as {
+        type: string
+        preset: string
+        append: string
+      }
 
-      expect(systemPrompt).toContain("Current Tasks")
-      expect(systemPrompt).toContain("In Progress")
-      expect(systemPrompt).toContain("test-2")
-      expect(systemPrompt).toContain("In progress task")
+      // Verify it uses the preset format
+      expect(systemPromptConfig.type).toBe("preset")
+      expect(systemPromptConfig.preset).toBe("claude_code")
+
+      // Check that the appended prompt contains task context
+      expect(systemPromptConfig.append).toContain("Current Tasks")
+      expect(systemPromptConfig.append).toContain("In Progress")
+      expect(systemPromptConfig.append).toContain("test-2")
+      expect(systemPromptConfig.append).toContain("In progress task")
     })
 
     it("continues without task context if BdProxy fails", async () => {

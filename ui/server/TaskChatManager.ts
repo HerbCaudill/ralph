@@ -175,12 +175,12 @@ export class TaskChatManager extends EventEmitter {
     this._messages.push(userMsg)
     this.emit("message", userMsg)
 
-    let systemPrompt: string
+    let appendSystemPrompt: string
     let conversationPrompt: string
 
     try {
-      // Build system prompt with current task context
-      systemPrompt = await this.buildSystemPrompt()
+      // Build system prompt to append to Claude Code's defaults
+      appendSystemPrompt = await this.buildSystemPrompt()
 
       // Build conversation for Claude
       conversationPrompt = this.buildConversationPrompt(userMessage)
@@ -223,7 +223,13 @@ export class TaskChatManager extends EventEmitter {
               model: this.options.model,
               cwd: this.options.cwd,
               env: this.options.env,
-              systemPrompt,
+              // Use Claude Code's default system prompt (includes CLAUDE.md, cwd awareness)
+              // and append our task chat instructions
+              systemPrompt: {
+                type: "preset",
+                preset: "claude_code",
+                append: appendSystemPrompt,
+              },
               // Read-only tools for context + Bash for bd commands
               tools: ["Read", "Grep", "Glob", "Bash"],
               permissionMode: "bypassPermissions",
