@@ -106,6 +106,26 @@ export class BdProxy {
   }
 
   /**
+   * List blocked issues.
+   *
+   * This includes both issues with status="blocked" AND open issues that have
+   * unsatisfied blocking dependencies (open issues that depend on other open issues).
+   *
+   * @param parent - Optional parent to filter descendants
+   * @returns Array of blocked issues with blocked_by field populated
+   */
+  async blocked(parent?: string): Promise<BdIssue[]> {
+    const args = ["blocked", "--json"]
+
+    if (parent) {
+      args.push("--parent", parent)
+    }
+
+    const result = await this.exec(args)
+    return JSON.parse(result) as BdIssue[]
+  }
+
+  /**
    * Show details for one or more issues.
    */
   async show(ids: string | string[]): Promise<BdIssue[]> {

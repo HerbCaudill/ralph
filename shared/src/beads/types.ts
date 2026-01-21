@@ -31,6 +31,10 @@ export interface BdIssue {
   dependent_count?: number
   dependencies?: BdDependency[]
   dependents?: BdDependency[]
+  /** IDs of issues that block this issue (from bd blocked command) */
+  blocked_by?: string[]
+  /** Number of issues blocking this issue (from bd blocked command) */
+  blocked_by_count?: number
 }
 
 /**

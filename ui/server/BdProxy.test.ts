@@ -903,6 +903,70 @@ describe("BdProxy", () => {
     })
   })
 
+  describe("blocked", () => {
+    it("calls bd blocked with --json flag", async () => {
+      const blockedIssue: BdIssue = {
+        ...sampleIssue,
+        blocked_by: ["rui-blocker"],
+        blocked_by_count: 1,
+      }
+
+      const blockedPromise = proxy.blocked()
+
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([blockedIssue])))
+      mockProcess.emit("close", 0)
+
+      const result = await blockedPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "bd",
+        ["blocked", "--json"],
+        expect.objectContaining({
+          stdio: ["ignore", "pipe", "pipe"],
+        }),
+      )
+      expect(result).toEqual([blockedIssue])
+      expect(result[0].blocked_by).toEqual(["rui-blocker"])
+      expect(result[0].blocked_by_count).toBe(1)
+    })
+
+    it("passes parent filter", async () => {
+      const blockedPromise = proxy.blocked("rui-epic")
+
+      mockProcess.stdout.emit("data", Buffer.from("[]"))
+      mockProcess.emit("close", 0)
+
+      await blockedPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "bd",
+        ["blocked", "--json", "--parent", "rui-epic"],
+        expect.anything(),
+      )
+    })
+
+    it("returns empty array when no blocked issues", async () => {
+      const blockedPromise = proxy.blocked()
+
+      mockProcess.stdout.emit("data", Buffer.from("[]"))
+      mockProcess.emit("close", 0)
+
+      const result = await blockedPromise
+      expect(result).toEqual([])
+    })
+
+    it("rejects on command failure", async () => {
+      const blockedPromise = proxy.blocked()
+
+      mockProcess.stderr.emit("data", Buffer.from("Error getting blocked issues"))
+      mockProcess.emit("close", 1)
+
+      await expect(blockedPromise).rejects.toThrow(
+        "bd exited with code 1: Error getting blocked issues",
+      )
+    })
+  })
+
   describe("listWithParents", () => {
     it("returns empty array when no issues", async () => {
       const listPromise = proxy.listWithParents()

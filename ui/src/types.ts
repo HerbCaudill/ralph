@@ -39,6 +39,10 @@ export interface Task {
   created_at?: string
   closed_at?: string
   dependencies?: TaskDependency[]
+  /** IDs of issues that block this issue (from bd blocked command) */
+  blocked_by?: string[]
+  /** Number of issues blocking this issue (from bd blocked command) */
+  blocked_by_count?: number
 }
 
 export type TaskCardTask = Task & {

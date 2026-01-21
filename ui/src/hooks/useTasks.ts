@@ -57,6 +57,34 @@ async function fetchTasks(options: UseTasksOptions = {}): Promise<TasksResponse>
   }
 }
 
+/**
+ * Fetch blocked tasks (both status=blocked and dependency-blocked issues).
+ *
+ * Unlike bd list --status=blocked which only shows explicitly blocked issues,
+ * this uses bd blocked to also include open issues with unsatisfied blocking dependencies.
+ *
+ * @param parent - Optional parent to filter descendants
+ * @returns Promise with blocked issues including blocked_by field
+ */
+export async function fetchBlockedTasks(parent?: string): Promise<TasksResponse> {
+  const params = new URLSearchParams()
+  if (parent) {
+    params.set("parent", parent)
+  }
+
+  const url = `/api/tasks/blocked${params.toString() ? `?${params.toString()}` : ""}`
+
+  try {
+    const response = await fetch(url)
+    return (await response.json()) as TasksResponse
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Failed to fetch blocked tasks",
+    }
+  }
+}
+
 // Hook
 
 /**

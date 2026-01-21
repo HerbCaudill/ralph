@@ -384,6 +384,21 @@ function createApp(config: ServerConfig): Express {
     }
   })
 
+  // Get blocked tasks (includes both status=blocked and dependency-blocked issues)
+  app.get("/api/tasks/blocked", async (req: Request, res: Response) => {
+    try {
+      const { parent } = req.query as { parent?: string }
+
+      const bdProxy = getBdProxy()
+      const issues = await bdProxy.blocked(parent)
+
+      res.status(200).json({ ok: true, issues })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to list blocked tasks"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
       const { title, description, priority, type, assignee, parent, labels } = req.body as {
