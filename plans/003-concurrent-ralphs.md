@@ -18,6 +18,7 @@ project-worktrees/           # Sibling folder (keeps worktrees out of main repo)
 ```
 
 **Workflow per instance:**
+
 1. On instance creation: `git worktree add ../project-worktrees/{name}-{id} -b ralph/{name}-{id}`
 2. Ralph runs in the worktree directory
 3. After each iteration: agent resolves any conflicts, then merges branch back to main, rebases worktree on updated main
@@ -35,6 +36,7 @@ Agents must assign tasks to themselves when starting work. The beads `--assignee
 ### Registry pattern
 
 Convert singletons to registries keyed by instance ID:
+
 - `RalphRegistry` → manages `RalphManager` instances
 - `BdProxyRegistry` → one `BdProxy` per workspace (shared across instances in same workspace)
 - `WorktreeManager` → handles git worktree lifecycle
