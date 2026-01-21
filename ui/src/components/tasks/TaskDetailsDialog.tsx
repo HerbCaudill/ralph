@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import {
   IconCircle,
   IconCircleDot,
@@ -54,7 +54,19 @@ export function TaskDetailsDialog({
   const [issueType, setIssueType] = useState<IssueType>("task")
   const [parent, setParent] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
+
+  // Track the last saved values to detect changes
+  const lastSavedRef = useRef<{
+    title: string
+    description: string
+    status: TaskStatus
+    priority: number
+    issueType: IssueType
+    parent: string | null
+  } | null>(null)
+
+  // Debounce timer ref for text field autosave
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Delete state
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
@@ -92,86 +104,153 @@ export function TaskDetailsDialog({
   // Reset local state when task changes
   useEffect(() => {
     if (task) {
-      setTitle(task.title)
-      setDescription(task.description ?? "")
-      setStatus(task.status)
-      setPriority(task.priority ?? 2)
-      setIssueType((task.issue_type as IssueType) ?? "task")
-      setParent(task.parent ?? null)
+      const initialValues = {
+        title: task.title,
+        description: task.description ?? "",
+        status: task.status,
+        priority: task.priority ?? 2,
+        issueType: (task.issue_type as IssueType) ?? "task",
+        parent: task.parent ?? null,
+      }
+      setTitle(initialValues.title)
+      setDescription(initialValues.description)
+      setStatus(initialValues.status)
+      setPriority(initialValues.priority)
+      setIssueType(initialValues.issueType)
+      setParent(initialValues.parent)
       setLabels(task.labels ?? [])
       setNewLabel("")
       setShowLabelInput(false)
       setIsEditingDescription(false)
-      setHasChanges(false)
       setIsConfirmingDelete(false)
       setIsDeleting(false)
       setDeleteError(null)
+      lastSavedRef.current = initialValues
     }
   }, [task])
 
-  // Track changes
+  // Cleanup autosave timer on unmount
   useEffect(() => {
-    if (!task) return
-    const changed =
-      title !== task.title ||
-      description !== (task.description ?? "") ||
-      status !== task.status ||
-      priority !== (task.priority ?? 2) ||
-      issueType !== ((task.issue_type as IssueType) ?? "task") ||
-      parent !== (task.parent ?? null)
-    setHasChanges(changed)
-  }, [task, title, description, status, priority, issueType, parent])
-
-  const handleSave = useCallback(async () => {
-    if (!task || !onSave || readOnly) return
-
-    const updates: TaskUpdateData = {}
-    if (title !== task.title) updates.title = title
-    if (description !== (task.description ?? "")) updates.description = description
-    if (status !== task.status) updates.status = status
-    if (priority !== (task.priority ?? 2)) updates.priority = priority
-    if (issueType !== ((task.issue_type as IssueType) ?? "task")) updates.type = issueType
-    if (parent !== (task.parent ?? null)) updates.parent = parent
-
-    if (Object.keys(updates).length === 0) {
-      onClose()
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      // If closing the task (status changed to closed), save event log first
-      const isClosing = status === "closed" && task.status !== "closed"
-      if (isClosing) {
-        await saveEventLogAndAddComment(task.id, task.title, events, workspace)
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current)
       }
-
-      await onSave(task.id, updates)
-      onClose()
-    } catch (error) {
-      console.error("Failed to save task:", error)
-    } finally {
-      setIsSaving(false)
     }
-  }, [
-    task,
-    onSave,
-    readOnly,
-    title,
-    description,
-    status,
-    priority,
-    issueType,
-    parent,
-    onClose,
-    events,
-    workspace,
-  ])
+  }, [])
 
-  const handleClose = useCallback(() => {
-    setIsConfirmingDelete(false)
+  // Autosave function - saves only the fields that have changed since last save
+  const performAutosave = useCallback(
+    async (currentValues: {
+      title: string
+      description: string
+      status: TaskStatus
+      priority: number
+      issueType: IssueType
+      parent: string | null
+    }) => {
+      if (!task || !onSave || readOnly) return
+
+      const lastSaved = lastSavedRef.current
+      if (!lastSaved) return
+
+      const updates: TaskUpdateData = {}
+      if (currentValues.title !== lastSaved.title) updates.title = currentValues.title
+      if (currentValues.description !== lastSaved.description)
+        updates.description = currentValues.description
+      if (currentValues.status !== lastSaved.status) updates.status = currentValues.status
+      if (currentValues.priority !== lastSaved.priority) updates.priority = currentValues.priority
+      if (currentValues.issueType !== lastSaved.issueType) updates.type = currentValues.issueType
+      if (currentValues.parent !== lastSaved.parent) updates.parent = currentValues.parent
+
+      if (Object.keys(updates).length === 0) return
+
+      setIsSaving(true)
+      try {
+        // If closing the task (status changed to closed), save event log first
+        const isClosing = currentValues.status === "closed" && lastSaved.status !== "closed"
+        if (isClosing) {
+          await saveEventLogAndAddComment(task.id, task.title, events, workspace)
+        }
+
+        await onSave(task.id, updates)
+        // Update last saved values
+        lastSavedRef.current = { ...currentValues }
+      } catch (error) {
+        console.error("Failed to autosave task:", error)
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [task, onSave, readOnly, events, workspace],
+  )
+
+  // Debounced autosave for text fields
+  const scheduleAutosave = useCallback(
+    (currentValues: {
+      title: string
+      description: string
+      status: TaskStatus
+      priority: number
+      issueType: IssueType
+      parent: string | null
+    }) => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current)
+      }
+      autosaveTimerRef.current = setTimeout(() => {
+        performAutosave(currentValues)
+      }, 500)
+    },
+    [performAutosave],
+  )
+
+  // Immediate autosave for non-text fields
+  const immediateAutosave = useCallback(
+    (currentValues: {
+      title: string
+      description: string
+      status: TaskStatus
+      priority: number
+      issueType: IssueType
+      parent: string | null
+    }) => {
+      // Cancel any pending debounced save
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current)
+      }
+      performAutosave(currentValues)
+    },
+    [performAutosave],
+  )
+
+  // Memoized current values for autosave
+  const currentValues = useMemo(
+    () => ({
+      title,
+      description,
+      status,
+      priority,
+      issueType,
+      parent,
+    }),
+    [title, description, status, priority, issueType, parent],
+  )
+
+  // Flush any pending saves before closing
+  const flushAndClose = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
+    // Perform final save with current values
+    await performAutosave(currentValues)
     onClose()
-  }, [onClose])
+  }, [performAutosave, currentValues, onClose])
+
+  const handleClose = useCallback(async () => {
+    setIsConfirmingDelete(false)
+    await flushAndClose()
+  }, [flushAndClose])
 
   const handleDelete = useCallback(async () => {
     if (!task || !onDelete || readOnly) return
@@ -291,7 +370,7 @@ export function TaskDetailsDialog({
     [task],
   )
 
-  // Handle keyboard shortcuts: Cmd+Enter to save, Escape to close
+  // Handle keyboard shortcuts: Cmd+Enter to close (saves automatically), Escape to close
   useEffect(() => {
     if (!open) return
 
@@ -308,21 +387,21 @@ export function TaskDetailsDialog({
         return
       }
 
-      // Cmd+Enter / Ctrl+Enter to save
-      if (!readOnly) {
+      // Cmd+Enter / Ctrl+Enter to close (changes are saved automatically)
+      if (!readOnly && !isSaving) {
         const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
         const modifierPressed = isMac ? event.metaKey : event.ctrlKey
 
-        if (modifierPressed && event.key === "Enter" && hasChanges && !isSaving) {
+        if (modifierPressed && event.key === "Enter") {
           event.preventDefault()
-          handleSave()
+          handleClose()
         }
       }
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [open, readOnly, hasChanges, isSaving, handleSave, handleClose])
+  }, [open, readOnly, isSaving, handleClose])
 
   // Don't render anything if there's no task or it's not open
   if (!task || !open) return null
@@ -362,7 +441,11 @@ export function TaskDetailsDialog({
           : <input
               id="task-title"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={e => {
+                const newTitle = e.target.value
+                setTitle(newTitle)
+                scheduleAutosave({ ...currentValues, title: newTitle })
+              }}
               placeholder="Task title"
               className="text-foreground placeholder:text-muted-foreground w-full bg-transparent text-lg font-semibold focus:outline-none"
             />
@@ -383,11 +466,13 @@ export function TaskDetailsDialog({
               id="task-description"
               value={description}
               onChange={e => {
-                setDescription(e.target.value)
+                const newDescription = e.target.value
+                setDescription(newDescription)
                 // Auto-grow textarea
                 const target = e.target
                 target.style.height = "auto"
                 target.style.height = `${target.scrollHeight}px`
+                scheduleAutosave({ ...currentValues, description: newDescription })
               }}
               onBlur={handleDescriptionBlur}
               onKeyDown={handleDescriptionKeyDown}
@@ -428,7 +513,14 @@ export function TaskDetailsDialog({
                 <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[status].color)} />
                 <span className="text-sm">{statusConfig[status].label}</span>
               </div>
-            : <Select value={status} onValueChange={value => setStatus(value as TaskStatus)}>
+            : <Select
+                value={status}
+                onValueChange={value => {
+                  const newStatus = value as TaskStatus
+                  setStatus(newStatus)
+                  immediateAutosave({ ...currentValues, status: newStatus })
+                }}
+              >
                 <SelectTrigger id="task-status" className="h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -459,7 +551,14 @@ export function TaskDetailsDialog({
               <span className="text-sm">
                 {priorityOptions.find(p => p.value === priority)?.label ?? `P${priority}`}
               </span>
-            : <Select value={String(priority)} onValueChange={value => setPriority(Number(value))}>
+            : <Select
+                value={String(priority)}
+                onValueChange={value => {
+                  const newPriority = Number(value)
+                  setPriority(newPriority)
+                  immediateAutosave({ ...currentValues, priority: newPriority })
+                }}
+              >
                 <SelectTrigger id="task-priority" className="h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -499,11 +598,15 @@ export function TaskDetailsDialog({
                 {issueTypeOptions.map((t, index) => {
                   const Icon = t.icon
                   const isSelected = issueType === t.value
+                  const handleTypeChange = (newType: IssueType) => {
+                    setIssueType(newType)
+                    immediateAutosave({ ...currentValues, issueType: newType })
+                  }
                   return (
                     <button
                       key={t.value}
                       type="button"
-                      onClick={() => setIssueType(t.value)}
+                      onClick={() => handleTypeChange(t.value)}
                       tabIndex={index === 0 || isSelected ? 0 : -1}
                       onKeyDown={e => {
                         if (e.key === "ArrowLeft") {
@@ -513,14 +616,14 @@ export function TaskDetailsDialog({
                           )
                           const prevIndex =
                             (currentIndex - 1 + issueTypeOptions.length) % issueTypeOptions.length
-                          setIssueType(issueTypeOptions[prevIndex].value)
+                          handleTypeChange(issueTypeOptions[prevIndex].value)
                         } else if (e.key === "ArrowRight") {
                           e.preventDefault()
                           const currentIndex = issueTypeOptions.findIndex(
                             opt => opt.value === t.value,
                           )
                           const nextIndex = (currentIndex + 1) % issueTypeOptions.length
-                          setIssueType(issueTypeOptions[nextIndex].value)
+                          handleTypeChange(issueTypeOptions[nextIndex].value)
                         }
                       }}
                       className={cn(
@@ -558,7 +661,10 @@ export function TaskDetailsDialog({
                 allTasks={allTasks}
                 issuePrefix={issuePrefix}
                 value={parent}
-                onChange={setParent}
+                onChange={newParent => {
+                  setParent(newParent)
+                  immediateAutosave({ ...currentValues, parent: newParent })
+                }}
               />
             }
           </div>
@@ -682,13 +788,11 @@ export function TaskDetailsDialog({
             </div>
           )}
 
-          {/* Save/Cancel section - right side */}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isSaving || isDeleting}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving || isDeleting || !hasChanges}>
-              {isSaving ? "Saving..." : "Save changes"}
+          {/* Done button - right side */}
+          <div className="flex items-center gap-2">
+            {isSaving && <span className="text-muted-foreground text-sm">Saving...</span>}
+            <Button onClick={handleClose} disabled={isSaving || isDeleting}>
+              Done
             </Button>
           </div>
         </div>

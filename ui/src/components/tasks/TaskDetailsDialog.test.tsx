@@ -209,7 +209,7 @@ describe("TaskDetailsDialog", () => {
       expect(screen.getByText("Test Task")).toBeInTheDocument()
     })
 
-    it("does not show save button in read-only mode", async () => {
+    it("does not show Done button in read-only mode", async () => {
       await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
@@ -220,21 +220,7 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      expect(screen.queryByRole("button", { name: /save/i })).not.toBeInTheDocument()
-    })
-
-    it("does not show cancel button in read-only mode", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog
-          task={mockTask}
-          open={true}
-          onClose={mockOnClose}
-          onSave={mockOnSave}
-          readOnly={true}
-        />,
-      )
-
-      expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: /done/i })).not.toBeInTheDocument()
     })
   })
 
@@ -268,120 +254,44 @@ describe("TaskDetailsDialog", () => {
       expect(descInput).toHaveValue("Updated description")
     })
 
-    it("enables save button when changes are made", async () => {
+    it("autosaves title after debounce", async () => {
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      expect(saveButton).toBeDisabled()
-
       const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "New Title")
 
-      await waitFor(() => {
-        expect(saveButton).toBeEnabled()
-      })
-    })
+      // Should not have saved immediately
+      expect(mockOnSave).not.toHaveBeenCalled()
 
-    it("disables save button when changes are reverted", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      // Wait for debounced save to complete
+      await waitFor(
+        () => {
+          expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "New Title" })
+        },
+        { timeout: 1000 },
       )
-
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      const titleInput = screen.getByDisplayValue("Test Task")
-
-      typeInInput(titleInput, "New Title")
-      await waitFor(() => {
-        expect(saveButton).toBeEnabled()
-      })
-
-      typeInInput(titleInput, mockTask.title)
-      await waitFor(() => {
-        expect(saveButton).toBeDisabled()
-      })
     })
 
-    it("allows editing type via button bar", async () => {
+    it("autosaves type immediately when changed", async () => {
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       // Find and click the "Bug" button in the type button bar
       const bugButton = screen.getByRole("button", { name: /bug/i })
-      act(() => {
-        fireEvent.click(bugButton)
-      })
-
-      // Save button should now be enabled
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
-    })
-
-    it("saves issue_type when type is changed", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      // Find and click the "Bug" button in the type button bar
-      const bugButton = screen.getByRole("button", { name: /bug/i })
-      act(() => {
-        fireEvent.click(bugButton)
-      })
-
-      // Click save
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
-      const saveButton = screen.getByRole("button", { name: /save/i })
       await act(async () => {
-        fireEvent.click(saveButton)
+        fireEvent.click(bugButton)
       })
 
-      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { type: "bug" })
-    })
-
-    it("allows editing parent via selector", async () => {
-      // Set up tasks in store
-      useAppStore.setState({
-        tasks: [
-          { id: "test-123", title: "Test Task", status: "open", parent: "parent-456" },
-          { id: "parent-456", title: "Parent Task", status: "open" },
-          { id: "other-789", title: "Other Task", status: "open" },
-        ],
-      })
-
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      // Click on the parent combobox
-      const parentCombobox = screen.getByRole("combobox", { name: /parent/i })
-      act(() => {
-        fireEvent.click(parentCombobox)
-      })
-
-      // Select "Other Task" from the dropdown (cmdk uses data-selected)
+      // Should save immediately (no debounce for non-text fields)
       await waitFor(() => {
-        expect(screen.getByText("other-789")).toBeInTheDocument()
-      })
-      act(() => {
-        // Find the command item with the other-789 text
-        const otherOption = screen.getByText("other-789").closest("[cmdk-item]")
-        if (otherOption) {
-          fireEvent.click(otherOption)
-        }
-      })
-
-      // Save button should now be enabled
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
+        expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { type: "bug" })
       })
     })
 
-    it("saves parent when parent is changed", async () => {
+    it("autosaves parent immediately when changed", async () => {
       // Set up tasks in store
       useAppStore.setState({
         tasks: [
@@ -405,26 +315,20 @@ describe("TaskDetailsDialog", () => {
       await waitFor(() => {
         expect(screen.getByText("other-789")).toBeInTheDocument()
       })
-      act(() => {
+      await act(async () => {
         const otherOption = screen.getByText("other-789").closest("[cmdk-item]")
         if (otherOption) {
           fireEvent.click(otherOption)
         }
       })
 
-      // Click save
+      // Should autosave immediately
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
+        expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { parent: "other-789" })
       })
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { parent: "other-789" })
     })
 
-    it("allows clearing parent by selecting None", async () => {
+    it("autosaves when clearing parent by selecting None", async () => {
       // Set up tasks in store
       useAppStore.setState({
         tasks: [
@@ -451,7 +355,7 @@ describe("TaskDetailsDialog", () => {
         const noneInList = noneOptions.find(el => el.closest("[cmdk-item]"))
         expect(noneInList).toBeInTheDocument()
       })
-      act(() => {
+      await act(async () => {
         const noneOptions = screen.getAllByText("None")
         const noneInList = noneOptions.find(el => el.closest("[cmdk-item]"))
         if (noneInList) {
@@ -462,16 +366,10 @@ describe("TaskDetailsDialog", () => {
         }
       })
 
-      // Click save
+      // Should autosave immediately
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
+        expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { parent: null })
       })
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { parent: null })
     })
 
     it("excludes self and children from parent options", async () => {
@@ -514,8 +412,8 @@ describe("TaskDetailsDialog", () => {
     })
   })
 
-  describe("saving", () => {
-    it("calls onSave with updated fields when save is clicked", async () => {
+  describe("autosave", () => {
+    it("only includes changed fields in autosave payload", async () => {
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
@@ -523,64 +421,16 @@ describe("TaskDetailsDialog", () => {
       const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
-
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "Updated Title" })
-    })
-
-    it("only includes changed fields in save payload", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      // Wait for debounced save to complete
+      await waitFor(
+        () => {
+          expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "Updated Title" })
+        },
+        { timeout: 1000 },
       )
-
-      const titleInput = screen.getByDisplayValue("Test Task")
-      typeInInput(titleInput, "Updated Title")
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
-
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      // Should only include title, not description or other unchanged fields
-      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "Updated Title" })
     })
 
-    it("calls onClose after successful save", async () => {
-      mockOnSave.mockResolvedValue(undefined)
-
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      const titleInput = screen.getByDisplayValue("Test Task")
-      typeInInput(titleInput, "Updated Title")
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
-
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockOnClose).toHaveBeenCalled()
-      })
-    })
-
-    it("shows saving state while save is in progress", async () => {
+    it("shows saving indicator during autosave", async () => {
       let resolvePromise: () => void = () => {}
       mockOnSave.mockImplementation(
         () =>
@@ -593,16 +443,10 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const titleInput = screen.getByDisplayValue("Test Task")
-      typeInInput(titleInput, "Updated Title")
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
-
-      const saveButton = screen.getByRole("button", { name: /save/i })
+      // Change type to trigger immediate autosave
+      const bugButton = screen.getByRole("button", { name: /bug/i })
       await act(async () => {
-        fireEvent.click(saveButton)
+        fireEvent.click(bugButton)
       })
 
       expect(screen.getByText(/saving/i)).toBeInTheDocument()
@@ -612,20 +456,20 @@ describe("TaskDetailsDialog", () => {
       })
 
       await waitFor(() => {
-        expect(mockOnClose).toHaveBeenCalled()
+        expect(screen.queryByText(/saving/i)).not.toBeInTheDocument()
       })
     })
   })
 
   describe("closing", () => {
-    it("calls onClose when cancel is clicked", async () => {
+    it("calls onClose when Done is clicked", async () => {
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const cancelButton = screen.getByRole("button", { name: /cancel/i })
+      const doneButton = screen.getByRole("button", { name: /done/i })
       await act(async () => {
-        fireEvent.click(cancelButton)
+        fireEvent.click(doneButton)
       })
 
       expect(mockOnClose).toHaveBeenCalled()
@@ -641,36 +485,6 @@ describe("TaskDetailsDialog", () => {
         fireEvent.click(closeButton)
       })
 
-      expect(mockOnClose).toHaveBeenCalled()
-    })
-
-    it("calls onClose after successfully saving changes", async () => {
-      mockOnSave.mockResolvedValue(undefined)
-
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      // Make a change to enable save button
-      const titleInput = screen.getByDisplayValue("Test Task")
-      typeInInput(titleInput, "Updated Task")
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
-
-      // Click save
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      // Verify onSave was called
-      await waitFor(() => {
-        expect(mockOnSave).toHaveBeenCalled()
-      })
-
-      // Verify onClose was called after save
       await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled()
       })
@@ -808,7 +622,7 @@ describe("TaskDetailsDialog", () => {
       expect(screen.getByText("This is a test description")).toBeInTheDocument()
     })
 
-    it("preserves changes on blur", async () => {
+    it("preserves changes on blur and triggers autosave", async () => {
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
@@ -832,8 +646,15 @@ describe("TaskDetailsDialog", () => {
       })
       expect(screen.getByText("Updated description")).toBeInTheDocument()
 
-      // Save button should be enabled
-      expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
+      // Should trigger autosave (description autosaves after debounce)
+      await waitFor(
+        () => {
+          expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, {
+            description: "Updated description",
+          })
+        },
+        { timeout: 1000 },
+      )
     })
 
     it("shows nothing in read-only mode when description is empty", async () => {
@@ -860,23 +681,14 @@ describe("TaskDetailsDialog", () => {
   })
 
   describe("keyboard shortcuts", () => {
-    it("saves on Cmd+Enter (Mac) when changes exist", async () => {
+    it("closes on Cmd+Enter (Mac)", async () => {
       // Mock Mac platform
       const originalPlatform = navigator.platform
       Object.defineProperty(navigator, "platform", { value: "MacIntel", configurable: true })
 
-      mockOnSave.mockResolvedValue(undefined)
-
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
-
-      const titleInput = screen.getByDisplayValue("Test Task")
-      typeInInput(titleInput, "Updated Title")
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
 
       // Press Cmd+Enter
       await act(async () => {
@@ -884,30 +696,21 @@ describe("TaskDetailsDialog", () => {
       })
 
       await waitFor(() => {
-        expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "Updated Title" })
+        expect(mockOnClose).toHaveBeenCalled()
       })
 
       // Restore platform
       Object.defineProperty(navigator, "platform", { value: originalPlatform, configurable: true })
     })
 
-    it("saves on Ctrl+Enter (Windows/Linux) when changes exist", async () => {
+    it("closes on Ctrl+Enter (Windows/Linux)", async () => {
       // Mock Windows platform
       const originalPlatform = navigator.platform
       Object.defineProperty(navigator, "platform", { value: "Win32", configurable: true })
 
-      mockOnSave.mockResolvedValue(undefined)
-
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
-
-      const titleInput = screen.getByDisplayValue("Test Task")
-      typeInInput(titleInput, "Updated Title")
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
 
       // Press Ctrl+Enter
       await act(async () => {
@@ -915,27 +718,14 @@ describe("TaskDetailsDialog", () => {
       })
 
       await waitFor(() => {
-        expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "Updated Title" })
+        expect(mockOnClose).toHaveBeenCalled()
       })
 
       // Restore platform
       Object.defineProperty(navigator, "platform", { value: originalPlatform, configurable: true })
     })
 
-    it("does not save on Cmd+Enter when no changes", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      // Press Cmd+Enter without making changes
-      await act(async () => {
-        fireEvent.keyDown(window, { key: "Enter", metaKey: true })
-      })
-
-      expect(mockOnSave).not.toHaveBeenCalled()
-    })
-
-    it("does not save on Cmd+Enter in read-only mode", async () => {
+    it("does not close on Cmd+Enter in read-only mode", async () => {
       await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
@@ -951,7 +741,7 @@ describe("TaskDetailsDialog", () => {
         fireEvent.keyDown(window, { key: "Enter", metaKey: true })
       })
 
-      expect(mockOnSave).not.toHaveBeenCalled()
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it("closes on Escape key", async () => {
@@ -1290,20 +1080,15 @@ describe("TaskDetailsDialog", () => {
       const titleInput = screen.getByDisplayValue("Already closed task")
       typeInInput(titleInput, "Updated title")
 
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save/i })).toBeEnabled()
-      })
-
-      // Click save
-      const saveButton = screen.getByRole("button", { name: /save/i })
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
+      // Wait for debounced autosave
+      await waitFor(
+        () => {
+          expect(mockOnSave).toHaveBeenCalledWith("task-001", { title: "Updated title" })
+        },
+        { timeout: 1000 },
+      )
 
       // Verify event log was NOT saved (task was already closed)
-      await waitFor(() => {
-        expect(mockOnSave).toHaveBeenCalledWith("task-001", { title: "Updated title" })
-      })
       expect(eventLogsCalled).toBe(false)
     })
   })
