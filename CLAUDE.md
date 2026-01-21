@@ -210,6 +210,7 @@ Web app with integrated Express server and React frontend:
   - Theme discovery from VS Code installations
 - **Frontend** (`ui/src/`):
   - Real-time event stream viewer
+  - Task chat shows tool uses and results during responses
   - Task sidebar with beads integration
   - Workspace switcher for multiple projects
   - Theme support (VS Code theme integration)

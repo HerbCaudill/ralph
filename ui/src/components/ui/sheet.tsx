@@ -92,6 +92,7 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      aria-describedby={undefined}
       className={cn(sheetVariants({ side, size }), className)}
       {...props}
     >

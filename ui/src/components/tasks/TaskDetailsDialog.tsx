@@ -419,7 +419,7 @@ export function TaskDetailsDialog({
         {/* Metadata Grid - 2x2 layout */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
           {/* Status */}
-          <div className="grid gap-1">
+          <div className="flex flex-col gap-1">
             <Label htmlFor="task-status" className="text-muted-foreground text-xs">
               Status
             </Label>
@@ -451,7 +451,7 @@ export function TaskDetailsDialog({
           </div>
 
           {/* Priority */}
-          <div className="grid gap-1">
+          <div className="flex flex-col gap-1">
             <Label htmlFor="task-priority" className="text-muted-foreground text-xs">
               Priority
             </Label>
@@ -475,7 +475,7 @@ export function TaskDetailsDialog({
           </div>
 
           {/* Type */}
-          <div className="grid gap-1">
+          <div className="flex flex-col gap-1">
             <Label className="text-muted-foreground text-xs">Type</Label>
             {readOnly ?
               <div className="flex items-center gap-2">
@@ -492,7 +492,10 @@ export function TaskDetailsDialog({
                   )
                 })()}
               </div>
-            : <div className="border-input bg-background flex h-8 rounded-md border" role="group">
+            : <div
+                className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
+                role="group"
+              >
                 {issueTypeOptions.map((t, index) => {
                   const Icon = t.icon
                   const isSelected = issueType === t.value
@@ -521,7 +524,7 @@ export function TaskDetailsDialog({
                         }
                       }}
                       className={cn(
-                        "flex flex-1 items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
+                        "flex items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
                         isSelected ?
                           "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
@@ -538,7 +541,7 @@ export function TaskDetailsDialog({
           </div>
 
           {/* Parent */}
-          <div className="grid gap-1">
+          <div className="flex flex-col gap-1">
             <Label htmlFor="task-parent" className="text-muted-foreground text-xs">
               Parent
             </Label>

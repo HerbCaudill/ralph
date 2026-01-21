@@ -177,6 +177,7 @@ function handleMessage(event: MessageEvent): void {
               timestamp: msg.timestamp || Date.now(),
             })
             // Clear streaming text since message is complete
+            // Note: Tool uses are NOT cleared here - they stay visible until user sends next message
             store.setTaskChatStreamingText("")
             store.setTaskChatLoading(false)
           }
@@ -212,6 +213,38 @@ function handleMessage(event: MessageEvent): void {
             role: "assistant",
             content: `Error: ${data.error}`,
             timestamp: Date.now(),
+          })
+        }
+        break
+
+      case "task-chat:tool_use":
+        // Task chat tool use started
+        if (data.toolUse && typeof data.toolUse === "object") {
+          const toolUse = data.toolUse as {
+            toolUseId: string
+            tool: string
+            input: Record<string, unknown>
+            status: "pending" | "running" | "success" | "error"
+          }
+          store.addTaskChatToolUse(toolUse)
+        }
+        break
+
+      case "task-chat:tool_result":
+        // Task chat tool result received
+        if (data.toolUse && typeof data.toolUse === "object") {
+          const toolUse = data.toolUse as {
+            toolUseId: string
+            tool: string
+            input: Record<string, unknown>
+            output?: string
+            error?: string
+            status: "pending" | "running" | "success" | "error"
+          }
+          store.updateTaskChatToolUse(toolUse.toolUseId, {
+            output: toolUse.output,
+            error: toolUse.error,
+            status: toolUse.status,
           })
         }
         break

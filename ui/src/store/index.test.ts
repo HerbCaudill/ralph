@@ -548,10 +548,15 @@ describe("useAppStore", () => {
         expect(task).toEqual({ id: "rui-123", title: "Fix the bug" })
       })
 
-      it("returns null if ralph_task_started event is missing taskId or taskTitle", () => {
+      it("returns task with ID as title if ralph_task_started event has taskId but no taskTitle", () => {
         const events = [
           { type: "ralph_task_started", timestamp: 1000, taskId: "rui-123" },
         ] as RalphEvent[]
+        expect(getTaskFromIterationEvents(events)).toEqual({ id: "rui-123", title: "rui-123" })
+      })
+
+      it("returns null if ralph_task_started event is missing both taskId and taskTitle", () => {
+        const events = [{ type: "ralph_task_started", timestamp: 1000 }] as RalphEvent[]
         expect(getTaskFromIterationEvents(events)).toBeNull()
       })
 

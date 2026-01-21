@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import {
   useAppStore,
   selectTaskChatMessages,
+  selectTaskChatToolUses,
   selectTaskChatLoading,
   selectIsConnected,
   selectTaskChatStreamingText,
@@ -13,7 +14,21 @@ import { AssistantMessageBubble } from "./AssistantMessageBubble"
 import { UserMessageBubble } from "./UserMessageBubble"
 import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
-import type { TaskChatMessage } from "@/types"
+import { ToolUseCard } from "@/components/events/ToolUseCard"
+import type { TaskChatMessage, TaskChatToolUse, ToolName, ToolUseEvent } from "@/types"
+
+// Helper to convert TaskChatToolUse to ToolUseEvent for rendering
+function toToolUseEvent(toolUse: TaskChatToolUse): ToolUseEvent {
+  return {
+    type: "tool_use",
+    timestamp: Date.now(),
+    tool: toolUse.tool as ToolName,
+    input: toolUse.input,
+    output: toolUse.output,
+    error: toolUse.error,
+    status: toolUse.status,
+  }
+}
 
 /**
  * Task chat panel for task management conversations with Claude.
@@ -21,12 +36,14 @@ import type { TaskChatMessage } from "@/types"
  */
 export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const messages = useAppStore(selectTaskChatMessages)
+  const toolUses = useAppStore(selectTaskChatToolUses)
   const isLoading = useAppStore(selectTaskChatLoading)
   const isConnected = useAppStore(selectIsConnected)
   const addMessage = useAppStore(state => state.addTaskChatMessage)
   const removeMessage = useAppStore(state => state.removeTaskChatMessage)
   const setLoading = useAppStore(state => state.setTaskChatLoading)
   const clearMessages = useAppStore(state => state.clearTaskChatMessages)
+  const clearToolUses = useAppStore(state => state.clearTaskChatToolUses)
 
   const chatInputRef = useRef<ChatInputHandle>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -61,11 +78,12 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     }
   }, [checkIsAtBottom])
 
+  // Auto-scroll to bottom when new messages or tool uses arrive
   useEffect(() => {
     if (autoScroll && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
-  }, [messages, streamingText, autoScroll])
+  }, [messages, streamingText, toolUses, autoScroll])
 
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
@@ -116,6 +134,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       addMessage(userMessage)
       setLoading(true)
       setStreamingText("")
+      clearToolUses() // Clear tool uses from previous turn
 
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current)
@@ -151,7 +170,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
         setError(errorMessage)
       }
     },
-    [addMessage, setLoading, setStreamingText, removeMessage],
+    [addMessage, setLoading, setStreamingText, clearToolUses, removeMessage],
   )
 
   const handleClearHistory = useCallback(async () => {
@@ -202,56 +221,81 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
         </div>
       </div>
 
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        onWheel={handleUserScroll}
-        onTouchMove={handleUserScroll}
-        className="bg-background flex-1 overflow-y-auto py-2"
-        role="log"
-        aria-label="Task chat messages"
-        aria-live="polite"
-      >
-        {messages.length === 0 && !streamingText ?
-          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-            Ask questions about your tasks
-          </div>
-        : <>
-            {messages.map(message =>
-              message.role === "user" ?
-                <UserMessageBubble key={message.id} message={message} />
-              : <AssistantMessageBubble key={message.id} message={message} />,
-            )}
-            {streamingText && (
-              <AssistantMessageBubble
-                message={{
-                  id: "streaming",
-                  role: "assistant",
-                  content: streamingText,
-                  timestamp: 0,
-                }}
-              />
-            )}
-            {isLoading && (
-              <div className="text-muted-foreground px-4 py-2 text-xs">Thinking...</div>
-            )}
-          </>
-        }
-      </div>
-
-      {!isAtBottom && (
-        <button
-          onClick={scrollToBottom}
-          className={cn(
-            "bg-primary text-primary-foreground absolute right-4 bottom-20 rounded-full p-2 shadow-lg transition-opacity hover:opacity-90",
-            "flex items-center gap-1.5",
-          )}
-          aria-label="Scroll to latest messages"
+      {/* Messages container */}
+      <div className="relative flex-1 overflow-hidden">
+        <div
+          ref={containerRef}
+          onScroll={handleScroll}
+          onWheel={handleUserScroll}
+          onTouchMove={handleUserScroll}
+          className="bg-background h-full overflow-y-auto py-2"
+          role="log"
+          aria-label="Task chat messages"
+          aria-live="polite"
         >
-          <IconChevronDown className="size-4" />
-          <span className="pr-1 text-xs font-medium">Latest</span>
-        </button>
-      )}
+          {messages.length === 0 && !streamingText && toolUses.length === 0 ?
+            <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
+              <IconMessageChatbot className="size-8 opacity-50" />
+              <p>Ask questions about your tasks</p>
+              <p className="text-xs opacity-70">
+                Get help organizing, prioritizing, and managing your issues
+              </p>
+            </div>
+          : <>
+              {messages.map(message =>
+                message.role === "user" ?
+                  <UserMessageBubble key={message.id} message={message} />
+                : <AssistantMessageBubble key={message.id} message={message} />,
+              )}
+              {/* Tool uses - shown during and after processing, cleared on next user message */}
+              {toolUses.length > 0 && (
+                <div className="py-1">
+                  {toolUses.map(toolUse => (
+                    <ToolUseCard
+                      key={toolUse.toolUseId}
+                      event={toToolUseEvent(toolUse)}
+                      className="text-sm"
+                    />
+                  ))}
+                </div>
+              )}
+              {/* Streaming response */}
+              {streamingText && (
+                <AssistantMessageBubble
+                  message={{
+                    id: "streaming",
+                    role: "assistant",
+                    content: streamingText,
+                    timestamp: Date.now(),
+                  }}
+                />
+              )}
+              {/* Loading indicator */}
+              {isLoading && !streamingText && toolUses.length === 0 && (
+                <div className="flex items-center gap-2 px-4 py-2">
+                  <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
+                  <span className="text-muted-foreground text-xs">Thinking...</span>
+                </div>
+              )}
+            </>
+          }
+        </div>
+
+        {/* Scroll to bottom button */}
+        {!isAtBottom && (
+          <button
+            onClick={scrollToBottom}
+            className={cn(
+              "bg-primary text-primary-foreground absolute right-4 bottom-4 rounded-full p-2 shadow-lg transition-opacity hover:opacity-90",
+              "flex items-center gap-1.5",
+            )}
+            aria-label="Scroll to latest messages"
+          >
+            <IconChevronDown className="size-4" />
+            <span className="pr-1 text-xs font-medium">Latest</span>
+          </button>
+        )}
+      </div>
 
       <div className="border-border border-t p-3">
         {error && <div className="text-status-error pb-2 text-xs">Error: {error}</div>}

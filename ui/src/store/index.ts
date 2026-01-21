@@ -6,6 +6,7 @@ import type {
   RalphStatus,
   Task,
   TaskChatMessage,
+  TaskChatToolUse,
   Theme,
   TokenUsage,
   ContextWindow,
@@ -169,7 +170,6 @@ export function isRalphStatus(value: unknown): value is RalphStatus {
 
 // Default context window size for Claude Sonnet (200k tokens)
 export const DEFAULT_CONTEXT_WINDOW_MAX = 200_000
-
 // Store State
 
 export interface AppState {
@@ -229,6 +229,7 @@ export interface AppState {
   taskChatOpen: boolean
   taskChatWidth: number
   taskChatMessages: TaskChatMessage[]
+  taskChatToolUses: TaskChatToolUse[]
   taskChatLoading: boolean
   taskChatStreamingText: string
 
@@ -325,6 +326,9 @@ export interface AppActions {
   setTaskChatLoading: (loading: boolean) => void
   setTaskChatStreamingText: (text: string) => void
   appendTaskChatStreamingText: (text: string) => void
+  addTaskChatToolUse: (toolUse: TaskChatToolUse) => void
+  updateTaskChatToolUse: (toolUseId: string, updates: Partial<TaskChatToolUse>) => void
+  clearTaskChatToolUses: () => void
 
   // Iteration view
   setViewingIterationIndex: (index: number | null) => void
@@ -417,16 +421,21 @@ export function getEventsForIteration(
 /**
  * Extracts task information from iteration events.
  * Looks for ralph_task_started events to get the task being worked on.
+ * Returns task info if found, with title falling back to taskId if not provided.
  */
 export function getTaskFromIterationEvents(
   events: RalphEvent[],
-): { id: string; title: string } | null {
+): { id: string | null; title: string } | null {
   for (const event of events) {
     if (event.type === "ralph_task_started") {
-      const taskId = (event as any).taskId
-      const taskTitle = (event as any).taskTitle
-      if (taskId && taskTitle) {
-        return { id: taskId, title: taskTitle }
+      const taskId = (event as any).taskId as string | undefined
+      const taskTitle = (event as any).taskTitle as string | undefined
+      // Accept tasks with taskTitle or taskId (title can fall back to ID)
+      if (taskTitle) {
+        return { id: taskId ?? null, title: taskTitle }
+      }
+      if (taskId) {
+        return { id: taskId, title: taskId } // Use ID as fallback title
       }
     }
   }
@@ -462,6 +471,7 @@ const initialState: AppState = {
   taskChatOpen: true,
   taskChatWidth: defaultTaskChatWidth,
   taskChatMessages: [],
+  taskChatToolUses: [],
   taskChatLoading: false,
   taskChatStreamingText: "",
   viewingIterationIndex: null,
@@ -555,8 +565,9 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       // Reset run state
       runStartedAt: null,
       initialTaskCount: null,
-      // Clear task chat messages
+      // Clear task chat messages and tool uses
       taskChatMessages: [],
+      taskChatToolUses: [],
       taskChatLoading: false,
       taskChatStreamingText: "",
       // Clear event log viewer state
@@ -645,11 +656,22 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     set(state => ({
       taskChatMessages: state.taskChatMessages.filter(m => m.id !== id),
     })),
-  clearTaskChatMessages: () => set({ taskChatMessages: [] }),
+  clearTaskChatMessages: () => set({ taskChatMessages: [], taskChatToolUses: [] }),
   setTaskChatLoading: loading => set({ taskChatLoading: loading }),
   setTaskChatStreamingText: text => set({ taskChatStreamingText: text }),
   appendTaskChatStreamingText: text =>
     set(state => ({ taskChatStreamingText: state.taskChatStreamingText + text })),
+  addTaskChatToolUse: toolUse =>
+    set(state => ({
+      taskChatToolUses: [...state.taskChatToolUses, toolUse],
+    })),
+  updateTaskChatToolUse: (toolUseId, updates) =>
+    set(state => ({
+      taskChatToolUses: state.taskChatToolUses.map(t =>
+        t.toolUseId === toolUseId ? { ...t, ...updates } : t,
+      ),
+    })),
+  clearTaskChatToolUses: () => set({ taskChatToolUses: [] }),
 
   // Iteration view
   setViewingIterationIndex: index => set({ viewingIterationIndex: index }),
@@ -751,6 +773,7 @@ export const selectEventLogError = (state: AppState) => state.eventLogError
 export const selectTaskChatOpen = (state: AppState) => state.taskChatOpen
 export const selectTaskChatWidth = (state: AppState) => state.taskChatWidth
 export const selectTaskChatMessages = (state: AppState) => state.taskChatMessages
+export const selectTaskChatToolUses = (state: AppState) => state.taskChatToolUses
 export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
 export const selectTaskChatStreamingText = (state: AppState) => state.taskChatStreamingText
 export const selectViewingIterationIndex = (state: AppState) => state.viewingIterationIndex

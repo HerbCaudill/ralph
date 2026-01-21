@@ -17,7 +17,7 @@ Ralph spawns individual Claude CLI sessions that:
 4. Commit changes
 5. Repeat
 
-The web UI server uses SDK-backed adapters for Claude and Codex, while the CLI continues to run the Claude CLI directly.
+The web UI server uses SDK-backed adapters for Claude and Codex, while the CLI continues to run the Claude CLI directly. The task chat panel also surfaces tool calls and results alongside assistant replies.
 
 ## Installation
 

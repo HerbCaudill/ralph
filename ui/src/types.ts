@@ -74,6 +74,15 @@ export interface TaskChatMessage {
   timestamp: number
 }
 
+export interface TaskChatToolUse {
+  toolUseId: string
+  tool: string
+  input: Record<string, unknown>
+  output?: string
+  error?: string
+  status: "pending" | "running" | "success" | "error"
+}
+
 export type TaskUpdateData = {
   title?: string
   description?: string
