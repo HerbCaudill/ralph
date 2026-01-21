@@ -321,6 +321,8 @@ export interface AppActions {
   toggleTaskChat: () => void
   setTaskChatWidth: (width: number) => void
   addTaskChatMessage: (message: TaskChatMessage) => void
+  /** Atomically adds a completed assistant message while clearing streaming state - prevents brief duplicates */
+  completeTaskChatMessage: (message: TaskChatMessage) => void
   removeTaskChatMessage: (id: string) => void
   clearTaskChatMessages: () => void
   setTaskChatLoading: (loading: boolean) => void
@@ -653,6 +655,12 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   addTaskChatMessage: message =>
     set(state => ({
       taskChatMessages: [...state.taskChatMessages, message],
+    })),
+  completeTaskChatMessage: message =>
+    set(state => ({
+      taskChatMessages: [...state.taskChatMessages, message],
+      taskChatStreamingText: "",
+      taskChatLoading: false,
     })),
   removeTaskChatMessage: id =>
     set(state => ({

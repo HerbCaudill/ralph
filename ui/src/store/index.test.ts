@@ -930,6 +930,37 @@ describe("useAppStore", () => {
       useAppStore.getState().appendTaskChatStreamingText("!")
       expect(useAppStore.getState().taskChatStreamingText).toBe("Hello World!")
     })
+
+    it("atomically completes task chat message", () => {
+      // Set up streaming state as if a response is being received
+      useAppStore.getState().setTaskChatStreamingText("This is the response...")
+      useAppStore.getState().setTaskChatLoading(true)
+
+      // Verify streaming state
+      expect(useAppStore.getState().taskChatStreamingText).toBe("This is the response...")
+      expect(useAppStore.getState().taskChatLoading).toBe(true)
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(0)
+
+      // Complete the message atomically - this should:
+      // 1. Add the message to taskChatMessages
+      // 2. Clear taskChatStreamingText
+      // 3. Set taskChatLoading to false
+      // All in a single state update to prevent brief duplicates
+      const message = {
+        id: "assistant-123",
+        role: "assistant" as const,
+        content: "This is the complete response",
+        timestamp: 123,
+      }
+      useAppStore.getState().completeTaskChatMessage(message)
+
+      // All state should be updated atomically
+      const state = useAppStore.getState()
+      expect(state.taskChatMessages).toHaveLength(1)
+      expect(state.taskChatMessages[0]).toEqual(message)
+      expect(state.taskChatStreamingText).toBe("")
+      expect(state.taskChatLoading).toBe(false)
+    })
   })
 
   describe("sidebar width localStorage persistence", () => {

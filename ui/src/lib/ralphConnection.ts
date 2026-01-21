@@ -205,16 +205,14 @@ function handleMessage(event: MessageEvent): void {
         if (data.message && typeof data.message === "object") {
           const msg = data.message as { role: string; content: string; timestamp: number }
           if (msg.role === "assistant") {
-            store.addTaskChatMessage({
+            // Use atomic update to prevent brief duplicate (streaming text + final message)
+            // Note: Tool uses are NOT cleared here - they stay visible until user sends next message
+            store.completeTaskChatMessage({
               id: `assistant-${msg.timestamp || Date.now()}`,
               role: "assistant",
               content: msg.content,
               timestamp: msg.timestamp || Date.now(),
             })
-            // Clear streaming text since message is complete
-            // Note: Tool uses are NOT cleared here - they stay visible until user sends next message
-            store.setTaskChatStreamingText("")
-            store.setTaskChatLoading(false)
           }
         }
         break
