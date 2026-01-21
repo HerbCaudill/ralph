@@ -2,7 +2,8 @@
  * ThemeDiscovery - Scan VS Code extensions for theme files and read settings.
  *
  * This server-side class handles:
- * - Scanning ~/.vscode/extensions for theme extensions
+ * - Scanning ~/.vscode/extensions for user-installed theme extensions
+ * - Scanning VS Code built-in themes from the application bundle
  * - Reading VS Code settings.json to get the current theme
  * - Providing theme metadata for the ThemePicker component
  */
@@ -13,6 +14,13 @@ import os from "node:os"
 import type { ThemeMeta } from "./lib/theme/types.js"
 
 /**
+ * NLS (localization) strings for resolving placeholders like %themeLabel%
+ */
+interface NlsStrings {
+  [key: string]: string
+}
+
+/**
  * VS Code extension package.json structure for theme contributions.
  */
 interface ExtensionPackageJson {
@@ -21,6 +29,7 @@ interface ExtensionPackageJson {
   publisher?: string
   contributes?: {
     themes?: Array<{
+      id?: string // Built-in themes may have an id field
       label: string
       uiTheme: "vs" | "vs-dark" | "hc-black" | "hc-light"
       path: string
@@ -64,21 +73,41 @@ const VSCODE_VARIANTS = [
     name: "VS Code",
     settingsPath: "Code/User/settings.json",
     extensionsDir: ".vscode/extensions",
+    builtinExtensionsDir: {
+      darwin: "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions",
+      win32: `${process.env.PROGRAMFILES || "C:\\Program Files"}\\Microsoft VS Code\\resources\\app\\extensions`,
+      linux: "/usr/share/code/resources/app/extensions",
+    },
   },
   {
     name: "VS Code Insiders",
     settingsPath: "Code - Insiders/User/settings.json",
     extensionsDir: ".vscode-insiders/extensions",
+    builtinExtensionsDir: {
+      darwin: "/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/extensions",
+      win32: `${process.env.PROGRAMFILES || "C:\\Program Files"}\\Microsoft VS Code Insiders\\resources\\app\\extensions`,
+      linux: "/usr/share/code-insiders/resources/app/extensions",
+    },
   },
   {
     name: "Cursor",
     settingsPath: "Cursor/User/settings.json",
     extensionsDir: ".cursor/extensions",
+    builtinExtensionsDir: {
+      darwin: "/Applications/Cursor.app/Contents/Resources/app/extensions",
+      win32: `${process.env.LOCALAPPDATA || ""}\\Programs\\Cursor\\resources\\app\\extensions`,
+      linux: "/opt/Cursor/resources/app/extensions",
+    },
   },
   {
     name: "VSCodium",
     settingsPath: "VSCodium/User/settings.json",
     extensionsDir: ".vscode-oss/extensions",
+    builtinExtensionsDir: {
+      darwin: "/Applications/VSCodium.app/Contents/Resources/app/extensions",
+      win32: `${process.env.PROGRAMFILES || "C:\\Program Files"}\\VSCodium\\resources\\app\\extensions`,
+      linux: "/usr/share/codium/resources/app/extensions",
+    },
   },
 ] as const
 
@@ -104,6 +133,7 @@ function getAppSupportPath(): string {
 export class ThemeDiscovery {
   private settingsPath: string | null = null
   private extensionsDir: string | null = null
+  private builtinExtensionsDir: string | null = null
   private variantName: string | null = null
 
   /**
@@ -113,10 +143,12 @@ export class ThemeDiscovery {
   async initialize(): Promise<boolean> {
     const appSupport = getAppSupportPath()
     const homeDir = os.homedir()
+    const platform = process.platform as "darwin" | "win32" | "linux"
 
     for (const variant of VSCODE_VARIANTS) {
       const settingsPath = path.join(appSupport, variant.settingsPath)
       const extensionsDir = path.join(homeDir, variant.extensionsDir)
+      const builtinDir = variant.builtinExtensionsDir[platform] || null
 
       // Check if settings file exists
       try {
@@ -125,6 +157,18 @@ export class ThemeDiscovery {
         this.settingsPath = settingsPath
         this.extensionsDir = extensionsDir
         this.variantName = variant.name
+
+        // Check if built-in extensions directory exists (optional)
+        if (builtinDir) {
+          try {
+            await stat(builtinDir)
+            this.builtinExtensionsDir = builtinDir
+          } catch {
+            // Built-in dir not found, continue without it
+            this.builtinExtensionsDir = null
+          }
+        }
+
         return true
       } catch {
         // This variant doesn't exist, try the next one
@@ -209,6 +253,7 @@ export class ThemeDiscovery {
 
     const themes: ThemeMeta[] = []
 
+    // Scan user-installed extensions
     try {
       const entries = await readdir(this.extensionsDir, { withFileTypes: true })
 
@@ -223,12 +268,35 @@ export class ThemeDiscovery {
         }
 
         const extensionPath = path.join(this.extensionsDir, entry.name)
-        const extensionThemes = await this.scanExtension(extensionPath, entry.name)
+        const extensionThemes = await this.scanExtension(extensionPath, entry.name, false)
         themes.push(...extensionThemes)
       }
     } catch {
       // Extensions directory doesn't exist or can't be read
-      return []
+    }
+
+    // Scan built-in themes
+    if (this.builtinExtensionsDir) {
+      try {
+        const entries = await readdir(this.builtinExtensionsDir, { withFileTypes: true })
+
+        for (const entry of entries) {
+          if (!entry.isDirectory()) {
+            continue
+          }
+
+          // Built-in theme directories typically start with "theme-"
+          if (!entry.name.startsWith("theme-")) {
+            continue
+          }
+
+          const extensionPath = path.join(this.builtinExtensionsDir, entry.name)
+          const extensionThemes = await this.scanExtension(extensionPath, entry.name, true)
+          themes.push(...extensionThemes)
+        }
+      } catch {
+        // Built-in extensions directory doesn't exist or can't be read
+      }
     }
 
     // Sort themes by label
@@ -236,9 +304,40 @@ export class ThemeDiscovery {
   }
 
   /**
-   * Scan a single extension directory for theme contributions.
+   * Load NLS (localization) strings from package.nls.json if it exists.
    */
-  private async scanExtension(extensionPath: string, _extensionName: string): Promise<ThemeMeta[]> {
+  private async loadNlsStrings(extensionPath: string): Promise<NlsStrings> {
+    const nlsPath = path.join(extensionPath, "package.nls.json")
+    try {
+      const content = await readFile(nlsPath, "utf-8")
+      return JSON.parse(content) as NlsStrings
+    } catch {
+      return {}
+    }
+  }
+
+  /**
+   * Resolve NLS placeholders like %themeLabel% using NLS strings.
+   */
+  private resolveNlsString(value: string, nlsStrings: NlsStrings): string {
+    // Match %key% pattern
+    const match = /^%([^%]+)%$/.exec(value)
+    if (match) {
+      const key = match[1]
+      return nlsStrings[key] || value
+    }
+    return value
+  }
+
+  /**
+   * Scan a single extension directory for theme contributions.
+   * @param isBuiltin Whether this is a built-in VS Code theme
+   */
+  private async scanExtension(
+    extensionPath: string,
+    _extensionName: string,
+    isBuiltin: boolean,
+  ): Promise<ThemeMeta[]> {
     const themes: ThemeMeta[] = []
     const packageJsonPath = path.join(extensionPath, "package.json")
 
@@ -251,6 +350,9 @@ export class ThemeDiscovery {
         return []
       }
 
+      // Load NLS strings for built-in themes (they use placeholders like %themeLabel%)
+      const nlsStrings = isBuiltin ? await this.loadNlsStrings(extensionPath) : {}
+
       for (const theme of contributedThemes) {
         const themePath = path.join(extensionPath, theme.path)
 
@@ -262,17 +364,30 @@ export class ThemeDiscovery {
           continue
         }
 
+        // Resolve NLS placeholders in label and displayName
+        const resolvedLabel = this.resolveNlsString(theme.label, nlsStrings)
+        const resolvedDisplayName =
+          packageJson.displayName ?
+            this.resolveNlsString(packageJson.displayName, nlsStrings)
+          : packageJson.name
+
         // Create a unique ID: extensionId/themeLabel
-        const extensionId = `${packageJson.publisher || "local"}.${packageJson.name}`
-        const id = `${extensionId}/${theme.label}`
+        // For built-in themes, use "vscode" as the publisher
+        const publisher = isBuiltin ? "vscode" : packageJson.publisher || "local"
+        const extensionId = `${publisher}.${packageJson.name}`
+
+        // Use the theme's id field if available (built-in themes often have this),
+        // otherwise fall back to the resolved label
+        const themeIdSuffix = theme.id || resolvedLabel
+        const id = `${extensionId}/${themeIdSuffix}`
 
         themes.push({
           id,
-          label: theme.label,
+          label: resolvedLabel,
           type: mapUiThemeToType(theme.uiTheme),
           path: themePath,
           extensionId,
-          extensionName: packageJson.displayName || packageJson.name,
+          extensionName: resolvedDisplayName,
         })
       }
     } catch {
