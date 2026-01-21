@@ -124,7 +124,7 @@ function HotkeyRow({ config }: HotkeyRowProps) {
   return (
     <div className="flex items-center justify-between py-1.5">
       <span className="text-foreground text-sm">{config.description}</span>
-      <kbd className="bg-muted text-muted-foreground border-border ml-4 shrink-0 rounded border px-2 py-1 font-mono text-xs">
+      <kbd className="bg-muted text-muted-foreground border-border ml-4 shrink-0 rounded border px-2 py-1 font-sans text-sm tracking-widest">
         {display}
       </kbd>
     </div>

@@ -44,7 +44,7 @@ function Kbd({ children, className, ...props }: KbdProps) {
   return (
     <kbd
       className={cn(
-        "bg-muted text-muted-foreground pointer-events-none ml-2 inline-flex h-5 items-center gap-1 rounded border px-1.5 font-mono text-xs font-medium",
+        "bg-muted text-muted-foreground pointer-events-none ml-2 inline-flex h-5 items-center gap-1 rounded border px-1.5 font-mono text-sm tracking-widest",
         className,
       )}
       {...props}
