@@ -163,7 +163,7 @@ describe("SearchInput", () => {
       expect(useAppStore.getState().selectedTaskId).toBe("task-1")
     })
 
-    it("calls onOpenTask when Enter is pressed with selected task", () => {
+    it("calls onOpenTask when Enter is pressed with selected task (keeps selection)", () => {
       const onOpenTask = vi.fn()
       useAppStore.getState().setSelectedTaskId("task-2")
       render(<SearchInput onOpenTask={onOpenTask} />)
@@ -172,7 +172,8 @@ describe("SearchInput", () => {
       fireEvent.keyDown(input, { key: "Enter" })
 
       expect(onOpenTask).toHaveBeenCalledWith("task-2")
-      expect(useAppStore.getState().selectedTaskId).toBe(null)
+      // Selection should persist so user can continue navigating after closing the opened task
+      expect(useAppStore.getState().selectedTaskId).toBe("task-2")
     })
 
     it("does not call onOpenTask when Enter is pressed without selected task", () => {

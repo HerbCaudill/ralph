@@ -132,12 +132,11 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
         return
       }
 
-      // Enter - open selected task
+      // Enter - open selected task (keep it selected so user can continue navigating)
       if (e.key === "Enter") {
         e.preventDefault()
         if (selectedTaskId && onOpenTask) {
           onOpenTask(selectedTaskId)
-          clearSelectedTaskId()
         }
         return
       }
