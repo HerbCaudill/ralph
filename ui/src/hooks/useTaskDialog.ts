@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import type { TaskCardTask } from "@/components/tasks/TaskCard"
 import type { TaskUpdateData } from "@/components/tasks/TaskDetailsDialog"
 import { useAppStore } from "@/store"
@@ -117,17 +117,30 @@ export function useTaskDialog(options: UseTaskDialogOptions = {}): UseTaskDialog
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Track pending close timeout to cancel if dialog is reopened quickly
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Get store actions for task management
   const refreshTasks = useAppStore(state => state.refreshTasks)
   const removeTask = useAppStore(state => state.removeTask)
 
   const openDialog = useCallback((task: TaskCardTask) => {
+    // Cancel any pending close timeout to prevent clearing state
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
     setSelectedTask(task)
     setIsOpen(true)
     setError(null)
   }, [])
 
   const openDialogById = useCallback(async (id: string) => {
+    // Cancel any pending close timeout to prevent clearing state
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
     setIsLoading(true)
     setIsOpen(true)
     setError(null)
@@ -152,9 +165,11 @@ export function useTaskDialog(options: UseTaskDialogOptions = {}): UseTaskDialog
   const closeDialog = useCallback(() => {
     setIsOpen(false)
     // Delay clearing the task so the dialog can animate out
-    setTimeout(() => {
+    // Store the timeout ref so it can be cancelled if the dialog is reopened quickly
+    closeTimeoutRef.current = setTimeout(() => {
       setSelectedTask(null)
       setError(null)
+      closeTimeoutRef.current = null
     }, 200)
   }, [])
 

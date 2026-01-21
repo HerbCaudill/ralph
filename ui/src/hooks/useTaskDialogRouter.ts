@@ -91,6 +91,7 @@ export function useTaskDialogRouter({
   }, [taskDialog])
 
   // Handle hash changes and open dialog when task ID is found
+  // This effect only runs once on mount and sets up the hashchange listener
   useEffect(() => {
     async function handleHashChange() {
       // Skip if this is a programmatic change we initiated
@@ -99,20 +100,19 @@ export function useTaskDialogRouter({
       }
 
       const id = parseTaskIdHash(window.location.hash)
+      const previousId = taskIdFromUrlRef.current
       taskIdFromUrlRef.current = id
 
       if (id) {
         // Open the dialog by ID
         await taskDialog.openDialogById(id)
-      } else {
-        // No task ID in hash, close dialog if it's open
-        if (taskDialog.isOpen) {
-          taskDialog.closeDialog()
-        }
+      } else if (previousId) {
+        // Hash was cleared (had an ID before, now doesn't) - close dialog
+        taskDialog.closeDialog()
       }
     }
 
-    // Check hash on mount
+    // Check hash on mount only
     handleHashChange()
 
     // Listen for hash changes
@@ -121,7 +121,10 @@ export function useTaskDialogRouter({
     return () => {
       window.removeEventListener("hashchange", handleHashChange)
     }
-  }, [taskDialog])
+    // Note: We intentionally only depend on the stable functions, not the entire taskDialog object
+    // This prevents the effect from re-running on every state change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskDialog.openDialogById, taskDialog.closeDialog])
 
   // Update URL when dialog opens/closes via other means (e.g., clicking a task)
   useEffect(() => {

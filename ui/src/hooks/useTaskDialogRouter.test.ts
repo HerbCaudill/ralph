@@ -216,7 +216,13 @@ describe("useTaskDialogRouter", () => {
     // Start with dialog open
     const mockTaskDialog = createMockTaskDialog({
       isOpen: true,
-      selectedTask: { id: "r-abc1", title: "Test", status: "open", priority: 2, issue_type: "task" },
+      selectedTask: {
+        id: "r-abc1",
+        title: "Test",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+      },
     })
 
     const { rerender } = renderHook(({ taskDialog }) => useTaskDialogRouter({ taskDialog }), {

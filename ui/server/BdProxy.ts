@@ -185,6 +185,9 @@ export class BdProxy {
 
     const result = await this.exec(args)
     const issues = JSON.parse(result) as BdIssue[]
+    if (!issues || issues.length === 0) {
+      throw new Error("bd create did not return an issue")
+    }
     return issues[0]
   }
 

@@ -211,6 +211,56 @@ describe("QuickTaskInput", () => {
       })
     })
 
+    it("clears input after successful submission with async onTaskCreated callback", async () => {
+      mockSuccessResponse({ id: "rui-async", title: "Task", status: "open", priority: 2 })
+
+      // Simulate an async callback like the one in App.tsx that refreshes the task list
+      const onTaskCreated = vi.fn(async () => {
+        // Simulate async work (like refreshing task list)
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      render(<QuickTaskInput onTaskCreated={onTaskCreated} />)
+
+      const input = screen.getByRole("textbox")
+      typeInInput(input, "Test task with callback")
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Wait for the callback to be called
+      await waitFor(() => {
+        expect(onTaskCreated).toHaveBeenCalled()
+      })
+
+      // Input should be cleared BEFORE the callback completes
+      await waitFor(() => {
+        expect(input).toHaveValue("")
+      })
+    })
+
+    it("clears localStorage after successful submission", async () => {
+      mockSuccessResponse({ id: "rui-storage", title: "Task", status: "open", priority: 2 })
+
+      render(<QuickTaskInput />)
+
+      const input = screen.getByRole("textbox")
+      typeInInput(input, "Test task for storage")
+
+      // Verify localStorage has the draft
+      expect(localStorage.getItem(STORAGE_KEY)).toBe("Test task for storage")
+
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Wait for input to be cleared
+      await waitFor(() => {
+        expect(input).toHaveValue("")
+      })
+
+      // localStorage should also be cleared
+      await waitFor(() => {
+        expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+      })
+    })
+
     it("trims whitespace from title", async () => {
       mockSuccessResponse({ id: "rui-abc", title: "Trimmed", status: "open", priority: 2 })
 

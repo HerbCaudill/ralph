@@ -405,10 +405,15 @@ function createApp(config: ServerConfig): Express {
 
       const issue = await bdProxy.create(options)
 
+      if (!issue) {
+        res.status(500).json({ ok: false, error: "Failed to create task - no issue returned" })
+        return
+      }
+
       // Only auto-title if this was created via quick input (title-only, no description)
       // and the title is long enough to potentially benefit from parsing
       const isQuickInput = !description && !priority && !type && !assignee && !parent && !labels
-      if (isQuickInput && title.trim().length > 0) {
+      if (isQuickInput && title.trim().length > 0 && issue.id) {
         // Fire and forget - don't block the response
         autoTitleTask(issue.id, title.trim()).catch(err => {
           console.error("[task-titling] Error auto-titling task:", err)
