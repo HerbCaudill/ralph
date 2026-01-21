@@ -874,7 +874,7 @@ describe("BdProxy", () => {
       expect(result).toEqual([])
     })
 
-    it("derives parent from dependent with blocks relationship", async () => {
+    it("uses parent field from detailed issue", async () => {
       // First call: list returns tasks
       const listIssue: BdIssue = {
         id: "rui-task",
@@ -886,21 +886,10 @@ describe("BdProxy", () => {
         updated_at: "2026-01-18T12:00:00Z",
       }
 
-      // Second call: show returns details with dependents
+      // Second call: show returns details with parent field
       const showIssue: BdIssue = {
         ...listIssue,
-        dependents: [
-          {
-            id: "rui-epic",
-            title: "Parent Epic",
-            status: "open",
-            priority: 2,
-            issue_type: "epic",
-            created_at: "2026-01-18T12:00:00Z",
-            updated_at: "2026-01-18T12:00:00Z",
-            dependency_type: "blocks",
-          },
-        ],
+        parent: "rui-epic",
       }
 
       const listPromise = proxy.listWithParents()
@@ -927,7 +916,7 @@ describe("BdProxy", () => {
       expect(result[0].parent).toBe("rui-epic")
     })
 
-    it("sets parent for non-epic dependents with blocks relationship", async () => {
+    it("handles tasks without a parent", async () => {
       const listIssue: BdIssue = {
         id: "rui-task",
         title: "Test Task",
@@ -940,100 +929,7 @@ describe("BdProxy", () => {
 
       const showIssue: BdIssue = {
         ...listIssue,
-        dependents: [
-          {
-            id: "rui-other-task",
-            title: "Other Task",
-            status: "open",
-            priority: 2,
-            issue_type: "task", // Not an epic, but still a valid parent
-            created_at: "2026-01-18T12:00:00Z",
-            updated_at: "2026-01-18T12:00:00Z",
-            dependency_type: "blocks",
-          },
-        ],
-      }
-
-      const listPromise = proxy.listWithParents()
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
-      mockProcess.emit("close", 0)
-
-      const secondMockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(secondMockProcess)
-
-      await new Promise(resolve => setTimeout(resolve, 0))
-
-      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
-      secondMockProcess.emit("close", 0)
-
-      const result = await listPromise
-
-      expect(result).toHaveLength(1)
-      expect(result[0].id).toBe("rui-task")
-      expect(result[0].parent).toBe("rui-other-task")
-    })
-
-    it("does not set parent for dependent with non-blocks relationship", async () => {
-      const listIssue: BdIssue = {
-        id: "rui-task",
-        title: "Test Task",
-        status: "open",
-        priority: 2,
-        issue_type: "task",
-        created_at: "2026-01-18T12:00:00Z",
-        updated_at: "2026-01-18T12:00:00Z",
-      }
-
-      const showIssue: BdIssue = {
-        ...listIssue,
-        dependents: [
-          {
-            id: "rui-epic",
-            title: "Some Epic",
-            status: "open",
-            priority: 2,
-            issue_type: "epic",
-            created_at: "2026-01-18T12:00:00Z",
-            updated_at: "2026-01-18T12:00:00Z",
-            dependency_type: "relates_to", // Not "blocks"
-          },
-        ],
-      }
-
-      const listPromise = proxy.listWithParents()
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
-      mockProcess.emit("close", 0)
-
-      const secondMockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(secondMockProcess)
-
-      await new Promise(resolve => setTimeout(resolve, 0))
-
-      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
-      secondMockProcess.emit("close", 0)
-
-      const result = await listPromise
-
-      expect(result).toHaveLength(1)
-      expect(result[0].parent).toBeUndefined()
-    })
-
-    it("handles tasks without any dependents", async () => {
-      const listIssue: BdIssue = {
-        id: "rui-task",
-        title: "Test Task",
-        status: "open",
-        priority: 2,
-        issue_type: "task",
-        created_at: "2026-01-18T12:00:00Z",
-        updated_at: "2026-01-18T12:00:00Z",
-      }
-
-      const showIssue: BdIssue = {
-        ...listIssue,
-        // No dependents array
+        // No parent field
       }
 
       const listPromise = proxy.listWithParents()

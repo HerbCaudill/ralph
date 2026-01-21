@@ -183,12 +183,12 @@ export class BdProxy {
   }
 
   /**
-   * List issues with parent field derived from dependency relationships.
+   * List issues with parent field from detailed issue data.
    *
    * This method fetches all issues matching the filters and then enriches them
-   * with the `parent` field by looking at each issue's dependents. If an issue
-   * has a dependent with dependency_type "blocks", that dependent's ID is set
-   * as the parent. This supports hierarchical task structures for both epics
+   * with the `parent` field from the full issue details. The `bd show` command
+   * returns the parent field for issues that have a parent-child dependency
+   * relationship. This supports hierarchical task structures for both epics
    * and regular tasks with subtasks.
    */
   async listWithParents(options: BdListOptions = {}): Promise<BdIssue[]> {
@@ -209,22 +209,16 @@ export class BdProxy {
       detailsMap.set(issue.id, issue)
     }
 
-    // Enrich each issue with parent field derived from dependents
+    // Enrich each issue with parent field from the detailed issue
+    // The `bd show` command returns the parent field directly when an issue
+    // has a parent-child dependency relationship
     return issues.map(issue => {
       const details = detailsMap.get(issue.id)
-      if (!details?.dependents?.length) {
+      if (!details?.parent) {
         return issue
       }
 
-      // Find a parent task (any task that this issue blocks)
-      // This means the current issue "blocks" the parent (is a child of the parent)
-      const parentTask = details.dependents.find(dep => dep.dependency_type === "blocks")
-
-      if (parentTask) {
-        return { ...issue, parent: parentTask.id }
-      }
-
-      return issue
+      return { ...issue, parent: details.parent }
     })
   }
 
