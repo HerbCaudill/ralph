@@ -231,6 +231,41 @@ Web app with integrated Express server and React frontend:
 
 Run with `npx @herbcaudill/ralph-ui` after installing.
 
+#### Multi-Agent Support
+
+The project supports multiple coding agents through the `AgentAdapter` abstraction:
+
+**Available Agents:**
+
+1. **Claude** (default) - Anthropic's Claude via the Claude Agent SDK
+   - Uses `@anthropic-ai/claude-agent-sdk`
+   - Requires `ANTHROPIC_API_KEY` environment variable
+
+2. **Codex** - OpenAI's Codex via the Codex SDK
+   - Uses `@openai/codex-sdk`
+   - `OPENAI_API_KEY` is optional if logged into the local codex CLI
+
+**Agent Adapter Architecture:**
+
+All agents implement the `AgentAdapter` base class (`server/AgentAdapter.ts`):
+
+- **AgentAdapter** - Abstract base class defining the interface
+- **AdapterRegistry** - Registry for discovering and instantiating adapters
+- **ClaudeAdapter** / **CodexAdapter** - Concrete implementations
+
+Each adapter normalizes native events into `AgentEvent` types:
+- `AgentMessageEvent`, `AgentToolUseEvent`, `AgentToolResultEvent`, `AgentResultEvent`, `AgentErrorEvent`, `AgentStatusEvent`
+
+**User Messages During Iterations:**
+
+Users can send messages to Ralph during an active iteration. The message format expected by the Ralph CLI:
+
+```json
+{ "type": "message", "text": "your message here" }
+```
+
+The server automatically wraps user messages in this format before sending to the Ralph CLI via stdin.
+
 ### Shared Package (`shared/`)
 
 Shared utilities and types used by both CLI and UI packages:
@@ -366,3 +401,12 @@ pnpm ui:test           # Run UI tests only
 - Components lead files; helper functions live in `ui/src/lib` (one function per file).
 - Standalone subcomponents live in their own files next to the parent component.
 - Shared types and constants live in `ui/src/types.ts` and `ui/src/constants.ts`.
+
+## Environment Variables
+
+- `ANTHROPIC_API_KEY` - Required for Claude agent
+- `OPENAI_API_KEY` - Optional for Codex agent (uses local codex CLI auth if absent)
+- `HOST` - Server host (default: 127.0.0.1)
+- `PORT` - Server port (default: 4242)
+- `RALPH_DEBUG` - Enable debug logging (see Debug Logging section)
+- `RALPH_CWD` - Override base path for relative path rendering
