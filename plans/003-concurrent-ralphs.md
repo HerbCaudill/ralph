@@ -8,11 +8,11 @@ Enable running multiple Ralph instances simultaneously within the same UI, each 
 
 ### Git worktree isolation
 
-Each Ralph instance gets its own git worktree, allowing parallel work without conflicts:
+Each Ralph instance gets its own git worktree in a sibling folder, allowing parallel work without conflicts:
 
 ```
 project/                     # Main worktree (main branch)
-project-worktrees/           # Sibling folder for worktrees
+project-worktrees/           # Sibling folder (keeps worktrees out of main repo)
   alice-abc123/              # Alice's worktree (branch: ralph/alice-abc123)
   bob-def456/                # Bob's worktree (branch: ralph/bob-def456)
 ```
@@ -21,7 +21,7 @@ project-worktrees/           # Sibling folder for worktrees
 1. On instance creation: `git worktree add ../project-worktrees/{name}-{id} -b ralph/{name}-{id}`
 2. Ralph runs in the worktree directory
 3. After each iteration: agent resolves any conflicts, then merges branch back to main, rebases worktree on updated main
-4. On instance removal: merge final changes, `git worktree remove`, delete branch
+4. On instance removal: merge final changes, `git worktree remove`, auto-delete branch
 
 ### Task assignment
 
@@ -96,10 +96,3 @@ Convert singletons to registries keyed by instance ID:
 36. Show instance count badge when multiple running
 37. Handle edge case: instance worktree deleted externally
 38. Add instance status to header (e.g., "Alice: running task 'Fix login bug'")
-
-## Decisions
-
-1. **Merge frequency:** Merge after every iteration
-2. **Conflict resolution:** Agents resolve conflicts themselves before merging
-3. **Worktree location:** Sibling folder (`{project}-worktrees/`)
-4. **Branch cleanup:** Auto-delete branches after merge
