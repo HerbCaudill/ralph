@@ -208,21 +208,27 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           </aside>
         )}
 
-        {leftPanel && leftPanelOpen && (
+        {leftPanel && (
           <div
             ref={leftPanelRef}
-            className="bg-background border-border relative flex h-full flex-col overflow-hidden border-r"
-            style={{ width: leftPanelWidth, borderColor }}
+            className={cn(
+              "bg-background border-border relative flex h-full flex-col overflow-hidden border-r",
+              leftPanelOpen ? "visible" : "hidden",
+            )}
+            style={{ width: leftPanelOpen ? leftPanelWidth : 0, borderColor }}
             tabIndex={-1}
+            data-testid="left-panel"
           >
-            {leftPanel}
-            <div
-              className="bg-border absolute top-0 right-0 h-full w-1 cursor-col-resize hover:w-2"
-              onMouseDown={() => setIsResizingLeftPanel(true)}
-              aria-label="Resize left panel"
-              role="separator"
-              aria-orientation="vertical"
-            />
+            {leftPanelOpen && leftPanel}
+            {leftPanelOpen && onLeftPanelWidthChange && (
+              <div
+                className="bg-border absolute top-0 right-0 h-full w-1 cursor-col-resize hover:w-2"
+                onMouseDown={() => setIsResizingLeftPanel(true)}
+                aria-label="Resize left panel"
+                role="separator"
+                aria-orientation="vertical"
+              />
+            )}
           </div>
         )}
 

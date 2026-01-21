@@ -388,6 +388,27 @@ export function App() {
     }, 50)
   }, [showSearch])
 
+  useEffect(() => {
+    if (!isSearchVisible) {
+      return
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return
+      }
+      const activeElement = document.activeElement
+      if (activeElement?.getAttribute("aria-label") === "Search tasks") {
+        hideSearch()
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape)
+    return () => {
+      window.removeEventListener("keydown", handleEscape)
+    }
+  }, [hideSearch, isSearchVisible])
+
   const handleClearTaskChat = useCallback(async () => {
     const result = await clearTaskChatHistory()
     if (result.ok) {

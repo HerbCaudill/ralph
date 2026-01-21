@@ -159,6 +159,7 @@ pnpm ui:build          # Build UI for production
 pnpm ui:test           # Run UI tests
 pnpm test:pw           # Run Playwright with dynamic ports (uses scripts/dev.js)
 pnpm --filter @herbcaudill/ralph-ui dev:headless  # Start UI without opening a browser
+# Playwright dev server output logs to ui/test-results/playwright-dev.log
 
 # Run server + UI together
 pnpm dev               # Start both server and UI concurrently

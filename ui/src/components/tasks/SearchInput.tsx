@@ -68,11 +68,12 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
       if (e.key === "Escape") {
         if (query) {
           clearQuery()
+          clearSelectedTaskId()
+          onHide?.()
+          return
         }
         clearSelectedTaskId()
-        if (!query) {
-          onHide?.()
-        }
+        onHide?.()
       }
     },
     [

@@ -141,6 +141,7 @@ pnpm test:pw
 
 # Playwright uses scripts/dev.js to start the server + UI with dynamic ports.
 # It waits for the UI to be ready before running tests.
+# Server output is written to ui/test-results/playwright-dev.log.
 
 # Run Playwright with UI
 pnpm test:pw:ui
