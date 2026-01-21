@@ -20,9 +20,9 @@
     "ui": "pnpm --filter @herbcaudill/ralph-ui dev",
     "ui:build": "pnpm --filter @herbcaudill/ralph-ui build",
     "ui:test": "pnpm --filter @herbcaudill/ralph-ui test",
-    "test:pw:ui": "pnpm --filter @herbcaudill/ralph-ui test:pw:ui",
-    "test:pw:headed": "pnpm --filter @herbcaudill/ralph-ui test:pw:headed",
-    "test:pw": "pnpm --filter @herbcaudill/ralph-ui test:pw",
+    "test:pw:ui": "node scripts/playwright.js --ui",
+    "test:pw:headed": "node scripts/playwright.js --headed",
+    "test:pw": "node scripts/playwright.js",
     "dev": "node scripts/dev.js",
     "storybook": "pnpm --filter @herbcaudill/ralph-ui storybook"
   },

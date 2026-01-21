@@ -5,9 +5,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test:watch": "vitest --watch",
-    "test:pw:ui": "playwright test --ui",
-    "test:pw:headed": "playwright test --headed",
-    "test:pw": "playwright test",
+    "test:pw:ui": "node ../scripts/playwright.js --ui",
+    "test:pw:headed": "node ../scripts/playwright.js --headed",
+    "test:pw": "node ../scripts/playwright.js",
     "test:all": "pnpm typecheck && vitest run --reporter=dot && pnpm test:pw --max-failures=1",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
