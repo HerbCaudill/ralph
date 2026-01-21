@@ -22,6 +22,8 @@ import {
   selectTaskChatWidth,
   selectViewingEventLogId,
   selectIsSearchVisible,
+  selectSelectedTaskId,
+  selectVisibleTaskIds,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -239,6 +241,11 @@ export function App() {
   const goToNextIteration = useAppStore(state => state.goToNextIteration)
   const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
 
+  // Task navigation
+  const selectedTaskId = useAppStore(selectSelectedTaskId)
+  const visibleTaskIds = useAppStore(selectVisibleTaskIds)
+  const setSelectedTaskId = useAppStore(state => state.setSelectedTaskId)
+
   // Tool output visibility
   const toggleToolOutput = useAppStore(state => state.toggleToolOutput)
 
@@ -424,6 +431,30 @@ export function App() {
     }
   }, [clearTaskChatMessages, setTaskChatStreamingText])
 
+  // Task navigation handlers
+  const handlePreviousTask = useCallback(() => {
+    if (visibleTaskIds.length === 0) return
+    const currentIndex =
+      selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : visibleTaskIds.length
+    const prevIndex = Math.max(currentIndex - 1, 0)
+    const prevId = visibleTaskIds[prevIndex]
+    if (prevId) setSelectedTaskId(prevId)
+  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
+
+  const handleNextTask = useCallback(() => {
+    if (visibleTaskIds.length === 0) return
+    const currentIndex = selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : -1
+    const nextIndex = Math.min(currentIndex + 1, visibleTaskIds.length - 1)
+    const nextId = visibleTaskIds[nextIndex]
+    if (nextId) setSelectedTaskId(nextId)
+  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
+
+  const handleOpenTask = useCallback(() => {
+    if (selectedTaskId) {
+      taskDialog.openDialogById(selectedTaskId)
+    }
+  }, [selectedTaskId, taskDialog])
+
   // Register hotkeys
   useHotkeys({
     handlers: {
@@ -450,6 +481,9 @@ export function App() {
       nextWorkspace: goToNextWorkspace,
       toggleToolOutput: toggleToolOutput,
       clearTaskChat: handleClearTaskChat,
+      previousTask: handlePreviousTask,
+      nextTask: handleNextTask,
+      openTask: handleOpenTask,
     },
   })
 

@@ -103,6 +103,9 @@ describe("useHotkeys", () => {
       expect(actions).toContain("toggleTaskChat")
       expect(actions).toContain("focusTaskChatInput")
       expect(actions).toContain("clearTaskChat")
+      expect(actions).toContain("previousTask")
+      expect(actions).toContain("nextTask")
+      expect(actions).toContain("openTask")
     })
   })
 
@@ -384,6 +387,111 @@ describe("useHotkeys", () => {
       })
 
       expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("handles previousTask hotkey (ArrowUp)", () => {
+      mockNavigator("MacIntel")
+      const handler = vi.fn()
+
+      renderHook(() =>
+        useHotkeys({
+          handlers: {
+            previousTask: handler,
+          },
+        }),
+      )
+
+      // Simulate ArrowUp (no modifiers)
+      act(() => {
+        const event = new KeyboardEvent("keydown", {
+          key: "ArrowUp",
+          bubbles: true,
+        })
+        window.dispatchEvent(event)
+      })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("handles nextTask hotkey (ArrowDown)", () => {
+      mockNavigator("MacIntel")
+      const handler = vi.fn()
+
+      renderHook(() =>
+        useHotkeys({
+          handlers: {
+            nextTask: handler,
+          },
+        }),
+      )
+
+      // Simulate ArrowDown (no modifiers)
+      act(() => {
+        const event = new KeyboardEvent("keydown", {
+          key: "ArrowDown",
+          bubbles: true,
+        })
+        window.dispatchEvent(event)
+      })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("handles openTask hotkey (Enter)", () => {
+      mockNavigator("MacIntel")
+      const handler = vi.fn()
+
+      renderHook(() =>
+        useHotkeys({
+          handlers: {
+            openTask: handler,
+          },
+        }),
+      )
+
+      // Simulate Enter (no modifiers)
+      act(() => {
+        const event = new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+        })
+        window.dispatchEvent(event)
+      })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not fire task navigation hotkeys when in input element", () => {
+      mockNavigator("MacIntel")
+      const handler = vi.fn()
+
+      renderHook(() =>
+        useHotkeys({
+          handlers: {
+            nextTask: handler,
+          },
+        }),
+      )
+
+      // Create an input element
+      const input = document.createElement("input")
+      document.body.appendChild(input)
+      input.focus()
+
+      // Simulate ArrowDown while focused on input
+      act(() => {
+        const event = new KeyboardEvent("keydown", {
+          key: "ArrowDown",
+          bubbles: true,
+        })
+        Object.defineProperty(event, "target", { value: input })
+        window.dispatchEvent(event)
+      })
+
+      // Should NOT fire for task navigation when in input
+      expect(handler).not.toHaveBeenCalled()
+
+      document.body.removeChild(input)
     })
 
     it("prevents default and stops propagation when handler fires", () => {

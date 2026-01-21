@@ -20,8 +20,8 @@ export class TaskListPage {
   async createTask(title: string) {
     await this.quickTaskInput.fill(title)
     await this.quickTaskInput.press("Enter")
-    // Wait for the task to appear in the list
-    await expect(this.page.getByText(title)).toBeVisible()
+    // Wait for the task to appear in the list - look specifically for the task card's title span
+    await expect(this.sidebar.locator("span.truncate", { hasText: title })).toBeVisible()
   }
 
   /** Search for tasks */

@@ -138,6 +138,24 @@
       "modifiers": ["cmd", "shift"],
       "description": "Clear task chat history",
       "category": "Chat"
+    },
+    "previousTask": {
+      "key": "ArrowUp",
+      "modifiers": [],
+      "description": "Select previous task",
+      "category": "Navigation"
+    },
+    "nextTask": {
+      "key": "ArrowDown",
+      "modifiers": [],
+      "description": "Select next task",
+      "category": "Navigation"
+    },
+    "openTask": {
+      "key": "Enter",
+      "modifiers": [],
+      "description": "Open selected task",
+      "category": "Navigation"
     }
   }
 }

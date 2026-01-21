@@ -303,4 +303,19 @@ test.describe("Navigation", () => {
       await expect(dialog.getByText(/latest iteration/i)).toBeVisible()
     })
   })
+
+  test.describe("task navigation", () => {
+    test("task navigation hotkeys are registered", async ({ app }) => {
+      // Open hotkeys dialog to verify task navigation hotkeys exist
+      await app.page.keyboard.press("Meta+/")
+
+      const dialog = app.page.getByRole("dialog")
+      await expect(dialog).toBeVisible()
+
+      // Verify task navigation hotkeys are documented
+      await expect(dialog.getByText(/select previous task/i)).toBeVisible()
+      await expect(dialog.getByText(/select next task/i)).toBeVisible()
+      await expect(dialog.getByText(/open selected task/i)).toBeVisible()
+    })
+  })
 })

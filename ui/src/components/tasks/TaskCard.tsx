@@ -133,6 +133,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
         className,
       )}
       style={selectionStyle}
+      data-selected={isSelected}
+      data-task-id={task.id}
       {...props}
     >
       {/* Main row */}
