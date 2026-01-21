@@ -425,6 +425,17 @@ export function App() {
     },
   })
 
+  // Track whether we've auto-started Ralph (to avoid restarting on reconnection)
+  const hasAutoStarted = useRef(false)
+
+  // Auto-start Ralph on first connection
+  useEffect(() => {
+    if (isConnected && ralphStatus === "stopped" && !hasAutoStarted.current) {
+      hasAutoStarted.current = true
+      startRalph()
+    }
+  }, [isConnected, ralphStatus])
+
   // Auto-focus task input on mount
   useEffect(() => {
     // Small delay to ensure DOM is ready

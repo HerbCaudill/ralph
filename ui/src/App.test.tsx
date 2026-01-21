@@ -128,6 +128,70 @@ describe("App", () => {
     vi.useRealTimers()
   })
 
+  it("auto-starts Ralph when connection is established", async () => {
+    // Start with disconnected state and stopped status
+    useAppStore.getState().setConnectionStatus("disconnected")
+    useAppStore.getState().setRalphStatus("stopped")
+
+    render(<App />)
+
+    // Verify start API hasn't been called yet
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      "/api/start",
+      expect.objectContaining({ method: "POST" }),
+    )
+
+    // Simulate connection being established
+    act(() => {
+      useAppStore.getState().setConnectionStatus("connected")
+    })
+
+    // Wait for the auto-start to be triggered
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/start",
+        expect.objectContaining({ method: "POST" }),
+      )
+    })
+  })
+
+  it("only auto-starts Ralph once (not on reconnection)", async () => {
+    // Start with connected state (simulating an already auto-started session)
+    useAppStore.getState().setConnectionStatus("connected")
+    useAppStore.getState().setRalphStatus("stopped")
+
+    render(<App />)
+
+    // Wait for auto-start to be triggered on initial mount
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/start",
+        expect.objectContaining({ method: "POST" }),
+      )
+    })
+
+    // Clear mock to track new calls
+    mockFetch.mockClear()
+
+    // Simulate disconnection and reconnection
+    act(() => {
+      useAppStore.getState().setConnectionStatus("disconnected")
+    })
+    act(() => {
+      useAppStore.getState().setRalphStatus("stopped")
+    })
+    act(() => {
+      useAppStore.getState().setConnectionStatus("connected")
+    })
+
+    // Wait a bit and verify start is NOT called again
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      "/api/start",
+      expect.objectContaining({ method: "POST" }),
+    )
+  })
+
   it("Tab key toggles focus between task input and chat input", async () => {
     // Set up connected state so chat input is enabled
     // (ChatInput is disabled when not connected or not running)
