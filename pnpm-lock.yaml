@@ -93,6 +93,9 @@ importers:
       '@anthropic-ai/claude-agent-sdk':
         specifier: ^0.2.7
         version: 0.2.12(zod@4.3.5)
+      '@herbcaudill/ralph-shared':
+        specifier: workspace:*
+        version: link:../shared
       '@openai/codex-sdk':
         specifier: ^0.87.0
         version: 0.87.0
