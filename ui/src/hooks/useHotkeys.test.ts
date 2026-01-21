@@ -102,6 +102,7 @@ describe("useHotkeys", () => {
       expect(actions).toContain("cycleTheme")
       expect(actions).toContain("toggleTaskChat")
       expect(actions).toContain("focusTaskChatInput")
+      expect(actions).toContain("clearTaskChat")
     })
   })
 
@@ -351,6 +352,32 @@ describe("useHotkeys", () => {
         const event = new KeyboardEvent("keydown", {
           key: "3",
           metaKey: true,
+          bubbles: true,
+        })
+        window.dispatchEvent(event)
+      })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("handles clearTaskChat hotkey (Cmd+Shift+Backspace)", () => {
+      mockNavigator("MacIntel")
+      const handler = vi.fn()
+
+      renderHook(() =>
+        useHotkeys({
+          handlers: {
+            clearTaskChat: handler,
+          },
+        }),
+      )
+
+      // Simulate Cmd+Shift+Backspace
+      act(() => {
+        const event = new KeyboardEvent("keydown", {
+          key: "Backspace",
+          metaKey: true,
+          shiftKey: true,
           bubbles: true,
         })
         window.dispatchEvent(event)

@@ -132,6 +132,12 @@
       "modifiers": ["ctrl"],
       "description": "Toggle tool output visibility",
       "category": "Navigation"
+    },
+    "clearTaskChat": {
+      "key": "Backspace",
+      "modifiers": ["cmd", "shift"],
+      "description": "Clear task chat history",
+      "category": "Chat"
     }
   }
 }

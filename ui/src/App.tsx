@@ -99,6 +99,18 @@ async function stopAfterCurrentRalph(): Promise<{ ok: boolean; error?: string }>
   }
 }
 
+async function clearTaskChatHistory(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const response = await fetch("/api/task-chat/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+    return await response.json()
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to clear history" }
+  }
+}
+
 // Tasks Sidebar
 
 interface TasksSidebarPanelProps {
@@ -234,6 +246,8 @@ export function App() {
   const taskChatOpen = useAppStore(selectTaskChatOpen)
   const taskChatWidth = useAppStore(selectTaskChatWidth)
   const setTaskChatWidth = useAppStore(state => state.setTaskChatWidth)
+  const clearTaskChatMessages = useAppStore(state => state.clearTaskChatMessages)
+  const setTaskChatStreamingText = useAppStore(state => state.setTaskChatStreamingText)
 
   // Event log viewer state
   const viewingEventLogId = useAppStore(selectViewingEventLogId)
@@ -374,6 +388,14 @@ export function App() {
     }, 50)
   }, [showSearch])
 
+  const handleClearTaskChat = useCallback(async () => {
+    const result = await clearTaskChatHistory()
+    if (result.ok) {
+      clearTaskChatMessages()
+      setTaskChatStreamingText("")
+    }
+  }, [clearTaskChatMessages, setTaskChatStreamingText])
+
   // Register hotkeys
   useHotkeys({
     handlers: {
@@ -399,6 +421,7 @@ export function App() {
       previousWorkspace: goToPreviousWorkspace,
       nextWorkspace: goToNextWorkspace,
       toggleToolOutput: toggleToolOutput,
+      clearTaskChat: handleClearTaskChat,
     },
   })
 

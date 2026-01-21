@@ -34,6 +34,7 @@ export type HotkeyAction =
   | "previousWorkspace"
   | "nextWorkspace"
   | "toggleToolOutput"
+  | "clearTaskChat"
 
 export type HotkeysConfig = Record<HotkeyAction, HotkeyConfig>
 
