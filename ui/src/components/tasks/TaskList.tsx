@@ -71,9 +71,7 @@ export function TaskList({
       const stored = persistCollapsedState ? loadStatusCollapsedState() : null
       const base = stored ?? DEFAULT_STATUS_COLLAPSED_STATE
       return {
-        blocked: defaultCollapsed.blocked ?? base.blocked,
-        ready: defaultCollapsed.ready ?? base.ready,
-        in_progress: defaultCollapsed.in_progress ?? base.in_progress,
+        open: defaultCollapsed.open ?? base.open,
         closed: defaultCollapsed.closed ?? base.closed,
       }
     },
@@ -389,39 +387,16 @@ export function TaskList({
 }
 
 const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
-  blocked: true,
-  ready: false,
-  in_progress: false,
+  open: false,
   closed: true,
-}
-
-/**
- * Check if a task has unsatisfied blocking dependencies (not closed/deferred)
- */
-function hasUnsatisfiedBlockingDependencies(task: TaskCardTask): boolean {
-  if (!task.dependencies) return false
-  return task.dependencies.some(
-    dep => dep.dependency_type === "blocks" && dep.status !== "closed" && dep.status !== "deferred",
-  )
 }
 
 const groupConfigs: GroupConfig[] = [
   {
-    key: "blocked",
-    label: "Blocked",
+    key: "open",
+    label: "Open",
     taskFilter: task =>
-      task.status === "blocked" ||
-      (task.status === "open" && hasUnsatisfiedBlockingDependencies(task)),
-  },
-  {
-    key: "ready",
-    label: "Ready",
-    taskFilter: task => task.status === "open" && !hasUnsatisfiedBlockingDependencies(task),
-  },
-  {
-    key: "in_progress",
-    label: "In progress",
-    taskFilter: task => task.status === "in_progress",
+      task.status === "open" || task.status === "in_progress" || task.status === "blocked",
   },
   {
     key: "closed",

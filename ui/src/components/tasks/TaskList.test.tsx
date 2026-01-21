@@ -37,28 +37,21 @@ describe("TaskList", () => {
 
     it("renders all group headers", () => {
       render(<TaskList tasks={sampleTasks} />)
-      expect(screen.getByLabelText(/Blocked section/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/Ready section/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/In progress section/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()
       expect(screen.getByLabelText(/Closed section/)).toBeInTheDocument()
     })
 
     it("displays correct task counts in headers", () => {
       render(<TaskList tasks={sampleTasks} />)
-      expect(screen.getByLabelText("Blocked section, 1 task")).toBeInTheDocument()
-      expect(screen.getByLabelText("Ready section, 2 tasks")).toBeInTheDocument()
-      expect(screen.getByLabelText("In progress section, 1 task")).toBeInTheDocument()
+      // Open group includes: blocked (1), open (2), in_progress (1) = 4 tasks
+      expect(screen.getByLabelText("Open section, 4 tasks")).toBeInTheDocument()
+      // Closed group includes: deferred (1), closed (1) = 2 tasks
       expect(screen.getByLabelText("Closed section, 2 tasks")).toBeInTheDocument()
     })
 
     it("renders tasks within groups", () => {
       // Override defaults to expand all groups for this test
-      render(
-        <TaskList
-          tasks={sampleTasks}
-          defaultCollapsed={{ blocked: false, ready: false, in_progress: false, closed: false }}
-        />,
-      )
+      render(<TaskList tasks={sampleTasks} defaultCollapsed={{ open: false, closed: false }} />)
       expect(screen.getByText("Open task 1")).toBeInTheDocument()
       expect(screen.getByText("Open task 2")).toBeInTheDocument()
       expect(screen.getByText("In progress task")).toBeInTheDocument()
@@ -82,113 +75,67 @@ describe("TaskList", () => {
       const tasksOnlyOpen: TaskCardTask[] = [{ id: "task-1", title: "Open task", status: "open" }]
       render(<TaskList tasks={tasksOnlyOpen} />)
 
-      expect(screen.getByLabelText(/Ready section/)).toBeInTheDocument()
-      expect(screen.queryByLabelText(/In progress section/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText(/Blocked section/)).not.toBeInTheDocument()
+      expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
     })
 
     it("shows empty groups when showEmptyGroups is true", () => {
       const tasksOnlyOpen: TaskCardTask[] = [{ id: "task-1", title: "Open task", status: "open" }]
       render(<TaskList tasks={tasksOnlyOpen} showEmptyGroups />)
 
-      expect(screen.getByLabelText(/Ready section/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/In progress section/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/Blocked section/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Closed section/)).toBeInTheDocument()
     })
 
     it("shows empty message within empty groups", () => {
       const tasksOnlyOpen: TaskCardTask[] = [{ id: "task-1", title: "Open task", status: "open" }]
       render(<TaskList tasks={tasksOnlyOpen} showEmptyGroups />)
 
-      // In Progress group should show "No tasks in this group"
+      // Closed group should show "No tasks in this group"
       expect(screen.getAllByText("No tasks in this group").length).toBeGreaterThan(0)
     })
   })
 
   describe("grouping", () => {
-    it("groups open tasks under Ready", () => {
+    it("groups open tasks under Open", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Open task", status: "open" },
         { id: "task-2", title: "Another open", status: "open" },
       ]
       render(<TaskList tasks={tasks} />)
 
-      const readyHeader = screen.getByLabelText("Ready section, 2 tasks")
-      expect(readyHeader).toBeInTheDocument()
+      const openHeader = screen.getByLabelText("Open section, 2 tasks")
+      expect(openHeader).toBeInTheDocument()
     })
 
-    it("groups in_progress tasks under In progress", () => {
+    it("groups in_progress tasks under Open", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Working on it", status: "in_progress" },
       ]
       render(<TaskList tasks={tasks} />)
 
-      const header = screen.getByLabelText("In progress section, 1 task")
+      const header = screen.getByLabelText("Open section, 1 task")
       expect(header).toBeInTheDocument()
     })
 
-    it("groups blocked tasks under Blocked", () => {
+    it("groups blocked tasks under Open", () => {
       const tasks: TaskCardTask[] = [{ id: "task-1", title: "Stuck task", status: "blocked" }]
       render(<TaskList tasks={tasks} />)
 
-      const header = screen.getByLabelText("Blocked section, 1 task")
+      const header = screen.getByLabelText("Open section, 1 task")
       expect(header).toBeInTheDocument()
     })
 
-    it("groups tasks with unsatisfied blocking dependencies under Blocked", () => {
+    it("groups open, in_progress, and blocked tasks together under Open", () => {
       const tasks: TaskCardTask[] = [
-        {
-          id: "task-1",
-          title: "Dependency blocked task",
-          status: "open",
-          dependencies: [{ id: "blocker-1", status: "open", dependency_type: "blocks" }],
-        },
-        { id: "task-2", title: "Ready task", status: "open" },
-      ]
-      render(<TaskList tasks={tasks} defaultCollapsed={{ blocked: false, ready: false }} />)
-
-      // The dependency-blocked task should appear in Blocked section, not Ready
-      expect(screen.getByLabelText("Blocked section, 1 task")).toBeInTheDocument()
-      expect(screen.getByLabelText("Ready section, 1 task")).toBeInTheDocument()
-
-      // Check task is in correct group
-      const blockedGroup = screen.getByRole("group", { name: "Blocked tasks" })
-      expect(blockedGroup).toContainElement(screen.getByText("Dependency blocked task"))
-
-      const readyGroup = screen.getByRole("group", { name: "Ready tasks" })
-      expect(readyGroup).toContainElement(screen.getByText("Ready task"))
-    })
-
-    it("does not block tasks with satisfied (closed) dependencies", () => {
-      const tasks: TaskCardTask[] = [
-        {
-          id: "task-1",
-          title: "Unblocked task",
-          status: "open",
-          dependencies: [{ id: "blocker-1", status: "closed", dependency_type: "blocks" }],
-        },
+        { id: "task-1", title: "Open task", status: "open" },
+        { id: "task-2", title: "In progress task", status: "in_progress" },
+        { id: "task-3", title: "Blocked task", status: "blocked" },
       ]
       render(<TaskList tasks={tasks} />)
 
-      // Task should be in Ready, not Blocked
-      expect(screen.getByLabelText("Ready section, 1 task")).toBeInTheDocument()
-      expect(screen.queryByLabelText(/Blocked section/)).not.toBeInTheDocument()
-    })
-
-    it("ignores parent-child dependencies for blocking", () => {
-      const tasks: TaskCardTask[] = [
-        {
-          id: "task-1",
-          title: "Child task",
-          status: "open",
-          dependencies: [{ id: "parent-1", status: "open", dependency_type: "parent-child" }],
-        },
-      ]
-      render(<TaskList tasks={tasks} />)
-
-      // Task should be in Ready, not Blocked (parent-child deps don't block)
-      expect(screen.getByLabelText("Ready section, 1 task")).toBeInTheDocument()
-      expect(screen.queryByLabelText(/Blocked section/)).not.toBeInTheDocument()
+      // All three should be in the Open section
+      expect(screen.getByLabelText("Open section, 3 tasks")).toBeInTheDocument()
     })
 
     it("groups deferred and closed tasks under Closed", () => {
@@ -387,21 +334,12 @@ describe("TaskList", () => {
   })
 
   describe("collapse/expand", () => {
-    it("expands Ready group by default", () => {
+    it("expands Open group by default", () => {
       render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
       // Tasks should be visible
       expect(screen.getByText("Open task 1")).toBeInTheDocument()
-    })
-
-    it("expands In Progress group by default", () => {
-      render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
       expect(screen.getByText("In progress task")).toBeInTheDocument()
-    })
-
-    it("collapses Blocked group by default", () => {
-      render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
-      // Blocked tasks should not be visible when collapsed
-      expect(screen.queryByText("Blocked task")).not.toBeInTheDocument()
+      expect(screen.getByText("Blocked task")).toBeInTheDocument()
     })
 
     it("collapses Closed group by default", () => {
@@ -414,44 +352,43 @@ describe("TaskList", () => {
     it("toggles group on header click", () => {
       render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
 
-      const readyHeader = screen.getByLabelText(/Ready section/)
+      const openHeader = screen.getByLabelText(/Open section/)
 
       // Initially expanded, tasks visible
       expect(screen.getByText("Open task 1")).toBeInTheDocument()
 
       // Click to collapse
-      fireEvent.click(readyHeader)
+      fireEvent.click(openHeader)
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
 
       // Click to expand again
-      fireEvent.click(readyHeader)
+      fireEvent.click(openHeader)
       expect(screen.getByText("Open task 1")).toBeInTheDocument()
     })
 
     it("toggles group on Enter key", () => {
       render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
 
-      const readyHeader = screen.getByLabelText(/Ready section/)
+      const openHeader = screen.getByLabelText(/Open section/)
       expect(screen.getByText("Open task 1")).toBeInTheDocument()
 
-      fireEvent.keyDown(readyHeader, { key: "Enter" })
+      fireEvent.keyDown(openHeader, { key: "Enter" })
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
     })
 
     it("toggles group on Space key", () => {
       render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
 
-      const readyHeader = screen.getByLabelText(/Ready section/)
+      const openHeader = screen.getByLabelText(/Open section/)
       expect(screen.getByText("Open task 1")).toBeInTheDocument()
 
-      fireEvent.keyDown(readyHeader, { key: " " })
+      fireEvent.keyDown(openHeader, { key: " " })
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
     })
 
     it("respects defaultCollapsed prop", () => {
       const defaultCollapsed: Partial<Record<TaskGroup, boolean>> = {
-        ready: true,
-        in_progress: false,
+        open: true,
         closed: false,
       }
       // Use sample tasks with recent closed_at dates
@@ -460,11 +397,10 @@ describe("TaskList", () => {
       )
       render(<TaskList tasks={tasksWithRecentClosed} defaultCollapsed={defaultCollapsed} />)
 
-      // Ready should be collapsed
+      // Open should be collapsed
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
-
-      // In Progress should be expanded
-      expect(screen.getByText("In progress task")).toBeInTheDocument()
+      expect(screen.queryByText("In progress task")).not.toBeInTheDocument()
+      expect(screen.queryByText("Blocked task")).not.toBeInTheDocument()
 
       // Closed should be expanded (overriding default behavior)
       expect(screen.getByText("Deferred task")).toBeInTheDocument()
@@ -473,11 +409,11 @@ describe("TaskList", () => {
     it("updates aria-expanded on toggle", () => {
       render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
 
-      const readyHeader = screen.getByLabelText(/Ready section/)
-      expect(readyHeader).toHaveAttribute("aria-expanded", "true")
+      const openHeader = screen.getByLabelText(/Open section/)
+      expect(openHeader).toHaveAttribute("aria-expanded", "true")
 
-      fireEvent.click(readyHeader)
-      expect(readyHeader).toHaveAttribute("aria-expanded", "false")
+      fireEvent.click(openHeader)
+      expect(openHeader).toHaveAttribute("aria-expanded", "false")
     })
   })
 
@@ -495,76 +431,67 @@ describe("TaskList", () => {
     it("persists collapsed state to localStorage", () => {
       render(<TaskList tasks={sampleTasks} />)
 
-      // Click to collapse Ready group
-      const readyHeader = screen.getByLabelText(/Ready section/)
-      fireEvent.click(readyHeader)
+      // Click to collapse Open group
+      const openHeader = screen.getByLabelText(/Open section/)
+      fireEvent.click(openHeader)
 
       const stored = JSON.parse(localStorage.getItem(TASK_LIST_STATUS_STORAGE_KEY) ?? "{}")
-      expect(stored.ready).toBe(true)
+      expect(stored.open).toBe(true)
     })
 
     it("restores collapsed state from localStorage", () => {
-      // Pre-set localStorage with Ready collapsed
+      // Pre-set localStorage with Open collapsed
       localStorage.setItem(
         TASK_LIST_STATUS_STORAGE_KEY,
         JSON.stringify({
-          blocked: false, // Override default
-          ready: true,
-          in_progress: false,
+          open: true,
           closed: false,
         }),
       )
 
       render(<TaskList tasks={sampleTasks} />)
 
-      // Ready should be collapsed (from localStorage)
+      // Open should be collapsed (from localStorage)
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
-
-      // Blocked should be expanded (overriding default from localStorage)
-      expect(screen.getByText("Blocked task")).toBeInTheDocument()
     })
 
     it("does not persist when persistCollapsedState is false", () => {
       render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
 
-      const readyHeader = screen.getByLabelText(/Ready section/)
-      fireEvent.click(readyHeader)
+      const openHeader = screen.getByLabelText(/Open section/)
+      fireEvent.click(openHeader)
 
       expect(localStorage.getItem(TASK_LIST_STATUS_STORAGE_KEY)).toBeNull()
     })
 
     it("does not read from localStorage when persistCollapsedState is false", () => {
-      // Pre-set localStorage with Ready collapsed
+      // Pre-set localStorage with Open collapsed
       localStorage.setItem(
         TASK_LIST_STATUS_STORAGE_KEY,
         JSON.stringify({
-          blocked: false,
-          ready: true,
-          in_progress: false,
+          open: true,
           closed: false,
         }),
       )
 
       render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
 
-      // Ready should be expanded (ignoring localStorage, using defaults)
+      // Open should be expanded (ignoring localStorage, using defaults)
       expect(screen.getByText("Open task 1")).toBeInTheDocument()
     })
 
     it("defaultCollapsed prop overrides localStorage", () => {
-      // Pre-set localStorage with Ready expanded
+      // Pre-set localStorage with Open expanded
       localStorage.setItem(
         TASK_LIST_STATUS_STORAGE_KEY,
         JSON.stringify({
-          blocked: false,
-          ready: false,
-          in_progress: false,
+          open: false,
           closed: false,
         }),
       )
 
-      // But defaultCollapsed says Ready should be collapsed
-      render(<TaskList tasks={sampleTasks} defaultCollapsed={{ ready: true }} />)
+      // But defaultCollapsed says Open should be collapsed
+      render(<TaskList tasks={sampleTasks} defaultCollapsed={{ open: true }} />)
 
       // defaultCollapsed should win
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
@@ -612,19 +539,19 @@ describe("TaskList", () => {
 
     it("group headers have button role", () => {
       render(<TaskList tasks={sampleTasks} />)
-      const readyHeader = screen.getByLabelText(/Ready section/)
-      expect(readyHeader).toHaveAttribute("role", "button")
+      const openHeader = screen.getByLabelText(/Open section/)
+      expect(openHeader).toHaveAttribute("role", "button")
     })
 
     it("group headers are keyboard accessible", () => {
       render(<TaskList tasks={sampleTasks} />)
-      const readyHeader = screen.getByLabelText(/Ready section/)
-      expect(readyHeader).toHaveAttribute("tabIndex", "0")
+      const openHeader = screen.getByLabelText(/Open section/)
+      expect(openHeader).toHaveAttribute("tabIndex", "0")
     })
 
     it("task groups have group role", () => {
       render(<TaskList tasks={sampleTasks} />)
-      expect(screen.getByRole("group", { name: "Ready tasks" })).toBeInTheDocument()
+      expect(screen.getByRole("group", { name: "Open tasks" })).toBeInTheDocument()
     })
   })
 
@@ -651,12 +578,10 @@ describe("TaskList", () => {
 
     it("renders all subtasks with parent regardless of their status", () => {
       render(<TaskList tasks={tasksWithEpic} persistCollapsedState={false} />)
-      // Should have Ready status group with epic + ALL 3 subtasks = 4 tasks
+      // Should have Open status group with epic + ALL 3 subtasks = 4 tasks
       // (in_progress child stays with open parent)
-      expect(screen.getByLabelText("Ready section, 4 tasks")).toBeInTheDocument()
-      // In Progress section should NOT appear (no standalone in_progress tasks)
-      expect(screen.queryByLabelText(/In progress section/)).not.toBeInTheDocument()
-      // Should show epic task card within Ready group
+      expect(screen.getByLabelText("Open section, 4 tasks")).toBeInTheDocument()
+      // Should show epic task card within Open group
       expect(screen.getByText("Epic with tasks")).toBeInTheDocument()
       // All children should be visible under the parent
       expect(screen.getByText("Child task 1")).toBeInTheDocument()
@@ -666,8 +591,8 @@ describe("TaskList", () => {
 
     it("groups tasks by epic within each status", () => {
       render(<TaskList tasks={tasksWithMultipleEpics} persistCollapsedState={false} />)
-      // Should have one Ready group with 2 epics + 1 child each + 1 ungrouped = 5 tasks
-      expect(screen.getByLabelText("Ready section, 5 tasks")).toBeInTheDocument()
+      // Should have one Open group with 2 epics + 1 child each + 1 ungrouped = 5 tasks
+      expect(screen.getByLabelText("Open section, 5 tasks")).toBeInTheDocument()
       // Should show epic task cards
       expect(screen.getByText("Epic A")).toBeInTheDocument()
       expect(screen.getByText("Epic B")).toBeInTheDocument()
@@ -704,7 +629,7 @@ describe("TaskList", () => {
     it("shows empty state when epic has no subtasks", () => {
       render(<TaskList tasks={epicWithoutSubtasks} persistCollapsedState={false} />)
       // Epic itself should be shown as a task card (1 task)
-      expect(screen.getByLabelText("Ready section, 1 task")).toBeInTheDocument()
+      expect(screen.getByLabelText("Open section, 1 task")).toBeInTheDocument()
       expect(screen.getByText("Empty epic")).toBeInTheDocument()
     })
 
@@ -735,8 +660,8 @@ describe("TaskList", () => {
       render(<TaskList tasks={tasks} persistCollapsedState={false} />)
 
       // Get all tasks within the list
-      const readyGroup = screen.getByLabelText("Ready group")
-      const taskTitles = Array.from(readyGroup.querySelectorAll("[role='button']"))
+      const openGroup = screen.getByLabelText("Open group")
+      const taskTitles = Array.from(openGroup.querySelectorAll("[role='button']"))
         .map(el => el.textContent)
         .filter(text => text?.includes("Epic"))
 
@@ -772,8 +697,8 @@ describe("TaskList", () => {
       render(<TaskList tasks={tasks} persistCollapsedState={false} />)
 
       // Get all top-level items in order (epics and standalone tasks)
-      const readyGroup = screen.getByLabelText("Ready group")
-      const taskButtons = Array.from(readyGroup.querySelectorAll("[role='button']"))
+      const openGroup = screen.getByLabelText("Open group")
+      const taskButtons = Array.from(openGroup.querySelectorAll("[role='button']"))
         .map(el => el.textContent)
         .filter(text => text && (text.includes("P1") || text.includes("P2") || text.includes("P3")))
 
@@ -1144,7 +1069,7 @@ describe("TaskList", () => {
       render(
         <TaskList
           tasks={tasks}
-          defaultCollapsed={{ blocked: false, closed: false }}
+          defaultCollapsed={{ open: false, closed: false }}
           persistCollapsedState={false}
         />,
       )
@@ -1268,8 +1193,8 @@ describe("TaskList", () => {
 
       render(<TaskList tasks={tasks} />)
 
-      // All should be in Ready group (parent + 2 subtasks = 3 tasks)
-      expect(screen.getByText("Ready")).toBeInTheDocument()
+      // All should be in Open group (parent + 2 subtasks = 3 tasks)
+      expect(screen.getByText("Open")).toBeInTheDocument()
       expect(screen.getByText("Parent task")).toBeInTheDocument()
       expect(screen.getByText("Subtask 1")).toBeInTheDocument()
       expect(screen.getByText("Subtask 2")).toBeInTheDocument()
@@ -1347,15 +1272,15 @@ describe("TaskList", () => {
       render(
         <TaskList
           tasks={tasks}
-          defaultCollapsed={{ closed: false }}
+          defaultCollapsed={{ open: false, closed: false }}
           persistCollapsedState={false}
         />,
       )
 
-      // Ready section should have parent + both children (3 tasks)
-      expect(screen.getByLabelText("Ready section, 3 tasks")).toBeInTheDocument()
+      // Open section should have parent + both children (3 tasks)
+      expect(screen.getByLabelText("Open section, 3 tasks")).toBeInTheDocument()
 
-      // Both children should be visible in Ready section under the parent
+      // Both children should be visible in Open section under the parent
       expect(screen.getByText("Open parent")).toBeInTheDocument()
       expect(screen.getByText("Open child")).toBeInTheDocument()
       expect(screen.getByText("Closed child")).toBeInTheDocument()
@@ -1423,15 +1348,15 @@ describe("TaskList", () => {
       render(
         <TaskList
           tasks={tasks}
-          defaultCollapsed={{ closed: false }}
+          defaultCollapsed={{ open: false, closed: false }}
           persistCollapsedState={false}
         />,
       )
 
-      // In Progress section should have parent + both children (3 tasks)
-      expect(screen.getByLabelText("In progress section, 3 tasks")).toBeInTheDocument()
+      // Open section should have parent + both children (3 tasks)
+      expect(screen.getByLabelText("Open section, 3 tasks")).toBeInTheDocument()
 
-      // All should be visible in In Progress section
+      // All should be visible in Open section
       expect(screen.getByText("In progress parent")).toBeInTheDocument()
       expect(screen.getByText("Open child")).toBeInTheDocument()
       expect(screen.getByText("Deferred child")).toBeInTheDocument()
@@ -1458,13 +1383,13 @@ describe("TaskList", () => {
       render(
         <TaskList
           tasks={tasks}
-          defaultCollapsed={{ blocked: false, closed: false }}
+          defaultCollapsed={{ open: false, closed: false }}
           persistCollapsedState={false}
         />,
       )
 
-      // Ready section should have parent + all 4 children (5 tasks)
-      expect(screen.getByLabelText("Ready section, 5 tasks")).toBeInTheDocument()
+      // Open section should have parent + all 4 children (5 tasks)
+      expect(screen.getByLabelText("Open section, 5 tasks")).toBeInTheDocument()
 
       // All children should be visible under the parent
       expect(screen.getByText("Open parent")).toBeInTheDocument()
@@ -1473,9 +1398,7 @@ describe("TaskList", () => {
       expect(screen.getByText("Blocked child")).toBeInTheDocument()
       expect(screen.getByText("Closed child")).toBeInTheDocument()
 
-      // Other sections should NOT have these tasks
-      expect(screen.queryByLabelText(/In progress section/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText(/Blocked section/)).not.toBeInTheDocument()
+      // Closed section should NOT appear
       expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
     })
 
@@ -1523,13 +1446,13 @@ describe("TaskList", () => {
       render(
         <TaskList
           tasks={tasks}
-          defaultCollapsed={{ blocked: false, closed: false }}
+          defaultCollapsed={{ open: false, closed: false }}
           persistCollapsedState={false}
         />,
       )
 
-      // Blocked section should have parent + both children (3 tasks)
-      expect(screen.getByLabelText("Blocked section, 3 tasks")).toBeInTheDocument()
+      // Open section should have parent + both children (3 tasks)
+      expect(screen.getByLabelText("Open section, 3 tasks")).toBeInTheDocument()
 
       // Both children should be visible under the blocked parent
       expect(screen.getByText("Blocked parent")).toBeInTheDocument()

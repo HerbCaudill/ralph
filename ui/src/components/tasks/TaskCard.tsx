@@ -4,7 +4,6 @@ import { useAppStore, selectIssuePrefix, selectSelectedTaskId, selectAccentColor
 import { DEFAULT_ACCENT_COLOR } from "@/constants"
 import {
   IconCircle,
-  IconCircleDot,
   IconCircleCheck,
   IconBan,
   IconClock,
@@ -13,6 +12,7 @@ import {
   IconStack2,
   IconCheckbox,
   IconChevronDown,
+  IconLoader2,
   type TablerIcon,
 } from "@tabler/icons-react"
 import type { TaskCardTask, TaskStatus } from "@/types"
@@ -175,7 +175,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           aria-haspopup={onStatusChange ? "listbox" : undefined}
           aria-expanded={isStatusMenuOpen}
         >
-          <StatusIcon className={cn("size-3.5", config.color)} />
+          <StatusIcon className={cn("size-3.5", config.color, config.animate)} />
 
           {/* Status dropdown menu */}
           {isStatusMenuOpen && (
@@ -209,7 +209,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
                       status === task.status && "bg-muted",
                     )}
                   >
-                    <Icon className={cn("size-3.5", sc.color)} />
+                    <Icon className={cn("size-3.5", sc.color, sc.animate)} />
                     <span>{sc.label}</span>
                   </div>
                 )
@@ -298,10 +298,11 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     bgColor: "bg-status-neutral/10",
   },
   in_progress: {
-    icon: IconCircleDot,
+    icon: IconLoader2,
     label: "In Progress",
     color: "text-status-info",
     bgColor: "bg-status-info/10",
+    animate: "animate-spin",
   },
   blocked: {
     icon: IconBan,
@@ -386,6 +387,7 @@ type StatusConfig = {
   label: string
   color: string
   bgColor: string
+  animate?: string
 }
 
 type TypeConfig = {

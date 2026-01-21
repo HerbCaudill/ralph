@@ -48,9 +48,7 @@ export const AllGroupsExpanded: Story = {
   args: {
     tasks: mixedTasks,
     defaultCollapsed: {
-      ready: false,
-      in_progress: false,
-      blocked: false,
+      open: false,
       closed: false,
     },
   },
@@ -60,9 +58,7 @@ export const AllGroupsCollapsed: Story = {
   args: {
     tasks: mixedTasks,
     defaultCollapsed: {
-      ready: true,
-      in_progress: true,
-      blocked: true,
+      open: true,
       closed: true,
     },
   },
@@ -105,9 +101,7 @@ export const ShowEmptyGroups: Story = {
     ],
     showEmptyGroups: true,
     defaultCollapsed: {
-      ready: false,
-      in_progress: false,
-      blocked: false,
+      open: false,
       closed: false,
     },
   },
@@ -314,7 +308,7 @@ export const PrioritySorting: Story = {
       { id: "rui-003", title: "P3 Normal priority task", status: "open", priority: 3 },
     ],
     defaultCollapsed: {
-      ready: false,
+      open: false,
     },
   },
 }
