@@ -36,6 +36,14 @@ export {
 } from "./useEventLogRouter"
 
 export {
+  useTaskDialogRouter,
+  parseTaskIdHash,
+  buildTaskIdHash,
+  type UseTaskDialogRouterOptions,
+  type UseTaskDialogRouterReturn,
+} from "./useTaskDialogRouter"
+
+export {
   useVSCodeTheme,
   type ThemeListResponse,
   type ThemeDetailResponse,

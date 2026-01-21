@@ -29,6 +29,7 @@ import {
   useTheme,
   useTasks,
   useTaskDialog,
+  useTaskDialogRouter,
   useEventLogRouter,
   useWorkspaces,
 } from "./hooks"
@@ -184,6 +185,9 @@ export function App() {
       await refreshTaskList()
     },
   })
+
+  // Task dialog URL routing - handles #id={taskId} hash parsing and navigation
+  const taskDialogRouter = useTaskDialogRouter({ taskDialog })
 
   // Event log URL routing - handles #eventlog={id} hash parsing and navigation
   useEventLogRouter()
@@ -417,13 +421,13 @@ export function App() {
           <TaskDetailsDialog
             task={taskDialog.selectedTask}
             open={taskDialog.isOpen}
-            onClose={taskDialog.closeDialog}
+            onClose={taskDialogRouter.closeTaskDialog}
             onSave={taskDialog.saveTask}
             onDelete={taskDialog.deleteTask}
           />
         }
         detailPanelOpen={taskDialog.isOpen}
-        onDetailPanelClose={taskDialog.closeDialog}
+        onDetailPanelClose={taskDialogRouter.closeTaskDialog}
       />
       <HotkeysDialog open={hotkeysDialogOpen} onClose={handleCloseHotkeysDialog} />
       <CommandPalette
