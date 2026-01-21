@@ -386,12 +386,28 @@ export function TaskList({
       // Apply search filter
       if (!matchesSearchQuery(task, searchQuery)) continue
 
-      // Find which status group this task belongs to
-      const config = groupConfigs.find(g => g.statusFilter(task.status))
+      // For child tasks with an open parent, group them with the parent (not by their own status)
+      // This keeps closed subtasks visible alongside siblings until the parent closes
+      const parentTask = task.parent ? parentTaskMap.get(task.parent) : null
+      const isClosedStatus = (status: TaskStatus) => status === "closed" || status === "deferred"
+      const parentIsOpen = parentTask && !isClosedStatus(parentTask.status)
+
+      // Determine which status group this task belongs to
+      // Child tasks inherit their parent's status group if the parent is still open
+      let config: GroupConfig | undefined
+      if (parentIsOpen) {
+        // Child of an open parent: use parent's status group
+        config = groupConfigs.find(g => g.statusFilter(parentTask.status))
+      } else {
+        // Parent tasks, standalone tasks, or children of closed parents: use own status
+        config = groupConfigs.find(g => g.statusFilter(task.status))
+      }
       if (!config) continue
 
       // Apply time filter for closed tasks (but not when searching)
-      if (config.key === "closed" && closedCutoff && !searchQuery.trim()) {
+      // Only apply to tasks actually in the closed group (not closed subtasks grouped with open parent)
+      const isInClosedGroup = config.key === "closed"
+      if (isInClosedGroup && closedCutoff && !searchQuery.trim()) {
         const closedAt = task.closed_at ? new Date(task.closed_at) : null
         if (!closedAt || closedAt < closedCutoff) {
           continue // Skip tasks closed before the cutoff

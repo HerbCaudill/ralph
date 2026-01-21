@@ -574,7 +574,7 @@ describe("TaskList", () => {
   })
 
   describe("epic grouping within status", () => {
-    // Tasks are grouped by status first, then by epic within each status
+    // Subtasks are grouped with their parent (in parent's status group) until parent is closed
     const tasksWithEpic: TaskCardTask[] = [
       { id: "epic-1", title: "Epic with tasks", status: "open", issue_type: "epic" },
       { id: "task-1", title: "Child task 1", status: "open", parent: "epic-1" },
@@ -594,14 +594,19 @@ describe("TaskList", () => {
       { id: "epic-1", title: "Empty epic", status: "open", issue_type: "epic" },
     ]
 
-    it("renders epic sub-header within status group", () => {
+    it("renders all subtasks with parent regardless of their status", () => {
       render(<TaskList tasks={tasksWithEpic} persistCollapsedState={false} />)
-      // Should have Ready status group with epic + 2 subtasks = 3 tasks
-      expect(screen.getByLabelText("Ready section, 3 tasks")).toBeInTheDocument()
-      // Should have In Progress status group with 1 task from epic
-      expect(screen.getByLabelText("In progress section, 1 task")).toBeInTheDocument()
+      // Should have Ready status group with epic + ALL 3 subtasks = 4 tasks
+      // (in_progress child stays with open parent)
+      expect(screen.getByLabelText("Ready section, 4 tasks")).toBeInTheDocument()
+      // In Progress section should NOT appear (no standalone in_progress tasks)
+      expect(screen.queryByLabelText(/In progress section/)).not.toBeInTheDocument()
       // Should show epic task card within Ready group
       expect(screen.getByText("Epic with tasks")).toBeInTheDocument()
+      // All children should be visible under the parent
+      expect(screen.getByText("Child task 1")).toBeInTheDocument()
+      expect(screen.getByText("Child task 2")).toBeInTheDocument()
+      expect(screen.getByText("Child task 3")).toBeInTheDocument()
     })
 
     it("groups tasks by epic within each status", () => {
@@ -623,19 +628,22 @@ describe("TaskList", () => {
       // Find the collapse button by aria-label
       const collapseButton = screen.getByLabelText("Collapse subtasks")
 
-      // Initially expanded
+      // Initially expanded - all children should be visible (regardless of their status)
       expect(screen.getByText("Child task 1")).toBeInTheDocument()
       expect(screen.getByText("Child task 2")).toBeInTheDocument()
+      expect(screen.getByText("Child task 3")).toBeInTheDocument() // in_progress child
 
       // Click chevron to collapse
       fireEvent.click(collapseButton)
       expect(screen.queryByText("Child task 1")).not.toBeInTheDocument()
       expect(screen.queryByText("Child task 2")).not.toBeInTheDocument()
+      expect(screen.queryByText("Child task 3")).not.toBeInTheDocument()
 
       // Click chevron to expand
       const expandButton = screen.getByLabelText("Expand subtasks")
       fireEvent.click(expandButton)
       expect(screen.getByText("Child task 1")).toBeInTheDocument()
+      expect(screen.getByText("Child task 3")).toBeInTheDocument() // in_progress child is back
     })
 
     it("shows empty state when epic has no subtasks", () => {
@@ -1225,6 +1233,217 @@ describe("TaskList", () => {
       const subtaskBadge = screen.getByLabelText("3 subtasks")
       expect(subtaskBadge).toBeInTheDocument()
       expect(subtaskBadge.textContent).toBe("3")
+    })
+  })
+
+  describe("closed subtasks with open parent", () => {
+    it("keeps closed subtasks with open parent in parent's status group", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "parent-1", title: "Open parent", status: "open", issue_type: "task" },
+        { id: "child-1", title: "Open child", status: "open", parent: "parent-1" },
+        {
+          id: "child-2",
+          title: "Closed child",
+          status: "closed",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+      ]
+
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // Ready section should have parent + both children (3 tasks)
+      expect(screen.getByLabelText("Ready section, 3 tasks")).toBeInTheDocument()
+
+      // Both children should be visible in Ready section under the parent
+      expect(screen.getByText("Open parent")).toBeInTheDocument()
+      expect(screen.getByText("Open child")).toBeInTheDocument()
+      expect(screen.getByText("Closed child")).toBeInTheDocument()
+
+      // Closed section should NOT have the closed child (parent is still open)
+      // Since there are no tasks in closed section, the header shouldn't appear
+      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+    })
+
+    it("moves closed subtasks to closed section when parent is also closed", () => {
+      const tasks: TaskCardTask[] = [
+        {
+          id: "parent-1",
+          title: "Closed parent",
+          status: "closed",
+          issue_type: "task",
+          closed_at: getRecentDate(),
+        },
+        {
+          id: "child-1",
+          title: "Closed child 1",
+          status: "closed",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+        {
+          id: "child-2",
+          title: "Closed child 2",
+          status: "closed",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+      ]
+
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // Closed section should have parent + both children (3 tasks)
+      expect(screen.getByLabelText("Closed section, 3 tasks")).toBeInTheDocument()
+
+      // All should be visible in Closed section
+      expect(screen.getByText("Closed parent")).toBeInTheDocument()
+      expect(screen.getByText("Closed child 1")).toBeInTheDocument()
+      expect(screen.getByText("Closed child 2")).toBeInTheDocument()
+    })
+
+    it("keeps deferred subtasks with open parent in parent's status group", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "parent-1", title: "In progress parent", status: "in_progress", issue_type: "task" },
+        { id: "child-1", title: "Open child", status: "open", parent: "parent-1" },
+        {
+          id: "child-2",
+          title: "Deferred child",
+          status: "deferred",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+      ]
+
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // In Progress section should have parent + both children (3 tasks)
+      expect(screen.getByLabelText("In progress section, 3 tasks")).toBeInTheDocument()
+
+      // All should be visible in In Progress section
+      expect(screen.getByText("In progress parent")).toBeInTheDocument()
+      expect(screen.getByText("Open child")).toBeInTheDocument()
+      expect(screen.getByText("Deferred child")).toBeInTheDocument()
+
+      // Closed section should NOT appear
+      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+    })
+
+    it("handles mixed subtask statuses with open parent", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "parent-1", title: "Open parent", status: "open", issue_type: "task" },
+        { id: "child-1", title: "Open child", status: "open", parent: "parent-1" },
+        { id: "child-2", title: "In progress child", status: "in_progress", parent: "parent-1" },
+        { id: "child-3", title: "Blocked child", status: "blocked", parent: "parent-1" },
+        {
+          id: "child-4",
+          title: "Closed child",
+          status: "closed",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+      ]
+
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ blocked: false, closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // Ready section should have parent + all 4 children (5 tasks)
+      expect(screen.getByLabelText("Ready section, 5 tasks")).toBeInTheDocument()
+
+      // All children should be visible under the parent
+      expect(screen.getByText("Open parent")).toBeInTheDocument()
+      expect(screen.getByText("Open child")).toBeInTheDocument()
+      expect(screen.getByText("In progress child")).toBeInTheDocument()
+      expect(screen.getByText("Blocked child")).toBeInTheDocument()
+      expect(screen.getByText("Closed child")).toBeInTheDocument()
+
+      // Other sections should NOT have these tasks
+      expect(screen.queryByLabelText(/In progress section/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Blocked section/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+    })
+
+    it("correctly counts subtasks including closed ones when parent is open", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "parent-1", title: "Parent task", status: "open", issue_type: "task" },
+        { id: "child-1", title: "Child 1", status: "open", parent: "parent-1" },
+        {
+          id: "child-2",
+          title: "Child 2",
+          status: "closed",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+        {
+          id: "child-3",
+          title: "Child 3",
+          status: "closed",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // The subtask count badge should show 3 (all children regardless of status)
+      const subtaskBadge = screen.getByLabelText("3 subtasks")
+      expect(subtaskBadge).toBeInTheDocument()
+      expect(subtaskBadge.textContent).toBe("3")
+    })
+
+    it("keeps closed subtasks grouped with siblings in blocked parent group", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "parent-1", title: "Blocked parent", status: "blocked", issue_type: "task" },
+        { id: "child-1", title: "Open child", status: "open", parent: "parent-1" },
+        {
+          id: "child-2",
+          title: "Closed child",
+          status: "closed",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+      ]
+
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ blocked: false, closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // Blocked section should have parent + both children (3 tasks)
+      expect(screen.getByLabelText("Blocked section, 3 tasks")).toBeInTheDocument()
+
+      // Both children should be visible under the blocked parent
+      expect(screen.getByText("Blocked parent")).toBeInTheDocument()
+      expect(screen.getByText("Open child")).toBeInTheDocument()
+      expect(screen.getByText("Closed child")).toBeInTheDocument()
+
+      // Closed section should NOT have the closed child
+      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
     })
   })
 })
