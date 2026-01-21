@@ -52,6 +52,49 @@ export interface ClaudeAdapterOptions {
 }
 
 /**
+ * A message in the conversation history.
+ * Represents either a user prompt or assistant content (including tool use/results).
+ */
+export interface ConversationMessage {
+  /** Role of the message sender */
+  role: "user" | "assistant"
+  /** The message content (user prompt or assistant text) */
+  content: string
+  /** Timestamp when this message was recorded */
+  timestamp: number
+  /** Tool uses in this assistant message (if any) */
+  toolUses?: Array<{
+    id: string
+    name: string
+    input: Record<string, unknown>
+    result?: {
+      output?: string
+      error?: string
+      isError: boolean
+    }
+  }>
+}
+
+/**
+ * Serializable conversation context that can be saved and restored
+ * to preserve iteration state across reconnections.
+ */
+export interface ConversationContext {
+  /** The conversation history */
+  messages: ConversationMessage[]
+  /** The last user prompt sent */
+  lastPrompt?: string
+  /** Total usage statistics across the conversation */
+  usage: {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+  }
+  /** Timestamp when this context was created/last updated */
+  timestamp: number
+}
+
+/**
  * Claude SDK native event types from stream-json output.
  * These are the raw events before normalization.
  */
@@ -155,6 +198,12 @@ export class ClaudeAdapter extends AgentAdapter {
   private options: Required<Pick<ClaudeAdapterOptions, "queryFn">> &
     Omit<ClaudeAdapterOptions, "queryFn">
 
+  // Conversation context tracking
+  private conversationMessages: ConversationMessage[] = []
+  private currentAssistantMessage: ConversationMessage | null = null
+  private lastPrompt: string | undefined
+  private totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+
   constructor(options: ClaudeAdapterOptions = {}) {
     super()
     this.options = {
@@ -207,8 +256,47 @@ export class ClaudeAdapter extends AgentAdapter {
     this.setStatus("starting")
     this.currentMessageContent = ""
     this.pendingToolUses.clear()
+    // Reset conversation context on fresh start
+    this.conversationMessages = []
+    this.currentAssistantMessage = null
+    this.lastPrompt = undefined
+    this.totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
     this.startOptions = options ?? {}
     this.setStatus("running")
+  }
+
+  /**
+   * Get the current conversation context for saving/restoring.
+   * Returns a serializable snapshot of the conversation state.
+   */
+  getConversationContext(): ConversationContext {
+    return {
+      messages: [...this.conversationMessages],
+      lastPrompt: this.lastPrompt,
+      usage: { ...this.totalUsage },
+      timestamp: this.now(),
+    }
+  }
+
+  /**
+   * Set the conversation context from a previously saved state.
+   * Use this to restore context after a reconnection.
+   * Note: This does not replay the conversation; it only sets the tracked state.
+   */
+  setConversationContext(context: ConversationContext): void {
+    this.conversationMessages = [...context.messages]
+    this.lastPrompt = context.lastPrompt
+    this.totalUsage = { ...context.usage }
+  }
+
+  /**
+   * Clear the conversation context, starting fresh.
+   */
+  clearConversationContext(): void {
+    this.conversationMessages = []
+    this.currentAssistantMessage = null
+    this.lastPrompt = undefined
+    this.totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
   }
 
   /**
@@ -222,6 +310,22 @@ export class ClaudeAdapter extends AgentAdapter {
     if (message.type === "user_message" && message.content) {
       if (this.inFlight) {
         throw new Error("Claude adapter already has a request in flight")
+      }
+
+      // Track user message in conversation context
+      this.lastPrompt = message.content
+      this.conversationMessages.push({
+        role: "user",
+        content: message.content,
+        timestamp: this.now(),
+      })
+
+      // Prepare to track the assistant's response
+      this.currentAssistantMessage = {
+        role: "assistant",
+        content: "",
+        timestamp: this.now(),
+        toolUses: [],
       }
 
       this.inFlight = this.runQuery(message.content)
@@ -302,7 +406,8 @@ export class ClaudeAdapter extends AgentAdapter {
         })) {
           this.handleSDKMessage(message)
         }
-        // Success - exit the retry loop
+        // Success - reset inFlight and exit the retry loop
+        this.inFlight = null
         return
       } catch (err) {
         const error = err instanceof Error ? err : new Error("Claude query failed")
@@ -374,6 +479,23 @@ export class ClaudeAdapter extends AgentAdapter {
       case "result":
         if (message.subtype === "success") {
           const usage = message.usage
+
+          // Finalize and save the current assistant message to conversation context
+          if (this.currentAssistantMessage) {
+            if (message.result) {
+              this.currentAssistantMessage.content = message.result
+            }
+            this.conversationMessages.push(this.currentAssistantMessage)
+            this.currentAssistantMessage = null
+          }
+
+          // Update total usage
+          if (usage) {
+            this.totalUsage.inputTokens += usage.input_tokens ?? 0
+            this.totalUsage.outputTokens += usage.output_tokens ?? 0
+            this.totalUsage.totalTokens = this.totalUsage.inputTokens + this.totalUsage.outputTokens
+          }
+
           const event: AgentResultEvent = {
             type: "result",
             timestamp: this.now(),
@@ -426,6 +548,10 @@ export class ClaudeAdapter extends AgentAdapter {
           for (const block of message.content) {
             if (block.type === "text" && block.text) {
               this.currentMessageContent = block.text
+              // Track in conversation context
+              if (this.currentAssistantMessage) {
+                this.currentAssistantMessage.content = block.text
+              }
               const event: AgentMessageEvent = {
                 type: "message",
                 timestamp,
@@ -436,6 +562,15 @@ export class ClaudeAdapter extends AgentAdapter {
             } else if (block.type === "tool_use" && block.id && block.name) {
               const input = (block.input as Record<string, unknown>) ?? {}
               this.pendingToolUses.set(block.id, { tool: block.name, input })
+              // Track in conversation context
+              if (this.currentAssistantMessage) {
+                this.currentAssistantMessage.toolUses = this.currentAssistantMessage.toolUses ?? []
+                this.currentAssistantMessage.toolUses.push({
+                  id: block.id,
+                  name: block.name,
+                  input,
+                })
+              }
               const event: AgentToolUseEvent = {
                 type: "tool_use",
                 timestamp,
@@ -470,6 +605,10 @@ export class ClaudeAdapter extends AgentAdapter {
 
         if (delta?.type === "text_delta" && delta.text) {
           this.currentMessageContent += delta.text
+          // Track in conversation context (accumulate streaming text)
+          if (this.currentAssistantMessage) {
+            this.currentAssistantMessage.content += delta.text
+          }
           const event: AgentMessageEvent = {
             type: "message",
             timestamp,
@@ -496,6 +635,15 @@ export class ClaudeAdapter extends AgentAdapter {
 
         if (toolUseId && tool) {
           this.pendingToolUses.set(toolUseId, { tool, input })
+          // Track in conversation context
+          if (this.currentAssistantMessage) {
+            this.currentAssistantMessage.toolUses = this.currentAssistantMessage.toolUses ?? []
+            this.currentAssistantMessage.toolUses.push({
+              id: toolUseId,
+              name: tool,
+              input,
+            })
+          }
           const event: AgentToolUseEvent = {
             type: "tool_use",
             timestamp,
@@ -514,6 +662,18 @@ export class ClaudeAdapter extends AgentAdapter {
         const output = nativeEvent.content as string | undefined
         const isError = (nativeEvent.is_error as boolean) ?? false
         const error = isError ? (output ?? "Unknown error") : undefined
+
+        // Track in conversation context
+        if (this.currentAssistantMessage?.toolUses) {
+          const toolUse = this.currentAssistantMessage.toolUses.find(t => t.id === toolUseId)
+          if (toolUse) {
+            toolUse.result = {
+              output: isError ? undefined : output,
+              error,
+              isError,
+            }
+          }
+        }
 
         const event: AgentToolResultEvent = {
           type: "tool_result",
@@ -537,6 +697,23 @@ export class ClaudeAdapter extends AgentAdapter {
         const usage = nativeEvent.usage as
           | { input_tokens?: number; output_tokens?: number }
           | undefined
+
+        // Finalize and save the current assistant message to conversation context
+        if (this.currentAssistantMessage) {
+          // Use the final content if available
+          if (typeof nativeEvent.result === "string") {
+            this.currentAssistantMessage.content = nativeEvent.result
+          }
+          this.conversationMessages.push(this.currentAssistantMessage)
+          this.currentAssistantMessage = null
+        }
+
+        // Update total usage
+        if (usage) {
+          this.totalUsage.inputTokens += usage.input_tokens ?? 0
+          this.totalUsage.outputTokens += usage.output_tokens ?? 0
+          this.totalUsage.totalTokens = this.totalUsage.inputTokens + this.totalUsage.outputTokens
+        }
 
         const event: AgentResultEvent = {
           type: "result",

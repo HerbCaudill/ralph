@@ -509,4 +509,282 @@ describe("ClaudeAdapter", () => {
       expect(callCount).toBe(4)
     })
   })
+
+  describe("conversation context tracking", () => {
+    beforeEach(async () => {
+      await adapter.start()
+    })
+
+    it("tracks user messages in conversation context", async () => {
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "result",
+            subtype: "success",
+            result: "Hello!",
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi Claude!" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const context = adapter.getConversationContext()
+      expect(context.messages).toHaveLength(2)
+      expect(context.messages[0].role).toBe("user")
+      expect(context.messages[0].content).toBe("Hi Claude!")
+      expect(context.lastPrompt).toBe("Hi Claude!")
+    })
+
+    it("tracks assistant messages in conversation context", async () => {
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "assistant",
+            message: { content: [{ type: "text", text: "Hello from Claude!" }] },
+          } as SDKMessage,
+          {
+            type: "result",
+            subtype: "success",
+            result: "Hello from Claude!",
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const context = adapter.getConversationContext()
+      expect(context.messages).toHaveLength(2)
+      expect(context.messages[1].role).toBe("assistant")
+      expect(context.messages[1].content).toBe("Hello from Claude!")
+    })
+
+    it("tracks streaming text deltas in conversation context", async () => {
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "stream_event",
+            event: { type: "content_block_delta", delta: { type: "text_delta", text: "Hel" } },
+          } as SDKMessage,
+          {
+            type: "stream_event",
+            event: { type: "content_block_delta", delta: { type: "text_delta", text: "lo!" } },
+          } as SDKMessage,
+          {
+            type: "result",
+            subtype: "success",
+            result: "Hello!",
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const context = adapter.getConversationContext()
+      expect(context.messages).toHaveLength(2)
+      // The assistant message should have the final result content
+      expect(context.messages[1].role).toBe("assistant")
+      expect(context.messages[1].content).toBe("Hello!")
+    })
+
+    it("tracks tool uses in conversation context", async () => {
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "assistant",
+            message: {
+              content: [
+                {
+                  type: "tool_use",
+                  id: "tool-123",
+                  name: "Read",
+                  input: { file_path: "/test.txt" },
+                },
+              ],
+            },
+          } as SDKMessage,
+          {
+            type: "stream_event",
+            event: {
+              type: "tool_result",
+              tool_use_id: "tool-123",
+              content: "file contents",
+              is_error: false,
+            },
+          } as SDKMessage,
+          {
+            type: "result",
+            subtype: "success",
+            result: "Done!",
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Read a file" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const context = adapter.getConversationContext()
+      expect(context.messages).toHaveLength(2)
+      expect(context.messages[1].toolUses).toHaveLength(1)
+      expect(context.messages[1].toolUses![0].id).toBe("tool-123")
+      expect(context.messages[1].toolUses![0].name).toBe("Read")
+      expect(context.messages[1].toolUses![0].input).toEqual({ file_path: "/test.txt" })
+      expect(context.messages[1].toolUses![0].result).toEqual({
+        output: "file contents",
+        error: undefined,
+        isError: false,
+      })
+    })
+
+    it("tracks usage statistics across messages", async () => {
+      mockQuery
+        .mockReturnValueOnce(
+          createMessageStream([
+            {
+              type: "result",
+              subtype: "success",
+              result: "First response",
+              usage: { input_tokens: 100, output_tokens: 50 },
+            } as SDKMessage,
+          ]),
+        )
+        .mockReturnValueOnce(
+          createMessageStream([
+            {
+              type: "result",
+              subtype: "success",
+              result: "Second response",
+              usage: { input_tokens: 150, output_tokens: 75 },
+            } as SDKMessage,
+          ]),
+        )
+
+      adapter.send({ type: "user_message", content: "First message" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      adapter.send({ type: "user_message", content: "Second message" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const context = adapter.getConversationContext()
+      expect(context.usage.inputTokens).toBe(250)
+      expect(context.usage.outputTokens).toBe(125)
+      expect(context.usage.totalTokens).toBe(375)
+    })
+
+    it("can restore conversation context", async () => {
+      const savedContext = {
+        messages: [
+          { role: "user" as const, content: "Hello", timestamp: 1000 },
+          { role: "assistant" as const, content: "Hi there!", timestamp: 1001, toolUses: [] },
+        ],
+        lastPrompt: "Hello",
+        usage: { inputTokens: 50, outputTokens: 25, totalTokens: 75 },
+        timestamp: 1001,
+      }
+
+      adapter.setConversationContext(savedContext)
+
+      const restored = adapter.getConversationContext()
+      expect(restored.messages).toHaveLength(2)
+      expect(restored.lastPrompt).toBe("Hello")
+      expect(restored.usage).toEqual({ inputTokens: 50, outputTokens: 25, totalTokens: 75 })
+    })
+
+    it("can clear conversation context", async () => {
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "result",
+            subtype: "success",
+            result: "Hello!",
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // Verify we have messages
+      expect(adapter.getConversationContext().messages).toHaveLength(2)
+
+      // Clear and verify
+      adapter.clearConversationContext()
+      const context = adapter.getConversationContext()
+      expect(context.messages).toHaveLength(0)
+      expect(context.lastPrompt).toBeUndefined()
+      expect(context.usage).toEqual({ inputTokens: 0, outputTokens: 0, totalTokens: 0 })
+    })
+
+    it("resets conversation context on fresh start", async () => {
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "result",
+            subtype: "success",
+            result: "Hello!",
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // Stop and restart
+      await adapter.stop()
+      await adapter.start()
+
+      // Context should be fresh
+      const context = adapter.getConversationContext()
+      expect(context.messages).toHaveLength(0)
+      expect(context.lastPrompt).toBeUndefined()
+    })
+
+    it("preserves restored context across new messages", async () => {
+      // Set up initial context
+      const savedContext = {
+        messages: [
+          { role: "user" as const, content: "Previous message", timestamp: 1000 },
+          {
+            role: "assistant" as const,
+            content: "Previous response",
+            timestamp: 1001,
+            toolUses: [],
+          },
+        ],
+        lastPrompt: "Previous message",
+        usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+        timestamp: 1001,
+      }
+
+      adapter.setConversationContext(savedContext)
+
+      // Send a new message
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "result",
+            subtype: "success",
+            result: "New response",
+            usage: { input_tokens: 50, output_tokens: 25 },
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "New message" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const context = adapter.getConversationContext()
+      // Should have 4 messages: 2 restored + 2 new
+      expect(context.messages).toHaveLength(4)
+      expect(context.messages[2].role).toBe("user")
+      expect(context.messages[2].content).toBe("New message")
+      expect(context.messages[3].role).toBe("assistant")
+      expect(context.messages[3].content).toBe("New response")
+      // Usage should be cumulative
+      expect(context.usage.inputTokens).toBe(150)
+      expect(context.usage.outputTokens).toBe(75)
+    })
+  })
 })
