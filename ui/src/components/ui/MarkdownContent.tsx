@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { cn } from "@/lib/utils"
-import { TaskIdLink } from "@/components/ui/TaskIdLink"
+import { TextWithLinks } from "@/components/ui/TextWithLinks"
 import { CodeBlock } from "@/components/ui/code-block"
 import { useTheme } from "@/hooks/useTheme"
 import type { Components } from "react-markdown"
@@ -20,15 +20,15 @@ export interface MarkdownContentProps {
   size?: "sm" | "base"
 }
 
-// Helper to process children and replace text nodes with TaskIdLink
+// Helper to process children and replace text nodes with links (task IDs and event logs)
 function processChildren(children: ReactNode): ReactNode {
   if (typeof children === "string") {
-    return <TaskIdLink>{children}</TaskIdLink>
+    return <TextWithLinks>{children}</TextWithLinks>
   }
   return children
 }
 
-// Create markdown components with TaskIdLink support
+// Create markdown components with link support for task IDs and event logs
 function createMarkdownComponents(isDark: boolean, withCodeBlocks: boolean): Components {
   return {
     // Process text in paragraph elements
@@ -67,7 +67,7 @@ function createMarkdownComponents(isDark: boolean, withCodeBlocks: boolean): Com
         }
       }
 
-      // Otherwise it's inline code - process for task IDs
+      // Otherwise it's inline code - process for links
       return (
         <code className={codeClassName} {...rest}>
           {processChildren(children)}
@@ -85,7 +85,7 @@ function createMarkdownComponents(isDark: boolean, withCodeBlocks: boolean): Com
 
 /**
  * Renders markdown content with support for GFM (GitHub Flavored Markdown),
- * task ID linking, and optional syntax-highlighted code blocks.
+ * task ID linking, event log linking, and optional syntax-highlighted code blocks.
  */
 export function MarkdownContent({
   children,
