@@ -279,7 +279,7 @@ export function CommandPalette({
                       )}
                     </div>
                     {shortcut && (
-                      <kbd className="bg-muted text-muted-foreground border-border ml-auto shrink-0 rounded border px-1.5 py-0.5 text-sm">
+                      <kbd className="bg-muted text-muted-foreground border-border ml-auto shrink-0 rounded border px-1.5 py-0.5 font-sans text-sm">
                         {shortcut}
                       </kbd>
                     )}
