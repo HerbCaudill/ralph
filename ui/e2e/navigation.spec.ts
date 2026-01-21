@@ -84,32 +84,52 @@ test.describe("Navigation", () => {
   })
 
   test.describe("panel toggles", () => {
-    test("Cmd+J toggles task chat panel", async ({ app }) => {
+    test("Cmd+J focuses chat input if panel open but not focused, then toggles on next press", async ({
+      app,
+    }) => {
       const leftPanel = app.page.getByTestId("left-panel")
+      const taskChatInput = app.page.getByLabel("Task chat input")
+
+      // Wait for the chat input to be enabled (connection established)
+      await expect(taskChatInput).toBeEnabled({ timeout: 5000 })
 
       // Panel should be open initially
       const initialWidth = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
       expect(initialWidth).toBeGreaterThan(0)
 
-      // Toggle off
+      // Focus something else first (like the quick task input)
+      await app.page.keyboard.press("Meta+k")
+      await expect(app.taskList.quickTaskInput).toBeFocused()
+
+      // First press: Focus the chat input (not toggle off)
       await app.page.keyboard.press("Meta+j")
-      await app.page.waitForTimeout(300) // Wait for transition
+      await app.page.waitForTimeout(100)
 
-      const closedWidth = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
-      expect(closedWidth).toBeLessThanOrEqual(1)
+      // Panel should still be open
+      const afterFirstPressWidth = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
+      expect(afterFirstPressWidth).toBeGreaterThan(0)
 
-      // Toggle back on
+      // Chat input should now be focused
+      await expect(taskChatInput).toBeFocused()
+
+      // Second press: Now toggle off (since input is focused)
       await app.page.keyboard.press("Meta+j")
       await app.page.waitForTimeout(300)
 
-      const reopenedWidth = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
-      expect(reopenedWidth).toBeGreaterThan(0)
+      const closedWidth = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
+      expect(closedWidth).toBeLessThanOrEqual(1)
     })
 
     test("Cmd+J focuses task chat input when opening panel", async ({ app }) => {
       const leftPanel = app.page.getByTestId("left-panel")
+      const taskChatInput = app.page.getByLabel("Task chat input")
 
-      // First close the panel
+      // Wait for the chat input to be enabled (connection established)
+      await expect(taskChatInput).toBeEnabled({ timeout: 5000 })
+
+      // First, close the panel: click to focus, then press Cmd+J to close
+      await taskChatInput.click()
+      await expect(taskChatInput).toBeFocused()
       await app.page.keyboard.press("Meta+j")
       await app.page.waitForTimeout(300)
 
@@ -120,9 +140,9 @@ test.describe("Navigation", () => {
       await app.page.keyboard.press("Meta+j")
       await app.page.waitForTimeout(300)
 
-      // The task chat input should be visible
-      const taskChatInput = app.page.getByRole("textbox", { name: "Message input" }).first()
+      // The task chat input should be visible and focused
       await expect(taskChatInput).toBeVisible()
+      await expect(taskChatInput).toBeFocused()
     })
   })
 

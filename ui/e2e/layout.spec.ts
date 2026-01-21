@@ -96,12 +96,19 @@ test.describe("Layout", () => {
 
     test("can toggle left panel with hotkey", async ({ app }) => {
       const leftPanel = app.page.getByTestId("left-panel")
+      const taskChatInput = app.page.getByLabel("Task chat input")
+
+      // Wait for the chat input to be enabled (connection established)
+      await expect(taskChatInput).toBeEnabled({ timeout: 5000 })
 
       // Panel should be open initially
       const initialWidth = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
       expect(initialWidth).toBeGreaterThan(0)
 
-      // Toggle task chat panel with Cmd+J
+      // First focus the chat input, then press Cmd+J to close
+      // (new behavior: if not focused, first press focuses; second press toggles)
+      await taskChatInput.click()
+      await expect(taskChatInput).toBeFocused()
       await app.page.keyboard.press("Meta+j")
 
       // Wait for CSS transition to complete (200ms duration + buffer)
