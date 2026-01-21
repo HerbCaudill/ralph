@@ -95,7 +95,7 @@ Find and update specific tasks. You might need to:
 ```bash
 bd ready           # Find available work
 bd show <id>       # Review issue details
-bd update <id> --status=in_progress  # Claim it
+bd update <id> --status=in_progress --assignee={agentName}  # Claim it and assign to yourself
 ```
 
 **Completing work:**

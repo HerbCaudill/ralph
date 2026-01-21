@@ -24,7 +24,7 @@ Select the highest-priority issue to work on. Finish in-progress tasks first. Bu
 ### Step 4: Work on a single task
 
 - Output `<start_task>{id}</start_task>`
-- Mark the issue as in progress with `bd update {id} --status=in_progress`
+- Mark the issue as in progress and assign it to yourself with `bd update {id} --status=in_progress --assignee={agentName}`
 - Work only on that task. Only work on a single issue in a single turn.
 - If the issue you choose is complex enough that it will take you more than a minute or two, your task is to break it into sub-issues and then end your turn.
 - While you're working, if you notice something else that needs to be done - follow-up tasks, other things that don't seem to be working right - open new issues.
@@ -94,7 +94,7 @@ When you complete a task:
 ```bash
 bd ready           # Find available work
 bd show {id}       # Review issue details
-bd update {id} --status=in_progress  # Claim it
+bd update {id} --status=in_progress --assignee={agentName}  # Claim it and assign to yourself
 ```
 
 **Completing work:**
