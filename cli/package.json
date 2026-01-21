@@ -18,7 +18,7 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "ralph": "tsx src/index.ts",
-    "test:all": "pnpm typecheck && pnpm test",
+    "test:all": "pnpm typecheck && vitest run --reporter=dot",
     "test": "vitest run",
     "test:e2e": "vitest --config vitest.e2e.config.ts",
     "test:watch": "vitest --watch",
