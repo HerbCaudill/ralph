@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect, useCallback } from "react"
+import { IconFolderFilled, IconChevronDown, IconCheck, IconRefresh } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import {
   useAppStore,
@@ -6,48 +8,7 @@ import {
   selectBranch,
   selectIssuePrefix,
 } from "@/store"
-import { useState, useRef, useEffect, useCallback } from "react"
-import { IconFolderFilled, IconChevronDown, IconCheck, IconRefresh } from "@tabler/icons-react"
 
-// Types
-
-export interface WorkspaceInfo {
-  path: string
-  name: string
-  issueCount?: number
-  daemonConnected?: boolean
-  daemonStatus?: string
-  accentColor?: string | null
-  branch?: string | null
-  issuePrefix?: string | null
-}
-
-export interface WorkspaceListEntry {
-  path: string
-  name: string
-  database: string
-  pid: number
-  version: string
-  startedAt: string
-  isActive: boolean
-  accentColor?: string | null
-  activeIssueCount?: number
-}
-
-export interface WorkspacePickerProps {
-  className?: string
-  /** Display variant - "header" for colored header background */
-  variant?: "default" | "header"
-  /** Text color to use when variant is "header" */
-  textColor?: string
-}
-
-// WorkspacePicker Component
-
-/**
- * Dropdown component to display and switch between bd workspaces.
- * Shows the current workspace name and allows switching to other workspaces.
- */
 export function WorkspacePicker({
   className,
   variant = "default",
@@ -372,4 +333,33 @@ export function WorkspacePicker({
       )}
     </div>
   )
+}
+
+export type WorkspaceInfo = {
+  path: string
+  name: string
+  issueCount?: number
+  daemonConnected?: boolean
+  daemonStatus?: string
+  accentColor?: string | null
+  branch?: string | null
+  issuePrefix?: string | null
+}
+
+type WorkspaceListEntry = {
+  path: string
+  name: string
+  database: string
+  pid: number
+  version: string
+  startedAt: string
+  isActive: boolean
+  accentColor?: string | null
+  activeIssueCount?: number
+}
+
+export type WorkspacePickerProps = {
+  className?: string
+  variant?: "default" | "header"
+  textColor?: string
 }

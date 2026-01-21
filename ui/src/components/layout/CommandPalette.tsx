@@ -10,115 +10,10 @@ import {
   IconMessage,
   IconListCheck,
   IconTerminal,
-  IconSearch,
 } from "@tabler/icons-react"
-import { hotkeys, type HotkeyAction, type HotkeyConfig } from "@/config"
-import type { RalphStatus } from "@/store"
-
-// Types
-
-export interface CommandPaletteProps {
-  /** Whether the command palette is open */
-  open: boolean
-  /** Callback when the command palette should close */
-  onClose: () => void
-  /** Command handlers */
-  handlers: Partial<Record<CommandAction, () => void>>
-  /** Current Ralph status for conditional rendering */
-  ralphStatus?: RalphStatus
-  /** Whether connected to the server */
-  isConnected?: boolean
-}
-
-export type CommandAction =
-  | "agentStart"
-  | "agentStop"
-  | "agentPause"
-  | "toggleSidebar"
-  | "cycleTheme"
-  | "showHotkeys"
-  | "focusTaskInput"
-  | "focusChatInput"
-  | "toggleTaskChat"
-
-interface CommandItem {
-  id: CommandAction
-  label: string
-  description?: string
-  icon: React.ReactNode
-  keywords?: string[]
-  /** Optional condition to determine if command is available */
-  available?: () => boolean
-}
-
-// Helpers
-
-/**
- * Check if the current platform is macOS
- */
-function isMac(): boolean {
-  return typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-}
-
-/**
- * Get the display string for a modifier key
- */
-function getModifierDisplay(modifier: string): string {
-  const mac = isMac()
-  switch (modifier) {
-    case "cmd":
-      return mac ? "\u2318" : "Ctrl"
-    case "ctrl":
-      return mac ? "\u2303" : "Ctrl"
-    case "alt":
-      return mac ? "\u2325" : "Alt"
-    case "shift":
-      return mac ? "\u21E7" : "Shift"
-    default:
-      return modifier
-  }
-}
-
-/**
- * Get the display string for a key
- */
-function getKeyDisplay(key: string): string {
-  switch (key.toLowerCase()) {
-    case "enter":
-      return "\u23CE"
-    case "escape":
-      return "Esc"
-    case "arrowup":
-      return "\u2191"
-    case "arrowdown":
-      return "\u2193"
-    case "arrowleft":
-      return "\u2190"
-    case "arrowright":
-      return "\u2192"
-    default:
-      return key.toUpperCase()
-  }
-}
-
-/**
- * Get the full display string for a hotkey config
- */
-function getHotkeyDisplayString(config: HotkeyConfig): string {
-  const modifiers = config.modifiers.map(getModifierDisplay)
-  const key = getKeyDisplay(config.key)
-  return [...modifiers, key].join(isMac() ? "" : "+")
-}
-
-/**
- * Get the keyboard shortcut display for an action
- */
-function getShortcut(action: HotkeyAction): string | undefined {
-  const config = hotkeys[action]
-  return config ? getHotkeyDisplayString(config) : undefined
-}
-
-// CommandPalette Component
+import { hotkeys } from "@/config"
+import { getShortcut } from "@/lib/getShortcut"
+import type { RalphStatus } from "@/types"
 
 /**
  * Command palette for quick access to application actions.
@@ -133,14 +28,12 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("")
 
-  // Reset search when opening
   useEffect(() => {
     if (open) {
       setSearch("")
     }
   }, [open])
 
-  // Define all available commands
   const commands: CommandItem[] = useMemo(
     () => [
       {
@@ -218,78 +111,78 @@ export function CommandPalette({
       const handler = handlers[action]
       if (handler) {
         handler()
+        onClose()
       }
-      onClose()
     },
     [handlers, onClose],
   )
 
-  // Filter out unavailable commands
-  const availableCommands = useMemo(
-    () => commands.filter(cmd => !cmd.available || cmd.available()),
-    [commands],
-  )
-
-  if (!open) return null
+  const filteredCommands = useMemo(() => {
+    return commands.filter(cmd => cmd.available?.() !== false)
+  }, [commands])
 
   return (
-    <div className="fixed inset-0 z-50" data-testid="command-palette">
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} data-testid="command-backdrop" />
-
-      {/* Command dialog */}
-      <div className="fixed top-[20%] left-1/2 w-full max-w-lg -translate-x-1/2">
-        <Command
-          className="bg-background border-border overflow-hidden rounded-lg border shadow-2xl"
-          loop
-        >
-          <div className="border-border flex items-center gap-2 border-b px-3">
-            <IconSearch className="text-muted-foreground h-4 w-4 shrink-0" />
-            <Command.Input
-              value={search}
-              onValueChange={setSearch}
-              placeholder="Type a command or search..."
-              className="placeholder:text-muted-foreground w-full border-0 bg-transparent py-3 text-sm outline-none"
-              data-testid="command-input"
-              autoFocus
-            />
-          </div>
-
-          <Command.List className="max-h-[300px] overflow-y-auto p-2">
-            <Command.Empty className="text-muted-foreground py-6 text-center text-sm">
-              No commands found.
-            </Command.Empty>
-
-            <Command.Group>
-              {availableCommands.map(command => {
-                const shortcut = getShortcut(command.id)
-                return (
-                  <Command.Item
-                    key={command.id}
-                    value={`${command.label} ${command.keywords?.join(" ") ?? ""}`}
-                    onSelect={() => handleSelect(command.id)}
-                    className="data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm"
-                    data-testid={`command-item-${command.id}`}
-                  >
-                    <span className="text-muted-foreground">{command.icon}</span>
-                    <div className="flex flex-1 flex-col">
-                      <span>{command.label}</span>
-                      {command.description && (
-                        <span className="text-muted-foreground text-xs">{command.description}</span>
-                      )}
-                    </div>
-                    {shortcut && (
-                      <kbd className="bg-muted text-muted-foreground border-border ml-auto shrink-0 rounded border px-1.5 py-0.5 font-sans text-sm">
-                        {shortcut}
-                      </kbd>
-                    )}
-                  </Command.Item>
-                )
-              })}
-            </Command.Group>
-          </Command.List>
-        </Command>
-      </div>
-    </div>
+    <Command.Dialog open={open} onOpenChange={onClose}>
+      <Command.Input
+        value={search}
+        onValueChange={setSearch}
+        placeholder="Type a command or search..."
+        className="border-border bg-background text-foreground w-full border-b px-3 py-2 text-sm outline-none"
+      />
+      <Command.List className="bg-popover text-foreground max-h-[400px] overflow-y-auto">
+        <Command.Empty className="text-muted-foreground p-4 text-center text-sm">
+          No results found
+        </Command.Empty>
+        {filteredCommands.map(command => (
+          <Command.Item
+            key={command.id}
+            value={command.label}
+            onSelect={() => handleSelect(command.id)}
+            className="data-[selected=true]:bg-muted flex items-start gap-3 px-4 py-3"
+          >
+            <div className="text-muted-foreground mt-0.5">{command.icon}</div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">{command.label}</span>
+                {hotkeys[command.id] && (
+                  <span className="text-muted-foreground text-xs">
+                    {getShortcut(command.id)}
+                  </span>
+                )}
+              </div>
+              <p className="text-muted-foreground mt-1 text-xs">{command.description}</p>
+            </div>
+          </Command.Item>
+        ))}
+      </Command.List>
+    </Command.Dialog>
   )
+}
+
+export type CommandPaletteProps = {
+  open: boolean
+  onClose: () => void
+  handlers: Partial<Record<CommandAction, () => void>>
+  ralphStatus?: RalphStatus
+  isConnected?: boolean
+}
+
+export type CommandAction =
+  | "agentStart"
+  | "agentStop"
+  | "agentPause"
+  | "toggleSidebar"
+  | "cycleTheme"
+  | "showHotkeys"
+  | "focusTaskInput"
+  | "focusChatInput"
+  | "toggleTaskChat"
+
+type CommandItem = {
+  id: CommandAction
+  label: string
+  description?: string
+  icon: React.ReactNode
+  keywords?: string[]
+  available?: () => boolean
 }

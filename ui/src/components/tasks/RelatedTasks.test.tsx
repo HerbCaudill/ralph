@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { RelatedTasks } from "./RelatedTasks"
 import { TaskDialogProvider } from "@/contexts"
-import type { Task } from "@/store"
+import type { Task } from "@/types"
 
 // Mock fetch
 const mockFetch = vi.fn()

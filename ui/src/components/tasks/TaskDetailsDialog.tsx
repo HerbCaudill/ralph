@@ -8,8 +8,9 @@ import {
   IconX,
   IconPlus,
   IconTrash,
-  IconCheck,
-  IconSelector,
+  IconBug,
+  IconStack2,
+  IconCheckbox,
   type TablerIcon,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
@@ -22,258 +23,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { useAppStore, selectIssuePrefix, selectTasks } from "@/store"
-import type { TaskCardTask, TaskStatus } from "./TaskCard"
-import { IconBug, IconStack2, IconCheckbox } from "@tabler/icons-react"
+import type { TaskCardTask, TaskStatus, TaskUpdateData } from "@/types"
 import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@/components/ui/MarkdownContent"
 import { RelatedTasks } from "./RelatedTasks"
-
-// Types
-
-export interface TaskDetailsDialogProps {
-  /** The task to display/edit, or null if dialog should be closed */
-  task: TaskCardTask | null
-  /** Whether the dialog is open */
-  open: boolean
-  /** Callback when the dialog should close */
-  onClose: () => void
-  /** Callback when the task is saved */
-  onSave?: (id: string, updates: TaskUpdateData) => void | Promise<void>
-  /** Callback when the task is deleted */
-  onDelete?: (id: string) => void | Promise<void>
-  /** Whether the dialog is in read-only mode (default: false) */
-  readOnly?: boolean
-}
-
-export interface TaskUpdateData {
-  title?: string
-  description?: string
-  status?: TaskStatus
-  priority?: number
-  type?: string
-  parent?: string | null
-}
-
-// Issue Type Options
-export type IssueType = "task" | "bug" | "epic"
-
-const issueTypeOptions: {
-  value: IssueType
-  label: string
-  icon: typeof IconCheckbox
-  color: string
-}[] = [
-  { value: "task", label: "Task", icon: IconCheckbox, color: "text-status-success" },
-  { value: "bug", label: "Bug", icon: IconBug, color: "text-red-500" },
-  { value: "epic", label: "Epic", icon: IconStack2, color: "text-indigo-500" },
-]
-
-// Status Configuration
-
-interface StatusConfig {
-  icon: TablerIcon
-  label: string
-  color: string
-}
-
-const statusConfig: Record<TaskStatus, StatusConfig> = {
-  open: {
-    icon: IconCircle,
-    label: "Open",
-    color: "text-gray-500",
-  },
-  in_progress: {
-    icon: IconCircleDot,
-    label: "In Progress",
-    color: "text-blue-500",
-  },
-  blocked: {
-    icon: IconBan,
-    label: "Blocked",
-    color: "text-red-500",
-  },
-  deferred: {
-    icon: IconClock,
-    label: "Deferred",
-    color: "text-amber-500",
-  },
-  closed: {
-    icon: IconCircleCheck,
-    label: "Closed",
-    color: "text-green-500",
-  },
-}
-
-const statusOptions: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
-
-const priorityOptions = [
-  { value: 0, label: "P0 - Critical" },
-  { value: 1, label: "P1 - High" },
-  { value: 2, label: "P2 - Medium" },
-  { value: 3, label: "P3 - Low" },
-  { value: 4, label: "P4 - Lowest" },
-]
-
-// ParentCombobox Component
-
-interface ParentComboboxProps {
-  task: TaskCardTask
-  allTasks: TaskCardTask[]
-  issuePrefix: string | null
-  value: string | null
-  onChange: (value: string | null) => void
-}
-
-function ParentCombobox({ task, allTasks, issuePrefix, value, onChange }: ParentComboboxProps) {
-  const [open, setOpen] = useState(false)
-
-  // Filter valid parent candidates (exclude self and direct children)
-  const validParents = allTasks.filter(t => t.id !== task.id && t.parent !== task.id)
-
-  // Find current selection
-  const selectedTask = value ? validParents.find(t => t.id === value) : null
-  const displayValue =
-    value && selectedTask ? `${stripTaskPrefix(value, issuePrefix)} ${selectedTask.title}`
-    : value ? stripTaskPrefix(value, issuePrefix)
-    : "None"
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          aria-label="Parent"
-          className="h-8 w-full justify-between px-3 text-sm font-normal"
-        >
-          <span className="truncate">{displayValue}</span>
-          <IconSelector className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search tasks..." />
-          <CommandList>
-            <CommandEmpty>No task found.</CommandEmpty>
-            <CommandGroup>
-              <CommandItem
-                value="__none__"
-                onSelect={() => {
-                  onChange(null)
-                  setOpen(false)
-                }}
-              >
-                <IconCheck
-                  className={cn("mr-2 h-4 w-4", value === null ? "opacity-100" : "opacity-0")}
-                />
-                None
-              </CommandItem>
-              {validParents.map(t => (
-                <CommandItem
-                  key={t.id}
-                  value={`${stripTaskPrefix(t.id, issuePrefix)} ${t.title}`}
-                  onSelect={() => {
-                    onChange(t.id)
-                    setOpen(false)
-                  }}
-                >
-                  <IconCheck
-                    className={cn("mr-2 h-4 w-4", value === t.id ? "opacity-100" : "opacity-0")}
-                  />
-                  <span className="font-mono text-xs">{stripTaskPrefix(t.id, issuePrefix)}</span>
-                  <span className="ml-2 truncate">{t.title}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-// TaskDetailsDialog Component
-
-/**
- * Dialog for viewing and editing task details.
- * Displays task title, description, status, and priority with editable fields.
- */
-/**
- * Save an event log and add a closing comment to the task.
- * Returns the event log ID if successful, null otherwise.
- */
-async function saveEventLogAndAddComment(
-  taskId: string,
-  taskTitle: string,
-  events: Array<{ type: string; timestamp: number; [key: string]: unknown }>,
-  workspacePath: string | null,
-): Promise<string | null> {
-  // Only save if there are events
-  if (events.length === 0) {
-    return null
-  }
-
-  try {
-    // Save the event log
-    const response = await fetch("/api/eventlogs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        events,
-        metadata: {
-          taskId,
-          title: taskTitle,
-          source: "task-close",
-          workspacePath: workspacePath ?? undefined,
-        },
-      }),
-    })
-
-    if (!response.ok) {
-      console.error("Failed to save event log:", await response.text())
-      return null
-    }
-
-    const result = (await response.json()) as { ok: boolean; eventlog?: { id: string } }
-    if (!result.ok || !result.eventlog?.id) {
-      return null
-    }
-
-    const eventLogId = result.eventlog.id
-
-    // Add closing comment with event log link
-    const commentResponse = await fetch(`/api/tasks/${taskId}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        comment: `Closed. Event log: #eventlog=${eventLogId}`,
-        author: "Ralph",
-      }),
-    })
-
-    if (!commentResponse.ok) {
-      console.error("Failed to add closing comment:", await commentResponse.text())
-      // Still return the event log ID even if comment failed
-    }
-
-    return eventLogId
-  } catch (err) {
-    console.error("Error saving event log:", err)
-    return null
-  }
-}
+import { ParentCombobox } from "./ParentCombobox"
+import { saveEventLogAndAddComment } from "@/lib/saveEventLogAndAddComment"
 
 export function TaskDetailsDialog({
   task,
@@ -935,4 +692,70 @@ export function TaskDetailsDialog({
       )}
     </div>
   )
+}
+
+const issueTypeOptions: {
+  value: IssueType
+  label: string
+  icon: typeof IconCheckbox
+  color: string
+}[] = [
+  { value: "task", label: "Task", icon: IconCheckbox, color: "text-status-success" },
+  { value: "bug", label: "Bug", icon: IconBug, color: "text-red-500" },
+  { value: "epic", label: "Epic", icon: IconStack2, color: "text-indigo-500" },
+]
+
+const statusConfig: Record<TaskStatus, StatusConfig> = {
+  open: {
+    icon: IconCircle,
+    label: "Open",
+    color: "text-gray-500",
+  },
+  in_progress: {
+    icon: IconCircleDot,
+    label: "In Progress",
+    color: "text-blue-500",
+  },
+  blocked: {
+    icon: IconBan,
+    label: "Blocked",
+    color: "text-red-500",
+  },
+  deferred: {
+    icon: IconClock,
+    label: "Deferred",
+    color: "text-amber-500",
+  },
+  closed: {
+    icon: IconCircleCheck,
+    label: "Closed",
+    color: "text-green-500",
+  },
+}
+
+const statusOptions: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
+
+const priorityOptions = [
+  { value: 0, label: "P0 - Critical" },
+  { value: 1, label: "P1 - High" },
+  { value: 2, label: "P2 - Medium" },
+  { value: 3, label: "P3 - Low" },
+  { value: 4, label: "P4 - Lowest" },
+]
+
+type TaskDetailsDialogProps = {
+  task: TaskCardTask | null
+  open: boolean
+  onClose: () => void
+  onSave?: (id: string, updates: TaskUpdateData) => void | Promise<void>
+  onDelete?: (id: string) => void | Promise<void>
+  readOnly?: boolean
+}
+
+type IssueType = "task" | "bug" | "epic"
+
+type StatusConfig = {
+  icon: TablerIcon
+  label: string
+  color: string
 }

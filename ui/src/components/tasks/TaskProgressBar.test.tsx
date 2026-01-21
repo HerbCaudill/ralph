@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { TaskProgressBar } from "./TaskProgressBar"
-import { useAppStore, type Task, type RalphStatus, type ClosedTasksTimeFilter } from "@/store"
+import { useAppStore } from "@/store"
+import type { Task, RalphStatus, ClosedTasksTimeFilter } from "@/types"
 
 // Mock the store
 vi.mock("@/store", async () => {

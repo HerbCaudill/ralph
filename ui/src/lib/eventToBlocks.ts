@@ -16,8 +16,7 @@ import type {
   AgentErrorEvent,
   AgentStatusEvent,
 } from "../../server/AgentAdapter.js"
-import type { AssistantTextEvent } from "@/components/events/AssistantText"
-import type { ToolUseEvent, ToolName } from "@/components/events/ToolUseCard"
+import type { AssistantTextEvent, ToolUseEvent, ToolName } from "@/types"
 
 // Display Block Types
 

@@ -16,7 +16,7 @@ import {
   selectIsViewingLatestIteration,
   selectIterationTask,
 } from "./index"
-import type { RalphEvent, Task, TaskChatMessage } from "./index"
+import type { RalphEvent, Task, TaskChatMessage } from "@/types"
 
 describe("useAppStore", () => {
   beforeEach(() => {

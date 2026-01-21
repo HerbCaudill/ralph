@@ -3,7 +3,7 @@ import { MainLayout } from "./MainLayout"
 import { withStoreState, fullPageDecorator } from "../../../.storybook/decorators"
 import { StatusBar } from "./StatusBar"
 import { TaskList } from "../tasks/TaskList"
-import type { TaskCardTask } from "../tasks/TaskCard"
+import type { TaskCardTask } from "@/types"
 
 const meta: Meta<typeof MainLayout> = {
   title: "Layout/MainLayout",

@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import { useState } from "react"
-import { TaskDetailsDialog, type TaskUpdateData } from "./TaskDetailsDialog"
-import type { TaskCardTask } from "./TaskCard"
+import { TaskDetailsDialog } from "./TaskDetailsDialog"
+import type { TaskUpdateData } from "@/types"
+import type { TaskCardTask } from "@/types"
 import { Button } from "@/components/ui/button"
 
 const meta: Meta<typeof TaskDetailsDialog> = {

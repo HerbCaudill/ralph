@@ -1,92 +1,12 @@
 import { cn } from "@/lib/utils"
 import { IconPlayerPlay, IconCheck } from "@tabler/icons-react"
 import { TaskIdLink } from "@/components/ui/TaskIdLink"
-
-export interface TaskLifecycleEventData {
-  type: "task_lifecycle"
-  timestamp: number
-  action: "starting" | "completed"
-  taskId: string
-  taskTitle?: string
-}
-
-export interface TaskLifecycleEventProps {
-  event: TaskLifecycleEventData
-  className?: string
-}
-
-/**
- * Parse a text message to detect task lifecycle events.
- * Returns TaskLifecycleEventData if the text matches the pattern, null otherwise.
- *
- * Patterns recognized:
- * - "<start_task>task-id</start_task>"
- * - "<end_task>task-id</end_task>"
- * - "✨ Starting **task-id** or **task-id title**"
- * - "✅ Completed **task-id** or **task-id title**"
- */
-export function parseTaskLifecycleEvent(
-  text: string,
-  timestamp: number,
-): TaskLifecycleEventData | null {
-  // Match starting pattern: <start_task>task-id</start_task>
-  const startingMatch = text.match(/<start_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/start_task>/i)
-  if (startingMatch) {
-    return {
-      type: "task_lifecycle",
-      timestamp,
-      action: "starting",
-      taskId: startingMatch[1],
-    }
-  }
-
-  // Match completed pattern: <end_task>task-id</end_task>
-  const completedMatch = text.match(/<end_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/end_task>/i)
-  if (completedMatch) {
-    return {
-      type: "task_lifecycle",
-      timestamp,
-      action: "completed",
-      taskId: completedMatch[1],
-    }
-  }
-
-  // Match emoji starting pattern: ✨ Starting **task-id** or ✨ Starting **task-id title**
-  // Task ID format: prefix-suffix (e.g., r-abc1, rui-4rt5)
-  const emojiStartMatch = text.match(
-    /✨\s*Starting\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)(?:\s+([^*]+))?\*\*/i,
-  )
-  if (emojiStartMatch) {
-    return {
-      type: "task_lifecycle",
-      timestamp,
-      action: "starting",
-      taskId: emojiStartMatch[1],
-      taskTitle: emojiStartMatch[2]?.trim(),
-    }
-  }
-
-  // Match emoji completed pattern: ✅ Completed **task-id** or ✅ Completed **task-id title**
-  const emojiCompletedMatch = text.match(
-    /✅\s*Completed\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)(?:\s+([^*]+))?\*\*/i,
-  )
-  if (emojiCompletedMatch) {
-    return {
-      type: "task_lifecycle",
-      timestamp,
-      action: "completed",
-      taskId: emojiCompletedMatch[1],
-      taskTitle: emojiCompletedMatch[2]?.trim(),
-    }
-  }
-
-  return null
-}
+import type { TaskLifecycleEventData } from "@/types"
 
 /**
  * Renders a task lifecycle event (starting or completing a task) with special styling.
  */
-export function TaskLifecycleEvent({ event, className }: TaskLifecycleEventProps) {
+export function TaskLifecycleEvent({ event, className }: Props) {
   const isStarting = event.action === "starting"
   const Icon = isStarting ? IconPlayerPlay : IconCheck
 
@@ -131,4 +51,9 @@ export function TaskLifecycleEvent({ event, className }: TaskLifecycleEventProps
       </div>
     </div>
   )
+}
+
+type Props = {
+  event: TaskLifecycleEventData
+  className?: string
 }

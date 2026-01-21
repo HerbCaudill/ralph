@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { EventLogViewer } from "./EventLogViewer"
-import { useAppStore, type EventLog, type RalphEvent } from "@/store"
+import { useAppStore } from "@/store"
+import type { EventLog, RalphEvent } from "@/types"
 
 // Mock the useEventLogRouter hook
 vi.mock("@/hooks", () => ({

@@ -1,11 +1,6 @@
 import { cn } from "@/lib/utils"
 import { MarkdownContent } from "@/components/ui/MarkdownContent"
-
-export interface AssistantTextEvent {
-  type: "assistant_text" | "text"
-  timestamp: number
-  content: string
-}
+import type { AssistantTextEvent } from "@/types"
 
 export function AssistantText({ event, className }: Props) {
   return (

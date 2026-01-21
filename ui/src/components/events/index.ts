@@ -2,16 +2,21 @@ export { EventStream } from "./EventStream"
 export type { EventStreamProps } from "./EventStream"
 
 export { AssistantText } from "./AssistantText"
-export type { AssistantTextEvent } from "./AssistantText"
 
 export { UserMessage } from "./UserMessage"
-export type { UserMessageEvent } from "./UserMessage"
 
 export { ToolUseCard } from "./ToolUseCard"
-export type { ToolUseCardProps, ToolUseEvent, ToolName } from "./ToolUseCard"
+export type { ToolUseCardProps } from "./ToolUseCard"
 
 export { EventLogViewer } from "./EventLogViewer"
 export type { EventLogViewerProps } from "./EventLogViewer"
 
-export { TaskLifecycleEvent, parseTaskLifecycleEvent } from "./TaskLifecycleEvent"
-export type { TaskLifecycleEventData, TaskLifecycleEventProps } from "./TaskLifecycleEvent"
+export { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+export { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
+export type {
+  AssistantTextEvent,
+  UserMessageEvent,
+  ToolUseEvent,
+  ToolName,
+  TaskLifecycleEventData,
+} from "@/types"

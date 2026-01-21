@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react"
 import { TaskDetailsDialog } from "./TaskDetailsDialog"
 import { useAppStore } from "@/store"
-import type { TaskCardTask } from "./TaskCard"
+import type { TaskCardTask } from "@/types"
 
 // Mock child components to avoid their async behavior
 vi.mock("./RelatedTasks", () => ({

@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef, useState } from "react"
+import { IconChevronDown, IconX, IconHistory, IconCopy, IconCheck } from "@tabler/icons-react"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import {
   useAppStore,
@@ -5,157 +7,11 @@ import {
   selectEventLogLoading,
   selectEventLogError,
   selectIssuePrefix,
-  type RalphEvent,
 } from "@/store"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { IconChevronDown, IconX, IconHistory, IconCopy, IconCheck } from "@tabler/icons-react"
-import { UserMessage, type UserMessageEvent } from "./UserMessage"
-import { AssistantText, type AssistantTextEvent } from "./AssistantText"
-import { ToolUseCard, type ToolUseEvent } from "./ToolUseCard"
-import { TaskLifecycleEvent, parseTaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { useEventLogRouter } from "@/hooks"
-
-// Types
-
-export interface EventLogViewerProps {
-  className?: string
-}
-
-// Event type guards (same as EventStream)
-
-function isUserMessageEvent(event: RalphEvent): event is UserMessageEvent & RalphEvent {
-  return event.type === "user_message" && typeof (event as any).message === "string"
-}
-
-function isAssistantMessage(event: RalphEvent): boolean {
-  return event.type === "assistant" && typeof (event as any).message === "object"
-}
-
-function isToolResultEvent(event: RalphEvent): boolean {
-  return event.type === "user" && typeof (event as any).tool_use_result !== "undefined"
-}
-
-// Content block types from Ralph's assistant messages
-interface TextContentBlock {
-  type: "text"
-  text: string
-}
-
-interface ToolUseContentBlock {
-  type: "tool_use"
-  id: string
-  name: string
-  input: Record<string, unknown>
-}
-
-type ContentBlock = TextContentBlock | ToolUseContentBlock
-
-// Render helper for assistant message content blocks
-
-function renderContentBlock(
-  block: ContentBlock,
-  index: number,
-  timestamp: number,
-  toolResults: Map<string, { output?: string; error?: string }>,
-) {
-  if (block.type === "text") {
-    // Check if this is a task lifecycle event
-    const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
-    if (lifecycleEvent) {
-      return <TaskLifecycleEvent key={`lifecycle-${index}`} event={lifecycleEvent} />
-    }
-
-    const textEvent: AssistantTextEvent = {
-      type: "text",
-      timestamp,
-      content: block.text,
-    }
-    return <AssistantText key={`text-${index}`} event={textEvent} />
-  }
-
-  if (block.type === "tool_use") {
-    const result = toolResults.get(block.id)
-    const toolEvent: ToolUseEvent = {
-      type: "tool_use",
-      timestamp,
-      tool: block.name as ToolUseEvent["tool"],
-      input: block.input,
-      status:
-        result ?
-          result.error ?
-            "error"
-          : "success"
-        : "success",
-      output: result?.output,
-      error: result?.error,
-    }
-    return <ToolUseCard key={`tool-${block.id}`} event={toolEvent} />
-  }
-
-  return null
-}
-
-// EventItem Component - renders appropriate component based on event type
-
-interface EventItemProps {
-  event: RalphEvent
-  toolResults: Map<string, { output?: string; error?: string }>
-}
-
-function EventItem({ event, toolResults }: EventItemProps) {
-  // User message from chat input
-  if (isUserMessageEvent(event)) {
-    return <UserMessage event={event as unknown as UserMessageEvent} />
-  }
-
-  // Assistant message with content blocks (text and/or tool_use)
-  if (isAssistantMessage(event)) {
-    const message = (event as any).message
-    const content = message?.content as ContentBlock[] | undefined
-
-    if (!content || content.length === 0) return null
-
-    return (
-      <>
-        {content.map((block, index) =>
-          renderContentBlock(block, index, event.timestamp, toolResults),
-        )}
-      </>
-    )
-  }
-
-  // Skip tool result events (they're used to populate toolResults map)
-  if (isToolResultEvent(event)) {
-    return null
-  }
-
-  // Skip stream events (intermediate streaming data)
-  if (event.type === "stream_event") {
-    return null
-  }
-
-  // Skip system events
-  if (event.type === "system") {
-    return null
-  }
-
-  // Fallback for unknown event types - show minimal debug info
-  return null
-}
-
-// Format date for display
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
-// EventLogViewer Component
+import { formatEventLogDate } from "@/lib/formatEventLogDate"
+import { isToolResultEvent } from "@/lib/isToolResultEvent"
+import { EventLogViewerEventItem } from "./EventLogViewerEventItem"
 
 /**
  * Displays a stored event log for viewing past Ralph sessions.
@@ -170,14 +26,12 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
   const { closeEventLogViewer } = useEventLogRouter()
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const [autoScroll, setAutoScroll] = useState(false) // Start at top for viewing logs
+  const [autoScroll, setAutoScroll] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [copied, setCopied] = useState(false)
 
-  // Get events from event log
   const events = eventLog?.events ?? []
 
-  // Build a map of tool_use_id -> result for matching tool uses with their results
   const toolResults = new Map<string, { output?: string; error?: string }>()
   for (const event of events) {
     if (isToolResultEvent(event)) {
@@ -200,37 +54,31 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     }
   }
 
-  // Check if user is at the bottom of the scroll container
   const checkIsAtBottom = useCallback(() => {
     const container = containerRef.current
     if (!container) return true
 
-    const threshold = 50 // pixels from bottom to consider "at bottom"
+    const threshold = 50
     const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight
     return scrollBottom <= threshold
   }, [])
 
-  // Handle scroll events
   const handleScroll = useCallback(() => {
     const atBottom = checkIsAtBottom()
     setIsAtBottom(atBottom)
 
-    // Re-enable auto-scroll when user scrolls to bottom
     if (atBottom && !autoScroll) {
       setAutoScroll(true)
     }
   }, [checkIsAtBottom, autoScroll])
 
-  // Handle user interaction (wheel/touch) to detect intentional scrolling
   const handleUserScroll = useCallback(() => {
     const atBottom = checkIsAtBottom()
-    // If user scrolls away from bottom, disable auto-scroll
     if (!atBottom) {
       setAutoScroll(false)
     }
   }, [checkIsAtBottom])
 
-  // Scroll to top when a new event log is loaded
   useEffect(() => {
     if (eventLog && containerRef.current) {
       containerRef.current.scrollTop = 0
@@ -238,7 +86,6 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     }
   }, [eventLog?.id])
 
-  // Scroll to bottom button handler
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
@@ -247,7 +94,6 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     }
   }, [])
 
-  // Copy link to clipboard
   const handleCopyLink = useCallback(async () => {
     if (!viewingEventLogId) return
     const url = `${window.location.origin}${window.location.pathname}#eventlog=${viewingEventLogId}`
@@ -256,12 +102,10 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback for browsers without clipboard API
       console.error("Failed to copy to clipboard")
     }
   }, [viewingEventLogId])
 
-  // Loading state
   if (isLoading) {
     return (
       <div className={cn("flex h-full flex-col", className)}>
@@ -288,7 +132,6 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className={cn("flex h-full flex-col", className)}>
@@ -318,14 +161,12 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     )
   }
 
-  // No event log loaded
   if (!eventLog) {
     return null
   }
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
-      {/* Header */}
       <div className="border-border flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-2">
           <IconHistory className="text-muted-foreground size-4" />
@@ -353,11 +194,10 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
         </div>
       </div>
 
-      {/* Metadata */}
       <div className="border-border border-b px-4 py-2">
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
           <span className="text-muted-foreground">
-            Created: <span className="text-foreground">{formatDate(eventLog.createdAt)}</span>
+            Created: <span className="text-foreground">{formatEventLogDate(eventLog.createdAt)}</span>
           </span>
           {eventLog.metadata?.taskId && (
             <span className="text-muted-foreground">
@@ -375,7 +215,6 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
         </div>
       </div>
 
-      {/* Events container */}
       <div className="relative flex-1 overflow-hidden">
         <div
           ref={containerRef}
@@ -391,7 +230,7 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
               No events in this log
             </div>
           : events.map((event, index) => (
-              <EventItem
+              <EventLogViewerEventItem
                 key={`${event.timestamp}-${index}`}
                 event={event}
                 toolResults={toolResults}
@@ -400,7 +239,6 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
           }
         </div>
 
-        {/* Scroll to bottom button (shown when not at bottom) */}
         {!isAtBottom && (
           <button
             onClick={scrollToBottom}
@@ -417,4 +255,8 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
       </div>
     </div>
   )
+}
+
+export type EventLogViewerProps = {
+  className?: string
 }

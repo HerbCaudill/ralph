@@ -1,71 +1,8 @@
-import { cn } from "@/lib/utils"
 import { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect } from "react"
+import { cn } from "@/lib/utils"
 import { Header } from "./Header"
 import { useAppStore, selectSidebarOpen, selectSidebarWidth, selectAccentColor } from "@/store"
-
-/** Default accent color (neutral dark) when peacock color is not set */
-const DEFAULT_ACCENT_COLOR = "#374151"
-
-// Note: Sidebar toggle removed from UI - use Cmd+B hotkey to toggle
-
-// Constants for sidebar width constraints
-const MIN_SIDEBAR_WIDTH = 200
-const MAX_SIDEBAR_WIDTH = 600
-
-// Constants for right panel width constraints
-const MIN_RIGHT_PANEL_WIDTH = 300
-const MAX_RIGHT_PANEL_WIDTH = 800
-
-// Constants for left panel width constraints
-const MIN_LEFT_PANEL_WIDTH = 300
-const MAX_LEFT_PANEL_WIDTH = 600
-
-// Constants for detail panel width constraints
-const MAX_DETAIL_PANEL_WIDTH = 800
-const MIN_RIGHT_MARGIN = 200
-
-// Types
-
-export interface MainLayoutProps {
-  sidebar?: React.ReactNode
-  main?: React.ReactNode
-  statusBar?: React.ReactNode
-  header?: React.ReactNode
-  showHeader?: boolean
-  className?: string
-  /** Optional left panel content (e.g., task chat panel) */
-  leftPanel?: React.ReactNode
-  /** Whether the left panel is open (defaults to false) */
-  leftPanelOpen?: boolean
-  /** Width of the left panel in pixels */
-  leftPanelWidth?: number
-  /** Callback when left panel width changes (for resize) */
-  onLeftPanelWidthChange?: (width: number) => void
-  /** Optional right panel content (e.g., event log viewer) */
-  rightPanel?: React.ReactNode
-  /** Whether the right panel is open (defaults to false) */
-  rightPanelOpen?: boolean
-  /** Width of the right panel in pixels */
-  rightPanelWidth?: number
-  /** Callback when right panel width changes (for resize) */
-  onRightPanelWidthChange?: (width: number) => void
-  /** Optional detail panel content (slides out from sidebar over main content) */
-  detailPanel?: React.ReactNode
-  /** Whether the detail panel is open (defaults to false) */
-  detailPanelOpen?: boolean
-  /** Callback when detail panel should close (e.g., from clicking outside) */
-  onDetailPanelClose?: () => void
-}
-
-export interface MainLayoutHandle {
-  focusSidebar: () => void
-  focusMain: () => void
-  focusLeftPanel: () => void
-  focusRightPanel: () => void
-  focusDetailPanel: () => void
-}
-
-// MainLayout Component
+import { DEFAULT_ACCENT_COLOR } from "@/constants"
 
 /**
  * Main application layout with header, sidebar, main content area, and status bar.
@@ -104,18 +41,13 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   const rightPanelRef = useRef<HTMLDivElement>(null)
   const detailPanelRef = useRef<HTMLDivElement>(null)
 
-  // Drag state for resizing (sidebar, left panel, right panel)
   const [isResizing, setIsResizing] = useState(false)
   const [isResizingLeftPanel, setIsResizingLeftPanel] = useState(false)
   const [isResizingRightPanel, setIsResizingRightPanel] = useState(false)
-
-  // Track main content area width for detail panel sizing
   const [mainWidth, setMainWidth] = useState(0)
 
-  // Calculate detail panel width: max 800px, leaving at least 200px on the right
   const detailPanelWidth = Math.min(MAX_DETAIL_PANEL_WIDTH, mainWidth - MIN_RIGHT_MARGIN)
 
-  // Track main content area width changes
   useEffect(() => {
     const mainElement = mainRef.current
     if (!mainElement) return
@@ -124,10 +56,8 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
       setMainWidth(mainElement.clientWidth)
     }
 
-    // Initial measurement
     updateWidth()
 
-    // Create ResizeObserver to track size changes
     const resizeObserver = new ResizeObserver(updateWidth)
     resizeObserver.observe(mainElement)
 
@@ -136,11 +66,9 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     }
   }, [])
 
-  // Handle mouse move during sidebar resize
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isResizing) return
-      // Account for left panel width when calculating sidebar position
       const leftOffset = leftPanelOpen ? leftPanelWidth : 0
       const newWidth = Math.min(
         MAX_SIDEBAR_WIDTH,
@@ -151,7 +79,6 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     [isResizing, setSidebarWidth, leftPanelOpen, leftPanelWidth],
   )
 
-  // Handle mouse move during left panel resize
   const handleLeftPanelMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isResizingLeftPanel || !onLeftPanelWidthChange) return
@@ -161,7 +88,6 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     [isResizingLeftPanel, onLeftPanelWidthChange],
   )
 
-  // Handle mouse move during right panel resize
   const handleRightPanelMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isResizingRightPanel || !onRightPanelWidthChange) return
@@ -175,19 +101,16 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     [isResizingRightPanel, onRightPanelWidthChange],
   )
 
-  // Handle mouse up to stop resizing
   const handleMouseUp = useCallback(() => {
     setIsResizing(false)
     setIsResizingLeftPanel(false)
     setIsResizingRightPanel(false)
   }, [])
 
-  // Add/remove global mouse event listeners during sidebar resize
   useEffect(() => {
     if (isResizing) {
       document.addEventListener("mousemove", handleMouseMove)
       document.addEventListener("mouseup", handleMouseUp)
-      // Prevent text selection during resize
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
     } else if (!isResizingLeftPanel && !isResizingRightPanel) {
@@ -198,315 +121,168 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     return () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizingLeftPanel && !isResizingRightPanel) {
-        document.body.style.userSelect = ""
-        document.body.style.cursor = ""
-      }
     }
-  }, [isResizing, isResizingLeftPanel, isResizingRightPanel, handleMouseMove, handleMouseUp])
+  }, [
+    isResizing,
+    isResizingLeftPanel,
+    isResizingRightPanel,
+    handleMouseMove,
+    handleMouseUp,
+  ])
 
-  // Add/remove global mouse event listeners during left panel resize
   useEffect(() => {
     if (isResizingLeftPanel) {
       document.addEventListener("mousemove", handleLeftPanelMouseMove)
       document.addEventListener("mouseup", handleMouseUp)
-      // Prevent text selection during resize
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
-    } else if (!isResizing && !isResizingRightPanel) {
-      document.body.style.userSelect = ""
-      document.body.style.cursor = ""
     }
 
     return () => {
       document.removeEventListener("mousemove", handleLeftPanelMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizing && !isResizingRightPanel) {
-        document.body.style.userSelect = ""
-        document.body.style.cursor = ""
-      }
     }
-  }, [
-    isResizingLeftPanel,
-    isResizing,
-    isResizingRightPanel,
-    handleLeftPanelMouseMove,
-    handleMouseUp,
-  ])
+  }, [isResizingLeftPanel, handleLeftPanelMouseMove, handleMouseUp])
 
-  // Add/remove global mouse event listeners during right panel resize
   useEffect(() => {
     if (isResizingRightPanel) {
       document.addEventListener("mousemove", handleRightPanelMouseMove)
       document.addEventListener("mouseup", handleMouseUp)
-      // Prevent text selection during resize
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
-    } else if (!isResizing && !isResizingLeftPanel) {
-      document.body.style.userSelect = ""
-      document.body.style.cursor = ""
     }
 
     return () => {
       document.removeEventListener("mousemove", handleRightPanelMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizing && !isResizingLeftPanel) {
-        document.body.style.userSelect = ""
-        document.body.style.cursor = ""
-      }
     }
-  }, [
-    isResizingRightPanel,
-    isResizing,
-    isResizingLeftPanel,
-    handleRightPanelMouseMove,
-    handleMouseUp,
-  ])
+  }, [isResizingRightPanel, handleRightPanelMouseMove, handleMouseUp])
 
-  // Start sidebar resizing on mouse down
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
-
-  // Start left panel resizing on mouse down
-  const handleLeftPanelResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizingLeftPanel(true)
-  }, [])
-
-  // Start right panel resizing on mouse down
-  const handleRightPanelResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizingRightPanel(true)
-  }, [])
-
-  // Handle click outside detail panel to close it
-  useEffect(() => {
-    if (!detailPanelOpen || !onDetailPanelClose) return
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node
-
-      // Don't close if clicking on the detail panel itself
-      if (detailPanelRef.current?.contains(target)) {
-        return
-      }
-
-      // Don't close if clicking inside a Radix UI portal (dropdowns, popovers, etc.)
-      // Radix portals are rendered outside the detail panel DOM but are logically part of it
-      const targetElement = target as Element
-      if (targetElement.closest?.("[data-radix-popper-content-wrapper]")) {
-        return
-      }
-
-      // Close the detail panel
-      onDetailPanelClose()
-    }
-
-    // Add listener with a small delay to avoid closing immediately on open
-    const timeoutId = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside)
-    }, 100)
-
-    return () => {
-      clearTimeout(timeoutId)
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [detailPanelOpen, onDetailPanelClose])
-
-  // Expose focus methods via ref
   useImperativeHandle(ref, () => ({
-    focusSidebar: () => {
-      if (sidebarRef.current) {
-        // Find the first focusable element in the sidebar
-        const focusable = sidebarRef.current.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        )
-        focusable?.focus()
-      }
-    },
-    focusMain: () => {
-      if (mainRef.current) {
-        // Find the first focusable element in main
-        const focusable = mainRef.current.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        )
-        focusable?.focus()
-      }
-    },
-    focusLeftPanel: () => {
-      if (leftPanelRef.current) {
-        // Find the first focusable element in the left panel
-        const focusable = leftPanelRef.current.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        )
-        focusable?.focus()
-      }
-    },
-    focusRightPanel: () => {
-      if (rightPanelRef.current) {
-        // Find the first focusable element in the right panel
-        const focusable = rightPanelRef.current.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        )
-        focusable?.focus()
-      }
-    },
-    focusDetailPanel: () => {
-      if (detailPanelRef.current) {
-        // Find the first focusable element in the detail panel
-        const focusable = detailPanelRef.current.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        )
-        focusable?.focus()
-      }
-    },
+    focusSidebar: () => sidebarRef.current?.focus(),
+    focusMain: () => mainRef.current?.focus(),
+    focusLeftPanel: () => leftPanelRef.current?.focus(),
+    focusRightPanel: () => rightPanelRef.current?.focus(),
+    focusDetailPanel: () => detailPanelRef.current?.focus(),
   }))
 
   return (
-    <div
-      className={cn("bg-background flex h-screen flex-col overflow-hidden", className)}
-      style={{ border: `2px solid ${borderColor}` }}
-    >
-      {/* Header */}
-      {showHeader && (header ?? <Header />)}
-
-      {/* Main content area */}
+    <div className={cn("flex h-screen w-screen flex-col", className)}>
+      {showHeader && (header || <Header />)}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel (e.g., task chat panel) */}
-        <aside
-          ref={leftPanelRef}
-          className={cn(
-            "border-sidebar-border bg-sidebar relative flex flex-col border-r",
-            !isResizingLeftPanel && "transition-all duration-200",
-          )}
-          style={{ width: leftPanelOpen ? leftPanelWidth : 0 }}
-          data-testid="left-panel"
-        >
-          {leftPanelOpen && (
-            <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto">{leftPanel}</div>
-            </div>
-          )}
-
-          {/* Resize handle for left panel */}
-          {leftPanelOpen && onLeftPanelWidthChange && (
+        {sidebar && (
+          <div
+            ref={sidebarRef}
+            className={cn(
+              "bg-background border-border relative flex h-full flex-col overflow-hidden border-r",
+              sidebarOpen ? "visible" : "hidden",
+            )}
+            style={{ width: sidebarWidth, borderColor }}
+            tabIndex={-1}
+          >
+            {sidebar}
             <div
-              className={cn(
-                "absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize transition-colors",
-                "hover:bg-primary/20",
-                isResizingLeftPanel && "bg-primary/30",
-              )}
-              onMouseDown={handleLeftPanelResizeStart}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize left panel"
-              aria-valuenow={leftPanelWidth}
-              aria-valuemin={MIN_LEFT_PANEL_WIDTH}
-              aria-valuemax={MAX_LEFT_PANEL_WIDTH}
-            />
-          )}
-        </aside>
-
-        {/* Sidebar */}
-        <aside
-          ref={sidebarRef}
-          className={cn(
-            "border-sidebar-border bg-sidebar relative flex flex-col border-r",
-            !isResizing && "transition-all duration-200",
-          )}
-          style={{ width: sidebarOpen ? sidebarWidth : 0 }}
-        >
-          {sidebarOpen && (
-            <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto">{sidebar}</div>
-            </div>
-          )}
-
-          {/* Resize handle */}
-          {sidebarOpen && (
-            <div
-              className={cn(
-                "absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize transition-colors",
-                "hover:bg-primary/20",
-                isResizing && "bg-primary/30",
-              )}
-              onMouseDown={handleResizeStart}
-              role="separator"
-              aria-orientation="vertical"
+              className="bg-border absolute top-0 right-0 h-full w-1 cursor-col-resize hover:w-2"
+              onMouseDown={() => setIsResizing(true)}
               aria-label="Resize sidebar"
-              aria-valuenow={sidebarWidth}
-              aria-valuemin={MIN_SIDEBAR_WIDTH}
-              aria-valuemax={MAX_SIDEBAR_WIDTH}
             />
-          )}
-        </aside>
+          </div>
+        )}
 
-        {/* Main content with detail panel overlay */}
-        <main ref={mainRef} className="relative flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">{main}</div>
-          {/* Status bar - inside main panel */}
-          {statusBar && (
-            <footer className="border-border bg-muted/50 border-t px-4 py-2">{statusBar}</footer>
-          )}
-
-          {/* Detail panel - slides out from left edge of main content, overlapping it */}
-          {detailPanel && (
-            <aside
-              ref={detailPanelRef}
-              className={cn(
-                "bg-background border-border absolute inset-y-0 left-0 z-20 flex flex-col overflow-hidden border-r shadow-lg",
-                "transition-all duration-200 ease-in-out",
-              )}
-              style={{
-                width: detailPanelOpen ? detailPanelWidth : 0,
-                opacity: detailPanelOpen ? 1 : 0,
-              }}
-              data-testid="detail-panel"
-            >
-              {detailPanelOpen && (
-                <div className="flex h-full flex-col overflow-hidden">{detailPanel}</div>
-              )}
-            </aside>
-          )}
-        </main>
-
-        {/* Right panel (e.g., event log viewer) */}
-        <aside
-          ref={rightPanelRef}
-          className={cn(
-            "border-sidebar-border bg-sidebar relative flex flex-col border-l",
-            !isResizingRightPanel && "transition-all duration-200",
-          )}
-          style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
-          data-testid="right-panel"
-        >
-          {rightPanelOpen && (
-            <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto">{rightPanel}</div>
-            </div>
-          )}
-
-          {/* Resize handle for right panel */}
-          {rightPanelOpen && onRightPanelWidthChange && (
+        {leftPanel && leftPanelOpen && (
+          <div
+            ref={leftPanelRef}
+            className="bg-background border-border relative flex h-full flex-col overflow-hidden border-r"
+            style={{ width: leftPanelWidth, borderColor }}
+            tabIndex={-1}
+          >
+            {leftPanel}
             <div
-              className={cn(
-                "absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize transition-colors",
-                "hover:bg-primary/20",
-                isResizingRightPanel && "bg-primary/30",
-              )}
-              onMouseDown={handleRightPanelResizeStart}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize right panel"
-              aria-valuenow={rightPanelWidth}
-              aria-valuemin={MIN_RIGHT_PANEL_WIDTH}
-              aria-valuemax={MAX_RIGHT_PANEL_WIDTH}
+              className="bg-border absolute top-0 right-0 h-full w-1 cursor-col-resize hover:w-2"
+              onMouseDown={() => setIsResizingLeftPanel(true)}
+              aria-label="Resize left panel"
             />
-          )}
-        </aside>
+          </div>
+        )}
+
+        <div ref={mainRef} className="flex min-w-0 flex-1 flex-col overflow-hidden" tabIndex={-1}>
+          {main}
+          {statusBar && <div className="border-border border-t px-4 py-2">{statusBar}</div>}
+        </div>
+
+        {rightPanel && rightPanelOpen && (
+          <div
+            ref={rightPanelRef}
+            className="bg-background border-border relative flex h-full flex-col overflow-hidden border-l"
+            style={{ width: rightPanelWidth, borderColor }}
+            tabIndex={-1}
+          >
+            <div
+              className="bg-border absolute top-0 left-0 h-full w-1 cursor-col-resize hover:w-2"
+              onMouseDown={() => setIsResizingRightPanel(true)}
+              aria-label="Resize right panel"
+            />
+            {rightPanel}
+          </div>
+        )}
+
+        {detailPanel && detailPanelOpen && (
+          <div
+            ref={detailPanelRef}
+            className="bg-background border-border absolute right-0 h-full overflow-hidden border-l shadow-lg"
+            style={{ width: detailPanelWidth, borderColor }}
+            tabIndex={-1}
+            onClick={e => e.stopPropagation()}
+          >
+            {detailPanel}
+          </div>
+        )}
       </div>
+
+      {detailPanel && detailPanelOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/20"
+          onClick={onDetailPanelClose}
+          aria-hidden="true"
+        />
+      )}
     </div>
   )
 })
+
+const MIN_SIDEBAR_WIDTH = 200
+const MAX_SIDEBAR_WIDTH = 600
+const MIN_RIGHT_PANEL_WIDTH = 300
+const MAX_RIGHT_PANEL_WIDTH = 800
+const MIN_LEFT_PANEL_WIDTH = 300
+const MAX_LEFT_PANEL_WIDTH = 600
+const MAX_DETAIL_PANEL_WIDTH = 800
+const MIN_RIGHT_MARGIN = 200
+
+export type MainLayoutProps = {
+  sidebar?: React.ReactNode
+  main?: React.ReactNode
+  statusBar?: React.ReactNode
+  header?: React.ReactNode
+  showHeader?: boolean
+  className?: string
+  leftPanel?: React.ReactNode
+  leftPanelOpen?: boolean
+  leftPanelWidth?: number
+  onLeftPanelWidthChange?: (width: number) => void
+  rightPanel?: React.ReactNode
+  rightPanelOpen?: boolean
+  rightPanelWidth?: number
+  onRightPanelWidthChange?: (width: number) => void
+  detailPanel?: React.ReactNode
+  detailPanelOpen?: boolean
+  onDetailPanelClose?: () => void
+}
+
+export type MainLayoutHandle = {
+  focusSidebar: () => void
+  focusMain: () => void
+  focusLeftPanel: () => void
+  focusRightPanel: () => void
+  focusDetailPanel: () => void
+}

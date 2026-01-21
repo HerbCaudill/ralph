@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { IconChevronDown } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import {
   useAppStore,
@@ -6,396 +8,15 @@ import {
   selectViewingIterationIndex,
   getEventsForIteration,
   countIterations,
-  type RalphEvent,
 } from "@/store"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { IconChevronDown, IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
 import { TopologySpinner } from "@/components/ui/TopologySpinner"
-import { UserMessage, type UserMessageEvent } from "./UserMessage"
-import { AssistantText, type AssistantTextEvent } from "./AssistantText"
-import { ToolUseCard, type ToolUseEvent } from "./ToolUseCard"
-import {
-  TaskLifecycleEvent,
-  parseTaskLifecycleEvent,
-  type TaskLifecycleEventData,
-} from "./TaskLifecycleEvent"
-import {
-  useStreamingState,
-  type StreamingMessage,
-  type StreamingContentBlock,
-} from "@/hooks/useStreamingState"
-import { useTaskDialogContext } from "@/contexts"
-
-// Types
-
-export interface EventStreamProps {
-  className?: string
-  /**
-   * Maximum number of events to display. Older events are removed when exceeded.
-   * @default 1000
-   */
-  maxEvents?: number
-}
-
-// Event type guards
-
-function isUserMessageEvent(event: RalphEvent): event is UserMessageEvent & RalphEvent {
-  return event.type === "user_message" && typeof (event as any).message === "string"
-}
-
-function isAssistantMessage(event: RalphEvent): boolean {
-  return event.type === "assistant" && typeof (event as any).message === "object"
-}
-
-function isToolResultEvent(event: RalphEvent): boolean {
-  return event.type === "user" && typeof (event as any).tool_use_result !== "undefined"
-}
-
-function isRalphTaskStartedEvent(event: RalphEvent): boolean {
-  return event.type === "ralph_task_started"
-}
-
-function isRalphTaskCompletedEvent(event: RalphEvent): boolean {
-  return event.type === "ralph_task_completed"
-}
-
-// Content block types from Ralph's assistant messages
-interface TextContentBlock {
-  type: "text"
-  text: string
-}
-
-interface ToolUseContentBlock {
-  type: "tool_use"
-  id: string
-  name: string
-  input: Record<string, unknown>
-}
-
-type ContentBlock = TextContentBlock | ToolUseContentBlock
-
-// Render helper for assistant message content blocks
-
-function renderContentBlock(
-  block: ContentBlock,
-  index: number,
-  timestamp: number,
-  toolResults: Map<string, { output?: string; error?: string }>,
-  hasStructuredLifecycleEvents: boolean,
-) {
-  if (block.type === "text") {
-    // Check if this is a task lifecycle event
-    const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
-    if (lifecycleEvent) {
-      // If we have structured lifecycle events from the CLI, skip rendering this text block
-      // to avoid duplication (the structured event will be rendered separately)
-      if (hasStructuredLifecycleEvents) {
-        return null
-      }
-      return <TaskLifecycleEvent key={`lifecycle-${index}`} event={lifecycleEvent} />
-    }
-
-    const textEvent: AssistantTextEvent = {
-      type: "text",
-      timestamp,
-      content: block.text,
-    }
-    return <AssistantText key={`text-${index}`} event={textEvent} />
-  }
-
-  if (block.type === "tool_use") {
-    const result = toolResults.get(block.id)
-    const toolEvent: ToolUseEvent = {
-      type: "tool_use",
-      timestamp,
-      tool: block.name as ToolUseEvent["tool"],
-      input: block.input,
-      status:
-        result ?
-          result.error ?
-            "error"
-          : "success"
-        : "success",
-      output: result?.output,
-      error: result?.error,
-    }
-    return <ToolUseCard key={`tool-${block.id}`} event={toolEvent} />
-  }
-
-  return null
-}
-
-// Helper to unescape JSON string escapes like \" and \\
-function unescapeJsonString(s: string): string {
-  return s.replace(/\\(.)/g, (_, char) => {
-    switch (char) {
-      case "n":
-        return "\n"
-      case "t":
-        return "\t"
-      case "r":
-        return "\r"
-      default:
-        return char // handles \" and \\ and others
-    }
-  })
-}
-
-// Streaming content renderer
-
-function StreamingContentRenderer({ message }: { message: StreamingMessage }) {
-  return (
-    <>
-      {message.contentBlocks.map((block, index) => (
-        <StreamingBlockRenderer key={index} block={block} timestamp={message.timestamp} />
-      ))}
-    </>
-  )
-}
-
-function StreamingBlockRenderer({
-  block,
-  timestamp,
-}: {
-  block: StreamingContentBlock
-  timestamp: number
-}) {
-  if (block.type === "text") {
-    if (!block.text) return null
-
-    // Check if this is a task lifecycle event
-    const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
-    if (lifecycleEvent) {
-      return <TaskLifecycleEvent event={lifecycleEvent} />
-    }
-
-    const textEvent: AssistantTextEvent = {
-      type: "text",
-      timestamp,
-      content: block.text,
-    }
-    return <AssistantText event={textEvent} />
-  }
-
-  if (block.type === "tool_use") {
-    // Parse partial JSON for display
-    let input: Record<string, unknown> = {}
-    try {
-      input = JSON.parse(block.input)
-    } catch {
-      // Partial JSON - try to extract what we can for display
-      // Look for common patterns like "command": "..."
-      // The regex uses (?:[^"\\]|\\.)* to match either:
-      // - any char except " or \
-      // - OR a backslash followed by any char (escaped char)
-      const commandMatch = block.input.match(/"command"\s*:\s*"((?:[^"\\]|\\.)*)/)
-      const filePathMatch = block.input.match(/"file_path"\s*:\s*"((?:[^"\\]|\\.)*)/)
-      const patternMatch = block.input.match(/"pattern"\s*:\s*"((?:[^"\\]|\\.)*)/)
-      if (commandMatch) input = { command: unescapeJsonString(commandMatch[1]) }
-      else if (filePathMatch) input = { file_path: unescapeJsonString(filePathMatch[1]) }
-      else if (patternMatch) input = { pattern: unescapeJsonString(patternMatch[1]) }
-    }
-
-    const toolEvent: ToolUseEvent = {
-      type: "tool_use",
-      timestamp,
-      tool: block.name as ToolUseEvent["tool"],
-      input,
-      status: "running",
-    }
-    return <ToolUseCard event={toolEvent} />
-  }
-
-  return null
-}
-
-// EventItem Component - renders appropriate component based on event type
-
-interface EventItemProps {
-  event: RalphEvent
-  toolResults: Map<string, { output?: string; error?: string }>
-  hasStructuredLifecycleEvents: boolean
-}
-
-function EventItem({ event, toolResults, hasStructuredLifecycleEvents }: EventItemProps) {
-  // User message from chat input
-  if (isUserMessageEvent(event)) {
-    return <UserMessage event={event as unknown as UserMessageEvent} />
-  }
-
-  // Ralph task started event - render as structured block
-  if (isRalphTaskStartedEvent(event)) {
-    const taskEvent = event as any
-    const lifecycleEvent: TaskLifecycleEventData = {
-      type: "task_lifecycle",
-      timestamp: event.timestamp,
-      action: "starting",
-      taskId: taskEvent.taskId,
-      taskTitle: taskEvent.taskTitle,
-    }
-    return <TaskLifecycleEvent event={lifecycleEvent} />
-  }
-
-  // Ralph task completed event - render as structured block
-  if (isRalphTaskCompletedEvent(event)) {
-    const taskEvent = event as any
-    const lifecycleEvent: TaskLifecycleEventData = {
-      type: "task_lifecycle",
-      timestamp: event.timestamp,
-      action: "completed",
-      taskId: taskEvent.taskId,
-      taskTitle: taskEvent.taskTitle,
-    }
-    return <TaskLifecycleEvent event={lifecycleEvent} />
-  }
-
-  // Assistant message with content blocks (text and/or tool_use)
-  if (isAssistantMessage(event)) {
-    const message = (event as any).message
-    const content = message?.content as ContentBlock[] | undefined
-
-    if (!content || content.length === 0) return null
-
-    return (
-      <>
-        {content.map((block, index) =>
-          renderContentBlock(
-            block,
-            index,
-            event.timestamp,
-            toolResults,
-            hasStructuredLifecycleEvents,
-          ),
-        )}
-      </>
-    )
-  }
-
-  // Skip tool result events (they're used to populate toolResults map)
-  if (isToolResultEvent(event)) {
-    return null
-  }
-
-  // Skip stream events (intermediate streaming data)
-  if (event.type === "stream_event") {
-    return null
-  }
-
-  // Skip system events
-  if (event.type === "system") {
-    return null
-  }
-
-  // Fallback for unknown event types - show minimal debug info
-  return null
-}
-
-// IterationBar Component - always visible at top of event panel
-
-interface IterationBarProps {
-  iterationCount: number
-  displayedIteration: number
-  isViewingLatest: boolean
-  viewingIterationIndex: number | null
-  currentTask: { id: string | null; title: string } | null
-  onPrevious: () => void
-  onNext: () => void
-  onLatest: () => void
-}
-
-function IterationBar({
-  iterationCount,
-  displayedIteration,
-  isViewingLatest,
-  viewingIterationIndex,
-  currentTask,
-  onPrevious,
-  onNext,
-  onLatest,
-}: IterationBarProps) {
-  const hasMultipleIterations = iterationCount > 1
-  const taskDialogContext = useTaskDialogContext()
-
-  const handleTaskClick = (taskId: string) => {
-    if (taskDialogContext) {
-      taskDialogContext.openTaskById(taskId)
-    }
-  }
-
-  return (
-    <div
-      className="bg-muted/50 border-border flex items-center justify-between border-b px-3 py-1.5"
-      data-testid="iteration-bar"
-    >
-      {/* Left: Previous button (only when multiple iterations) */}
-      <div className="flex w-20 items-center">
-        {hasMultipleIterations && (
-          <button
-            onClick={onPrevious}
-            disabled={viewingIterationIndex === 0}
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Previous iteration"
-          >
-            <IconChevronLeft className="size-4" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-        )}
-      </div>
-
-      {/* Center: Current task or iteration info */}
-      <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
-        {currentTask ?
-          <div
-            className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"
-            title="Current task"
-          >
-            {currentTask.id && (
-              <button
-                onClick={() => handleTaskClick(currentTask.id!)}
-                className="hover:text-foreground shrink-0 font-mono opacity-70 transition-opacity hover:underline hover:opacity-100"
-                aria-label={`View task ${currentTask.id}`}
-              >
-                {currentTask.id}
-              </button>
-            )}
-            <span className="truncate">{currentTask.title}</span>
-          </div>
-        : hasMultipleIterations ?
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs">
-              Iteration {displayedIteration} of {iterationCount}
-            </span>
-            {!isViewingLatest && (
-              <button
-                onClick={onLatest}
-                className="bg-primary text-primary-foreground rounded px-2 py-0.5 text-xs font-medium hover:opacity-90"
-              >
-                Latest
-              </button>
-            )}
-          </div>
-        : <span className="text-muted-foreground text-xs">No active task</span>}
-      </div>
-
-      {/* Right: Next button (only when multiple iterations) */}
-      <div className="flex w-20 items-center justify-end">
-        {hasMultipleIterations && (
-          <button
-            onClick={onNext}
-            disabled={isViewingLatest}
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Next iteration"
-          >
-            <span className="hidden sm:inline">Next</span>
-            <IconChevronRight className="size-4" />
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// EventStream Component
+import { useStreamingState } from "@/hooks/useStreamingState"
+import { isRalphTaskCompletedEvent } from "@/lib/isRalphTaskCompletedEvent"
+import { isRalphTaskStartedEvent } from "@/lib/isRalphTaskStartedEvent"
+import { isToolResultEvent } from "@/lib/isToolResultEvent"
+import { EventStreamEventItem } from "./EventStreamEventItem"
+import { EventStreamIterationBar } from "./EventStreamIterationBar"
+import { StreamingContentRenderer } from "./StreamingContentRenderer"
 
 /**
  * Scrollable container displaying real-time events from ralph.
@@ -413,7 +34,6 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
   const [autoScroll, setAutoScroll] = useState(true)
   const [isAtBottom, setIsAtBottom] = useState(true)
 
-  // Compute iteration-related values with useMemo to avoid infinite loops
   const iterationCount = useMemo(() => countIterations(allEvents), [allEvents])
   const iterationEvents = useMemo(
     () => getEventsForIteration(allEvents, viewingIterationIndex),
@@ -421,14 +41,11 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
   )
   const isViewingLatest = viewingIterationIndex === null
 
-  // Get task for current iteration
   const iterationTask = useMemo(() => {
-    // Extract task from iteration events
     for (const event of iterationEvents) {
       if (event.type === "ralph_task_started") {
         const taskId = (event as any).taskId
         const taskTitle = (event as any).taskTitle
-        // Accept tasks with at least a title (taskId is optional)
         if (taskTitle) {
           return { id: taskId || null, title: taskTitle }
         }
@@ -437,18 +54,13 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
     return null
   }, [iterationEvents])
 
-  // Use iteration-filtered events
   const events = iterationEvents
 
-  // Process streaming events
   const { completedEvents, streamingMessage } = useStreamingState(events)
 
-  // Limit displayed events
   const displayedEvents = completedEvents.slice(-maxEvents)
 
-  // Build a map of tool_use_id -> result for matching tool uses with their results
   const toolResults = new Map<string, { output?: string; error?: string }>()
-  // Check if we have any structured lifecycle events (ralph_task_started/completed)
   let hasStructuredLifecycleEvents = false
   for (const event of displayedEvents) {
     if (isToolResultEvent(event)) {
@@ -474,51 +86,43 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
     }
   }
 
-  // Check if user is at the bottom of the scroll container
   const checkIsAtBottom = useCallback(() => {
     const container = containerRef.current
     if (!container) return true
 
-    const threshold = 50 // pixels from bottom to consider "at bottom"
+    const threshold = 50
     const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight
     return scrollBottom <= threshold
   }, [])
 
-  // Handle scroll events
   const handleScroll = useCallback(() => {
     const atBottom = checkIsAtBottom()
     setIsAtBottom(atBottom)
 
-    // Re-enable auto-scroll when user scrolls to bottom
     if (atBottom && !autoScroll) {
       setAutoScroll(true)
     }
   }, [checkIsAtBottom, autoScroll])
 
-  // Handle user interaction (wheel/touch) to detect intentional scrolling
   const handleUserScroll = useCallback(() => {
     const atBottom = checkIsAtBottom()
-    // If user scrolls away from bottom, disable auto-scroll
     if (!atBottom) {
       setAutoScroll(false)
     }
   }, [checkIsAtBottom])
 
-  // Auto-scroll to bottom when new events arrive (only when viewing latest)
   useEffect(() => {
     if (autoScroll && isViewingLatest && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [events, autoScroll, isViewingLatest])
 
-  // Scroll to bottom when navigating to a different iteration
   useEffect(() => {
     if (!isViewingLatest && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [viewingIterationIndex, isViewingLatest])
 
-  // Scroll to bottom button handler
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
@@ -527,14 +131,12 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
     }
   }, [])
 
-  // Calculate displayed iteration number (1-based for UI)
   const displayedIteration =
     viewingIterationIndex !== null ? viewingIterationIndex + 1 : iterationCount
 
   return (
     <div className={cn("relative flex h-full flex-col", className)}>
-      {/* Iteration bar - always visible */}
-      <IterationBar
+      <EventStreamIterationBar
         iterationCount={iterationCount}
         displayedIteration={displayedIteration}
         isViewingLatest={isViewingLatest}
@@ -545,7 +147,6 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
         onLatest={goToLatestIteration}
       />
 
-      {/* Events container */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
@@ -562,7 +163,7 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
           </div>
         : <>
             {displayedEvents.map((event, index) => (
-              <EventItem
+              <EventStreamEventItem
                 key={`${event.timestamp}-${index}`}
                 event={event}
                 toolResults={toolResults}
@@ -570,7 +171,6 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
               />
             ))}
             {streamingMessage && <StreamingContentRenderer message={streamingMessage} />}
-            {/* Spinner shown when Ralph is running and viewing latest iteration */}
             {isRunning && isViewingLatest && (
               <div
                 className="flex items-center justify-start px-4 py-4"
@@ -584,7 +184,6 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
         }
       </div>
 
-      {/* Scroll to bottom button (shown when not at bottom) */}
       {!isAtBottom && (
         <button
           onClick={scrollToBottom}
@@ -600,4 +199,13 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
       )}
     </div>
   )
+}
+
+export type EventStreamProps = {
+  className?: string
+  /**
+   * Maximum number of events to display. Older events are removed when exceeded.
+   * @default 1000
+   */
+  maxEvents?: number
 }

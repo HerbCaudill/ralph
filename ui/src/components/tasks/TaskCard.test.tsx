@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
-import { TaskCard, type TaskCardTask, type TaskStatus } from "./TaskCard"
+import { TaskCard } from "./TaskCard"
+import type { TaskCardTask, TaskStatus } from "@/types"
 
 // Mock zustand store
 vi.mock("@/store", async importOriginal => {

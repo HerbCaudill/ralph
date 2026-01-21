@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from "react"
-import { useAppStore, selectTheme, type Theme } from "@/store"
+import { useAppStore, selectTheme } from "@/store"
+import type { Theme } from "@/types"
 
 // Constants
 

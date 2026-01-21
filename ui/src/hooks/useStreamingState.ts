@@ -1,25 +1,5 @@
 import { useMemo } from "react"
-import type { RalphEvent } from "@/store"
-
-// Types for streaming content blocks
-export interface StreamingTextBlock {
-  type: "text"
-  text: string
-}
-
-export interface StreamingToolUseBlock {
-  type: "tool_use"
-  id: string
-  name: string
-  input: string // Partial JSON being built up
-}
-
-export type StreamingContentBlock = StreamingTextBlock | StreamingToolUseBlock
-
-export interface StreamingMessage {
-  timestamp: number
-  contentBlocks: StreamingContentBlock[]
-}
+import type { RalphEvent, StreamingMessage } from "@/types"
 
 interface StreamState {
   currentMessage: StreamingMessage | null

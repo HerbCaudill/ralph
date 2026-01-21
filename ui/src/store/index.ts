@@ -1,11 +1,25 @@
 import { create } from "zustand"
 import type { ConnectionStatus } from "../hooks/useWebSocket"
+import type {
+  ClosedTasksTimeFilter,
+  RalphEvent,
+  RalphStatus,
+  Task,
+  TaskChatMessage,
+  TaskStatus,
+  Theme,
+  TokenUsage,
+  ContextWindow,
+  IterationInfo,
+  EventLog,
+  EventLogMetadata,
+} from "@/types"
+import { TASK_LIST_CLOSED_FILTER_STORAGE_KEY } from "@/constants"
 
 // localStorage keys
 export const SIDEBAR_WIDTH_STORAGE_KEY = "ralph-ui-sidebar-width"
 export const TASK_CHAT_WIDTH_STORAGE_KEY = "ralph-ui-task-chat-width"
 export const TASK_CHAT_OPEN_STORAGE_KEY = "ralph-ui-task-chat-open"
-export const CLOSED_FILTER_STORAGE_KEY = "ralph-ui-task-list-closed-filter"
 export const SHOW_TOOL_OUTPUT_STORAGE_KEY = "ralph-ui-show-tool-output"
 
 // Helper functions for localStorage
@@ -77,8 +91,6 @@ function saveTaskChatOpen(open: boolean): void {
 }
 
 // Closed time filter types and localStorage persistence
-export type ClosedTasksTimeFilter = "past_hour" | "past_day" | "past_week" | "all_time"
-
 const CLOSED_TIME_FILTERS: ClosedTasksTimeFilter[] = [
   "past_hour",
   "past_day",
@@ -88,7 +100,7 @@ const CLOSED_TIME_FILTERS: ClosedTasksTimeFilter[] = [
 
 function loadClosedTimeFilter(): ClosedTasksTimeFilter {
   try {
-    const stored = localStorage.getItem(CLOSED_FILTER_STORAGE_KEY)
+    const stored = localStorage.getItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY)
     if (stored && CLOSED_TIME_FILTERS.includes(stored as ClosedTasksTimeFilter)) {
       return stored as ClosedTasksTimeFilter
     }
@@ -100,7 +112,7 @@ function loadClosedTimeFilter(): ClosedTasksTimeFilter {
 
 function saveClosedTimeFilter(filter: ClosedTasksTimeFilter): void {
   try {
-    localStorage.setItem(CLOSED_FILTER_STORAGE_KEY, filter)
+    localStorage.setItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY, filter)
   } catch {
     // localStorage may not be available
   }
@@ -153,83 +165,13 @@ export const RALPH_STATUSES = [
   "stopping_after_current",
 ] as const
 
-export type RalphStatus = (typeof RALPH_STATUSES)[number]
-
 export function isRalphStatus(value: unknown): value is RalphStatus {
   return typeof value === "string" && RALPH_STATUSES.includes(value as RalphStatus)
-}
-export type Theme = "system" | "light" | "dark"
-
-export interface RalphEvent {
-  type: string
-  timestamp: number
-  [key: string]: unknown
-}
-
-export type TaskStatus = "open" | "in_progress" | "blocked" | "deferred" | "closed"
-
-export interface Task {
-  /** Unique task ID (e.g., "rui-4rt.5") */
-  id: string
-  /** Task title */
-  title: string
-  /** Optional description */
-  description?: string
-  /** Task status */
-  status: TaskStatus
-  /** Priority (0 = highest, 4 = lowest) */
-  priority?: number
-  /** Issue type (e.g., "task", "bug", "epic") */
-  issue_type?: string
-  /** Parent issue ID */
-  parent?: string
-  /** Timestamp when task was created */
-  created_at?: string
-  /** Timestamp when task was closed */
-  closed_at?: string
-}
-
-export interface TokenUsage {
-  input: number
-  output: number
-}
-
-export interface ContextWindow {
-  used: number
-  max: number
 }
 
 // Default context window size for Claude Sonnet (200k tokens)
 export const DEFAULT_CONTEXT_WINDOW_MAX = 200_000
 
-export interface IterationInfo {
-  current: number
-  total: number
-}
-
-// Event log metadata type (matches server EventLogMetadata)
-export interface EventLogMetadata {
-  taskId?: string
-  title?: string
-  source?: string
-  workspacePath?: string
-}
-
-// Event log type (matches server EventLog)
-export interface EventLog {
-  id: string
-  createdAt: string
-  events: RalphEvent[]
-  metadata?: EventLogMetadata
-}
-
-// Task chat message type for task management conversations
-export interface TaskChatMessage {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  timestamp: number
-}
 
 // Store State
 

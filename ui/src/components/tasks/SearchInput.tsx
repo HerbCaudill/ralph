@@ -1,3 +1,6 @@
+import { forwardRef, useImperativeHandle, useRef, useCallback } from "react"
+import type { KeyboardEvent } from "react"
+import { IconSearch, IconX } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import {
   useAppStore,
@@ -5,46 +8,6 @@ import {
   selectSelectedTaskId,
   selectVisibleTaskIds,
 } from "@/store"
-import { forwardRef, useImperativeHandle, useRef, useCallback, type KeyboardEvent } from "react"
-import { IconSearch, IconX } from "@tabler/icons-react"
-
-// Types
-
-export interface SearchInputProps {
-  /**
-   * Placeholder text for the input.
-   * @default "Search tasks..."
-   */
-  placeholder?: string
-
-  /**
-   * Whether the input is disabled.
-   * @default false
-   */
-  disabled?: boolean
-
-  /**
-   * Additional CSS classes.
-   */
-  className?: string
-
-  /**
-   * Callback when a task should be opened (triggered by Enter key).
-   */
-  onOpenTask?: (taskId: string) => void
-
-  /**
-   * Callback when the search should be hidden (triggered by Escape or clear when empty).
-   */
-  onHide?: () => void
-}
-
-export interface SearchInputHandle {
-  focus: () => void
-  clear: () => void
-}
-
-// SearchInput Component
 
 /**
  * Search input for filtering tasks in the task list.
@@ -80,84 +43,60 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
     [setQuery],
   )
 
-  const handleClear = useCallback(() => {
-    clearQuery()
-    onHide?.()
-  }, [clearQuery, onHide])
-
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
-      // Escape clears the search and selection, and hides the search bar
-      if (e.key === "Escape") {
+      if (e.key === "Enter" && selectedTaskId && onOpenTask) {
         e.preventDefault()
-        clearQuery()
-        clearSelectedTaskId()
-        onHide?.()
-        return
+        onOpenTask(selectedTaskId)
       }
-
-      // Arrow down - select next task
       if (e.key === "ArrowDown") {
         e.preventDefault()
-        if (visibleTaskIds.length === 0) return
-
-        if (!selectedTaskId) {
-          // Select first task
-          setSelectedTaskId(visibleTaskIds[0])
-        } else {
-          // Select next task
-          const currentIndex = visibleTaskIds.indexOf(selectedTaskId)
-          if (currentIndex < visibleTaskIds.length - 1) {
-            setSelectedTaskId(visibleTaskIds[currentIndex + 1])
-          }
-        }
-        return
+        const currentIndex = selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : -1
+        const nextIndex = Math.min(currentIndex + 1, visibleTaskIds.length - 1)
+        const nextId = visibleTaskIds[nextIndex]
+        if (nextId) setSelectedTaskId(nextId)
       }
-
-      // Arrow up - select previous task
       if (e.key === "ArrowUp") {
         e.preventDefault()
-        if (visibleTaskIds.length === 0) return
-
-        if (!selectedTaskId) {
-          // Select last task
-          setSelectedTaskId(visibleTaskIds[visibleTaskIds.length - 1])
-        } else {
-          // Select previous task
-          const currentIndex = visibleTaskIds.indexOf(selectedTaskId)
-          if (currentIndex > 0) {
-            setSelectedTaskId(visibleTaskIds[currentIndex - 1])
-          }
-        }
-        return
+        const currentIndex = selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : 0
+        const prevIndex = Math.max(currentIndex - 1, 0)
+        const prevId = visibleTaskIds[prevIndex]
+        if (prevId) setSelectedTaskId(prevId)
       }
-
-      // Enter - open selected task (keep it selected so user can continue navigating)
-      if (e.key === "Enter") {
-        e.preventDefault()
-        if (selectedTaskId && onOpenTask) {
-          onOpenTask(selectedTaskId)
+      if (e.key === "Escape") {
+        if (query) {
+          clearQuery()
+          clearSelectedTaskId()
+        } else {
+          onHide?.()
         }
-        return
       }
     },
     [
+      selectedTaskId,
+      onOpenTask,
+      visibleTaskIds,
+      setSelectedTaskId,
+      query,
       clearQuery,
       clearSelectedTaskId,
-      visibleTaskIds,
-      selectedTaskId,
-      setSelectedTaskId,
-      onOpenTask,
       onHide,
     ],
   )
 
+  const handleClear = useCallback(() => {
+    clearQuery()
+    clearSelectedTaskId()
+    if (query === "") {
+      onHide?.()
+    }
+  }, [clearQuery, clearSelectedTaskId, query, onHide])
+
   return (
-    <div className={cn("relative flex items-center", className)}>
-      <IconSearch
-        className="text-muted-foreground pointer-events-none absolute left-2 size-4"
-        aria-hidden="true"
-      />
+    <div className={cn("relative", className)}>
+      <div className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2">
+        <IconSearch className="h-4 w-4" />
+      </div>
       <input
         ref={inputRef}
         type="text"
@@ -167,27 +106,35 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "text-foreground placeholder:text-muted-foreground h-8 w-full bg-transparent text-sm",
-          "py-1 pr-8 pl-8",
-          "focus:outline-none",
+          "border-border bg-background text-foreground h-9 w-full rounded-md border pl-9 pr-9 text-sm",
+          "placeholder:text-muted-foreground",
+          "focus:ring-ring focus:outline-none focus:ring-2",
           "disabled:cursor-not-allowed disabled:opacity-50",
         )}
-        aria-label="Search tasks"
       />
       {query && (
         <button
           type="button"
           onClick={handleClear}
-          className={cn(
-            "text-muted-foreground hover:text-foreground absolute right-2",
-            "rounded-sm p-0.5 transition-colors",
-            "focus:ring-ring/50 focus:ring-1 focus:outline-none",
-          )}
+          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
           aria-label="Clear search"
         >
-          <IconX className="size-3.5" aria-hidden="true" />
+          <IconX className="h-4 w-4" />
         </button>
       )}
     </div>
   )
 })
+
+type SearchInputProps = {
+  placeholder?: string
+  disabled?: boolean
+  className?: string
+  onOpenTask?: (taskId: string) => void
+  onHide?: () => void
+}
+
+type SearchInputHandle = {
+  focus: () => void
+  clear: () => void
+}

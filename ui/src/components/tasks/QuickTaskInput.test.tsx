@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { createRef } from "react"
 import { QuickTaskInput, type QuickTaskInputHandle } from "./QuickTaskInput"
+import { TASK_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 
 // Mock fetch
 
 const mockFetch = vi.fn()
 
-const STORAGE_KEY = "ralph-ui-task-input-draft"
 
 beforeEach(() => {
   vi.stubGlobal("fetch", mockFetch)
@@ -246,7 +246,7 @@ describe("QuickTaskInput", () => {
       typeInInput(input, "Test task for storage")
 
       // Verify localStorage has the draft
-      expect(localStorage.getItem(STORAGE_KEY)).toBe("Test task for storage")
+      expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBe("Test task for storage")
 
       fireEvent.keyDown(input, { key: "Enter" })
 
@@ -257,7 +257,7 @@ describe("QuickTaskInput", () => {
 
       // localStorage should also be cleared
       await waitFor(() => {
-        expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+        expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBeNull()
       })
     })
 
@@ -506,11 +506,11 @@ describe("QuickTaskInput", () => {
       const input = screen.getByRole("textbox")
       typeInInput(input, "My draft task")
 
-      expect(localStorage.getItem(STORAGE_KEY)).toBe("My draft task")
+      expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBe("My draft task")
     })
 
     it("restores input value from localStorage on mount", () => {
-      localStorage.setItem(STORAGE_KEY, "Saved draft")
+      localStorage.setItem(TASK_INPUT_DRAFT_STORAGE_KEY, "Saved draft")
 
       render(<QuickTaskInput />)
 
@@ -523,10 +523,10 @@ describe("QuickTaskInput", () => {
 
       const input = screen.getByRole("textbox")
       typeInInput(input, "Some text")
-      expect(localStorage.getItem(STORAGE_KEY)).toBe("Some text")
+      expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBe("Some text")
 
       typeInInput(input, "")
-      expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+      expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBeNull()
     })
 
     it("clears localStorage after successful submission", async () => {
@@ -536,7 +536,7 @@ describe("QuickTaskInput", () => {
 
       const input = screen.getByRole("textbox")
       typeInInput(input, "Task to submit")
-      expect(localStorage.getItem(STORAGE_KEY)).toBe("Task to submit")
+      expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBe("Task to submit")
 
       fireEvent.keyDown(input, { key: "Enter" })
 
@@ -546,7 +546,7 @@ describe("QuickTaskInput", () => {
 
       // localStorage is cleared by useEffect after render, so we need to wait for it
       await waitFor(() => {
-        expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+        expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBeNull()
       })
     })
 
@@ -564,7 +564,7 @@ describe("QuickTaskInput", () => {
       })
 
       // Value should still be in localStorage
-      expect(localStorage.getItem(STORAGE_KEY)).toBe("Task that fails")
+      expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBe("Task that fails")
     })
 
     it("clears localStorage synchronously before onTaskCreated callback", async () => {
@@ -574,14 +574,14 @@ describe("QuickTaskInput", () => {
       let localStorageValueDuringCallback: string | null = "not-called"
       const onTaskCreated = vi.fn(() => {
         // Capture localStorage state when callback is invoked
-        localStorageValueDuringCallback = localStorage.getItem(STORAGE_KEY)
+        localStorageValueDuringCallback = localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)
       })
 
       render(<QuickTaskInput onTaskCreated={onTaskCreated} />)
 
       const input = screen.getByRole("textbox")
       typeInInput(input, "Test synchronous clear")
-      expect(localStorage.getItem(STORAGE_KEY)).toBe("Test synchronous clear")
+      expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBe("Test synchronous clear")
 
       fireEvent.keyDown(input, { key: "Enter" })
 

@@ -1,59 +1,9 @@
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
+import type { FormEvent, KeyboardEvent } from "react"
+import { IconArrowUp } from "@tabler/icons-react"
 import { cn, getContrastingColor } from "@/lib/utils"
 import { useAppStore, selectAccentColor } from "@/store"
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react"
-import { IconArrowUp } from "@tabler/icons-react"
-
-// Constants
-
-/** Default accent color (black) when peacock color is not set */
-const DEFAULT_ACCENT_COLOR = "#000000"
-
-// Types
-
-export interface ChatInputProps {
-  /**
-   * Callback when a message is submitted.
-   */
-  onSubmit?: (message: string) => void
-
-  /**
-   * Placeholder text for the input.
-   * @default "Send Ralph a message..."
-   */
-  placeholder?: string
-
-  /**
-   * Whether the input is disabled.
-   * @default false
-   */
-  disabled?: boolean
-
-  /**
-   * Additional CSS classes.
-   */
-  className?: string
-
-  /**
-   * Aria label for the textarea.
-   * @default "Message input"
-   */
-  "aria-label"?: string
-}
-
-export interface ChatInputHandle {
-  focus: () => void
-}
-
-// ChatInput Component
+import { DEFAULT_INPUT_ACCENT_COLOR } from "@/constants"
 
 /**
  * Text area input for sending messages to a running agent.
@@ -70,24 +20,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   ref,
 ) {
   const accentColor = useAppStore(selectAccentColor)
-  const buttonBgColor = accentColor ?? DEFAULT_ACCENT_COLOR
+  const buttonBgColor = accentColor ?? DEFAULT_INPUT_ACCENT_COLOR
   const buttonTextColor = getContrastingColor(buttonBgColor)
 
   const [message, setMessage] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Auto-resize textarea to fit content
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current
     if (!textarea) return
 
-    // Reset height to auto to get the correct scrollHeight
     textarea.style.height = "auto"
-    // Set height to scrollHeight to fit content
     textarea.style.height = `${textarea.scrollHeight}px`
   }, [])
 
-  // Adjust height when message changes
   useEffect(() => {
     adjustTextareaHeight()
   }, [message, adjustTextareaHeight])
@@ -113,12 +59,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      // Enter to submit, Shift+Enter for new line
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault()
         handleSubmit()
       }
-      // Shift+Enter allows default behavior (new line)
     },
     [handleSubmit],
   )
@@ -138,7 +82,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           "w-full resize-none border-0 px-0 py-1 text-sm",
           "focus:ring-0 focus:outline-none",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          "overflow-hidden", // Hide scrollbar during auto-resize
+          "overflow-hidden",
         )}
         aria-label={ariaLabel}
       />
@@ -164,3 +108,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     </form>
   )
 })
+
+export type ChatInputProps = {
+  onSubmit?: (message: string) => void
+  placeholder?: string
+  disabled?: boolean
+  className?: string
+  "aria-label"?: string
+}
+
+export type ChatInputHandle = {
+  focus: () => void
+}

@@ -14,167 +14,8 @@ import {
   IconChevronDown,
   type TablerIcon,
 } from "@tabler/icons-react"
+import type { TaskCardTask, TaskStatus } from "@/types"
 
-// Types
-
-export type TaskStatus = "open" | "in_progress" | "blocked" | "deferred" | "closed"
-
-export interface TaskCardTask {
-  /** Unique task ID (e.g., "rui-4rt.5") */
-  id: string
-  /** Task title */
-  title: string
-  /** Optional description */
-  description?: string
-  /** Task status */
-  status: TaskStatus
-  /** Priority (0 = highest, 4 = lowest) */
-  priority?: number
-  /** Issue type (e.g., "task", "bug", "epic") */
-  issue_type?: string
-  /** Parent issue ID */
-  parent?: string
-  /** Timestamp when task was created */
-  created_at?: string
-  /** Timestamp when task was closed */
-  closed_at?: string
-  /** Labels attached to this task */
-  labels?: string[]
-}
-
-export interface TaskCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> {
-  /** The task to display */
-  task: TaskCardTask
-  /** Callback when status is changed */
-  onStatusChange?: (id: string, status: TaskStatus) => void
-  /** Callback when task is clicked */
-  onClick?: (id: string) => void
-  /** Whether this is a newly added task that should be highlighted */
-  isNew?: boolean
-  /** For epics with subtasks: whether the subtasks are collapsed */
-  isCollapsed?: boolean
-  /** For parent tasks with subtasks: callback when collapse/expand is toggled */
-  onToggleCollapse?: () => void
-  /** For parent tasks: number of subtasks */
-  subtaskCount?: number
-}
-
-// Status Configuration
-
-interface StatusConfig {
-  icon: TablerIcon
-  label: string
-  color: string
-  bgColor: string
-}
-
-const statusConfig: Record<TaskStatus, StatusConfig> = {
-  open: {
-    icon: IconCircle,
-    label: "Open",
-    color: "text-status-neutral",
-    bgColor: "bg-status-neutral/10",
-  },
-  in_progress: {
-    icon: IconCircleDot,
-    label: "In Progress",
-    color: "text-status-info",
-    bgColor: "bg-status-info/10",
-  },
-  blocked: {
-    icon: IconBan,
-    label: "Blocked",
-    color: "text-status-error",
-    bgColor: "bg-status-error/10",
-  },
-  deferred: {
-    icon: IconClock,
-    label: "Deferred",
-    color: "text-status-warning",
-    bgColor: "bg-status-warning/10",
-  },
-  closed: {
-    icon: IconCircleCheck,
-    label: "Closed",
-    color: "text-status-success",
-    bgColor: "bg-status-success/10",
-  },
-}
-
-// Available Statuses for Transition
-
-const availableStatuses: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
-
-// Issue Type Configuration (only for non-task types)
-
-interface TypeConfig {
-  icon: TablerIcon
-  label: string
-  color: string
-}
-
-const typeConfig: Record<string, TypeConfig> = {
-  task: {
-    icon: IconCheckbox,
-    label: "Task",
-    color: "text-status-success",
-  },
-  bug: {
-    icon: IconBug,
-    label: "Bug",
-    color: "text-status-error",
-  },
-  feature: {
-    icon: IconSparkles,
-    label: "Feature",
-    color: "text-primary",
-  },
-  epic: {
-    icon: IconStack2,
-    label: "Epic",
-    color: "text-primary",
-  },
-}
-
-// Priority Configuration (only for non-P2 priorities)
-
-interface PriorityConfig {
-  label: string
-  color: string
-  bgColor: string
-}
-
-const priorityConfig: Record<number, PriorityConfig> = {
-  0: {
-    label: "P0",
-    color: "text-status-error",
-    bgColor: "bg-status-error/20",
-  },
-  1: {
-    label: "P1",
-    color: "text-status-warning",
-    bgColor: "bg-status-warning/15",
-  },
-  3: {
-    label: "P3",
-    color: "text-status-neutral",
-    bgColor: "bg-status-neutral/10",
-  },
-  4: {
-    label: "P4",
-    color: "text-muted-foreground",
-    bgColor: "bg-muted/50",
-  },
-}
-
-// TaskCard Component
-
-/**
- * Card component for displaying an individual task.
- * Shows task title and status indicator.
- * Clicking opens the task details dialog.
- * Supports inline status changes via dropdown.
- */
 export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskCard(
   {
     task,
@@ -425,3 +266,113 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     </div>
   )
 })
+
+const statusConfig: Record<TaskStatus, StatusConfig> = {
+  open: {
+    icon: IconCircle,
+    label: "Open",
+    color: "text-status-neutral",
+    bgColor: "bg-status-neutral/10",
+  },
+  in_progress: {
+    icon: IconCircleDot,
+    label: "In Progress",
+    color: "text-status-info",
+    bgColor: "bg-status-info/10",
+  },
+  blocked: {
+    icon: IconBan,
+    label: "Blocked",
+    color: "text-status-error",
+    bgColor: "bg-status-error/10",
+  },
+  deferred: {
+    icon: IconClock,
+    label: "Deferred",
+    color: "text-status-warning",
+    bgColor: "bg-status-warning/10",
+  },
+  closed: {
+    icon: IconCircleCheck,
+    label: "Closed",
+    color: "text-status-success",
+    bgColor: "bg-status-success/10",
+  },
+}
+
+const availableStatuses: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
+
+const typeConfig: Record<string, TypeConfig> = {
+  task: {
+    icon: IconCheckbox,
+    label: "Task",
+    color: "text-status-success",
+  },
+  bug: {
+    icon: IconBug,
+    label: "Bug",
+    color: "text-status-error",
+  },
+  feature: {
+    icon: IconSparkles,
+    label: "Feature",
+    color: "text-primary",
+  },
+  epic: {
+    icon: IconStack2,
+    label: "Epic",
+    color: "text-primary",
+  },
+}
+
+const priorityConfig: Record<number, PriorityConfig> = {
+  0: {
+    label: "P0",
+    color: "text-status-error",
+    bgColor: "bg-status-error/20",
+  },
+  1: {
+    label: "P1",
+    color: "text-status-warning",
+    bgColor: "bg-status-warning/15",
+  },
+  3: {
+    label: "P3",
+    color: "text-status-neutral",
+    bgColor: "bg-status-neutral/10",
+  },
+  4: {
+    label: "P4",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted/50",
+  },
+}
+
+export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> & {
+  task: TaskCardTask
+  onStatusChange?: (id: string, status: TaskStatus) => void
+  onClick?: (id: string) => void
+  isNew?: boolean
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
+  subtaskCount?: number
+}
+
+type StatusConfig = {
+  icon: TablerIcon
+  label: string
+  color: string
+  bgColor: string
+}
+
+type TypeConfig = {
+  icon: TablerIcon
+  label: string
+  color: string
+}
+
+type PriorityConfig = {
+  label: string
+  color: string
+  bgColor: string
+}

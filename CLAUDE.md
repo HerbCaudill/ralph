@@ -270,6 +270,8 @@ ui/                        # UI package (@herbcaudill/ralph-ui)
     store/                  # Zustand global state
     hooks/                  # Custom React hooks
     lib/                    # Utilities and theme management
+    constants.ts            # Shared UI constants
+    types.ts                # Shared UI types
   bin/ralph-ui.js           # Published executable
   public/                   # Static assets
   .storybook/               # Storybook configuration
@@ -338,3 +340,9 @@ pnpm ui:test           # Run UI tests only
 - React component tests
 - Store tests
 - E2E tests with Playwright
+
+### UI Conventions
+
+- Components lead files; helper functions live in `ui/src/lib` (one function per file).
+- Standalone subcomponents live in their own files next to the parent component.
+- Shared types and constants live in `ui/src/types.ts` and `ui/src/constants.ts`.

@@ -1,10 +1,5 @@
 import { cn } from "@/lib/utils"
-
-export interface UserMessageEvent {
-  type: "user_message"
-  timestamp: number
-  message: string
-}
+import type { UserMessageEvent } from "@/types"
 
 export function UserMessage({ event, className }: Props) {
   return (

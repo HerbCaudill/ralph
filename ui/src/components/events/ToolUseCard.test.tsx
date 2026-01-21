@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, beforeEach } from "vitest"
-import { ToolUseCard, type ToolUseEvent, type ToolName } from "./ToolUseCard"
+import { ToolUseCard } from "./ToolUseCard"
+import type { ToolUseEvent, ToolName } from "@/types"
 import { useAppStore } from "@/store"
 
 // Helper to create a basic tool use event

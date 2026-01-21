@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import type { TaskCardTask, TaskStatus } from "@/components/tasks/TaskCard"
+import type { TaskCardTask, TaskStatus } from "@/types"
 import { useAppStore } from "@/store"
 
 // Types

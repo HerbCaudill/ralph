@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { TaskLifecycleEvent, parseTaskLifecycleEvent } from "./TaskLifecycleEvent"
+import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
 import { TaskDialogProvider } from "@/contexts"
 import { useAppStore } from "@/store"
 

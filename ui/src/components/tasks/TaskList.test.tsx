@@ -1,11 +1,10 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { TaskList, type TaskGroup } from "./TaskList"
-import type { TaskCardTask } from "./TaskCard"
+import { TaskList } from "./TaskList"
+import type { TaskCardTask } from "@/types"
 import { useAppStore } from "@/store"
-
-const STORAGE_KEY = "ralph-ui-task-list-collapsed-state"
-const CLOSED_FILTER_STORAGE_KEY = "ralph-ui-task-list-closed-filter"
+import type { TaskGroup } from "@/types"
+import { TASK_LIST_STATUS_STORAGE_KEY, TASK_LIST_CLOSED_FILTER_STORAGE_KEY } from "@/constants"
 
 // Helper to get recent date (for closed tasks to be visible with default filter)
 const getRecentDate = () => new Date().toISOString()
@@ -444,14 +443,14 @@ describe("TaskList", () => {
       const readyHeader = screen.getByLabelText(/Ready section/)
       fireEvent.click(readyHeader)
 
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")
+      const stored = JSON.parse(localStorage.getItem(TASK_LIST_STATUS_STORAGE_KEY) ?? "{}")
       expect(stored.ready).toBe(true)
     })
 
     it("restores collapsed state from localStorage", () => {
       // Pre-set localStorage with Ready collapsed
       localStorage.setItem(
-        STORAGE_KEY,
+        TASK_LIST_STATUS_STORAGE_KEY,
         JSON.stringify({
           blocked: false, // Override default
           ready: true,
@@ -475,13 +474,13 @@ describe("TaskList", () => {
       const readyHeader = screen.getByLabelText(/Ready section/)
       fireEvent.click(readyHeader)
 
-      expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+      expect(localStorage.getItem(TASK_LIST_STATUS_STORAGE_KEY)).toBeNull()
     })
 
     it("does not read from localStorage when persistCollapsedState is false", () => {
       // Pre-set localStorage with Ready collapsed
       localStorage.setItem(
-        STORAGE_KEY,
+        TASK_LIST_STATUS_STORAGE_KEY,
         JSON.stringify({
           blocked: false,
           ready: true,
@@ -499,7 +498,7 @@ describe("TaskList", () => {
     it("defaultCollapsed prop overrides localStorage", () => {
       // Pre-set localStorage with Ready expanded
       localStorage.setItem(
-        STORAGE_KEY,
+        TASK_LIST_STATUS_STORAGE_KEY,
         JSON.stringify({
           blocked: false,
           ready: false,
@@ -853,7 +852,7 @@ describe("TaskList", () => {
       fireEvent.change(filterDropdown, { target: { value: "past_week" } })
 
       // Store persists to localStorage automatically
-      expect(localStorage.getItem(CLOSED_FILTER_STORAGE_KEY)).toBe("past_week")
+      expect(localStorage.getItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY)).toBe("past_week")
       expect(useAppStore.getState().closedTimeFilter).toBe("past_week")
     })
 
@@ -881,7 +880,7 @@ describe("TaskList", () => {
       fireEvent.change(filterDropdown, { target: { value: "past_week" } })
 
       // Time filter is stored via the global store, which always persists
-      expect(localStorage.getItem(CLOSED_FILTER_STORAGE_KEY)).toBe("past_week")
+      expect(localStorage.getItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY)).toBe("past_week")
     })
 
     it("updates task count when filter changes", () => {

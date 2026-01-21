@@ -1,69 +1,9 @@
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
+import type { FormEvent, KeyboardEvent } from "react"
+import { IconArrowUp, IconLoader } from "@tabler/icons-react"
 import { cn, getContrastingColor } from "@/lib/utils"
 import { useAppStore, selectAccentColor } from "@/store"
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react"
-import { IconArrowUp, IconLoader } from "@tabler/icons-react"
-
-// Constants
-
-/** Default accent color (black) when peacock color is not set */
-const DEFAULT_ACCENT_COLOR = "#000000"
-
-// Types
-
-export interface QuickTaskInputProps {
-  /**
-   * Callback when a task is successfully created.
-   * Receives the created issue data from bd.
-   */
-  onTaskCreated?: (issue: CreatedIssue) => void
-
-  /**
-   * Callback when task creation fails.
-   */
-  onError?: (error: string) => void
-
-  /**
-   * Placeholder text for the input.
-   * @default "Tell Ralph what you want to do"
-   */
-  placeholder?: string
-
-  /**
-   * Whether the input is disabled.
-   * @default false
-   */
-  disabled?: boolean
-
-  /**
-   * Additional CSS classes.
-   */
-  className?: string
-}
-
-export interface CreatedIssue {
-  id: string
-  title: string
-  status: string
-  priority: number
-  issue_type: string
-}
-
-export interface QuickTaskInputHandle {
-  focus: () => void
-}
-
-const STORAGE_KEY = "ralph-ui-task-input-draft"
-
-// QuickTaskInput Component
+import { DEFAULT_INPUT_ACCENT_COLOR, TASK_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 
 /**
  * Text input for quickly adding tasks.
@@ -81,44 +21,37 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
     ref,
   ) {
     const accentColor = useAppStore(selectAccentColor)
-    const buttonBgColor = accentColor ?? DEFAULT_ACCENT_COLOR
+    const buttonBgColor = accentColor ?? DEFAULT_INPUT_ACCENT_COLOR
     const buttonTextColor = getContrastingColor(buttonBgColor)
 
     const [title, setTitle] = useState(() => {
-      // Initialize from localStorage
       if (typeof window !== "undefined") {
-        return localStorage.getItem(STORAGE_KEY) ?? ""
+        return localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY) ?? ""
       }
       return ""
     })
     const [isSubmitting, setIsSubmitting] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
-    // Track if we just completed a successful submission to refocus
     const shouldRefocusRef = useRef(false)
 
-    // Auto-resize textarea to fit content
     const adjustTextareaHeight = useCallback(() => {
       const textarea = textareaRef.current
       if (!textarea) return
 
-      // Reset height to auto to get the correct scrollHeight
       textarea.style.height = "auto"
-      // Set height to scrollHeight to fit content
       textarea.style.height = `${textarea.scrollHeight}px`
     }, [])
 
-    // Adjust height when title changes
     useEffect(() => {
       adjustTextareaHeight()
     }, [title, adjustTextareaHeight])
 
-    // Persist to localStorage as user types
     useEffect(() => {
       if (typeof window !== "undefined") {
         if (title) {
-          localStorage.setItem(STORAGE_KEY, title)
+          localStorage.setItem(TASK_INPUT_DRAFT_STORAGE_KEY, title)
         } else {
-          localStorage.removeItem(STORAGE_KEY)
+          localStorage.removeItem(TASK_INPUT_DRAFT_STORAGE_KEY)
         }
       }
     }, [title])
@@ -129,14 +62,9 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
       },
     }))
 
-    // Refocus textarea after successful submission
-    // This runs after React has finished rendering, ensuring focus is restored
-    // even after parent components have updated (e.g., task list refresh)
     useEffect(() => {
       if (!isSubmitting && shouldRefocusRef.current) {
         shouldRefocusRef.current = false
-        // Use setTimeout to ensure focus happens after all React updates and
-        // parent component re-renders have completed
         const timer = setTimeout(() => {
           textareaRef.current?.focus()
         }, 0)
@@ -166,9 +94,7 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
             throw new Error(data.error || "Failed to create task")
           }
 
-          // Clear localStorage synchronously before any async work that could trigger
-          // remounts - the useEffect that normally clears it may not run in time
-          localStorage.removeItem(STORAGE_KEY)
+          localStorage.removeItem(TASK_INPUT_DRAFT_STORAGE_KEY)
           setTitle("")
           shouldRefocusRef.current = true
           await onTaskCreated?.(data.issue)
@@ -184,12 +110,10 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLTextAreaElement>) => {
-        // Enter to submit, Shift+Enter for new line
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault()
           handleSubmit()
         }
-        // Shift+Enter allows default behavior (new line)
       },
       [handleSubmit],
     )
@@ -211,9 +135,8 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
             "w-full resize-none border-0 px-0 py-1 text-sm",
             "focus:ring-0 focus:outline-none",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            "overflow-hidden", // Hide scrollbar during auto-resize
+            "overflow-hidden",
           )}
-          aria-label="New task title"
         />
         <div className="flex justify-end">
           <button
@@ -229,14 +152,32 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
               backgroundColor: buttonBgColor,
               color: buttonTextColor,
             }}
-            aria-label={isSubmitting ? "Creating task..." : "Add task"}
+            aria-label="Create task"
           >
-            {isSubmitting ?
-              <IconLoader className="size-4 animate-spin" aria-hidden="true" />
-            : <IconArrowUp className="size-5" aria-hidden="true" />}
+            {isSubmitting ? <IconLoader className="size-5 animate-spin" /> : <IconArrowUp className="size-5" />}
           </button>
         </div>
       </form>
     )
   },
 )
+
+export type QuickTaskInputProps = {
+  onTaskCreated?: (issue: CreatedIssue) => void
+  onError?: (error: string) => void
+  placeholder?: string
+  disabled?: boolean
+  className?: string
+}
+
+export type CreatedIssue = {
+  id: string
+  title: string
+  status: string
+  priority: number
+  issue_type: string
+}
+
+export type QuickTaskInputHandle = {
+  focus: () => void
+}

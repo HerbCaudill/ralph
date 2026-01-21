@@ -179,6 +179,8 @@ pnpm format
 │   ├── components/    # UI components
 │   ├── hooks/         # React hooks
 │   ├── lib/           # Utilities
+│   ├── constants.ts   # Shared UI constants
+│   ├── types.ts       # Shared UI types
 │   └── store/         # Zustand state
 ├── server/            # Node.js backend
 │   ├── AgentAdapter.ts      # Agent abstraction

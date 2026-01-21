@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react"
-import type { TaskCardTask } from "@/components/tasks/TaskCard"
-import type { TaskUpdateData } from "@/components/tasks/TaskDetailsDialog"
+import type { TaskCardTask } from "@/types"
+import type { TaskUpdateData } from "@/types"
 import { useAppStore } from "@/store"
 
 // Types
