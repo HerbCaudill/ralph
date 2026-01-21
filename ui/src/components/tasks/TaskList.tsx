@@ -224,8 +224,35 @@ export function TaskList({
       }
 
       const allUngroupedTasks = sortTasks([...ungroupedTasks, ...orphanedTasks], config.key)
-      if (allUngroupedTasks.length > 0) {
-        parentSubGroups.push({ parent: null, tasks: allUngroupedTasks })
+      // Add each ungrouped task as its own group for proper priority interleaving
+      for (const task of allUngroupedTasks) {
+        parentSubGroups.push({ parent: null, tasks: [task] })
+      }
+
+      // Sort all groups (parent groups and ungrouped task groups) by priority
+      // For parent groups, use parent priority; for ungrouped tasks, use first task's priority
+      if (config.key !== "closed") {
+        parentSubGroups.sort((a, b) => {
+          const aPriority = a.parent ? (a.parent.priority ?? 4) : (a.tasks[0]?.priority ?? 4)
+          const bPriority = b.parent ? (b.parent.priority ?? 4) : (b.tasks[0]?.priority ?? 4)
+          const priorityDiff = aPriority - bPriority
+          if (priorityDiff !== 0) return priorityDiff
+          const aTime =
+            a.parent ?
+              a.parent.created_at ?
+                new Date(a.parent.created_at).getTime()
+              : 0
+            : a.tasks[0]?.created_at ? new Date(a.tasks[0].created_at).getTime()
+            : 0
+          const bTime =
+            b.parent ?
+              b.parent.created_at ?
+                new Date(b.parent.created_at).getTime()
+              : 0
+            : b.tasks[0]?.created_at ? new Date(b.tasks[0].created_at).getTime()
+            : 0
+          return aTime - bTime
+        })
       }
 
       const totalCount = parentSubGroups.reduce((sum, g) => {

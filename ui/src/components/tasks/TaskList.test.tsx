@@ -746,6 +746,45 @@ describe("TaskList", () => {
       expect(taskTitles[1]).toContain("Low Priority Epic")
     })
 
+    it("interleaves epics and standalone tasks by priority", () => {
+      const tasks: TaskCardTask[] = [
+        {
+          id: "epic-p3",
+          title: "P3 Epic",
+          status: "open",
+          issue_type: "epic",
+          priority: 3,
+        },
+        {
+          id: "task-p2",
+          title: "P2 Standalone Task",
+          status: "open",
+          priority: 2,
+        },
+        {
+          id: "task-p1",
+          title: "P1 Standalone Task",
+          status: "open",
+          priority: 1,
+        },
+        { id: "epic-child", title: "P3 Epic Child", status: "open", parent: "epic-p3" },
+      ]
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // Get all top-level items in order (epics and standalone tasks)
+      const readyGroup = screen.getByLabelText("Ready group")
+      const taskButtons = Array.from(readyGroup.querySelectorAll("[role='button']"))
+        .map(el => el.textContent)
+        .filter(text => text && (text.includes("P1") || text.includes("P2") || text.includes("P3")))
+
+      // Should be sorted by priority: P1, P2, P3
+      expect(taskButtons).toHaveLength(4) // P1 task, P2 task, P3 epic, P3 epic child
+      expect(taskButtons[0]).toContain("P1 Standalone Task")
+      expect(taskButtons[1]).toContain("P2 Standalone Task")
+      expect(taskButtons[2]).toContain("P3 Epic")
+      expect(taskButtons[3]).toContain("P3 Epic Child")
+    })
+
     it("calls onTaskClick when epic card content is clicked", () => {
       const onTaskClick = vi.fn()
       render(
