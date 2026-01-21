@@ -663,7 +663,10 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     set(state => ({ taskChatStreamingText: state.taskChatStreamingText + text })),
   addTaskChatToolUse: toolUse =>
     set(state => ({
-      taskChatToolUses: [...state.taskChatToolUses, toolUse],
+      taskChatToolUses: [
+        ...state.taskChatToolUses,
+        { ...toolUse, timestamp: toolUse.timestamp ?? Date.now() },
+      ],
     })),
   updateTaskChatToolUse: (toolUseId, updates) =>
     set(state => ({

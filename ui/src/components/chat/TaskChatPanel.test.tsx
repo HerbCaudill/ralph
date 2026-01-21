@@ -581,5 +581,59 @@ describe("TaskChatPanel", () => {
       render(<TaskChatPanel />)
       expect(screen.queryByText("Ask questions about your tasks")).not.toBeInTheDocument()
     })
+
+    it("interleaves messages and tool uses in timestamp order", () => {
+      const baseTime = 1000000
+
+      // Add user message at t=0
+      useAppStore.getState().addTaskChatMessage({
+        id: "user-1",
+        role: "user",
+        content: "First user message",
+        timestamp: baseTime,
+      })
+
+      // Add tool use at t=1
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Bash",
+        input: { command: "bd list" },
+        status: "success",
+        timestamp: baseTime + 1,
+      })
+
+      // Add assistant message at t=2 (after the tool use)
+      useAppStore.getState().addTaskChatMessage({
+        id: "assistant-1",
+        role: "assistant",
+        content: "Assistant response",
+        timestamp: baseTime + 2,
+      })
+
+      render(<TaskChatPanel />)
+
+      // Get all rendered elements
+      const userMsg = screen.getByText("First user message")
+      const toolUse = screen.getByText("Bash")
+      const assistantMsg = screen.getByText("Assistant response")
+
+      // Verify all elements are present
+      expect(userMsg).toBeInTheDocument()
+      expect(toolUse).toBeInTheDocument()
+      expect(assistantMsg).toBeInTheDocument()
+
+      // Verify the order: user message should come before tool use,
+      // which should come before assistant message
+      const container = screen.getByRole("log", { name: "Task chat messages" })
+      const textContent = container.textContent || ""
+
+      // Verify elements appear in correct order in the DOM
+      const userPos = textContent.indexOf("First user message")
+      const toolPos = textContent.indexOf("Bash")
+      const assistantPos = textContent.indexOf("Assistant response")
+
+      expect(userPos).toBeLessThan(toolPos)
+      expect(toolPos).toBeLessThan(assistantPos)
+    })
   })
 })

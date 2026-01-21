@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import {
@@ -22,7 +22,7 @@ import type { TaskChatMessage, TaskChatToolUse, ToolName, ToolUseEvent } from "@
 function toToolUseEvent(toolUse: TaskChatToolUse): ToolUseEvent {
   return {
     type: "tool_use",
-    timestamp: Date.now(),
+    timestamp: toolUse.timestamp ?? Date.now(),
     tool: toolUse.tool as ToolName,
     input: toolUse.input,
     output: toolUse.output,
@@ -30,6 +30,11 @@ function toToolUseEvent(toolUse: TaskChatToolUse): ToolUseEvent {
     status: toolUse.status,
   }
 }
+
+// Content block types for unified rendering
+type MessageBlock = { type: "message"; data: TaskChatMessage }
+type ToolUseBlock = { type: "toolUse"; data: TaskChatToolUse }
+type ContentBlock = MessageBlock | ToolUseBlock
 
 /**
  * Task chat panel for task management conversations with Claude.
@@ -50,6 +55,19 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
 
   const chatInputRef = useRef<ChatInputHandle>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Create a unified content array that interleaves messages and tool uses by timestamp
+  const contentBlocks = useMemo((): ContentBlock[] => {
+    const messageBlocks: ContentBlock[] = messages.map(m => ({ type: "message", data: m }))
+    const toolUseBlocks: ContentBlock[] = toolUses.map(t => ({ type: "toolUse", data: t }))
+    const allBlocks = [...messageBlocks, ...toolUseBlocks]
+    // Sort by timestamp to maintain proper ordering
+    return allBlocks.sort((a, b) => {
+      const tsA = a.type === "message" ? a.data.timestamp : (a.data.timestamp ?? 0)
+      const tsB = b.type === "message" ? b.data.timestamp : (b.data.timestamp ?? 0)
+      return tsA - tsB
+    })
+  }, [messages, toolUses])
 
   const wasLoadingRef = useRef(false)
 
@@ -183,7 +201,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       <ContentStreamContainer
         className="flex-1 overflow-hidden"
         ariaLabel="Task chat messages"
-        dependencies={[messages, streamingText, toolUses]}
+        dependencies={[contentBlocks, streamingText]}
         emptyState={
           <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
             <IconMessageChatbot className="size-8 opacity-50" />
@@ -194,24 +212,19 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
           </div>
         }
       >
-        {messages.length > 0 || streamingText || toolUses.length > 0 ?
+        {contentBlocks.length > 0 || streamingText ?
           <>
-            {messages.map(message =>
-              message.role === "user" ?
-                <UserMessageBubble key={message.id} message={message} />
-              : <AssistantMessageBubble key={message.id} message={message} />,
-            )}
-            {/* Tool uses - shown during and after processing, cleared on next user message */}
-            {toolUses.length > 0 && (
-              <div className="py-1">
-                {toolUses.map(toolUse => (
-                  <ToolUseCard
-                    key={toolUse.toolUseId}
-                    event={toToolUseEvent(toolUse)}
-                    className="text-sm"
-                  />
-                ))}
-              </div>
+            {/* Render messages and tool uses interleaved by timestamp */}
+            {contentBlocks.map(block =>
+              block.type === "message" ?
+                block.data.role === "user" ?
+                  <UserMessageBubble key={block.data.id} message={block.data} />
+                : <AssistantMessageBubble key={block.data.id} message={block.data} />
+              : <ToolUseCard
+                  key={block.data.toolUseId}
+                  event={toToolUseEvent(block.data)}
+                  className="text-sm"
+                />,
             )}
             {/* Streaming response */}
             {streamingText && (

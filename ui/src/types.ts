@@ -81,6 +81,7 @@ export interface TaskChatToolUse {
   output?: string
   error?: string
   status: "pending" | "running" | "success" | "error"
+  timestamp?: number
 }
 
 export type TaskUpdateData = {
