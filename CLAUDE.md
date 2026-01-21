@@ -179,10 +179,11 @@ pnpm --filter @herbcaudill/ralph-ui publish --access public
 
 ## Workspace Structure
 
-This is a pnpm workspace with two packages:
+This is a pnpm workspace with three packages:
 
 - **`cli/`** (`@herbcaudill/ralph`) - The CLI tool (published to npm)
 - **`ui/`** (`@herbcaudill/ralph-ui`) - Web app with server and React frontend (published to npm)
+- **`shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types used by CLI and UI
 
 ### CLI Package (`cli/`)
 
@@ -213,6 +214,23 @@ Web app with integrated Express server and React frontend:
   - Bash tool output strips ANSI color codes before display
 
 Run with `npx @herbcaudill/ralph-ui` after installing.
+
+### Shared Package (`shared/`)
+
+Shared utilities and types used by both CLI and UI packages:
+
+- **Agent Events** (`events/`):
+  - Normalized event types (`AgentMessageEvent`, `AgentToolUseEvent`, etc.)
+  - Type guards (`isAgentMessageEvent`, `isAgentToolUseEvent`, etc.)
+  - Status types (`AgentStatus`)
+- **Beads Domain Types** (`beads/`):
+  - Issue types (`BdIssue`, `BdDependency`)
+  - Options types (`BdListOptions`, `BdCreateOptions`, `BdUpdateOptions`)
+  - Mutation events (`MutationEvent`, `MutationType`)
+- **Prompt Loading** (`prompts/`):
+  - `loadPrompt()` - Load prompt files with custom overrides
+  - `initPrompt()` - Initialize custom prompt from default
+  - `hasCustomPrompt()` - Check for custom prompt existence
 
 ## Project Structure
 
@@ -255,6 +273,17 @@ ui/                        # UI package (@herbcaudill/ralph-ui)
   bin/ralph-ui.js           # Published executable
   public/                   # Static assets
   .storybook/               # Storybook configuration
+
+shared/                    # Shared package (@herbcaudill/ralph-shared)
+  src/
+    events/                 # Normalized agent event types and guards
+      types.ts              # AgentEvent, AgentMessageEvent, etc.
+      guards.ts             # Type guard functions
+    beads/                  # Beads domain types
+      types.ts              # BdIssue, BdDependency, etc.
+    prompts/                # Prompt loading utilities
+      loadPrompt.ts         # Load prompt with custom override support
+    index.ts                # Package exports
 ```
 
 ## Important Implementation Details

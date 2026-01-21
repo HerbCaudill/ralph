@@ -178,13 +178,23 @@ claude auth
 - **Let Claude prioritize** by not ordering tasks strictly - Claude will choose what makes sense
 - **Editor setup** - For UI server TypeScript files, point your editor at `ui/server/tsconfig.json`
 
+## Packages
+
+This is a pnpm monorepo with three packages:
+
+| Package | Description |
+|---------|-------------|
+| `@herbcaudill/ralph` | CLI tool - the autonomous iteration engine |
+| `@herbcaudill/ralph-ui` | Web UI with server and React frontend |
+| `@herbcaudill/ralph-shared` | Shared types and utilities used by CLI and UI |
+
 ## Publishing
 
 ```bash
 pnpm pub
 ```
 
-Publishes both `@herbcaudill/ralph` (CLI) and `@herbcaudill/ralph-ui` (UI).
+Publishes `@herbcaudill/ralph` (CLI), `@herbcaudill/ralph-ui` (UI), and `@herbcaudill/ralph-shared` (shared).
 The UI package is configured to publish as public via `publishConfig`.
 
 ## License
