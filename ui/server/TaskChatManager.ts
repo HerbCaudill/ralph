@@ -391,15 +391,29 @@ export class TaskChatManager extends EventEmitter {
               this.currentResponse = block.text
               this.emit("chunk", block.text)
             } else if (block.type === "tool_use" && block.id && block.name) {
-              // Tool use from complete assistant message
+              // Tool use from complete assistant message - update the pending tool use
+              // (the initial tool_use event was already emitted during streaming)
               const input = (block.input as Record<string, unknown>) ?? {}
+              const existingToolUse = this.pendingToolUses.get(block.id)
               this.pendingToolUses.set(block.id, { tool: block.name, input })
-              this.emit("tool_use", {
-                toolUseId: block.id,
-                tool: block.name,
-                input,
-                status: "running",
-              } satisfies TaskChatToolUse)
+
+              if (existingToolUse) {
+                // Update the existing tool use with full input and running status
+                this.emit("tool_update", {
+                  toolUseId: block.id,
+                  tool: block.name,
+                  input,
+                  status: "running",
+                } satisfies TaskChatToolUse)
+              } else {
+                // No existing tool use - emit a new one (fallback for edge cases)
+                this.emit("tool_use", {
+                  toolUseId: block.id,
+                  tool: block.name,
+                  input,
+                  status: "running",
+                } satisfies TaskChatToolUse)
+              }
             }
           }
         }

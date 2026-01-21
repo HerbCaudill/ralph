@@ -230,6 +230,22 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      case "task-chat:tool_update":
+        // Task chat tool use updated (e.g., with full input after streaming)
+        if (data.toolUse && typeof data.toolUse === "object") {
+          const toolUse = data.toolUse as {
+            toolUseId: string
+            tool: string
+            input: Record<string, unknown>
+            status: "pending" | "running" | "success" | "error"
+          }
+          store.updateTaskChatToolUse(toolUse.toolUseId, {
+            input: toolUse.input,
+            status: toolUse.status,
+          })
+        }
+        break
+
       case "task-chat:tool_result":
         // Task chat tool result received
         if (data.toolUse && typeof data.toolUse === "object") {

@@ -1249,6 +1249,15 @@ function createTaskChatManager(options?: { cwd?: string }): TaskChatManager {
     })
   })
 
+  // Broadcast tool update events (when streaming tool_use is updated with full input)
+  manager.on("tool_update", (toolUse: TaskChatToolUse) => {
+    broadcast({
+      type: "task-chat:tool_update",
+      toolUse,
+      timestamp: Date.now(),
+    })
+  })
+
   // Broadcast tool result events
   manager.on("tool_result", (toolUse: TaskChatToolUse) => {
     broadcast({
