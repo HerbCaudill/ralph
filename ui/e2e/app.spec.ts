@@ -1,36 +1,32 @@
-import { test, expect } from "@playwright/test"
+import { test, expect } from "./fixtures"
 
-test("displays main layout with sidebar and content", async ({ page }) => {
-  await page.goto("/")
-
-  // Check for sidebar (TaskSidebar is a pure layout component without heading)
-  await expect(page.getByRole("complementary", { name: "Task sidebar" })).toBeVisible()
+test("displays main layout with sidebar and content", async ({ app }) => {
+  // Check for sidebar
+  await expect(app.taskList.sidebar).toBeVisible()
 
   // Check for event stream
-  await expect(page.getByRole("log", { name: "Event stream" })).toBeVisible()
+  await expect(app.eventStream.container).toBeVisible()
 
   // Check for chat input
-  await expect(page.getByRole("textbox", { name: "Message input" })).toBeVisible()
+  await expect(app.chat.messageInput).toBeVisible()
 
-  // Check for status bar at bottom (by checking for the control buttons)
-  await expect(page.getByRole("button", { name: "Start" })).toBeVisible()
+  // Check for control bar at bottom (by checking for the Start button)
+  await expect(app.page.getByRole("button", { name: "Start" })).toBeVisible()
 })
 
-test("can toggle sidebar", async ({ page }) => {
-  await page.goto("/")
-
+test("can toggle sidebar", async ({ app }) => {
   // Sidebar should be visible initially
-  await expect(page.getByRole("complementary", { name: "Task sidebar" })).toBeVisible()
+  await expect(app.taskList.sidebar).toBeVisible()
 
-  // Use keyboard shortcut to collapse sidebar (Cmd+B on Mac, Ctrl+B on Windows/Linux)
-  await page.keyboard.press("Meta+b")
+  // Use keyboard shortcut to collapse sidebar
+  await app.toggleSidebar()
 
   // Sidebar content should be hidden
-  await expect(page.getByRole("complementary", { name: "Task sidebar" })).not.toBeVisible()
+  await expect(app.taskList.sidebar).not.toBeVisible()
 
   // Use keyboard shortcut to expand sidebar again
-  await page.keyboard.press("Meta+b")
+  await app.toggleSidebar()
 
   // Sidebar should be visible again
-  await expect(page.getByRole("complementary", { name: "Task sidebar" })).toBeVisible()
+  await expect(app.taskList.sidebar).toBeVisible()
 })
