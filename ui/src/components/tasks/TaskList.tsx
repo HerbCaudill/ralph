@@ -390,8 +390,8 @@ export function TaskList({
       const config = groupConfigs.find(g => g.statusFilter(task.status))
       if (!config) continue
 
-      // Apply time filter for closed tasks
-      if (config.key === "closed" && closedCutoff) {
+      // Apply time filter for closed tasks (but not when searching)
+      if (config.key === "closed" && closedCutoff && !searchQuery.trim()) {
         const closedAt = task.closed_at ? new Date(task.closed_at) : null
         if (!closedAt || closedAt < closedCutoff) {
           continue // Skip tasks closed before the cutoff

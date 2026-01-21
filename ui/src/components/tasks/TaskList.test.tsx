@@ -1052,6 +1052,50 @@ describe("TaskList", () => {
       expect(screen.getByText("Closed auth task")).toBeInTheDocument()
       expect(screen.queryByText("Blocked other task")).not.toBeInTheDocument()
     })
+
+    it("includes closed tasks outside time filter when searching", () => {
+      const now = new Date()
+      const hourAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString() // 30 mins ago
+      const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString()
+
+      const tasks: TaskCardTask[] = [
+        { id: "task-recent", title: "Recent auth task", status: "closed", closed_at: hourAgo },
+        { id: "task-old", title: "Old auth task", status: "closed", closed_at: twoDaysAgo },
+        { id: "task-other", title: "Old other task", status: "closed", closed_at: twoDaysAgo },
+      ]
+
+      // Default filter is past_day, so old tasks would normally be hidden
+      useAppStore.getState().setClosedTimeFilter("past_day")
+
+      // Without search, old task should not appear
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+      expect(screen.getByText("Recent auth task")).toBeInTheDocument()
+      expect(screen.queryByText("Old auth task")).not.toBeInTheDocument()
+
+      // Now search for "auth" - should include both recent and old auth tasks
+      useAppStore.getState().setTaskSearchQuery("auth")
+
+      // Re-render to apply search
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // Both auth tasks should now be visible (bypassing time filter)
+      expect(screen.getAllByText("Recent auth task").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Old auth task").length).toBeGreaterThanOrEqual(1)
+      // But non-matching task should not appear
+      expect(screen.queryByText("Old other task")).not.toBeInTheDocument()
+    })
   })
 
   describe("new task animation", () => {
