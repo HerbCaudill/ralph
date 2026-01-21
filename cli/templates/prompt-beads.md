@@ -21,6 +21,8 @@ If there are none:
 
 Select the highest-priority issue to work on. Finish in-progress tasks first. Bugs take priority. Otherwise use your best judgement.
 
+**Skip tasks assigned to other agents.** When reviewing available work with `bd ready`, check the assignee field. If a task is assigned to a different agent (not you), skip it and look for another task.
+
 ### Step 4: Work on a single task
 
 - Output `<start_task>{id}</start_task>`
@@ -93,7 +95,7 @@ When you complete a task:
 
 ```bash
 bd ready           # Find available work
-bd show {id}       # Review issue details
+bd show {id}       # Review issue details (check assignee - skip if assigned to another agent)
 bd update {id} --status=in_progress --assignee={agentName}  # Claim it and assign to yourself
 ```
 

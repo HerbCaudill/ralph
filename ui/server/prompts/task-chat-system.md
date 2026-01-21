@@ -50,7 +50,7 @@ Find and update specific tasks. You might need to:
 - Use `bd create` for issues, TodoWrite for simple single-session execution
 - When in doubt, prefer bd—persistence you don't need beats lost context
 - Git workflow: daemon auto-syncs beads changes
-- Session management: check `bd ready` for available work
+- Session management: check `bd ready` for available work; skip tasks assigned to other agents
 
 ## Essential Commands
 
@@ -94,7 +94,7 @@ Find and update specific tasks. You might need to:
 
 ```bash
 bd ready           # Find available work
-bd show <id>       # Review issue details
+bd show <id>       # Review issue details (check assignee - skip if assigned to another agent)
 bd update <id> --status=in_progress --assignee={agentName}  # Claim it and assign to yourself
 ```
 
