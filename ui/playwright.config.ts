@@ -26,7 +26,9 @@ export default defineConfig({
     {
       command: "pnpm dev:server",
       url: "http://localhost:4242/api/workspace",
-      reuseExistingServer: !process.env.CI,
+      // Always start fresh server to ensure WORKSPACE_PATH is set correctly
+      // This prevents E2E tests from polluting the main repo's beads database
+      reuseExistingServer: false,
       timeout: 30000,
       env: {
         PORT: "4242",
