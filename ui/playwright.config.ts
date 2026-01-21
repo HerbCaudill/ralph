@@ -13,7 +13,8 @@ export default defineConfig({
   reporter: "html",
   globalSetup: "./e2e/global-setup.ts",
   use: {
-    baseURL: "http://localhost:5179",
+    // Use port 5180 for tests to avoid conflict with Ralph UI on 5179
+    baseURL: "http://localhost:5180",
     trace: "on-first-retry",
   },
   projects: [
@@ -36,9 +37,11 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm dev",
-      url: "http://localhost:5179",
-      reuseExistingServer: !process.env.CI,
+      // Use port 5180 to avoid conflict with Ralph UI's Vite server on 5179
+      command: "pnpm dev -- --port 5180",
+      url: "http://localhost:5180",
+      // Must start fresh to ensure Vite proxies to the test server (4243), not the Ralph UI server (4242)
+      reuseExistingServer: false,
       timeout: 30000,
       env: {
         PORT: "4243",
