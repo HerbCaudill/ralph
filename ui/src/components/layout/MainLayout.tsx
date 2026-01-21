@@ -232,9 +232,25 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           </aside>
         )}
 
-        <div ref={mainRef} className="flex min-w-0 flex-1 flex-col overflow-hidden" tabIndex={-1}>
+        <div
+          ref={mainRef}
+          className="relative flex min-w-0 flex-1 flex-col overflow-hidden"
+          tabIndex={-1}
+        >
           {main}
           {statusBar && <div className="border-border border-t px-4 py-2">{statusBar}</div>}
+
+          {detailPanel && detailPanelOpen && (
+            <div
+              ref={detailPanelRef}
+              className="bg-background border-border absolute left-0 h-full overflow-hidden border-r shadow-lg"
+              style={{ width: detailPanelWidth, borderColor }}
+              tabIndex={-1}
+              onClick={e => e.stopPropagation()}
+            >
+              {detailPanel}
+            </div>
+          )}
         </div>
 
         {rightPanel && (
@@ -260,27 +276,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
             {rightPanelOpen && rightPanel}
           </div>
         )}
-
-        {detailPanel && detailPanelOpen && (
-          <div
-            ref={detailPanelRef}
-            className="bg-background border-border absolute right-0 h-full overflow-hidden border-l shadow-lg"
-            style={{ width: detailPanelWidth, borderColor }}
-            tabIndex={-1}
-            onClick={e => e.stopPropagation()}
-          >
-            {detailPanel}
-          </div>
-        )}
       </div>
-
-      {detailPanel && detailPanelOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/20"
-          onClick={onDetailPanelClose}
-          aria-hidden="true"
-        />
-      )}
     </div>
   )
 })
