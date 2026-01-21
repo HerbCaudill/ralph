@@ -208,10 +208,11 @@ describe("BdProxy", () => {
   })
 
   describe("create", () => {
-    it("creates issue with title", async () => {
+    it("creates issue with title (single object response)", async () => {
       const createPromise = proxy.create({ title: "New Issue" })
 
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
+      // bd create returns a single object, not an array
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
       mockProcess.emit("close", 0)
 
       const result = await createPromise
@@ -224,13 +225,25 @@ describe("BdProxy", () => {
       expect(result).toEqual(sampleIssue)
     })
 
+    it("creates issue with title (array response for backward compatibility)", async () => {
+      const createPromise = proxy.create({ title: "New Issue" })
+
+      // Handle array response for backward compatibility
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
+      mockProcess.emit("close", 0)
+
+      const result = await createPromise
+
+      expect(result).toEqual(sampleIssue)
+    })
+
     it("passes description option", async () => {
       const createPromise = proxy.create({
         title: "New Issue",
         description: "Issue description",
       })
 
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
       mockProcess.emit("close", 0)
 
       await createPromise
@@ -248,7 +261,7 @@ describe("BdProxy", () => {
         priority: 1,
       })
 
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
       mockProcess.emit("close", 0)
 
       await createPromise
@@ -266,7 +279,7 @@ describe("BdProxy", () => {
         type: "bug",
       })
 
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
       mockProcess.emit("close", 0)
 
       await createPromise
@@ -284,7 +297,7 @@ describe("BdProxy", () => {
         assignee: "alice",
       })
 
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
       mockProcess.emit("close", 0)
 
       await createPromise
@@ -302,7 +315,7 @@ describe("BdProxy", () => {
         parent: "rui-epic",
       })
 
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
       mockProcess.emit("close", 0)
 
       await createPromise
@@ -320,7 +333,7 @@ describe("BdProxy", () => {
         labels: ["urgent", "frontend"],
       })
 
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
       mockProcess.emit("close", 0)
 
       await createPromise
@@ -330,6 +343,33 @@ describe("BdProxy", () => {
         ["create", "--json", "New Issue", "--labels", "urgent,frontend"],
         expect.anything(),
       )
+    })
+
+    it("throws error when no issue is returned", async () => {
+      const createPromise = proxy.create({ title: "New Issue" })
+
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(null)))
+      mockProcess.emit("close", 0)
+
+      await expect(createPromise).rejects.toThrow("bd create did not return an issue")
+    })
+
+    it("throws error when empty array is returned", async () => {
+      const createPromise = proxy.create({ title: "New Issue" })
+
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([])))
+      mockProcess.emit("close", 0)
+
+      await expect(createPromise).rejects.toThrow("bd create did not return an issue")
+    })
+
+    it("throws error when issue has no id", async () => {
+      const createPromise = proxy.create({ title: "New Issue" })
+
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify({ title: "No ID" })))
+      mockProcess.emit("close", 0)
+
+      await expect(createPromise).rejects.toThrow("bd create did not return an issue")
     })
   })
 

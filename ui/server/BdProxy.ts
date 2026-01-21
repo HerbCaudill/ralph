@@ -184,11 +184,13 @@ export class BdProxy {
     }
 
     const result = await this.exec(args)
-    const issues = JSON.parse(result) as BdIssue[]
-    if (!issues || issues.length === 0) {
+    const parsed = JSON.parse(result)
+    // bd create returns a single object, not an array
+    const issue: BdIssue = Array.isArray(parsed) ? parsed[0] : parsed
+    if (!issue || !issue.id) {
       throw new Error("bd create did not return an issue")
     }
-    return issues[0]
+    return issue
   }
 
   /**
