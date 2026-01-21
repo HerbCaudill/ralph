@@ -38,7 +38,6 @@ import { IconBug, IconStack2, IconCheckbox } from "@tabler/icons-react"
 import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@/components/ui/MarkdownContent"
 import { RelatedTasks } from "./RelatedTasks"
-import { RelationshipGraph } from "./RelationshipGraph"
 
 // Types
 
@@ -870,25 +869,6 @@ export function TaskDetailsDialog({
             )}
           </div>
         </div>
-
-        {/* Relationship Graph (visual representation of relationships) */}
-        <RelationshipGraph
-          taskId={task.id}
-          parent={
-            task.parent ?
-              (() => {
-                const parentTask = allTasks.find(t => t.id === task.parent)
-                return parentTask ?
-                    {
-                      id: parentTask.id,
-                      title: parentTask.title,
-                      status: parentTask.status as TaskStatus,
-                    }
-                  : null
-              })()
-            : null
-          }
-        />
 
         {/* Related Tasks (text list - children and blockers) */}
         <RelatedTasks taskId={task.id} />
