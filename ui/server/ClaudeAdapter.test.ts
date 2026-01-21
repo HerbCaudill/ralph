@@ -508,6 +508,155 @@ describe("ClaudeAdapter", () => {
       // Verify we made 4 attempts total (initial + 3 retries)
       expect(callCount).toBe(4)
     })
+
+    it("captures session ID from SDK messages", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "assistant",
+            message: { content: [{ type: "text", text: "Hello!" }] },
+            session_id: "test-session-123",
+          } as SDKMessage,
+          {
+            type: "result",
+            subtype: "success",
+            result: "Done",
+            session_id: "test-session-123",
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // Verify session ID was captured (through internal state)
+      const adapterInternal = adapter as unknown as { currentSessionId: string | undefined }
+      expect(adapterInternal.currentSessionId).toBe("test-session-123")
+    })
+
+    it("resumes session on retry when session ID is available", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+      adapter.on("error", () => {}) // Suppress error events
+
+      let callCount = 0
+      mockQuery.mockImplementation(async function* () {
+        callCount++
+        if (callCount === 1) {
+          // First call: yield a message with session ID, then fail
+          yield {
+            type: "assistant",
+            message: { content: [{ type: "text", text: "Starting..." }] },
+            session_id: "resume-session-456",
+          } as SDKMessage
+          throw new Error("Connection error: network failure")
+        } else {
+          // Retry: should succeed
+          yield {
+            type: "result",
+            subtype: "success",
+            result: "Success after resume",
+            session_id: "resume-session-456",
+          } as SDKMessage
+        }
+      })
+
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Advance through retry delay
+      await vi.advanceTimersByTimeAsync(200)
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // Check that a RESUMING event was emitted before the retry
+      const resumingEvents = events.filter(
+        e => e.type === "error" && (e as AgentErrorEvent).code === "RESUMING",
+      ) as AgentErrorEvent[]
+      expect(resumingEvents).toHaveLength(1)
+      expect(resumingEvents[0].fatal).toBe(false)
+      expect(resumingEvents[0].message).toContain("resume-session-456")
+
+      // Check that retry used resume option (second call should have resume in options)
+      expect(mockQuery).toHaveBeenCalledTimes(2)
+      const secondCall = mockQuery.mock.calls[1]
+      expect(secondCall[0].options.resume).toBe("resume-session-456")
+      // When resuming, prompt should be empty
+      expect(secondCall[0].prompt).toBe("")
+    })
+
+    it("does not resume on first attempt", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "result",
+            subtype: "success",
+            result: "Success",
+            session_id: "new-session-789",
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // First attempt should not have resume option
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+      const firstCall = mockQuery.mock.calls[0]
+      expect(firstCall[0].options.resume).toBeUndefined()
+      expect(firstCall[0].prompt).toBe("Hi")
+
+      // No RESUMING events should be emitted
+      const resumingEvents = events.filter(
+        e => e.type === "error" && (e as AgentErrorEvent).code === "RESUMING",
+      )
+      expect(resumingEvents).toHaveLength(0)
+    })
+
+    it("retries without resume if no session ID was captured", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+      adapter.on("error", () => {}) // Suppress error events
+
+      let callCount = 0
+      mockQuery.mockImplementation(async function* () {
+        callCount++
+        if (callCount === 1) {
+          // First call: fail immediately without yielding any messages (no session ID)
+          throw new Error("Connection error: failed immediately")
+        } else {
+          // Retry: should succeed
+          yield {
+            type: "result",
+            subtype: "success",
+            result: "Success without resume",
+            session_id: "new-session-after-retry",
+          } as SDKMessage
+        }
+      })
+
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Advance through retry delay
+      await vi.advanceTimersByTimeAsync(200)
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      // No RESUMING event should be emitted (no session to resume)
+      const resumingEvents = events.filter(
+        e => e.type === "error" && (e as AgentErrorEvent).code === "RESUMING",
+      )
+      expect(resumingEvents).toHaveLength(0)
+
+      // Retry should still use the original prompt (not resume)
+      expect(mockQuery).toHaveBeenCalledTimes(2)
+      const secondCall = mockQuery.mock.calls[1]
+      expect(secondCall[0].options.resume).toBeUndefined()
+      expect(secondCall[0].prompt).toBe("Hi")
+    })
   })
 
   describe("conversation context tracking", () => {

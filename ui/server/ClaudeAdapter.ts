@@ -204,6 +204,9 @@ export class ClaudeAdapter extends AgentAdapter {
   private lastPrompt: string | undefined
   private totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
 
+  // Session tracking for retry/resume
+  private currentSessionId: string | undefined
+
   constructor(options: ClaudeAdapterOptions = {}) {
     super()
     this.options = {
@@ -261,6 +264,8 @@ export class ClaudeAdapter extends AgentAdapter {
     this.currentAssistantMessage = null
     this.lastPrompt = undefined
     this.totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+    // Reset session tracking
+    this.currentSessionId = undefined
     this.startOptions = options ?? {}
     this.setStatus("running")
   }
@@ -297,6 +302,14 @@ export class ClaudeAdapter extends AgentAdapter {
     this.currentAssistantMessage = null
     this.lastPrompt = undefined
     this.totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+  }
+
+  /**
+   * Get the current session ID if one has been established.
+   * This is the SDK session ID that can be used for resuming interrupted sessions.
+   */
+  getSessionId(): string | undefined {
+    return this.currentSessionId
   }
 
   /**
@@ -384,9 +397,25 @@ export class ClaudeAdapter extends AgentAdapter {
     while (attempt <= maxRetries) {
       this.abortController = new AbortController()
 
+      // On retry attempts with an existing session, use resume to continue from where we left off
+      const isRetry = attempt > 0
+      const sessionToResume = isRetry && this.currentSessionId ? this.currentSessionId : undefined
+
       try {
+        // If resuming, emit a status event to inform the UI
+        if (sessionToResume) {
+          const resumingEvent: AgentErrorEvent = {
+            type: "error",
+            timestamp: this.now(),
+            message: `Resuming session ${sessionToResume} from last checkpoint...`,
+            code: "RESUMING",
+            fatal: false,
+          }
+          this.emit("event", resumingEvent)
+        }
+
         for await (const message of this.options.queryFn({
-          prompt,
+          prompt: sessionToResume ? "" : prompt, // Empty prompt when resuming - SDK continues from last state
           options: {
             model: options.model,
             cwd: options.cwd,
@@ -402,6 +431,8 @@ export class ClaudeAdapter extends AgentAdapter {
             includePartialMessages: true,
             maxTurns: options.maxIterations ?? 1,
             abortController: this.abortController,
+            // Resume from the session if we have one from a previous attempt
+            resume: sessionToResume,
           },
         })) {
           this.handleSDKMessage(message)
@@ -469,6 +500,11 @@ export class ClaudeAdapter extends AgentAdapter {
    * Handle SDK message from query() and emit appropriate events.
    */
   private handleSDKMessage(message: SDKMessage): void {
+    // Capture session ID from any message that has it
+    if ("session_id" in message && message.session_id) {
+      this.currentSessionId = message.session_id
+    }
+
     switch (message.type) {
       case "assistant":
         this.translateEvent({ type: "assistant", message: message.message })
