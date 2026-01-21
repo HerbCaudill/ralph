@@ -74,7 +74,7 @@ describe("Tooltip", () => {
 
       const kbd = screen.getByText("⌘K")
       expect(kbd.tagName.toLowerCase()).toBe("kbd")
-      expect(kbd).toHaveClass("font-mono")
+      expect(kbd).toHaveClass("font-sans")
     })
 
     it("applies custom className", () => {
