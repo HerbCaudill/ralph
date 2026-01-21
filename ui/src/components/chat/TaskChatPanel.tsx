@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { IconChevronDown, IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
+import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import {
   useAppStore,
@@ -15,6 +15,8 @@ import { UserMessageBubble } from "./UserMessageBubble"
 import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
+import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton"
+import { useAutoScroll } from "@/hooks/useAutoScroll"
 import type { TaskChatMessage, TaskChatToolUse, ToolName, ToolUseEvent } from "@/types"
 
 // Helper to convert TaskChatToolUse to ToolUseEvent for rendering
@@ -44,54 +46,17 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const setLoading = useAppStore(state => state.setTaskChatLoading)
   const clearMessages = useAppStore(state => state.clearTaskChatMessages)
   const clearToolUses = useAppStore(state => state.clearTaskChatToolUses)
-
-  const chatInputRef = useRef<ChatInputHandle>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [autoScroll, setAutoScroll] = useState(true)
-  const [isAtBottom, setIsAtBottom] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const streamingText = useAppStore(selectTaskChatStreamingText)
   const setStreamingText = useAppStore(state => state.setTaskChatStreamingText)
 
-  const checkIsAtBottom = useCallback(() => {
-    const container = containerRef.current
-    if (!container) return true
+  const chatInputRef = useRef<ChatInputHandle>(null)
+  const [error, setError] = useState<string | null>(null)
 
-    const threshold = 50
-    const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight
-    return scrollBottom <= threshold
-  }, [])
-
-  const handleScroll = useCallback(() => {
-    const atBottom = checkIsAtBottom()
-    setIsAtBottom(atBottom)
-
-    if (atBottom && !autoScroll) {
-      setAutoScroll(true)
-    }
-  }, [checkIsAtBottom, autoScroll])
-
-  const handleUserScroll = useCallback(() => {
-    const atBottom = checkIsAtBottom()
-    if (!atBottom) {
-      setAutoScroll(false)
-    }
-  }, [checkIsAtBottom])
-
-  // Auto-scroll to bottom when new messages or tool uses arrive
-  useEffect(() => {
-    if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
-    }
-  }, [messages, streamingText, toolUses, autoScroll])
-
-  const scrollToBottom = useCallback(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
-      setAutoScroll(true)
-      setIsAtBottom(true)
-    }
-  }, [])
+  // Use the shared auto-scroll hook
+  const { containerRef, isAtBottom, handleScroll, handleUserScroll, scrollToBottom } =
+    useAutoScroll({
+      dependencies: [messages, streamingText, toolUses],
+    })
 
   const wasLoadingRef = useRef(false)
 
@@ -282,19 +247,11 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
         </div>
 
         {/* Scroll to bottom button */}
-        {!isAtBottom && (
-          <button
-            onClick={scrollToBottom}
-            className={cn(
-              "bg-primary text-primary-foreground absolute right-4 bottom-4 rounded-full p-2 shadow-lg transition-opacity hover:opacity-90",
-              "flex items-center gap-1.5",
-            )}
-            aria-label="Scroll to latest messages"
-          >
-            <IconChevronDown className="size-4" />
-            <span className="pr-1 text-xs font-medium">Latest</span>
-          </button>
-        )}
+        <ScrollToBottomButton
+          isVisible={!isAtBottom}
+          onClick={scrollToBottom}
+          ariaLabel="Scroll to latest messages"
+        />
       </div>
 
       <div className="border-border border-t p-3">

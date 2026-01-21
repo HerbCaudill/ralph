@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { IconChevronDown } from "@tabler/icons-react"
+import { useEffect, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import {
   useAppStore,
@@ -11,6 +10,7 @@ import {
   countIterations,
 } from "@/store"
 import { TopologySpinner } from "@/components/ui/TopologySpinner"
+import { useAutoScroll } from "@/hooks/useAutoScroll"
 import { useStreamingState } from "@/hooks/useStreamingState"
 import { isRalphTaskCompletedEvent } from "@/lib/isRalphTaskCompletedEvent"
 import { isRalphTaskStartedEvent } from "@/lib/isRalphTaskStartedEvent"
@@ -18,6 +18,7 @@ import { isToolResultEvent } from "@/lib/isToolResultEvent"
 import { EventStreamEventItem } from "./EventStreamEventItem"
 import { EventStreamIterationBar } from "./EventStreamIterationBar"
 import { StreamingContentRenderer } from "./StreamingContentRenderer"
+import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton"
 
 /**
  * Scrollable container displaying real-time events from ralph.
@@ -32,16 +33,13 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
   const ralphStatus = useAppStore(selectRalphStatus)
   const tasks = useAppStore(selectTasks)
   const isRunning = ralphStatus === "running" || ralphStatus === "starting"
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [autoScroll, setAutoScroll] = useState(true)
-  const [isAtBottom, setIsAtBottom] = useState(true)
+  const isViewingLatest = viewingIterationIndex === null
 
   const iterationCount = useMemo(() => countIterations(allEvents), [allEvents])
   const iterationEvents = useMemo(
     () => getEventsForIteration(allEvents, viewingIterationIndex),
     [allEvents, viewingIterationIndex],
   )
-  const isViewingLatest = viewingIterationIndex === null
 
   const iterationTask = useMemo(() => {
     for (const event of iterationEvents) {
@@ -95,50 +93,19 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
     }
   }
 
-  const checkIsAtBottom = useCallback(() => {
-    const container = containerRef.current
-    if (!container) return true
+  // Use the shared auto-scroll hook
+  const { containerRef, isAtBottom, handleScroll, handleUserScroll, scrollToBottom } =
+    useAutoScroll({
+      dependencies: [events],
+      enabled: isViewingLatest,
+    })
 
-    const threshold = 50
-    const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight
-    return scrollBottom <= threshold
-  }, [])
-
-  const handleScroll = useCallback(() => {
-    const atBottom = checkIsAtBottom()
-    setIsAtBottom(atBottom)
-
-    if (atBottom && !autoScroll) {
-      setAutoScroll(true)
-    }
-  }, [checkIsAtBottom, autoScroll])
-
-  const handleUserScroll = useCallback(() => {
-    const atBottom = checkIsAtBottom()
-    if (!atBottom) {
-      setAutoScroll(false)
-    }
-  }, [checkIsAtBottom])
-
-  useEffect(() => {
-    if (autoScroll && isViewingLatest && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
-    }
-  }, [events, autoScroll, isViewingLatest])
-
+  // When viewing a historical iteration, scroll to bottom on iteration change
   useEffect(() => {
     if (!isViewingLatest && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
-  }, [viewingIterationIndex, isViewingLatest])
-
-  const scrollToBottom = useCallback(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
-      setAutoScroll(true)
-      setIsAtBottom(true)
-    }
-  }, [])
+  }, [viewingIterationIndex, isViewingLatest, containerRef])
 
   const displayedIteration =
     viewingIterationIndex !== null ? viewingIterationIndex + 1 : iterationCount
@@ -193,19 +160,11 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
         }
       </div>
 
-      {!isAtBottom && (
-        <button
-          onClick={scrollToBottom}
-          className={cn(
-            "bg-primary text-primary-foreground absolute right-4 bottom-4 rounded-full p-2 shadow-lg transition-opacity hover:opacity-90",
-            "flex items-center gap-1.5",
-          )}
-          aria-label="Scroll to latest events"
-        >
-          <IconChevronDown className="size-4" />
-          <span className="pr-1 text-xs font-medium">Latest</span>
-        </button>
-      )}
+      <ScrollToBottomButton
+        isVisible={!isAtBottom}
+        onClick={scrollToBottom}
+        ariaLabel="Scroll to latest events"
+      />
     </div>
   )
 }

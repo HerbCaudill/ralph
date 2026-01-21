@@ -1,3 +1,5 @@
+export { useAutoScroll, type UseAutoScrollOptions, type UseAutoScrollReturn } from "./useAutoScroll"
+
 export {
   useWebSocket,
   type UseWebSocketOptions,
