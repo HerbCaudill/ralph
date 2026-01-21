@@ -5,7 +5,8 @@
 import { createServer } from "node:net"
 import { spawn } from "node:child_process"
 
-const DEFAULT_PORT = 4242
+const DEFAULT_SERVER_PORT = 4242
+const DEFAULT_UI_PORT = 5179
 const MAX_ATTEMPTS = 10
 
 async function checkPortAvailable(port) {
@@ -30,10 +31,22 @@ async function findAvailablePort(startPort) {
 }
 
 async function main() {
-  const port = await findAvailablePort(DEFAULT_PORT)
-  console.log(`[dev] Using port ${port}`)
+  const requestedServerPort = process.env.PORT ? Number(process.env.PORT) : undefined
+  const requestedUiPort = process.env.RALPH_UI_PORT ? Number(process.env.RALPH_UI_PORT) : undefined
+  const serverPort =
+    requestedServerPort ?? (await findAvailablePort(DEFAULT_SERVER_PORT))
+  const uiPort = requestedUiPort ?? (await findAvailablePort(DEFAULT_UI_PORT))
 
-  const env = { ...process.env, PORT: String(port) }
+  if (requestedServerPort !== undefined && !(await checkPortAvailable(requestedServerPort))) {
+    throw new Error(`Server port ${requestedServerPort} is already in use`)
+  }
+  if (requestedUiPort !== undefined && !(await checkPortAvailable(requestedUiPort))) {
+    throw new Error(`UI port ${requestedUiPort} is already in use`)
+  }
+  console.log(`[dev] Server port ${serverPort}`)
+  console.log(`[dev] UI port ${uiPort}`)
+
+  const env = { ...process.env, PORT: String(serverPort), RALPH_UI_PORT: String(uiPort) }
 
   // Start server
   const server = spawn("pnpm", ["serve"], {
@@ -44,10 +57,25 @@ async function main() {
   // Wait a moment for server to start, then start UI
   await new Promise(resolve => setTimeout(resolve, 1000))
 
-  const ui = spawn("pnpm", ["ui"], {
-    stdio: "inherit",
-    env,
-  })
+  const uiArgs = [
+    "--filter",
+    "@herbcaudill/ralph-ui",
+    "exec",
+    "vite",
+    "--port",
+    String(uiPort),
+  ]
+  if (!process.env.RALPH_NO_OPEN) {
+    uiArgs.push("--open")
+  }
+  const ui = spawn(
+    "pnpm",
+    uiArgs,
+    {
+      stdio: "inherit",
+      env,
+    },
+  )
 
   // Handle cleanup
   const cleanup = () => {

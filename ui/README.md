@@ -121,6 +121,7 @@ pnpm install
 # Run development servers
 pnpm dev          # Frontend (Vite)
 pnpm dev:server   # Backend (Express)
+pnpm dev:headless # Frontend without opening a browser window
 ```
 
 ### Testing
@@ -137,6 +138,9 @@ pnpm test:watch
 
 # Run Playwright e2e tests
 pnpm test:pw
+
+# Playwright uses scripts/dev.js to start the server + UI with dynamic ports.
+# It waits for the UI to be ready before running tests.
 
 # Run Playwright with UI
 pnpm test:pw:ui
