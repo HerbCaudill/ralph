@@ -20,6 +20,9 @@ interface RalphConnectionManager {
   disconnect: () => void
   send: (message: unknown) => void
   reset: () => void // For testing
+  reconnect: () => void // Manual reconnect (resets backoff state)
+  readonly reconnectAttempts: number
+  readonly maxReconnectAttempts: number
 }
 
 // Singleton state
@@ -29,7 +32,39 @@ let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 let intentionalClose = false
 let initialized = false
 
-const RECONNECT_DELAY = 1000
+// Reconnection configuration
+const INITIAL_RECONNECT_DELAY = 1000 // 1 second
+const MAX_RECONNECT_DELAY = 30000 // 30 seconds
+const MAX_RECONNECT_ATTEMPTS = 10
+const JITTER_FACTOR = 0.3 // +/- 30% jitter
+
+// Reconnection state
+let reconnectAttempts = 0
+let currentReconnectDelay = INITIAL_RECONNECT_DELAY
+
+/**
+ * Calculate the next reconnection delay using exponential backoff with jitter.
+ * Jitter helps prevent thundering herd when many clients reconnect simultaneously.
+ */
+function calculateReconnectDelay(): number {
+  // Exponential backoff: delay doubles each attempt
+  const baseDelay = Math.min(
+    INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts),
+    MAX_RECONNECT_DELAY,
+  )
+
+  // Add jitter: random value between -30% and +30% of base delay
+  const jitter = baseDelay * JITTER_FACTOR * (Math.random() * 2 - 1)
+  return Math.max(INITIAL_RECONNECT_DELAY, Math.round(baseDelay + jitter))
+}
+
+/**
+ * Reset reconnection state after successful connection
+ */
+function resetReconnectState(): void {
+  reconnectAttempts = 0
+  currentReconnectDelay = INITIAL_RECONNECT_DELAY
+}
 
 function getDefaultUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
@@ -289,6 +324,7 @@ function connect(): void {
 
   ws.onopen = () => {
     setStatus("connected")
+    resetReconnectState() // Reset backoff on successful connection
   }
 
   ws.onmessage = handleMessage
@@ -302,10 +338,32 @@ function connect(): void {
 
     // Schedule reconnection if not intentionally closed
     if (!intentionalClose) {
+      // Check if we've exceeded max retry attempts
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error(
+          `[ralphConnection] Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Connection permanently failed.`,
+        )
+        // Emit a connection error event so the UI can show a permanent error state
+        useAppStore.getState().addEvent({
+          type: "connection_error",
+          timestamp: Date.now(),
+          error: `Failed to connect after ${MAX_RECONNECT_ATTEMPTS} attempts. Please refresh the page to try again.`,
+          permanent: true,
+        })
+        return
+      }
+
       clearReconnectTimeout()
+      currentReconnectDelay = calculateReconnectDelay()
+      reconnectAttempts++
+
+      console.log(
+        `[ralphConnection] Reconnecting in ${currentReconnectDelay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`,
+      )
+
       reconnectTimeout = setTimeout(() => {
         connect()
-      }, RECONNECT_DELAY)
+      }, currentReconnectDelay)
     }
   }
 }
@@ -340,6 +398,16 @@ function reset(): void {
   status = "disconnected"
   initialized = false
   intentionalClose = false
+  resetReconnectState()
+}
+
+/**
+ * Manual reconnection - resets backoff state and attempts to connect immediately.
+ * Use this when the user explicitly wants to retry after a failed connection.
+ */
+function reconnect(): void {
+  resetReconnectState()
+  connect()
 }
 
 // Export singleton manager
@@ -347,10 +415,17 @@ export const ralphConnection: RalphConnectionManager = {
   get status() {
     return status
   },
+  get reconnectAttempts() {
+    return reconnectAttempts
+  },
+  get maxReconnectAttempts() {
+    return MAX_RECONNECT_ATTEMPTS
+  },
   connect,
   disconnect,
   send,
   reset,
+  reconnect,
 }
 
 // Auto-connect on module load (survives HMR)

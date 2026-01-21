@@ -521,4 +521,182 @@ describe("useRalphConnection", () => {
       expect(useAppStore.getState().connectionStatus).toBe("disconnected")
     })
   })
+
+  describe("reconnection with exponential backoff", () => {
+    it("attempts to reconnect after connection closes unexpectedly", () => {
+      renderHook(() => useRalphConnection())
+      const initialCount = MockWebSocket.instances.length
+
+      // Simulate successful connection
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Simulate unexpected close
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      // Advance timer to trigger first reconnect (1 second initial delay)
+      act(() => {
+        vi.advanceTimersByTime(1500) // Allow for jitter
+      })
+
+      // Should have created a new connection attempt
+      expect(MockWebSocket.instances.length).toBeGreaterThan(initialCount)
+    })
+
+    it("does not reconnect after intentional disconnect", () => {
+      const { result } = renderHook(() => useRalphConnection())
+      const initialCount = MockWebSocket.instances.length
+
+      // Simulate successful connection
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Intentionally disconnect
+      act(() => {
+        result.current.disconnect()
+      })
+
+      // Advance timer
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+
+      // Should not have created additional connections
+      expect(MockWebSocket.instances.length).toBe(initialCount)
+    })
+
+    it("uses exponential backoff for reconnection delays", () => {
+      renderHook(() => useRalphConnection())
+
+      // Simulate successful connection then close
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      const countAfterFirstClose = MockWebSocket.instances.length
+
+      // First reconnect attempt (1s base delay)
+      act(() => {
+        vi.advanceTimersByTime(1500) // Allow for jitter
+      })
+      expect(MockWebSocket.instances.length).toBeGreaterThan(countAfterFirstClose)
+
+      // Second close
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      const countAfterSecondClose = MockWebSocket.instances.length
+
+      // Second reconnect attempt (2s base delay)
+      act(() => {
+        vi.advanceTimersByTime(3000) // Allow for jitter
+      })
+      expect(MockWebSocket.instances.length).toBeGreaterThan(countAfterSecondClose)
+    })
+
+    it("resets backoff after successful connection", () => {
+      renderHook(() => useRalphConnection())
+
+      // Simulate failed connections to build up backoff
+      for (let i = 0; i < 3; i++) {
+        act(() => {
+          getWs()?.simulateClose()
+          vi.advanceTimersByTime(10000) // Advance past any backoff
+        })
+      }
+
+      // Simulate successful connection
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Backoff should be reset - verify via reconnectAttempts
+      expect(ralphConnection.reconnectAttempts).toBe(0)
+    })
+
+    it("stops reconnecting after max attempts", () => {
+      renderHook(() => useRalphConnection())
+
+      // Simulate max reconnect attempts (10)
+      for (let i = 0; i < 10; i++) {
+        act(() => {
+          getWs()?.simulateClose()
+          vi.advanceTimersByTime(60000) // Advance past any backoff
+        })
+      }
+
+      const countAfterMaxAttempts = MockWebSocket.instances.length
+
+      // Wait more and verify no more reconnect attempts
+      act(() => {
+        vi.advanceTimersByTime(60000)
+      })
+
+      expect(MockWebSocket.instances.length).toBe(countAfterMaxAttempts)
+    })
+
+    it("emits connection_error event after max attempts", () => {
+      renderHook(() => useRalphConnection())
+
+      // Clear any existing events
+      act(() => {
+        useAppStore.getState().clearEvents()
+      })
+
+      // Simulate max reconnect attempts (10 attempts, then 11th close triggers error)
+      for (let i = 0; i < 10; i++) {
+        act(() => {
+          getWs()?.simulateClose()
+          vi.advanceTimersByTime(60000)
+        })
+      }
+
+      // The 11th close should trigger the error (we've already used up 10 attempts)
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      // Should have emitted a connection_error event
+      const events = useAppStore.getState().events
+      const errorEvent = events.find(e => e.type === "connection_error")
+      expect(errorEvent).toBeDefined()
+      expect(errorEvent?.permanent).toBe(true)
+    })
+
+    it("provides manual reconnect that resets backoff", () => {
+      renderHook(() => useRalphConnection())
+
+      // Build up some backoff
+      for (let i = 0; i < 5; i++) {
+        act(() => {
+          getWs()?.simulateClose()
+          vi.advanceTimersByTime(60000)
+        })
+      }
+
+      expect(ralphConnection.reconnectAttempts).toBeGreaterThan(0)
+
+      // Manual reconnect should reset backoff
+      act(() => {
+        ralphConnection.reconnect()
+      })
+
+      expect(ralphConnection.reconnectAttempts).toBe(0)
+    })
+
+    it("exposes reconnectAttempts and maxReconnectAttempts", () => {
+      renderHook(() => useRalphConnection())
+
+      expect(ralphConnection.reconnectAttempts).toBeDefined()
+      expect(ralphConnection.maxReconnectAttempts).toBe(10)
+    })
+  })
 })
