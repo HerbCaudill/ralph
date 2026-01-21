@@ -188,26 +188,6 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     >
       {showHeader && (header || <Header />)}
       <div className="flex flex-1 overflow-hidden">
-        {sidebar && sidebarOpen && (
-          <aside
-            ref={sidebarRef}
-            className={cn(
-              "bg-background border-border relative flex h-full flex-col overflow-hidden border-r",
-            )}
-            style={{ width: sidebarWidth, borderColor }}
-            tabIndex={-1}
-          >
-            {sidebar}
-            <div
-              className="bg-border absolute top-0 right-0 h-full w-1 cursor-col-resize hover:w-2"
-              onMouseDown={() => setIsResizing(true)}
-              aria-label="Resize sidebar"
-              role="separator"
-              aria-orientation="vertical"
-            />
-          </aside>
-        )}
-
         {leftPanel && (
           <div
             ref={leftPanelRef}
@@ -230,6 +210,26 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
               />
             )}
           </div>
+        )}
+
+        {sidebar && sidebarOpen && (
+          <aside
+            ref={sidebarRef}
+            className={cn(
+              "bg-background border-border relative flex h-full flex-col overflow-hidden border-r",
+            )}
+            style={{ width: sidebarWidth, borderColor }}
+            tabIndex={-1}
+          >
+            {sidebar}
+            <div
+              className="bg-border absolute top-0 right-0 h-full w-1 cursor-col-resize hover:w-2"
+              onMouseDown={() => setIsResizing(true)}
+              aria-label="Resize sidebar"
+              role="separator"
+              aria-orientation="vertical"
+            />
+          </aside>
         )}
 
         <div ref={mainRef} className="flex min-w-0 flex-1 flex-col overflow-hidden" tabIndex={-1}>
