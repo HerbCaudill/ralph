@@ -207,7 +207,7 @@ export function App() {
     },
   })
 
-  // Task dialog URL routing - handles #id={taskId} hash parsing and navigation
+  // Task dialog URL routing - handles /issue/{taskId} path parsing and navigation
   const taskDialogRouter = useTaskDialogRouter({ taskDialog })
 
   // Event log URL routing - handles #eventlog={id} hash parsing and navigation
