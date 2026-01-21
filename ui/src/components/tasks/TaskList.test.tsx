@@ -135,6 +135,62 @@ describe("TaskList", () => {
       expect(header).toBeInTheDocument()
     })
 
+    it("groups tasks with unsatisfied blocking dependencies under Blocked", () => {
+      const tasks: TaskCardTask[] = [
+        {
+          id: "task-1",
+          title: "Dependency blocked task",
+          status: "open",
+          dependencies: [{ id: "blocker-1", status: "open", dependency_type: "blocks" }],
+        },
+        { id: "task-2", title: "Ready task", status: "open" },
+      ]
+      render(<TaskList tasks={tasks} defaultCollapsed={{ blocked: false, ready: false }} />)
+
+      // The dependency-blocked task should appear in Blocked section, not Ready
+      expect(screen.getByLabelText("Blocked section, 1 task")).toBeInTheDocument()
+      expect(screen.getByLabelText("Ready section, 1 task")).toBeInTheDocument()
+
+      // Check task is in correct group
+      const blockedGroup = screen.getByRole("group", { name: "Blocked tasks" })
+      expect(blockedGroup).toContainElement(screen.getByText("Dependency blocked task"))
+
+      const readyGroup = screen.getByRole("group", { name: "Ready tasks" })
+      expect(readyGroup).toContainElement(screen.getByText("Ready task"))
+    })
+
+    it("does not block tasks with satisfied (closed) dependencies", () => {
+      const tasks: TaskCardTask[] = [
+        {
+          id: "task-1",
+          title: "Unblocked task",
+          status: "open",
+          dependencies: [{ id: "blocker-1", status: "closed", dependency_type: "blocks" }],
+        },
+      ]
+      render(<TaskList tasks={tasks} />)
+
+      // Task should be in Ready, not Blocked
+      expect(screen.getByLabelText("Ready section, 1 task")).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Blocked section/)).not.toBeInTheDocument()
+    })
+
+    it("ignores parent-child dependencies for blocking", () => {
+      const tasks: TaskCardTask[] = [
+        {
+          id: "task-1",
+          title: "Child task",
+          status: "open",
+          dependencies: [{ id: "parent-1", status: "open", dependency_type: "parent-child" }],
+        },
+      ]
+      render(<TaskList tasks={tasks} />)
+
+      // Task should be in Ready, not Blocked (parent-child deps don't block)
+      expect(screen.getByLabelText("Ready section, 1 task")).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Blocked section/)).not.toBeInTheDocument()
+    })
+
     it("groups deferred and closed tasks under Closed", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Deferred task", status: "deferred", closed_at: getRecentDate() },

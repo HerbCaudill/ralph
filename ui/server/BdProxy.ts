@@ -117,13 +117,13 @@ export class BdProxy {
   }
 
   /**
-   * List issues with parent field from detailed issue data.
+   * List issues with parent and dependencies fields from detailed issue data.
    *
    * This method fetches all issues matching the filters and then enriches them
-   * with the `parent` field from the full issue details. The `bd show` command
-   * returns the parent field for issues that have a parent-child dependency
-   * relationship. This supports hierarchical task structures for both epics
-   * and regular tasks with subtasks.
+   * with the `parent` and `dependencies` fields from the full issue details.
+   * The `bd show` command returns these fields for issues that have dependency
+   * relationships. This supports hierarchical task structures and blocking
+   * relationship detection.
    */
   async listWithParents(options: BdListOptions = {}): Promise<BdIssue[]> {
     // First, get the filtered list of issues
@@ -143,16 +143,23 @@ export class BdProxy {
       detailsMap.set(issue.id, issue)
     }
 
-    // Enrich each issue with parent field from the detailed issue
-    // The `bd show` command returns the parent field directly when an issue
-    // has a parent-child dependency relationship
+    // Enrich each issue with parent and dependencies fields from the detailed issue
+    // The `bd show` command returns these fields directly when an issue
+    // has dependency relationships
     return issues.map(issue => {
       const details = detailsMap.get(issue.id)
-      if (!details?.parent) {
+      if (!details) {
         return issue
       }
 
-      return { ...issue, parent: details.parent }
+      const enriched = { ...issue }
+      if (details.parent) {
+        enriched.parent = details.parent
+      }
+      if (details.dependencies) {
+        enriched.dependencies = details.dependencies
+      }
+      return enriched
     })
   }
 

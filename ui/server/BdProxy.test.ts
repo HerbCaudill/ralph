@@ -1005,5 +1005,61 @@ describe("BdProxy", () => {
         expect.anything(),
       )
     })
+
+    it("includes dependencies field from detailed issue", async () => {
+      // First call: list returns task
+      const listIssue: BdIssue = {
+        id: "rui-task",
+        title: "Test Task",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+        created_at: "2026-01-18T12:00:00Z",
+        updated_at: "2026-01-18T12:00:00Z",
+      }
+
+      // Second call: show returns details with dependencies field
+      const showIssue: BdIssue = {
+        ...listIssue,
+        dependencies: [
+          {
+            id: "rui-blocker",
+            title: "Blocking Task",
+            status: "open",
+            priority: 1,
+            issue_type: "task",
+            created_at: "2026-01-18T12:00:00Z",
+            updated_at: "2026-01-18T12:00:00Z",
+            dependency_type: "blocks",
+          },
+        ],
+      }
+
+      const listPromise = proxy.listWithParents()
+
+      // First spawn: list command
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
+      mockProcess.emit("close", 0)
+
+      // Create new mock process for second command
+      const secondMockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(secondMockProcess)
+
+      // Give time for second spawn
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      // Second spawn: show command
+      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
+      secondMockProcess.emit("close", 0)
+
+      const result = await listPromise
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("rui-task")
+      expect(result[0].dependencies).toBeDefined()
+      expect(result[0].dependencies).toHaveLength(1)
+      expect(result[0].dependencies![0].id).toBe("rui-blocker")
+      expect(result[0].dependencies![0].dependency_type).toBe("blocks")
+    })
   })
 })

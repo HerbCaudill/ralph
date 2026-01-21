@@ -22,6 +22,12 @@ export interface RalphEvent {
 
 export type TaskStatus = "open" | "in_progress" | "blocked" | "deferred" | "closed"
 
+export interface TaskDependency {
+  id: string
+  status: TaskStatus
+  dependency_type: string
+}
+
 export interface Task {
   id: string
   title: string
@@ -32,6 +38,7 @@ export interface Task {
   parent?: string
   created_at?: string
   closed_at?: string
+  dependencies?: TaskDependency[]
 }
 
 export type TaskCardTask = Task & {

@@ -140,9 +140,9 @@ export function TaskList({
 
       let config: GroupConfig | undefined
       if (parentIsOpen) {
-        config = groupConfigs.find(g => g.statusFilter(parentTask.status))
+        config = groupConfigs.find(g => g.taskFilter(parentTask))
       } else {
-        config = groupConfigs.find(g => g.statusFilter(task.status))
+        config = groupConfigs.find(g => g.taskFilter(task))
       }
       if (!config) continue
 
@@ -200,7 +200,7 @@ export function TaskList({
         .filter((id): id is string => id !== null)
         .map(id => parentTaskMap.get(id)!)
         .filter(Boolean)
-        .filter(parent => config.statusFilter(parent.status))
+        .filter(parent => config.taskFilter(parent))
         .sort((a, b) => {
           const priorityDiff = (a.priority ?? 4) - (b.priority ?? 4)
           if (priorityDiff !== 0) return priorityDiff
@@ -368,26 +368,38 @@ const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
   closed: true,
 }
 
+/**
+ * Check if a task has unsatisfied blocking dependencies (not closed/deferred)
+ */
+function hasUnsatisfiedBlockingDependencies(task: TaskCardTask): boolean {
+  if (!task.dependencies) return false
+  return task.dependencies.some(
+    dep => dep.dependency_type === "blocks" && dep.status !== "closed" && dep.status !== "deferred",
+  )
+}
+
 const groupConfigs: GroupConfig[] = [
   {
     key: "blocked",
     label: "Blocked",
-    statusFilter: status => status === "blocked",
+    taskFilter: task =>
+      task.status === "blocked" ||
+      (task.status === "open" && hasUnsatisfiedBlockingDependencies(task)),
   },
   {
     key: "ready",
     label: "Ready",
-    statusFilter: status => status === "open",
+    taskFilter: task => task.status === "open" && !hasUnsatisfiedBlockingDependencies(task),
   },
   {
     key: "in_progress",
     label: "In progress",
-    statusFilter: status => status === "in_progress",
+    taskFilter: task => task.status === "in_progress",
   },
   {
     key: "closed",
     label: "Closed",
-    statusFilter: status => status === "deferred" || status === "closed",
+    taskFilter: task => task.status === "deferred" || task.status === "closed",
   },
 ]
 
@@ -404,7 +416,7 @@ export type TaskListProps = {
 type GroupConfig = {
   key: TaskGroup
   label: string
-  statusFilter: (status: TaskStatus) => boolean
+  taskFilter: (task: TaskCardTask) => boolean
 }
 
 type ParentSubGroup = {
