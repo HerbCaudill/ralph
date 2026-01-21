@@ -112,6 +112,12 @@ export interface TaskLifecycleEventData {
   taskTitle?: string
 }
 
+export interface ErrorEventData {
+  type: "error" | "server_error"
+  timestamp: number
+  error: string
+}
+
 export type ToolName =
   | "Read"
   | "Edit"

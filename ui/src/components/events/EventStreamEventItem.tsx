@@ -1,12 +1,19 @@
 import { UserMessage } from "./UserMessage"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+import { ErrorEvent } from "./ErrorEvent"
 import { renderEventContentBlock } from "@/lib/renderEventContentBlock"
 import { isAssistantMessage } from "@/lib/isAssistantMessage"
+import { isErrorEvent } from "@/lib/isErrorEvent"
 import { isRalphTaskCompletedEvent } from "@/lib/isRalphTaskCompletedEvent"
 import { isRalphTaskStartedEvent } from "@/lib/isRalphTaskStartedEvent"
 import { isToolResultEvent } from "@/lib/isToolResultEvent"
 import { isUserMessageEvent } from "@/lib/isUserMessageEvent"
-import type { RalphEvent, TaskLifecycleEventData, AssistantContentBlock } from "@/types"
+import type {
+  RalphEvent,
+  TaskLifecycleEventData,
+  ErrorEventData,
+  AssistantContentBlock,
+} from "@/types"
 
 export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycleEvents }: Props) {
   if (isUserMessageEvent(event)) {
@@ -52,6 +59,15 @@ export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycl
         )}
       </>
     )
+  }
+
+  if (isErrorEvent(event)) {
+    const errorEvent: ErrorEventData = {
+      type: event.type as "error" | "server_error",
+      timestamp: event.timestamp,
+      error: (event as any).error,
+    }
+    return <ErrorEvent event={errorEvent} />
   }
 
   if (isToolResultEvent(event)) {
