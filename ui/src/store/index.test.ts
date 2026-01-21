@@ -15,6 +15,16 @@ import {
   selectViewingIterationIndex,
   selectIsViewingLatestIteration,
   selectIterationTask,
+  // Instance-related exports
+  DEFAULT_INSTANCE_ID,
+  DEFAULT_INSTANCE_NAME,
+  DEFAULT_AGENT_NAME,
+  createRalphInstance,
+  selectInstances,
+  selectActiveInstanceId,
+  selectActiveInstance,
+  selectInstance,
+  selectInstanceCount,
 } from "./index"
 import type { RalphEvent, Task, TaskChatMessage } from "@/types"
 
@@ -45,6 +55,136 @@ describe("useAppStore", () => {
       expect(state.taskChatLoading).toBe(false)
       expect(state.taskChatStreamingText).toBe("")
       expect(state.viewingIterationIndex).toBeNull()
+    })
+
+    it("has instances Map with default instance", () => {
+      const state = useAppStore.getState()
+      expect(state.instances).toBeInstanceOf(Map)
+      expect(state.instances.size).toBe(1)
+      expect(state.instances.has(DEFAULT_INSTANCE_ID)).toBe(true)
+    })
+
+    it("has activeInstanceId set to default", () => {
+      const state = useAppStore.getState()
+      expect(state.activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("default instance has correct initial values", () => {
+      const state = useAppStore.getState()
+      const defaultInstance = state.instances.get(DEFAULT_INSTANCE_ID)
+      expect(defaultInstance).toBeDefined()
+      expect(defaultInstance?.id).toBe(DEFAULT_INSTANCE_ID)
+      expect(defaultInstance?.name).toBe(DEFAULT_INSTANCE_NAME)
+      expect(defaultInstance?.agentName).toBe(DEFAULT_AGENT_NAME)
+      expect(defaultInstance?.status).toBe("stopped")
+      expect(defaultInstance?.events).toEqual([])
+      expect(defaultInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(defaultInstance?.contextWindow).toEqual({ used: 0, max: 200_000 })
+      expect(defaultInstance?.iteration).toEqual({ current: 0, total: 0 })
+      expect(defaultInstance?.worktreePath).toBeNull()
+      expect(defaultInstance?.branch).toBeNull()
+      expect(defaultInstance?.currentTaskId).toBeNull()
+      expect(defaultInstance?.createdAt).toBeGreaterThan(0)
+      expect(defaultInstance?.runStartedAt).toBeNull()
+    })
+  })
+
+  describe("createRalphInstance helper", () => {
+    it("creates instance with provided id", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.id).toBe("test-id")
+      expect(instance.name).toBe(DEFAULT_INSTANCE_NAME)
+      expect(instance.agentName).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("creates instance with custom name and agent", () => {
+      const instance = createRalphInstance("test-id", "Custom Name", "Custom Agent")
+      expect(instance.id).toBe("test-id")
+      expect(instance.name).toBe("Custom Name")
+      expect(instance.agentName).toBe("Custom Agent")
+    })
+
+    it("creates instance with stopped status", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.status).toBe("stopped")
+    })
+
+    it("creates instance with empty events array", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.events).toEqual([])
+    })
+
+    it("creates instance with zero token usage", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.tokenUsage).toEqual({ input: 0, output: 0 })
+    })
+
+    it("creates instance with default context window", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.contextWindow).toEqual({ used: 0, max: 200_000 })
+    })
+
+    it("creates instance with zero iteration progress", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.iteration).toEqual({ current: 0, total: 0 })
+    })
+
+    it("creates instance with null worktree and branch", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.worktreePath).toBeNull()
+      expect(instance.branch).toBeNull()
+    })
+
+    it("creates instance with createdAt timestamp", () => {
+      const before = Date.now()
+      const instance = createRalphInstance("test-id")
+      const after = Date.now()
+      expect(instance.createdAt).toBeGreaterThanOrEqual(before)
+      expect(instance.createdAt).toBeLessThanOrEqual(after)
+    })
+
+    it("creates instance with null runStartedAt", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.runStartedAt).toBeNull()
+    })
+  })
+
+  describe("instance selectors", () => {
+    it("selectInstances returns the instances Map", () => {
+      const state = useAppStore.getState()
+      const instances = selectInstances(state)
+      expect(instances).toBeInstanceOf(Map)
+      expect(instances.size).toBe(1)
+    })
+
+    it("selectActiveInstanceId returns the active instance ID", () => {
+      const state = useAppStore.getState()
+      expect(selectActiveInstanceId(state)).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("selectActiveInstance returns the active instance", () => {
+      const state = useAppStore.getState()
+      const activeInstance = selectActiveInstance(state)
+      expect(activeInstance).not.toBeNull()
+      expect(activeInstance?.id).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("selectInstance returns instance by ID", () => {
+      const state = useAppStore.getState()
+      const instance = selectInstance(state, DEFAULT_INSTANCE_ID)
+      expect(instance).not.toBeNull()
+      expect(instance?.id).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("selectInstance returns null for non-existent ID", () => {
+      const state = useAppStore.getState()
+      const instance = selectInstance(state, "non-existent")
+      expect(instance).toBeNull()
+    })
+
+    it("selectInstanceCount returns number of instances", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceCount(state)).toBe(1)
     })
   })
 

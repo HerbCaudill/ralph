@@ -3,6 +3,7 @@ import type { ConnectionStatus } from "../hooks/useWebSocket"
 import type {
   ClosedTasksTimeFilter,
   RalphEvent,
+  RalphInstance,
   RalphStatus,
   Task,
   TaskChatMessage,
@@ -170,9 +171,53 @@ export function isRalphStatus(value: unknown): value is RalphStatus {
 
 // Default context window size for Claude Sonnet (200k tokens)
 export const DEFAULT_CONTEXT_WINDOW_MAX = 200_000
+
+// Default instance constants
+export const DEFAULT_INSTANCE_ID = "default"
+export const DEFAULT_INSTANCE_NAME = "Main"
+export const DEFAULT_AGENT_NAME = "Ralph"
+
+/**
+ * Creates a new RalphInstance with default values.
+ * Used when initializing the store and when creating new instances.
+ */
+export function createRalphInstance(
+  id: string,
+  name: string = DEFAULT_INSTANCE_NAME,
+  agentName: string = DEFAULT_AGENT_NAME,
+): RalphInstance {
+  return {
+    id,
+    name,
+    agentName,
+    status: "stopped",
+    events: [],
+    tokenUsage: { input: 0, output: 0 },
+    contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+    iteration: { current: 0, total: 0 },
+    worktreePath: null,
+    branch: null,
+    currentTaskId: null,
+    createdAt: Date.now(),
+    runStartedAt: null,
+  }
+}
+
 // Store State
 
 export interface AppState {
+  // === Multi-instance state ===
+
+  /** Map of all Ralph instances by their ID */
+  instances: Map<string, RalphInstance>
+
+  /** ID of the currently active/displayed instance */
+  activeInstanceId: string
+
+  // === Legacy flat fields (for backward compatibility) ===
+  // These fields delegate to the active instance. They will be deprecated
+  // once all consumers are updated to use the instances Map directly.
+
   // Ralph process status
   ralphStatus: RalphStatus
 
@@ -184,6 +229,8 @@ export interface AppState {
 
   // Event stream from ralph
   events: RalphEvent[]
+
+  // === Workspace state (shared across all instances) ===
 
   // Tasks from ralph
   tasks: Task[]
@@ -449,11 +496,31 @@ export function getTaskFromIterationEvents(
 const defaultSidebarWidth = 320
 const defaultTaskChatWidth = 400
 
+/**
+ * Creates the initial instances Map with a default instance.
+ * This is called fresh each time to avoid shared state between tests.
+ */
+function createInitialInstances(): Map<string, RalphInstance> {
+  const defaultInstance = createRalphInstance(
+    DEFAULT_INSTANCE_ID,
+    DEFAULT_INSTANCE_NAME,
+    DEFAULT_AGENT_NAME,
+  )
+  return new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
+}
+
 const initialState: AppState = {
+  // Multi-instance state
+  instances: createInitialInstances(),
+  activeInstanceId: DEFAULT_INSTANCE_ID,
+
+  // Legacy flat fields (delegate to active instance)
   ralphStatus: "stopped",
   runStartedAt: null,
   initialTaskCount: null,
   events: [],
+
+  // Workspace state
   tasks: [],
   workspace: null,
   branch: null,
@@ -488,6 +555,8 @@ const initialState: AppState = {
 // Create the store with localStorage initialization
 const getInitialStateWithPersistence = (): AppState => ({
   ...initialState,
+  // Create fresh instances Map to avoid shared state
+  instances: createInitialInstances(),
   sidebarWidth: loadSidebarWidth(),
   taskChatWidth: loadTaskChatWidth(),
   taskChatOpen: loadTaskChatOpen(),
@@ -754,11 +823,21 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
 
   // Reset
-  reset: () => set(initialState),
+  reset: () => set({ ...initialState, instances: createInitialInstances() }),
 }))
 
 // Selectors
 
+// Instance selectors
+export const selectInstances = (state: AppState) => state.instances
+export const selectActiveInstanceId = (state: AppState) => state.activeInstanceId
+export const selectActiveInstance = (state: AppState) =>
+  state.instances.get(state.activeInstanceId) ?? null
+export const selectInstance = (state: AppState, instanceId: string) =>
+  state.instances.get(instanceId) ?? null
+export const selectInstanceCount = (state: AppState) => state.instances.size
+
+// Legacy selectors (use active instance)
 export const selectRalphStatus = (state: AppState) => state.ralphStatus
 export const selectRunStartedAt = (state: AppState) => state.runStartedAt
 export const selectInitialTaskCount = (state: AppState) => state.initialTaskCount
