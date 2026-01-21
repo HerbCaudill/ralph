@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
+import { flushSync } from "react-dom"
 import type { FormEvent, KeyboardEvent } from "react"
 import { IconArrowUp, IconLoader } from "@tabler/icons-react"
 import { cn, getContrastingColor } from "@/lib/utils"
@@ -95,9 +96,14 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
           }
 
           localStorage.removeItem(TASK_INPUT_DRAFT_STORAGE_KEY)
-          setTitle("")
+          // Use flushSync to ensure the title is cleared before any callbacks that might
+          // trigger re-renders (like task list refresh). This prevents race conditions.
+          flushSync(() => {
+            setTitle("")
+          })
           shouldRefocusRef.current = true
-          await onTaskCreated?.(data.issue)
+          // Don't await onTaskCreated - let it run in background
+          onTaskCreated?.(data.issue)
         } catch (err) {
           const message = err instanceof Error ? err.message : "Failed to create task"
           onError?.(message)

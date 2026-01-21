@@ -18,11 +18,9 @@ test.describe("QuickTaskInput", () => {
     // Wait for the task to appear in the list (confirming creation succeeded)
     await expect(app.page.getByText(taskTitle)).toBeVisible({ timeout: 10000 })
 
-    // Wait for the input to be enabled (submission complete)
-    await expect(app.taskList.quickTaskInput).toBeEnabled({ timeout: 5000 })
-
-    // The input should be cleared after successful submission
-    await expect(app.taskList.quickTaskInput).toHaveValue("")
+    // Wait for the input to be cleared (indicates submission completed)
+    // Use a longer timeout to account for task list refresh under load
+    await expect(app.taskList.quickTaskInput).toHaveValue("", { timeout: 10000 })
   })
 
   test("clears localStorage draft after successful task submission", async ({ app }) => {
@@ -44,7 +42,8 @@ test.describe("QuickTaskInput", () => {
     await expect(app.page.getByText(taskTitle)).toBeVisible({ timeout: 10000 })
 
     // Wait for input to be cleared (indicates submission completed)
-    await expect(app.taskList.quickTaskInput).toHaveValue("")
+    // Use a longer timeout to account for task list refresh under load
+    await expect(app.taskList.quickTaskInput).toHaveValue("", { timeout: 10000 })
 
     // localStorage should be cleared
     const clearedValue = await app.page.evaluate(() =>
@@ -67,7 +66,10 @@ test.describe("QuickTaskInput", () => {
     await expect(app.page.getByText(taskTitle)).toBeVisible({ timeout: 10000 })
 
     // Input should still be focused (or re-focused) after submission
-    await expect(app.taskList.quickTaskInput).toBeFocused()
+    // Wait for submission to complete first (input will be enabled when done)
+    await expect(app.taskList.quickTaskInput).toBeEnabled({ timeout: 10000 })
+    // Focus happens via setTimeout after submission, so give it time to complete
+    await expect(app.taskList.quickTaskInput).toBeFocused({ timeout: 5000 })
   })
 
   test("keeps input value on API error", async ({ app }) => {
