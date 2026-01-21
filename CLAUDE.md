@@ -1,5 +1,7 @@
 # Agent Instructions
 
+IMPORTANT: begin every response with an emoji.
+
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
 ## Quick Reference
@@ -254,6 +256,7 @@ All agents implement the `AgentAdapter` base class (`server/AgentAdapter.ts`):
 - **ClaudeAdapter** / **CodexAdapter** - Concrete implementations
 
 Each adapter normalizes native events into `AgentEvent` types:
+
 - `AgentMessageEvent`, `AgentToolUseEvent`, `AgentToolResultEvent`, `AgentResultEvent`, `AgentErrorEvent`, `AgentStatusEvent`
 
 **User Messages During Iterations:**
