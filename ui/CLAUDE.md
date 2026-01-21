@@ -20,7 +20,7 @@ The project supports multiple coding agents through the `AgentAdapter` abstracti
 2. **Codex** - OpenAI's Codex via the Codex SDK
    - Uses `@openai/codex-sdk`
    - Supports streaming, tools, and system prompts
-   - Requires `OPENAI_API_KEY` environment variable
+   - `OPENAI_API_KEY` is optional if logged into the local codex CLI
 
 ### Using Different Agents
 
@@ -151,6 +151,6 @@ Tests verify:
 ## Environment Variables
 
 - `ANTHROPIC_API_KEY` - Required for Claude agent
-- `OPENAI_API_KEY` - Required for Codex agent
+- `OPENAI_API_KEY` - Optional for Codex agent (uses local codex CLI auth if absent)
 - `HOST` - Server host (default: 127.0.0.1)
 - `PORT` - Server port (default: 4242)

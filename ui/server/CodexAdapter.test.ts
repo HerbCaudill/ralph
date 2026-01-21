@@ -55,7 +55,7 @@ describe("CodexAdapter", () => {
       expect(await custom.isAvailable()).toBe(true)
     })
 
-    it("returns false when no api key is present", async () => {
+    it("returns true even without api key (uses local CLI auth)", async () => {
       const previous = {
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
         CODEX_API_KEY: process.env.CODEX_API_KEY,
@@ -63,7 +63,7 @@ describe("CodexAdapter", () => {
       delete process.env.OPENAI_API_KEY
       delete process.env.CODEX_API_KEY
 
-      expect(await adapter.isAvailable()).toBe(false)
+      expect(await adapter.isAvailable()).toBe(true)
 
       process.env.OPENAI_API_KEY = previous.OPENAI_API_KEY
       process.env.CODEX_API_KEY = previous.CODEX_API_KEY

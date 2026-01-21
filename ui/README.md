@@ -62,7 +62,7 @@ Ralph UI supports multiple AI coding agents through an adapter architecture. Eac
 - Provider: OpenAI
 - SDK: `@openai/codex-sdk`
 - Features: Streaming, tools, system prompts
-- Setup: Set `OPENAI_API_KEY` environment variable
+- Setup: `OPENAI_API_KEY` is optional if you're logged into the local codex CLI
 
 ### Using Different Agents
 
@@ -193,12 +193,12 @@ pnpm format
 
 ## Environment Variables
 
-| Variable            | Description              | Default             |
-| ------------------- | ------------------------ | ------------------- |
-| `ANTHROPIC_API_KEY` | API key for Claude agent | Required for Claude |
-| `OPENAI_API_KEY`    | API key for Codex agent  | Required for Codex  |
-| `HOST`              | Server bind address      | 127.0.0.1           |
-| `PORT`              | Server port              | 4242                |
+| Variable            | Description              | Default                                        |
+| ------------------- | ------------------------ | ---------------------------------------------- |
+| `ANTHROPIC_API_KEY` | API key for Claude agent | Required for Claude                            |
+| `OPENAI_API_KEY`    | API key for Codex agent  | Optional (uses local codex CLI auth if absent) |
+| `HOST`              | Server bind address      | 127.0.0.1                                      |
+| `PORT`              | Server port              | 4242                                           |
 
 ## API
 

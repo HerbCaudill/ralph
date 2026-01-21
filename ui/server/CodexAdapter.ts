@@ -101,10 +101,16 @@ export class CodexAdapter extends AgentAdapter {
   }
 
   /**
-   * Check if Codex SDK is available (API key present).
+   * Check if Codex SDK is available.
+   *
+   * The Codex SDK wraps the bundled `codex` binary which handles its own
+   * authentication (OAuth login). An API key is optional - if not provided,
+   * it uses the local CLI's authentication.
    */
   async isAvailable(): Promise<boolean> {
-    return Boolean(this.options.apiKey ?? process.env.OPENAI_API_KEY ?? process.env.CODEX_API_KEY)
+    // The SDK always bundles the codex binary, so it's always available.
+    // Authentication failures will be surfaced when actually trying to run.
+    return true
   }
 
   /**
