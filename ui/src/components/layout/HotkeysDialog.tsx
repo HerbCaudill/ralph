@@ -34,13 +34,13 @@ function getModifierDisplay(modifier: string): string {
   const mac = isMac()
   switch (modifier) {
     case "cmd":
-      return mac ? "\u2318" : "Ctrl"
+      return mac ? "⌘" : "Ctrl"
     case "ctrl":
-      return mac ? "\u2303" : "Ctrl"
+      return mac ? "⌃" : "Ctrl"
     case "alt":
-      return mac ? "\u2325" : "Alt"
+      return mac ? "⌥" : "Alt"
     case "shift":
-      return mac ? "\u21E7" : "Shift"
+      return mac ? "⇧" : "Shift"
     default:
       return modifier
   }
@@ -52,17 +52,17 @@ function getModifierDisplay(modifier: string): string {
 function getKeyDisplay(key: string): string {
   switch (key.toLowerCase()) {
     case "enter":
-      return "\u23CE"
+      return "⏎"
     case "escape":
       return "Esc"
     case "arrowup":
-      return "\u2191"
+      return "↑"
     case "arrowdown":
-      return "\u2193"
+      return "↓"
     case "arrowleft":
-      return "\u2190"
+      return "←"
     case "arrowright":
-      return "\u2192"
+      return "→"
     default:
       return key.toUpperCase()
   }
