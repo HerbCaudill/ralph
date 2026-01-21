@@ -59,6 +59,8 @@ export interface ServerConfig {
   host: string
   port: number
   appDir: string
+  /** Workspace directory for beads database. Defaults to process.cwd() if not set. */
+  workspacePath?: string
 }
 
 export function getConfig(): ServerConfig {
@@ -66,6 +68,7 @@ export function getConfig(): ServerConfig {
     host: process.env.HOST || "localhost",
     port: parseInt(process.env.PORT || "4242", 10),
     appDir: path.resolve(import.meta.dirname, ".."),
+    workspacePath: process.env.WORKSPACE_PATH || undefined,
   }
 }
 
@@ -983,12 +986,15 @@ export function broadcast(message: unknown): void {
 // Singleton BdProxy instance
 let bdProxy: BdProxy | null = null
 
+// Configured workspace path (set by startServer)
+let configuredWorkspacePath: string | undefined
+
 /**
  * Get the singleton BdProxy instance, creating it if needed.
  */
 export function getBdProxy(): BdProxy {
   if (!bdProxy) {
-    bdProxy = new BdProxy()
+    bdProxy = new BdProxy({ cwd: configuredWorkspacePath })
   }
   return bdProxy
 }
@@ -1103,7 +1109,7 @@ let ralphManager: RalphManager | null = null
  */
 export function getRalphManager(): RalphManager {
   if (!ralphManager) {
-    ralphManager = createRalphManager()
+    ralphManager = createRalphManager({ cwd: configuredWorkspacePath })
   }
   return ralphManager
 }
@@ -1112,7 +1118,7 @@ export function getRalphManager(): RalphManager {
  * Create a RalphManager and wire up event broadcasting.
  */
 function createRalphManager(options?: { cwd?: string; watch?: boolean }): RalphManager {
-  const manager = new RalphManager(options)
+  const manager = new RalphManager({ ...options, cwd: options?.cwd ?? configuredWorkspacePath })
 
   // Broadcast ralph events to all WebSocket clients and store in history
   manager.on("event", (event: RalphEvent) => {
@@ -1187,7 +1193,7 @@ let taskChatManager: TaskChatManager | null = null
  */
 export function getTaskChatManager(): TaskChatManager {
   if (!taskChatManager) {
-    taskChatManager = createTaskChatManager()
+    taskChatManager = createTaskChatManager({ cwd: configuredWorkspacePath })
   }
   return taskChatManager
 }
@@ -1198,6 +1204,7 @@ export function getTaskChatManager(): TaskChatManager {
 function createTaskChatManager(options?: { cwd?: string }): TaskChatManager {
   const manager = new TaskChatManager({
     ...options,
+    cwd: options?.cwd ?? configuredWorkspacePath,
     getBdProxy: () => getBdProxy(),
     // Pass the current environment to ensure PATH is available
     env: process.env as Record<string, string>,
@@ -1363,6 +1370,13 @@ function checkPortAvailable(host: string, port: number): Promise<boolean> {
 // Main entry point
 
 export async function startServer(config: ServerConfig): Promise<void> {
+  // Set the configured workspace path for use by BdProxy, RalphManager, etc.
+  configuredWorkspacePath = config.workspacePath
+
+  if (configuredWorkspacePath) {
+    console.log(`[server] Using workspace: ${configuredWorkspacePath}`)
+  }
+
   const app = createApp(config)
   const server = createServer(app)
 

@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test"
+import path from "node:path"
+
+// Test workspace path - isolated from the main repo's beads database
+const TEST_WORKSPACE_PATH = path.join(import.meta.dirname, "e2e", "test-workspace")
 
 export default defineConfig({
   testDir: "./e2e",
@@ -7,6 +11,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
+  globalSetup: "./e2e/global-setup.ts",
   use: {
     baseURL: "http://localhost:5179",
     trace: "on-first-retry",
@@ -19,10 +24,14 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "PORT=4242 pnpm dev:server",
+      command: "pnpm dev:server",
       url: "http://localhost:4242/api/workspace",
       reuseExistingServer: !process.env.CI,
       timeout: 30000,
+      env: {
+        PORT: "4242",
+        WORKSPACE_PATH: TEST_WORKSPACE_PATH,
+      },
     },
     {
       command: "pnpm dev",

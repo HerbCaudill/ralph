@@ -12,3 +12,4 @@ ui/test-results
 ui/playwright-report
 ui/storybook-static
 ui/.ralph/*.jsonl
+ui/e2e/test-workspace
