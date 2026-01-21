@@ -12,3 +12,6 @@ export * from "./events/index.js"
 
 // Beads Domain Types
 export * from "./beads/index.js"
+
+// Prompt Loading
+export * from "./prompts/index.js"
