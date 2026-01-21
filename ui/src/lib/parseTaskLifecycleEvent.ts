@@ -4,9 +4,7 @@ export function parseTaskLifecycleEvent(
   text: string,
   timestamp: number,
 ): TaskLifecycleEventData | null {
-  const startingMatch = text.match(
-    /<start_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/start_task>/i,
-  )
+  const startingMatch = text.match(/<start_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/start_task>/i)
   if (startingMatch) {
     return {
       type: "task_lifecycle",
@@ -16,9 +14,7 @@ export function parseTaskLifecycleEvent(
     }
   }
 
-  const completedMatch = text.match(
-    /<end_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/end_task>/i,
-  )
+  const completedMatch = text.match(/<end_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/end_task>/i)
   if (completedMatch) {
     return {
       type: "task_lifecycle",

@@ -124,8 +124,11 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
               onClick={handleAddComment}
               disabled={!newComment.trim() || isSubmitting}
               className="min-w-[80px]"
+              aria-label="Add comment"
             >
-              {isSubmitting ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Add"}
+              {isSubmitting ?
+                <IconLoader2 className="h-4 w-4 animate-spin" />
+              : "Add"}
             </Button>
           </div>
         </div>

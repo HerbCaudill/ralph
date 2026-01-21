@@ -3,12 +3,7 @@ import { IconChevronDown, IconChevronUp } from "@tabler/icons-react"
 import { TaskLink } from "./TaskLink"
 import type { RelatedTask } from "@/types"
 
-export function CollapsibleSection({
-  label,
-  tasks,
-  issuePrefix,
-  defaultExpanded = true,
-}: Props) {
+export function CollapsibleSection({ label, tasks, issuePrefix, defaultExpanded = true }: Props) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   if (tasks.length === 0) return null
@@ -20,7 +15,9 @@ export function CollapsibleSection({
         onClick={() => setIsExpanded(!isExpanded)}
         className="text-muted-foreground hover:text-foreground flex w-full items-center gap-1 text-xs font-medium transition-colors"
       >
-        {isExpanded ? <IconChevronDown className="h-3.5 w-3.5" /> : <IconChevronUp className="h-3.5 w-3.5" />}
+        {isExpanded ?
+          <IconChevronDown className="h-3.5 w-3.5" />
+        : <IconChevronUp className="h-3.5 w-3.5" />}
         {label} ({tasks.length})
       </button>
       {isExpanded && (

@@ -1,6 +1,7 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { CommentsSection, type Comment } from "./CommentsSection"
+import { CommentsSection } from "./CommentsSection"
+import type { Comment } from "@/types"
 
 // Mock fetch
 const mockFetch = vi.fn()

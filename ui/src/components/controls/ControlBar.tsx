@@ -1,5 +1,10 @@
 import { useState, useCallback } from "react"
-import { IconPlayerPlayFilled, IconPlayerPauseFilled, IconPlayerStopFilled, IconPlayerStop } from "@tabler/icons-react"
+import {
+  IconPlayerPlayFilled,
+  IconPlayerPauseFilled,
+  IconPlayerStopFilled,
+  IconPlayerStop,
+} from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { TooltipButton } from "@/components/ui/tooltip"
@@ -25,6 +30,7 @@ export function ControlBar({ className }: ControlBarProps) {
   const { getHotkeyDisplay } = useHotkeys({ handlers: {} })
 
   const buttonStates = getControlBarButtonStates(status, isConnected)
+  const isPaused = status === "paused"
 
   const handleStart = useCallback(async () => {
     setIsLoading(true)
@@ -72,44 +78,58 @@ export function ControlBar({ className }: ControlBarProps) {
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <TooltipButton
-        tooltip={`Start${getHotkeyDisplay("agentStart")}`}
-        onClick={handleStart}
-        disabled={!buttonStates.start || isLoading}
-        aria-label="Start Ralph"
-      >
-        <IconPlayerPlayFilled className="size-4" />
+      <TooltipButton tooltip={`Start${getHotkeyDisplay("agentStart")}`}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleStart}
+          disabled={!buttonStates.start || isLoading}
+          aria-label="Start"
+        >
+          <IconPlayerPlayFilled className="size-4" />
+        </Button>
       </TooltipButton>
 
-      <TooltipButton
-        tooltip={`${status === "paused" || status === "pausing" ? "Resume" : "Pause"}${getHotkeyDisplay("agentPause")}`}
-        onClick={handlePause}
-        disabled={!buttonStates.pause || isLoading}
-        aria-label={status === "paused" || status === "pausing" ? "Resume Ralph" : "Pause Ralph"}
-      >
-        <IconPlayerPauseFilled className="size-4" />
+      <TooltipButton tooltip={`${isPaused ? "Resume" : "Pause"}${getHotkeyDisplay("agentPause")}`}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handlePause}
+          disabled={!buttonStates.pause || isLoading}
+          aria-label={isPaused ? "Resume" : "Pause"}
+        >
+          <IconPlayerPauseFilled className="size-4" />
+        </Button>
       </TooltipButton>
 
-      <TooltipButton
-        tooltip={`Stop${getHotkeyDisplay("agentStop")}`}
-        onClick={handleStop}
-        disabled={!buttonStates.stop || isLoading}
-        aria-label="Stop Ralph"
-      >
-        <IconPlayerStopFilled className="size-4" />
+      <TooltipButton tooltip={`Stop${getHotkeyDisplay("agentStop")}`}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleStop}
+          disabled={!buttonStates.stop || isLoading}
+          aria-label="Stop"
+        >
+          <IconPlayerStopFilled className="size-4" />
+        </Button>
       </TooltipButton>
 
       <TooltipButton
         tooltip={`${status === "stopping_after_current" ? "Cancel stop after current" : "Stop after current"}`}
-        onClick={handleStopAfterCurrent}
-        disabled={!buttonStates.stopAfterCurrent || isLoading}
-        aria-label={
-          status === "stopping_after_current" ?
-            "Cancel stop after current"
-          : "Stop after current"
-        }
       >
-        <IconPlayerStop className="size-4" />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleStopAfterCurrent}
+          disabled={!buttonStates.stopAfterCurrent || isLoading}
+          aria-label={
+            status === "stopping_after_current" ?
+              "Cancel stop after current"
+            : "Stop after current action"
+          }
+        >
+          <IconPlayerStop className="size-4" />
+        </Button>
       </TooltipButton>
 
       {error && <span className="text-status-error text-xs">{error}</span>}

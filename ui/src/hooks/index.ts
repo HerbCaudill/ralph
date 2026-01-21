@@ -20,13 +20,13 @@ export { useTasks, type UseTasksOptions, type UseTasksResult } from "./useTasks"
 
 export { useTaskDialog, type UseTaskDialogOptions, type UseTaskDialogResult } from "./useTaskDialog"
 
-export {
-  useStreamingState,
-  type StreamingMessage,
-  type StreamingContentBlock,
-  type StreamingTextBlock,
-  type StreamingToolUseBlock,
-} from "./useStreamingState"
+export { useStreamingState } from "./useStreamingState"
+export type {
+  StreamingMessage,
+  StreamingContentBlock,
+  StreamingTextBlock,
+  StreamingToolUseBlock,
+} from "@/types"
 
 export {
   useEventLogRouter,

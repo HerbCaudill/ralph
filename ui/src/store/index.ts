@@ -6,13 +6,11 @@ import type {
   RalphStatus,
   Task,
   TaskChatMessage,
-  TaskStatus,
   Theme,
   TokenUsage,
   ContextWindow,
   IterationInfo,
   EventLog,
-  EventLogMetadata,
 } from "@/types"
 import { TASK_LIST_CLOSED_FILTER_STORAGE_KEY } from "@/constants"
 
@@ -171,7 +169,6 @@ export function isRalphStatus(value: unknown): value is RalphStatus {
 
 // Default context window size for Claude Sonnet (200k tokens)
 export const DEFAULT_CONTEXT_WINDOW_MAX = 200_000
-
 
 // Store State
 

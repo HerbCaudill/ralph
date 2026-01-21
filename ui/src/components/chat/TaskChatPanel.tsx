@@ -24,6 +24,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const isLoading = useAppStore(selectTaskChatLoading)
   const isConnected = useAppStore(selectIsConnected)
   const addMessage = useAppStore(state => state.addTaskChatMessage)
+  const removeMessage = useAppStore(state => state.removeTaskChatMessage)
   const setLoading = useAppStore(state => state.setTaskChatLoading)
   const clearMessages = useAppStore(state => state.clearTaskChatMessages)
 
@@ -31,6 +32,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
   const [isAtBottom, setIsAtBottom] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const streamingText = useAppStore(selectTaskChatStreamingText)
   const setStreamingText = useAppStore(state => state.setTaskChatStreamingText)
 
@@ -103,6 +105,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const handleSendMessage = useCallback(
     async (message: string) => {
       const messageId = `user-${Date.now()}`
+      setError(null)
 
       const userMessage: TaskChatMessage = {
         id: messageId,
@@ -126,21 +129,35 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       const result = await sendTaskChatMessage(message)
 
       if (!result.ok) {
+        const errorMessage = result.error ?? "Failed to send message"
+        const isAlreadyInProgress = errorMessage.toLowerCase().includes("already in progress")
+
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current)
+          loadingTimeoutRef.current = null
+        }
+
+        if (isAlreadyInProgress) {
+          removeMessage(messageId)
+          loadingTimeoutRef.current = setTimeout(() => {
+            setLoading(false)
+            loadingTimeoutRef.current = null
+          }, 60_000)
+          return
+        }
+
         setLoading(false)
         setStreamingText("")
-        setTimeout(() => {
-          clearMessages()
-        }, 500)
+        setError(errorMessage)
       }
     },
-    [addMessage, setLoading, setStreamingText, clearMessages],
+    [addMessage, setLoading, setStreamingText, removeMessage],
   )
 
   const handleClearHistory = useCallback(async () => {
-    if (!confirm("Clear task chat history?")) return
-
     setLoading(true)
     setStreamingText("")
+    setError(null)
 
     const result = await clearTaskChatHistory()
 
@@ -150,19 +167,22 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     setLoading(false)
   }, [clearMessages, setLoading, setStreamingText])
 
-  const hasMessages = messages.length > 0 || streamingText
+  const inputPlaceholder =
+    !isConnected ? "Connecting..."
+    : isLoading ? "Waiting for response..."
+    : "Send a message to Ralph"
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
       <div className="border-border flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-2">
           <IconMessageChatbot className="text-muted-foreground size-4" />
-          <span className="text-sm font-medium">Task chat</span>
+          <span className="text-sm font-medium">Task Chat</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={handleClearHistory}
-            disabled={!hasMessages || isLoading}
+            disabled={isLoading}
             className="text-muted-foreground hover:text-foreground rounded p-1 transition-colors disabled:opacity-50"
             aria-label="Clear chat history"
             title="Clear chat history"
@@ -189,12 +209,12 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
         onTouchMove={handleUserScroll}
         className="bg-background flex-1 overflow-y-auto py-2"
         role="log"
-        aria-label="Task chat"
+        aria-label="Task chat messages"
         aria-live="polite"
       >
         {messages.length === 0 && !streamingText ?
           <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-            No messages yet
+            Ask questions about your tasks
           </div>
         : <>
             {messages.map(message =>
@@ -204,8 +224,16 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
             )}
             {streamingText && (
               <AssistantMessageBubble
-                message={{ id: "streaming", role: "assistant", content: streamingText, timestamp: 0 }}
+                message={{
+                  id: "streaming",
+                  role: "assistant",
+                  content: streamingText,
+                  timestamp: 0,
+                }}
               />
+            )}
+            {isLoading && (
+              <div className="text-muted-foreground px-4 py-2 text-xs">Thinking...</div>
             )}
           </>
         }
@@ -226,11 +254,12 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       )}
 
       <div className="border-border border-t p-3">
+        {error && <div className="text-status-error pb-2 text-xs">Error: {error}</div>}
         <ChatInput
           ref={chatInputRef}
           onSubmit={handleSendMessage}
           disabled={!isConnected || isLoading}
-          placeholder={isConnected ? "Send a message to Ralph" : "Not connected"}
+          placeholder={inputPlaceholder}
           aria-label="Task chat input"
         />
       </div>

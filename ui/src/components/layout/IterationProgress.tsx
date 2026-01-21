@@ -8,7 +8,10 @@ export function IterationProgress({}: Props) {
   const progress = (iteration.current / iteration.total) * 100
 
   return (
-    <div className="flex items-center gap-2" title={`Iteration ${iteration.current} of ${iteration.total}`}>
+    <div
+      className="flex items-center gap-2"
+      title={`Iteration ${iteration.current} of ${iteration.total}`}
+    >
       <div className="bg-muted h-1.5 w-16 overflow-hidden rounded-full">
         <div
           className="bg-primary h-full transition-all duration-300"

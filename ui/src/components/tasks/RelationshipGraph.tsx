@@ -151,7 +151,14 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
             style={{ width: "100%", height: "100%", overflow: "visible" }}
           >
             <defs>
-              <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <marker
+                id="arrowhead"
+                markerWidth="6"
+                markerHeight="6"
+                refX="5"
+                refY="3"
+                orient="auto"
+              >
                 <polygon
                   points="0 0, 6 3, 0 6"
                   fill="currentColor"

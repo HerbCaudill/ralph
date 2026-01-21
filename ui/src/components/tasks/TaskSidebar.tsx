@@ -33,7 +33,7 @@ export function TaskSidebar({
       <div className="min-h-0 flex-1">
         {taskList ?? (
           <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">
-            No tasks
+            No tasks yet
           </div>
         )}
       </div>

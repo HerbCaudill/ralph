@@ -14,6 +14,7 @@ import {
 import { hotkeys } from "@/config"
 import { getShortcut } from "@/lib/getShortcut"
 import type { RalphStatus } from "@/types"
+import { Kbd } from "@/components/ui/tooltip"
 
 /**
  * Command palette for quick access to application actions.
@@ -121,41 +122,54 @@ export function CommandPalette({
     return commands.filter(cmd => cmd.available?.() !== false)
   }, [commands])
 
+  if (!open) {
+    return null
+  }
+
   return (
-    <Command.Dialog open={open} onOpenChange={onClose}>
-      <Command.Input
-        value={search}
-        onValueChange={setSearch}
-        placeholder="Type a command or search..."
-        className="border-border bg-background text-foreground w-full border-b px-3 py-2 text-sm outline-none"
+    <div data-testid="command-palette" className="fixed inset-0 z-40">
+      <div
+        className="absolute inset-0 bg-black/20"
+        data-testid="command-backdrop"
+        onClick={onClose}
       />
-      <Command.List className="bg-popover text-foreground max-h-[400px] overflow-y-auto">
-        <Command.Empty className="text-muted-foreground p-4 text-center text-sm">
-          No results found
-        </Command.Empty>
-        {filteredCommands.map(command => (
-          <Command.Item
-            key={command.id}
-            value={command.label}
-            onSelect={() => handleSelect(command.id)}
-            className="data-[selected=true]:bg-muted flex items-start gap-3 px-4 py-3"
-          >
-            <div className="text-muted-foreground mt-0.5">{command.icon}</div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium">{command.label}</span>
-                {hotkeys[command.id] && (
-                  <span className="text-muted-foreground text-xs">
-                    {getShortcut(command.id)}
-                  </span>
-                )}
+      <Command className="bg-popover text-foreground fixed inset-x-0 top-20 z-50 mx-auto w-[480px] max-w-[90vw] overflow-hidden rounded-lg border shadow-lg">
+        <Command.Input
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Type a command or search..."
+          autoFocus
+          className="border-border bg-background text-foreground w-full border-b px-3 py-2 text-sm outline-none"
+          data-testid="command-input"
+        />
+        <Command.List className="bg-popover text-foreground max-h-[400px] overflow-y-auto">
+          <Command.Empty className="text-muted-foreground p-4 text-center text-sm">
+            No commands found.
+          </Command.Empty>
+          {filteredCommands.map(command => (
+            <Command.Item
+              key={command.id}
+              value={command.label}
+              keywords={command.keywords}
+              onSelect={() => handleSelect(command.id)}
+              className="data-[selected=true]:bg-muted flex items-start gap-3 px-4 py-3"
+              data-testid={`command-item-${command.id}`}
+            >
+              <div className="text-muted-foreground mt-0.5">{command.icon}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{command.label}</span>
+                  {hotkeys[command.id] && (
+                    <Kbd className="text-muted-foreground text-xs">{getShortcut(command.id)}</Kbd>
+                  )}
+                </div>
+                <p className="text-muted-foreground mt-1 text-xs">{command.description}</p>
               </div>
-              <p className="text-muted-foreground mt-1 text-xs">{command.description}</p>
-            </div>
-          </Command.Item>
-        ))}
-      </Command.List>
-    </Command.Dialog>
+            </Command.Item>
+          ))}
+        </Command.List>
+      </Command>
+    </div>
   )
 }
 

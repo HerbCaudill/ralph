@@ -129,6 +129,7 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isDisabled}
+          aria-label="New task title"
           rows={1}
           className={cn(
             "placeholder:text-muted-foreground bg-transparent",
@@ -152,9 +153,11 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
               backgroundColor: buttonBgColor,
               color: buttonTextColor,
             }}
-            aria-label="Create task"
+            aria-label={isSubmitting ? "Creating task" : "Add task"}
           >
-            {isSubmitting ? <IconLoader className="size-5 animate-spin" /> : <IconArrowUp className="size-5" />}
+            {isSubmitting ?
+              <IconLoader className="size-5 animate-spin" />
+            : <IconArrowUp className="size-5" />}
           </button>
         </div>
       </form>

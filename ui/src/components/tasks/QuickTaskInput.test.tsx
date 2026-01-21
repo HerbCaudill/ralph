@@ -8,7 +8,6 @@ import { TASK_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 
 const mockFetch = vi.fn()
 
-
 beforeEach(() => {
   vi.stubGlobal("fetch", mockFetch)
   mockFetch.mockReset()

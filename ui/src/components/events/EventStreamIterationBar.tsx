@@ -14,7 +14,8 @@ export function EventStreamIterationBar({
   const hasMultipleIterations = iterationCount > 1
   const taskDialogContext = useTaskDialogContext()
 
-  const handleTaskClick = (taskId: string) => {
+  const handleTaskClick = (taskId: string | null) => {
+    if (!taskId) return
     if (taskDialogContext) {
       taskDialogContext.openTaskById(taskId)
     }
@@ -45,7 +46,7 @@ export function EventStreamIterationBar({
             className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"
             title="Current task"
           >
-            {currentTask.id && (
+            {currentTask.id ?
               <button
                 onClick={() => handleTaskClick(currentTask.id)}
                 className="hover:text-foreground shrink-0 font-mono opacity-70 transition-opacity hover:underline hover:opacity-100"
@@ -53,7 +54,7 @@ export function EventStreamIterationBar({
               >
                 {currentTask.id}
               </button>
-            )}
+            : null}
             <span className="truncate">{currentTask.title}</span>
           </div>
         : hasMultipleIterations ?

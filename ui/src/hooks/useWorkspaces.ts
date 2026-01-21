@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useAppStore, selectWorkspace } from "@/store"
-import type { WorkspaceListEntry } from "@/components/layout/WorkspacePicker"
+import type { WorkspaceListEntry } from "@/types"
 
 export interface UseWorkspacesReturn {
   /** List of all available workspaces */

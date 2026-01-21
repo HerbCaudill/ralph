@@ -8,11 +8,7 @@ import { isToolResultEvent } from "@/lib/isToolResultEvent"
 import { isUserMessageEvent } from "@/lib/isUserMessageEvent"
 import type { RalphEvent, TaskLifecycleEventData, AssistantContentBlock } from "@/types"
 
-export function EventStreamEventItem({
-  event,
-  toolResults,
-  hasStructuredLifecycleEvents,
-}: Props) {
+export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycleEvents }: Props) {
   if (isUserMessageEvent(event)) {
     return <UserMessage event={event} />
   }

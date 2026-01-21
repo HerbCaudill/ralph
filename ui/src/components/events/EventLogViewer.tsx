@@ -197,7 +197,8 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
       <div className="border-border border-b px-4 py-2">
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
           <span className="text-muted-foreground">
-            Created: <span className="text-foreground">{formatEventLogDate(eventLog.createdAt)}</span>
+            Created:{" "}
+            <span className="text-foreground">{formatEventLogDate(eventLog.createdAt)}</span>
           </span>
           {eventLog.metadata?.taskId && (
             <span className="text-muted-foreground">

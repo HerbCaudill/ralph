@@ -107,7 +107,10 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
         disabled={isLoading}
         data-testid="theme-picker-trigger"
       >
-        <IconPalette className="size-4" style={isHeaderVariant ? { color: textColor } : undefined} />
+        <IconPalette
+          className="size-4"
+          style={isHeaderVariant ? { color: textColor } : undefined}
+        />
         <span className="max-w-[150px] truncate">{displayName}</span>
         <IconChevronDown className={cn("size-3 transition-transform", isOpen && "rotate-180")} />
       </button>
@@ -141,9 +144,10 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
                 className={cn(
                   "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
                   "hover:bg-muted",
-                  !activeThemeId && "bg-muted",
+                  !activeThemeId && "bg-accent/50",
                 )}
                 onMouseEnter={handleMouseLeave}
+                data-testid="theme-picker-default"
               >
                 <span className="flex-1">Default</span>
                 {!activeThemeId && <IconCheck className="text-primary size-3" />}
@@ -151,14 +155,18 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
 
               {currentVSCodeTheme && (
                 <div className="text-muted-foreground px-2 py-1 text-xs">
-                  Current VS Code theme: {currentVSCodeTheme}
+                  VS Code: {currentVSCodeTheme}
                 </div>
+              )}
+
+              {themeGroups.length === 0 && (
+                <div className="text-muted-foreground px-2 py-2 text-xs">No themes found</div>
               )}
 
               {themeGroups.map(group => (
                 <div key={group.type} className="mt-2">
                   <div className="text-muted-foreground px-2 py-1 text-xs font-medium">
-                    {group.type === "dark" ? "Dark themes" : "Light themes"}
+                    {group.type === "dark" ? "Dark" : "Light"}
                   </div>
                   {group.themes.map(theme => (
                     <button
@@ -169,20 +177,34 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
                       className={cn(
                         "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
                         "hover:bg-muted",
-                        activeThemeId === theme.id && "bg-muted",
+                        activeThemeId === theme.id && "bg-accent/50",
                       )}
+                      data-testid={`theme-picker-item-${theme.id}`}
                     >
-                      {theme.type === "dark" || theme.type === "hcDark" ? (
+                      {theme.type === "dark" || theme.type === "hcDark" ?
                         <IconMoon className="text-muted-foreground size-3.5" />
-                      ) : (
-                        <IconSun className="text-muted-foreground size-3.5" />
-                      )}
+                      : <IconSun className="text-muted-foreground size-3.5" />}
                       <span className="flex-1 truncate">{theme.label}</span>
                       {activeThemeId === theme.id && <IconCheck className="text-primary size-3" />}
                     </button>
                   ))}
                 </div>
               ))}
+            </div>
+          )}
+
+          {!error && (
+            <div className="border-border border-t p-1">
+              <button
+                onClick={fetchThemes}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
+                  "hover:bg-muted",
+                )}
+              >
+                <IconRefresh className="text-muted-foreground size-3.5" />
+                <span>Refresh</span>
+              </button>
             </div>
           )}
         </div>

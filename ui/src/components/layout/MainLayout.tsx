@@ -35,7 +35,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   const setSidebarWidth = useAppStore(state => state.setSidebarWidth)
   const accentColor = useAppStore(selectAccentColor)
   const borderColor = accentColor ?? DEFAULT_ACCENT_COLOR
-  const sidebarRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
   const mainRef = useRef<HTMLDivElement>(null)
   const leftPanelRef = useRef<HTMLDivElement>(null)
   const rightPanelRef = useRef<HTMLDivElement>(null)
@@ -122,13 +122,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
     }
-  }, [
-    isResizing,
-    isResizingLeftPanel,
-    isResizingRightPanel,
-    handleMouseMove,
-    handleMouseUp,
-  ])
+  }, [isResizing, isResizingLeftPanel, isResizingRightPanel, handleMouseMove, handleMouseUp])
 
   useEffect(() => {
     if (isResizingLeftPanel) {
@@ -158,6 +152,27 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     }
   }, [isResizingRightPanel, handleRightPanelMouseMove, handleMouseUp])
 
+  useEffect(() => {
+    if (!detailPanelOpen || !onDetailPanelClose) return
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target) return
+      if (detailPanelRef.current?.contains(target)) return
+      if (target.closest("[data-radix-popper-content-wrapper]")) return
+      onDetailPanelClose()
+    }
+
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleOutsideClick)
+    }, 100)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener("mousedown", handleOutsideClick)
+    }
+  }, [detailPanelOpen, onDetailPanelClose])
+
   useImperativeHandle(ref, () => ({
     focusSidebar: () => sidebarRef.current?.focus(),
     focusMain: () => mainRef.current?.focus(),
@@ -167,15 +182,17 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   }))
 
   return (
-    <div className={cn("flex h-screen w-screen flex-col", className)}>
+    <div
+      className={cn("flex h-screen w-screen flex-col", className)}
+      style={{ border: `2px solid ${borderColor}` }}
+    >
       {showHeader && (header || <Header />)}
       <div className="flex flex-1 overflow-hidden">
-        {sidebar && (
-          <div
+        {sidebar && sidebarOpen && (
+          <aside
             ref={sidebarRef}
             className={cn(
               "bg-background border-border relative flex h-full flex-col overflow-hidden border-r",
-              sidebarOpen ? "visible" : "hidden",
             )}
             style={{ width: sidebarWidth, borderColor }}
             tabIndex={-1}
@@ -185,8 +202,10 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
               className="bg-border absolute top-0 right-0 h-full w-1 cursor-col-resize hover:w-2"
               onMouseDown={() => setIsResizing(true)}
               aria-label="Resize sidebar"
+              role="separator"
+              aria-orientation="vertical"
             />
-          </div>
+          </aside>
         )}
 
         {leftPanel && leftPanelOpen && (
@@ -201,6 +220,8 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
               className="bg-border absolute top-0 right-0 h-full w-1 cursor-col-resize hover:w-2"
               onMouseDown={() => setIsResizingLeftPanel(true)}
               aria-label="Resize left panel"
+              role="separator"
+              aria-orientation="vertical"
             />
           </div>
         )}
@@ -210,19 +231,27 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           {statusBar && <div className="border-border border-t px-4 py-2">{statusBar}</div>}
         </div>
 
-        {rightPanel && rightPanelOpen && (
+        {rightPanel && (
           <div
             ref={rightPanelRef}
-            className="bg-background border-border relative flex h-full flex-col overflow-hidden border-l"
-            style={{ width: rightPanelWidth, borderColor }}
+            className={cn(
+              "bg-background border-border relative flex h-full flex-col overflow-hidden border-l",
+              rightPanelOpen ? "visible" : "hidden",
+            )}
+            style={{ width: rightPanelOpen ? rightPanelWidth : 0, borderColor }}
             tabIndex={-1}
+            data-testid="right-panel"
           >
-            <div
-              className="bg-border absolute top-0 left-0 h-full w-1 cursor-col-resize hover:w-2"
-              onMouseDown={() => setIsResizingRightPanel(true)}
-              aria-label="Resize right panel"
-            />
-            {rightPanel}
+            {rightPanelOpen && onRightPanelWidthChange && (
+              <div
+                className="bg-border absolute top-0 left-0 h-full w-1 cursor-col-resize hover:w-2"
+                onMouseDown={() => setIsResizingRightPanel(true)}
+                aria-label="Resize right panel"
+                role="separator"
+                aria-orientation="vertical"
+              />
+            )}
+            {rightPanelOpen && rightPanel}
           </div>
         )}
 

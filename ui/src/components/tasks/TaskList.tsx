@@ -13,7 +13,7 @@ import { loadStatusCollapsedState } from "@/lib/loadStatusCollapsedState"
 import { matchesSearchQuery } from "@/lib/matchesSearchQuery"
 import { saveParentCollapsedState } from "@/lib/saveParentCollapsedState"
 import { saveStatusCollapsedState } from "@/lib/saveStatusCollapsedState"
-import type { ClosedTasksTimeFilter, TaskCardTask, TaskGroup, TaskStatus } from "@/types"
+import type { TaskCardTask, TaskGroup, TaskStatus } from "@/types"
 
 /**
  * List component for displaying tasks grouped by status and parent.
@@ -350,7 +350,8 @@ export function TaskList({
                   })
                 : <div className="text-muted-foreground px-3 py-3 text-center text-xs italic">
                     No tasks in this group
-                  </div>}
+                  </div>
+                }
               </div>
             )}
           </div>

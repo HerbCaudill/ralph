@@ -1,7 +1,7 @@
 import type { Decorator } from "@storybook/react-vite"
 import { useEffect } from "react"
 import { useAppStore } from "../src/store"
-import type { RalphStatus } from "../src/store"
+import type { RalphStatus } from "../src/types"
 
 /** Connection status type for Storybook decorators */
 type ConnectionStatus = "connected" | "connecting" | "disconnected"

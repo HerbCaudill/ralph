@@ -23,8 +23,8 @@ export function ToolUseCard({ event, className, defaultExpanded = false }: ToolU
 
   const hasExpandableContent = Boolean(
     event.output ||
-      event.error ||
-      (event.tool === "Edit" && event.input?.old_string && event.input?.new_string),
+    event.error ||
+    (event.tool === "Edit" && event.input?.old_string && event.input?.new_string),
   )
 
   if (event.tool === "TodoWrite" && event.input?.todos && Array.isArray(event.input.todos)) {
@@ -114,9 +114,7 @@ export function ToolUseCard({ event, className, defaultExpanded = false }: ToolU
                       {!isExpanded && remainingLines > 0 && (
                         <>
                           {"\n"}
-                          <span className="text-muted-foreground">
-                            ... +{remainingLines} lines
-                          </span>
+                          <span className="text-muted-foreground">... +{remainingLines} lines</span>
                         </>
                       )}
                     </pre>

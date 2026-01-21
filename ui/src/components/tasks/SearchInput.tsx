@@ -58,7 +58,9 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
       }
       if (e.key === "ArrowUp") {
         e.preventDefault()
-        const currentIndex = selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : 0
+        if (visibleTaskIds.length === 0) return
+        const currentIndex =
+          selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : visibleTaskIds.length
         const prevIndex = Math.max(currentIndex - 1, 0)
         const prevId = visibleTaskIds[prevIndex]
         if (prevId) setSelectedTaskId(prevId)
@@ -66,8 +68,9 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
       if (e.key === "Escape") {
         if (query) {
           clearQuery()
-          clearSelectedTaskId()
-        } else {
+        }
+        clearSelectedTaskId()
+        if (!query) {
           onHide?.()
         }
       }
@@ -87,10 +90,8 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
   const handleClear = useCallback(() => {
     clearQuery()
     clearSelectedTaskId()
-    if (query === "") {
-      onHide?.()
-    }
-  }, [clearQuery, clearSelectedTaskId, query, onHide])
+    onHide?.()
+  }, [clearQuery, clearSelectedTaskId, onHide])
 
   return (
     <div className={cn("relative", className)}>
@@ -105,10 +106,11 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
+        aria-label="Search tasks"
         className={cn(
-          "border-border bg-background text-foreground h-9 w-full rounded-md border pl-9 pr-9 text-sm",
+          "border-border bg-background text-foreground h-9 w-full rounded-md border pr-9 pl-9 text-sm",
           "placeholder:text-muted-foreground",
-          "focus:ring-ring focus:outline-none focus:ring-2",
+          "focus:ring-ring focus:ring-2 focus:outline-none",
           "disabled:cursor-not-allowed disabled:opacity-50",
         )}
       />
@@ -126,7 +128,7 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
   )
 })
 
-type SearchInputProps = {
+export type SearchInputProps = {
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -134,7 +136,7 @@ type SearchInputProps = {
   onHide?: () => void
 }
 
-type SearchInputHandle = {
+export type SearchInputHandle = {
   focus: () => void
   clear: () => void
 }

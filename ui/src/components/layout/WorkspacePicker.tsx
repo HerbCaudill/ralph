@@ -8,6 +8,7 @@ import {
   selectBranch,
   selectIssuePrefix,
 } from "@/store"
+import type { WorkspaceInfo, WorkspaceListEntry } from "@/types"
 
 export function WorkspacePicker({
   className,
@@ -333,29 +334,6 @@ export function WorkspacePicker({
       )}
     </div>
   )
-}
-
-export type WorkspaceInfo = {
-  path: string
-  name: string
-  issueCount?: number
-  daemonConnected?: boolean
-  daemonStatus?: string
-  accentColor?: string | null
-  branch?: string | null
-  issuePrefix?: string | null
-}
-
-type WorkspaceListEntry = {
-  path: string
-  name: string
-  database: string
-  pid: number
-  version: string
-  startedAt: string
-  isActive: boolean
-  accentColor?: string | null
-  activeIssueCount?: number
 }
 
 export type WorkspacePickerProps = {

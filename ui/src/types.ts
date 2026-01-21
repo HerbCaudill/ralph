@@ -192,3 +192,26 @@ export interface Comment {
   text: string
   created_at: string
 }
+
+export interface WorkspaceInfo {
+  path: string
+  name: string
+  issueCount?: number
+  daemonConnected?: boolean
+  daemonStatus?: string
+  accentColor?: string | null
+  branch?: string | null
+  issuePrefix?: string | null
+}
+
+export interface WorkspaceListEntry {
+  path: string
+  name: string
+  database: string
+  pid: number
+  version: string
+  startedAt: string
+  isActive: boolean
+  accentColor?: string | null
+  activeIssueCount?: number
+}
