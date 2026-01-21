@@ -463,6 +463,49 @@ describe("EventStream", () => {
       // Should not show any task ID link
       expect(screen.queryByRole("button", { name: /View task/ })).not.toBeInTheDocument()
     })
+
+    it("looks up task title from store when ralph_task_started event has only taskId", () => {
+      // Add a task to the store with a known ID and title
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-xyz9",
+          title: "Fix the iteration toolbar",
+          status: "in_progress",
+        },
+      ])
+
+      // Add a ralph_task_started event with only taskId (no taskTitle)
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000500,
+        taskId: "rui-xyz9",
+      })
+
+      renderEventStream()
+
+      // Should show the task title looked up from the store
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("Fix the iteration toolbar")
+      expect(iterationBar).toHaveTextContent("rui-xyz9")
+    })
+
+    it("shows taskId as title when ralph_task_started has taskId but task not found in store", () => {
+      // Empty tasks store
+      useAppStore.getState().setTasks([])
+
+      // Add a ralph_task_started event with only taskId
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000500,
+        taskId: "rui-unknown",
+      })
+
+      renderEventStream()
+
+      // Should show the task ID as the title (fallback)
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-unknown")
+    })
   })
 
   describe("empty state", () => {

@@ -478,16 +478,21 @@ export function getEventsForIteration(
 /**
  * Extracts task information from iteration events.
  * Looks for ralph_task_started events to get the task being worked on.
+ * Returns task info if found, with title falling back to taskId if not provided.
  */
 export function getTaskFromIterationEvents(
   events: RalphEvent[],
-): { id: string; title: string } | null {
+): { id: string | null; title: string } | null {
   for (const event of events) {
     if (event.type === "ralph_task_started") {
-      const taskId = (event as any).taskId
-      const taskTitle = (event as any).taskTitle
-      if (taskId && taskTitle) {
-        return { id: taskId, title: taskTitle }
+      const taskId = (event as any).taskId as string | undefined
+      const taskTitle = (event as any).taskTitle as string | undefined
+      // Accept tasks with taskTitle or taskId (title can fall back to ID)
+      if (taskTitle) {
+        return { id: taskId ?? null, title: taskTitle }
+      }
+      if (taskId) {
+        return { id: taskId, title: taskId } // Use ID as fallback title
       }
     }
   }

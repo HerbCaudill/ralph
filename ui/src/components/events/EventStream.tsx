@@ -4,6 +4,7 @@ import {
   selectEvents,
   selectRalphStatus,
   selectViewingIterationIndex,
+  selectTasks,
   getEventsForIteration,
   countIterations,
   type RalphEvent,
@@ -408,6 +409,7 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
   const goToNextIteration = useAppStore(state => state.goToNextIteration)
   const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
   const ralphStatus = useAppStore(selectRalphStatus)
+  const tasks = useAppStore(selectTasks)
   const isRunning = ralphStatus === "running" || ralphStatus === "starting"
   const containerRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
@@ -426,16 +428,22 @@ export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
     // Extract task from iteration events
     for (const event of iterationEvents) {
       if (event.type === "ralph_task_started") {
-        const taskId = (event as any).taskId
-        const taskTitle = (event as any).taskTitle
-        // Accept tasks with at least a title (taskId is optional)
+        const taskId = (event as any).taskId as string | undefined
+        const taskTitle = (event as any).taskTitle as string | undefined
+        // Accept tasks with taskTitle, or look up title from store if we have taskId
         if (taskTitle) {
           return { id: taskId || null, title: taskTitle }
+        }
+        if (taskId) {
+          // Look up the task title from the store
+          const task = tasks.find(t => t.id === taskId)
+          const title = task?.title ?? taskId // Fall back to showing the ID if title not found
+          return { id: taskId, title }
         }
       }
     }
     return null
-  }, [iterationEvents])
+  }, [iterationEvents, tasks])
 
   // Use iteration-filtered events
   const events = iterationEvents
