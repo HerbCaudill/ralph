@@ -1,0 +1,285 @@
+import { EventEmitter } from "node:events"
+import { RalphManager, type RalphEvent, type RalphStatus } from "./RalphManager.js"
+import { BdProxy } from "./BdProxy.js"
+import {
+  TaskChatManager,
+  type TaskChatMessage,
+  type TaskChatStatus,
+  type TaskChatToolUse,
+} from "./TaskChatManager.js"
+
+/**
+ * Maximum number of events to store in history buffer.
+ */
+const MAX_EVENT_HISTORY = 1000
+
+/**
+ * Options for creating a WorkspaceContext.
+ */
+export interface WorkspaceContextOptions {
+  /** Workspace directory path (required) */
+  workspacePath: string
+  /** Run RalphManager in watch mode */
+  watch?: boolean
+  /** Additional environment variables */
+  env?: Record<string, string>
+}
+
+/**
+ * Encapsulates all state for a single workspace.
+ *
+ * Each workspace has its own:
+ * - RalphManager (process management)
+ * - BdProxy (issue database access)
+ * - TaskChatManager (chat with Claude)
+ * - Event history
+ * - Current task tracking
+ *
+ * WorkspaceContext emits events that can be forwarded to WebSocket clients:
+ * - "ralph:event" - Ralph event
+ * - "ralph:status" - Ralph status change
+ * - "ralph:output" - Non-JSON stdout line
+ * - "ralph:error" - Ralph error
+ * - "ralph:exit" - Ralph process exit
+ * - "task-chat:message" - Chat message
+ * - "task-chat:chunk" - Streaming chunk
+ * - "task-chat:status" - Chat status change
+ * - "task-chat:error" - Chat error
+ * - "task-chat:tool_use" - Tool use started
+ * - "task-chat:tool_update" - Tool use updated
+ * - "task-chat:tool_result" - Tool use completed
+ */
+export class WorkspaceContext extends EventEmitter {
+  /** Workspace directory path */
+  readonly workspacePath: string
+
+  /** RalphManager instance for this workspace */
+  private _ralphManager: RalphManager
+
+  /** BdProxy instance for this workspace */
+  private _bdProxy: BdProxy
+
+  /** TaskChatManager instance for this workspace */
+  private _taskChatManager: TaskChatManager
+
+  /** Event history buffer */
+  private _eventHistory: RalphEvent[] = []
+
+  /** Current task being worked on */
+  private _currentTaskId: string | undefined
+  private _currentTaskTitle: string | undefined
+
+  /** Whether this context has been disposed */
+  private _disposed = false
+
+  constructor(options: WorkspaceContextOptions) {
+    super()
+    this.workspacePath = options.workspacePath
+
+    // Create BdProxy
+    this._bdProxy = new BdProxy({ cwd: options.workspacePath })
+
+    // Create RalphManager and wire up events
+    this._ralphManager = new RalphManager({
+      cwd: options.workspacePath,
+      watch: options.watch,
+      env: options.env,
+    })
+    this.wireRalphManagerEvents()
+
+    // Create TaskChatManager and wire up events
+    this._taskChatManager = new TaskChatManager({
+      cwd: options.workspacePath,
+      env: options.env,
+      getBdProxy: () => this._bdProxy,
+    })
+    this.wireTaskChatManagerEvents()
+  }
+
+  /**
+   * Get the RalphManager for this workspace.
+   */
+  get ralphManager(): RalphManager {
+    this.assertNotDisposed()
+    return this._ralphManager
+  }
+
+  /**
+   * Get the BdProxy for this workspace.
+   */
+  get bdProxy(): BdProxy {
+    this.assertNotDisposed()
+    return this._bdProxy
+  }
+
+  /**
+   * Get the TaskChatManager for this workspace.
+   */
+  get taskChatManager(): TaskChatManager {
+    this.assertNotDisposed()
+    return this._taskChatManager
+  }
+
+  /**
+   * Get the event history for this workspace.
+   */
+  get eventHistory(): RalphEvent[] {
+    return [...this._eventHistory]
+  }
+
+  /**
+   * Get the current task being worked on.
+   */
+  get currentTask(): { taskId?: string; taskTitle?: string } {
+    return {
+      taskId: this._currentTaskId,
+      taskTitle: this._currentTaskTitle,
+    }
+  }
+
+  /**
+   * Whether this context has been disposed.
+   */
+  get disposed(): boolean {
+    return this._disposed
+  }
+
+  /**
+   * Clear the event history and current task tracking.
+   */
+  clearHistory(): void {
+    this.assertNotDisposed()
+    this._eventHistory = []
+    this._currentTaskId = undefined
+    this._currentTaskTitle = undefined
+  }
+
+  /**
+   * Dispose of this context and release all resources.
+   * Stops Ralph if running and removes all event listeners.
+   */
+  async dispose(): Promise<void> {
+    if (this._disposed) {
+      return
+    }
+
+    this._disposed = true
+
+    // Stop Ralph if running
+    if (this._ralphManager.isRunning || this._ralphManager.status === "paused") {
+      try {
+        await this._ralphManager.stop()
+      } catch {
+        // Ignore errors during cleanup
+      }
+    }
+
+    // Remove all listeners
+    this._ralphManager.removeAllListeners()
+    this._taskChatManager.removeAllListeners()
+
+    // Clear history
+    this._eventHistory = []
+    this._currentTaskId = undefined
+    this._currentTaskTitle = undefined
+  }
+
+  /**
+   * Wire up RalphManager events to be emitted from this context.
+   */
+  private wireRalphManagerEvents(): void {
+    this._ralphManager.on("event", (event: RalphEvent) => {
+      // Update current task tracking
+      this.updateCurrentTask(event)
+
+      // Add to history
+      this.addEventToHistory(event)
+
+      // Emit for broadcasting
+      this.emit("ralph:event", event)
+    })
+
+    this._ralphManager.on("status", (status: RalphStatus) => {
+      this.emit("ralph:status", status)
+    })
+
+    this._ralphManager.on("output", (line: string) => {
+      this.emit("ralph:output", line)
+    })
+
+    this._ralphManager.on("error", (error: Error) => {
+      this.emit("ralph:error", error)
+    })
+
+    this._ralphManager.on("exit", (info: { code: number | null; signal: string | null }) => {
+      this.emit("ralph:exit", info)
+    })
+  }
+
+  /**
+   * Wire up TaskChatManager events to be emitted from this context.
+   */
+  private wireTaskChatManagerEvents(): void {
+    this._taskChatManager.on("message", (message: TaskChatMessage) => {
+      this.emit("task-chat:message", message)
+    })
+
+    this._taskChatManager.on("chunk", (text: string) => {
+      this.emit("task-chat:chunk", text)
+    })
+
+    this._taskChatManager.on("status", (status: TaskChatStatus) => {
+      this.emit("task-chat:status", status)
+    })
+
+    this._taskChatManager.on("error", (error: Error) => {
+      this.emit("task-chat:error", error)
+    })
+
+    this._taskChatManager.on("tool_use", (toolUse: TaskChatToolUse) => {
+      this.emit("task-chat:tool_use", toolUse)
+    })
+
+    this._taskChatManager.on("tool_update", (toolUse: TaskChatToolUse) => {
+      this.emit("task-chat:tool_update", toolUse)
+    })
+
+    this._taskChatManager.on("tool_result", (toolUse: TaskChatToolUse) => {
+      this.emit("task-chat:tool_result", toolUse)
+    })
+  }
+
+  /**
+   * Add an event to the history buffer.
+   */
+  private addEventToHistory(event: RalphEvent): void {
+    this._eventHistory.push(event)
+    // Trim to max size
+    if (this._eventHistory.length > MAX_EVENT_HISTORY) {
+      this._eventHistory = this._eventHistory.slice(-MAX_EVENT_HISTORY)
+    }
+  }
+
+  /**
+   * Update the current task based on task lifecycle events.
+   */
+  private updateCurrentTask(event: RalphEvent): void {
+    if (event.type === "ralph_task_started") {
+      this._currentTaskId = event.taskId as string | undefined
+      this._currentTaskTitle = event.taskTitle as string | undefined
+    } else if (event.type === "ralph_task_completed") {
+      // Clear current task when completed
+      this._currentTaskId = undefined
+      this._currentTaskTitle = undefined
+    }
+  }
+
+  /**
+   * Assert that this context has not been disposed.
+   */
+  private assertNotDisposed(): void {
+    if (this._disposed) {
+      throw new Error("WorkspaceContext has been disposed")
+    }
+  }
+}
