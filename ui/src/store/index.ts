@@ -231,6 +231,16 @@ export interface TaskChatMessage {
   timestamp: number
 }
 
+// Task chat tool use for displaying tool invocations in the chat
+export interface TaskChatToolUse {
+  toolUseId: string
+  tool: string
+  input: Record<string, unknown>
+  output?: string
+  error?: string
+  status: "pending" | "running" | "success" | "error"
+}
+
 // Store State
 
 export interface AppState {
@@ -290,6 +300,7 @@ export interface AppState {
   taskChatOpen: boolean
   taskChatWidth: number
   taskChatMessages: TaskChatMessage[]
+  taskChatToolUses: TaskChatToolUse[]
   taskChatLoading: boolean
   taskChatStreamingText: string
 
@@ -386,6 +397,9 @@ export interface AppActions {
   setTaskChatLoading: (loading: boolean) => void
   setTaskChatStreamingText: (text: string) => void
   appendTaskChatStreamingText: (text: string) => void
+  addTaskChatToolUse: (toolUse: TaskChatToolUse) => void
+  updateTaskChatToolUse: (toolUseId: string, updates: Partial<TaskChatToolUse>) => void
+  clearTaskChatToolUses: () => void
 
   // Iteration view
   setViewingIterationIndex: (index: number | null) => void
@@ -528,6 +542,7 @@ const initialState: AppState = {
   taskChatOpen: true,
   taskChatWidth: defaultTaskChatWidth,
   taskChatMessages: [],
+  taskChatToolUses: [],
   taskChatLoading: false,
   taskChatStreamingText: "",
   viewingIterationIndex: null,
@@ -621,8 +636,9 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       // Reset run state
       runStartedAt: null,
       initialTaskCount: null,
-      // Clear task chat messages
+      // Clear task chat messages and tool uses
       taskChatMessages: [],
+      taskChatToolUses: [],
       taskChatLoading: false,
       taskChatStreamingText: "",
       // Clear event log viewer state
@@ -711,11 +727,22 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     set(state => ({
       taskChatMessages: state.taskChatMessages.filter(m => m.id !== id),
     })),
-  clearTaskChatMessages: () => set({ taskChatMessages: [] }),
+  clearTaskChatMessages: () => set({ taskChatMessages: [], taskChatToolUses: [] }),
   setTaskChatLoading: loading => set({ taskChatLoading: loading }),
   setTaskChatStreamingText: text => set({ taskChatStreamingText: text }),
   appendTaskChatStreamingText: text =>
     set(state => ({ taskChatStreamingText: state.taskChatStreamingText + text })),
+  addTaskChatToolUse: toolUse =>
+    set(state => ({
+      taskChatToolUses: [...state.taskChatToolUses, toolUse],
+    })),
+  updateTaskChatToolUse: (toolUseId, updates) =>
+    set(state => ({
+      taskChatToolUses: state.taskChatToolUses.map(t =>
+        t.toolUseId === toolUseId ? { ...t, ...updates } : t,
+      ),
+    })),
+  clearTaskChatToolUses: () => set({ taskChatToolUses: [] }),
 
   // Iteration view
   setViewingIterationIndex: index => set({ viewingIterationIndex: index }),
@@ -817,6 +844,7 @@ export const selectEventLogError = (state: AppState) => state.eventLogError
 export const selectTaskChatOpen = (state: AppState) => state.taskChatOpen
 export const selectTaskChatWidth = (state: AppState) => state.taskChatWidth
 export const selectTaskChatMessages = (state: AppState) => state.taskChatMessages
+export const selectTaskChatToolUses = (state: AppState) => state.taskChatToolUses
 export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
 export const selectTaskChatStreamingText = (state: AppState) => state.taskChatStreamingText
 export const selectViewingIterationIndex = (state: AppState) => state.viewingIterationIndex

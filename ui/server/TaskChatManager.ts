@@ -47,6 +47,15 @@ export interface TaskChatEvent {
   [key: string]: unknown
 }
 
+export interface TaskChatToolUse {
+  toolUseId: string
+  tool: string
+  input: Record<string, unknown>
+  output?: string
+  error?: string
+  status: "pending" | "running" | "success" | "error"
+}
+
 /** Function to get the BdProxy instance (avoids circular dependency) */
 export type GetBdProxyFn = () => BdProxy
 
@@ -77,6 +86,8 @@ export interface TaskChatManagerOptions {
  * - "chunk" - Streaming text chunk from Claude
  * - "status" - Status changed
  * - "error" - Error from SDK
+ * - "tool_use" - Tool use started
+ * - "tool_result" - Tool use completed
  */
 export class TaskChatManager extends EventEmitter {
   private _status: TaskChatStatus = "idle"
@@ -85,6 +96,8 @@ export class TaskChatManager extends EventEmitter {
   private cancelled = false
   private abortController: AbortController | null = null
   private getBdProxy: GetBdProxyFn | undefined
+  /** Track pending tool uses to match results */
+  private pendingToolUses: Map<string, { tool: string; input: Record<string, unknown> }> = new Map()
   private options: {
     cwd: string
     env: Record<string, string>
@@ -363,22 +376,11 @@ export class TaskChatManager extends EventEmitter {
    * Handle SDK message from query() and emit appropriate events.
    */
   private handleSDKMessage(message: SDKMessage): void {
+    const timestamp = Date.now()
+
     switch (message.type) {
       case "stream_event":
-        // Handle streaming chunks
-        if (message.event.type === "content_block_delta") {
-          const delta = message.event.delta
-          if (delta.type === "text_delta" && delta.text) {
-            this.currentResponse += delta.text
-            this.emit("chunk", delta.text)
-          }
-        }
-        // Emit the event as a task chat event for compatibility
-        this.emit("event", {
-          type: message.event.type,
-          timestamp: Date.now(),
-          ...message.event,
-        })
+        this.handleStreamEvent(message.event, timestamp)
         break
 
       case "assistant":
@@ -388,13 +390,58 @@ export class TaskChatManager extends EventEmitter {
             if (block.type === "text" && block.text) {
               this.currentResponse = block.text
               this.emit("chunk", block.text)
+            } else if (block.type === "tool_use" && block.id && block.name) {
+              // Tool use from complete assistant message
+              const input = (block.input as Record<string, unknown>) ?? {}
+              this.pendingToolUses.set(block.id, { tool: block.name, input })
+              this.emit("tool_use", {
+                toolUseId: block.id,
+                tool: block.name,
+                input,
+                status: "running",
+              } satisfies TaskChatToolUse)
             }
           }
         }
         // Emit as task chat event
         this.emit("event", {
           type: "assistant",
-          timestamp: Date.now(),
+          timestamp,
+          message: message.message,
+        })
+        break
+
+      case "user":
+        // User message (typically tool results)
+        if (message.message?.content && Array.isArray(message.message.content)) {
+          for (const block of message.message.content) {
+            if (block.type === "tool_result" && block.tool_use_id) {
+              const toolUseId = block.tool_use_id as string
+              const pending = this.pendingToolUses.get(toolUseId)
+              const isError = block.is_error === true
+              const content =
+                typeof block.content === "string" ? block.content
+                : Array.isArray(block.content) ?
+                  block.content.map((c: { text?: string }) => c.text || "").join("")
+                : ""
+
+              this.emit("tool_result", {
+                toolUseId,
+                tool: pending?.tool ?? "unknown",
+                input: pending?.input ?? {},
+                output: isError ? undefined : content,
+                error: isError ? content : undefined,
+                status: isError ? "error" : "success",
+              } satisfies TaskChatToolUse)
+
+              this.pendingToolUses.delete(toolUseId)
+            }
+          }
+        }
+        // Emit as task chat event
+        this.emit("event", {
+          type: "user",
+          timestamp,
           message: message.message,
         })
         break
@@ -404,11 +451,13 @@ export class TaskChatManager extends EventEmitter {
         if (message.subtype === "success" && message.result) {
           this.currentResponse = message.result
         }
+        // Clear pending tool uses on completion
+        this.pendingToolUses.clear()
         // Note: error results are handled in sendMessage() to properly reject the promise
         // Emit as task chat event
         this.emit("event", {
           type: "result",
-          timestamp: Date.now(),
+          timestamp,
           result: message.subtype === "success" ? message.result : undefined,
           error: message.subtype !== "success" ? message.subtype : undefined,
         })
@@ -418,10 +467,64 @@ export class TaskChatManager extends EventEmitter {
         // Emit other message types as events
         this.emit("event", {
           ...message,
-          timestamp: Date.now(),
+          timestamp,
         })
         break
     }
+  }
+
+  /**
+   * Handle stream_event messages from the SDK.
+   */
+  private handleStreamEvent(
+    event: { type: string; delta?: unknown; content_block?: unknown; [key: string]: unknown },
+    timestamp: number,
+  ): void {
+    switch (event.type) {
+      case "content_block_start": {
+        // Start of a new content block
+        const contentBlock = event.content_block as {
+          type?: string
+          id?: string
+          name?: string
+        }
+        if (contentBlock?.type === "tool_use" && contentBlock.id && contentBlock.name) {
+          this.pendingToolUses.set(contentBlock.id, { tool: contentBlock.name, input: {} })
+          this.emit("tool_use", {
+            toolUseId: contentBlock.id,
+            tool: contentBlock.name,
+            input: {},
+            status: "pending",
+          } satisfies TaskChatToolUse)
+        }
+        break
+      }
+
+      case "content_block_delta": {
+        // Handle streaming chunks
+        const delta = event.delta as {
+          type?: string
+          text?: string
+          partial_json?: string
+        }
+        if (delta?.type === "text_delta" && delta.text) {
+          this.currentResponse += delta.text
+          this.emit("chunk", delta.text)
+        }
+        // Tool input being streamed - we'll get the full input later
+        break
+      }
+
+      case "content_block_stop":
+        // Content block finished
+        break
+    }
+
+    // Emit the event as a task chat event for compatibility
+    this.emit("event", {
+      ...event,
+      timestamp,
+    })
   }
 
   /**

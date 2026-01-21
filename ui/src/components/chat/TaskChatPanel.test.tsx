@@ -11,6 +11,7 @@ describe("TaskChatPanel", () => {
   beforeEach(() => {
     // Reset the store before each test
     useAppStore.getState().clearTaskChatMessages()
+    useAppStore.getState().clearTaskChatToolUses()
     useAppStore.getState().setTaskChatLoading(false)
     useAppStore.getState().setConnectionStatus("connected")
     mockFetch.mockReset()
@@ -457,6 +458,128 @@ describe("TaskChatPanel", () => {
       expect(timeoutCalls.length).toBeGreaterThanOrEqual(2)
 
       setTimeoutSpy.mockRestore()
+    })
+  })
+
+  describe("tool use display", () => {
+    it("renders tool uses in the chat", () => {
+      // Add a tool use to the store
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Bash",
+        input: { command: "bd list" },
+        status: "running",
+      })
+
+      render(<TaskChatPanel />)
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+    })
+
+    it("shows tool output when tool completes", () => {
+      // Add a completed tool use
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Read",
+        input: { file_path: "/test/file.ts" },
+        output: "file contents here",
+        status: "success",
+      })
+
+      render(<TaskChatPanel />)
+      expect(screen.getByText("Read")).toBeInTheDocument()
+    })
+
+    it("shows tool error status", () => {
+      // Add a failed tool use
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Bash",
+        input: { command: "invalid" },
+        error: "Command failed",
+        status: "error",
+      })
+
+      render(<TaskChatPanel />)
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+    })
+
+    it("clears tool uses when sending a new message", async () => {
+      // Add a tool use to the store
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Bash",
+        input: { command: "bd list" },
+        status: "success",
+      })
+
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: true, status: "processing" }),
+      })
+
+      render(<TaskChatPanel />)
+      // Tool use should be visible initially
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+
+      const input = screen.getByRole("textbox")
+
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "Next message" } })
+        fireEvent.submit(input.closest("form")!)
+      })
+
+      // Tool use should be cleared when new message is sent
+      expect(screen.queryByText("Bash")).not.toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled()
+      })
+    })
+
+    it("keeps tool uses visible after assistant message completes", () => {
+      // Add messages first
+      useAppStore.getState().addTaskChatMessage({
+        id: "user-1",
+        role: "user",
+        content: "Check my tasks",
+        timestamp: Date.now(),
+      })
+
+      // Add a tool use (as would happen during assistant response)
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Bash",
+        input: { command: "bd list" },
+        status: "success",
+      })
+
+      // Add assistant message (as would happen after tools complete)
+      useAppStore.getState().addTaskChatMessage({
+        id: "assistant-1",
+        role: "assistant",
+        content: "Here are your tasks...",
+        timestamp: Date.now(),
+      })
+
+      render(<TaskChatPanel />)
+
+      // Both messages should be visible
+      expect(screen.getByText("Check my tasks")).toBeInTheDocument()
+      expect(screen.getByText("Here are your tasks...")).toBeInTheDocument()
+
+      // Tool use should still be visible
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+    })
+
+    it("hides empty state when tool uses are present", () => {
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Grep",
+        input: { pattern: "test" },
+        status: "running",
+      })
+
+      render(<TaskChatPanel />)
+      expect(screen.queryByText("Ask questions about your tasks")).not.toBeInTheDocument()
     })
   })
 })

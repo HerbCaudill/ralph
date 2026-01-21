@@ -2,15 +2,18 @@ import { cn } from "@/lib/utils"
 import {
   useAppStore,
   selectTaskChatMessages,
+  selectTaskChatToolUses,
   selectTaskChatLoading,
   selectIsConnected,
   selectTaskChatStreamingText,
   type TaskChatMessage,
+  type TaskChatToolUse,
 } from "@/store"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { IconChevronDown, IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
 import { MarkdownContent } from "@/components/ui/MarkdownContent"
+import { ToolUseCard, type ToolUseEvent, type ToolName } from "@/components/events/ToolUseCard"
 
 // Types
 
@@ -77,6 +80,19 @@ function AssistantMessageBubble({ message, className }: AssistantMessageProps) {
   )
 }
 
+// Helper to convert TaskChatToolUse to ToolUseEvent for rendering
+function toToolUseEvent(toolUse: TaskChatToolUse): ToolUseEvent {
+  return {
+    type: "tool_use",
+    timestamp: Date.now(),
+    tool: toolUse.tool as ToolName,
+    input: toolUse.input,
+    output: toolUse.output,
+    error: toolUse.error,
+    status: toolUse.status,
+  }
+}
+
 // TaskChatPanel Component
 
 /**
@@ -85,11 +101,13 @@ function AssistantMessageBubble({ message, className }: AssistantMessageProps) {
  */
 export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const messages = useAppStore(selectTaskChatMessages)
+  const toolUses = useAppStore(selectTaskChatToolUses)
   const isLoading = useAppStore(selectTaskChatLoading)
   const isConnected = useAppStore(selectIsConnected)
   const addMessage = useAppStore(state => state.addTaskChatMessage)
   const setLoading = useAppStore(state => state.setTaskChatLoading)
   const clearMessages = useAppStore(state => state.clearTaskChatMessages)
+  const clearToolUses = useAppStore(state => state.clearTaskChatToolUses)
 
   const chatInputRef = useRef<ChatInputHandle>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -128,12 +146,12 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     }
   }, [checkIsAtBottom])
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages or tool uses arrive
   useEffect(() => {
     if (autoScroll && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
-  }, [messages, streamingText, autoScroll])
+  }, [messages, streamingText, toolUses, autoScroll])
 
   // Scroll to bottom button handler
   const scrollToBottom = useCallback(() => {
@@ -193,6 +211,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       addMessage(userMessage)
       setLoading(true)
       setStreamingText("")
+      clearToolUses() // Clear tool uses from previous turn
 
       // Clear any existing timeout
       if (loadingTimeoutRef.current) {
@@ -265,7 +284,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       // Loading state is cleared via WebSocket event (task-chat:status or task-chat:message)
       // Input will be focused via useEffect when loading completes
     },
-    [addMessage, setLoading, setStreamingText],
+    [addMessage, setLoading, setStreamingText, clearToolUses],
   )
 
   // Handle clearing chat history
@@ -319,7 +338,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
           aria-label="Task chat messages"
           aria-live="polite"
         >
-          {messages.length === 0 && !streamingText ?
+          {messages.length === 0 && !streamingText && toolUses.length === 0 ?
             <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
               <IconMessageChatbot className="size-8 opacity-50" />
               <p>Ask questions about your tasks</p>
@@ -333,6 +352,18 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
                   <UserMessageBubble key={message.id} message={message} />
                 : <AssistantMessageBubble key={message.id} message={message} />,
               )}
+              {/* Tool uses - shown during and after processing, cleared on next user message */}
+              {toolUses.length > 0 && (
+                <div className="py-1">
+                  {toolUses.map(toolUse => (
+                    <ToolUseCard
+                      key={toolUse.toolUseId}
+                      event={toToolUseEvent(toolUse)}
+                      className="text-sm"
+                    />
+                  ))}
+                </div>
+              )}
               {/* Streaming response */}
               {streamingText && (
                 <AssistantMessageBubble
@@ -345,7 +376,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
                 />
               )}
               {/* Loading indicator */}
-              {isLoading && !streamingText && (
+              {isLoading && !streamingText && toolUses.length === 0 && (
                 <div className="flex items-center gap-2 px-4 py-2">
                   <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
                   <span className="text-muted-foreground text-xs">Thinking...</span>

@@ -9,7 +9,12 @@ import { RalphManager, type RalphEvent, type RalphStatus } from "./RalphManager.
 import { BdProxy, type BdCreateOptions } from "./BdProxy.js"
 import { getAliveWorkspaces } from "./registry.js"
 import { getEventLogStore, type EventLogMetadata } from "./EventLogStore.js"
-import { TaskChatManager, type TaskChatMessage, type TaskChatStatus } from "./TaskChatManager.js"
+import {
+  TaskChatManager,
+  type TaskChatMessage,
+  type TaskChatStatus,
+  type TaskChatToolUse,
+} from "./TaskChatManager.js"
 import { getThemeDiscovery } from "./ThemeDiscovery.js"
 import { parseThemeObject } from "./lib/theme/parser.js"
 import { mapThemeToCSSVariables, createAppTheme } from "./lib/theme/mapper.js"
@@ -1231,6 +1236,24 @@ function createTaskChatManager(options?: { cwd?: string }): TaskChatManager {
     broadcast({
       type: "task-chat:error",
       error: error.message,
+      timestamp: Date.now(),
+    })
+  })
+
+  // Broadcast tool use events
+  manager.on("tool_use", (toolUse: TaskChatToolUse) => {
+    broadcast({
+      type: "task-chat:tool_use",
+      toolUse,
+      timestamp: Date.now(),
+    })
+  })
+
+  // Broadcast tool result events
+  manager.on("tool_result", (toolUse: TaskChatToolUse) => {
+    broadcast({
+      type: "task-chat:tool_result",
+      toolUse,
       timestamp: Date.now(),
     })
   })
