@@ -166,6 +166,9 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
             throw new Error(data.error || "Failed to create task")
           }
 
+          // Clear localStorage synchronously before any async work that could trigger
+          // remounts - the useEffect that normally clears it may not run in time
+          localStorage.removeItem(STORAGE_KEY)
           setTitle("")
           shouldRefocusRef.current = true
           await onTaskCreated?.(data.issue)

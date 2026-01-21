@@ -566,5 +566,32 @@ describe("QuickTaskInput", () => {
       // Value should still be in localStorage
       expect(localStorage.getItem(STORAGE_KEY)).toBe("Task that fails")
     })
+
+    it("clears localStorage synchronously before onTaskCreated callback", async () => {
+      mockSuccessResponse({ id: "rui-sync", title: "Task", status: "open", priority: 2 })
+
+      // Track when localStorage is cleared relative to callback
+      let localStorageValueDuringCallback: string | null = "not-called"
+      const onTaskCreated = vi.fn(() => {
+        // Capture localStorage state when callback is invoked
+        localStorageValueDuringCallback = localStorage.getItem(STORAGE_KEY)
+      })
+
+      render(<QuickTaskInput onTaskCreated={onTaskCreated} />)
+
+      const input = screen.getByRole("textbox")
+      typeInInput(input, "Test synchronous clear")
+      expect(localStorage.getItem(STORAGE_KEY)).toBe("Test synchronous clear")
+
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      await waitFor(() => {
+        expect(onTaskCreated).toHaveBeenCalled()
+      })
+
+      // localStorage should have been cleared BEFORE the callback was invoked
+      // This prevents race conditions where component remounts read stale localStorage
+      expect(localStorageValueDuringCallback).toBeNull()
+    })
   })
 })
