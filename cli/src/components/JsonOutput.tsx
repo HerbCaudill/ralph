@@ -205,7 +205,7 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
                   const taskInfo = parseTaskLifecycleEvent(block.text)
                   if (taskInfo) {
                     if (taskInfo.action === "starting") {
-                      currentTaskIdRef.current = taskInfo.taskId
+                      currentTaskIdRef.current = taskInfo.taskId ?? null
                       currentTaskTitleRef.current = taskInfo.taskTitle ?? null
                       log(
                         `Task started: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,

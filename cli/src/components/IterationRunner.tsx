@@ -552,7 +552,7 @@ export const IterationRunner = ({
                   const taskInfo = parseTaskLifecycleEvent(block.text)
                   if (taskInfo) {
                     if (taskInfo.action === "starting") {
-                      setCurrentTaskId(taskInfo.taskId)
+                      setCurrentTaskId(taskInfo.taskId ?? null)
                       setCurrentTaskTitle(taskInfo.taskTitle ?? null)
                       log(
                         `Task started: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,

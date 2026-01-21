@@ -17,9 +17,7 @@ export interface TaskLifecycleInfo {
  */
 export function parseTaskLifecycleEvent(text: string): TaskLifecycleInfo | null {
   // Match starting pattern: <start_task>task-id</start_task>
-  const startingMatch = text.match(
-    /<start_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/start_task>/i,
-  )
+  const startingMatch = text.match(/<start_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/start_task>/i)
   if (startingMatch) {
     return {
       action: "starting",
@@ -28,9 +26,7 @@ export function parseTaskLifecycleEvent(text: string): TaskLifecycleInfo | null 
   }
 
   // Match completed pattern: <end_task>task-id</end_task>
-  const completedMatch = text.match(
-    /<end_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/end_task>/i,
-  )
+  const completedMatch = text.match(/<end_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/end_task>/i)
   if (completedMatch) {
     return {
       action: "completed",
