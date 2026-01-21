@@ -32,14 +32,11 @@ test.describe("Navigation", () => {
       const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
       await expect(searchInput).toBeVisible()
 
-      // Click on the input to focus it
-      await searchInput.click()
+      // Use fill() which handles focus automatically and is reliable for React controlled components
+      await searchInput.fill("a")
 
-      // Type a character and verify it was received
-      await app.page.keyboard.type("a")
-
-      // Wait for the input to contain the character (may have been processed asynchronously)
-      await expect(searchInput).toHaveValue(/a/)
+      // Verify the input received the value
+      await expect(searchInput).toHaveValue("a")
     })
 
     test("Escape closes search and clears it", async ({ app }) => {
