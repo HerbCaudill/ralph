@@ -1,0 +1,38 @@
+#!/bin/bash
+# Auto-close parent epics when all children are closed
+#
+# This hook runs after an issue is closed and checks if the closed issue's
+# parent epic has all children closed. If so, it automatically closes the parent.
+
+set -e
+
+ISSUE_ID="$1"
+
+if [ -z "$ISSUE_ID" ]; then
+  exit 0
+fi
+
+# Get the parent of the closed issue
+PARENT_ID=$(bd show "$ISSUE_ID" --json 2>/dev/null | jq -r '.[0].parent // empty')
+
+if [ -z "$PARENT_ID" ]; then
+  # No parent, nothing to do
+  exit 0
+fi
+
+# Check if parent is already closed
+PARENT_STATUS=$(bd show "$PARENT_ID" --json 2>/dev/null | jq -r '.[0].status // empty')
+
+if [ "$PARENT_STATUS" = "closed" ]; then
+  # Parent already closed, nothing to do
+  exit 0
+fi
+
+# Get all children of the parent and check their statuses
+OPEN_CHILDREN=$(bd list --json --parent="$PARENT_ID" 2>/dev/null | jq '[.[] | select(.status != "closed")] | length')
+
+if [ "$OPEN_CHILDREN" = "0" ]; then
+  # All children are closed, close the parent
+  bd close "$PARENT_ID" --reason="All child issues closed" 2>/dev/null
+  echo "Auto-closed parent epic $PARENT_ID (all children complete)"
+fi

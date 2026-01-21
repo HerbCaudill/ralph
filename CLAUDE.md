@@ -12,6 +12,18 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
+## Custom Beads Hooks
+
+This project has custom hooks in `.beads/hooks/`:
+
+- **on_close** - Auto-closes parent epics when all children are closed
+
+Note: Beads internal hooks (`on_close`, `on_create`, `on_update`) aren't automatically
+called yet in beads v0.47.x. Until that feature is implemented, you can manually run
+the hook after closing: `.beads/hooks/on_close <issue-id>`
+
+Or use the wrapper: `.beads/hooks/bd-close <issue-id> [--reason="..."]`
+
 ## User Input During Runtime
 
 Ralph supports sending user messages to Claude while it's working:

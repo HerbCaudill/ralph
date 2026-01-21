@@ -1,0 +1,24 @@
+#!/bin/bash
+# Wrapper for 'bd close' that runs on_close hook afterward
+# Usage: .beads/hooks/bd-close <issue-id> [--reason="..."]
+#
+# This wrapper exists because beads internal hooks (on_close, on_create, etc.)
+# aren't wired up yet. Once beads implements them, this wrapper won't be needed.
+
+set -e
+
+# Pass all arguments to bd close
+bd close "$@"
+
+# Extract the issue ID (first argument that doesn't start with -)
+for arg in "$@"; do
+  if [[ ! "$arg" =~ ^- ]]; then
+    ISSUE_ID="$arg"
+    # Run the on_close hook
+    SCRIPT_DIR="$(dirname "$0")"
+    if [ -x "$SCRIPT_DIR/on_close" ]; then
+      "$SCRIPT_DIR/on_close" "$ISSUE_ID"
+    fi
+    break
+  fi
+done
