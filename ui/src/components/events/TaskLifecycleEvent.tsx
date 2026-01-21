@@ -22,6 +22,8 @@ export interface TaskLifecycleEventProps {
  * Patterns recognized:
  * - "<start_task>task-id</start_task>"
  * - "<end_task>task-id</end_task>"
+ * - "✨ Starting **task-id** or **task-id title**"
+ * - "✅ Completed **task-id** or **task-id title**"
  */
 export function parseTaskLifecycleEvent(
   text: string,
@@ -46,6 +48,35 @@ export function parseTaskLifecycleEvent(
       timestamp,
       action: "completed",
       taskId: completedMatch[1],
+    }
+  }
+
+  // Match emoji starting pattern: ✨ Starting **task-id** or ✨ Starting **task-id title**
+  // Task ID format: prefix-suffix (e.g., r-abc1, rui-4rt5)
+  const emojiStartMatch = text.match(
+    /✨\s*Starting\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)(?:\s+([^*]+))?\*\*/i,
+  )
+  if (emojiStartMatch) {
+    return {
+      type: "task_lifecycle",
+      timestamp,
+      action: "starting",
+      taskId: emojiStartMatch[1],
+      taskTitle: emojiStartMatch[2]?.trim(),
+    }
+  }
+
+  // Match emoji completed pattern: ✅ Completed **task-id** or ✅ Completed **task-id title**
+  const emojiCompletedMatch = text.match(
+    /✅\s*Completed\s+\*\*([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)(?:\s+([^*]+))?\*\*/i,
+  )
+  if (emojiCompletedMatch) {
+    return {
+      type: "task_lifecycle",
+      timestamp,
+      action: "completed",
+      taskId: emojiCompletedMatch[1],
+      taskTitle: emojiCompletedMatch[2]?.trim(),
     }
   }
 

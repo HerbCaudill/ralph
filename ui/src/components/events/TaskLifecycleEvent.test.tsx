@@ -150,9 +150,59 @@ describe("parseTaskLifecycleEvent", () => {
       expect(parseTaskLifecycleEvent("<start_task>invalidid</start_task>", 1234567890)).toBeNull()
     })
 
-    it("returns null for old emoji format", () => {
-      expect(parseTaskLifecycleEvent("✨ Starting **r-abc1**", 1234567890)).toBeNull()
-      expect(parseTaskLifecycleEvent("✅ Completed **r-abc1**", 1234567890)).toBeNull()
+    it("parses emoji starting format", () => {
+      const result = parseTaskLifecycleEvent("✨ Starting **r-abc1**", 1234567890)
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "starting",
+        taskId: "r-abc1",
+        taskTitle: undefined,
+      })
+    })
+
+    it("parses emoji completed format", () => {
+      const result = parseTaskLifecycleEvent("✅ Completed **r-abc1**", 1234567890)
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "completed",
+        taskId: "r-abc1",
+        taskTitle: undefined,
+      })
+    })
+
+    it("parses emoji format with task title", () => {
+      const result = parseTaskLifecycleEvent("✨ Starting **r-abc1 Fix the bug**", 1234567890)
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "starting",
+        taskId: "r-abc1",
+        taskTitle: "Fix the bug",
+      })
+    })
+
+    it("parses emoji completed format with task title", () => {
+      const result = parseTaskLifecycleEvent("✅ Completed **r-xyz9 Add new feature**", 1234567890)
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "completed",
+        taskId: "r-xyz9",
+        taskTitle: "Add new feature",
+      })
+    })
+
+    it("parses emoji format with sub-task ID", () => {
+      const result = parseTaskLifecycleEvent("✨ Starting **r-abc1.2**", 1234567890)
+      expect(result).toEqual({
+        type: "task_lifecycle",
+        timestamp: 1234567890,
+        action: "starting",
+        taskId: "r-abc1.2",
+        taskTitle: undefined,
+      })
     })
   })
 })
