@@ -137,24 +137,28 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     >
       {/* Main row */}
       <div className="flex w-full items-center gap-2 px-2 py-1.5">
-        {/* Chevron for epics with subtasks */}
-        {showChevron && (
-          <button
-            type="button"
-            onClick={handleChevronClick}
-            onKeyDown={handleChevronKeyDown}
-            className={cn("hover:bg-muted shrink-0 cursor-pointer rounded p-0.5 transition-colors")}
-            aria-label={isCollapsed ? "Expand subtasks" : "Collapse subtasks"}
-            aria-expanded={!isCollapsed}
-          >
-            <IconChevronDown
+        {/* Chevron column - always present for consistent alignment */}
+        <div className="flex w-4 shrink-0 items-center justify-center">
+          {showChevron && (
+            <button
+              type="button"
+              onClick={handleChevronClick}
+              onKeyDown={handleChevronKeyDown}
               className={cn(
-                "text-muted-foreground size-3.5 transition-transform",
-                isCollapsed && "-rotate-90",
+                "hover:bg-muted shrink-0 cursor-pointer rounded p-0.5 transition-colors",
               )}
-            />
-          </button>
-        )}
+              aria-label={isCollapsed ? "Expand subtasks" : "Collapse subtasks"}
+              aria-expanded={!isCollapsed}
+            >
+              <IconChevronDown
+                className={cn(
+                  "text-muted-foreground size-3.5 transition-transform",
+                  isCollapsed && "-rotate-90",
+                )}
+              />
+            </button>
+          )}
+        </div>
 
         {/* Status indicator button */}
         <button

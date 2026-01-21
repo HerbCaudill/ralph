@@ -329,7 +329,7 @@ export function TaskList({
                                   onStatusChange={onStatusChange}
                                   onClick={onTaskClick}
                                   isNew={newTaskIds.has(task.id)}
-                                  className="pl-5"
+                                  className="pl-6"
                                 />
                               ))}
                             </div>
