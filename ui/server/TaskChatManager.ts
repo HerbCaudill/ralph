@@ -1,7 +1,35 @@
 import { EventEmitter } from "node:events"
+import { existsSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import { loadSystemPrompt } from "./systemPrompt.js"
 import type { BdProxy } from "./BdProxy.js"
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
+
+/**
+ * Try to find the Claude Code executable in common locations.
+ * Returns the path if found, undefined otherwise.
+ */
+function findClaudeExecutable(): string | undefined {
+  const home = homedir()
+
+  // Common installation paths for Claude Code
+  const candidates = [
+    join(home, ".local", "bin", "claude"), // Linux/macOS npm global
+    join(home, ".claude", "local", "claude"), // Native installer location
+    "/usr/local/bin/claude", // System-wide installation
+    "/opt/homebrew/bin/claude", // Homebrew on Apple Silicon
+    "/usr/bin/claude", // Linux system
+  ]
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  return undefined
+}
 
 // Types
 
@@ -33,6 +61,8 @@ export interface TaskChatManagerOptions {
   getBdProxy?: GetBdProxyFn
   /** Request timeout in ms (default: 600000 = 10 minutes) */
   timeout?: number
+  /** Path to the Claude Code executable (auto-detected if not specified) */
+  pathToClaudeCodeExecutable?: string
 }
 
 // TaskChatManager
@@ -60,16 +90,22 @@ export class TaskChatManager extends EventEmitter {
     env: Record<string, string>
     model: string
     timeout: number
+    pathToClaudeCodeExecutable?: string
   }
 
   constructor(options: TaskChatManagerOptions = {}) {
     super()
     this.getBdProxy = options.getBdProxy
+
+    // Auto-detect Claude executable path if not provided
+    const claudePath = options.pathToClaudeCodeExecutable ?? findClaudeExecutable()
+
     this.options = {
       cwd: options.cwd ?? process.cwd(),
       env: options.env ?? {},
       model: options.model ?? "haiku",
       timeout: options.timeout ?? 600000, // 10 minute default
+      pathToClaudeCodeExecutable: claudePath,
     }
   }
 
@@ -181,6 +217,7 @@ export class TaskChatManager extends EventEmitter {
               includePartialMessages: true, // Enable streaming
               maxTurns: 1, // Single turn for task chat
               abortController: this.abortController,
+              pathToClaudeCodeExecutable: this.options.pathToClaudeCodeExecutable,
             },
           })) {
             // If cancelled, stop processing

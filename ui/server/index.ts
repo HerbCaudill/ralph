@@ -1199,6 +1199,8 @@ function createTaskChatManager(options?: { cwd?: string }): TaskChatManager {
   const manager = new TaskChatManager({
     ...options,
     getBdProxy: () => getBdProxy(),
+    // Pass the current environment to ensure PATH is available
+    env: process.env as Record<string, string>,
   })
 
   // Broadcast task chat messages to all WebSocket clients
