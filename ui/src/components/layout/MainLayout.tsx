@@ -21,9 +21,8 @@ const MIN_LEFT_PANEL_WIDTH = 300
 const MAX_LEFT_PANEL_WIDTH = 600
 
 // Constants for detail panel width constraints
-const MIN_DETAIL_PANEL_WIDTH = 400
-const MAX_DETAIL_PANEL_WIDTH = 1800
-const DEFAULT_DETAIL_PANEL_WIDTH = 1200
+const MAX_DETAIL_PANEL_WIDTH = 800
+const MIN_RIGHT_MARGIN = 200
 
 // Types
 
@@ -105,12 +104,37 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   const rightPanelRef = useRef<HTMLDivElement>(null)
   const detailPanelRef = useRef<HTMLDivElement>(null)
 
-  // Drag state for resizing (sidebar, left panel, right panel, and detail panel)
+  // Drag state for resizing (sidebar, left panel, right panel)
   const [isResizing, setIsResizing] = useState(false)
   const [isResizingLeftPanel, setIsResizingLeftPanel] = useState(false)
   const [isResizingRightPanel, setIsResizingRightPanel] = useState(false)
-  const [isResizingDetailPanel, setIsResizingDetailPanel] = useState(false)
-  const [detailPanelWidth, setDetailPanelWidth] = useState(DEFAULT_DETAIL_PANEL_WIDTH)
+
+  // Track main content area width for detail panel sizing
+  const [mainWidth, setMainWidth] = useState(0)
+
+  // Calculate detail panel width: max 800px, leaving at least 200px on the right
+  const detailPanelWidth = Math.min(MAX_DETAIL_PANEL_WIDTH, mainWidth - MIN_RIGHT_MARGIN)
+
+  // Track main content area width changes
+  useEffect(() => {
+    const mainElement = mainRef.current
+    if (!mainElement) return
+
+    const updateWidth = () => {
+      setMainWidth(mainElement.clientWidth)
+    }
+
+    // Initial measurement
+    updateWidth()
+
+    // Create ResizeObserver to track size changes
+    const resizeObserver = new ResizeObserver(updateWidth)
+    resizeObserver.observe(mainElement)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
 
   // Handle mouse move during sidebar resize
   const handleMouseMove = useCallback(
@@ -151,27 +175,11 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     [isResizingRightPanel, onRightPanelWidthChange],
   )
 
-  // Handle mouse move during detail panel resize
-  const handleDetailPanelMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isResizingDetailPanel) return
-      // Calculate the left edge position (after left panel and sidebar)
-      const leftOffset = (leftPanelOpen ? leftPanelWidth : 0) + (sidebarOpen ? sidebarWidth : 0)
-      const newWidth = Math.min(
-        MAX_DETAIL_PANEL_WIDTH,
-        Math.max(MIN_DETAIL_PANEL_WIDTH, e.clientX - leftOffset),
-      )
-      setDetailPanelWidth(newWidth)
-    },
-    [isResizingDetailPanel, leftPanelOpen, leftPanelWidth, sidebarOpen, sidebarWidth],
-  )
-
   // Handle mouse up to stop resizing
   const handleMouseUp = useCallback(() => {
     setIsResizing(false)
     setIsResizingLeftPanel(false)
     setIsResizingRightPanel(false)
-    setIsResizingDetailPanel(false)
   }, [])
 
   // Add/remove global mouse event listeners during sidebar resize
@@ -182,7 +190,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
       // Prevent text selection during resize
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
-    } else if (!isResizingLeftPanel && !isResizingRightPanel && !isResizingDetailPanel) {
+    } else if (!isResizingLeftPanel && !isResizingRightPanel) {
       document.body.style.userSelect = ""
       document.body.style.cursor = ""
     }
@@ -190,19 +198,12 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     return () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizingLeftPanel && !isResizingRightPanel && !isResizingDetailPanel) {
+      if (!isResizingLeftPanel && !isResizingRightPanel) {
         document.body.style.userSelect = ""
         document.body.style.cursor = ""
       }
     }
-  }, [
-    isResizing,
-    isResizingLeftPanel,
-    isResizingRightPanel,
-    isResizingDetailPanel,
-    handleMouseMove,
-    handleMouseUp,
-  ])
+  }, [isResizing, isResizingLeftPanel, isResizingRightPanel, handleMouseMove, handleMouseUp])
 
   // Add/remove global mouse event listeners during left panel resize
   useEffect(() => {
@@ -212,7 +213,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
       // Prevent text selection during resize
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
-    } else if (!isResizing && !isResizingRightPanel && !isResizingDetailPanel) {
+    } else if (!isResizing && !isResizingRightPanel) {
       document.body.style.userSelect = ""
       document.body.style.cursor = ""
     }
@@ -220,7 +221,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     return () => {
       document.removeEventListener("mousemove", handleLeftPanelMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizing && !isResizingRightPanel && !isResizingDetailPanel) {
+      if (!isResizing && !isResizingRightPanel) {
         document.body.style.userSelect = ""
         document.body.style.cursor = ""
       }
@@ -229,7 +230,6 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     isResizingLeftPanel,
     isResizing,
     isResizingRightPanel,
-    isResizingDetailPanel,
     handleLeftPanelMouseMove,
     handleMouseUp,
   ])
@@ -242,7 +242,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
       // Prevent text selection during resize
       document.body.style.userSelect = "none"
       document.body.style.cursor = "col-resize"
-    } else if (!isResizing && !isResizingLeftPanel && !isResizingDetailPanel) {
+    } else if (!isResizing && !isResizingLeftPanel) {
       document.body.style.userSelect = ""
       document.body.style.cursor = ""
     }
@@ -250,7 +250,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     return () => {
       document.removeEventListener("mousemove", handleRightPanelMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizing && !isResizingLeftPanel && !isResizingDetailPanel) {
+      if (!isResizing && !isResizingLeftPanel) {
         document.body.style.userSelect = ""
         document.body.style.cursor = ""
       }
@@ -259,38 +259,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     isResizingRightPanel,
     isResizing,
     isResizingLeftPanel,
-    isResizingDetailPanel,
     handleRightPanelMouseMove,
-    handleMouseUp,
-  ])
-
-  // Add/remove global mouse event listeners during detail panel resize
-  useEffect(() => {
-    if (isResizingDetailPanel) {
-      document.addEventListener("mousemove", handleDetailPanelMouseMove)
-      document.addEventListener("mouseup", handleMouseUp)
-      // Prevent text selection during resize
-      document.body.style.userSelect = "none"
-      document.body.style.cursor = "col-resize"
-    } else if (!isResizing && !isResizingLeftPanel && !isResizingRightPanel) {
-      document.body.style.userSelect = ""
-      document.body.style.cursor = ""
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleDetailPanelMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-      if (!isResizing && !isResizingLeftPanel && !isResizingRightPanel) {
-        document.body.style.userSelect = ""
-        document.body.style.cursor = ""
-      }
-    }
-  }, [
-    isResizingDetailPanel,
-    isResizing,
-    isResizingLeftPanel,
-    isResizingRightPanel,
-    handleDetailPanelMouseMove,
     handleMouseUp,
   ])
 
@@ -310,12 +279,6 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   const handleRightPanelResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     setIsResizingRightPanel(true)
-  }, [])
-
-  // Start detail panel resizing on mouse down
-  const handleDetailPanelResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizingDetailPanel(true)
   }, [])
 
   // Handle click outside detail panel to close it
@@ -504,24 +467,6 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
             >
               {detailPanelOpen && (
                 <div className="flex h-full flex-col overflow-hidden">{detailPanel}</div>
-              )}
-
-              {/* Resize handle for detail panel */}
-              {detailPanelOpen && (
-                <div
-                  className={cn(
-                    "absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize transition-colors",
-                    "hover:bg-primary/20",
-                    isResizingDetailPanel && "bg-primary/30",
-                  )}
-                  onMouseDown={handleDetailPanelResizeStart}
-                  role="separator"
-                  aria-orientation="vertical"
-                  aria-label="Resize detail panel"
-                  aria-valuenow={detailPanelWidth}
-                  aria-valuemin={MIN_DETAIL_PANEL_WIDTH}
-                  aria-valuemax={MAX_DETAIL_PANEL_WIDTH}
-                />
               )}
             </aside>
           )}
