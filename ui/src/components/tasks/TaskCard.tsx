@@ -1,6 +1,7 @@
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { forwardRef, useCallback, useState, useEffect } from "react"
-import { useAppStore, selectIssuePrefix, selectSelectedTaskId } from "@/store"
+import { forwardRef, useCallback, useState, useEffect, useMemo } from "react"
+import { useAppStore, selectIssuePrefix, selectSelectedTaskId, selectAccentColor } from "@/store"
+import { DEFAULT_ACCENT_COLOR } from "@/constants"
 import {
   IconCircle,
   IconCircleDot,
@@ -34,7 +35,11 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   const [shouldAnimate, setShouldAnimate] = useState(isNew)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const selectedTaskId = useAppStore(selectSelectedTaskId)
+  const accentColor = useAppStore(selectAccentColor)
   const isSelected = selectedTaskId === task.id
+
+  // Compute the selection color based on accent color
+  const selectionColor = accentColor ?? DEFAULT_ACCENT_COLOR
 
   // Remove animation class after animation completes
   useEffect(() => {
@@ -106,6 +111,18 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   const hasSubtasks = subtaskCount > 0
   const showChevron = hasSubtasks && onToggleCollapse
 
+  // Compute the selection style with dynamic accent color
+  const selectionStyle = useMemo(
+    () =>
+      isSelected ?
+        {
+          backgroundColor: `${selectionColor}1A`, // 10% opacity (1A in hex = 10%)
+          boxShadow: `inset 0 0 0 2px ${selectionColor}80`, // 50% opacity ring (80 in hex = 50%)
+        }
+      : undefined,
+    [isSelected, selectionColor],
+  )
+
   return (
     <div
       ref={ref}
@@ -113,9 +130,9 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
         "border-border hover:bg-muted/50 group border-b transition-colors",
         task.status === "closed" && "opacity-60",
         shouldAnimate && "animate-bounceIn",
-        isSelected && "bg-primary/10 ring-primary/50 ring-2 ring-inset",
         className,
       )}
+      style={selectionStyle}
       {...props}
     >
       {/* Main row */}

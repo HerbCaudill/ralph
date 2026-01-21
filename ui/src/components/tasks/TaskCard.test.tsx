@@ -1,20 +1,26 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { TaskCard } from "./TaskCard"
 import type { TaskCardTask, TaskStatus } from "@/types"
+
+// Mock state that can be modified per test
+let mockState = {
+  issuePrefix: "rui" as string | null,
+  selectedTaskId: null as string | null,
+  accentColor: null as string | null,
+}
 
 // Mock zustand store
 vi.mock("@/store", async importOriginal => {
   const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
-    useAppStore: (selector: (state: unknown) => unknown) => {
-      const mockState = {
-        issuePrefix: "rui",
-      }
+    useAppStore: (selector: (state: typeof mockState) => unknown) => {
       return selector(mockState)
     },
     selectIssuePrefix: (state: { issuePrefix: string | null }) => state.issuePrefix,
+    selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
+    selectAccentColor: (state: { accentColor: string | null }) => state.accentColor,
   }
 })
 
@@ -39,6 +45,15 @@ const fullTask: TaskCardTask = {
 // Tests
 
 describe("TaskCard", () => {
+  beforeEach(() => {
+    // Reset mock state before each test
+    mockState = {
+      issuePrefix: "rui",
+      selectedTaskId: null,
+      accentColor: null,
+    }
+  })
+
   describe("rendering", () => {
     it("renders task title", () => {
       render(<TaskCard task={baseTask} />)
@@ -487,6 +502,53 @@ describe("TaskCard", () => {
       fireEvent.keyDown(chevron, { key: " " })
 
       expect(onToggleCollapse).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("keyboard selection styling", () => {
+    it("applies selection style when task is selected", () => {
+      mockState.selectedTaskId = baseTask.id
+      const { container } = render(<TaskCard task={baseTask} />)
+
+      // When selected, the card should have inline styles for selection
+      const card = container.firstChild as HTMLElement
+      expect(card.style.backgroundColor).toBeTruthy()
+      expect(card.style.boxShadow).toBeTruthy()
+    })
+
+    it("does not apply selection style when task is not selected", () => {
+      mockState.selectedTaskId = "other-task-id"
+      const { container } = render(<TaskCard task={baseTask} />)
+
+      const card = container.firstChild as HTMLElement
+      expect(card.style.backgroundColor).toBe("")
+      expect(card.style.boxShadow).toBe("")
+    })
+
+    it("uses accent color for selection when provided", () => {
+      mockState.selectedTaskId = baseTask.id
+      mockState.accentColor = "#ff5500"
+      const { container } = render(<TaskCard task={baseTask} />)
+
+      const card = container.firstChild as HTMLElement
+      // Check that the accent color is used
+      // Background: #ff5500 with 1A (10%) opacity
+      expect(card.style.backgroundColor).toMatch(/rgba\(255,\s*85,\s*0,\s*0\.1\)|#ff55001a/i)
+      // Box shadow uses accent color with 80 suffix (50% opacity)
+      expect(card.style.boxShadow).toContain("#ff550080")
+    })
+
+    it("uses default color for selection when accent color is null", () => {
+      mockState.selectedTaskId = baseTask.id
+      mockState.accentColor = null
+      const { container } = render(<TaskCard task={baseTask} />)
+
+      const card = container.firstChild as HTMLElement
+      // DEFAULT_ACCENT_COLOR is #374151 (gray-700)
+      // Background: #374151 with 1A (10%) opacity
+      expect(card.style.backgroundColor).toMatch(/rgba\(55,\s*65,\s*81,\s*0\.1\)|#3741511a/i)
+      // Box shadow uses default color with 80 suffix (50% opacity)
+      expect(card.style.boxShadow).toContain("#37415180")
     })
   })
 })
