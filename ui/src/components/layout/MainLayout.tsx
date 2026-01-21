@@ -192,10 +192,10 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           <div
             ref={leftPanelRef}
             className={cn(
-              "bg-background border-border relative flex h-full flex-col overflow-hidden border-r",
+              "bg-background border-sidebar-border relative flex h-full flex-col overflow-hidden border-r",
               leftPanelOpen ? "visible" : "hidden",
             )}
-            style={{ width: leftPanelOpen ? leftPanelWidth : 0, borderColor }}
+            style={{ width: leftPanelOpen ? leftPanelWidth : 0 }}
             tabIndex={-1}
             data-testid="left-panel"
           >
@@ -216,9 +216,9 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           <aside
             ref={sidebarRef}
             className={cn(
-              "bg-background border-border relative flex h-full flex-col overflow-hidden border-r",
+              "bg-background border-sidebar-border relative flex h-full flex-col overflow-hidden border-r",
             )}
-            style={{ width: sidebarWidth, borderColor }}
+            style={{ width: sidebarWidth }}
             tabIndex={-1}
           >
             {sidebar}
@@ -238,13 +238,13 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           tabIndex={-1}
         >
           {main}
-          {statusBar && <div className="border-border border-t px-4 py-2">{statusBar}</div>}
+          {statusBar && <div className="border-sidebar-border border-t px-4 py-2">{statusBar}</div>}
 
           {detailPanel && detailPanelOpen && (
             <div
               ref={detailPanelRef}
-              className="bg-background border-border absolute left-0 h-full overflow-hidden border-r shadow-lg"
-              style={{ width: detailPanelWidth, borderColor }}
+              className="bg-background border-sidebar-border absolute left-0 h-full overflow-hidden border-r shadow-lg"
+              style={{ width: detailPanelWidth }}
               tabIndex={-1}
               onClick={e => e.stopPropagation()}
             >
@@ -257,10 +257,10 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           <div
             ref={rightPanelRef}
             className={cn(
-              "bg-background border-border relative flex h-full flex-col overflow-hidden border-l",
+              "bg-background border-sidebar-border relative flex h-full flex-col overflow-hidden border-l",
               rightPanelOpen ? "visible" : "hidden",
             )}
-            style={{ width: rightPanelOpen ? rightPanelWidth : 0, borderColor }}
+            style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
             tabIndex={-1}
             data-testid="right-panel"
           >
