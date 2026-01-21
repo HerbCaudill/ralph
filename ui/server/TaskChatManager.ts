@@ -211,11 +211,12 @@ export class TaskChatManager extends EventEmitter {
               cwd: this.options.cwd,
               env: this.options.env,
               systemPrompt,
-              tools: [], // No tools for task chat
+              // Read-only tools for context + Bash for bd commands
+              tools: ["Read", "Grep", "Glob", "Bash"],
               permissionMode: "bypassPermissions",
               allowDangerouslySkipPermissions: true,
               includePartialMessages: true, // Enable streaming
-              maxTurns: 1, // Single turn for task chat
+              maxTurns: 10, // Allow multiple turns for tool use
               abortController: this.abortController,
               pathToClaudeCodeExecutable: this.options.pathToClaudeCodeExecutable,
             },

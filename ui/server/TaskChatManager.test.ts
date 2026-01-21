@@ -102,11 +102,11 @@ describe("TaskChatManager", () => {
         options: expect.objectContaining({
           model: "haiku",
           systemPrompt: expect.any(String),
-          tools: [],
+          tools: ["Read", "Grep", "Glob", "Bash"],
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           includePartialMessages: true,
-          maxTurns: 1,
+          maxTurns: 10,
         }),
       })
     })
