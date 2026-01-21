@@ -5,12 +5,11 @@ import { readFile } from "node:fs/promises"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { WebSocketServer, type WebSocket, type RawData } from "ws"
-import { RalphManager, type RalphEvent, type RalphStatus } from "./RalphManager.js"
+import { type RalphEvent, type RalphStatus } from "./RalphManager.js"
 import { BdProxy, type BdCreateOptions } from "./BdProxy.js"
 import { getAliveWorkspaces } from "./registry.js"
 import { getEventLogStore, type EventLogMetadata } from "./EventLogStore.js"
 import {
-  TaskChatManager,
   type TaskChatMessage,
   type TaskChatStatus,
   type TaskChatToolUse,
@@ -18,6 +17,8 @@ import {
 import { getThemeDiscovery } from "./ThemeDiscovery.js"
 import { parseThemeObject } from "./lib/theme/parser.js"
 import { mapThemeToCSSVariables, createAppTheme } from "./lib/theme/mapper.js"
+import { WorkspaceContextManager } from "./WorkspaceContextManager.js"
+import type { WorkspaceContext } from "./WorkspaceContext.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -636,6 +637,7 @@ function createApp(config: ServerConfig): Express {
       }
 
       // Only set taskId if not already provided and we have a current task
+      const { taskId: currentTaskId, taskTitle: currentTaskTitle } = getCurrentTask()
       if (!enrichedMetadata.taskId && currentTaskId) {
         enrichedMetadata.taskId = currentTaskId
         // Also include title if we have it and it's not already set
@@ -915,13 +917,13 @@ function attachWsServer(httpServer: Server): WebSocketServer {
     })
 
     // Send welcome message with current Ralph status and event history
-    const manager = getRalphManager()
+    const context = getActiveContext()
     ws.send(
       JSON.stringify({
         type: "connected",
         timestamp: Date.now(),
-        ralphStatus: manager.status,
-        events: getEventHistory(),
+        ralphStatus: context.ralphManager.status,
+        events: context.eventHistory,
       }),
     )
   })
@@ -942,7 +944,7 @@ function handleWsMessage(ws: WebSocket, data: RawData): void {
 
       case "chat_message": {
         // Forward user message to ralph stdin
-        const manager = getRalphManager()
+        const context = getActiveContext()
         const chatMessage = message.message as string | undefined
         if (!chatMessage) {
           ws.send(
@@ -951,7 +953,7 @@ function handleWsMessage(ws: WebSocket, data: RawData): void {
           return
         }
 
-        if (!manager.isRunning) {
+        if (!context.ralphManager.isRunning) {
           ws.send(
             JSON.stringify({ type: "error", error: "Ralph is not running", timestamp: Date.now() }),
           )
@@ -959,7 +961,7 @@ function handleWsMessage(ws: WebSocket, data: RawData): void {
         }
 
         // Send to ralph - wrap in JSON format that Ralph CLI expects
-        manager.send({ type: "message", text: chatMessage })
+        context.ralphManager.send({ type: "message", text: chatMessage })
 
         // Broadcast user message to all clients so it appears in event stream
         broadcast({
@@ -990,309 +992,258 @@ export function broadcast(message: unknown): void {
   }
 }
 
-// BdProxy Integration
+// WorkspaceContextManager Integration
 
-// Singleton BdProxy instance
-let bdProxy: BdProxy | null = null
+// Singleton WorkspaceContextManager instance
+let workspaceContextManager: WorkspaceContextManager | null = null
 
 // Configured workspace path (set by startServer)
 let configuredWorkspacePath: string | undefined
 
 /**
- * Get the singleton BdProxy instance, creating it if needed.
+ * Get the singleton WorkspaceContextManager instance, creating it if needed.
+ */
+export function getWorkspaceContextManager(): WorkspaceContextManager {
+  if (!workspaceContextManager) {
+    workspaceContextManager = new WorkspaceContextManager({
+      watch: true,
+      env: process.env as Record<string, string>,
+    })
+
+    // Wire up event forwarding from the context manager to WebSocket clients
+    wireContextManagerEvents(workspaceContextManager)
+  }
+  return workspaceContextManager
+}
+
+/**
+ * Wire up event forwarding from WorkspaceContextManager to WebSocket clients.
+ */
+function wireContextManagerEvents(manager: WorkspaceContextManager): void {
+  manager.on("context:event", (workspacePath: string, eventType: string, ...args: unknown[]) => {
+    // Only forward events from the active context
+    if (workspacePath !== manager.activeWorkspacePath) {
+      return
+    }
+
+    switch (eventType) {
+      case "ralph:event": {
+        const event = args[0] as RalphEvent
+        broadcast({
+          type: "ralph:event",
+          event,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "ralph:status": {
+        const status = args[0] as RalphStatus
+        broadcast({
+          type: "ralph:status",
+          status,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "ralph:output": {
+        const line = args[0] as string
+        broadcast({
+          type: "ralph:output",
+          line,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "ralph:error": {
+        const error = args[0] as Error
+        broadcast({
+          type: "ralph:error",
+          error: error.message,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "ralph:exit": {
+        const info = args[0] as { code: number | null; signal: string | null }
+        broadcast({
+          type: "ralph:exit",
+          code: info.code,
+          signal: info.signal,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:message": {
+        const message = args[0] as TaskChatMessage
+        broadcast({
+          type: "task-chat:message",
+          message,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:chunk": {
+        const text = args[0] as string
+        broadcast({
+          type: "task-chat:chunk",
+          text,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:status": {
+        const status = args[0] as TaskChatStatus
+        broadcast({
+          type: "task-chat:status",
+          status,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:error": {
+        const error = args[0] as Error
+        broadcast({
+          type: "task-chat:error",
+          error: error.message,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:tool_use": {
+        const toolUse = args[0] as TaskChatToolUse
+        broadcast({
+          type: "task-chat:tool_use",
+          toolUse,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:tool_update": {
+        const toolUse = args[0] as TaskChatToolUse
+        broadcast({
+          type: "task-chat:tool_update",
+          toolUse,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:tool_result": {
+        const toolUse = args[0] as TaskChatToolUse
+        broadcast({
+          type: "task-chat:tool_result",
+          toolUse,
+          timestamp: Date.now(),
+        })
+        break
+      }
+    }
+  })
+}
+
+/**
+ * Get the active WorkspaceContext, creating one if needed.
+ * Throws an error if no workspace is configured.
+ */
+export function getActiveContext(): WorkspaceContext {
+  const manager = getWorkspaceContextManager()
+  let context = manager.getActiveContext()
+
+  if (!context) {
+    // If no active context, create one for the configured workspace path
+    const workspacePath = configuredWorkspacePath || process.cwd()
+    context = manager.setActiveContext(workspacePath)
+  }
+
+  return context
+}
+
+/**
+ * Reset the WorkspaceContextManager (for testing).
+ */
+export async function resetWorkspaceContextManager(): Promise<void> {
+  if (workspaceContextManager) {
+    await workspaceContextManager.disposeAll()
+    workspaceContextManager = null
+  }
+}
+
+// Legacy accessor functions - delegate to active context
+// These maintain backwards compatibility with existing code
+
+/**
+ * Get the BdProxy for the active workspace.
  */
 export function getBdProxy(): BdProxy {
-  if (!bdProxy) {
-    bdProxy = new BdProxy({ cwd: configuredWorkspacePath })
-  }
-  return bdProxy
+  return getActiveContext().bdProxy
 }
 
 /**
- * Reset the BdProxy singleton (for testing).
+ * Get the RalphManager for the active workspace.
  */
-export function resetBdProxy(): void {
-  bdProxy = null
+export function getRalphManager() {
+  return getActiveContext().ralphManager
 }
 
 /**
- * Switch to a different workspace by creating a new BdProxy with the given cwd.
- * Also stops any running Ralph instance and starts a new one in watch mode for the new workspace.
+ * Get the TaskChatManager for the active workspace.
  */
-export async function switchWorkspace(workspacePath: string): Promise<void> {
-  // Stop any currently running Ralph instance
-  if (ralphManager?.isRunning) {
-    await ralphManager.stop()
-  }
-
-  // Clear event history for the old workspace
-  clearEventHistory()
-
-  // Switch the BdProxy to the new workspace
-  bdProxy = new BdProxy({ cwd: workspacePath })
-
-  // Create a new RalphManager for the new workspace with watch mode enabled
-  if (ralphManager) {
-    ralphManager.removeAllListeners()
-  }
-  ralphManager = createRalphManager({ cwd: workspacePath, watch: true })
-
-  // Create a new TaskChatManager for the new workspace
-  if (taskChatManager) {
-    taskChatManager.removeAllListeners()
-  }
-  taskChatManager = createTaskChatManager({ cwd: workspacePath })
-
-  // Start Ralph in watch mode
-  try {
-    await ralphManager.start()
-  } catch (err) {
-    // Log but don't fail - user can manually start later
-    console.error("[server] Failed to auto-start Ralph in watch mode:", err)
-  }
+export function getTaskChatManager() {
+  return getActiveContext().taskChatManager
 }
 
-// RalphManager Integration
-
-// Event history buffer - stores recent events for clients that connect/reconnect
-const MAX_EVENT_HISTORY = 1000
-let eventHistory: RalphEvent[] = []
-
-// Track current task per workspace session
-let currentTaskId: string | undefined
-let currentTaskTitle: string | undefined
-
 /**
- * Get the current event history.
+ * Get the event history for the active workspace.
  */
 export function getEventHistory(): RalphEvent[] {
-  return eventHistory
+  return getActiveContext().eventHistory
 }
 
 /**
- * Clear the event history (e.g., on workspace switch).
+ * Clear the event history for the active workspace.
  */
 export function clearEventHistory(): void {
-  eventHistory = []
-  currentTaskId = undefined
-  currentTaskTitle = undefined
+  getActiveContext().clearHistory()
 }
 
 /**
- * Get the current task being worked on.
+ * Get the current task being worked on in the active workspace.
  */
 export function getCurrentTask(): { taskId?: string; taskTitle?: string } {
-  return { taskId: currentTaskId, taskTitle: currentTaskTitle }
+  return getActiveContext().currentTask
 }
 
 /**
- * Add an event to the history buffer.
+ * Switch to a different workspace.
+ * Uses the WorkspaceContextManager to switch contexts, preserving the old context.
  */
-function addEventToHistory(event: RalphEvent): void {
-  eventHistory.push(event)
-  // Trim to max size
-  if (eventHistory.length > MAX_EVENT_HISTORY) {
-    eventHistory = eventHistory.slice(-MAX_EVENT_HISTORY)
+export async function switchWorkspace(workspacePath: string): Promise<void> {
+  const manager = getWorkspaceContextManager()
+
+  // Switch to the new context (creates it if it doesn't exist)
+  const context = manager.setActiveContext(workspacePath)
+
+  // Start Ralph in watch mode if not already running
+  if (!context.ralphManager.isRunning && context.ralphManager.status !== "paused") {
+    try {
+      await context.ralphManager.start()
+    } catch (err) {
+      // Log but don't fail - user can manually start later
+      console.error("[server] Failed to auto-start Ralph in watch mode:", err)
+    }
   }
 }
 
-/**
- * Update the current task based on task lifecycle events.
- */
-function updateCurrentTask(event: RalphEvent): void {
-  if (event.type === "ralph_task_started") {
-    currentTaskId = event.taskId as string | undefined
-    currentTaskTitle = event.taskTitle as string | undefined
-  } else if (event.type === "ralph_task_completed") {
-    // Clear current task when completed
-    currentTaskId = undefined
-    currentTaskTitle = undefined
-  }
+// Legacy reset functions for backwards compatibility in tests
+export function resetBdProxy(): void {
+  // No-op: contexts are managed by WorkspaceContextManager
 }
 
-// Singleton RalphManager instance
-let ralphManager: RalphManager | null = null
-
-/**
- * Get the singleton RalphManager instance, creating it if needed.
- */
-export function getRalphManager(): RalphManager {
-  if (!ralphManager) {
-    ralphManager = createRalphManager({ cwd: configuredWorkspacePath })
-  }
-  return ralphManager
-}
-
-/**
- * Create a RalphManager and wire up event broadcasting.
- */
-function createRalphManager(options?: { cwd?: string; watch?: boolean }): RalphManager {
-  const manager = new RalphManager({ ...options, cwd: options?.cwd ?? configuredWorkspacePath })
-
-  // Broadcast ralph events to all WebSocket clients and store in history
-  manager.on("event", (event: RalphEvent) => {
-    // Update current task tracking based on task lifecycle events
-    updateCurrentTask(event)
-
-    addEventToHistory(event)
-    broadcast({
-      type: "ralph:event",
-      event,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast status changes
-  manager.on("status", (status: RalphStatus) => {
-    broadcast({
-      type: "ralph:status",
-      status,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast non-JSON output lines
-  manager.on("output", (line: string) => {
-    broadcast({
-      type: "ralph:output",
-      line,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast errors
-  manager.on("error", (error: Error) => {
-    broadcast({
-      type: "ralph:error",
-      error: error.message,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast exit events
-  manager.on("exit", (info: { code: number | null; signal: string | null }) => {
-    broadcast({
-      type: "ralph:exit",
-      code: info.code,
-      signal: info.signal,
-      timestamp: Date.now(),
-    })
-  })
-
-  return manager
-}
-
-/**
- * Reset the RalphManager singleton (for testing).
- */
 export function resetRalphManager(): void {
-  if (ralphManager) {
-    ralphManager.removeAllListeners()
-    ralphManager = null
-  }
+  // No-op: contexts are managed by WorkspaceContextManager
 }
 
-// TaskChatManager Integration
-
-// Singleton TaskChatManager instance
-let taskChatManager: TaskChatManager | null = null
-
-/**
- * Get the singleton TaskChatManager instance, creating it if needed.
- */
-export function getTaskChatManager(): TaskChatManager {
-  if (!taskChatManager) {
-    taskChatManager = createTaskChatManager({ cwd: configuredWorkspacePath })
-  }
-  return taskChatManager
-}
-
-/**
- * Create a TaskChatManager and wire up event broadcasting.
- */
-function createTaskChatManager(options?: { cwd?: string }): TaskChatManager {
-  const manager = new TaskChatManager({
-    ...options,
-    cwd: options?.cwd ?? configuredWorkspacePath,
-    getBdProxy: () => getBdProxy(),
-    // Pass the current environment to ensure PATH is available
-    env: process.env as Record<string, string>,
-  })
-
-  // Broadcast task chat messages to all WebSocket clients
-  manager.on("message", (message: TaskChatMessage) => {
-    broadcast({
-      type: "task-chat:message",
-      message,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast streaming chunks
-  manager.on("chunk", (text: string) => {
-    broadcast({
-      type: "task-chat:chunk",
-      text,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast status changes
-  manager.on("status", (status: TaskChatStatus) => {
-    broadcast({
-      type: "task-chat:status",
-      status,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast errors
-  manager.on("error", (error: Error) => {
-    broadcast({
-      type: "task-chat:error",
-      error: error.message,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast tool use events
-  manager.on("tool_use", (toolUse: TaskChatToolUse) => {
-    broadcast({
-      type: "task-chat:tool_use",
-      toolUse,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast tool update events (when streaming tool_use is updated with full input)
-  manager.on("tool_update", (toolUse: TaskChatToolUse) => {
-    broadcast({
-      type: "task-chat:tool_update",
-      toolUse,
-      timestamp: Date.now(),
-    })
-  })
-
-  // Broadcast tool result events
-  manager.on("tool_result", (toolUse: TaskChatToolUse) => {
-    broadcast({
-      type: "task-chat:tool_result",
-      toolUse,
-      timestamp: Date.now(),
-    })
-  })
-
-  return manager
-}
-
-/**
- * Reset the TaskChatManager singleton (for testing).
- */
 export function resetTaskChatManager(): void {
-  if (taskChatManager) {
-    taskChatManager.removeAllListeners()
-    taskChatManager = null
-  }
+  // No-op: contexts are managed by WorkspaceContextManager
 }
 
 // Port availability check
