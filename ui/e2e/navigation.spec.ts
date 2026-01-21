@@ -3,8 +3,8 @@ import { test, expect } from "./fixtures"
 test.describe("Navigation", () => {
   test.describe("focus management", () => {
     test("Cmd+K focuses quick task input", async ({ app }) => {
-      // Start by focusing somewhere else
-      await app.chat.messageInput.focus()
+      // Start by focusing somewhere else (use body as a neutral target)
+      await app.page.locator("body").focus()
 
       // Press Cmd+K to focus quick task input
       await app.page.keyboard.press("Meta+k")
@@ -261,8 +261,8 @@ test.describe("Navigation", () => {
     })
 
     test("Cmd+1 focuses sidebar", async ({ app }) => {
-      // Focus somewhere else first
-      await app.chat.messageInput.focus()
+      // Focus somewhere else first (use body as a neutral target)
+      await app.page.locator("body").focus()
 
       // Press Cmd+1 to focus sidebar
       await app.page.keyboard.press("Meta+1")
