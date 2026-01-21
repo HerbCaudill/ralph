@@ -15,8 +15,7 @@ import { UserMessageBubble } from "./UserMessageBubble"
 import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
-import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton"
-import { useAutoScroll } from "@/hooks/useAutoScroll"
+import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
 import type { TaskChatMessage, TaskChatToolUse, ToolName, ToolUseEvent } from "@/types"
 
 // Helper to convert TaskChatToolUse to ToolUseEvent for rendering
@@ -51,12 +50,6 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
 
   const chatInputRef = useRef<ChatInputHandle>(null)
   const [error, setError] = useState<string | null>(null)
-
-  // Use the shared auto-scroll hook
-  const { containerRef, isAtBottom, handleScroll, handleUserScroll, scrollToBottom } =
-    useAutoScroll({
-      dependencies: [messages, streamingText, toolUses],
-    })
 
   const wasLoadingRef = useRef(false)
 
@@ -187,72 +180,60 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       </div>
 
       {/* Messages container */}
-      <div className="relative flex-1 overflow-hidden">
-        <div
-          ref={containerRef}
-          onScroll={handleScroll}
-          onWheel={handleUserScroll}
-          onTouchMove={handleUserScroll}
-          className="bg-background h-full overflow-y-auto py-2"
-          role="log"
-          aria-label="Task chat messages"
-          aria-live="polite"
-        >
-          {messages.length === 0 && !streamingText && toolUses.length === 0 ?
-            <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
-              <IconMessageChatbot className="size-8 opacity-50" />
-              <p>Ask questions about your tasks</p>
-              <p className="text-xs opacity-70">
-                Get help organizing, prioritizing, and managing your issues
-              </p>
-            </div>
-          : <>
-              {messages.map(message =>
-                message.role === "user" ?
-                  <UserMessageBubble key={message.id} message={message} />
-                : <AssistantMessageBubble key={message.id} message={message} />,
-              )}
-              {/* Tool uses - shown during and after processing, cleared on next user message */}
-              {toolUses.length > 0 && (
-                <div className="py-1">
-                  {toolUses.map(toolUse => (
-                    <ToolUseCard
-                      key={toolUse.toolUseId}
-                      event={toToolUseEvent(toolUse)}
-                      className="text-sm"
-                    />
-                  ))}
-                </div>
-              )}
-              {/* Streaming response */}
-              {streamingText && (
-                <AssistantMessageBubble
-                  message={{
-                    id: "streaming",
-                    role: "assistant",
-                    content: streamingText,
-                    timestamp: Date.now(),
-                  }}
-                />
-              )}
-              {/* Loading indicator */}
-              {isLoading && !streamingText && toolUses.length === 0 && (
-                <div className="flex items-center gap-2 px-4 py-2">
-                  <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
-                  <span className="text-muted-foreground text-xs">Thinking...</span>
-                </div>
-              )}
-            </>
-          }
-        </div>
-
-        {/* Scroll to bottom button */}
-        <ScrollToBottomButton
-          isVisible={!isAtBottom}
-          onClick={scrollToBottom}
-          ariaLabel="Scroll to latest messages"
-        />
-      </div>
+      <ContentStreamContainer
+        className="flex-1 overflow-hidden"
+        ariaLabel="Task chat messages"
+        dependencies={[messages, streamingText, toolUses]}
+        emptyState={
+          <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
+            <IconMessageChatbot className="size-8 opacity-50" />
+            <p>Ask questions about your tasks</p>
+            <p className="text-xs opacity-70">
+              Get help organizing, prioritizing, and managing your issues
+            </p>
+          </div>
+        }
+      >
+        {messages.length > 0 || streamingText || toolUses.length > 0 ?
+          <>
+            {messages.map(message =>
+              message.role === "user" ?
+                <UserMessageBubble key={message.id} message={message} />
+              : <AssistantMessageBubble key={message.id} message={message} />,
+            )}
+            {/* Tool uses - shown during and after processing, cleared on next user message */}
+            {toolUses.length > 0 && (
+              <div className="py-1">
+                {toolUses.map(toolUse => (
+                  <ToolUseCard
+                    key={toolUse.toolUseId}
+                    event={toToolUseEvent(toolUse)}
+                    className="text-sm"
+                  />
+                ))}
+              </div>
+            )}
+            {/* Streaming response */}
+            {streamingText && (
+              <AssistantMessageBubble
+                message={{
+                  id: "streaming",
+                  role: "assistant",
+                  content: streamingText,
+                  timestamp: Date.now(),
+                }}
+              />
+            )}
+            {/* Loading indicator */}
+            {isLoading && !streamingText && toolUses.length === 0 && (
+              <div className="flex items-center gap-2 px-4 py-2">
+                <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
+                <span className="text-muted-foreground text-xs">Thinking...</span>
+              </div>
+            )}
+          </>
+        : null}
+      </ContentStreamContainer>
 
       <div className="border-border border-t p-3">
         {error && <div className="text-status-error pb-2 text-xs">Error: {error}</div>}
