@@ -397,6 +397,13 @@ export function App() {
       if (event.key !== "Escape") {
         return
       }
+      // If there's text in the search box, clear and hide regardless of focus
+      const searchQuery = useAppStore.getState().taskSearchQuery
+      if (searchQuery) {
+        hideSearch()
+        return
+      }
+      // If no text, only hide when the search input is focused
       const activeElement = document.activeElement
       if (activeElement?.getAttribute("aria-label") === "Search tasks") {
         hideSearch()

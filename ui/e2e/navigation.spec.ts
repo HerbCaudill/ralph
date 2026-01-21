@@ -58,6 +58,29 @@ test.describe("Navigation", () => {
       // Search input should be hidden
       await expect(searchInput).not.toBeVisible()
     })
+
+    test("Escape clears search even when not focused", async ({ app }) => {
+      // Activate search
+      await app.page.keyboard.press("Meta+f")
+
+      const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
+      await expect(searchInput).toBeVisible()
+
+      // Type something in search
+      await searchInput.fill("test")
+      await expect(searchInput).toHaveValue("test")
+
+      // Focus somewhere else (the quick task input, which is always focusable)
+      await app.taskList.quickTaskInput.focus()
+      await expect(app.taskList.quickTaskInput).toBeFocused()
+
+      // Press Escape while search is NOT focused but has text
+      // This should still clear the search
+      await app.page.keyboard.press("Escape")
+
+      // Search input should be hidden (and cleared)
+      await expect(searchInput).not.toBeVisible()
+    })
   })
 
   test.describe("panel toggles", () => {
