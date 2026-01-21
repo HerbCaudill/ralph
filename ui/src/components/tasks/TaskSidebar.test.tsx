@@ -29,11 +29,9 @@ describe("TaskSidebar", () => {
 
     it("does not render quickInput area when not provided", () => {
       const { container } = render(<TaskSidebar />)
-      // Only the search input border-b should exist when quickInput is not provided
+      // No border-b elements should exist when quickInput and search are not shown
       const borderBElements = container.querySelectorAll(".border-b")
-      expect(borderBElements).toHaveLength(1)
-      // Verify the one border-b element contains the search input
-      expect(borderBElements[0].querySelector('[aria-label="Search tasks"]')).toBeInTheDocument()
+      expect(borderBElements).toHaveLength(0)
     })
 
     it("renders taskList when provided", () => {
@@ -90,16 +88,22 @@ describe("TaskSidebar", () => {
   })
 
   describe("search", () => {
-    it("renders search input", () => {
+    it("does not render search input by default", () => {
       render(<TaskSidebar />)
+      expect(screen.queryByRole("textbox", { name: "Search tasks" })).not.toBeInTheDocument()
+    })
+
+    it("renders search input when isSearchVisible is true", () => {
+      render(<TaskSidebar isSearchVisible={true} />)
       expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
     })
 
-    it("renders search input between quick input and task list", () => {
+    it("renders search input between quick input and task list when visible", () => {
       render(
         <TaskSidebar
           quickInput={<div data-testid="quick-input">Quick input</div>}
           taskList={<div data-testid="task-list">Task list</div>}
+          isSearchVisible={true}
         />,
       )
       // Verify all elements are present

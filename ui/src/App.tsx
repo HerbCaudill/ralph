@@ -21,6 +21,7 @@ import {
   selectTaskChatOpen,
   selectTaskChatWidth,
   selectViewingEventLogId,
+  selectIsSearchVisible,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -106,6 +107,8 @@ interface TasksSidebarPanelProps {
   onTaskClick?: (taskId: string) => void
   onOpenTask?: (taskId: string) => void
   onTaskCreated?: () => void
+  isSearchVisible?: boolean
+  onHideSearch?: () => void
 }
 
 function TasksSidebarPanel({
@@ -114,6 +117,8 @@ function TasksSidebarPanel({
   onTaskClick,
   onOpenTask,
   onTaskCreated,
+  isSearchVisible,
+  onHideSearch,
 }: TasksSidebarPanelProps) {
   const { tasks, refresh } = useTasks({ all: true })
 
@@ -128,6 +133,8 @@ function TasksSidebarPanel({
       taskList={<TaskList tasks={tasks} onTaskClick={onTaskClick} />}
       searchInputRef={searchInputRef}
       onOpenTask={onOpenTask}
+      isSearchVisible={isSearchVisible}
+      onHideSearch={onHideSearch}
     />
   )
 }
@@ -231,6 +238,11 @@ export function App() {
   // Event log viewer state
   const viewingEventLogId = useAppStore(selectViewingEventLogId)
   const isViewingEventLog = viewingEventLogId !== null
+
+  // Search visibility state
+  const isSearchVisible = useAppStore(selectIsSearchVisible)
+  const showSearch = useAppStore(state => state.showSearch)
+  const hideSearch = useAppStore(state => state.hideSearch)
 
   // Handle task chat panel width change
   const handleTaskChatWidthChange = useCallback(
@@ -355,8 +367,12 @@ export function App() {
   }, [toggleTaskChat])
 
   const handleFocusSearch = useCallback(() => {
-    searchInputRef.current?.focus()
-  }, [])
+    showSearch()
+    // Focus the input after a brief delay to allow it to render
+    setTimeout(() => {
+      searchInputRef.current?.focus()
+    }, 50)
+  }, [showSearch])
 
   // Register hotkeys
   useHotkeys({
@@ -405,6 +421,8 @@ export function App() {
             searchInputRef={searchInputRef}
             onTaskClick={handleTaskClick}
             onOpenTask={handleTaskClick}
+            isSearchVisible={isSearchVisible}
+            onHideSearch={hideSearch}
           />
         }
         main={<AgentView chatInputRef={chatInputRef} />}

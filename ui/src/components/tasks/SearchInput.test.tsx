@@ -236,4 +236,27 @@ describe("SearchInput", () => {
       expect(screen.getByRole("textbox")).toHaveValue("existing query")
     })
   })
+
+  describe("onHide callback", () => {
+    it("calls onHide when clear button is clicked", () => {
+      const onHide = vi.fn()
+      useAppStore.getState().setTaskSearchQuery("test query")
+      render(<SearchInput onHide={onHide} />)
+
+      const clearButton = screen.getByRole("button", { name: "Clear search" })
+      fireEvent.click(clearButton)
+
+      expect(onHide).toHaveBeenCalledTimes(1)
+    })
+
+    it("calls onHide when Escape is pressed", () => {
+      const onHide = vi.fn()
+      render(<SearchInput onHide={onHide} />)
+
+      const input = screen.getByRole("textbox")
+      fireEvent.keyDown(input, { key: "Escape" })
+
+      expect(onHide).toHaveBeenCalledTimes(1)
+    })
+  })
 })

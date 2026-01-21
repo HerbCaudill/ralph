@@ -27,6 +27,17 @@ export interface TaskSidebarProps {
   onOpenTask?: (taskId: string) => void
 
   /**
+   * Whether the search input is visible.
+   * @default false
+   */
+  isSearchVisible?: boolean
+
+  /**
+   * Callback when the search should be hidden.
+   */
+  onHideSearch?: () => void
+
+  /**
    * Additional CSS classes.
    */
   className?: string
@@ -43,6 +54,8 @@ export function TaskSidebar({
   taskList,
   searchInputRef,
   onOpenTask,
+  isSearchVisible = false,
+  onHideSearch,
   className,
 }: TaskSidebarProps) {
   return (
@@ -54,10 +67,12 @@ export function TaskSidebar({
       {/* Quick Input Area */}
       {quickInput && <div className="border-border shrink-0 border-b px-4 py-3">{quickInput}</div>}
 
-      {/* Search Input */}
-      <div className="border-border shrink-0 border-b px-3 py-2">
-        <SearchInput ref={searchInputRef} onOpenTask={onOpenTask} />
-      </div>
+      {/* Search Input - only visible when activated via Cmd+F */}
+      {isSearchVisible && (
+        <div className="border-border shrink-0 border-b px-3 py-2">
+          <SearchInput ref={searchInputRef} onOpenTask={onOpenTask} onHide={onHideSearch} />
+        </div>
+      )}
 
       {/* Task List Area - scrolling is handled by TaskList sections */}
       <div className="min-h-0 flex-1">

@@ -1165,4 +1165,43 @@ describe("useAppStore", () => {
       expect(state.viewingIterationIndex).toBeNull()
     })
   })
+
+  describe("search visibility", () => {
+    it("has isSearchVisible false initially", () => {
+      expect(useAppStore.getState().isSearchVisible).toBe(false)
+    })
+
+    it("setSearchVisible sets the visibility", () => {
+      useAppStore.getState().setSearchVisible(true)
+      expect(useAppStore.getState().isSearchVisible).toBe(true)
+
+      useAppStore.getState().setSearchVisible(false)
+      expect(useAppStore.getState().isSearchVisible).toBe(false)
+    })
+
+    it("showSearch sets isSearchVisible to true", () => {
+      useAppStore.getState().showSearch()
+      expect(useAppStore.getState().isSearchVisible).toBe(true)
+    })
+
+    it("hideSearch sets isSearchVisible to false", () => {
+      useAppStore.getState().showSearch()
+      expect(useAppStore.getState().isSearchVisible).toBe(true)
+
+      useAppStore.getState().hideSearch()
+      expect(useAppStore.getState().isSearchVisible).toBe(false)
+    })
+
+    it("hideSearch also clears the search query", () => {
+      useAppStore.getState().setTaskSearchQuery("test query")
+      useAppStore.getState().showSearch()
+
+      expect(useAppStore.getState().taskSearchQuery).toBe("test query")
+      expect(useAppStore.getState().isSearchVisible).toBe(true)
+
+      useAppStore.getState().hideSearch()
+      expect(useAppStore.getState().taskSearchQuery).toBe("")
+      expect(useAppStore.getState().isSearchVisible).toBe(false)
+    })
+  })
 })

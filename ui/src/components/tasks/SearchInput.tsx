@@ -5,14 +5,7 @@ import {
   selectSelectedTaskId,
   selectVisibleTaskIds,
 } from "@/store"
-import {
-  forwardRef,
-  useImperativeHandle,
-  useRef,
-  useCallback,
-  useState,
-  type KeyboardEvent,
-} from "react"
+import { forwardRef, useImperativeHandle, useRef, useCallback, type KeyboardEvent } from "react"
 import { IconSearch, IconX } from "@tabler/icons-react"
 
 // Types
@@ -39,6 +32,11 @@ export interface SearchInputProps {
    * Callback when a task should be opened (triggered by Enter key).
    */
   onOpenTask?: (taskId: string) => void
+
+  /**
+   * Callback when the search should be hidden (triggered by Escape or clear when empty).
+   */
+  onHide?: () => void
 }
 
 export interface SearchInputHandle {
@@ -53,7 +51,7 @@ export interface SearchInputHandle {
  * Uses Zustand store for state management to enable live filtering.
  */
 export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(function SearchInput(
-  { placeholder = "Search tasks...", disabled = false, className, onOpenTask },
+  { placeholder = "Search tasks...", disabled = false, className, onOpenTask, onHide },
   ref,
 ) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -64,7 +62,6 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
   const setSelectedTaskId = useAppStore(state => state.setSelectedTaskId)
   const clearSelectedTaskId = useAppStore(state => state.clearSelectedTaskId)
   const visibleTaskIds = useAppStore(selectVisibleTaskIds)
-  const [isFocused, setIsFocused] = useState(false)
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -85,16 +82,17 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
 
   const handleClear = useCallback(() => {
     clearQuery()
-    inputRef.current?.focus()
-  }, [clearQuery])
+    onHide?.()
+  }, [clearQuery, onHide])
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
-      // Escape clears the search and selection
+      // Escape clears the search and selection, and hides the search bar
       if (e.key === "Escape") {
         e.preventDefault()
         clearQuery()
         clearSelectedTaskId()
+        onHide?.()
         return
       }
 
@@ -151,26 +149,14 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
       selectedTaskId,
       setSelectedTaskId,
       onOpenTask,
+      onHide,
     ],
   )
-
-  const handleFocus = useCallback(() => {
-    setIsFocused(true)
-  }, [])
-
-  const handleBlur = useCallback(() => {
-    setIsFocused(false)
-  }, [])
-
-  const isActive = isFocused || query.length > 0
 
   return (
     <div className={cn("relative flex items-center", className)}>
       <IconSearch
-        className={cn(
-          "pointer-events-none absolute left-2 size-4 transition-colors",
-          isActive ? "text-muted-foreground" : "text-muted-foreground/60",
-        )}
+        className="text-muted-foreground pointer-events-none absolute left-2 size-4"
         aria-hidden="true"
       />
       <input
@@ -179,22 +165,13 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
         value={query}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "text-foreground h-8 w-full text-sm transition-all",
+          "text-foreground placeholder:text-muted-foreground h-8 w-full bg-transparent text-sm",
           "py-1 pr-8 pl-8",
           "focus:outline-none",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          isActive ?
-            [
-              "placeholder:text-muted-foreground bg-muted/50",
-              "rounded-md border-0",
-              "focus:ring-ring/50 focus:bg-muted focus:ring-1",
-            ]
-          : ["placeholder:text-muted-foreground/60 bg-transparent", "rounded-none border-0"],
         )}
         aria-label="Search tasks"
       />

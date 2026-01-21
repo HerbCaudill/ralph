@@ -310,6 +310,9 @@ export interface AppState {
 
   // Tool output visibility (global setting for all ToolUseCards)
   showToolOutput: boolean
+
+  // Search input visibility (hidden by default, shown on Cmd+F)
+  isSearchVisible: boolean
 }
 
 // Store Actions
@@ -405,6 +408,11 @@ export interface AppActions {
   // Tool output visibility
   setShowToolOutput: (show: boolean) => void
   toggleToolOutput: () => void
+
+  // Search visibility
+  setSearchVisible: (visible: boolean) => void
+  showSearch: () => void
+  hideSearch: () => void
 
   // Reset
   reset: () => void
@@ -523,6 +531,7 @@ const initialState: AppState = {
   visibleTaskIds: [],
   closedTimeFilter: "past_day",
   showToolOutput: false,
+  isSearchVisible: false,
 }
 
 // Create the store with localStorage initialization
@@ -765,6 +774,11 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       return { showToolOutput: newValue }
     }),
 
+  // Search visibility
+  setSearchVisible: visible => set({ isSearchVisible: visible }),
+  showSearch: () => set({ isSearchVisible: true }),
+  hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
+
   // Reset
   reset: () => set(initialState),
 }))
@@ -814,3 +828,4 @@ export const selectIterationTask = (state: AppState) => {
   const iterationEvents = getEventsForIteration(state.events, state.viewingIterationIndex)
   return getTaskFromIterationEvents(iterationEvents)
 }
+export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
