@@ -242,3 +242,45 @@ export interface WorkspaceListEntry {
   accentColor?: string | null
   activeIssueCount?: number
 }
+
+/**
+ * Represents a single Ralph instance with its per-instance state.
+ * Used for concurrent Ralph support where multiple instances can run simultaneously.
+ */
+export interface RalphInstance {
+  /** Unique identifier for the instance */
+  id: string
+
+  /** Display name for the instance (e.g., "Main", "Worktree 1") */
+  name: string
+
+  /** Ralph process status */
+  status: RalphStatus
+
+  /** Event stream from Ralph for this instance */
+  events: RalphEvent[]
+
+  /** Token usage for this instance */
+  tokenUsage: TokenUsage
+
+  /** Context window usage for this instance */
+  contextWindow: ContextWindow
+
+  /** Iteration progress for this instance */
+  iteration: IterationInfo
+
+  /** Path to the git worktree (null for main workspace) */
+  worktreePath: string | null
+
+  /** Git branch name for this instance */
+  branch: string | null
+
+  /** ID of the current task being worked on */
+  currentTaskId: string | null
+
+  /** Timestamp when the instance was created */
+  createdAt: number
+
+  /** Timestamp when Ralph started running (null if not running) */
+  runStartedAt: number | null
+}
