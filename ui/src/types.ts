@@ -254,6 +254,9 @@ export interface RalphInstance {
   /** Display name for the instance (e.g., "Main", "Worktree 1") */
   name: string
 
+  /** Agent name/ID used for task assignment (e.g., "Ralph-1", "Ralph-2") */
+  agentName: string
+
   /** Ralph process status */
   status: RalphStatus
 
