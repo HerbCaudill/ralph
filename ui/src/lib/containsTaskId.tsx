@@ -1,4 +1,4 @@
-import { createTaskIdPattern } from "../components/ui/TaskIdLink"
+import { createTaskIdPattern } from "@/components/ui/createTaskIdPattern"
 
 /**
  * Utility function to check if a string contains any task IDs with the given prefix.

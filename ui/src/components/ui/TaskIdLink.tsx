@@ -2,30 +2,7 @@ import { useTaskDialogContext } from "@/contexts"
 import { useAppStore, selectIssuePrefix } from "@/store"
 import { stripTaskPrefix } from "@/lib/utils"
 import type { ReactNode, MouseEvent } from "react"
-
-/**
- * Creates a regex pattern that matches task IDs with the given prefix.
- * If no prefix is provided, returns null (don't match anything).
- *
- * @param prefix - The issue prefix for this workspace (e.g., "rui")
- * @returns A regex that matches task IDs like "rui-48s" or "rui-4vp.5", or null if no prefix
- */
-export function createTaskIdPattern(prefix: string | null): RegExp | null {
-  if (!prefix) return null
-  // Escape any special regex characters in the prefix (unlikely but safe)
-  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  // Match prefix-alphanumeric with optional decimal suffixes (e.g., rui-4vp.1 or rui-4vp.1.2.3)
-  return new RegExp(`\\b(${escapedPrefix}-[a-z0-9]+(?:\\.\\d+)*)\\b`, "g")
-}
-
-// Types
-
-export interface TaskIdLinkProps {
-  /** Text content that may contain task IDs */
-  children: string
-  /** Additional class name for task ID links */
-  className?: string
-}
+import { createTaskIdPattern } from "./createTaskIdPattern"
 
 // TaskIdLink Component
 
@@ -107,4 +84,13 @@ export function TaskIdLink({ children, className }: TaskIdLinkProps) {
   }
 
   return <>{parts}</>
+}
+
+// Types
+
+export interface TaskIdLinkProps {
+  /** Text content that may contain task IDs */
+  children: string
+  /** Additional class name for task ID links */
+  className?: string
 }

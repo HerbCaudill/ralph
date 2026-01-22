@@ -276,8 +276,10 @@ export class WorkspaceContext extends EventEmitter {
       this.emit("task-chat:tool_result", toolUse)
     })
 
-    // Log all events (for replay testing)
+    // Emit raw SDK events for unified event model
     this._taskChatManager.on("event", (event: TaskChatEvent) => {
+      this.emit("task-chat:event", event)
+      // Also log for replay testing
       this.logTaskChatEvent(event)
     })
   }
