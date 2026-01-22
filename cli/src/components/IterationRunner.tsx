@@ -26,10 +26,16 @@ import { processEvents } from "../lib/processEvents.js"
 import { renderStaticItem } from "./renderStaticItem.js"
 import { type StaticItem, type IterationRunnerProps } from "./IterationRunner.types.js"
 
+/** Debug logger for iteration lifecycle events */
 const log = createDebugLogger("iteration")
 
+/** The .ralph directory path in the current working directory */
 const ralphDir = join(process.cwd(), ".ralph")
+
+/** Path to the todo.md file in the .ralph directory */
 const todoFile = join(ralphDir, "todo.md")
+
+/** The name of the current repository (basename of cwd) */
 const repoName = basename(process.cwd())
 
 /**
@@ -92,7 +98,7 @@ export const IterationRunner = ({
   // Log file path for this run (set once at startup, persisted across iterations)
   const logFileRef = useRef<string | null>(null)
 
-  // Only use input handling if stdin supports raw mode
+  /** Whether stdin supports raw mode (required for keyboard input handling) */
   const stdinSupportsRawMode = process.stdin.isTTY === true
 
   /**
