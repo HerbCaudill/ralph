@@ -247,6 +247,9 @@ describe("EventDisplay", () => {
     })
   })
 
+  /**
+   * Verify that consecutive text blocks are merged to prevent unwanted gaps in the output
+   */
   it("merges consecutive text blocks to prevent unwanted gaps", async () => {
     // When Claude outputs text in multiple blocks (e.g., before and after inline code),
     // we should merge them into one StreamingText component to avoid gaps
@@ -285,6 +288,9 @@ describe("EventDisplay", () => {
     expect(contentLines.length).toBe(1)
   })
 
+  /**
+   * Verify that completed iteration rounds are displayed before the current round
+   */
   it("displays completed rounds before current round", async () => {
     const completedIterations = [
       {
