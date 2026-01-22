@@ -88,7 +88,7 @@ function TasksSidebarPanel({
   return (
     <TaskSidebar
       quickInput={<QuickTaskInput ref={quickInputRef} onTaskCreated={handleTaskCreated} />}
-      taskList={<TaskList tasks={tasks} onTaskClick={onTaskClick} />}
+      taskList={<TaskList tasks={tasks} onTaskClick={onTaskClick} showEmptyGroups />}
       searchInputRef={searchInputRef}
       onOpenTask={onOpenTask}
       isSearchVisible={isSearchVisible}
