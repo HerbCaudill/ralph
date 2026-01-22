@@ -14,7 +14,9 @@ describe("InstanceStore", () => {
   let testDir: string
   let store: InstanceStore
 
-  // Create a unique test directory for each test
+  /**
+   * Create a unique test directory for each test
+   */
   beforeEach(async () => {
     testDir = join(tmpdir(), `instance-store-test-${randomBytes(8).toString("hex")}`)
     await mkdir(testDir, { recursive: true })
@@ -22,7 +24,9 @@ describe("InstanceStore", () => {
     resetInstanceStores()
   })
 
-  // Clean up after each test
+  /**
+   * Clean up after each test
+   */
   afterEach(async () => {
     try {
       await rm(testDir, { recursive: true, force: true })
@@ -31,7 +35,9 @@ describe("InstanceStore", () => {
     }
   })
 
-  // Helper to create a test instance
+  /**
+   * Helper to create a test instance
+   */
   function createTestInstance(overrides: Partial<PersistedInstance> = {}): PersistedInstance {
     return {
       id: overrides.id ?? randomBytes(4).toString("hex"),
