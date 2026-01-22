@@ -55,10 +55,18 @@ export function DiffView({ oldString, newString, language = "text", isExpanded, 
   )
 }
 
+/**
+ * Props for the DiffView component
+ */
 type Props = {
+  /** Original string before changes */
   oldString: string
+  /** New string after changes */
   newString: string
+  /** Syntax highlighting language hint */
   language?: string
+  /** Whether the diff is currently expanded to show all lines */
   isExpanded: boolean
+  /** Callback invoked when user clicks to expand truncated diff */
   onExpand?: () => void
 }

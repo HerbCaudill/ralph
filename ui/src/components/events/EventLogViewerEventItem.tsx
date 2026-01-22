@@ -5,6 +5,10 @@ import { isToolResultEvent } from "@/lib/isToolResultEvent"
 import { isUserMessageEvent } from "@/lib/isUserMessageEvent"
 import type { AssistantContentBlock, RalphEvent } from "@/types"
 
+/**
+ * Renders a single event item within the event log viewer.
+ * Handles user messages, assistant messages, and tool results.
+ */
 export function EventLogViewerEventItem({ event, toolResults }: Props) {
   if (isUserMessageEvent(event)) {
     return <UserMessage event={event} />
@@ -40,7 +44,12 @@ export function EventLogViewerEventItem({ event, toolResults }: Props) {
   return null
 }
 
+/**
+ * Props for the EventLogViewerEventItem component
+ */
 type Props = {
+  /** The event to render */
   event: RalphEvent
+  /** Map of tool use IDs to their results for matching tool uses with results */
   toolResults: Map<string, { output?: string; error?: string }>
 }

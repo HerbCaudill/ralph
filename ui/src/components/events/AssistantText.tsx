@@ -13,7 +13,12 @@ export function AssistantText({ event, className }: Props) {
   )
 }
 
+/**
+ * Props for the AssistantText component
+ */
 type Props = {
+  /** The assistant text event to render */
   event: AssistantTextEvent
+  /** Optional CSS class to apply to the container */
   className?: string
 }

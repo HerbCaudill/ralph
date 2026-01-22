@@ -192,16 +192,14 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
   )
 }
 
+/**
+ * Props for the EventStream component
+ */
 export type EventStreamProps = {
+  /** Optional CSS class to apply to the container */
   className?: string
-  /**
-   * Maximum number of events to display. Older events are removed when exceeded.
-   * @default 1000
-   */
+  /** Maximum number of events to display. Older events are removed when exceeded. */
   maxEvents?: number
-  /**
-   * Optional instance ID to display events from. When provided, shows events
-   * from the specified instance. When omitted, shows events from the active instance.
-   */
+  /** Optional instance ID to display events from. When provided, shows events from the specified instance. When omitted, shows events from the active instance. */
   instanceId?: string
 }

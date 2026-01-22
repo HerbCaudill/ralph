@@ -279,6 +279,10 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
   )
 }
 
+/**
+ * Props for the EventLogViewer component
+ */
 export type EventLogViewerProps = {
+  /** Optional CSS class to apply to the container */
   className?: string
 }
