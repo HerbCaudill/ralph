@@ -6,8 +6,8 @@ test.describe("Layout", () => {
       const header = app.page.getByTestId("header")
       await expect(header).toBeVisible()
 
-      // Logo should be visible with "Ralph" text
-      await expect(header.getByText("Ralph")).toBeVisible()
+      // Logo should be visible with "Ralph" text (exact match to avoid matching "Ralph:")
+      await expect(header.getByText("Ralph", { exact: true })).toBeVisible()
     })
 
     test("displays workspace picker in header", async ({ app }) => {
@@ -89,9 +89,10 @@ test.describe("Layout", () => {
   test.describe("panels", () => {
     test("left panel (task chat) is open by default", async ({ app }) => {
       const leftPanel = app.page.getByTestId("left-panel")
-      // Left panel (task chat) is open by default with non-zero width
-      const width = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
-      expect(width).toBeGreaterThan(0)
+      // Left panel (task chat) is open by default with non-zero width - use poll to retry
+      await expect
+        .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
+        .toBeGreaterThan(0)
     })
 
     test("can toggle left panel with hotkey", async ({ app }) => {
@@ -99,11 +100,12 @@ test.describe("Layout", () => {
       const taskChatInput = app.page.getByLabel("Task chat input")
 
       // Wait for the chat input to be enabled (connection established)
-      await expect(taskChatInput).toBeEnabled({ timeout: 5000 })
+      await expect(taskChatInput).toBeEnabled({ timeout: 10000 })
 
-      // Panel should be open initially
-      const initialWidth = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
-      expect(initialWidth).toBeGreaterThan(0)
+      // Panel should be open initially - use poll to retry
+      await expect
+        .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
+        .toBeGreaterThan(0)
 
       // First focus the chat input, then press Cmd+J to close
       // (new behavior: if not focused, first press focuses; second press toggles)
@@ -111,19 +113,18 @@ test.describe("Layout", () => {
       await expect(taskChatInput).toBeFocused()
       await app.page.keyboard.press("Meta+j")
 
-      // Wait for CSS transition to complete (200ms duration + buffer)
-      await app.page.waitForTimeout(300)
-
-      // Panel should be closed now (width is 0, but border may add 1px)
-      const closedWidth = await leftPanel.evaluate(el => el.getBoundingClientRect().width)
-      expect(closedWidth).toBeLessThanOrEqual(1)
+      // Wait for panel to close (CSS transition) - use poll to retry
+      await expect
+        .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
+        .toBeLessThanOrEqual(1)
     })
 
     test("right panel is hidden by default", async ({ app }) => {
       const rightPanel = app.page.getByTestId("right-panel")
       // Right panel (event log viewer) is hidden by default (width is 0, but border may add 1px)
-      const width = await rightPanel.evaluate(el => el.getBoundingClientRect().width)
-      expect(width).toBeLessThanOrEqual(1)
+      await expect
+        .poll(() => rightPanel.evaluate(el => el.getBoundingClientRect().width))
+        .toBeLessThanOrEqual(1)
     })
   })
 

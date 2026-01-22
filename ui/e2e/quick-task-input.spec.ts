@@ -1,5 +1,8 @@
 import { test, expect } from "./fixtures"
 
+// Run these tests serially since they create tasks which modifies shared state
+test.describe.configure({ mode: "serial" })
+
 test.describe("QuickTaskInput", () => {
   test("clears input after successful task submission", async ({ app }) => {
     const taskTitle = `E2E Test Task ${Date.now()}`
@@ -100,10 +103,8 @@ test.describe("QuickTaskInput", () => {
     // Try to submit the task
     await app.taskList.quickTaskInput.press("Enter")
 
-    // Wait a bit for the error response
-    await app.page.waitForTimeout(500)
-
-    // Input should retain the value on error
-    await expect(app.taskList.quickTaskInput).toHaveValue(taskTitle)
+    // Input should retain the value on error - toHaveValue auto-retries
+    // Use a longer timeout to account for the error response processing
+    await expect(app.taskList.quickTaskInput).toHaveValue(taskTitle, { timeout: 5000 })
   })
 })
