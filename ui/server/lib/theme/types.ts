@@ -1,13 +1,4 @@
 /**
- * Theme types for VS Code theme support in ralph-ui.
- *
- * These types are used for:
- * - Parsing VS Code theme files
- * - Storing processed theme data for the application
- * - Providing type-safe access to status colors
- */
-
-/**
  * Raw VS Code theme file structure.
  * This matches the format of .json theme files in VS Code extensions.
  */

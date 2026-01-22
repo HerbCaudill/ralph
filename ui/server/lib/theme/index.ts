@@ -1,4 +1,3 @@
-// Re-export all theme types and constants
 export type {
   VSCodeTheme,
   VSCodeTokenColor,
@@ -15,7 +14,6 @@ export {
   DEFAULT_LIGHT_STATUS_COLORS,
 } from "./types.js"
 
-// Re-export parser functions and types
 export type { ParseResult, ValidationResult } from "./parser.js"
 export {
   parseThemeJson,
@@ -30,7 +28,6 @@ export {
   getEssentialColors,
 } from "./parser.js"
 
-// Re-export mapper functions and types
 export type { CSSVariables } from "./mapper.js"
 export {
   extractStatusColors,
