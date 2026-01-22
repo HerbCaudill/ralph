@@ -1,18 +1,11 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp, Static, useInput } from "ink"
 import Spinner from "ink-spinner"
-import BigText from "ink-big-text"
-import Gradient from "ink-gradient"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
 import { appendFileSync, writeFileSync, readFileSync, existsSync } from "fs"
-import { join, dirname, basename } from "path"
-import { fileURLToPath } from "url"
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
-import { Header } from "./Header.js"
-import { eventToBlocks, type ContentBlock } from "./eventToBlocks.js"
-import { formatContentBlock } from "../lib/formatContentBlock.js"
+import { join, basename } from "path"
+import { query } from "@anthropic-ai/claude-agent-sdk"
+import { eventToBlocks } from "./eventToBlocks.js"
 import { addTodo } from "../lib/addTodo.js"
 import {
   getProgress,
@@ -21,184 +14,37 @@ import {
   type StartupSnapshot,
 } from "../lib/getProgress.js"
 import { ProgressBar } from "./ProgressBar.js"
-import { watchForNewIssues, BeadsClient, type MutationEvent } from "../lib/beadsClient.js"
+import { watchForNewIssues, type MutationEvent } from "../lib/beadsClient.js"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { createDebugLogger } from "../lib/debug.js"
 import { useTerminalSize } from "../lib/useTerminalSize.js"
 import { getNextLogFile } from "../lib/getNextLogFile.js"
 import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
-
-import { loadIterationPrompt } from "@herbcaudill/ralph-shared"
+import { getPromptContent } from "../lib/getPromptContent.js"
+import { sdkMessageToEvent } from "../lib/sdkMessageToEvent.js"
+import { processEvents } from "../lib/processEvents.js"
+import { renderStaticItem } from "./renderStaticItem.js"
+import { type StaticItem, type IterationRunnerProps } from "./IterationRunner.types.js"
 
 const log = createDebugLogger("iteration")
 
 const ralphDir = join(process.cwd(), ".ralph")
 const todoFile = join(ralphDir, "todo.md")
-const templatesDir = join(__dirname, "..", "..", "templates")
 const repoName = basename(process.cwd())
 
 /**
- * Get the prompt content by combining core-prompt.md with workflow.md.
+ * Orchestrates the iterative execution of Claude AI iterations.
  *
- * Core prompt is always loaded from templates (bundled).
- * Workflow is loaded from .ralph/workflow.md if it exists, otherwise from templates.
+ * Spawns Claude CLI with prompts, captures streaming output, displays formatted UI,
+ * and handles user input during iteration execution.
  */
-export const getPromptContent = (): string => {
-  try {
-    const result = loadIterationPrompt({
-      templatesDir,
-      cwd: process.cwd(),
-    })
-    return result.content
-  } catch {
-    // Last resort: return a minimal prompt
-    return "Work on the highest-priority task."
-  }
-}
-
-// Convert SDK message to event format for display
-const sdkMessageToEvent = (message: SDKMessage): Record<string, unknown> | null => {
-  // Pass through messages that have the structure we expect
-  if (message.type === "assistant" || message.type === "user" || message.type === "result") {
-    return message as unknown as Record<string, unknown>
-  }
-  // Skip system and stream_event messages for display
-  return null
-}
-
-type IterationEvents = {
-  iteration: number
-  events: Array<Record<string, unknown>>
-}
-
-// Process raw events into content blocks (moved from EventDisplay)
-// With includePartialMessages: true, we receive multiple snapshots of the same message
-// as it builds up. Each snapshot may contain different parts of the message content,
-// so we need to merge them and deduplicate.
-const processEvents = (events: Array<Record<string, unknown>>): ContentBlock[] => {
-  const blocks: ContentBlock[] = []
-
-  // First pass: collect all assistant message content and track message order
-  const assistantEvents = events.filter(event => event.type === "assistant")
-
-  // Collect all content blocks from all snapshots of the same message
-  const messageMap = new Map<string, Array<Record<string, unknown>>>()
-  for (const event of assistantEvents) {
-    const message = event.message as Record<string, unknown> | undefined
-    const messageId = message?.id as string | undefined
-    const content = message?.content as Array<Record<string, unknown>> | undefined
-
-    if (messageId && content) {
-      if (!messageMap.has(messageId)) {
-        messageMap.set(messageId, [])
-      }
-      messageMap.get(messageId)!.push(...content)
-    }
-  }
-
-  // Create merged events with deduplicated content
-  const mergedEvents = Array.from(messageMap.entries()).map(([messageId, allContent]) => {
-    // Deduplicate content blocks by their ID (for tool_use) or text (for text blocks)
-    const seenBlocks = new Set<string>()
-    const uniqueContent: Array<Record<string, unknown>> = []
-
-    for (const block of allContent) {
-      const blockType = block.type as string
-      let blockKey: string
-
-      if (blockType === "tool_use") {
-        // Tool use blocks are unique by their ID
-        blockKey = `tool:${block.id}`
-      } else if (blockType === "text") {
-        // For text blocks, check if this is a prefix of or prefixed by existing text
-        // This handles incremental text updates where each snapshot has more content
-        const text = block.text as string
-        let isDuplicate = false
-
-        for (const seenKey of seenBlocks) {
-          if (seenKey.startsWith("text:")) {
-            const seenText = seenKey.substring(5)
-            // If existing text starts with this text, or this text starts with existing,
-            // keep only the longer one
-            if (seenText.startsWith(text)) {
-              // Existing is longer, this is a duplicate
-              isDuplicate = true
-              break
-            } else if (text.startsWith(seenText)) {
-              // This is longer, remove the old one and add this
-              seenBlocks.delete(seenKey)
-              // Also remove from uniqueContent
-              const idx = uniqueContent.findIndex(b => b.type === "text" && b.text === seenText)
-              if (idx >= 0) uniqueContent.splice(idx, 1)
-              break
-            }
-          }
-        }
-
-        if (isDuplicate) continue
-        blockKey = `text:${text}`
-      } else {
-        blockKey = JSON.stringify(block)
-      }
-
-      if (!seenBlocks.has(blockKey)) {
-        seenBlocks.add(blockKey)
-        uniqueContent.push(block)
-      }
-    }
-
-    return {
-      type: "assistant",
-      message: {
-        id: messageId,
-        content: uniqueContent,
-      },
-    }
-  })
-
-  const assistantBlocks = mergedEvents.flatMap(event => eventToBlocks(event))
-
-  // Second pass: process events in order, including user messages
-  // Track which user messages and assistant messages we've already seen
-  const processedUserIds = new Set<string>()
-  const processedAssistantIds = new Set<string>()
-
-  for (const event of events) {
-    if (event.type === "user") {
-      const message = event.message as Record<string, unknown> | undefined
-      const messageId = (message?.id as string | undefined) ?? `user-${Date.now()}`
-      if (!processedUserIds.has(messageId)) {
-        processedUserIds.add(messageId)
-        blocks.push(...eventToBlocks(event))
-      }
-    } else if (event.type === "assistant") {
-      const message = event.message as Record<string, unknown> | undefined
-      const messageId = message?.id as string | undefined
-      if (messageId && !processedAssistantIds.has(messageId)) {
-        processedAssistantIds.add(messageId)
-        // Find the merged version of this message
-        const merged = assistantBlocks.filter(b => b.id.startsWith(messageId))
-        blocks.push(...merged)
-      }
-    }
-  }
-
-  return blocks
-}
-
-// Static item representing either header, iteration header, or content block
-type StaticItem =
-  | { type: "header"; claudeVersion: string; ralphVersion: string; key: string }
-  | { type: "iteration"; iteration: number; key: string }
-  | { type: "block"; block: ContentBlock; key: string }
-
 export const IterationRunner = ({
   totalIterations,
   claudeVersion,
   ralphVersion,
   watch,
   agent,
-}: Props) => {
+}: IterationRunnerProps) => {
   const { exit } = useApp()
   const { columns } = useTerminalSize()
   const [currentIteration, setCurrentIteration] = useState(1)
@@ -249,8 +95,13 @@ export const IterationRunner = ({
   // Only use input handling if stdin supports raw mode
   const stdinSupportsRawMode = process.stdin.isTTY === true
 
-  // Handle Ctrl-T to add a new todo
-  const handleTodoSubmit = (text: string) => {
+  /**
+   * Handle adding a new todo when Ctrl-T is pressed.
+   */
+  const handleTodoSubmit = (
+    /** The todo text to add */
+    text: string,
+  ) => {
     const trimmed = text.trim()
     if (!trimmed) {
       setIsAddingTodo(false)
@@ -277,8 +128,13 @@ export const IterationRunner = ({
     }
   }
 
-  // Handle submitting a user message to Claude
-  const handleUserMessageSubmit = (text: string) => {
+  /**
+   * Handle submitting a user message to Claude during iteration.
+   */
+  const handleUserMessageSubmit = (
+    /** The message text from the user */
+    text: string,
+  ) => {
     const trimmed = text.trim()
     if (!trimmed) {
       setUserMessageText("")
@@ -314,9 +170,16 @@ export const IterationRunner = ({
     setTimeout(() => setUserMessageStatus(null), 3000)
   }
 
-  // Handle keyboard input for Ctrl-T (todo), Ctrl-S (stop), and Escape (cancel todo input)
+  /**
+   * Handle keyboard input for Ctrl-T (todo), Ctrl-S (stop), Ctrl-P (pause), and Escape (cancel).
+   */
   useInput(
-    (input, key) => {
+    (
+      /** The input character */
+      input,
+      /** The key information including modifiers */
+      key,
+    ) => {
       // Ctrl-T to start adding a todo (only if todo.md exists)
       if (key.ctrl && input === "t" && hasTodoFile) {
         setIsAddingTodo(true)
@@ -506,6 +369,9 @@ export const IterationRunner = ({
     // Push the initial prompt as the first message
     messageQueue.push(createUserMessage(fullPrompt))
 
+    /**
+     * Execute a query to Claude and handle the streaming response.
+     */
     const runQuery = async () => {
       let finalResult = ""
       log(`Starting iteration ${currentIteration}`)
@@ -670,31 +536,6 @@ export const IterationRunner = ({
     )
   }
 
-  // Render a static item (header, iteration header, or content block)
-  const renderStaticItem = (item: StaticItem) => {
-    if (item.type === "header") {
-      return <Header claudeVersion={item.claudeVersion} ralphVersion={item.ralphVersion} />
-    }
-    if (item.type === "iteration") {
-      return (
-        <Box flexDirection="column" marginTop={1}>
-          <Gradient colors={["#30A6E4", "#EBC635"]}>
-            <BigText text={`R${item.iteration}`} font="tiny" />
-          </Gradient>
-        </Box>
-      )
-    }
-    // Content block
-    const lines = formatContentBlock(item.block)
-    return (
-      <Box flexDirection="column" marginBottom={1}>
-        {lines.map((line, i) => (
-          <Text key={i}>{line || " "}</Text>
-        ))}
-      </Box>
-    )
-  }
-
   return (
     <Box flexDirection="column">
       {/* Static content that has already been rendered - won't re-render */}
@@ -803,12 +644,4 @@ export const IterationRunner = ({
       </Box>
     </Box>
   )
-}
-
-type Props = {
-  totalIterations: number
-  claudeVersion: string
-  ralphVersion: string
-  watch?: boolean
-  agent: string
 }
