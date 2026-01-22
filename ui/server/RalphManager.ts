@@ -1,44 +1,6 @@
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
 import { EventEmitter } from "node:events"
 
-// Types
-
-export type RalphStatus =
-  | "stopped"
-  | "starting"
-  | "running"
-  | "pausing"
-  | "paused"
-  | "stopping"
-  | "stopping_after_current"
-
-export interface RalphEvent {
-  type: string
-  timestamp: number
-  [key: string]: unknown
-}
-
-export type SpawnFn = (command: string, args: string[], options: SpawnOptions) => ChildProcess
-
-export interface RalphManagerOptions {
-  /** Command to spawn (default: "npx") */
-  command?: string
-  /** Arguments for the command (default: ["@herbcaudill/ralph", "--json"]) */
-  args?: string[]
-  /** Working directory for the process */
-  cwd?: string
-  /** Additional environment variables */
-  env?: Record<string, string>
-  /** Custom spawn function (for testing) */
-  spawn?: SpawnFn
-  /** Run in watch mode (adds --watch flag) */
-  watch?: boolean
-  /** Agent to use (adds --agent flag, default: "claude") */
-  agent?: string
-}
-
-// RalphManager
-
 /**
  * Manages a ralph CLI child process.
  *
@@ -378,4 +340,38 @@ export class RalphManager extends EventEmitter {
       this.emit("status", status)
     }
   }
+}
+
+export type RalphStatus =
+  | "stopped"
+  | "starting"
+  | "running"
+  | "pausing"
+  | "paused"
+  | "stopping"
+  | "stopping_after_current"
+
+export interface RalphEvent {
+  type: string
+  timestamp: number
+  [key: string]: unknown
+}
+
+export type SpawnFn = (command: string, args: string[], options: SpawnOptions) => ChildProcess
+
+export interface RalphManagerOptions {
+  /** Command to spawn (default: "npx") */
+  command?: string
+  /** Arguments for the command (default: ["@herbcaudill/ralph", "--json"]) */
+  args?: string[]
+  /** Working directory for the process */
+  cwd?: string
+  /** Additional environment variables */
+  env?: Record<string, string>
+  /** Custom spawn function (for testing) */
+  spawn?: SpawnFn
+  /** Run in watch mode (adds --watch flag) */
+  watch?: boolean
+  /** Agent to use (adds --agent flag, default: "claude") */
+  agent?: string
 }
