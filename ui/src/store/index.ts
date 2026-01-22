@@ -406,6 +406,9 @@ export interface AppActions {
   showSearch: () => void
   hideSearch: () => void
 
+  // Active instance
+  setActiveInstanceId: (instanceId: string) => void
+
   // Reset
   reset: () => void
 }
@@ -976,6 +979,37 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   setSearchVisible: visible => set({ isSearchVisible: visible }),
   showSearch: () => set({ isSearchVisible: true }),
   hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
+
+  // Active instance
+  setActiveInstanceId: instanceId =>
+    set(state => {
+      // Only switch if the instance exists
+      if (!state.instances.has(instanceId)) {
+        console.warn(`[store] Cannot switch to non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      // If already active, no change needed
+      if (state.activeInstanceId === instanceId) {
+        return state
+      }
+
+      // Get the new active instance to sync flat fields
+      const instance = state.instances.get(instanceId)!
+
+      return {
+        activeInstanceId: instanceId,
+        // Sync flat fields from the new active instance for backward compatibility
+        ralphStatus: instance.status,
+        runStartedAt: instance.runStartedAt,
+        events: instance.events,
+        tokenUsage: instance.tokenUsage,
+        contextWindow: instance.contextWindow,
+        iteration: instance.iteration,
+        // Reset iteration view when switching instances
+        viewingIterationIndex: null,
+      }
+    }),
 
   // Reset
   reset: () => set({ ...initialState, instances: createInitialInstances() }),

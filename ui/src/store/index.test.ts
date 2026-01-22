@@ -431,6 +431,114 @@ describe("useAppStore", () => {
     })
   })
 
+  describe("setActiveInstanceId action", () => {
+    it("does nothing when instance does not exist", () => {
+      const state = useAppStore.getState()
+      const originalActiveId = state.activeInstanceId
+
+      useAppStore.getState().setActiveInstanceId("non-existent-id")
+
+      expect(useAppStore.getState().activeInstanceId).toBe(originalActiveId)
+    })
+
+    it("does nothing when switching to the same instance", () => {
+      const state = useAppStore.getState()
+      const originalActiveId = state.activeInstanceId
+
+      useAppStore.getState().setActiveInstanceId(originalActiveId)
+
+      expect(useAppStore.getState().activeInstanceId).toBe(originalActiveId)
+    })
+
+    it("switches to existing instance", () => {
+      // Create a second instance manually in the instances Map
+      const state = useAppStore.getState()
+      const newInstance = createRalphInstance("second-instance", "Second", "Agent2")
+      newInstance.status = "running"
+      newInstance.events = [{ type: "test-event", timestamp: 123 }]
+      newInstance.tokenUsage = { input: 500, output: 250 }
+      newInstance.contextWindow = { used: 10000, max: 200000 }
+      newInstance.iteration = { current: 2, total: 5 }
+      newInstance.runStartedAt = 12345
+
+      // Add the new instance to the Map
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to the new instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+
+      // Verify activeInstanceId changed
+      expect(useAppStore.getState().activeInstanceId).toBe("second-instance")
+    })
+
+    it("syncs flat fields when switching instance", () => {
+      // Create a second instance with distinct state
+      const state = useAppStore.getState()
+      const newInstance = createRalphInstance("second-instance", "Second", "Agent2")
+      newInstance.status = "running"
+      newInstance.events = [{ type: "test-event", timestamp: 123 }]
+      newInstance.tokenUsage = { input: 500, output: 250 }
+      newInstance.contextWindow = { used: 10000, max: 200000 }
+      newInstance.iteration = { current: 2, total: 5 }
+      newInstance.runStartedAt = 12345
+
+      // Add the new instance to the Map
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to the new instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+
+      // Verify flat fields are synced from the new active instance
+      const updatedState = useAppStore.getState()
+      expect(updatedState.ralphStatus).toBe("running")
+      expect(updatedState.events).toEqual([{ type: "test-event", timestamp: 123 }])
+      expect(updatedState.tokenUsage).toEqual({ input: 500, output: 250 })
+      expect(updatedState.contextWindow).toEqual({ used: 10000, max: 200000 })
+      expect(updatedState.iteration).toEqual({ current: 2, total: 5 })
+      expect(updatedState.runStartedAt).toBe(12345)
+    })
+
+    it("resets viewingIterationIndex when switching instance", () => {
+      // Set a viewing iteration index
+      useAppStore.getState().setViewingIterationIndex(3)
+      expect(useAppStore.getState().viewingIterationIndex).toBe(3)
+
+      // Create and add a second instance
+      const state = useAppStore.getState()
+      const newInstance = createRalphInstance("second-instance")
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to the new instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+
+      // Verify viewingIterationIndex is reset
+      expect(useAppStore.getState().viewingIterationIndex).toBeNull()
+    })
+
+    it("allows switching back to original instance", () => {
+      // Create a second instance
+      const state = useAppStore.getState()
+      const newInstance = createRalphInstance("second-instance")
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to second instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+      expect(useAppStore.getState().activeInstanceId).toBe("second-instance")
+
+      // Switch back to default
+      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
+      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+    })
+  })
+
   describe("flat field delegation to active instance", () => {
     it("setRalphStatus updates active instance status", () => {
       useAppStore.getState().setRalphStatus("running")
