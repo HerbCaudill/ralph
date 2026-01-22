@@ -34,10 +34,7 @@ export const Header = ({
 }
 
 type Props = {
-  /** Claude CLI version string */
   claudeVersion: string
-  /** Ralph version string */
   ralphVersion: string
-  /** Optional box width in characters */
   width?: number
 }
