@@ -46,10 +46,8 @@ test.describe("Navigation", () => {
       const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
       await expect(searchInput).toBeVisible()
 
-      // Use click then type for more reliable input handling (fill clears first which can cause state issues)
-      await searchInput.click()
-      await expect(searchInput).toBeFocused()
-      await searchInput.type("test")
+      // Use fill() which is more reliable for React controlled components
+      await searchInput.fill("test")
       await expect(searchInput).toHaveValue("test")
 
       // Press Escape while input is focused to close search
