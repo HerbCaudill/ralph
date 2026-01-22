@@ -1,12 +1,4 @@
 /**
- * Beads Domain Types
- *
- * These types define the data structures used when interacting with the
- * beads issue tracking system. They are shared between the CLI and UI
- * packages to ensure consistency.
- */
-
-/**
  * Status of an issue.
  */
 export type IssueStatus = "open" | "in_progress" | "blocked" | "deferred" | "closed"
