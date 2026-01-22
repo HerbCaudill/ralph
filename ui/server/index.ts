@@ -1136,7 +1136,10 @@ function createApp(config: ServerConfig): Express {
         return
       }
 
-      const parseResult = parseThemeObject(themeData)
+      // Inject the type from package.json metadata (VS Code theme files don't include type)
+      const themeDataWithType = { ...(themeData as object), type: themeMeta.type }
+
+      const parseResult = parseThemeObject(themeDataWithType)
       if (!parseResult.success) {
         res.status(500).json({ ok: false, error: `Failed to parse theme: ${parseResult.error}` })
         return
