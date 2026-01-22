@@ -90,6 +90,7 @@ async function main() {
     WORKSPACE_PATH: testWorkspacePath,
     PW_BASE_URL: baseURL,
     RALPH_NO_OPEN: "1",
+    PW_QUIET: "1", // Use dot reporter for minimal output
   }
 
   const devProcess = spawn("node", ["scripts/dev.js"], {

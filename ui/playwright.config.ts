@@ -12,7 +12,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  // Use dot reporter for minimal output (via PW_QUIET), html for interactive debugging
+  reporter: process.env.PW_QUIET || process.env.CI ? "dot" : "html",
   globalSetup: "./e2e/global-setup.ts",
   use: {
     // Use port 5180 for tests to avoid conflict with Ralph UI on 5179

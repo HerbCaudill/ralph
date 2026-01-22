@@ -8,7 +8,7 @@
     "test:pw:ui": "node ../scripts/playwright.js --ui",
     "test:pw:headed": "node ../scripts/playwright.js --headed",
     "test:pw": "node ../scripts/playwright.js",
-    "test:all": "OUT=$(tsc -b --noEmit 2>&1) || { echo \"$OUT\"; exit 1; }; vitest run --reporter=dot --bail 1 && pnpm test:pw --max-failures=1",
+    "test:all": "OUT=$(tsc -b --noEmit 2>&1) || { echo \"$OUT\"; exit 1; }; vitest run --reporter=dot --bail 1 --silent=passed-only && pnpm test:pw --max-failures=1",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
     "preview": "vite preview",
