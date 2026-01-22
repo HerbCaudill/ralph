@@ -80,6 +80,9 @@ export function TaskDetailsDialog({
   const [showLabelInput, setShowLabelInput] = useState(false)
   const labelInputRef = useRef<HTMLInputElement>(null)
 
+  // Title textarea ref for auto-sizing
+  const titleTextareaRef = useRef<HTMLTextAreaElement>(null)
+
   // Description edit mode state
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -354,6 +357,14 @@ export function TaskDetailsDialog({
     }
   }, [isEditingDescription])
 
+  // Auto-size title textarea when title changes or dialog opens
+  useEffect(() => {
+    if (titleTextareaRef.current) {
+      titleTextareaRef.current.style.height = "auto"
+      titleTextareaRef.current.style.height = `${titleTextareaRef.current.scrollHeight}px`
+    }
+  }, [title, open])
+
   // Handle description edit completion (blur or escape)
   const handleDescriptionBlur = useCallback(() => {
     setIsEditingDescription(false)
@@ -438,16 +449,28 @@ export function TaskDetailsDialog({
         <div>
           {readOnly ?
             <p className="text-lg font-semibold">{title}</p>
-          : <input
+          : <textarea
+              ref={titleTextareaRef}
               id="task-title"
               value={title}
               onChange={e => {
                 const newTitle = e.target.value
                 setTitle(newTitle)
+                // Auto-grow textarea
+                const target = e.target
+                target.style.height = "auto"
+                target.style.height = `${target.scrollHeight}px`
                 scheduleAutosave({ ...currentValues, title: newTitle })
               }}
+              onKeyDown={e => {
+                // Prevent Enter from adding newlines in title
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                }
+              }}
               placeholder="Task title"
-              className="text-foreground placeholder:text-muted-foreground w-full bg-transparent text-lg font-semibold focus:outline-none"
+              className="text-foreground placeholder:text-muted-foreground w-full resize-none overflow-hidden bg-transparent text-lg font-semibold focus:outline-none"
+              rows={1}
             />
           }
         </div>
