@@ -409,6 +409,12 @@ export interface AppActions {
   // Active instance
   setActiveInstanceId: (instanceId: string) => void
 
+  // Instance management
+  /** Create a new Ralph instance and add it to the instances Map */
+  createInstance: (id: string, name?: string, agentName?: string) => void
+  /** Remove an instance from the instances Map (cannot remove the active instance) */
+  removeInstance: (instanceId: string) => void
+
   // Reset
   reset: () => void
 }
@@ -1008,6 +1014,56 @@ export const useAppStore = create<AppState & AppActions>(set => ({
         iteration: instance.iteration,
         // Reset iteration view when switching instances
         viewingIterationIndex: null,
+      }
+    }),
+
+  // Instance management
+  createInstance: (id, name, agentName) =>
+    set(state => {
+      // Don't create if instance with this ID already exists
+      if (state.instances.has(id)) {
+        console.warn(`[store] Instance with id "${id}" already exists`)
+        return state
+      }
+
+      const newInstance = createRalphInstance(
+        id,
+        name ?? DEFAULT_INSTANCE_NAME,
+        agentName ?? DEFAULT_AGENT_NAME,
+      )
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(id, newInstance)
+
+      return {
+        instances: updatedInstances,
+      }
+    }),
+
+  removeInstance: instanceId =>
+    set(state => {
+      // Don't allow removing the active instance
+      if (state.activeInstanceId === instanceId) {
+        console.warn(`[store] Cannot remove the active instance: ${instanceId}`)
+        return state
+      }
+
+      // Don't remove if instance doesn't exist
+      if (!state.instances.has(instanceId)) {
+        console.warn(`[store] Cannot remove non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      // Don't allow removing if it's the last instance
+      if (state.instances.size <= 1) {
+        console.warn(`[store] Cannot remove the last instance`)
+        return state
+      }
+
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.delete(instanceId)
+
+      return {
+        instances: updatedInstances,
       }
     }),
 

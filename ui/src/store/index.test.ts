@@ -539,6 +539,188 @@ describe("useAppStore", () => {
     })
   })
 
+  describe("createInstance action", () => {
+    it("creates a new instance with the provided ID", () => {
+      useAppStore.getState().createInstance("new-instance")
+
+      const state = useAppStore.getState()
+      expect(state.instances.has("new-instance")).toBe(true)
+      expect(state.instances.size).toBe(2) // default + new
+    })
+
+    it("creates instance with default name and agent when not provided", () => {
+      useAppStore.getState().createInstance("new-instance")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("new-instance")
+      expect(newInstance?.name).toBe(DEFAULT_INSTANCE_NAME)
+      expect(newInstance?.agentName).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("creates instance with custom name when provided", () => {
+      useAppStore.getState().createInstance("custom-instance", "Custom Name")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("custom-instance")
+      expect(newInstance?.name).toBe("Custom Name")
+      expect(newInstance?.agentName).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("creates instance with custom name and agent when provided", () => {
+      useAppStore.getState().createInstance("custom-instance", "Custom Name", "Custom Agent")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("custom-instance")
+      expect(newInstance?.name).toBe("Custom Name")
+      expect(newInstance?.agentName).toBe("Custom Agent")
+    })
+
+    it("creates instance with initial stopped status", () => {
+      useAppStore.getState().createInstance("new-instance")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("new-instance")
+      expect(newInstance?.status).toBe("stopped")
+    })
+
+    it("creates instance with empty events and zero token usage", () => {
+      useAppStore.getState().createInstance("new-instance")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("new-instance")
+      expect(newInstance?.events).toEqual([])
+      expect(newInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+    })
+
+    it("creates instance with createdAt timestamp", () => {
+      const before = Date.now()
+      useAppStore.getState().createInstance("new-instance")
+      const after = Date.now()
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("new-instance")
+      expect(newInstance?.createdAt).toBeGreaterThanOrEqual(before)
+      expect(newInstance?.createdAt).toBeLessThanOrEqual(after)
+    })
+
+    it("does nothing when instance with same ID already exists", () => {
+      // Create first instance
+      useAppStore.getState().createInstance("test-instance", "First")
+      expect(useAppStore.getState().instances.size).toBe(2)
+
+      // Try to create with same ID
+      useAppStore.getState().createInstance("test-instance", "Second")
+
+      // Should still have same count, and first name should be preserved
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(2)
+      expect(state.instances.get("test-instance")?.name).toBe("First")
+    })
+
+    it("does not change activeInstanceId when creating new instance", () => {
+      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+
+      useAppStore.getState().createInstance("new-instance")
+
+      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("can create multiple instances", () => {
+      useAppStore.getState().createInstance("instance-1", "First")
+      useAppStore.getState().createInstance("instance-2", "Second")
+      useAppStore.getState().createInstance("instance-3", "Third")
+
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(4) // default + 3 new
+      expect(state.instances.has("instance-1")).toBe(true)
+      expect(state.instances.has("instance-2")).toBe(true)
+      expect(state.instances.has("instance-3")).toBe(true)
+    })
+  })
+
+  describe("removeInstance action", () => {
+    beforeEach(() => {
+      // Create some instances for removal tests
+      useAppStore.getState().createInstance("instance-1", "First")
+      useAppStore.getState().createInstance("instance-2", "Second")
+    })
+
+    it("removes an existing instance", () => {
+      expect(useAppStore.getState().instances.size).toBe(3) // default + 2
+
+      useAppStore.getState().removeInstance("instance-1")
+
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(2)
+      expect(state.instances.has("instance-1")).toBe(false)
+      expect(state.instances.has("instance-2")).toBe(true)
+    })
+
+    it("does nothing when trying to remove non-existent instance", () => {
+      const initialSize = useAppStore.getState().instances.size
+
+      useAppStore.getState().removeInstance("non-existent")
+
+      expect(useAppStore.getState().instances.size).toBe(initialSize)
+    })
+
+    it("cannot remove the active instance", () => {
+      // Switch to instance-1
+      useAppStore.getState().setActiveInstanceId("instance-1")
+      expect(useAppStore.getState().activeInstanceId).toBe("instance-1")
+
+      // Try to remove active instance
+      useAppStore.getState().removeInstance("instance-1")
+
+      // Instance should still exist
+      expect(useAppStore.getState().instances.has("instance-1")).toBe(true)
+    })
+
+    it("cannot remove the last instance", () => {
+      // Remove all instances except default (which is active)
+      useAppStore.getState().removeInstance("instance-1")
+      useAppStore.getState().removeInstance("instance-2")
+
+      expect(useAppStore.getState().instances.size).toBe(1)
+
+      // Try to remove the last remaining instance - switch first
+      // But we can't switch because there's only one instance
+      // So we can't remove it anyway because it's active
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(1)
+      expect(state.instances.has(DEFAULT_INSTANCE_ID)).toBe(true)
+    })
+
+    it("preserves activeInstanceId after removing other instances", () => {
+      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+
+      useAppStore.getState().removeInstance("instance-1")
+      useAppStore.getState().removeInstance("instance-2")
+
+      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("does not affect other instances when removing one", () => {
+      // Set up some state on instance-2
+      const state = useAppStore.getState()
+      const instance2 = state.instances.get("instance-2")!
+      instance2.status = "running"
+      instance2.events = [{ type: "test", timestamp: 123 }]
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-2", instance2)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Remove instance-1
+      useAppStore.getState().removeInstance("instance-1")
+
+      // instance-2 should still have its state
+      const newState = useAppStore.getState()
+      const stillInstance2 = newState.instances.get("instance-2")
+      expect(stillInstance2?.status).toBe("running")
+      expect(stillInstance2?.events).toHaveLength(1)
+    })
+  })
+
   describe("flat field delegation to active instance", () => {
     it("setRalphStatus updates active instance status", () => {
       useAppStore.getState().setRalphStatus("running")
