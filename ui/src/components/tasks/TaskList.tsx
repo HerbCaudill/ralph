@@ -182,8 +182,15 @@ export function TaskList({
         })
       }
       return [...tasks].sort((a, b) => {
+        // Primary: priority (ascending)
         const priorityDiff = (a.priority ?? 4) - (b.priority ?? 4)
         if (priorityDiff !== 0) return priorityDiff
+        // Secondary: bugs first within same priority
+        const aIsBug = a.issue_type === "bug"
+        const bIsBug = b.issue_type === "bug"
+        if (aIsBug && !bIsBug) return -1
+        if (!aIsBug && bIsBug) return 1
+        // Tertiary: created_at (oldest first)
         const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
         const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
         return aTime - bTime
@@ -200,8 +207,15 @@ export function TaskList({
         .filter(Boolean)
         .filter(parent => config.taskFilter(parent))
         .sort((a, b) => {
+          // Primary: priority (ascending)
           const priorityDiff = (a.priority ?? 4) - (b.priority ?? 4)
           if (priorityDiff !== 0) return priorityDiff
+          // Secondary: bugs first within same priority
+          const aIsBug = a.issue_type === "bug"
+          const bIsBug = b.issue_type === "bug"
+          if (aIsBug && !bIsBug) return -1
+          if (!aIsBug && bIsBug) return 1
+          // Tertiary: created_at (oldest first)
           const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
           const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
           return aTime - bTime
@@ -231,10 +245,17 @@ export function TaskList({
       // For parent groups, use parent priority; for ungrouped tasks, use first task's priority
       if (config.key !== "closed") {
         parentSubGroups.sort((a, b) => {
+          // Primary: priority (ascending)
           const aPriority = a.parent ? (a.parent.priority ?? 4) : (a.tasks[0]?.priority ?? 4)
           const bPriority = b.parent ? (b.parent.priority ?? 4) : (b.tasks[0]?.priority ?? 4)
           const priorityDiff = aPriority - bPriority
           if (priorityDiff !== 0) return priorityDiff
+          // Secondary: bugs first within same priority
+          const aIsBug = a.parent ? a.parent.issue_type === "bug" : a.tasks[0]?.issue_type === "bug"
+          const bIsBug = b.parent ? b.parent.issue_type === "bug" : b.tasks[0]?.issue_type === "bug"
+          if (aIsBug && !bIsBug) return -1
+          if (!aIsBug && bIsBug) return 1
+          // Tertiary: created_at (oldest first)
           const aTime =
             a.parent ?
               a.parent.created_at ?

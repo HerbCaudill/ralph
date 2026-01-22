@@ -237,6 +237,68 @@ describe("TaskList", () => {
       expect(taskTitles).toEqual(["High priority new", "Low priority old"])
     })
 
+    it("shows bugs before other types within the same priority", () => {
+      const now = new Date()
+      const tasks: TaskCardTask[] = [
+        {
+          id: "task-feature",
+          title: "Feature task",
+          status: "open",
+          priority: 2,
+          issue_type: "task",
+          created_at: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago (older)
+        },
+        {
+          id: "task-bug",
+          title: "Bug task",
+          status: "open",
+          priority: 2,
+          issue_type: "bug",
+          created_at: new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago (newer)
+        },
+        {
+          id: "task-epic",
+          title: "Epic task",
+          status: "open",
+          priority: 2,
+          issue_type: "epic",
+          created_at: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+        },
+      ]
+      render(<TaskList tasks={tasks} />)
+
+      // Bug should come first even though it's newer
+      const taskTitles = screen.getAllByText(/task$/).map(el => el.textContent)
+      expect(taskTitles).toEqual(["Bug task", "Feature task", "Epic task"])
+    })
+
+    it("sorts by created_at when same priority and both are bugs", () => {
+      const now = new Date()
+      const tasks: TaskCardTask[] = [
+        {
+          id: "bug-newer",
+          title: "Newer bug",
+          status: "open",
+          priority: 2,
+          issue_type: "bug",
+          created_at: new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
+        },
+        {
+          id: "bug-older",
+          title: "Older bug",
+          status: "open",
+          priority: 2,
+          issue_type: "bug",
+          created_at: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
+        },
+      ]
+      render(<TaskList tasks={tasks} />)
+
+      // Older bug should come first (oldest first within same priority and type)
+      const taskTitles = screen.getAllByText(/bug$/).map(el => el.textContent)
+      expect(taskTitles).toEqual(["Older bug", "Newer bug"])
+    })
+
     it("treats undefined created_at as oldest for secondary sort", () => {
       const now = new Date()
       const tasks: TaskCardTask[] = [
