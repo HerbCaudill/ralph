@@ -1,7 +1,7 @@
 import type { Decorator } from "@storybook/react-vite"
 import { useEffect } from "react"
 import { useAppStore } from "../src/store"
-import type { RalphStatus } from "../src/types"
+import type { RalphInstance, RalphStatus } from "../src/types"
 
 /** Connection status type for Storybook decorators */
 type ConnectionStatus = "connected" | "connecting" | "disconnected"
@@ -18,6 +18,9 @@ export interface StoreState {
   iteration?: { current: number; total: number }
   sidebarOpen?: boolean
   accentColor?: string | null
+  /** Multi-instance state */
+  instances?: Map<string, RalphInstance>
+  activeInstanceId?: string
 }
 
 /**
@@ -51,6 +54,12 @@ export function withStoreState(state: StoreState): Decorator {
       }
       if (state.accentColor !== undefined) {
         store.setAccentColor(state.accentColor)
+      }
+      if (state.instances !== undefined) {
+        useAppStore.setState({ instances: state.instances })
+      }
+      if (state.activeInstanceId !== undefined) {
+        useAppStore.setState({ activeInstanceId: state.activeInstanceId })
       }
     }, [])
 

@@ -221,6 +221,7 @@ export function createRalphInstance(
     worktreePath: null,
     branch: null,
     currentTaskId: null,
+    currentTaskTitle: null,
     createdAt: Date.now(),
     runStartedAt: null,
   }
@@ -1153,6 +1154,7 @@ export const useAppStore = create<AppState & AppActions>(set => ({
         iteration: { current: 0, total: 0 },
         runStartedAt: null,
         currentTaskId: null,
+        currentTaskTitle: null,
       }
 
       const updatedInstances = new Map(state.instances)
@@ -1199,6 +1201,7 @@ export const useAppStore = create<AppState & AppActions>(set => ({
             branch: serverInstance.branch,
             createdAt: serverInstance.createdAt,
             currentTaskId: serverInstance.currentTaskId,
+            currentTaskTitle: serverInstance.currentTaskTitle,
             status: serverInstance.status,
           }
           updatedInstances.set(serverInstance.id, updated)
@@ -1216,6 +1219,7 @@ export const useAppStore = create<AppState & AppActions>(set => ({
             worktreePath: serverInstance.worktreePath,
             branch: serverInstance.branch,
             currentTaskId: serverInstance.currentTaskId,
+            currentTaskTitle: serverInstance.currentTaskTitle,
             createdAt: serverInstance.createdAt,
             runStartedAt: null,
           }
@@ -1425,6 +1429,12 @@ export const selectActiveInstance = (state: AppState) =>
 export const selectInstance = (state: AppState, instanceId: string) =>
   state.instances.get(instanceId) ?? null
 export const selectInstanceCount = (state: AppState) => state.instances.size
+export const selectActiveInstanceName = (state: AppState) =>
+  state.instances.get(state.activeInstanceId)?.name ?? DEFAULT_INSTANCE_NAME
+export const selectActiveInstanceAgentName = (state: AppState) =>
+  state.instances.get(state.activeInstanceId)?.agentName ?? DEFAULT_AGENT_NAME
+export const selectActiveInstanceCurrentTaskTitle = (state: AppState) =>
+  state.instances.get(state.activeInstanceId)?.currentTaskTitle ?? null
 
 // Legacy selectors (delegate to active instance)
 // These selectors read from the active instance for backward compatibility.
@@ -1542,6 +1552,14 @@ export const selectInstanceBranch = (state: AppState, instanceId: string): strin
 export const selectInstanceCurrentTaskId = (state: AppState, instanceId: string): string | null => {
   const instance = state.instances.get(instanceId)
   return instance?.currentTaskId ?? null
+}
+
+export const selectInstanceCurrentTaskTitle = (
+  state: AppState,
+  instanceId: string,
+): string | null => {
+  const instance = state.instances.get(instanceId)
+  return instance?.currentTaskTitle ?? null
 }
 
 export const selectInstanceName = (state: AppState, instanceId: string): string => {

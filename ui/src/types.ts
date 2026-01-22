@@ -281,6 +281,9 @@ export interface RalphInstance {
   /** ID of the current task being worked on */
   currentTaskId: string | null
 
+  /** Title of the current task being worked on (for display purposes) */
+  currentTaskTitle: string | null
+
   /** Timestamp when the instance was created */
   createdAt: number
 
