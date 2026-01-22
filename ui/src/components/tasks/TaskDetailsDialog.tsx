@@ -609,7 +609,7 @@ export function TaskDetailsDialog({
                       className={cn(
                         "flex items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
                         isSelected ?
-                          cn("bg-accent text-accent-foreground", p.color)
+                          cn("text-white", p.selectedBg)
                         : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
                       )}
                       aria-pressed={isSelected}
@@ -678,12 +678,12 @@ export function TaskDetailsDialog({
                       className={cn(
                         "flex items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
                         isSelected ?
-                          "bg-accent text-accent-foreground"
+                          cn("text-white", t.selectedBg)
                         : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
                       )}
                       aria-pressed={isSelected}
                     >
-                      <Icon className={cn("h-3.5 w-3.5", isSelected ? t.color : "")} />
+                      <Icon className="h-3.5 w-3.5" />
                       <span>{t.label}</span>
                     </button>
                   )
@@ -855,10 +855,23 @@ const issueTypeOptions: {
   label: string
   icon: typeof IconCheckbox
   color: string
+  selectedBg: string
 }[] = [
-  { value: "task", label: "Task", icon: IconCheckbox, color: "text-status-success" },
-  { value: "bug", label: "Bug", icon: IconBug, color: "text-red-500" },
-  { value: "epic", label: "Epic", icon: IconStack2, color: "text-indigo-500" },
+  {
+    value: "task",
+    label: "Task",
+    icon: IconCheckbox,
+    color: "text-status-success",
+    selectedBg: "bg-green-600",
+  },
+  { value: "bug", label: "Bug", icon: IconBug, color: "text-red-500", selectedBg: "bg-red-500" },
+  {
+    value: "epic",
+    label: "Epic",
+    icon: IconStack2,
+    color: "text-indigo-500",
+    selectedBg: "bg-indigo-500",
+  },
 ]
 
 const statusConfig: Record<TaskStatus, StatusConfig> = {
@@ -892,11 +905,41 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
 const statusOptions: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
 
 const priorityOptions = [
-  { value: 0, label: "P0 - Critical", short: "P0", color: "text-red-600" },
-  { value: 1, label: "P1 - High", short: "P1", color: "text-orange-500" },
-  { value: 2, label: "P2 - Medium", short: "P2", color: "text-amber-500" },
-  { value: 3, label: "P3 - Low", short: "P3", color: "text-yellow-500" },
-  { value: 4, label: "P4 - Lowest", short: "P4", color: "text-gray-500" },
+  {
+    value: 0,
+    label: "P0 - Critical",
+    short: "P0",
+    color: "text-red-600",
+    selectedBg: "bg-red-600",
+  },
+  {
+    value: 1,
+    label: "P1 - High",
+    short: "P1",
+    color: "text-orange-500",
+    selectedBg: "bg-orange-500",
+  },
+  {
+    value: 2,
+    label: "P2 - Medium",
+    short: "P2",
+    color: "text-amber-500",
+    selectedBg: "bg-amber-500",
+  },
+  {
+    value: 3,
+    label: "P3 - Low",
+    short: "P3",
+    color: "text-yellow-500",
+    selectedBg: "bg-yellow-500",
+  },
+  {
+    value: 4,
+    label: "P4 - Lowest",
+    short: "P4",
+    color: "text-gray-500",
+    selectedBg: "bg-gray-500",
+  },
 ]
 
 type TaskDetailsDialogProps = {
