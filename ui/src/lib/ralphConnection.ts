@@ -189,7 +189,8 @@ function handleMessage(event: MessageEvent): void {
             }
           }
 
-          // Extract token usage from stream events
+          // Extract token usage from events
+          // Handle stream_event with message_delta.usage (streaming API format)
           if (event.type === "stream_event") {
             const streamEvent = (event as any).event
             if (streamEvent?.type === "message_delta" && streamEvent.usage) {
@@ -222,6 +223,41 @@ function handleMessage(event: MessageEvent): void {
                       outputTokens
                     store.updateContextWindowUsedForInstance(targetInstanceId, totalTokens)
                   }
+                }
+              }
+            }
+          }
+
+          // Handle result events with usage (normalized event format from server)
+          if (event.type === "result" && (event as any).usage) {
+            const usage = (event as any).usage as {
+              inputTokens?: number
+              outputTokens?: number
+              totalTokens?: number
+            }
+            const inputTokens = usage.inputTokens || 0
+            const outputTokens = usage.outputTokens || 0
+            if (inputTokens > 0 || outputTokens > 0) {
+              if (isForActiveInstance) {
+                store.addTokenUsage({ input: inputTokens, output: outputTokens })
+                // Update context window usage (total tokens used = input + output)
+                const totalTokens =
+                  store.tokenUsage.input + inputTokens + store.tokenUsage.output + outputTokens
+                store.updateContextWindowUsed(totalTokens)
+              } else {
+                store.addTokenUsageForInstance(targetInstanceId, {
+                  input: inputTokens,
+                  output: outputTokens,
+                })
+                // Update context window usage for non-active instance
+                const targetInstance = store.instances.get(targetInstanceId)
+                if (targetInstance) {
+                  const totalTokens =
+                    targetInstance.tokenUsage.input +
+                    inputTokens +
+                    targetInstance.tokenUsage.output +
+                    outputTokens
+                  store.updateContextWindowUsedForInstance(targetInstanceId, totalTokens)
                 }
               }
             }

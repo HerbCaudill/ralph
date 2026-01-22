@@ -549,6 +549,96 @@ describe("useRalphConnection", () => {
       // Token usage should remain zero
       expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
     })
+
+    it("extracts token usage from result events", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Initial token usage should be zero
+      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+
+      // Simulate a result event with token usage (normalized format from server)
+      const resultEvent = {
+        type: "result",
+        timestamp: 1234,
+        content: "Task completed",
+        usage: {
+          inputTokens: 1000,
+          outputTokens: 500,
+          totalTokens: 1500,
+        },
+      }
+
+      act(() => {
+        getWs()?.simulateMessage({ type: "ralph:event", event: resultEvent })
+      })
+
+      // Should extract tokens from result event
+      expect(useAppStore.getState().tokenUsage).toEqual({ input: 1000, output: 500 })
+    })
+
+    it("accumulates token usage across multiple result events", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // First result event
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "ralph:event",
+          event: {
+            type: "result",
+            timestamp: 1234,
+            content: "First task",
+            usage: { inputTokens: 100, outputTokens: 50 },
+          },
+        })
+      })
+
+      // Second result event
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "ralph:event",
+          event: {
+            type: "result",
+            timestamp: 1235,
+            content: "Second task",
+            usage: { inputTokens: 200, outputTokens: 100 },
+          },
+        })
+      })
+
+      // Should accumulate: 100+200 = 300 input, 50+100 = 150 output
+      expect(useAppStore.getState().tokenUsage).toEqual({ input: 300, output: 150 })
+    })
+
+    it("ignores result events without usage data", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Simulate a result event without usage
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "ralph:event",
+          event: {
+            type: "result",
+            timestamp: 1234,
+            content: "Task completed",
+          },
+        })
+      })
+
+      // Token usage should remain zero
+      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+    })
   })
 
   describe("connect and disconnect", () => {
