@@ -4,8 +4,16 @@ import { mkdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { spawn } from "node:child_process"
 
-// Helper to run git commands in tests
-function git(cwd: string, args: string[]): Promise<string> {
+/**
+ * Run a git command in the specified directory and return its stdout.
+ * Rejects with an error if the command fails.
+ */
+function git(
+  /** Working directory for the git command */
+  cwd: string,
+  /** Git command arguments (e.g., ["add", "."]) */
+  args: string[],
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn("git", args, {
       cwd,
