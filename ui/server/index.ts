@@ -19,6 +19,11 @@ import { parseThemeObject } from "./lib/theme/parser.js"
 import { mapThemeToCSSVariables, createAppTheme } from "./lib/theme/mapper.js"
 import { WorkspaceContextManager } from "./WorkspaceContextManager.js"
 import type { WorkspaceContext } from "./WorkspaceContext.js"
+import {
+  RalphRegistry,
+  type CreateInstanceOptions,
+  type RalphInstanceState,
+} from "./RalphRegistry.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -201,6 +206,326 @@ function createApp(config: ServerConfig): Express {
     const manager = getRalphManager()
     res.status(200).json({ ok: true, status: manager.status })
   })
+
+  // ============================================================================
+  // Instance-scoped API endpoints
+  // These endpoints operate on specific Ralph instances by ID
+  // ============================================================================
+
+  // List all instances
+  app.get("/api/instances", (_req: Request, res: Response) => {
+    const registry = getRalphRegistry()
+    const instances = registry.getAll().map(serializeInstanceState)
+    res.status(200).json({ ok: true, instances })
+  })
+
+  // Get a specific instance
+  app.get("/api/ralph/:instanceId", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+    const instance = registry.get(instanceId)
+
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    res.status(200).json({ ok: true, instance: serializeInstanceState(instance) })
+  })
+
+  // Get instance status
+  app.get("/api/ralph/:instanceId/status", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+    const instance = registry.get(instanceId)
+
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    res.status(200).json({ ok: true, status: instance.manager.status })
+  })
+
+  // Start a specific instance
+  app.post("/api/ralph/:instanceId/start", async (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+    const instance = registry.get(instanceId)
+
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      if (instance.manager.isRunning) {
+        res.status(409).json({ ok: false, error: "Instance is already running" })
+        return
+      }
+
+      const { iterations } = req.body as { iterations?: number }
+      await instance.manager.start(iterations)
+      res.status(200).json({ ok: true, status: instance.manager.status })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to start"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Stop a specific instance
+  app.post("/api/ralph/:instanceId/stop", async (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+    const instance = registry.get(instanceId)
+
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      if (!instance.manager.isRunning && instance.manager.status !== "paused") {
+        res.status(409).json({ ok: false, error: "Instance is not running" })
+        return
+      }
+
+      await instance.manager.stop()
+      res.status(200).json({ ok: true, status: instance.manager.status })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to stop"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Pause a specific instance
+  app.post("/api/ralph/:instanceId/pause", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+    const instance = registry.get(instanceId)
+
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      instance.manager.pause()
+      res.status(200).json({ ok: true, status: instance.manager.status })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to pause"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Resume a specific instance
+  app.post("/api/ralph/:instanceId/resume", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+    const instance = registry.get(instanceId)
+
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      instance.manager.resume()
+      res.status(200).json({ ok: true, status: instance.manager.status })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to resume"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Stop after current iteration for a specific instance
+  app.post("/api/ralph/:instanceId/stop-after-current", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+    const instance = registry.get(instanceId)
+
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      instance.manager.stopAfterCurrent()
+      res.status(200).json({ ok: true, status: instance.manager.status })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to stop after current"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Cancel stop after current for a specific instance
+  app.post(
+    "/api/ralph/:instanceId/cancel-stop-after-current",
+    async (req: Request, res: Response) => {
+      const instanceId = req.params.instanceId as string
+      const registry = getRalphRegistry()
+      const instance = registry.get(instanceId)
+
+      if (!instance) {
+        res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+        return
+      }
+
+      try {
+        await instance.manager.cancelStopAfterCurrent()
+        res.status(200).json({ ok: true, status: instance.manager.status })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to cancel stop after current"
+        res.status(500).json({ ok: false, error: message })
+      }
+    },
+  )
+
+  // Send message to a specific instance
+  app.post("/api/ralph/:instanceId/message", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+    const instance = registry.get(instanceId)
+
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      if (!instance.manager.isRunning) {
+        res.status(409).json({ ok: false, error: "Instance is not running" })
+        return
+      }
+
+      const { message } = req.body as { message?: string | object }
+      if (message === undefined) {
+        res.status(400).json({ ok: false, error: "Message is required" })
+        return
+      }
+
+      // Wrap string messages in JSON format that Ralph CLI expects
+      const payload = typeof message === "string" ? { type: "message", text: message } : message
+      instance.manager.send(payload)
+      res.status(200).json({ ok: true })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to send message"
+      res.status(500).json({ ok: false, error: msg })
+    }
+  })
+
+  // Get event history for a specific instance
+  app.get("/api/ralph/:instanceId/events", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+
+    if (!registry.has(instanceId)) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    const events = registry.getEventHistory(instanceId)
+    res.status(200).json({ ok: true, events })
+  })
+
+  // Clear event history for a specific instance
+  app.delete("/api/ralph/:instanceId/events", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+
+    if (!registry.has(instanceId)) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    registry.clearEventHistory(instanceId)
+    res.status(200).json({ ok: true })
+  })
+
+  // Get current task for a specific instance
+  app.get("/api/ralph/:instanceId/current-task", (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+
+    const task = registry.getCurrentTask(instanceId)
+    if (task === undefined) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    res.status(200).json({
+      ok: true,
+      taskId: task.taskId,
+      taskTitle: task.taskTitle,
+    })
+  })
+
+  // Create a new instance
+  app.post("/api/instances", async (req: Request, res: Response) => {
+    try {
+      const { id, name, agentName, worktreePath, branch } = req.body as {
+        id?: string
+        name?: string
+        agentName?: string
+        worktreePath?: string | null
+        branch?: string | null
+      }
+
+      if (!id?.trim()) {
+        res.status(400).json({ ok: false, error: "Instance ID is required" })
+        return
+      }
+
+      if (!name?.trim()) {
+        res.status(400).json({ ok: false, error: "Instance name is required" })
+        return
+      }
+
+      const registry = getRalphRegistry()
+
+      if (registry.has(id)) {
+        res.status(409).json({ ok: false, error: `Instance '${id}' already exists` })
+        return
+      }
+
+      const options: CreateInstanceOptions = {
+        id: id.trim(),
+        name: name.trim(),
+        agentName: agentName?.trim() || name.trim(),
+        worktreePath: worktreePath ?? null,
+        branch: branch ?? null,
+      }
+
+      const instance = registry.create(options)
+      res.status(201).json({ ok: true, instance: serializeInstanceState(instance) })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create instance"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Delete an instance
+  app.delete("/api/ralph/:instanceId", async (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+
+    if (!registry.has(instanceId)) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      await registry.dispose(instanceId)
+      res.status(200).json({ ok: true })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete instance"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // ============================================================================
+  // End of instance-scoped API endpoints
+  // ============================================================================
 
   // Workspace info endpoint
   app.get("/api/workspace", async (_req: Request, res: Response) => {
@@ -991,6 +1316,140 @@ export function broadcast(message: unknown): void {
     }
   }
 }
+
+// ============================================================================
+// RalphRegistry Integration
+// ============================================================================
+
+// Singleton RalphRegistry instance
+let ralphRegistry: RalphRegistry | null = null
+
+/**
+ * Get the singleton RalphRegistry instance, creating it if needed.
+ */
+export function getRalphRegistry(): RalphRegistry {
+  if (!ralphRegistry) {
+    ralphRegistry = new RalphRegistry({
+      maxInstances: 10,
+    })
+
+    // Wire up event forwarding from the registry to WebSocket clients
+    wireRegistryEvents(ralphRegistry)
+  }
+  return ralphRegistry
+}
+
+/**
+ * Wire up event forwarding from RalphRegistry to WebSocket clients.
+ */
+function wireRegistryEvents(registry: RalphRegistry): void {
+  registry.on("instance:event", (instanceId: string, eventType: string, ...args: unknown[]) => {
+    switch (eventType) {
+      case "ralph:event": {
+        const event = args[0] as RalphEvent
+        broadcast({
+          type: "ralph:event",
+          instanceId,
+          event,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "ralph:status": {
+        const status = args[0] as RalphStatus
+        broadcast({
+          type: "ralph:status",
+          instanceId,
+          status,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "ralph:output": {
+        const line = args[0] as string
+        broadcast({
+          type: "ralph:output",
+          instanceId,
+          line,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "ralph:error": {
+        const error = args[0] as Error
+        broadcast({
+          type: "ralph:error",
+          instanceId,
+          error: error.message,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "ralph:exit": {
+        const info = args[0] as { code: number | null; signal: string | null }
+        broadcast({
+          type: "ralph:exit",
+          instanceId,
+          code: info.code,
+          signal: info.signal,
+          timestamp: Date.now(),
+        })
+        break
+      }
+    }
+  })
+
+  registry.on("instance:created", (instanceId: string, state: RalphInstanceState) => {
+    broadcast({
+      type: "instance:created",
+      instanceId,
+      instance: serializeInstanceState(state),
+      timestamp: Date.now(),
+    })
+  })
+
+  registry.on("instance:disposed", (instanceId: string) => {
+    broadcast({
+      type: "instance:disposed",
+      instanceId,
+      timestamp: Date.now(),
+    })
+  })
+}
+
+/**
+ * Serialize a RalphInstanceState for API responses.
+ * Excludes the RalphManager reference since it can't be serialized.
+ */
+function serializeInstanceState(
+  state: RalphInstanceState,
+): Omit<RalphInstanceState, "manager"> & { status: RalphStatus } {
+  return {
+    id: state.id,
+    name: state.name,
+    agentName: state.agentName,
+    worktreePath: state.worktreePath,
+    branch: state.branch,
+    createdAt: state.createdAt,
+    currentTaskId: state.currentTaskId,
+    currentTaskTitle: state.currentTaskTitle,
+    status: state.manager.status,
+  }
+}
+
+/**
+ * Reset the RalphRegistry (for testing).
+ */
+export async function resetRalphRegistry(): Promise<void> {
+  if (ralphRegistry) {
+    await ralphRegistry.disposeAll()
+    ralphRegistry = null
+  }
+}
+
+// ============================================================================
+// End RalphRegistry Integration
+// ============================================================================
 
 // WorkspaceContextManager Integration
 
