@@ -28,38 +28,32 @@ import { useTerminalSize } from "../lib/useTerminalSize.js"
 import { getNextLogFile } from "../lib/getNextLogFile.js"
 import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
 
+import { loadIterationPrompt } from "@herbcaudill/ralph-shared"
+
 const log = createDebugLogger("iteration")
 
 const ralphDir = join(process.cwd(), ".ralph")
-const promptFile = join(ralphDir, "prompt.md")
 const todoFile = join(ralphDir, "todo.md")
-const beadsDir = join(process.cwd(), ".beads")
 const templatesDir = join(__dirname, "..", "..", "templates")
 const repoName = basename(process.cwd())
 
 /**
- * Get the prompt content, falling back to templates if .ralph/prompt.md doesn't exist.
- * Uses the appropriate template based on the project setup:
- * - If .beads directory exists OR no .ralph/todo.md: use prompt-beads.md
- * - If .ralph/todo.md exists: use prompt-todos.md (todo-based workflow)
+ * Get the prompt content by combining core-prompt.md with workflow.md.
+ *
+ * Core prompt is always loaded from templates (bundled).
+ * Workflow is loaded from .ralph/workflow.md if it exists, otherwise from templates.
  */
 export const getPromptContent = (): string => {
-  // First, try to read from .ralph/prompt.md
-  if (existsSync(promptFile)) {
-    return readFileSync(promptFile, "utf-8")
+  try {
+    const result = loadIterationPrompt({
+      templatesDir,
+      cwd: process.cwd(),
+    })
+    return result.content
+  } catch {
+    // Last resort: return a minimal prompt
+    return "Work on the highest-priority task."
   }
-
-  // Fall back to templates based on project setup
-  const useBeadsTemplate = existsSync(beadsDir) || !existsSync(todoFile)
-  const templateFile = useBeadsTemplate ? "prompt-beads.md" : "prompt-todos.md"
-  const templatePath = join(templatesDir, templateFile)
-
-  if (existsSync(templatePath)) {
-    return readFileSync(templatePath, "utf-8")
-  }
-
-  // Last resort: return a minimal prompt
-  return "Work on the highest-priority task."
 }
 
 // Convert SDK message to event format for display

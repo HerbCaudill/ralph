@@ -3,8 +3,11 @@ dist
 .DS_Store
 *.log
 .ralph/events.jsonl
+.ralph/iterations/**/*
 .test-results
 .test-workspace
+
+
 
 # UI-specific
 ui/dist

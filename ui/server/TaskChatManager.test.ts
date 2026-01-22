@@ -100,14 +100,16 @@ describe("TaskChatManager", () => {
       expect(mockQuery).toHaveBeenCalledWith({
         prompt: "Hello",
         options: expect.objectContaining({
-          model: "haiku",
+          // Model comes from skill metadata (default skill specifies sonnet)
+          model: "sonnet",
           // Uses Claude Code's preset with appended task chat instructions
           systemPrompt: {
             type: "preset",
             preset: "claude_code",
             append: expect.any(String),
           },
-          tools: ["Read", "Grep", "Glob", "Bash"],
+          // Tools come from skill metadata
+          tools: expect.arrayContaining(["Read", "Bash"]),
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           includePartialMessages: true,

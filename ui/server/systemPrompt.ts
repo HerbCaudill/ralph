@@ -1,82 +1,55 @@
-import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
-import {
-  loadPrompt,
-  initPrompt,
-  getCustomPromptPath as sharedGetCustomPromptPath,
-} from "@herbcaudill/ralph-shared"
+import { loadSkill, type LoadSkillResult, type SkillMetadata } from "./loadSkill.js"
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-/** Default system prompt filename */
-const SYSTEM_PROMPT_FILENAME = "task-chat-system.md"
-
-/** Custom prompt directory name */
-const CUSTOM_PROMPT_DIR = ".ralph"
-
-/** Path to the default system prompt in the server/prompts directory */
-const DEFAULT_PROMPT_PATH = join(__dirname, "prompts", SYSTEM_PROMPT_FILENAME)
+/** The skill used for task chat */
+const TASK_CHAT_SKILL = "manage-tasks"
 
 /**
- * Get the path to the customized system prompt in the .ralph folder.
+ * Load the task chat system prompt from the manage-tasks skill.
  *
- * @param cwd - Working directory (defaults to process.cwd())
- * @returns Path to the customized prompt file
- */
-export function getCustomPromptPath(cwd: string = process.cwd()): string {
-  return sharedGetCustomPromptPath({
-    filename: SYSTEM_PROMPT_FILENAME,
-    customDir: CUSTOM_PROMPT_DIR,
-    cwd,
-  })
-}
-
-/**
- * Get the path to the default system prompt.
+ * Looks for a customized skill in the project's .claude/skills/ directory first.
+ * Falls back to the bundled default skill if no customization exists.
  *
- * @returns Path to the default prompt file
- */
-export function getDefaultPromptPath(): string {
-  return DEFAULT_PROMPT_PATH
-}
-
-/**
- * Load the task chat system prompt.
- *
- * Looks for a customized prompt in the .ralph folder first.
- * Falls back to the default prompt if no customization exists.
- *
- * @param cwd - Working directory to look for .ralph folder (defaults to process.cwd())
- * @returns The system prompt content
- * @throws Error if no prompt file can be found
+ * @param cwd - Working directory to look for custom skill (defaults to process.cwd())
+ * @returns The system prompt content (skill body without frontmatter)
+ * @throws Error if skill cannot be found
  */
 export function loadSystemPrompt(cwd: string = process.cwd()): string {
-  const result = loadPrompt({
-    filename: SYSTEM_PROMPT_FILENAME,
-    customDir: CUSTOM_PROMPT_DIR,
-    defaultPath: DEFAULT_PROMPT_PATH,
-    cwd,
-  })
+  const result = loadSkill(TASK_CHAT_SKILL, cwd)
   return result.content
 }
 
 /**
- * Initialize the system prompt by copying the default to .ralph folder if it doesn't exist.
+ * Load the full task chat skill with metadata.
  *
- * This allows users to customize the prompt on a per-repo basis.
- *
- * @param cwd - Working directory (defaults to process.cwd())
- * @returns Object with path and whether it was newly created
+ * @param cwd - Working directory to look for custom skill (defaults to process.cwd())
+ * @returns Full skill result including content, metadata, and path
+ * @throws Error if skill cannot be found
  */
-export function initSystemPrompt(cwd: string = process.cwd()): {
-  path: string
-  created: boolean
-} {
-  return initPrompt({
-    filename: SYSTEM_PROMPT_FILENAME,
-    customDir: CUSTOM_PROMPT_DIR,
-    defaultPath: DEFAULT_PROMPT_PATH,
-    cwd,
-  })
+export function loadTaskChatSkill(cwd: string = process.cwd()): LoadSkillResult {
+  return loadSkill(TASK_CHAT_SKILL, cwd)
 }
+
+/**
+ * Get the allowed tools for the task chat skill.
+ *
+ * @param cwd - Working directory to look for custom skill (defaults to process.cwd())
+ * @returns Array of allowed tool names, or undefined if not specified
+ */
+export function getTaskChatAllowedTools(cwd: string = process.cwd()): string[] | undefined {
+  const result = loadSkill(TASK_CHAT_SKILL, cwd)
+  return result.metadata.allowedTools
+}
+
+/**
+ * Get the model for the task chat skill.
+ *
+ * @param cwd - Working directory to look for custom skill (defaults to process.cwd())
+ * @returns Model name, or undefined if not specified
+ */
+export function getTaskChatModel(cwd: string = process.cwd()): string | undefined {
+  const result = loadSkill(TASK_CHAT_SKILL, cwd)
+  return result.metadata.model
+}
+
+// Re-export types for convenience
+export type { LoadSkillResult, SkillMetadata }

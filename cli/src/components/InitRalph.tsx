@@ -1,5 +1,4 @@
 import { Text, Box } from "ink"
-import SelectInput from "ink-select-input"
 import React, { useEffect, useState } from "react"
 import {
   existsSync,
@@ -14,66 +13,101 @@ import { fileURLToPath } from "url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-type TaskMode = "todo" | "beads"
+type InitStatus = "checking" | "exists" | "creating" | "done"
+
+interface CopyResult {
+  created: string[]
+  skipped: string[]
+  errors: string[]
+}
+
+/**
+ * Copy files from templates to destination, creating directories as needed.
+ */
+const copyTemplates = (
+  templatesDir: string,
+  destDir: string,
+  files: Array<{ src: string; dest: string }>,
+): CopyResult => {
+  const result: CopyResult = { created: [], skipped: [], errors: [] }
+
+  for (const { src, dest } of files) {
+    const srcPath = join(templatesDir, src)
+    const destPath = join(destDir, dest)
+
+    // Create destination directory if needed
+    const destDirPath = dirname(destPath)
+    if (!existsSync(destDirPath)) {
+      mkdirSync(destDirPath, { recursive: true })
+    }
+
+    // Only copy if destination doesn't exist
+    if (existsSync(destPath)) {
+      result.skipped.push(dest)
+    } else if (existsSync(srcPath)) {
+      copyFileSync(srcPath, destPath)
+      result.created.push(dest)
+    } else {
+      result.errors.push(`Template not found: ${src}`)
+    }
+  }
+
+  return result
+}
 
 export const InitRalph = () => {
-  const [status, setStatus] = useState<"checking" | "exists" | "selecting" | "creating" | "done">(
-    "checking",
-  )
-  const [taskMode, setTaskMode] = useState<TaskMode | null>(null)
+  const [status, setStatus] = useState<InitStatus>("checking")
   const [createdFiles, setCreatedFiles] = useState<string[]>([])
+  const [skippedFiles, setSkippedFiles] = useState<string[]>([])
   const [errors, setErrors] = useState<string[]>([])
 
-  // Check if .ralph already exists
+  // Check if .ralph already exists and run initialization
   useEffect(() => {
     const ralphDir = join(process.cwd(), ".ralph")
+    const claudeDir = join(process.cwd(), ".claude")
 
-    if (existsSync(ralphDir) && existsSync(join(ralphDir, "prompt.md"))) {
+    // Check if already initialized
+    if (existsSync(join(ralphDir, "workflow.md"))) {
       setStatus("exists")
-    } else {
-      setStatus("selecting")
+      return
     }
-  }, [])
 
-  // Run initialization when task mode is selected
-  useEffect(() => {
-    if (!taskMode) return
-
+    // Run initialization
     const initialize = async () => {
-      const ralphDir = join(process.cwd(), ".ralph")
       const templatesDir = join(__dirname, "..", "..", "templates")
-
-      // Select templates based on task mode
-      const templates: Array<{ src: string; dest: string }> =
-        taskMode === "beads" ?
-          [{ src: "prompt-beads.md", dest: "prompt.md" }]
-        : [
-            { src: "prompt-todos.md", dest: "prompt.md" },
-            { src: "todo.md", dest: "todo.md" },
-          ]
 
       setStatus("creating")
 
       try {
-        mkdirSync(ralphDir, { recursive: true })
+        const allCreated: string[] = []
+        const allSkipped: string[] = []
+        const allErrors: string[] = []
 
-        const created: string[] = []
-        const failed: string[] = []
+        // Copy workflow to .ralph/
+        const ralphResult = copyTemplates(templatesDir, ralphDir, [
+          { src: "workflow.md", dest: "workflow.md" },
+        ])
+        allCreated.push(...ralphResult.created.map(f => `.ralph/${f}`))
+        allSkipped.push(...ralphResult.skipped.map(f => `.ralph/${f}`))
+        allErrors.push(...ralphResult.errors)
 
-        for (const template of templates) {
-          const src = join(templatesDir, template.src)
-          const dest = join(ralphDir, template.dest)
+        // Copy skills to .claude/skills/
+        const skillsResult = copyTemplates(templatesDir, claudeDir, [
+          { src: "skills/manage-tasks/SKILL.md", dest: "skills/manage-tasks/SKILL.md" },
+        ])
+        allCreated.push(...skillsResult.created.map(f => `.claude/${f}`))
+        allSkipped.push(...skillsResult.skipped.map(f => `.claude/${f}`))
+        allErrors.push(...skillsResult.errors)
 
-          // Only copy if the destination doesn't exist
-          if (!existsSync(dest)) {
-            if (existsSync(src)) {
-              copyFileSync(src, dest)
-              created.push(template.dest)
-            } else {
-              failed.push(`Template not found: ${template.src}`)
-            }
-          }
-        }
+        // Copy agents to .claude/agents/
+        const agentsResult = copyTemplates(templatesDir, claudeDir, [
+          { src: "agents/make-tests.md", dest: "agents/make-tests.md" },
+          { src: "agents/write-docs.md", dest: "agents/write-docs.md" },
+          { src: "agents/run-tests.md", dest: "agents/run-tests.md" },
+        ])
+        allCreated.push(...agentsResult.created.map(f => `.claude/${f}`))
+        allSkipped.push(...agentsResult.skipped.map(f => `.claude/${f}`))
+        allErrors.push(...agentsResult.errors)
 
         // Add events log pattern to .gitignore
         const gitignorePath = join(process.cwd(), ".gitignore")
@@ -83,15 +117,16 @@ export const InitRalph = () => {
           if (!content.includes(eventsLogEntry)) {
             const newline = content.endsWith("\n") ? "" : "\n"
             appendFileSync(gitignorePath, `${newline}${eventsLogEntry}\n`)
-            created.push("(added .ralph/events-*.jsonl to .gitignore)")
+            allCreated.push("(added .ralph/events-*.jsonl to .gitignore)")
           }
         } else {
           writeFileSync(gitignorePath, `${eventsLogEntry}\n`)
-          created.push("(created .gitignore with .ralph/events-*.jsonl)")
+          allCreated.push("(created .gitignore with .ralph/events-*.jsonl)")
         }
 
-        setCreatedFiles(created)
-        setErrors(failed)
+        setCreatedFiles(allCreated)
+        setSkippedFiles(allSkipped)
+        setErrors(allErrors)
         setStatus("done")
 
         // Exit after a brief delay so user can see success message
@@ -104,38 +139,17 @@ export const InitRalph = () => {
     }
 
     initialize()
-  }, [taskMode])
-
-  const handleModeSelect = (item: { value: string }) => {
-    setTaskMode(item.value as TaskMode)
-  }
+  }, [])
 
   if (status === "checking") {
-    return <Text>Checking .ralph directory...</Text>
+    return <Text>Checking directories...</Text>
   }
 
   if (status === "exists") {
     return (
       <Box flexDirection="column">
-        <Text color="yellow">⚠️ .ralph directory already exists</Text>
-        <Text dimColor>To reinitialize, remove the directory first: rm -rf .ralph</Text>
-      </Box>
-    )
-  }
-
-  if (status === "selecting") {
-    return (
-      <Box flexDirection="column">
-        <Text bold>How will you manage tasks?</Text>
-        <Box marginTop={1}>
-          <SelectInput
-            items={[
-              { label: "todo.md - Simple markdown checklist", value: "todo" },
-              { label: "beads - Git-backed issue tracker", value: "beads" },
-            ]}
-            onSelect={handleModeSelect}
-          />
-        </Box>
+        <Text color="yellow">Ralph is already initialized</Text>
+        <Text dimColor>To reinitialize, remove the workflow first: rm .ralph/workflow.md</Text>
       </Box>
     )
   }
@@ -148,7 +162,13 @@ export const InitRalph = () => {
     <Box flexDirection="column">
       {createdFiles.map(file => (
         <Text key={file}>
-          <Text color="green">✓</Text> Created <Text dimColor>.ralph/{file}</Text>
+          <Text color="green">✓</Text> Created <Text dimColor>{file}</Text>
+        </Text>
+      ))}
+      {skippedFiles.map(file => (
+        <Text key={file}>
+          <Text color="yellow">○</Text> Skipped <Text dimColor>{file}</Text>
+          <Text dimColor> (already exists)</Text>
         </Text>
       ))}
       {errors.map((error, i) => (
@@ -158,35 +178,20 @@ export const InitRalph = () => {
       ))}
       {errors.length === 0 && (
         <>
-          <Text color="green">{"\n"}✓ Ralph initialized successfully!</Text>
-          {taskMode === "todo" ?
-            <>
-              <Text bold>{"\n"}Before running ralph, you need to:</Text>
-              <Text>
-                <Text color="cyan"> 1. Edit .ralph/prompt.md</Text>
-                <Text dimColor> - Add your project context and workflow instructions</Text>
-              </Text>
-              <Text>
-                <Text color="cyan"> 2. Edit .ralph/todo.md</Text>
-                <Text dimColor> - Add the tasks you want Ralph to work on</Text>
-              </Text>
-            </>
-          : <>
-              <Text bold>{"\n"}Before running ralph, you need to:</Text>
-              <Text>
-                <Text color="cyan"> 1. Edit .ralph/prompt.md</Text>
-                <Text dimColor> - Customize build commands and workflow for your project</Text>
-              </Text>
-              <Text>
-                <Text color="cyan"> 2. Initialize beads</Text>
-                <Text dimColor> - Run `bd init` to set up the issue tracker</Text>
-              </Text>
-              <Text>
-                <Text color="cyan"> 3. Create issues</Text>
-                <Text dimColor> - Run `bd create --title="..." --type=task` to add work</Text>
-              </Text>
-            </>
-          }
+          <Text color="green">{"\n"}Ralph initialized successfully!</Text>
+          <Text bold>{"\n"}Next steps:</Text>
+          <Text>
+            <Text color="cyan"> 1. Edit .ralph/workflow.md</Text>
+            <Text dimColor> - Customize build commands for your project</Text>
+          </Text>
+          <Text>
+            <Text color="cyan"> 2. Initialize beads</Text>
+            <Text dimColor> - Run `bd init` to set up the issue tracker</Text>
+          </Text>
+          <Text>
+            <Text color="cyan"> 3. Create issues</Text>
+            <Text dimColor> - Run `bd create --title="..." --type=task` to add work</Text>
+          </Text>
           <Text>
             <Text bold>{"\n"}Then run: </Text>
             <Text color="cyan">ralph</Text>

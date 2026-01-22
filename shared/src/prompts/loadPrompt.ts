@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, copyFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 
+/** Placeholder in core prompt for workflow content */
+const WORKFLOW_PLACEHOLDER = "{WORKFLOW}"
+
 /**
  * Configuration for loading a prompt file.
  */
@@ -126,4 +129,102 @@ export function hasCustomPrompt(options: {
 }): boolean {
   const customPath = getCustomPromptPath(options)
   return existsSync(customPath)
+}
+
+// ---- Iteration Prompt Loading ----
+
+/**
+ * Configuration for loading iteration prompts.
+ */
+export type LoadIterationPromptOptions = {
+  /** Path to the templates directory containing core-prompt.md and workflow.md */
+  templatesDir: string
+  /** Working directory to search for custom workflow (defaults to process.cwd()) */
+  cwd?: string
+}
+
+/**
+ * Result from loading iteration prompt.
+ */
+export type LoadIterationPromptResult = {
+  /** The combined prompt content (core + workflow) */
+  content: string
+  /** Whether a custom workflow was used */
+  hasCustomWorkflow: boolean
+  /** Path to the workflow file that was used */
+  workflowPath: string
+}
+
+/**
+ * Load the iteration prompt by combining core-prompt.md with workflow.md.
+ *
+ * The core prompt is always loaded from templates (bundled).
+ * The workflow is loaded from .ralph/workflow.md if it exists, otherwise from templates.
+ * The workflow content replaces {WORKFLOW} placeholder in the core prompt.
+ *
+ * @param options - Configuration for loading the prompt
+ * @returns Combined prompt with workflow merged in
+ * @throws Error if core prompt cannot be found
+ */
+export function loadIterationPrompt(options: LoadIterationPromptOptions): LoadIterationPromptResult {
+  const { templatesDir, cwd = process.cwd() } = options
+
+  // Load core prompt (always from templates)
+  const corePromptPath = join(templatesDir, "core-prompt.md")
+  if (!existsSync(corePromptPath)) {
+    throw new Error(`Core prompt not found at ${corePromptPath}`)
+  }
+  const corePrompt = readFileSync(corePromptPath, "utf-8")
+
+  // Try custom workflow first, then fall back to template
+  const customWorkflowPath = join(cwd, ".ralph", "workflow.md")
+  const defaultWorkflowPath = join(templatesDir, "workflow.md")
+
+  let workflowContent: string
+  let hasCustomWorkflow: boolean
+  let workflowPath: string
+
+  if (existsSync(customWorkflowPath)) {
+    workflowContent = readFileSync(customWorkflowPath, "utf-8")
+    hasCustomWorkflow = true
+    workflowPath = customWorkflowPath
+  } else if (existsSync(defaultWorkflowPath)) {
+    workflowContent = readFileSync(defaultWorkflowPath, "utf-8")
+    hasCustomWorkflow = false
+    workflowPath = defaultWorkflowPath
+  } else {
+    // Minimal fallback
+    workflowContent = "Work on the highest-priority task."
+    hasCustomWorkflow = false
+    workflowPath = ""
+  }
+
+  // Combine by replacing placeholder
+  const content = corePrompt.replace(WORKFLOW_PLACEHOLDER, workflowContent)
+
+  return {
+    content,
+    hasCustomWorkflow,
+    workflowPath,
+  }
+}
+
+/**
+ * Check if a custom workflow exists.
+ *
+ * @param cwd - Working directory (defaults to process.cwd())
+ * @returns True if .ralph/workflow.md exists
+ */
+export function hasCustomWorkflow(cwd: string = process.cwd()): boolean {
+  return existsSync(join(cwd, ".ralph", "workflow.md"))
+}
+
+/**
+ * Get the path to the custom workflow file.
+ *
+ * @param cwd - Working directory (defaults to process.cwd())
+ * @returns Path to .ralph/workflow.md
+ */
+export function getCustomWorkflowPath(cwd: string = process.cwd()): string {
+  return join(cwd, ".ralph", "workflow.md")
 }

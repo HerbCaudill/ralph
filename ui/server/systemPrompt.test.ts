@@ -1,18 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
-import { mkdir, writeFile, rm, readFile } from "node:fs/promises"
-import { existsSync } from "node:fs"
+import { mkdir, writeFile, rm } from "node:fs/promises"
 import path from "node:path"
-import {
-  loadSystemPrompt,
-  initSystemPrompt,
-  getCustomPromptPath,
-  getDefaultPromptPath,
-} from "./systemPrompt.js"
+import { loadSystemPrompt, loadTaskChatSkill, getTaskChatAllowedTools, getTaskChatModel } from "./systemPrompt.js"
 
 describe("systemPrompt", () => {
   const testDir = path.join(import.meta.dirname, "__test_system_prompt__")
-  const ralphDir = path.join(testDir, ".ralph")
-  const customPromptPath = path.join(ralphDir, "task-chat-system.md")
+  const claudeDir = path.join(testDir, ".claude")
+  const skillDir = path.join(claudeDir, "skills", "manage-tasks")
+  const customSkillPath = path.join(skillDir, "SKILL.md")
 
   beforeEach(async () => {
     // Create test directory structure
@@ -24,106 +19,141 @@ describe("systemPrompt", () => {
     await rm(testDir, { recursive: true, force: true })
   })
 
-  describe("getCustomPromptPath", () => {
-    it("returns path to .ralph/task-chat-system.md", () => {
-      const result = getCustomPromptPath(testDir)
-      expect(result).toBe(customPromptPath)
-    })
-
-    it("uses process.cwd() when no argument provided", () => {
-      const result = getCustomPromptPath()
-      expect(result).toBe(path.join(process.cwd(), ".ralph", "task-chat-system.md"))
-    })
-  })
-
-  describe("getDefaultPromptPath", () => {
-    it("returns path to server/prompts/task-chat-system.md", () => {
-      const result = getDefaultPromptPath()
-      expect(result).toContain("server")
-      expect(result).toContain("prompts")
-      expect(result).toContain("task-chat-system.md")
-    })
-
-    it("points to an existing file", () => {
-      const result = getDefaultPromptPath()
-      expect(existsSync(result)).toBe(true)
-    })
-  })
-
   describe("loadSystemPrompt", () => {
-    it("loads customized prompt from .ralph folder when it exists", async () => {
-      const customContent = "# Custom System Prompt\n\nThis is a custom prompt."
-      await mkdir(ralphDir, { recursive: true })
-      await writeFile(customPromptPath, customContent)
+    it("loads customized skill from .claude/skills folder when it exists", async () => {
+      const customContent = `---
+name: manage-tasks
+description: Custom task manager
+model: haiku
+allowed-tools:
+  - Read
+  - Bash
+---
+
+# Custom Task Manager
+
+This is a custom skill.`
+
+      await mkdir(skillDir, { recursive: true })
+      await writeFile(customSkillPath, customContent)
 
       const result = loadSystemPrompt(testDir)
-      expect(result).toBe(customContent)
+      expect(result).toContain("# Custom Task Manager")
+      expect(result).toContain("This is a custom skill.")
+      // Should not contain frontmatter
+      expect(result).not.toContain("---")
+      expect(result).not.toContain("name: manage-tasks")
     })
 
-    it("loads default prompt when no custom prompt exists", () => {
-      // No custom prompt in testDir, should fall back to default
+    it("loads default skill when no custom skill exists", () => {
+      // No custom skill in testDir, should fall back to default
       const result = loadSystemPrompt(testDir)
       expect(result).toContain("task management assistant")
       expect(result).toContain("beads")
     })
 
-    it("prefers custom prompt over default", async () => {
-      const customContent = "# My Custom Prompt"
-      await mkdir(ralphDir, { recursive: true })
-      await writeFile(customPromptPath, customContent)
+    it("prefers custom skill over default", async () => {
+      const customContent = `---
+name: manage-tasks
+---
+
+# My Custom Skill`
+
+      await mkdir(skillDir, { recursive: true })
+      await writeFile(customSkillPath, customContent)
 
       const result = loadSystemPrompt(testDir)
-      expect(result).toBe(customContent)
-      expect(result).not.toContain("Task Management Assistant")
+      expect(result).toContain("# My Custom Skill")
+      expect(result).not.toContain("task management assistant")
     })
   })
 
-  describe("initSystemPrompt", () => {
-    it("creates .ralph directory and copies default prompt", async () => {
-      expect(existsSync(ralphDir)).toBe(false)
+  describe("loadTaskChatSkill", () => {
+    it("returns full skill result with metadata", async () => {
+      const customContent = `---
+name: manage-tasks
+description: Test description
+model: haiku
+allowed-tools:
+  - Read
+  - Bash
+  - Glob
+---
 
-      const result = initSystemPrompt(testDir)
+# Skill Content`
 
-      expect(result.created).toBe(true)
-      expect(result.path).toBe(customPromptPath)
-      expect(existsSync(customPromptPath)).toBe(true)
+      await mkdir(skillDir, { recursive: true })
+      await writeFile(customSkillPath, customContent)
 
-      // Verify content matches default
-      const content = await readFile(customPromptPath, "utf-8")
-      expect(content).toContain("task management assistant")
+      const result = loadTaskChatSkill(testDir)
+
+      expect(result.content).toContain("# Skill Content")
+      expect(result.metadata.name).toBe("manage-tasks")
+      expect(result.metadata.model).toBe("haiku")
+      expect(result.isCustom).toBe(true)
+      expect(result.path).toBe(customSkillPath)
     })
 
-    it("does not overwrite existing custom prompt", async () => {
-      const customContent = "# My Existing Custom Prompt"
-      await mkdir(ralphDir, { recursive: true })
-      await writeFile(customPromptPath, customContent)
+    it("returns isCustom=false when loading default skill", () => {
+      const result = loadTaskChatSkill(testDir)
 
-      const result = initSystemPrompt(testDir)
+      expect(result.isCustom).toBe(false)
+      expect(result.path).toContain("prompts")
+      expect(result.path).toContain("manage-tasks")
+    })
+  })
 
-      expect(result.created).toBe(false)
-      expect(result.path).toBe(customPromptPath)
+  describe("getTaskChatAllowedTools", () => {
+    it("returns allowed tools from skill metadata", async () => {
+      const customContent = `---
+name: manage-tasks
+allowed-tools:
+  - Read
+  - Bash
+  - CustomTool
+---
 
-      // Verify content was not overwritten
-      const content = await readFile(customPromptPath, "utf-8")
-      expect(content).toBe(customContent)
+Content`
+
+      await mkdir(skillDir, { recursive: true })
+      await writeFile(customSkillPath, customContent)
+
+      const tools = getTaskChatAllowedTools(testDir)
+
+      expect(tools).toContain("Read")
+      expect(tools).toContain("Bash")
+      expect(tools).toContain("CustomTool")
     })
 
-    it("creates .ralph directory when it does not exist", async () => {
-      expect(existsSync(ralphDir)).toBe(false)
+    it("returns default tools when using bundled skill", () => {
+      const tools = getTaskChatAllowedTools(testDir)
 
-      initSystemPrompt(testDir)
+      // Default skill should have some tools defined
+      expect(tools).toBeDefined()
+      expect(Array.isArray(tools)).toBe(true)
+    })
+  })
 
-      expect(existsSync(ralphDir)).toBe(true)
+  describe("getTaskChatModel", () => {
+    it("returns model from skill metadata", async () => {
+      const customContent = `---
+name: manage-tasks
+model: opus
+---
+
+Content`
+
+      await mkdir(skillDir, { recursive: true })
+      await writeFile(customSkillPath, customContent)
+
+      const model = getTaskChatModel(testDir)
+      expect(model).toBe("opus")
     })
 
-    it("works when .ralph directory already exists", async () => {
-      await mkdir(ralphDir, { recursive: true })
-      expect(existsSync(ralphDir)).toBe(true)
-
-      const result = initSystemPrompt(testDir)
-
-      expect(result.created).toBe(true)
-      expect(existsSync(customPromptPath)).toBe(true)
+    it("returns default model when using bundled skill", () => {
+      const model = getTaskChatModel(testDir)
+      // Default skill should specify sonnet
+      expect(model).toBe("sonnet")
     })
   })
 })

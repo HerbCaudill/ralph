@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events"
 import { existsSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { loadSystemPrompt } from "./systemPrompt.js"
+import { loadTaskChatSkill } from "./systemPrompt.js"
 import type { BdProxy } from "./BdProxy.js"
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 
@@ -178,11 +178,16 @@ export class TaskChatManager extends EventEmitter {
     this.emit("message", userMsg)
 
     let appendSystemPrompt: string
+    let skillTools: string[]
+    let skillModel: string | undefined
     let conversationPrompt: string
 
     try {
       // Build system prompt to append to Claude Code's defaults
-      appendSystemPrompt = await this.buildSystemPrompt()
+      const skillConfig = await this.buildSystemPrompt()
+      appendSystemPrompt = skillConfig.prompt
+      skillTools = skillConfig.tools
+      skillModel = skillConfig.model
 
       // Build conversation for Claude
       conversationPrompt = this.buildConversationPrompt(userMessage)
@@ -222,7 +227,7 @@ export class TaskChatManager extends EventEmitter {
           for await (const message of query({
             prompt: conversationPrompt,
             options: {
-              model: this.options.model,
+              model: skillModel ?? this.options.model,
               cwd: this.options.cwd,
               env: this.options.env,
               // Use Claude Code's default system prompt (includes CLAUDE.md, cwd awareness)
@@ -232,8 +237,8 @@ export class TaskChatManager extends EventEmitter {
                 preset: "claude_code",
                 append: appendSystemPrompt,
               },
-              // Read-only tools for context + Bash for bd commands
-              tools: ["Read", "Grep", "Glob", "Bash"],
+              // Tools from skill metadata (with fallback defaults)
+              tools: skillTools,
               permissionMode: "bypassPermissions",
               allowDangerouslySkipPermissions: true,
               includePartialMessages: true, // Enable streaming
@@ -304,13 +309,26 @@ export class TaskChatManager extends EventEmitter {
 
   /**
    * Build the system prompt with current task context.
+   * Also returns metadata from the skill (tools, model).
    */
-  private async buildSystemPrompt(): Promise<string> {
+  private async buildSystemPrompt(): Promise<{
+    prompt: string
+    tools: string[]
+    model: string | undefined
+  }> {
     let basePrompt: string
+    let tools: string[] = ["Read", "Grep", "Glob", "Bash"] // Default fallback
+    let model: string | undefined
+
     try {
-      basePrompt = loadSystemPrompt(this.options.cwd)
+      const skill = loadTaskChatSkill(this.options.cwd)
+      basePrompt = skill.content
+      if (skill.metadata.allowedTools) {
+        tools = skill.metadata.allowedTools
+      }
+      model = skill.metadata.model
     } catch {
-      // Fallback to a basic prompt if file not found
+      // Fallback to a basic prompt if skill not found
       basePrompt = "You are a task management assistant. Help users manage their issues and tasks."
     }
 
@@ -353,7 +371,11 @@ export class TaskChatManager extends EventEmitter {
       }
     }
 
-    return basePrompt + taskContext
+    return {
+      prompt: basePrompt + taskContext,
+      tools,
+      model,
+    }
   }
 
   /**

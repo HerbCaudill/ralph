@@ -35,63 +35,73 @@ describe("IterationRunner prompt content", () => {
     return module.getPromptContent
   }
 
-  it("returns content from .ralph/prompt.md when it exists", async () => {
+  it("combines core-prompt.md with custom workflow.md when it exists", async () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
     const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>
 
     mockExistsSync.mockImplementation((path: string) => {
-      return path.includes(".ralph/prompt.md") || path.includes(".ralph\\prompt.md")
-    })
-    mockReadFileSync.mockReturnValue("Custom prompt content")
-
-    const getPromptContent = await getGetPromptContent()
-    const content = getPromptContent()
-
-    expect(content).toBe("Custom prompt content")
-  })
-
-  it("falls back to prompt-beads.md when .beads directory exists", async () => {
-    const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
-    const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>
-
-    mockExistsSync.mockImplementation((path: string) => {
-      // .ralph/prompt.md doesn't exist
-      if (path.includes("prompt.md") && path.includes(".ralph")) return false
-      // .beads directory exists
-      if (path.includes(".beads")) return true
-      // Template file exists
-      if (path.includes("prompt-beads.md")) return true
+      // Core prompt always exists in templates
+      if (path.includes("core-prompt.md")) return true
+      // Custom workflow exists
+      if (path.includes(".ralph") && path.includes("workflow.md")) return true
       return false
     })
-    mockReadFileSync.mockReturnValue("Beads template content")
+
+    mockReadFileSync.mockImplementation((path: string) => {
+      if (path.includes("core-prompt.md")) {
+        return "# Core\n\n{WORKFLOW}"
+      }
+      if (path.includes("workflow.md")) {
+        return "Custom workflow content"
+      }
+      return ""
+    })
 
     const getPromptContent = await getGetPromptContent()
     const content = getPromptContent()
 
-    expect(content).toBe("Beads template content")
+    expect(content).toBe("# Core\n\nCustom workflow content")
   })
 
-  it("falls back to prompt-todos.md template when .ralph/todo.md exists", async () => {
+  it("falls back to default workflow.md when no custom workflow exists", async () => {
     const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
     const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>
 
     mockExistsSync.mockImplementation((path: string) => {
-      // .ralph/prompt.md doesn't exist
-      if (path.includes("prompt.md") && path.includes(".ralph")) return false
-      // .beads directory doesn't exist
-      if (path.includes(".beads")) return false
-      // .ralph/todo.md exists
-      if (path.includes("todo.md") && path.includes(".ralph")) return true
-      // Template files exist
-      if (path.includes("templates") && path.includes("prompt-todos.md")) return true
+      // Core prompt always exists in templates
+      if (path.includes("core-prompt.md")) return true
+      // Custom workflow doesn't exist
+      if (path.includes(".ralph") && path.includes("workflow.md")) return false
+      // Default workflow exists in templates
+      if (path.includes("templates") && path.includes("workflow.md")) return true
       return false
     })
-    mockReadFileSync.mockReturnValue("Todo template content")
+
+    mockReadFileSync.mockImplementation((path: string) => {
+      if (path.includes("core-prompt.md")) {
+        return "# Core\n\n{WORKFLOW}"
+      }
+      if (path.includes("templates") && path.includes("workflow.md")) {
+        return "Default workflow content"
+      }
+      return ""
+    })
 
     const getPromptContent = await getGetPromptContent()
     const content = getPromptContent()
 
-    expect(content).toBe("Todo template content")
+    expect(content).toBe("# Core\n\nDefault workflow content")
+  })
+
+  it("returns minimal prompt when templates are missing", async () => {
+    const mockExistsSync = existsSync as unknown as ReturnType<typeof vi.fn>
+
+    mockExistsSync.mockReturnValue(false)
+
+    const getPromptContent = await getGetPromptContent()
+    const content = getPromptContent()
+
+    expect(content).toBe("Work on the highest-priority task.")
   })
 })
 
