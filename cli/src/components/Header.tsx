@@ -3,7 +3,17 @@ import { Box, Text } from "ink"
 import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 
-export const Header = ({ claudeVersion, ralphVersion, width }: Props) => {
+/**
+ * Display the Ralph header with version information and branding.
+ */
+export const Header = ({
+  /** The Claude CLI version */
+  claudeVersion,
+  /** The Ralph version */
+  ralphVersion,
+  /** Optional box width */
+  width,
+}: Props) => {
   return (
     <Box
       flexDirection="column"
@@ -24,7 +34,10 @@ export const Header = ({ claudeVersion, ralphVersion, width }: Props) => {
 }
 
 type Props = {
+  /** Claude CLI version string */
   claudeVersion: string
+  /** Ralph version string */
   ralphVersion: string
+  /** Optional box width in characters */
   width?: number
 }
