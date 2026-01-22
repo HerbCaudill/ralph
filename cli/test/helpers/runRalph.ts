@@ -1,6 +1,6 @@
 import { spawn } from "child_process"
 import { join } from "path"
-import { createWriteStream, mkdirSync, existsSync, rmSync, readdirSync } from "fs"
+import { createWriteStream, mkdirSync, existsSync } from "fs"
 
 export type RunRalphOptions = {
   args?: string[]
@@ -20,23 +20,7 @@ export type RunRalphResult = {
 }
 
 /**
- * Cleans the .test-results directory
- */
-export const cleanTestResults = () => {
-  const resultsDir = join(__dirname, "../../.test-results")
-  if (existsSync(resultsDir)) {
-    // Remove all .txt files in the directory
-    const files = readdirSync(resultsDir)
-    for (const file of files) {
-      if (file.endsWith(".txt")) {
-        rmSync(join(resultsDir, file))
-      }
-    }
-  }
-}
-
-/**
- * Runs the ralph binary for E2E testing and streams output to .test-results
+ * Runs the ralph binary for E2E testing and streams output to .test-results.
  */
 export const runRalph = async (options: RunRalphOptions = {}): Promise<RunRalphResult> => {
   const { args = [], cwd = process.cwd(), timeout = 5000, env = {}, input, testName } = options

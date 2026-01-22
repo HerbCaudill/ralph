@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll } from "vitest"
 import { join } from "path"
 import { existsSync, rmSync, cpSync, mkdirSync, readFileSync } from "fs"
-import { runRalph, cleanTestResults } from "../helpers/runRalph.js"
+import { runRalph } from "../helpers/runRalph.js"
+import { cleanTestResults } from "../helpers/cleanTestResults.js"
 
 const FIXTURES_DIR = join(__dirname, "../fixtures")
 const TEST_WORKSPACE = join(__dirname, "../../.test-workspace")
