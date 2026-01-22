@@ -2,10 +2,11 @@ import React from "react"
 import { Text } from "ink"
 import chalk from "chalk"
 
+/**
+ * Process markdown formatting: **bold** and `code`. Build a single string with
+ * chalk formatting to avoid Ink treating multiple Text components as separate blocks.
+ */
 export const StreamingText = ({ content }: Props) => {
-  // Process markdown formatting: **bold** and `code`
-  // Build a single string with chalk formatting to avoid Ink treating
-  // multiple Text components as separate blocks
   let result = ""
   let i = 0
   let inBold = false
