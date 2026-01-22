@@ -12,10 +12,26 @@ import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
 import { getPromptContent } from "../lib/getPromptContent.js"
 import { outputEvent } from "../lib/outputEvent.js"
 
+/**
+ * Debug logger for iteration lifecycle events
+ */
 const log = createDebugLogger("iteration")
+
+/**
+ * Path to the todo.md file in the .ralph directory
+ */
 const todoFile = join(process.cwd(), ".ralph", "todo.md")
+
+/**
+ * Name of the current repository
+ */
 const repoName = basename(process.cwd())
 
+/**
+ * Component that runs Claude Agent SDK iterations in JSON output mode.
+ * Manages message queues, task lifecycle tracking, pause/resume, and
+ * streams SDK events to stdout as newline-delimited JSON.
+ */
 export const JsonOutput = ({ totalIterations, agent }: Props) => {
   const { exit } = useApp()
   const [currentIteration, setCurrentIteration] = useState(1)
