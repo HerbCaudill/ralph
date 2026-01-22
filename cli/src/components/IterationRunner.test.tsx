@@ -24,45 +24,47 @@ describe("IterationRunner", () => {
   })
 })
 
-// Note: For comprehensive integration tests, you would want to:
-//
-// 1. Test child process spawning:
-//    - Mock spawn() to return a fake ChildProcess
-//    - Emit data events to simulate Claude output
-//    - Test JSON parsing of events
-//    - Test COMPLETE promise detection
-//    - Test exit code handling
-//
-// 2. Test file operations:
-//    - Mock appendFileSync/writeFileSync
-//    - Verify events are logged correctly
-//    - Test log file creation
-//
-// 3. Test React rendering:
-//    - Use ink-testing-library to render component
-//    - Test initialization prompts
-//    - Test error display
-//    - Test iteration counter
-//
-// Example structure for a full integration test:
-//
-// import { render } from 'ink-testing-library'
-// import { EventEmitter } from 'events'
-//
-// vi.mock('child_process', () => ({
-//   spawn: vi.fn(() => {
-//     const mockProcess = new EventEmitter()
-//     mockProcess.stdout = new EventEmitter()
-//     mockProcess.kill = vi.fn()
-//     return mockProcess
-//   })
-// }))
-//
-// it('parses streaming JSON events', () => {
-//   const { lastFrame } = render(<IterationRunner totalIterations={1} />)
-//   const mockChild = getLastSpawnedProcess()
-//
-//   mockChild.stdout.emit('data', Buffer.from('{"type":"assistant"}\n'))
-//
-//   expect(lastFrame()).toContain('expected output')
-// })
+/**
+ * Note: For comprehensive integration tests, you would want to:
+ *
+ * 1. Test child process spawning:
+ *    - Mock spawn() to return a fake ChildProcess
+ *    - Emit data events to simulate Claude output
+ *    - Test JSON parsing of events
+ *    - Test COMPLETE promise detection
+ *    - Test exit code handling
+ *
+ * 2. Test file operations:
+ *    - Mock appendFileSync/writeFileSync
+ *    - Verify events are logged correctly
+ *    - Test log file creation
+ *
+ * 3. Test React rendering:
+ *    - Use ink-testing-library to render component
+ *    - Test initialization prompts
+ *    - Test error display
+ *    - Test iteration counter
+ *
+ * Example structure for a full integration test:
+ *
+ * import { render } from 'ink-testing-library'
+ * import { EventEmitter } from 'events'
+ *
+ * vi.mock('child_process', () => ({
+ *   spawn: vi.fn(() => {
+ *     const mockProcess = new EventEmitter()
+ *     mockProcess.stdout = new EventEmitter()
+ *     mockProcess.kill = vi.fn()
+ *     return mockProcess
+ *   })
+ * }))
+ *
+ * it('parses streaming JSON events', () => {
+ *   const { lastFrame } = render(<IterationRunner totalIterations={1} />)
+ *   const mockChild = getLastSpawnedProcess()
+ *
+ *   mockChild.stdout.emit('data', Buffer.from('{"type":"assistant"}\n'))
+ *
+ *   expect(lastFrame()).toContain('expected output')
+ * })
+ */
