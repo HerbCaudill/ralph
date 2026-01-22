@@ -26,7 +26,7 @@ export const program = new Command()
     (
       /** The number of iterations to run, or undefined to use default */
       iterationsArg: number | undefined,
-      /** Command options */
+      /** Command options including replay, watch, json, and agent */
       options,
     ) => {
       const iterations = iterationsArg ?? getDefaultIterations()
@@ -74,25 +74,24 @@ export const program = new Command()
 program
   .command("init")
   .description("initialize .ralph directory with templates")
-  .action(
-    /** Initialize the .ralph directory with templates */
-    () => {
-      render(React.createElement(InitRalph))
-    },
-  )
+  /**
+   * Initialize the .ralph directory with templates
+   */
+  .action(() => {
+    render(React.createElement(InitRalph))
+  })
 
 program
   .command("todo [description...]")
   .description("add a todo item and commit it (safe to use while ralph is running)")
-  .action(
-    /**
-     * Add a todo item and commit it. If description is provided as arguments,
-     * use that; otherwise prompt interactively.
-     */
-    async (
-      /** The description parts from command arguments */
-      descriptionParts: string[],
-    ) => {
+  /**
+   * Add a todo item and commit it. If description is provided as arguments,
+   * use that; otherwise prompt interactively.
+   */
+  .action(async (
+    /** The description parts from command arguments */
+    descriptionParts: string[],
+  ) => {
       let description = descriptionParts.join(" ").trim()
 
       if (!description) {
