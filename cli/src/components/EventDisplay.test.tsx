@@ -3,7 +3,13 @@ import { render } from "ink-testing-library"
 import { describe, it, expect, vi } from "vitest"
 import { EventDisplay } from "./EventDisplay.js"
 
+/**
+ * Test suite for EventDisplay component
+ */
 describe("EventDisplay", () => {
+  /**
+   * Verify that stream_event types are filtered out and only assistant messages are displayed
+   */
   it("filters out stream_event types and only shows assistant messages", async () => {
     const events = [
       {
@@ -34,6 +40,9 @@ describe("EventDisplay", () => {
     })
   })
 
+  /**
+   * Verify that events with the same message ID are deduplicated, keeping only the latest version
+   */
   it("deduplicates events with the same message ID", async () => {
     const events = [
       {
@@ -70,6 +79,9 @@ describe("EventDisplay", () => {
     expect(output.match(/First version/g)?.length).toBe(1)
   })
 
+  /**
+   * Verify that multiple different messages are all displayed correctly
+   */
   it("handles multiple different messages", async () => {
     const events = [
       {
@@ -99,6 +111,9 @@ describe("EventDisplay", () => {
     })
   })
 
+  /**
+   * Verify that tool use events are displayed correctly with tool names and file paths
+   */
   it("handles tool use events", async () => {
     const events = [
       {
@@ -127,6 +142,9 @@ describe("EventDisplay", () => {
     })
   })
 
+  /**
+   * Verify that the display updates correctly when new events are added to the event list
+   */
   it("updates display when new events arrive", async () => {
     const events1 = [
       {
@@ -166,6 +184,9 @@ describe("EventDisplay", () => {
     })
   })
 
+  /**
+   * Verify that partial message updates during streaming don't create duplicate React keys
+   */
   it("handles partial message updates without duplicating keys", async () => {
     // Simulate streaming where the same message gets updated multiple times
     const events = [

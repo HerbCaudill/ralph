@@ -1,25 +1,8 @@
 import { describe, it, expect, vi } from "vitest"
-import React, { useState } from "react"
+import React from "react"
 import { render } from "ink-testing-library"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
-
-// Helper component that manages controlled state
-const ControlledInput = ({
-  initialValue,
-  onValueChange,
-  onSubmit,
-}: {
-  initialValue: string
-  onValueChange?: (value: string) => void
-  onSubmit?: (value: string) => void
-}) => {
-  const [value, setValue] = useState(initialValue)
-  const handleChange = (newValue: string) => {
-    setValue(newValue)
-    onValueChange?.(newValue)
-  }
-  return <EnhancedTextInput value={value} onChange={handleChange} onSubmit={onSubmit} />
-}
+import { ControlledInput } from "./test-helpers/ControlledInput.js"
 
 describe("EnhancedTextInput", () => {
   describe("rendering", () => {
