@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from "@/test-utils"
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { Header } from "./Header"
-import { useAppStore } from "@/store"
+import { useAppStore, createRalphInstance } from "@/store"
 
 // Mock the useVSCodeTheme hook used by ThemePicker
 vi.mock("@/hooks", async importOriginal => {
@@ -367,4 +367,57 @@ describe("Header", () => {
   })
 
   // Note: Control bar has been moved to StatusBar (see rui-z4z)
+
+  describe("instance count badge", () => {
+    it("does not show badge when only one instance exists", async () => {
+      render(<Header />)
+
+      await waitFor(() => {
+        expect(screen.getByText("my-project")).toBeInTheDocument()
+      })
+
+      expect(screen.queryByTestId("instance-count-badge")).not.toBeInTheDocument()
+    })
+
+    it("shows badge when multiple instances exist", async () => {
+      // Add a second instance to the store
+      act(() => {
+        const store = useAppStore.getState()
+        const instances = new Map(store.instances)
+        instances.set("instance-2", createRalphInstance("instance-2", "Worktree 1"))
+        useAppStore.setState({ instances })
+      })
+
+      render(<Header />)
+
+      await waitFor(() => {
+        expect(screen.getByText("my-project")).toBeInTheDocument()
+      })
+
+      const badge = screen.getByTestId("instance-count-badge")
+      expect(badge).toBeInTheDocument()
+      expect(badge).toHaveTextContent("2")
+    })
+
+    it("shows correct count with three instances", async () => {
+      // Add two more instances to the store
+      act(() => {
+        const store = useAppStore.getState()
+        const instances = new Map(store.instances)
+        instances.set("instance-2", createRalphInstance("instance-2", "Worktree 1"))
+        instances.set("instance-3", createRalphInstance("instance-3", "Worktree 2"))
+        useAppStore.setState({ instances })
+      })
+
+      render(<Header />)
+
+      await waitFor(() => {
+        expect(screen.getByText("my-project")).toBeInTheDocument()
+      })
+
+      const badge = screen.getByTestId("instance-count-badge")
+      expect(badge).toBeInTheDocument()
+      expect(badge).toHaveTextContent("3")
+    })
+  })
 })
