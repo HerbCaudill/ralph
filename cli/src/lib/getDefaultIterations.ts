@@ -1,4 +1,4 @@
-import { getOpenIssueCount } from "./getOpenIssueCount"
+import { getOpenIssueCount } from "./getOpenIssueCount.js"
 
 /**
  * Calculate the default number of iterations based on open issues.

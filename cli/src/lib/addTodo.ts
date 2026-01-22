@@ -1,7 +1,7 @@
 import { execSync } from "child_process"
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import { join } from "path"
-import { insertTodo } from "./insertTodo"
+import { insertTodo } from "./insertTodo.js"
 
 /**
  * Adds a todo item to the todo.md file and commits just that line.

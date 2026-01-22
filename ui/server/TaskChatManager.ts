@@ -25,7 +25,12 @@ export class TaskChatManager extends EventEmitter {
   private abortController: AbortController | null = null
   private getBdProxy: GetBdProxyFn | undefined
   /** Track pending tool uses to match results */
-  private pendingToolUses: Map<string, { tool: string; input: Record<string, unknown> }> = new Map()
+  private pendingToolUses: Map<
+    string,
+    { tool: string; input: Record<string, unknown>; sequence: number }
+  > = new Map()
+  /** Sequence counter for ordering content within a turn */
+  private sequenceCounter = 0
   private options: {
     cwd: string
     env: Record<string, string>
@@ -93,6 +98,7 @@ export class TaskChatManager extends EventEmitter {
     this.setStatus("processing")
     this.cancelled = false
     this.currentResponse = ""
+    this.sequenceCounter = 0 // Reset sequence counter for new turn
 
     // Add user message to history
     const userMsg: TaskChatMessage = {
@@ -382,7 +388,9 @@ export class TaskChatManager extends EventEmitter {
               // (the initial tool_use event was already emitted during streaming)
               const input = (block.input as Record<string, unknown>) ?? {}
               const existingToolUse = this.pendingToolUses.get(block.id)
-              this.pendingToolUses.set(block.id, { tool: block.name, input })
+              // Keep the existing sequence or assign a new one
+              const sequence = existingToolUse?.sequence ?? this.sequenceCounter++
+              this.pendingToolUses.set(block.id, { tool: block.name, input, sequence })
 
               if (existingToolUse) {
                 // Update the existing tool use with full input and running status
@@ -392,6 +400,7 @@ export class TaskChatManager extends EventEmitter {
                   input,
                   status: "running",
                   timestamp,
+                  sequence,
                 } satisfies TaskChatToolUse)
               } else {
                 // No existing tool use - emit a new one (fallback for edge cases)
@@ -401,6 +410,7 @@ export class TaskChatManager extends EventEmitter {
                   input,
                   status: "running",
                   timestamp,
+                  sequence,
                 } satisfies TaskChatToolUse)
               }
             }
@@ -436,6 +446,7 @@ export class TaskChatManager extends EventEmitter {
                 error: isError ? content : undefined,
                 status: isError ? "error" : "success",
                 timestamp,
+                sequence: pending?.sequence ?? this.sequenceCounter++,
               } satisfies TaskChatToolUse)
 
               this.pendingToolUses.delete(toolUseId)
@@ -493,13 +504,19 @@ export class TaskChatManager extends EventEmitter {
           name?: string
         }
         if (contentBlock?.type === "tool_use" && contentBlock.id && contentBlock.name) {
-          this.pendingToolUses.set(contentBlock.id, { tool: contentBlock.name, input: {} })
+          const sequence = this.sequenceCounter++
+          this.pendingToolUses.set(contentBlock.id, {
+            tool: contentBlock.name,
+            input: {},
+            sequence,
+          })
           this.emit("tool_use", {
             toolUseId: contentBlock.id,
             tool: contentBlock.name,
             input: {},
             status: "pending",
             timestamp,
+            sequence,
           } satisfies TaskChatToolUse)
         }
         break
@@ -566,6 +583,8 @@ export interface TaskChatToolUse {
   status: "pending" | "running" | "success" | "error"
   /** Timestamp when this tool use was created/emitted */
   timestamp: number
+  /** Sequence number for ordering within a turn (lower = earlier) */
+  sequence: number
 }
 
 /** Function to get the BdProxy instance (avoids circular dependency) */

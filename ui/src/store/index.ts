@@ -1001,9 +1001,12 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       const existingIndex = state.taskChatToolUses.findIndex(t => t.toolUseId === toolUse.toolUseId)
       if (existingIndex !== -1) {
         // Update existing tool use instead of adding duplicate
+        // Preserve original timestamp and sequence for ordering stability
         return {
           taskChatToolUses: state.taskChatToolUses.map((t, i) =>
-            i === existingIndex ? { ...t, ...toolUse, timestamp: t.timestamp } : t,
+            i === existingIndex ?
+              { ...t, ...toolUse, timestamp: t.timestamp, sequence: t.sequence ?? toolUse.sequence }
+            : t,
           ),
         }
       }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useStdout } from "ink"
-import { getTerminalSize } from "./getTerminalSize"
+import { getTerminalSize } from "./getTerminalSize.js"
 
 /**
  * Hook to get the current terminal size and subscribe to resize events.

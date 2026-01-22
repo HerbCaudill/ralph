@@ -1,4 +1,4 @@
-import { cx } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import { parseDiff } from "@/lib/parseDiff"
 import { TOOL_OUTPUT_PREVIEW_LINES } from "@/constants"
 import { HighlightedLine } from "./HighlightedLine"
@@ -15,7 +15,7 @@ export function DiffView({ oldString, newString, language = "text", isExpanded, 
 
   return (
     <div
-      className={cx(
+      className={cn(
         "bg-muted/30 overflow-x-auto rounded border font-mono text-xs",
         shouldTruncate && "cursor-pointer",
       )}
@@ -24,7 +24,7 @@ export function DiffView({ oldString, newString, language = "text", isExpanded, 
       {displayLines.map((line, i) => (
         <div
           key={i}
-          className={cx(
+          className={cn(
             "flex",
             line.type === "added" && "bg-status-success/20",
             line.type === "removed" && "bg-status-error/20",

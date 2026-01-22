@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { getOpenIssueCount, getDefaultIterations } from "./getOpenIssueCount.js"
+import { getOpenIssueCount } from "./getOpenIssueCount.js"
+import { getDefaultIterations } from "./getDefaultIterations.js"
 import * as childProcess from "child_process"
 
 vi.mock("child_process")

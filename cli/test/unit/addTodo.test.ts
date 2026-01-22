@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { insertTodo } from "../../src/lib/addTodo.js"
+import { insertTodo } from "../../src/lib/insertTodo.js"
 
 describe("insertTodo", () => {
   it("inserts todo after 'To do' header", () => {

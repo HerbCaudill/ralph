@@ -83,6 +83,8 @@ export interface TaskChatMessage {
   role: "user" | "assistant"
   content: string
   timestamp: number
+  /** Sequence number for ordering within a turn (lower = earlier) */
+  sequence?: number
 }
 
 export interface TaskChatToolUse {
@@ -94,6 +96,8 @@ export interface TaskChatToolUse {
   status: "pending" | "running" | "success" | "error"
   /** Timestamp when this tool use was created on the server */
   timestamp: number
+  /** Sequence number for ordering within a turn (lower = earlier) */
+  sequence?: number
 }
 
 export type TaskUpdateData = {

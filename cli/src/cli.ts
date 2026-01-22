@@ -4,7 +4,7 @@ import React from "react"
 import { App } from "./components/App.js"
 import { InitRalph } from "./components/InitRalph.js"
 import { getClaudeVersion } from "./lib/getClaudeVersion.js"
-import { getDefaultIterations } from "./lib/getOpenIssueCount.js"
+import { getDefaultIterations } from "./lib/getDefaultIterations.js"
 import { addTodo } from "./lib/addTodo.js"
 import { getLatestLogFile } from "./lib/getNextLogFile.js"
 import packageJson from "../package.json" with { type: "json" }

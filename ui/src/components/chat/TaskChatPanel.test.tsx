@@ -678,5 +678,89 @@ describe("TaskChatPanel", () => {
         command: "bd list",
       })
     })
+
+    it("sorts by sequence number when available (even with out-of-order timestamps)", () => {
+      const baseTime = 1000000
+
+      // Add user message (no sequence)
+      useAppStore.getState().addTaskChatMessage({
+        id: "user-1",
+        role: "user",
+        content: "User question",
+        timestamp: baseTime,
+      })
+
+      // Add tool uses with sequence numbers (but timestamps are deliberately out of order)
+      // Tool 2 has an earlier timestamp but higher sequence - should appear AFTER tool 1
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-2",
+        tool: "Grep",
+        input: { pattern: "search" },
+        status: "success",
+        timestamp: baseTime + 1, // Earlier timestamp
+        sequence: 1, // Higher sequence
+      })
+
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Read",
+        input: { file_path: "/test.ts" },
+        status: "success",
+        timestamp: baseTime + 2, // Later timestamp
+        sequence: 0, // Lower sequence - should appear first
+      })
+
+      render(<TaskChatPanel />)
+
+      const container = screen.getByRole("log", { name: "Task chat messages" })
+      const textContent = container.textContent || ""
+
+      // Verify all elements are present
+      expect(screen.getByText("User question")).toBeInTheDocument()
+      expect(screen.getByText("Read")).toBeInTheDocument()
+      expect(screen.getByText("Grep")).toBeInTheDocument()
+
+      // Read (sequence 0) should come before Grep (sequence 1)
+      // even though Grep has an earlier timestamp
+      const readPos = textContent.indexOf("Read")
+      const grepPos = textContent.indexOf("Grep")
+
+      expect(readPos).toBeLessThan(grepPos)
+    })
+
+    it("puts messages without sequence before tool uses with sequence", () => {
+      const baseTime = 1000000
+
+      // Add a tool use with sequence
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Bash",
+        input: { command: "test" },
+        status: "success",
+        timestamp: baseTime, // Earlier timestamp
+        sequence: 0,
+      })
+
+      // Add user message without sequence (later timestamp but no sequence)
+      useAppStore.getState().addTaskChatMessage({
+        id: "user-1",
+        role: "user",
+        content: "Later message",
+        timestamp: baseTime + 1000, // Later timestamp
+      })
+
+      render(<TaskChatPanel />)
+
+      const container = screen.getByRole("log", { name: "Task chat messages" })
+      const textContent = container.textContent || ""
+
+      // Messages without sequence should come before tool uses with sequence
+      // because user messages arrive before the response (which contains tool uses)
+      const userPos = textContent.indexOf("Later message")
+      const toolPos = textContent.indexOf("Bash")
+
+      // User message should appear before tool use since it has no sequence
+      expect(userPos).toBeLessThan(toolPos)
+    })
   })
 })

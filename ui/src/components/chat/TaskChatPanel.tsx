@@ -40,13 +40,32 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const chatInputRef = useRef<ChatInputHandle>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Create a unified content array that interleaves messages and tool uses by timestamp
+  // Create a unified content array that interleaves messages and tool uses
+  // Messages always come before tool uses within the same turn
   const contentBlocks = useMemo((): ContentBlock[] => {
     const messageBlocks: ContentBlock[] = messages.map(m => ({ type: "message", data: m }))
     const toolUseBlocks: ContentBlock[] = toolUses.map(t => ({ type: "toolUse", data: t }))
     const allBlocks = [...messageBlocks, ...toolUseBlocks]
-    // Sort by timestamp to maintain proper ordering (server timestamps ensure correct order)
-    return allBlocks.sort((a, b) => a.data.timestamp - b.data.timestamp)
+
+    // Sort by sequence number if available, then by timestamp as fallback
+    // Sequence numbers are assigned server-side to ensure correct ordering within a turn
+    return allBlocks.sort((a, b) => {
+      const seqA = a.data.sequence
+      const seqB = b.data.sequence
+
+      // If both have sequence numbers, sort by sequence
+      if (seqA !== undefined && seqB !== undefined) {
+        return seqA - seqB
+      }
+
+      // If only one has a sequence number, items without sequence come first (messages)
+      // This ensures user messages (which don't have sequence) appear before tool uses
+      if (seqA !== undefined && seqB === undefined) return 1
+      if (seqA === undefined && seqB !== undefined) return -1
+
+      // Fall back to timestamp
+      return a.data.timestamp - b.data.timestamp
+    })
   }, [messages, toolUses])
 
   const wasLoadingRef = useRef(false)
@@ -261,7 +280,7 @@ type ContentBlock = MessageBlock | ToolUseBlock
 /**
  * Props for TaskChatPanel component.
  */
-type TaskChatPanelProps = {
+export type TaskChatPanelProps = {
   /** Optional CSS class name to apply to the panel */
   className?: string
   /** Optional callback when close button is clicked */

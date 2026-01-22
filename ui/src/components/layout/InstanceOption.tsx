@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 import { IconCheck } from "@tabler/icons-react"
-import type { RalphInstance, RalphStatus } from "@/types"
+import type { RalphInstance } from "@/types"
 
 /**
  * Individual option item in the instance selector dropdown.
