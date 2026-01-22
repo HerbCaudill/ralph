@@ -1,11 +1,6 @@
 import { rel } from "../lib/rel.js"
 import { shortenTempPaths } from "../lib/shortenTempPaths.js"
 
-export type ContentBlock =
-  | { type: "text"; content: string; id: string }
-  | { type: "tool"; name: string; arg?: string; id: string }
-  | { type: "user"; content: string; id: string }
-
 /**
  * Transform an event from the Claude SDK into display blocks.
  * Extracts text content and tool use information from assistant and user messages.
@@ -176,3 +171,8 @@ export const eventToBlocks = (
 
   return blocks
 }
+
+export type ContentBlock =
+  | { type: "text"; content: string; id: string }
+  | { type: "tool"; name: string; arg?: string; id: string }
+  | { type: "user"; content: string; id: string }
