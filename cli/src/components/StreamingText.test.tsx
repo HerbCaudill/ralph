@@ -3,13 +3,22 @@ import { describe, it, expect } from "vitest"
 import { render } from "ink-testing-library"
 import { StreamingText } from "./StreamingText.js"
 
+/**
+ * Test suite for StreamingText component
+ */
 describe("StreamingText", () => {
+  /**
+   * Verify that plain text without markdown is rendered correctly
+   */
   it("renders plain text", () => {
     const { lastFrame } = render(<StreamingText content="Hello world" />)
     const output = lastFrame()
     expect(output).toContain("Hello world")
   })
 
+  /**
+   * Verify that text with **bold** markdown is styled correctly
+   */
   it("renders bold text", () => {
     const { lastFrame } = render(<StreamingText content="This is **bold** text" />)
     const output = lastFrame()
@@ -18,6 +27,9 @@ describe("StreamingText", () => {
     expect(output).toContain("text")
   })
 
+  /**
+   * Verify that text with `code` markdown is styled correctly
+   */
   it("renders code text", () => {
     const { lastFrame } = render(<StreamingText content="Use `console.log()` to debug" />)
     const output = lastFrame()
@@ -26,6 +38,9 @@ describe("StreamingText", () => {
     expect(output).toContain("to debug")
   })
 
+  /**
+   * Verify that multiple **bold** sections in a single line are handled correctly
+   */
   it("renders multiple bold sections", () => {
     const { lastFrame } = render(<StreamingText content="**First** and **Second** bold" />)
     const output = lastFrame()
@@ -35,6 +50,9 @@ describe("StreamingText", () => {
     expect(output).toContain("bold")
   })
 
+  /**
+   * Verify that multiple `code` sections in a single line are handled correctly
+   */
   it("renders multiple code sections", () => {
     const { lastFrame } = render(<StreamingText content="`foo` and `bar` are variables" />)
     const output = lastFrame()
@@ -44,6 +62,9 @@ describe("StreamingText", () => {
     expect(output).toContain("are variables")
   })
 
+  /**
+   * Verify that **bold** and `code` can be used together in the same line
+   */
   it("renders mixed bold and code", () => {
     const { lastFrame } = render(<StreamingText content="Use **bold** and `code` together" />)
     const output = lastFrame()
@@ -54,12 +75,18 @@ describe("StreamingText", () => {
     expect(output).toContain("together")
   })
 
+  /**
+   * Verify that empty string content is handled gracefully
+   */
   it("handles empty string", () => {
     const { lastFrame } = render(<StreamingText content="" />)
     const output = lastFrame()
     expect(output).toBe("")
   })
 
+  /**
+   * Verify that unclosed **bold markers are handled gracefully
+   */
   it("handles unclosed bold markers", () => {
     const { lastFrame } = render(<StreamingText content="This has **unclosed bold" />)
     const output = lastFrame()
@@ -67,6 +94,9 @@ describe("StreamingText", () => {
     expect(output).toContain("unclosed bold")
   })
 
+  /**
+   * Verify that unclosed `code markers are handled gracefully
+   */
   it("handles unclosed code markers", () => {
     const { lastFrame } = render(<StreamingText content="This has `unclosed code" />)
     const output = lastFrame()
@@ -74,18 +104,27 @@ describe("StreamingText", () => {
     expect(output).toContain("unclosed code")
   })
 
+  /**
+   * Verify that text containing only bold markers (no content) renders as empty
+   */
   it("handles text with only bold markers", () => {
     const { lastFrame } = render(<StreamingText content="****" />)
     const output = lastFrame()
     expect(output).toBe("")
   })
 
+  /**
+   * Verify that text containing only code markers (no content) renders as empty
+   */
   it("handles text with only code markers", () => {
     const { lastFrame } = render(<StreamingText content="``" />)
     const output = lastFrame()
     expect(output).toBe("")
   })
 
+  /**
+   * Verify that nested markdown markers (bold inside code) are handled correctly
+   */
   it("handles nested-style markers (bold inside code context)", () => {
     const { lastFrame } = render(<StreamingText content="`code with **bold** inside`" />)
     const output = lastFrame()
