@@ -35,6 +35,21 @@ export function CommandPalette({
     }
   }, [open])
 
+  // Handle Escape key to close the command palette
+  useEffect(() => {
+    if (!open) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        onClose()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [open, onClose])
+
   const commands: CommandItem[] = useMemo(
     () => [
       {

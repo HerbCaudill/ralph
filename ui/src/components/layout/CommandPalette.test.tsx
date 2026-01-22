@@ -200,6 +200,15 @@ describe("CommandPalette", () => {
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
+    it("closes when pressing Escape key", () => {
+      const onClose = vi.fn()
+      render(<CommandPalette open={true} onClose={onClose} handlers={mockHandlers} />)
+
+      fireEvent.keyDown(document, { key: "Escape" })
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
     it("filters commands based on search input", () => {
       const onClose = vi.fn()
       render(<CommandPalette open={true} onClose={onClose} handlers={mockHandlers} />)
