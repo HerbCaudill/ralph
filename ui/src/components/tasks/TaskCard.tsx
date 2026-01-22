@@ -58,8 +58,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   const StatusIcon = config.icon
   const displayId = stripTaskPrefix(task.id, issuePrefix)
 
-  // Only show spinning animation for tasks that are actively being worked on
-  const shouldSpin = isActivelyWorking && config.animate
+  // Show spinning animation for all in_progress tasks
+  const shouldSpin = !!config.animate
 
   const handleClick = useCallback(() => {
     onClick?.(task.id)
@@ -214,11 +214,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
                     )}
                   >
                     <Icon
-                      className={cn(
-                        "size-3.5",
-                        sc.color,
-                        status === "in_progress" && isActivelyWorking && sc.animate,
-                      )}
+                      className={cn("size-3.5", sc.color, status === "in_progress" && sc.animate)}
                     />
                     <span>{sc.label}</span>
                   </div>

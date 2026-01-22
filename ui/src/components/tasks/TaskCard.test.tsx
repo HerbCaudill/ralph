@@ -505,6 +505,27 @@ describe("TaskCard", () => {
     })
   })
 
+  describe("in_progress spinner animation", () => {
+    it("applies animate-spin class to in_progress status icon", () => {
+      const { container } = render(<TaskCard task={{ ...baseTask, status: "in_progress" }} />)
+      // The status icon should have the animate-spin class
+      const statusIcon = container.querySelector('svg[class*="animate-spin"]')
+      expect(statusIcon).toBeInTheDocument()
+    })
+
+    it("does not apply animate-spin class to other status icons", () => {
+      const statuses: TaskStatus[] = ["open", "blocked", "deferred", "closed"]
+
+      statuses.forEach(status => {
+        const { container, unmount } = render(<TaskCard task={{ ...baseTask, status }} />)
+        // These status icons should NOT have the animate-spin class
+        const statusIcon = container.querySelector('svg[class*="animate-spin"]')
+        expect(statusIcon).not.toBeInTheDocument()
+        unmount()
+      })
+    })
+  })
+
   describe("keyboard selection styling", () => {
     it("applies selection style when task is selected", () => {
       mockState.selectedTaskId = baseTask.id
