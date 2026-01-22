@@ -1,7 +1,8 @@
+import React from "react"
 import { readFileSync } from "fs"
 import { join } from "path"
 import { render } from "ink-testing-library"
-import { vi } from "vitest"
+import { vi, expect } from "vitest"
 import { EventDisplay } from "./EventDisplay.js"
 
 /**

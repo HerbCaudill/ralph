@@ -6,7 +6,7 @@ import { InitRalph } from "./components/InitRalph.js"
 import { getClaudeVersion } from "./lib/getClaudeVersion.js"
 import { getDefaultIterations } from "./lib/getDefaultIterations.js"
 import { addTodo } from "./lib/addTodo.js"
-import { getLatestLogFile } from "./lib/getNextLogFile.js"
+import { getLatestLogFile } from "./lib/getLatestLogFile.js"
 import packageJson from "../package.json" with { type: "json" }
 
 export const program = new Command()
@@ -88,10 +88,11 @@ program
    * Add a todo item and commit it. If description is provided as arguments,
    * use that; otherwise prompt interactively.
    */
-  .action(async (
-    /** The description parts from command arguments */
-    descriptionParts: string[],
-  ) => {
+  .action(
+    async (
+      /** The description parts from command arguments */
+      descriptionParts: string[],
+    ) => {
       let description = descriptionParts.join(" ").trim()
 
       if (!description) {

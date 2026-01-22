@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react"
 import { Text, useInput } from "ink"
 import chalk from "chalk"
-import { findPreviousWordBoundary } from "./findPreviousWordBoundary"
-import { findNextWordBoundary } from "./findNextWordBoundary"
+import { findPreviousWordBoundary } from "./findPreviousWordBoundary.js"
+import { findNextWordBoundary } from "./findNextWordBoundary.js"
 
 /**
  * Enhanced text input component with standard text editing shortcuts:
