@@ -38,6 +38,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     adjustTextareaHeight()
   }, [message, adjustTextareaHeight])
 
+  /**
+   * Expose focus method to parent components via ref.
+   */
   useImperativeHandle(ref, () => ({
     focus: () => {
       textareaRef.current?.focus()
