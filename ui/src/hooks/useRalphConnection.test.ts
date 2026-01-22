@@ -1252,7 +1252,7 @@ describe("useRalphConnection", () => {
       expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
     })
 
-    it("shows reconnection choice dialog when reconnecting while running", () => {
+    it("auto-resumes and clears running flag when reconnecting while running", async () => {
       renderHook(() => useRalphConnection())
 
       // Set Ralph to running
@@ -1266,7 +1266,7 @@ describe("useRalphConnection", () => {
         getWs()?.simulateClose()
       })
 
-      expect(useAppStore.getState().showReconnectionChoice).toBe(false)
+      expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(true)
 
       // Advance time and reconnect
       act(() => {
@@ -1274,11 +1274,14 @@ describe("useRalphConnection", () => {
         getWs()?.simulateOpen()
       })
 
-      // Should show the reconnection choice dialog
-      expect(useAppStore.getState().showReconnectionChoice).toBe(true)
+      // Wait for async restore operation to complete
+      await vi.waitFor(() => {
+        // Auto-resume clears the wasRunningBeforeDisconnect flag
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+      })
     })
 
-    it("does not show reconnection choice dialog when not running before disconnect", () => {
+    it("does not auto-resume when not running before disconnect", () => {
       renderHook(() => useRalphConnection())
 
       // Set Ralph to stopped
@@ -1298,8 +1301,8 @@ describe("useRalphConnection", () => {
         getWs()?.simulateOpen()
       })
 
-      // Should NOT show the reconnection choice dialog
-      expect(useAppStore.getState().showReconnectionChoice).toBe(false)
+      // Should NOT have auto-resume flag set since Ralph wasn't running
+      expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
     })
 
     it("marks running state for paused status before disconnect", () => {

@@ -327,9 +327,9 @@ export interface AppState {
   // Search input visibility (hidden by default, shown on Cmd+F)
   isSearchVisible: boolean
 
-  // Reconnection choice state (for showing dialog when reconnecting mid-iteration)
-  /** Whether the reconnection choice dialog should be shown */
-  showReconnectionChoice: boolean
+  // Reconnection state (for auto-resuming when reconnecting mid-iteration)
+  /** Whether the reconnection choice dialog is visible */
+  isReconnectionChoiceDialogVisible: boolean
   /** Whether Ralph was running when the connection was lost */
   wasRunningBeforeDisconnect: boolean
 }
@@ -623,7 +623,7 @@ const initialState: AppState = {
   closedTimeFilter: "past_day",
   showToolOutput: false,
   isSearchVisible: false,
-  showReconnectionChoice: false,
+  isReconnectionChoiceDialogVisible: false,
   wasRunningBeforeDisconnect: false,
 }
 
@@ -1076,9 +1076,9 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
 
   // Reconnection choice
-  showReconnectionChoiceDialog: () => set({ showReconnectionChoice: true }),
+  showReconnectionChoiceDialog: () => set({ isReconnectionChoiceDialogVisible: true }),
   hideReconnectionChoiceDialog: () =>
-    set({ showReconnectionChoice: false, wasRunningBeforeDisconnect: false }),
+    set({ isReconnectionChoiceDialogVisible: false, wasRunningBeforeDisconnect: false }),
   markRunningBeforeDisconnect: () =>
     set(state => ({
       wasRunningBeforeDisconnect: state.ralphStatus === "running" || state.ralphStatus === "paused",
@@ -1714,6 +1714,7 @@ export const selectActivelyWorkingTaskIds = (state: AppState): string[] => {
 }
 
 // Reconnection choice selectors
-export const selectShowReconnectionChoice = (state: AppState) => state.showReconnectionChoice
+export const selectIsReconnectionChoiceDialogVisible = (state: AppState) =>
+  state.isReconnectionChoiceDialogVisible
 export const selectWasRunningBeforeDisconnect = (state: AppState) =>
   state.wasRunningBeforeDisconnect

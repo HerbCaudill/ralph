@@ -2848,17 +2848,17 @@ describe("useAppStore", () => {
 
   describe("reconnection choice state", () => {
     describe("showReconnectionChoiceDialog action", () => {
-      it("sets showReconnectionChoice to true", () => {
+      it("sets isReconnectionChoiceDialogVisible to true", () => {
         useAppStore.getState().showReconnectionChoiceDialog()
-        expect(useAppStore.getState().showReconnectionChoice).toBe(true)
+        expect(useAppStore.getState().isReconnectionChoiceDialogVisible).toBe(true)
       })
     })
 
     describe("hideReconnectionChoiceDialog action", () => {
-      it("sets showReconnectionChoice to false", () => {
+      it("sets isReconnectionChoiceDialogVisible to false", () => {
         useAppStore.getState().showReconnectionChoiceDialog()
         useAppStore.getState().hideReconnectionChoiceDialog()
-        expect(useAppStore.getState().showReconnectionChoice).toBe(false)
+        expect(useAppStore.getState().isReconnectionChoiceDialogVisible).toBe(false)
       })
 
       it("also clears wasRunningBeforeDisconnect", () => {
@@ -2867,7 +2867,7 @@ describe("useAppStore", () => {
         useAppStore.getState().showReconnectionChoiceDialog()
         useAppStore.getState().hideReconnectionChoiceDialog()
 
-        expect(useAppStore.getState().showReconnectionChoice).toBe(false)
+        expect(useAppStore.getState().isReconnectionChoiceDialogVisible).toBe(false)
         expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
       })
     })
