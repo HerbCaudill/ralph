@@ -5,6 +5,7 @@ import {
   StatusBar,
   HotkeysDialog,
   CommandPalette,
+  ReconnectionChoiceDialog,
 } from "./components/layout"
 import { ChatInput, type ChatInputHandle } from "./components/chat/ChatInput"
 import { EventStream, EventLogViewer } from "./components/events"
@@ -24,6 +25,7 @@ import {
   selectIsSearchVisible,
   selectSelectedTaskId,
   selectVisibleTaskIds,
+  selectShowReconnectionChoice,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -203,6 +205,10 @@ export function App() {
   // Event log viewer state
   const viewingEventLogId = useAppStore(selectViewingEventLogId)
   const isViewingEventLog = viewingEventLogId !== null
+
+  // Reconnection choice dialog state
+  const showReconnectionChoice = useAppStore(selectShowReconnectionChoice)
+  const hideReconnectionChoiceDialog = useAppStore(state => state.hideReconnectionChoiceDialog)
 
   // Search visibility state
   const isSearchVisible = useAppStore(selectIsSearchVisible)
@@ -406,6 +412,23 @@ export function App() {
     }
   }, [selectedTaskId, taskDialog])
 
+  // Reconnection choice handlers
+  const handleReconnectionContinue = useCallback(() => {
+    // User chose to continue from where they left off
+    // The server should already have preserved the iteration state,
+    // so we just close the dialog and let the agent continue
+    hideReconnectionChoiceDialog()
+  }, [hideReconnectionChoiceDialog])
+
+  const handleReconnectionStartFresh = useCallback(async () => {
+    // User chose to start fresh - stop the current iteration and clear state
+    hideReconnectionChoiceDialog()
+    // If Ralph is running, stop it to discard partial state
+    if (ralphStatus === "running" || ralphStatus === "paused") {
+      await stopRalph()
+    }
+  }, [hideReconnectionChoiceDialog, ralphStatus])
+
   // Register hotkeys
   useHotkeys({
     handlers: {
@@ -511,6 +534,11 @@ export function App() {
         }}
         ralphStatus={ralphStatus}
         isConnected={isConnected}
+      />
+      <ReconnectionChoiceDialog
+        open={showReconnectionChoice}
+        onContinue={handleReconnectionContinue}
+        onStartFresh={handleReconnectionStartFresh}
       />
     </TaskDialogProvider>
   )

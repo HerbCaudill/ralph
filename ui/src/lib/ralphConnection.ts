@@ -496,6 +496,13 @@ function connect(): void {
   ws.onopen = () => {
     setStatus("connected")
     resetReconnectState() // Reset backoff on successful connection
+
+    // Check if we need to show the reconnection choice dialog
+    // This happens when we reconnect after losing connection while Ralph was running
+    const store = useAppStore.getState()
+    if (store.wasRunningBeforeDisconnect) {
+      store.showReconnectionChoiceDialog()
+    }
   }
 
   ws.onmessage = handleMessage
@@ -505,6 +512,10 @@ function connect(): void {
   }
 
   ws.onclose = () => {
+    // Before setting status to disconnected, mark if Ralph was running
+    // This is used to show the reconnection choice dialog when we reconnect
+    useAppStore.getState().markRunningBeforeDisconnect()
+
     setStatus("disconnected")
 
     // Schedule reconnection if not intentionally closed

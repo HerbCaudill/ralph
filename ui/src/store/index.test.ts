@@ -2845,4 +2845,66 @@ describe("useAppStore", () => {
       })
     })
   })
+
+  describe("reconnection choice state", () => {
+    describe("showReconnectionChoiceDialog action", () => {
+      it("sets showReconnectionChoice to true", () => {
+        useAppStore.getState().showReconnectionChoiceDialog()
+        expect(useAppStore.getState().showReconnectionChoice).toBe(true)
+      })
+    })
+
+    describe("hideReconnectionChoiceDialog action", () => {
+      it("sets showReconnectionChoice to false", () => {
+        useAppStore.getState().showReconnectionChoiceDialog()
+        useAppStore.getState().hideReconnectionChoiceDialog()
+        expect(useAppStore.getState().showReconnectionChoice).toBe(false)
+      })
+
+      it("also clears wasRunningBeforeDisconnect", () => {
+        useAppStore.getState().setRalphStatus("running")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        useAppStore.getState().showReconnectionChoiceDialog()
+        useAppStore.getState().hideReconnectionChoiceDialog()
+
+        expect(useAppStore.getState().showReconnectionChoice).toBe(false)
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+      })
+    })
+
+    describe("markRunningBeforeDisconnect action", () => {
+      it("sets wasRunningBeforeDisconnect to true when ralph is running", () => {
+        useAppStore.getState().setRalphStatus("running")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(true)
+      })
+
+      it("sets wasRunningBeforeDisconnect to true when ralph is paused", () => {
+        useAppStore.getState().setRalphStatus("paused")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(true)
+      })
+
+      it("sets wasRunningBeforeDisconnect to false when ralph is stopped", () => {
+        useAppStore.getState().setRalphStatus("stopped")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+      })
+
+      it("sets wasRunningBeforeDisconnect to false when ralph is starting", () => {
+        useAppStore.getState().setRalphStatus("starting")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+      })
+    })
+
+    describe("clearRunningBeforeDisconnect action", () => {
+      it("clears wasRunningBeforeDisconnect", () => {
+        useAppStore.getState().setRalphStatus("running")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        useAppStore.getState().clearRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+      })
+    })
+  })
 })

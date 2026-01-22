@@ -326,6 +326,12 @@ export interface AppState {
 
   // Search input visibility (hidden by default, shown on Cmd+F)
   isSearchVisible: boolean
+
+  // Reconnection choice state (for showing dialog when reconnecting mid-iteration)
+  /** Whether the reconnection choice dialog should be shown */
+  showReconnectionChoice: boolean
+  /** Whether Ralph was running when the connection was lost */
+  wasRunningBeforeDisconnect: boolean
 }
 
 // Store Actions
@@ -431,6 +437,16 @@ export interface AppActions {
   setSearchVisible: (visible: boolean) => void
   showSearch: () => void
   hideSearch: () => void
+
+  // Reconnection choice
+  /** Show the reconnection choice dialog */
+  showReconnectionChoiceDialog: () => void
+  /** Hide the reconnection choice dialog */
+  hideReconnectionChoiceDialog: () => void
+  /** Mark that Ralph was running before disconnect (called when connection is lost) */
+  markRunningBeforeDisconnect: () => void
+  /** Clear the running-before-disconnect flag */
+  clearRunningBeforeDisconnect: () => void
 
   // Active instance
   setActiveInstanceId: (instanceId: string) => void
@@ -607,6 +623,8 @@ const initialState: AppState = {
   closedTimeFilter: "past_day",
   showToolOutput: false,
   isSearchVisible: false,
+  showReconnectionChoice: false,
+  wasRunningBeforeDisconnect: false,
 }
 
 // Create the store with localStorage initialization
@@ -1043,6 +1061,16 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   setSearchVisible: visible => set({ isSearchVisible: visible }),
   showSearch: () => set({ isSearchVisible: true }),
   hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
+
+  // Reconnection choice
+  showReconnectionChoiceDialog: () => set({ showReconnectionChoice: true }),
+  hideReconnectionChoiceDialog: () =>
+    set({ showReconnectionChoice: false, wasRunningBeforeDisconnect: false }),
+  markRunningBeforeDisconnect: () =>
+    set(state => ({
+      wasRunningBeforeDisconnect: state.ralphStatus === "running" || state.ralphStatus === "paused",
+    })),
+  clearRunningBeforeDisconnect: () => set({ wasRunningBeforeDisconnect: false }),
 
   // Active instance
   setActiveInstanceId: instanceId =>
@@ -1655,3 +1683,8 @@ export const selectInstancesWithMergeConflicts = (state: AppState): RalphInstanc
   }
   return result
 }
+
+// Reconnection choice selectors
+export const selectShowReconnectionChoice = (state: AppState) => state.showReconnectionChoice
+export const selectWasRunningBeforeDisconnect = (state: AppState) =>
+  state.wasRunningBeforeDisconnect

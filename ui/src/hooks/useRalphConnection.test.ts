@@ -1212,4 +1212,112 @@ describe("useRalphConnection", () => {
       expect(useAppStore.getState().instances.get("instance-2")?.status).toBe("running")
     })
   })
+
+  describe("reconnection choice dialog", () => {
+    it("marks running state before disconnect when connection closes", () => {
+      renderHook(() => useRalphConnection())
+
+      // Set Ralph to running
+      act(() => {
+        getWs()?.simulateOpen()
+        useAppStore.getState().setRalphStatus("running")
+      })
+
+      expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+
+      // Simulate connection close
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      // Should have marked that Ralph was running before disconnect
+      expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(true)
+    })
+
+    it("does not mark running state when Ralph is stopped before disconnect", () => {
+      renderHook(() => useRalphConnection())
+
+      // Set Ralph to stopped
+      act(() => {
+        getWs()?.simulateOpen()
+        useAppStore.getState().setRalphStatus("stopped")
+      })
+
+      // Simulate connection close
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      // Should not mark running state because Ralph was stopped
+      expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+    })
+
+    it("shows reconnection choice dialog when reconnecting while running", () => {
+      renderHook(() => useRalphConnection())
+
+      // Set Ralph to running
+      act(() => {
+        getWs()?.simulateOpen()
+        useAppStore.getState().setRalphStatus("running")
+      })
+
+      // Simulate connection close
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      expect(useAppStore.getState().showReconnectionChoice).toBe(false)
+
+      // Advance time and reconnect
+      act(() => {
+        vi.advanceTimersByTime(1000)
+        getWs()?.simulateOpen()
+      })
+
+      // Should show the reconnection choice dialog
+      expect(useAppStore.getState().showReconnectionChoice).toBe(true)
+    })
+
+    it("does not show reconnection choice dialog when not running before disconnect", () => {
+      renderHook(() => useRalphConnection())
+
+      // Set Ralph to stopped
+      act(() => {
+        getWs()?.simulateOpen()
+        useAppStore.getState().setRalphStatus("stopped")
+      })
+
+      // Simulate connection close
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      // Advance time and reconnect
+      act(() => {
+        vi.advanceTimersByTime(1000)
+        getWs()?.simulateOpen()
+      })
+
+      // Should NOT show the reconnection choice dialog
+      expect(useAppStore.getState().showReconnectionChoice).toBe(false)
+    })
+
+    it("marks running state for paused status before disconnect", () => {
+      renderHook(() => useRalphConnection())
+
+      // Set Ralph to paused
+      act(() => {
+        getWs()?.simulateOpen()
+        useAppStore.getState().setRalphStatus("paused")
+      })
+
+      // Simulate connection close
+      act(() => {
+        getWs()?.simulateClose()
+      })
+
+      // Should have marked that Ralph was running (paused counts as active)
+      expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(true)
+    })
+  })
 })
