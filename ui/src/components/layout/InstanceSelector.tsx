@@ -142,7 +142,9 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
             }
           </div>
 
-          {/* Actions section */}
+          {/**
+           * Actions section with new instance button.
+           */}
           <div className="border-border border-t p-1">
             <button
               onClick={() => {
@@ -162,43 +164,11 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
         </div>
       )}
 
-      {/* New Instance Dialog */}
+      {/**
+       * New instance dialog for creating additional Ralph instances.
+       */}
       <NewInstanceDialog open={isNewInstanceDialogOpen} onOpenChange={setIsNewInstanceDialogOpen} />
     </div>
-  )
-}
-
-function InstanceOption({
-  instance,
-  isActive,
-  statusConfig,
-  onSelect,
-}: {
-  instance: RalphInstance
-  isActive: boolean
-  statusConfig: { color: string; label: string }
-  onSelect: () => void
-}) {
-  return (
-    <button
-      onClick={onSelect}
-      className={cn(
-        "flex w-full items-center gap-2 rounded px-3 py-2 text-left",
-        "hover:bg-accent transition-colors",
-        isActive && "bg-accent/50",
-      )}
-      role="option"
-      aria-selected={isActive}
-      data-testid={`instance-option-${instance.id}`}
-    >
-      {/* Status indicator */}
-      <span className={cn("size-2 shrink-0 rounded-full", statusConfig.color)} />
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="truncate text-sm font-medium">{instance.name}</span>
-        <span className="text-muted-foreground text-xs">{statusConfig.label}</span>
-        {isActive && <IconCheck className="text-primary size-3.5 shrink-0" />}
-      </div>
-    </button>
   )
 }
 

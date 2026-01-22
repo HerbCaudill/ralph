@@ -35,6 +35,9 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const shouldRefocusRef = useRef(false)
 
+    /**
+     * Adjusts textarea height to fit content automatically.
+     */
     const adjustTextareaHeight = useCallback(() => {
       const textarea = textareaRef.current
       if (!textarea) return
@@ -73,6 +76,9 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
       }
     }, [isSubmitting])
 
+    /**
+     * Submits the task form, creates a new task via API, and resets the input.
+     */
     const handleSubmit = useCallback(
       async (e?: FormEvent) => {
         e?.preventDefault()
@@ -114,6 +120,9 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
       [title, disabled, isSubmitting, onTaskCreated, onError],
     )
 
+    /**
+     * Handles Enter key to submit the form (Shift+Enter creates new line).
+     */
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {

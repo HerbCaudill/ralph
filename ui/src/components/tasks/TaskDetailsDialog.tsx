@@ -385,7 +385,9 @@ export function TaskDetailsDialog({
     }
   }, [isEditingDescription])
 
-  // Auto-size title textarea when title changes or dialog opens
+  /**
+   * Auto-sizes the title textarea when the title changes or dialog opens.
+   */
   useEffect(() => {
     if (titleTextareaRef.current) {
       titleTextareaRef.current.style.height = "auto"
@@ -393,11 +395,16 @@ export function TaskDetailsDialog({
     }
   }, [title, open])
 
-  // Handle description edit completion (blur or escape)
+  /**
+   * Exits description edit mode when the textarea loses focus.
+   */
   const handleDescriptionBlur = useCallback(() => {
     setIsEditingDescription(false)
   }, [])
 
+  /**
+   * Handles Escape key to discard description changes and exit edit mode.
+   */
   const handleDescriptionKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Escape") {
@@ -409,7 +416,9 @@ export function TaskDetailsDialog({
     [task],
   )
 
-  // Handle keyboard shortcuts: Cmd+Enter to close (saves automatically), Escape to close
+  /**
+   * Handles global keyboard shortcuts for the dialog: Escape to close, Cmd/Ctrl+Enter to close (saves automatically).
+   */
   useEffect(() => {
     if (!open) return
 
@@ -442,7 +451,9 @@ export function TaskDetailsDialog({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [open, readOnly, isSaving, handleClose])
 
-  // Don't render anything if there's no task or it's not open
+  /**
+   * Don't render anything if there's no task or it's not open
+   */
   if (!task || !open) return null
 
   const StatusIcon = statusConfig[status].icon
@@ -878,6 +889,9 @@ export function TaskDetailsDialog({
   )
 }
 
+/**
+ * Configuration options for issue type selector buttons.
+ */
 const issueTypeOptions: {
   value: IssueType
   label: string
@@ -920,6 +934,9 @@ const issueTypeOptions: {
   },
 ]
 
+/**
+ * Configuration for task status display (icons, labels, and colors).
+ */
 const statusConfig: Record<TaskStatus, StatusConfig> = {
   open: {
     icon: IconCircle,
@@ -948,8 +965,14 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   },
 }
 
+/**
+ * Available task status values for the status selector.
+ */
 const statusOptions: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
 
+/**
+ * Configuration options for priority selector buttons.
+ */
 const priorityOptions = [
   {
     value: 0,

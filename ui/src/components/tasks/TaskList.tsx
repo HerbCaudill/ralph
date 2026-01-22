@@ -187,7 +187,16 @@ export function TaskList({
 
     const result: StatusGroupData[] = []
 
-    const sortTasks = (tasks: TaskCardTask[], groupKey: TaskGroup): TaskCardTask[] => {
+    /**
+     * Sort tasks within a group by priority, bug status, and creation time.
+     * Closed groups are sorted by closed_at date (most recent first).
+     */
+    const sortTasks = (
+      /** Tasks to sort */
+      tasks: TaskCardTask[],
+      /** The status group key */
+      groupKey: TaskGroup,
+    ): TaskCardTask[] => {
       if (groupKey === "closed") {
         return [...tasks].sort((a, b) => {
           const aTime = a.closed_at ? new Date(a.closed_at).getTime() : 0
@@ -441,11 +450,17 @@ export function TaskList({
   )
 }
 
+/**
+ * Default collapsed state for status groups (open is expanded, closed is collapsed).
+ */
 const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
   open: false,
   closed: true,
 }
 
+/**
+ * Configuration for the two status groups: open (ready/in progress/blocked) and closed.
+ */
 const groupConfigs: GroupConfig[] = [
   {
     key: "open",
@@ -460,29 +475,56 @@ const groupConfigs: GroupConfig[] = [
   },
 ]
 
+/**
+ * Props for the TaskList component.
+ */
 export type TaskListProps = {
+  /** Array of tasks to display and organize */
   tasks: TaskCardTask[]
+  /** Additional CSS classes to apply */
   className?: string
+  /** Callback when task status is changed */
   onStatusChange?: (id: string, status: TaskStatus) => void
+  /** Callback when task is clicked */
   onTaskClick?: (id: string) => void
+  /** Initial collapsed state for status groups */
   defaultCollapsed?: Partial<Record<TaskGroup, boolean>>
+  /** Whether to show empty status groups */
   showEmptyGroups?: boolean
+  /** Whether to persist collapsed state to localStorage */
   persistCollapsedState?: boolean
 }
 
+/**
+ * Configuration for a task status group.
+ */
 type GroupConfig = {
+  /** The status group key ("open" or "closed") */
   key: TaskGroup
+  /** Human-readable label for the group */
   label: string
+  /** Function to filter tasks into this group */
   taskFilter: (task: TaskCardTask) => boolean
 }
 
+/**
+ * A sub-group of tasks under a parent task within a status group.
+ */
 type ParentSubGroup = {
+  /** The parent task (null if tasks are ungrouped) */
   parent: TaskCardTask | null
+  /** Child tasks in this sub-group */
   tasks: TaskCardTask[]
 }
 
+/**
+ * A complete status group with all its parent sub-groups.
+ */
 type StatusGroupData = {
+  /** Group configuration */
   config: GroupConfig
+  /** Sub-groups organized by parent task */
   parentSubGroups: ParentSubGroup[]
+  /** Total count of all tasks in this status group */
   totalCount: number
 }
