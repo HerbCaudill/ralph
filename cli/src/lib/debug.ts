@@ -1,14 +1,16 @@
-/**
- * Debug logging utility controlled by RALPH_DEBUG environment variable.
- *
- * Set RALPH_DEBUG=1 or RALPH_DEBUG=true to enable debug logging.
- * Set RALPH_DEBUG=messagequeue to enable only MessageQueue logging.
- * Set RALPH_DEBUG=all or RALPH_DEBUG=* to enable all debug logging.
- */
-
 type DebugNamespace = "messagequeue" | "iteration" | "sdk" | "stdin-command" | "worktree"
 
-const isDebugEnabled = (namespace?: DebugNamespace): boolean => {
+/**
+ * Check if debug logging is enabled for the given namespace.
+ * Controlled by RALPH_DEBUG environment variable:
+ * - RALPH_DEBUG=1 or RALPH_DEBUG=true or RALPH_DEBUG=all - enable all logging
+ * - RALPH_DEBUG=messagequeue - enable only that namespace
+ * - RALPH_DEBUG=messagequeue,iteration - enable multiple namespaces
+ */
+const isDebugEnabled = (
+  /** The debug namespace to check, or undefined to check global debug setting */
+  namespace?: DebugNamespace,
+): boolean => {
   const debugEnv = process.env.RALPH_DEBUG
 
   if (!debugEnv) return false
@@ -36,7 +38,14 @@ const isDebugEnabled = (namespace?: DebugNamespace): boolean => {
 /**
  * Log a debug message if debugging is enabled for the given namespace.
  */
-export const debug = (namespace: DebugNamespace, message: string, ...args: unknown[]): void => {
+export const debug = (
+  /** The debug namespace for this message */
+  namespace: DebugNamespace,
+  /** The message to log */
+  message: string,
+  /** Additional arguments to log after the message */
+  ...args: unknown[]
+): void => {
   if (isDebugEnabled(namespace)) {
     const timestamp = new Date().toISOString()
     const prefix = `[${timestamp}] [RALPH:${namespace.toUpperCase()}]`
@@ -46,8 +55,16 @@ export const debug = (namespace: DebugNamespace, message: string, ...args: unkno
 }
 
 /**
- * Create a namespaced debug logger.
+ * Create a namespaced debug logger that captures the namespace for all logs.
  */
-export const createDebugLogger = (namespace: DebugNamespace) => {
-  return (message: string, ...args: unknown[]) => debug(namespace, message, ...args)
+export const createDebugLogger = (
+  /** The debug namespace to use for all logged messages */
+  namespace: DebugNamespace,
+) => {
+  return (
+    /** The message to log */
+    message: string,
+    /** Additional arguments to log after the message */
+    ...args: unknown[]
+  ) => debug(namespace, message, ...args)
 }
