@@ -8,14 +8,14 @@
       "category": "Agent Control"
     },
     "agentStop": {
-      "modifiers": ["cmd"],
-      "key": ".",
+      "modifiers": ["ctrl"],
+      "key": "c",
       "description": "Stop Ralph agent",
       "category": "Agent Control"
     },
     "agentPause": {
-      "modifiers": ["cmd", "shift"],
-      "key": "p",
+      "modifiers": ["cmd"],
+      "key": ".",
       "description": "Pause/Resume Ralph agent",
       "category": "Agent Control"
     },
@@ -133,10 +133,10 @@
       "description": "Toggle tool output visibility",
       "category": "Navigation"
     },
-    "clearTaskChat": {
-      "modifiers": ["cmd", "shift"],
-      "key": "Backspace",
-      "description": "Clear task chat history",
+    "newChat": {
+      "modifiers": ["cmd"],
+      "key": "n",
+      "description": "New chat",
       "category": "Chat"
     },
     "previousTask": {

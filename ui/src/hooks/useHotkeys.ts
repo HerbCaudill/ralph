@@ -186,7 +186,7 @@ export function useHotkeys({ handlers, enabled = true }: UseHotkeysOptions): Use
               "previousWorkspace",
               "nextWorkspace",
               "toggleToolOutput",
-              "clearTaskChat",
+              "newChat",
             ]
 
             if (isInput && !allowedInInput.includes(action)) {

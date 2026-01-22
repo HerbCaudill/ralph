@@ -382,7 +382,7 @@ export function App() {
     }
   }, [hideSearch, isSearchVisible])
 
-  const handleClearTaskChat = useCallback(async () => {
+  const handleNewChat = useCallback(async () => {
     const result = await clearTaskChatHistory()
     if (result.ok) {
       clearTaskChatMessages()
@@ -466,7 +466,7 @@ export function App() {
       previousWorkspace: goToPreviousWorkspace,
       nextWorkspace: goToNextWorkspace,
       toggleToolOutput: toggleToolOutput,
-      clearTaskChat: handleClearTaskChat,
+      newChat: handleNewChat,
       previousTask: handlePreviousTask,
       nextTask: handleNextTask,
       openTask: handleOpenTask,

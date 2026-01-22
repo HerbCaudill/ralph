@@ -102,7 +102,7 @@ describe("useHotkeys", () => {
       expect(actions).toContain("cycleTheme")
       expect(actions).toContain("toggleTaskChat")
       expect(actions).toContain("focusTaskChatInput")
-      expect(actions).toContain("clearTaskChat")
+      expect(actions).toContain("newChat")
       expect(actions).toContain("previousTask")
       expect(actions).toContain("nextTask")
       expect(actions).toContain("openTask")
@@ -236,7 +236,7 @@ describe("useHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
-    it("handles agentStop hotkey (Cmd+.)", () => {
+    it("handles agentStop hotkey (Ctrl+C)", () => {
       mockNavigator("MacIntel")
       const handler = vi.fn()
 
@@ -248,11 +248,11 @@ describe("useHotkeys", () => {
         }),
       )
 
-      // Simulate Cmd+.
+      // Simulate Ctrl+C on Mac
       act(() => {
         const event = new KeyboardEvent("keydown", {
-          key: ".",
-          metaKey: true,
+          key: "c",
+          ctrlKey: true,
           bubbles: true,
         })
         window.dispatchEvent(event)
@@ -363,24 +363,23 @@ describe("useHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
-    it("handles clearTaskChat hotkey (Cmd+Shift+Backspace)", () => {
+    it("handles newChat hotkey (Cmd+N)", () => {
       mockNavigator("MacIntel")
       const handler = vi.fn()
 
       renderHook(() =>
         useHotkeys({
           handlers: {
-            clearTaskChat: handler,
+            newChat: handler,
           },
         }),
       )
 
-      // Simulate Cmd+Shift+Backspace
+      // Simulate Cmd+N
       act(() => {
         const event = new KeyboardEvent("keydown", {
-          key: "Backspace",
+          key: "n",
           metaKey: true,
-          shiftKey: true,
           bubbles: true,
         })
         window.dispatchEvent(event)
@@ -658,8 +657,8 @@ describe("useHotkeys", () => {
       act(() => {
         window.dispatchEvent(
           new KeyboardEvent("keydown", {
-            key: ".",
-            metaKey: true,
+            key: "c",
+            ctrlKey: true,
             bubbles: true,
           }),
         )

@@ -34,7 +34,7 @@ export type HotkeyAction =
   | "previousWorkspace"
   | "nextWorkspace"
   | "toggleToolOutput"
-  | "clearTaskChat"
+  | "newChat"
   | "previousTask"
   | "nextTask"
   | "openTask"
