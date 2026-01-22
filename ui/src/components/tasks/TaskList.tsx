@@ -389,6 +389,7 @@ export function TaskList({
                             isCollapsed={isParentCollapsed}
                             onToggleCollapse={() => toggleParentGroup(parent.id)}
                             subtaskCount={childTasks.length}
+                            isActivelyWorking={activelyWorkingTaskIds.has(parent.id)}
                           />
                           {!isParentCollapsed && childTasks.length > 0 && (
                             <div role="group" aria-label={`${parent.title} tasks`}>
@@ -399,6 +400,7 @@ export function TaskList({
                                   onStatusChange={onStatusChange}
                                   onClick={onTaskClick}
                                   isNew={newTaskIds.has(task.id)}
+                                  isActivelyWorking={activelyWorkingTaskIds.has(task.id)}
                                   className="pl-6"
                                 />
                               ))}
@@ -415,6 +417,7 @@ export function TaskList({
                         onStatusChange={onStatusChange}
                         onClick={onTaskClick}
                         isNew={newTaskIds.has(task.id)}
+                        isActivelyWorking={activelyWorkingTaskIds.has(task.id)}
                       />
                     ))
                   })

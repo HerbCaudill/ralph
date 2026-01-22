@@ -83,7 +83,7 @@ Find and update specific tasks. You might need to:
 
 ## Core Rules
 
-- Track strategic work in beads (multi-session, dependencies, discovered work)
+- Track work in beads (multi-session, dependencies, discovered work)
 - Use `bd create` for issues, TodoWrite for simple single-session execution
 - When in doubt, prefer bd—persistence you don't need beats lost context
 - Git workflow: daemon auto-syncs beads changes

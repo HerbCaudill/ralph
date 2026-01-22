@@ -27,6 +27,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     isCollapsed,
     onToggleCollapse,
     subtaskCount = 0,
+    isActivelyWorking = false,
     ...props
   },
   ref,
@@ -56,6 +57,9 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   const config = statusConfig[task.status]
   const StatusIcon = config.icon
   const displayId = stripTaskPrefix(task.id, issuePrefix)
+
+  // Only show spinning animation for tasks that are actively being worked on
+  const shouldSpin = isActivelyWorking && config.animate
 
   const handleClick = useCallback(() => {
     onClick?.(task.id)
@@ -175,7 +179,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           aria-haspopup={onStatusChange ? "listbox" : undefined}
           aria-expanded={isStatusMenuOpen}
         >
-          <StatusIcon className={cn("size-3.5", config.color, config.animate)} />
+          <StatusIcon className={cn("size-3.5", config.color, shouldSpin && config.animate)} />
 
           {/* Status dropdown menu */}
           {isStatusMenuOpen && (
@@ -209,7 +213,13 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
                       status === task.status && "bg-muted",
                     )}
                   >
-                    <Icon className={cn("size-3.5", sc.color, sc.animate)} />
+                    <Icon
+                      className={cn(
+                        "size-3.5",
+                        sc.color,
+                        status === "in_progress" && isActivelyWorking && sc.animate,
+                      )}
+                    />
                     <span>{sc.label}</span>
                   </div>
                 )
@@ -380,6 +390,8 @@ export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"
   isCollapsed?: boolean
   onToggleCollapse?: () => void
   subtaskCount?: number
+  /** Whether this task is actively being worked on by a running instance */
+  isActivelyWorking?: boolean
 }
 
 type StatusConfig = {

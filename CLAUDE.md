@@ -1,7 +1,5 @@
 # Agent Instructions
 
-IMPORTANT: begin every response with an emoji.
-
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
 ## Quick Reference
