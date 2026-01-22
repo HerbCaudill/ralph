@@ -1,31 +1,38 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
-import { cn } from "@/lib/utils"
-import {
-  useAppStore,
-  selectTaskChatMessages,
-  selectTaskChatToolUses,
-  selectTaskChatLoading,
-  selectIsConnected,
-  selectTaskChatStreamingText,
-} from "@/store"
-import { ChatInput, type ChatInputHandle } from "./ChatInput"
-import { AssistantMessageBubble } from "./AssistantMessageBubble"
-import { UserMessageBubble } from "./UserMessageBubble"
+import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
+import { TASK_CHAT_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
+import { useStreamingState } from "@/hooks/useStreamingState"
 import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
-import { TASK_CHAT_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
+import { cn } from "@/lib/utils"
+import {
+  selectIsConnected,
+  selectTaskChatEvents,
+  selectTaskChatLoading,
+  selectTaskChatMessages,
+  selectTaskChatToolUses,
+  useAppStore,
+} from "@/store"
+import type { RalphEvent, TaskChatMessage, TaskChatToolUse } from "@/types"
+import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
-import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
-import { toToolUseEvent } from "@/lib/toToolUseEvent"
-import type { TaskChatMessage, TaskChatToolUse } from "@/types"
+import { AssistantMessageBubble } from "./AssistantMessageBubble"
+import { ChatInput, type ChatInputHandle } from "./ChatInput"
+import { UserMessageBubble } from "./UserMessageBubble"
 
 /**
  * Task chat panel for task management conversations with Claude.
  * Displays a chat interface with message history and input.
+ *
+ * Uses the unified event model (same as EventStream) for rendering assistant content,
+ * which preserves proper interleaving of text and tool uses.
  */
 export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
-  const messages = useAppStore(selectTaskChatMessages)
+  // User messages (typed by the user)
+  const userMessages = useAppStore(selectTaskChatMessages)
+  // Raw SDK events (for assistant content with proper interleaving)
+  const taskChatEvents = useAppStore(selectTaskChatEvents)
+  // Tool uses from the legacy model (still used by tests and some code paths)
   const toolUses = useAppStore(selectTaskChatToolUses)
   const isLoading = useAppStore(selectTaskChatLoading)
   const isConnected = useAppStore(selectIsConnected)
@@ -33,42 +40,115 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const removeMessage = useAppStore(state => state.removeTaskChatMessage)
   const setLoading = useAppStore(state => state.setTaskChatLoading)
   const clearMessages = useAppStore(state => state.clearTaskChatMessages)
-  const clearToolUses = useAppStore(state => state.clearTaskChatToolUses)
-  const streamingText = useAppStore(selectTaskChatStreamingText)
-  const setStreamingText = useAppStore(state => state.setTaskChatStreamingText)
 
   const chatInputRef = useRef<ChatInputHandle>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Create a unified content array that interleaves messages and tool uses
-  // Server assigns sequence numbers: tool uses get seq 0, 1, 2... and assistant message gets final seq
-  // User messages don't have sequence, so they sort by timestamp and appear before sequenced items
-  const contentBlocks = useMemo((): ContentBlock[] => {
-    const messageBlocks: ContentBlock[] = messages.map(m => ({ type: "message", data: m }))
-    const toolUseBlocks: ContentBlock[] = toolUses.map(t => ({ type: "toolUse", data: t }))
-    const allBlocks = [...messageBlocks, ...toolUseBlocks]
+  // Process events using the same hook as EventStream
+  const { completedEvents, streamingMessage } = useStreamingState(taskChatEvents)
 
-    // Sort by sequence number if available, then by timestamp as fallback
-    // Sequence numbers are assigned server-side to ensure correct ordering within a turn
-    return allBlocks.sort((a, b) => {
-      const seqA = a.data.sequence
-      const seqB = b.data.sequence
+  // Build tool results map from user events (tool_result blocks)
+  const toolResults = useMemo(() => {
+    const results = new Map<string, { output?: string; error?: string }>()
+    for (const event of completedEvents) {
+      if (event.type === "user") {
+        const content = (event as any).message?.content
+        if (Array.isArray(content)) {
+          for (const item of content) {
+            if (item.type === "tool_result" && item.tool_use_id) {
+              results.set(item.tool_use_id, {
+                output: typeof item.content === "string" ? item.content : undefined,
+                error:
+                  item.is_error ?
+                    typeof item.content === "string" ?
+                      item.content
+                    : "Error"
+                  : undefined,
+              })
+            }
+          }
+        }
+      }
+    }
+    return results
+  }, [completedEvents])
 
-      // If both have sequence numbers, sort by sequence
-      // This orders: tool_use(0) → tool_use(1) → assistant_message(2)
-      if (seqA !== undefined && seqB !== undefined) {
-        return seqA - seqB
+  // Create unified content list: user messages + assistant events + tool uses, sorted properly
+  const contentItems = useMemo((): ContentItem[] => {
+    const items: ContentItem[] = []
+
+    // Add user messages
+    for (const msg of userMessages) {
+      if (msg.role === "user") {
+        items.push({
+          type: "user_message",
+          data: msg,
+          timestamp: msg.timestamp,
+          sequence: msg.sequence,
+        })
+      } else if (msg.role === "assistant") {
+        // Assistant messages from the legacy model
+        items.push({
+          type: "assistant_message",
+          data: msg,
+          timestamp: msg.timestamp,
+          sequence: msg.sequence,
+        })
+      }
+    }
+
+    // Add tool uses from the legacy model (taskChatToolUses)
+    for (const toolUse of toolUses) {
+      items.push({
+        type: "tool_use",
+        data: toolUse,
+        timestamp: toolUse.timestamp,
+        sequence: toolUse.sequence,
+      })
+    }
+
+    // Add assistant events from SDK events (text + tool use interleaved)
+    for (const event of completedEvents) {
+      if (event.type === "assistant") {
+        items.push({
+          type: "assistant_event",
+          data: event,
+          timestamp: event.timestamp,
+        })
+      }
+    }
+
+    // Sort by sequence first (if available), then by timestamp
+    // Items without sequence come before items with sequence (user messages before tool uses)
+    return items.sort((a, b) => {
+      const aSeq = a.sequence
+      const bSeq = b.sequence
+
+      // If one has sequence and other doesn't, the one without comes first
+      if (aSeq === undefined && bSeq !== undefined) return -1
+      if (aSeq !== undefined && bSeq === undefined) return 1
+
+      // If both have sequence, sort by sequence
+      if (aSeq !== undefined && bSeq !== undefined) {
+        if (aSeq !== bSeq) return aSeq - bSeq
       }
 
-      // Items without sequence (user messages) come before items with sequence
-      // This ensures: user_message → tool_uses → assistant_message
-      if (seqA !== undefined && seqB === undefined) return 1
-      if (seqA === undefined && seqB !== undefined) return -1
-
-      // Fall back to timestamp for items without sequence (multiple user messages)
-      return a.data.timestamp - b.data.timestamp
+      // Fall back to timestamp
+      return a.timestamp - b.timestamp
     })
-  }, [messages, toolUses])
+  }, [userMessages, toolUses, completedEvents])
+
+  const hasContent = contentItems.length > 0 || streamingMessage !== null
+
+  /**
+   * Extract streaming text from the streaming message content blocks.
+   */
+  const streamingText = useMemo(() => {
+    if (!streamingMessage) return null
+    const textBlocks = streamingMessage.contentBlocks.filter(b => b.type === "text")
+    if (textBlocks.length === 0) return null
+    return textBlocks.map(b => b.text).join("")
+  }, [streamingMessage])
 
   const wasLoadingRef = useRef(false)
 
@@ -116,8 +196,6 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       }
       addMessage(userMessage)
       setLoading(true)
-      setStreamingText("")
-      clearToolUses() // Clear tool uses from previous turn
 
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current)
@@ -149,11 +227,10 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
         }
 
         setLoading(false)
-        setStreamingText("")
         setError(errorMessage)
       }
     },
-    [addMessage, setLoading, setStreamingText, clearToolUses, removeMessage],
+    [addMessage, setLoading, removeMessage],
   )
 
   /**
@@ -161,7 +238,6 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
    */
   const handleClearHistory = useCallback(async () => {
     setLoading(true)
-    setStreamingText("")
     setError(null)
 
     const result = await clearTaskChatHistory()
@@ -170,7 +246,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       clearMessages()
     }
     setLoading(false)
-  }, [clearMessages, setLoading, setStreamingText])
+  }, [clearMessages, setLoading])
 
   const inputPlaceholder =
     !isConnected ? "Connecting..."
@@ -211,7 +287,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       <ContentStreamContainer
         className="flex-1 overflow-hidden"
         ariaLabel="Task chat messages"
-        dependencies={[contentBlocks, streamingText]}
+        dependencies={[contentItems, streamingText]}
         emptyState={
           <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
             <IconMessageChatbot className="size-8 opacity-50" />
@@ -222,20 +298,43 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
           </div>
         }
       >
-        {contentBlocks.length > 0 || streamingText ?
+        {hasContent ?
           <>
-            {/* Render messages and tool uses interleaved by timestamp */}
-            {contentBlocks.map(block =>
-              block.type === "message" ?
-                block.data.role === "user" ?
-                  <UserMessageBubble key={block.data.id} message={block.data} />
-                : <AssistantMessageBubble key={block.data.id} message={block.data} />
-              : <ToolUseCard
-                  key={block.data.toolUseId}
-                  event={toToolUseEvent(block.data)}
-                  className="text-sm"
-                />,
-            )}
+            {/* Render messages and tool uses interleaved by timestamp/sequence */}
+            {contentItems.map(item => {
+              switch (item.type) {
+                case "user_message":
+                  return <UserMessageBubble key={item.data.id} message={item.data} />
+                case "assistant_message":
+                  return <AssistantMessageBubble key={item.data.id} message={item.data} />
+                case "tool_use":
+                  return (
+                    <ToolUseCard
+                      key={item.data.toolUseId}
+                      event={{
+                        type: "tool_use",
+                        timestamp: item.data.timestamp,
+                        tool: item.data.tool as any,
+                        input: item.data.input,
+                        output: item.data.output,
+                        error: item.data.error,
+                        status: item.data.status,
+                      }}
+                      className="text-sm"
+                    />
+                  )
+                case "assistant_event":
+                  return (
+                    <AssistantEventContent
+                      key={`assistant-${item.timestamp}`}
+                      event={item.data}
+                      toolResults={toolResults}
+                    />
+                  )
+                default:
+                  return null
+              }
+            })}
             {/* Streaming response */}
             {streamingText && (
               <AssistantMessageBubble
@@ -248,7 +347,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
               />
             )}
             {/* Loading indicator */}
-            {isLoading && !streamingText && toolUses.length === 0 && (
+            {isLoading && !streamingText && (
               <div className="flex items-center gap-2 px-4 py-2">
                 <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
                 <span className="text-muted-foreground text-xs">Thinking...</span>
@@ -274,19 +373,91 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
 }
 
 /**
- * Content block types for unified rendering.
+ * Content item types for unified rendering in the chat timeline.
  */
-type MessageBlock = { type: "message"; data: TaskChatMessage }
+type UserMessageItem = {
+  type: "user_message"
+  data: TaskChatMessage
+  timestamp: number
+  sequence?: number
+}
+type AssistantMessageItem = {
+  type: "assistant_message"
+  data: TaskChatMessage
+  timestamp: number
+  sequence?: number
+}
+type ToolUseItem = {
+  type: "tool_use"
+  data: TaskChatToolUse
+  timestamp: number
+  sequence?: number
+}
+type AssistantEventItem = {
+  type: "assistant_event"
+  data: RalphEvent
+  timestamp: number
+  sequence?: number
+}
+type ContentItem = UserMessageItem | AssistantMessageItem | ToolUseItem | AssistantEventItem
 
 /**
- * Tool use block type for unified rendering.
+ * Renders the content of an assistant event, extracting text and tool uses.
  */
-type ToolUseBlock = { type: "toolUse"; data: TaskChatToolUse }
+function AssistantEventContent({
+  event,
+  toolResults,
+}: {
+  event: RalphEvent
+  toolResults: Map<string, { output?: string; error?: string }>
+}) {
+  const content = (event as any).message?.content
+  if (!Array.isArray(content)) return null
 
-/**
- * Union type for message and tool use blocks.
- */
-type ContentBlock = MessageBlock | ToolUseBlock
+  return (
+    <>
+      {content.map((block: any, index: number) => {
+        if (block.type === "text" && block.text) {
+          return (
+            <AssistantMessageBubble
+              key={`text-${event.timestamp}-${index}`}
+              message={{
+                id: `text-${event.timestamp}-${index}`,
+                role: "assistant",
+                content: block.text,
+                timestamp: event.timestamp,
+              }}
+            />
+          )
+        }
+        if (block.type === "tool_use") {
+          const result = toolResults.get(block.id)
+          return (
+            <ToolUseCard
+              key={block.id}
+              event={{
+                type: "tool_use",
+                timestamp: event.timestamp,
+                tool: block.name as any,
+                input: block.input,
+                output: result?.output,
+                error: result?.error,
+                status:
+                  result ?
+                    result.error ?
+                      "error"
+                    : "success"
+                  : "pending",
+              }}
+              className="text-sm"
+            />
+          )
+        }
+        return null
+      })}
+    </>
+  )
+}
 
 /**
  * Props for TaskChatPanel component.

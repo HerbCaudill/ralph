@@ -506,7 +506,7 @@ describe("TaskChatPanel", () => {
       expect(screen.getByText("Bash")).toBeInTheDocument()
     })
 
-    it("clears tool uses when sending a new message", async () => {
+    it("keeps tool uses visible when sending a new message", async () => {
       // Add a tool use to the store
       useAppStore.getState().addTaskChatToolUse({
         toolUseId: "tool-1",
@@ -531,8 +531,8 @@ describe("TaskChatPanel", () => {
         fireEvent.submit(input.closest("form")!)
       })
 
-      // Tool use should be cleared when new message is sent
-      expect(screen.queryByText("Bash")).not.toBeInTheDocument()
+      // Tool uses should remain visible after sending a new message
+      expect(screen.getByText("Bash")).toBeInTheDocument()
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalled()
