@@ -524,4 +524,139 @@ describe("WorktreeManager", () => {
       await expect(manager.recreate("abc123", "alice")).rejects.toThrow("already valid")
     })
   })
+
+  describe("cleanup", () => {
+    it("merges commits and removes worktree when there are unmerged commits", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Make a commit in the worktree
+      await git(info.path, ["commit", "--allow-empty", "-m", "Work from alice"])
+
+      // Run cleanup
+      const result = await manager.cleanup("abc123", "alice")
+
+      expect(result.success).toBe(true)
+      expect(result.merge).not.toBeNull()
+      expect(result.merge!.success).toBe(true)
+      expect(result.removed).toBe(true)
+      expect(result.message).toContain("Merged")
+      expect(result.message).toContain("Removed")
+
+      // Verify worktree is gone
+      const exists = await manager.exists("abc123", "alice")
+      expect(exists).toBe(false)
+
+      // Verify branch is gone
+      const branches = await git(mainWorkspace, ["branch", "-a"])
+      expect(branches).not.toContain("ralph/alice-abc123")
+
+      // Verify the commit made it to main
+      const log = await git(mainWorkspace, ["log", "--oneline"])
+      expect(log).toContain("Work from alice")
+    })
+
+    it("removes worktree without merge when there are no commits", async () => {
+      // Create a worktree (no commits made)
+      await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Run cleanup
+      const result = await manager.cleanup("abc123", "alice")
+
+      expect(result.success).toBe(true)
+      expect(result.merge).toBeNull() // No merge needed
+      expect(result.removed).toBe(true)
+      expect(result.message).toContain("No commits to merge")
+      expect(result.message).toContain("Removed")
+
+      // Verify worktree is gone
+      const exists = await manager.exists("abc123", "alice")
+      expect(exists).toBe(false)
+    })
+
+    it("fails with merge conflicts and does not remove worktree", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Make a conflicting change in main
+      const { writeFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      // Make a conflicting commit in the worktree
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Run cleanup
+      const result = await manager.cleanup("abc123", "alice")
+
+      expect(result.success).toBe(false)
+      expect(result.merge).not.toBeNull()
+      expect(result.merge!.success).toBe(false)
+      expect(result.merge!.hadConflicts).toBe(true)
+      expect(result.removed).toBe(false)
+      expect(result.message).toContain("conflicts")
+
+      // Verify worktree still exists
+      const exists = await manager.exists("abc123", "alice")
+      expect(exists).toBe(true)
+
+      // Verify branch still exists
+      const branches = await git(mainWorkspace, ["branch", "-a"])
+      expect(branches).toContain("ralph/alice-abc123")
+
+      // Clean up the merge state
+      await git(mainWorkspace, ["merge", "--abort"])
+    })
+
+    it("handles non-existent worktree gracefully", async () => {
+      // Try to cleanup a worktree that doesn't exist
+      const result = await manager.cleanup("nonexistent", "test")
+
+      expect(result.success).toBe(true)
+      expect(result.merge).toBeNull()
+      expect(result.removed).toBe(true)
+      expect(result.message).toContain("No commits to merge")
+    })
+
+    it("preserves main branch state after successful cleanup", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Make a commit in the worktree
+      const { writeFile } = await import("node:fs/promises")
+      await writeFile(join(info.path, "alice.txt"), "alice's work")
+      await git(info.path, ["add", "alice.txt"])
+      await git(info.path, ["commit", "-m", "Alice's changes"])
+
+      // Run cleanup
+      const result = await manager.cleanup("abc123", "alice")
+
+      expect(result.success).toBe(true)
+
+      // Verify we're on main after cleanup
+      const currentBranch = await git(mainWorkspace, ["rev-parse", "--abbrev-ref", "HEAD"])
+      expect(currentBranch).toBe("main")
+
+      // Verify the file from alice's work is now on main
+      const { readFile } = await import("node:fs/promises")
+      const content = await readFile(join(mainWorkspace, "alice.txt"), "utf-8")
+      expect(content).toBe("alice's work")
+    })
+  })
 })

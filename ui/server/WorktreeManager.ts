@@ -20,6 +20,17 @@ export interface MergeResult {
   message: string
 }
 
+export interface CleanupResult {
+  /** Overall success - true only if merge and removal succeeded */
+  success: boolean
+  /** Result of the merge operation (null if no uncommitted changes or merge not needed) */
+  merge: MergeResult | null
+  /** Whether the worktree and branch were removed */
+  removed: boolean
+  /** Summary message */
+  message: string
+}
+
 export interface PostIterationResult {
   /** Overall success - true only if both merge and rebase succeeded */
   success: boolean
@@ -309,6 +320,81 @@ export class WorktreeManager {
           throw error
         }
       }
+    }
+  }
+
+  /**
+   * Cleanup an instance's worktree completely.
+   *
+   * This is the standard workflow when removing an instance:
+   * 1. Merge the instance branch to main (if there are commits)
+   * 2. Remove the worktree
+   * 3. Delete the branch
+   *
+   * If merge conflicts occur, the cleanup will fail and the caller
+   * should handle conflict resolution before retrying.
+   *
+   * @param instanceId - The instance ID
+   * @param instanceName - The instance name
+   * @returns Result of the cleanup operation
+   */
+  async cleanup(instanceId: string, instanceName: string): Promise<CleanupResult> {
+    const branchName = this.getBranchName(instanceId, instanceName)
+    const mainBranch = await this.getMainBranch()
+
+    // Check if the branch has commits that aren't on main
+    let hasUnmergedCommits = false
+    try {
+      // Get commits on branch that aren't on main
+      const commits = await this.git(["rev-list", "--count", `${mainBranch}..${branchName}`])
+      hasUnmergedCommits = parseInt(commits.trim(), 10) > 0
+    } catch {
+      // Branch might not exist, that's fine - no commits to merge
+      hasUnmergedCommits = false
+    }
+
+    // Step 1: Merge if there are unmerged commits
+    let mergeResult: MergeResult | null = null
+    if (hasUnmergedCommits) {
+      mergeResult = await this.merge(instanceId, instanceName)
+
+      if (!mergeResult.success) {
+        return {
+          success: false,
+          merge: mergeResult,
+          removed: false,
+          message:
+            mergeResult.hadConflicts ?
+              `Cannot cleanup: merge conflicts detected in ${branchName}. Resolve conflicts before removing.`
+            : `Cannot cleanup: merge failed - ${mergeResult.message}`,
+        }
+      }
+    }
+
+    // Step 2: Remove the worktree and delete the branch
+    try {
+      await this.remove(instanceId, instanceName, true)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      return {
+        success: false,
+        merge: mergeResult,
+        removed: false,
+        message: `Failed to remove worktree: ${errorMessage}`,
+      }
+    }
+
+    // Success
+    const mergeMessage =
+      mergeResult?.success ? `Merged ${branchName} to ${mainBranch}. `
+      : hasUnmergedCommits ? ""
+      : "No commits to merge. "
+
+    return {
+      success: true,
+      merge: mergeResult,
+      removed: true,
+      message: `${mergeMessage}Removed worktree and branch ${branchName}.`,
     }
   }
 
