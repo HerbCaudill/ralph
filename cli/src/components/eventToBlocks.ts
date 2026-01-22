@@ -6,7 +6,14 @@ export type ContentBlock =
   | { type: "tool"; name: string; arg?: string; id: string }
   | { type: "user"; content: string; id: string }
 
-export const eventToBlocks = (event: Record<string, unknown>): ContentBlock[] => {
+/**
+ * Transform an event from the Claude SDK into display blocks.
+ * Extracts text content and tool use information from assistant and user messages.
+ */
+export const eventToBlocks = (
+  /** The event object from Claude SDK containing message data */
+  event: Record<string, unknown>,
+): ContentBlock[] => {
   // Handle user messages
   if (event.type === "user") {
     const message = event.message as Record<string, unknown> | undefined
