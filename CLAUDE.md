@@ -97,10 +97,10 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
    - Replay mode: Replay events from log (`ralph --replay [file]`)
 
 2. **Iteration Runner** (`IterationRunner.tsx`) → Core orchestration:
-   - Reads prompt from `.ralph/prompt.md` or falls back to bundled templates
+   - Combines core-prompt.md with .ralph/workflow.md (or bundled default)
    - Spawns `claude` CLI with `--output-format stream-json`
    - Parses streaming JSON events line-by-line
-   - Appends events to `.ralph/events.jsonl`
+   - Appends events to `.ralph/events-*.jsonl`
    - Detects `<promise>COMPLETE</promise>` to exit early (or enter watch mode if `--watch`)
    - Recursively runs next iteration after completion
    - In watch mode: polls beads daemon for new issues via Unix socket RPC
@@ -115,36 +115,47 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
 
 ### Template System
 
-Ralph initializes projects with template files in `.ralph/`:
+Ralph uses a two-tier prompt system:
 
-- `prompt.md` - Instructions given to Claude each iteration (build commands, workflow) **(optional - falls back to bundled templates)**
-- `todo.md` - Task list in markdown checkbox format **(optional)**
-- `events.jsonl` - JSONL event stream for debugging/replay (auto-generated during runs)
+1. **Core prompt** (`cli/templates/core-prompt.md`) - Bundled iteration protocol (required by Ralph)
+   - Iteration lifecycle (check errors → find issue → work → complete)
+   - Task assignment logic
+   - Output tokens (`<promise>COMPLETE</promise>`, `<start_task>`, `<end_task>`)
 
-Templates are copied from `templates/` directory on `ralph init`.
+2. **Workflow** (`.ralph/workflow.md`) - Repo-specific configuration
+   - Build/test commands
+   - Task prioritization rules
+   - Wrap-up steps (formatting, committing)
+   - When to delegate to subagents
 
-If no `.ralph/prompt.md` exists, Ralph automatically uses the appropriate bundled template:
+On `ralph init`, the following are copied:
 
-- If `.beads` directory exists → uses `prompt-beads.md` (beads workflow)
-- If `.ralph/todo.md` exists → uses `prompt-todos.md` (todo-based workflow)
-- Otherwise → uses `prompt-beads.md` (default)
+- `.ralph/workflow.md` - Customizable workflow instructions
+- `.claude/skills/manage-tasks/SKILL.md` - Task management skill for UI
+- `.claude/agents/` - Subagent prompts (make-tests, write-docs, run-tests)
+
+Auto-generated during runs:
+
+- `.ralph/events-*.jsonl` - JSONL event stream for debugging/replay
 
 ### The Contract with Claude CLI
 
 Ralph expects Claude CLI to:
 
-- Accept `@.ralph/prompt.md`, `@.ralph/todo.md` as context files
 - Output `--output-format stream-json` with `--include-partial-messages`
 - Exit with code 0 on success
-- Output `<promise>COMPLETE</promise>` when todo list is complete
+- Output `<promise>COMPLETE</promise>` when no issues are ready
 
-Claude is instructed (via `prompt.md`) to:
+Claude is instructed (via core-prompt + workflow) to:
 
-- Check build/tests first, fix errors if found
-- Select one high-priority task from todo.md
-- Complete the task, update todo.md
-- Commit changes with git
-- Output `<promise>COMPLETE</promise>` if todo list is empty
+- Check build/tests first, create bug issue if errors found
+- Run `bd ready` to find available issues
+- Claim one issue with `bd update --status=in_progress`
+- Output `<start_task>{id}</start_task>` when starting
+- Complete the task, run wrap-up steps
+- Close the issue with `bd close {id}`
+- Output `<end_task>{id}</end_task>` when done
+- Output `<promise>COMPLETE</promise>` if no issues are ready
 
 ## Development Commands
 
@@ -280,9 +291,9 @@ Shared utilities and types used by both CLI and UI packages:
   - Options types (`BdListOptions`, `BdCreateOptions`, `BdUpdateOptions`)
   - Mutation events (`MutationEvent`, `MutationType`)
 - **Prompt Loading** (`prompts/`):
+  - `loadIterationPrompt()` - Combine core-prompt with workflow
   - `loadPrompt()` - Load prompt files with custom overrides
-  - `initPrompt()` - Initialize custom prompt from default
-  - `hasCustomPrompt()` - Check for custom prompt existence
+  - `hasCustomWorkflow()` - Check for custom workflow existence
 
 ## Project Structure
 
@@ -306,6 +317,10 @@ cli/                       # CLI package (@herbcaudill/ralph)
     e2e/                    # E2E tests (skipped by default)
     fixtures/               # Test fixtures
   templates/                # Template files for ralph init
+    core-prompt.md          # Bundled iteration protocol
+    workflow.md             # Default workflow → .ralph/workflow.md
+    skills/                 # → symlink to .claude/skills/
+    agents/                 # → symlink to .claude/agents/
   bin/ralph.js              # Published executable
 
 ui/                        # UI package (@herbcaudill/ralph-ui)
@@ -338,6 +353,15 @@ shared/                    # Shared package (@herbcaudill/ralph-shared)
     prompts/                # Prompt loading utilities
       loadPrompt.ts         # Load prompt with custom override support
     index.ts                # Package exports
+
+.claude/                   # Claude Code configuration (symlinked from templates)
+  skills/
+    manage-tasks/
+      SKILL.md              # Task management skill for UI task chat
+  agents/
+    make-tests.md           # Subagent prompt for test generation
+    write-docs.md           # Subagent prompt for documentation
+    run-tests.md            # Subagent prompt for test execution
 ```
 
 ## Important Implementation Details
@@ -366,7 +390,7 @@ An iteration ends when:
 
 ### Initialization Detection
 
-On startup, `IterationRunner` reads the prompt from `.ralph/prompt.md` if it exists. If the file is missing, it automatically falls back to the bundled templates based on project setup (beads vs todo-based workflow). This allows Ralph to run without requiring `ralph init` first.
+On startup, `IterationRunner` combines core-prompt.md (bundled) with .ralph/workflow.md (if it exists, otherwise uses bundled default). This allows Ralph to run without requiring `ralph init` first.
 
 ## Testing
 
