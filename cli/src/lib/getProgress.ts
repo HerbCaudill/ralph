@@ -103,15 +103,6 @@ const getTodoProgress = (): ProgressData => {
   }
 }
 
-export type StartupSnapshot = {
-  /** Initial count of open + in_progress issues */
-  initialCount: number
-  /** RFC3339 timestamp of when the snapshot was taken */
-  timestamp: string
-  /** Type of workspace (beads or todo) */
-  type: "beads" | "todo"
-}
-
 /**
  * Capture a startup snapshot for beads workspaces.
  * Call this once at startup to capture the baseline count and timestamp.
@@ -163,6 +154,9 @@ const captureBeadsSnapshot = (): StartupSnapshot | undefined => {
   }
 }
 
+/**
+ * Capture a startup snapshot for a todo.md workspace.
+ */
 const captureTodoSnapshot = (): StartupSnapshot | undefined => {
   try {
     const content = readFileSync(todoFile, "utf-8")
@@ -190,4 +184,21 @@ const captureTodoSnapshot = (): StartupSnapshot | undefined => {
 export const getInitialBeadsCount = (): number | undefined => {
   const snapshot = captureStartupSnapshot()
   return snapshot?.initialCount
+}
+
+export type ProgressData = {
+  type: "beads" | "todo" | "none"
+  /** Number of issues/tasks completed since startup */
+  completed: number
+  /** Total issues/tasks seen since startup (initial + created since) */
+  total: number
+}
+
+export type StartupSnapshot = {
+  /** Initial count of open + in_progress issues */
+  initialCount: number
+  /** RFC3339 timestamp of when the snapshot was taken */
+  timestamp: string
+  /** Type of workspace (beads or todo) */
+  type: "beads" | "todo"
 }
