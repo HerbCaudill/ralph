@@ -1,4 +1,3 @@
-import chalk from "chalk"
 import type { ContentBlock } from "../components/eventToBlocks.js"
 import { formatText } from "./formatText.js"
 import { formatToolUse } from "./formatToolUse.js"
@@ -7,7 +6,10 @@ import { formatUserMessage } from "./formatUserMessage.js"
 /**
  * Convert a content block to formatted string lines
  */
-export const formatContentBlock = (block: ContentBlock): string[] => {
+export const formatContentBlock = (
+  /** Content block to format */
+  block: ContentBlock,
+): string[] => {
   if (block.type === "text") {
     const formatted = formatText(block.content)
     // Split into lines, preserving empty lines for paragraph breaks
@@ -19,11 +21,4 @@ export const formatContentBlock = (block: ContentBlock): string[] => {
   }
 
   return [formatToolUse(block.name, block.arg)]
-}
-
-/**
- * Format a round header
- */
-export const formatIterationHeader = (iteration: number): string => {
-  return chalk.cyan.bold(`─── Round ${iteration} ───`)
 }
