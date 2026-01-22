@@ -7,11 +7,26 @@ import { useAppStore } from "@/store"
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
+/**
+ * Helper to add an assistant message via SDK events (the new unified model).
+ * This simulates what happens when the server sends assistant content through WebSocket.
+ */
+function addAssistantEvent(content: string, timestamp: number) {
+  useAppStore.getState().addTaskChatEvent({
+    type: "assistant",
+    timestamp,
+    message: {
+      content: [{ type: "text", text: content }],
+    },
+  } as any)
+}
+
 describe("TaskChatPanel", () => {
   beforeEach(() => {
     // Reset the store before each test
     useAppStore.getState().clearTaskChatMessages()
     useAppStore.getState().clearTaskChatToolUses()
+    useAppStore.getState().clearTaskChatEvents()
     useAppStore.getState().setTaskChatLoading(false)
     useAppStore.getState().setConnectionStatus("connected")
     mockFetch.mockReset()
@@ -73,13 +88,8 @@ describe("TaskChatPanel", () => {
     })
 
     it("renders assistant messages with markdown", () => {
-      // Add an assistant message to the store
-      useAppStore.getState().addTaskChatMessage({
-        id: "assistant-1",
-        role: "assistant",
-        content: "You can **prioritize** tasks by setting their priority level.",
-        timestamp: Date.now(),
-      })
+      // Add an assistant message via SDK events (the new unified model)
+      addAssistantEvent("You can **prioritize** tasks by setting their priority level.", Date.now())
 
       render(<TaskChatPanel />)
       expect(screen.getByText(/prioritize/)).toBeInTheDocument()
@@ -92,12 +102,8 @@ describe("TaskChatPanel", () => {
         content: "First message",
         timestamp: 1,
       })
-      useAppStore.getState().addTaskChatMessage({
-        id: "assistant-1",
-        role: "assistant",
-        content: "Second message",
-        timestamp: 2,
-      })
+      // Assistant message via SDK events
+      addAssistantEvent("Second message", 2)
       useAppStore.getState().addTaskChatMessage({
         id: "user-2",
         role: "user",
@@ -540,38 +546,35 @@ describe("TaskChatPanel", () => {
     })
 
     it("keeps tool uses visible after assistant message completes", () => {
-      // Add messages first
+      const baseTime = Date.now()
+
+      // Add user message first
       useAppStore.getState().addTaskChatMessage({
         id: "user-1",
         role: "user",
         content: "Check my tasks",
-        timestamp: Date.now(),
+        timestamp: baseTime,
       })
 
-      // Add a tool use (as would happen during assistant response)
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Bash",
-        input: { command: "bd list" },
-        status: "success",
-        timestamp: Date.now(),
-      })
-
-      // Add assistant message (as would happen after tools complete)
-      useAppStore.getState().addTaskChatMessage({
-        id: "assistant-1",
-        role: "assistant",
-        content: "Here are your tasks...",
-        timestamp: Date.now(),
-      })
+      // Add an assistant event with tool use followed by text (simulating interleaved content)
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
+        timestamp: baseTime + 1,
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "bd list" } },
+            { type: "text", text: "Here are your tasks..." },
+          ],
+        },
+      } as any)
 
       render(<TaskChatPanel />)
 
-      // Both messages should be visible
+      // User message should be visible
       expect(screen.getByText("Check my tasks")).toBeInTheDocument()
+      // Assistant text should be visible
       expect(screen.getByText("Here are your tasks...")).toBeInTheDocument()
-
-      // Tool use should still be visible
+      // Tool use should be visible
       expect(screen.getByText("Bash")).toBeInTheDocument()
     })
 
@@ -599,22 +602,17 @@ describe("TaskChatPanel", () => {
         timestamp: baseTime,
       })
 
-      // Add tool use at t=1
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Bash",
-        input: { command: "bd list" },
-        status: "success",
+      // Add an assistant event with tool use followed by text (proper interleaving in SDK model)
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
         timestamp: baseTime + 1,
-      })
-
-      // Add assistant message at t=2 (after the tool use)
-      useAppStore.getState().addTaskChatMessage({
-        id: "assistant-1",
-        role: "assistant",
-        content: "Assistant response",
-        timestamp: baseTime + 2,
-      })
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "bd list" } },
+            { type: "text", text: "Assistant response" },
+          ],
+        },
+      } as any)
 
       render(<TaskChatPanel />)
 
@@ -629,7 +627,7 @@ describe("TaskChatPanel", () => {
       expect(assistantMsg).toBeInTheDocument()
 
       // Verify the order: user message should come before tool use,
-      // which should come before assistant message
+      // which should come before assistant text (content blocks are rendered in order)
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
 
@@ -679,10 +677,10 @@ describe("TaskChatPanel", () => {
       })
     })
 
-    it("sorts by sequence number when available (even with out-of-order timestamps)", () => {
+    it("renders tool uses in content block order (SDK model)", () => {
       const baseTime = 1000000
 
-      // Add user message (no sequence)
+      // Add user message
       useAppStore.getState().addTaskChatMessage({
         id: "user-1",
         role: "user",
@@ -690,25 +688,18 @@ describe("TaskChatPanel", () => {
         timestamp: baseTime,
       })
 
-      // Add tool uses with sequence numbers (but timestamps are deliberately out of order)
-      // Tool 2 has an earlier timestamp but higher sequence - should appear AFTER tool 1
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-2",
-        tool: "Grep",
-        input: { pattern: "search" },
-        status: "success",
-        timestamp: baseTime + 1, // Earlier timestamp
-        sequence: 1, // Higher sequence
-      })
-
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Read",
-        input: { file_path: "/test.ts" },
-        status: "success",
-        timestamp: baseTime + 2, // Later timestamp
-        sequence: 0, // Lower sequence - should appear first
-      })
+      // Add assistant event with multiple tool uses in a specific order
+      // The content blocks should be rendered in the order they appear in the array
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
+        timestamp: baseTime + 1,
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Read", input: { file_path: "/test.ts" } },
+            { type: "tool_use", id: "tool-2", name: "Grep", input: { pattern: "search" } },
+          ],
+        },
+      } as any)
 
       render(<TaskChatPanel />)
 
@@ -720,53 +711,49 @@ describe("TaskChatPanel", () => {
       expect(screen.getByText("Read")).toBeInTheDocument()
       expect(screen.getByText("Grep")).toBeInTheDocument()
 
-      // Read (sequence 0) should come before Grep (sequence 1)
-      // even though Grep has an earlier timestamp
+      // Read should come before Grep (as ordered in the content blocks array)
       const readPos = textContent.indexOf("Read")
       const grepPos = textContent.indexOf("Grep")
 
       expect(readPos).toBeLessThan(grepPos)
     })
 
-    it("puts messages without sequence before tool uses with sequence", () => {
+    it("renders user message before assistant content (timestamp ordering)", () => {
       const baseTime = 1000000
 
-      // Add a tool use with sequence
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Bash",
-        input: { command: "test" },
-        status: "success",
-        timestamp: baseTime, // Earlier timestamp
-        sequence: 0,
-      })
-
-      // Add user message without sequence (later timestamp but no sequence)
+      // Add user message (will have earlier timestamp)
       useAppStore.getState().addTaskChatMessage({
         id: "user-1",
         role: "user",
-        content: "Later message",
-        timestamp: baseTime + 1000, // Later timestamp
+        content: "User message",
+        timestamp: baseTime,
       })
+
+      // Add assistant event with tool use (later timestamp)
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
+        timestamp: baseTime + 1,
+        message: {
+          content: [{ type: "tool_use", id: "tool-1", name: "Bash", input: { command: "test" } }],
+        },
+      } as any)
 
       render(<TaskChatPanel />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
 
-      // Messages without sequence should come before tool uses with sequence
-      // because user messages arrive before the response (which contains tool uses)
-      const userPos = textContent.indexOf("Later message")
+      // User message should appear before tool use (sorted by timestamp)
+      const userPos = textContent.indexOf("User message")
       const toolPos = textContent.indexOf("Bash")
 
-      // User message should appear before tool use since it has no sequence
       expect(userPos).toBeLessThan(toolPos)
     })
 
-    it("orders user message → tool uses → assistant message correctly", () => {
+    it("orders user message → tool uses → assistant text correctly (SDK model)", () => {
       const baseTime = 1000000
 
-      // Add user message (no sequence)
+      // Add user message
       useAppStore.getState().addTaskChatMessage({
         id: "user-1",
         role: "user",
@@ -774,41 +761,26 @@ describe("TaskChatPanel", () => {
         timestamp: baseTime,
       })
 
-      // Add tool uses with sequence numbers
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Read",
-        input: { file_path: "/test.ts" },
-        status: "success",
+      // Add assistant event with tool uses followed by text response
+      // In the SDK model, all of this comes as content blocks in a single assistant event
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
         timestamp: baseTime + 1,
-        sequence: 0,
-      })
-
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-2",
-        tool: "Grep",
-        input: { pattern: "search" },
-        status: "success",
-        timestamp: baseTime + 2,
-        sequence: 1,
-      })
-
-      // Add assistant message with sequence (higher than tool uses)
-      // This simulates what happens when the server assigns a sequence to the final assistant message
-      useAppStore.getState().addTaskChatMessage({
-        id: "assistant-1",
-        role: "assistant",
-        content: "Here is my response",
-        timestamp: baseTime + 3,
-        sequence: 2, // Final sequence after all tool uses
-      })
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Read", input: { file_path: "/test.ts" } },
+            { type: "tool_use", id: "tool-2", name: "Grep", input: { pattern: "search" } },
+            { type: "text", text: "Here is my response" },
+          ],
+        },
+      } as any)
 
       render(<TaskChatPanel />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
 
-      // Verify order: user → Read → Grep → assistant
+      // Verify order: user → Read → Grep → assistant text
       const userPos = textContent.indexOf("User question")
       const readPos = textContent.indexOf("Read")
       const grepPos = textContent.indexOf("Grep")
