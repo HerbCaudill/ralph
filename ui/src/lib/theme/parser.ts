@@ -139,12 +139,13 @@ export function validateThemeObject(data: unknown): ValidationResult {
 
 /**
  * Validate a single token color entry.
- *
- * @param tc - The token color entry to validate
- * @param index - The index in the tokenColors array (for error messages)
- * @returns Array of error messages (empty if valid)
  */
-function validateTokenColor(tc: unknown, index: number): string[] {
+function validateTokenColor(
+  /** The token color entry to validate */
+  tc: unknown,
+  /** The index in the tokenColors array (for error messages) */
+  index: number,
+): string[] {
   const errors: string[] = []
   const prefix = `tokenColors[${index}]`
 
@@ -197,14 +198,12 @@ function validateTokenColor(tc: unknown, index: number): string[] {
 }
 
 /**
- * Normalize a raw theme object into a proper VSCodeTheme.
- *
- * This fills in defaults and ensures the structure is complete.
- *
- * @param raw - The raw theme object (already validated)
- * @returns The normalized VSCodeTheme
+ * Normalize a raw theme object into a proper VSCodeTheme, filling in defaults and ensuring complete structure.
  */
-function normalizeTheme(raw: Record<string, unknown>): VSCodeTheme {
+function normalizeTheme(
+  /** The raw theme object (already validated) */
+  raw: Record<string, unknown>,
+): VSCodeTheme {
   // Extract and normalize colors
   const colors = normalizeColors(raw.colors)
 
@@ -229,11 +228,11 @@ function normalizeTheme(raw: Record<string, unknown>): VSCodeTheme {
 
 /**
  * Normalize the colors object.
- *
- * @param colors - The raw colors object
- * @returns Normalized VSCodeEditorColors
  */
-function normalizeColors(colors: unknown): VSCodeEditorColors {
+function normalizeColors(
+  /** The raw colors object */
+  colors: unknown,
+): VSCodeEditorColors {
   if (colors === null || typeof colors !== "object" || Array.isArray(colors)) {
     return {}
   }
@@ -252,11 +251,11 @@ function normalizeColors(colors: unknown): VSCodeEditorColors {
 
 /**
  * Normalize the tokenColors array.
- *
- * @param tokenColors - The raw tokenColors array
- * @returns Normalized array of VSCodeTokenColor
  */
-function normalizeTokenColors(tokenColors: unknown): VSCodeTokenColor[] {
+function normalizeTokenColors(
+  /** The raw tokenColors array */
+  tokenColors: unknown,
+): VSCodeTokenColor[] {
   if (!Array.isArray(tokenColors)) {
     return []
   }
@@ -283,11 +282,11 @@ function normalizeTokenColors(tokenColors: unknown): VSCodeTokenColor[] {
 
 /**
  * Normalize token settings.
- *
- * @param settings - The raw settings object
- * @returns Normalized VSCodeTokenSettings
  */
-function normalizeTokenSettings(settings: unknown): VSCodeTokenSettings {
+function normalizeTokenSettings(
+  /** The raw settings object */
+  settings: unknown,
+): VSCodeTokenSettings {
   if (settings === null || typeof settings !== "object") {
     return {}
   }
@@ -310,11 +309,9 @@ function normalizeTokenSettings(settings: unknown): VSCodeTokenSettings {
 
 /**
  * Normalize semantic token colors.
- *
- * @param semanticTokenColors - The raw semanticTokenColors object
- * @returns Normalized record of semantic token colors
  */
 function normalizeSemanticTokenColors(
+  /** The raw semanticTokenColors object */
   semanticTokenColors: unknown,
 ): Record<string, VSCodeTokenSettings | string> {
   if (
@@ -369,15 +366,14 @@ export function getTokenColorsForScope(theme: VSCodeTheme, scope: string): VSCod
 
 /**
  * Check if a scope matches a pattern.
- *
- * TextMate scopes use a hierarchical matching system where
- * "source.js" matches "source.js.jsx" and "source.js".
- *
- * @param scope - The scope to check
- * @param pattern - The pattern to match against
- * @returns true if the scope matches the pattern
+ * TextMate scopes use a hierarchical matching system where "source.js" matches "source.js.jsx" and "source.js".
  */
-function scopeMatches(scope: string, pattern: string): boolean {
+function scopeMatches(
+  /** The scope to check */
+  scope: string,
+  /** The pattern to match against */
+  pattern: string,
+): boolean {
   // Exact match
   if (scope === pattern) return true
 

@@ -409,12 +409,13 @@ export function applyThemeToElement(element: HTMLElement, theme: VSCodeTheme): v
 
 /**
  * Get the first available color from a list of keys.
- *
- * @param theme - The theme to search
- * @param keys - Keys to try in order
- * @returns The first found color or undefined
  */
-function getFirstColor(theme: VSCodeTheme, keys: string[]): string | undefined {
+function getFirstColor(
+  /** The theme to search */
+  theme: VSCodeTheme,
+  /** Keys to try in order */
+  keys: string[],
+): string | undefined {
   for (const key of keys) {
     const color = theme.colors[key]
     if (color) {
@@ -426,11 +427,11 @@ function getFirstColor(theme: VSCodeTheme, keys: string[]): string | undefined {
 
 /**
  * Get default CSS variable values based on theme type.
- *
- * @param isDark - Whether the theme is dark
- * @returns Default CSS variables
  */
-function getDefaultCSSVariables(isDark: boolean): CSSVariables {
+function getDefaultCSSVariables(
+  /** Whether the theme is dark */
+  isDark: boolean,
+): CSSVariables {
   if (isDark) {
     return {
       "--background": "#1e1e1e",
@@ -504,12 +505,13 @@ function getDefaultCSSVariables(isDark: boolean): CSSVariables {
 
 /**
  * Adjust the brightness of a hex color.
- *
- * @param hex - The hex color to adjust
- * @param amount - Amount to adjust (-1 to 1, negative = darker, positive = lighter)
- * @returns Adjusted hex color
  */
-function adjustColorBrightness(hex: string, amount: number): string {
+function adjustColorBrightness(
+  /** The hex color to adjust */
+  hex: string,
+  /** Amount to adjust (-1 to 1, negative = darker, positive = lighter) */
+  amount: number,
+): string {
   // Remove # if present
   const cleanHex = hex.replace("#", "")
 
@@ -532,7 +534,7 @@ function adjustColorBrightness(hex: string, amount: number): string {
     return hex
   }
 
-  // Adjust brightness
+  /** Adjust a single color channel to the new brightness level */
   const adjust = (value: number): number => {
     const adjusted = Math.round(value + 255 * amount)
     return Math.max(0, Math.min(255, adjusted))
@@ -542,7 +544,7 @@ function adjustColorBrightness(hex: string, amount: number): string {
   const newG = adjust(g)
   const newB = adjust(b)
 
-  // Convert back to hex
+  /** Convert a single color channel to 2-digit hex */
   const toHex = (n: number): string => n.toString(16).padStart(2, "0")
   return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`
 }
