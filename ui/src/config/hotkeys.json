@@ -135,7 +135,7 @@
     },
     "newChat": {
       "modifiers": ["cmd"],
-      "key": "n",
+      "key": "Backspace",
       "description": "New chat",
       "category": "Chat"
     },
