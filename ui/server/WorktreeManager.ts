@@ -21,6 +21,26 @@ export interface MergeResult {
 }
 
 /**
+ * Status of a worktree's integrity.
+ */
+export interface WorktreeStatus {
+  /** Does the worktree directory exist on disk? */
+  directoryExists: boolean
+
+  /** Is the worktree registered with git? */
+  gitRegistered: boolean
+
+  /** Does the branch exist? */
+  branchExists: boolean
+
+  /** Is the worktree valid and usable? */
+  isValid: boolean
+
+  /** Human-readable status message */
+  message: string
+}
+
+/**
  * Manages git worktrees for concurrent Ralph instances.
  *
  * Each Ralph instance gets its own worktree in a sibling folder,
@@ -321,6 +341,149 @@ export class WorktreeManager {
       return stats.isDirectory()
     } catch {
       return false
+    }
+  }
+
+  /**
+   * Validate a worktree and return its status.
+   *
+   * This detects cases where:
+   * - The worktree directory was externally deleted
+   * - The worktree is no longer registered with git
+   * - The branch was deleted
+   *
+   * @param instanceId - The instance ID
+   * @param instanceName - The instance name
+   * @returns Status information about the worktree
+   */
+  async validate(instanceId: string, instanceName: string): Promise<WorktreeStatus> {
+    const worktreePath = this.getWorktreePath(instanceId, instanceName)
+    const branchName = this.getBranchName(instanceId, instanceName)
+
+    // Check if directory exists
+    let directoryExists = false
+    try {
+      const stats = await stat(worktreePath)
+      directoryExists = stats.isDirectory()
+    } catch {
+      directoryExists = false
+    }
+
+    // Check if git has the worktree registered
+    let gitRegistered = false
+    try {
+      const output = await this.git(["worktree", "list", "--porcelain"])
+      // Git stores the path, possibly with symlinks resolved (e.g. /private/var on macOS)
+      // We need to check both the original path and all resolved variants
+      const pathsToCheck = [worktreePath]
+
+      // On macOS, /var is a symlink to /private/var, and /tmp is a symlink to /private/tmp
+      // Git may store either version, so check both
+      if (worktreePath.startsWith("/var/")) {
+        pathsToCheck.push("/private" + worktreePath)
+      } else if (worktreePath.startsWith("/tmp/")) {
+        pathsToCheck.push("/private" + worktreePath)
+      }
+
+      if (directoryExists) {
+        try {
+          const resolved = await realpath(worktreePath)
+          if (!pathsToCheck.includes(resolved)) {
+            pathsToCheck.push(resolved)
+          }
+        } catch {
+          // Ignore realpath errors
+        }
+      }
+
+      gitRegistered = pathsToCheck.some(p => output.includes(`worktree ${p}`))
+    } catch {
+      gitRegistered = false
+    }
+
+    // Check if the branch exists
+    let branchExists = false
+    try {
+      await this.git(["show-ref", "--verify", "--quiet", `refs/heads/${branchName}`])
+      branchExists = true
+    } catch {
+      branchExists = false
+    }
+
+    // Determine overall validity and message
+    const isValid = directoryExists && gitRegistered && branchExists
+
+    let message: string
+    if (isValid) {
+      message = "Worktree is valid and ready"
+    } else if (!directoryExists && !gitRegistered && !branchExists) {
+      // Nothing exists - worktree was never created or fully cleaned up
+      message = "Worktree does not exist"
+    } else if (!directoryExists && gitRegistered) {
+      message =
+        "Worktree directory was externally deleted. Run prune() to clean up, or recreate the worktree."
+    } else if (directoryExists && !gitRegistered) {
+      message = "Worktree directory exists but is not registered with git. It may have been pruned."
+    } else if (!branchExists) {
+      message = "Worktree branch was deleted. The worktree may be unusable."
+    } else {
+      message = "Worktree is in an unknown state"
+    }
+
+    return {
+      directoryExists,
+      gitRegistered,
+      branchExists,
+      isValid,
+      message,
+    }
+  }
+
+  /**
+   * Recreate a worktree that was externally deleted.
+   *
+   * If the branch still exists, recreates the worktree pointing to that branch.
+   * If the branch was also deleted, creates a fresh worktree with a new branch.
+   *
+   * @param instanceId - The instance ID
+   * @param instanceName - The instance name
+   * @returns Info about the recreated worktree
+   * @throws Error if worktree already exists and is valid
+   */
+  async recreate(instanceId: string, instanceName: string): Promise<WorktreeInfo> {
+    const status = await this.validate(instanceId, instanceName)
+    const worktreePath = this.getWorktreePath(instanceId, instanceName)
+    const branchName = this.getBranchName(instanceId, instanceName)
+
+    // If the worktree is fully valid, don't recreate
+    if (status.isValid) {
+      throw new Error(
+        `Worktree for ${instanceName}-${instanceId} is already valid. No need to recreate.`,
+      )
+    }
+
+    // If git still has the worktree registered (but directory is gone), prune first
+    if (status.gitRegistered && !status.directoryExists) {
+      await this.prune()
+    }
+
+    // Ensure the worktrees base directory exists
+    await this.ensureWorktreesDirectory()
+
+    // Recreate the worktree
+    if (status.branchExists) {
+      // Branch exists, just create the worktree pointing to it
+      await this.git(["worktree", "add", worktreePath, branchName])
+    } else {
+      // Branch is gone too, create fresh with new branch
+      await this.git(["worktree", "add", worktreePath, "-b", branchName])
+    }
+
+    return {
+      path: worktreePath,
+      branch: branchName,
+      instanceId,
+      instanceName,
     }
   }
 

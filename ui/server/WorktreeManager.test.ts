@@ -319,4 +319,122 @@ describe("WorktreeManager", () => {
       expect(result.hadConflicts).toBe(true)
     })
   })
+
+  describe("validate", () => {
+    it("returns valid status for existing worktree", async () => {
+      await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      const status = await manager.validate("abc123", "alice")
+
+      expect(status.directoryExists).toBe(true)
+      expect(status.gitRegistered).toBe(true)
+      expect(status.branchExists).toBe(true)
+      expect(status.isValid).toBe(true)
+      expect(status.message).toBe("Worktree is valid and ready")
+    })
+
+    it("returns invalid status for non-existent worktree", async () => {
+      const status = await manager.validate("nonexistent", "test")
+
+      expect(status.directoryExists).toBe(false)
+      expect(status.gitRegistered).toBe(false)
+      expect(status.branchExists).toBe(false)
+      expect(status.isValid).toBe(false)
+      expect(status.message).toBe("Worktree does not exist")
+    })
+
+    it("detects externally deleted worktree directory", async () => {
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Externally delete the directory (simulating manual deletion)
+      await rm(info.path, { recursive: true, force: true })
+
+      const status = await manager.validate("abc123", "alice")
+
+      expect(status.directoryExists).toBe(false)
+      expect(status.gitRegistered).toBe(true) // Git still knows about it
+      expect(status.branchExists).toBe(true) // Branch still exists
+      expect(status.isValid).toBe(false)
+      expect(status.message).toContain("externally deleted")
+    })
+
+    it("detects missing branch", async () => {
+      await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Remove the worktree and delete the branch
+      await manager.remove("abc123", "alice", true)
+
+      const status = await manager.validate("abc123", "alice")
+
+      expect(status.branchExists).toBe(false)
+      expect(status.isValid).toBe(false)
+    })
+  })
+
+  describe("recreate", () => {
+    it("recreates worktree after external deletion (branch exists)", async () => {
+      const originalInfo = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Make a commit so we can verify it's preserved
+      await git(originalInfo.path, ["commit", "--allow-empty", "-m", "Alice's work"])
+
+      // Externally delete the directory
+      await rm(originalInfo.path, { recursive: true, force: true })
+
+      // Recreate the worktree
+      const newInfo = await manager.recreate("abc123", "alice")
+
+      expect(newInfo.path).toBe(originalInfo.path)
+      expect(newInfo.branch).toBe(originalInfo.branch)
+
+      // Verify it's valid now
+      const status = await manager.validate("abc123", "alice")
+      expect(status.isValid).toBe(true)
+
+      // Verify the commit is still there (branch was preserved)
+      const log = await git(newInfo.path, ["log", "--oneline"])
+      expect(log).toContain("Alice's work")
+    })
+
+    it("recreates worktree with new branch if branch was deleted", async () => {
+      const originalInfo = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Remove the worktree AND delete the branch
+      await manager.remove("abc123", "alice", true)
+
+      // Recreate the worktree (will create new branch)
+      const newInfo = await manager.recreate("abc123", "alice")
+
+      expect(newInfo.path).toBe(originalInfo.path)
+      expect(newInfo.branch).toBe(originalInfo.branch)
+
+      // Verify it's valid now
+      const status = await manager.validate("abc123", "alice")
+      expect(status.isValid).toBe(true)
+    })
+
+    it("throws if worktree is already valid", async () => {
+      await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      await expect(manager.recreate("abc123", "alice")).rejects.toThrow("already valid")
+    })
+  })
 })
