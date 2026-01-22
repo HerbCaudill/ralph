@@ -4,11 +4,18 @@ import { readFileSync } from "fs"
 import { EventDisplay } from "./EventDisplay.js"
 import { FullScreenLayout, useContentHeight } from "./FullScreenLayout.js"
 
-export const ReplayLog = ({ filePath }: Props) => {
+export const ReplayLog = ({
+  /** The path to the replay log file */
+  filePath,
+}: Props) => {
   const { exit } = useApp()
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const [error, setError] = useState<string>()
 
+  /**
+   * Load and parse the replay log file on mount.
+   * Parses pretty-printed JSON objects separated by blank lines.
+   */
   useEffect(() => {
     try {
       const content = readFileSync(filePath, "utf-8")
