@@ -2,25 +2,8 @@ import { useEffect, useCallback } from "react"
 import { useAppStore, selectTheme } from "@/store"
 import type { Theme } from "@/types"
 
-// Constants
-
 /** localStorage key for persisting theme preference */
 const THEME_STORAGE_KEY = "ralph-ui-theme"
-
-// Types
-
-export interface UseThemeReturn {
-  /** Current theme setting ("system", "light", or "dark") */
-  theme: Theme
-  /** Resolved theme based on system preference when theme is "system" */
-  resolvedTheme: "light" | "dark"
-  /** Set the theme preference */
-  setTheme: (theme: Theme) => void
-  /** Toggle between light and dark (or system -> light -> dark -> system) */
-  cycleTheme: () => void
-}
-
-// Helper Functions
 
 /**
  * Gets the system color scheme preference
@@ -60,8 +43,6 @@ export function getStoredTheme(): Theme {
 function saveTheme(theme: Theme) {
   localStorage.setItem(THEME_STORAGE_KEY, theme)
 }
-
-// Hook
 
 /**
  * Hook for managing light/dark theme with system preference support.
@@ -132,4 +113,15 @@ export function useTheme(): UseThemeReturn {
     setTheme,
     cycleTheme,
   }
+}
+
+export interface UseThemeReturn {
+  /** Current theme setting ("system", "light", or "dark") */
+  theme: Theme
+  /** Resolved theme based on system preference when theme is "system" */
+  resolvedTheme: "light" | "dark"
+  /** Set the theme preference */
+  setTheme: (theme: Theme) => void
+  /** Toggle between light and dark (or system -> light -> dark -> system) */
+  cycleTheme: () => void
 }

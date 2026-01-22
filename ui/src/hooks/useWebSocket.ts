@@ -1,93 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-export type ConnectionStatus = "disconnected" | "connecting" | "connected"
-
-export interface UseWebSocketOptions {
-  /**
-   * The WebSocket URL to connect to.
-   * Defaults to `ws://${window.location.host}/ws`.
-   */
-  url?: string
-
-  /**
-   * Whether to automatically connect on mount.
-   * @default true
-   */
-  autoConnect?: boolean
-
-  /**
-   * Whether to automatically reconnect on disconnection.
-   * @default true
-   */
-  autoReconnect?: boolean
-
-  /**
-   * Delay in milliseconds before attempting to reconnect.
-   * @default 1000
-   */
-  reconnectDelay?: number
-
-  /**
-   * Maximum number of reconnection attempts before giving up.
-   * Set to 0 for unlimited attempts.
-   * @default 0
-   */
-  maxReconnectAttempts?: number
-
-  /**
-   * Callback when a message is received.
-   */
-  onMessage?: (data: unknown) => void
-
-  /**
-   * Callback when the connection is established.
-   */
-  onConnect?: () => void
-
-  /**
-   * Callback when the connection is closed.
-   */
-  onDisconnect?: (event: CloseEvent) => void
-
-  /**
-   * Callback when a connection error occurs.
-   */
-  onError?: (error: Event) => void
-}
-
-export interface UseWebSocketReturn {
-  /**
-   * Current connection status.
-   */
-  status: ConnectionStatus
-
-  /**
-   * Whether the connection is currently open.
-   */
-  isConnected: boolean
-
-  /**
-   * Send a message through the WebSocket.
-   * The message will be JSON-stringified if it's not already a string.
-   */
-  send: (message: unknown) => void
-
-  /**
-   * Manually connect to the WebSocket server.
-   */
-  connect: () => void
-
-  /**
-   * Manually disconnect from the WebSocket server.
-   */
-  disconnect: () => void
-
-  /**
-   * Number of reconnection attempts made.
-   */
-  reconnectAttempts: number
-}
-
+/**
+ * Get the default WebSocket URL based on current window location
+ */
 function getDefaultUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
   return `${protocol}//${window.location.host}/ws`
@@ -255,4 +170,92 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     disconnect,
     reconnectAttempts,
   }
+}
+
+export type ConnectionStatus = "disconnected" | "connecting" | "connected"
+
+export interface UseWebSocketOptions {
+  /**
+   * The WebSocket URL to connect to.
+   * Defaults to `ws://${window.location.host}/ws`.
+   */
+  url?: string
+
+  /**
+   * Whether to automatically connect on mount.
+   * @default true
+   */
+  autoConnect?: boolean
+
+  /**
+   * Whether to automatically reconnect on disconnection.
+   * @default true
+   */
+  autoReconnect?: boolean
+
+  /**
+   * Delay in milliseconds before attempting to reconnect.
+   * @default 1000
+   */
+  reconnectDelay?: number
+
+  /**
+   * Maximum number of reconnection attempts before giving up.
+   * Set to 0 for unlimited attempts.
+   * @default 0
+   */
+  maxReconnectAttempts?: number
+
+  /**
+   * Callback when a message is received.
+   */
+  onMessage?: (data: unknown) => void
+
+  /**
+   * Callback when the connection is established.
+   */
+  onConnect?: () => void
+
+  /**
+   * Callback when the connection is closed.
+   */
+  onDisconnect?: (event: CloseEvent) => void
+
+  /**
+   * Callback when a connection error occurs.
+   */
+  onError?: (error: Event) => void
+}
+
+export interface UseWebSocketReturn {
+  /**
+   * Current connection status.
+   */
+  status: ConnectionStatus
+
+  /**
+   * Whether the connection is currently open.
+   */
+  isConnected: boolean
+
+  /**
+   * Send a message through the WebSocket.
+   * The message will be JSON-stringified if it's not already a string.
+   */
+  send: (message: unknown) => void
+
+  /**
+   * Manually connect to the WebSocket server.
+   */
+  connect: () => void
+
+  /**
+   * Manually disconnect from the WebSocket server.
+   */
+  disconnect: () => void
+
+  /**
+   * Number of reconnection attempts made.
+   */
+  reconnectAttempts: number
 }

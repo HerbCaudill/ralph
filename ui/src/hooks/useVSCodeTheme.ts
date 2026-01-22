@@ -1,69 +1,10 @@
-/**
- * Hook for managing VS Code themes in ralph-ui.
- *
- * This hook provides:
- * - Fetching available VS Code themes from the API
- * - Auto-applying the current VS Code theme on mount
- * - Theme switching with CSS variable application
- * - Preview on hover functionality for theme picker
- * - Loading a theme into Shiki for code highlighting
- */
-
 import { useState, useEffect, useCallback, useRef } from "react"
 import type { ThemeMeta, AppTheme } from "@/lib/theme"
 import { loadTheme, applyThemeToElement } from "@/lib/theme"
 import type { CSSVariables } from "@/lib/theme/mapper"
 
-// localStorage key for persisting VS Code theme preference
+/** localStorage key for persisting VS Code theme preference */
 const VSCODE_THEME_STORAGE_KEY = "ralph-ui-vscode-theme"
-
-// Types
-
-export interface ThemeListResponse {
-  ok: boolean
-  themes: ThemeMeta[]
-  currentTheme: string | null
-  variant: string | null
-  error?: string
-}
-
-export interface ThemeDetailResponse {
-  ok: boolean
-  theme?: AppTheme
-  cssVariables?: CSSVariables
-  error?: string
-}
-
-export interface UseVSCodeThemeReturn {
-  /** List of available VS Code themes */
-  themes: ThemeMeta[]
-  /** Currently active theme (null if using default) */
-  activeTheme: AppTheme | null
-  /** Theme ID of the currently active theme */
-  activeThemeId: string | null
-  /** The current VS Code theme name (from VS Code settings) */
-  currentVSCodeTheme: string | null
-  /** VS Code variant name (e.g., "VS Code", "VS Code Insiders", "Cursor") */
-  variant: string | null
-  /** Loading state for theme list */
-  isLoadingList: boolean
-  /** Loading state for theme details */
-  isLoadingTheme: boolean
-  /** Error message if any operation failed */
-  error: string | null
-  /** Fetch the list of available themes */
-  fetchThemes: () => Promise<void>
-  /** Apply a theme by ID */
-  applyTheme: (themeId: string) => Promise<void>
-  /** Preview a theme (temporary application without saving) */
-  previewTheme: (themeId: string) => Promise<void>
-  /** Clear the preview and restore the active theme */
-  clearPreview: () => void
-  /** Reset to the default theme (clear VS Code theme) */
-  resetToDefault: () => void
-}
-
-// Helper Functions
 
 /**
  * Get the stored VS Code theme ID from localStorage
@@ -153,8 +94,6 @@ function clearCSSVariables(): void {
     style.removeProperty(name)
   }
 }
-
-// Hook
 
 /**
  * Hook for managing VS Code themes.
@@ -416,4 +355,48 @@ export function useVSCodeTheme(): UseVSCodeThemeReturn {
     clearPreview,
     resetToDefault,
   }
+}
+
+export interface ThemeListResponse {
+  ok: boolean
+  themes: ThemeMeta[]
+  currentTheme: string | null
+  variant: string | null
+  error?: string
+}
+
+export interface ThemeDetailResponse {
+  ok: boolean
+  theme?: AppTheme
+  cssVariables?: CSSVariables
+  error?: string
+}
+
+export interface UseVSCodeThemeReturn {
+  /** List of available VS Code themes */
+  themes: ThemeMeta[]
+  /** Currently active theme (null if using default) */
+  activeTheme: AppTheme | null
+  /** Theme ID of the currently active theme */
+  activeThemeId: string | null
+  /** The current VS Code theme name (from VS Code settings) */
+  currentVSCodeTheme: string | null
+  /** VS Code variant name (e.g., "VS Code", "VS Code Insiders", "Cursor") */
+  variant: string | null
+  /** Loading state for theme list */
+  isLoadingList: boolean
+  /** Loading state for theme details */
+  isLoadingTheme: boolean
+  /** Error message if any operation failed */
+  error: string | null
+  /** Fetch the list of available themes */
+  fetchThemes: () => Promise<void>
+  /** Apply a theme by ID */
+  applyTheme: (themeId: string) => Promise<void>
+  /** Preview a theme (temporary application without saving) */
+  previewTheme: (themeId: string) => Promise<void>
+  /** Clear the preview and restore the active theme */
+  clearPreview: () => void
+  /** Reset to the default theme (clear VS Code theme) */
+  resetToDefault: () => void
 }
