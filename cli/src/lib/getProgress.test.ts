@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { getProgress, captureStartupSnapshot } from "./getProgress.js"
+import { getProgress } from "./getProgress.js"
+import { captureStartupSnapshot } from "./captureStartupSnapshot.js"
 import * as fs from "fs"
 import * as child_process from "child_process"
 
