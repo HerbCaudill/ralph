@@ -226,18 +226,20 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
           role="log"
           aria-label="Event log"
         >
-          {events.length === 0 ?
-            <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-              No events in this log
-            </div>
-          : events.map((event, index) => (
-              <EventLogViewerEventItem
-                key={`${event.timestamp}-${index}`}
-                event={event}
-                toolResults={toolResults}
-              />
-            ))
-          }
+          <div className="mx-auto max-w-4xl">
+            {events.length === 0 ?
+              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                No events in this log
+              </div>
+            : events.map((event, index) => (
+                <EventLogViewerEventItem
+                  key={`${event.timestamp}-${index}`}
+                  event={event}
+                  toolResults={toolResults}
+                />
+              ))
+            }
+          </div>
         </div>
 
         {!isAtBottom && (

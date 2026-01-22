@@ -145,31 +145,33 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
         aria-label="Event stream"
         aria-live="polite"
       >
-        {allEvents.length === 0 ?
-          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-            No events yet
-          </div>
-        : <>
-            {displayedEvents.map((event, index) => (
-              <EventStreamEventItem
-                key={`${event.timestamp}-${index}`}
-                event={event}
-                toolResults={toolResults}
-                hasStructuredLifecycleEvents={hasStructuredLifecycleEvents}
-              />
-            ))}
-            {streamingMessage && <StreamingContentRenderer message={streamingMessage} />}
-            {isRunning && isViewingLatest && (
-              <div
-                className="flex items-center justify-start px-4 py-4"
-                aria-label="Ralph is running"
-                data-testid="ralph-running-spinner"
-              >
-                <TopologySpinner />
-              </div>
-            )}
-          </>
-        }
+        <div className="mx-auto max-w-4xl">
+          {allEvents.length === 0 ?
+            <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+              No events yet
+            </div>
+          : <>
+              {displayedEvents.map((event, index) => (
+                <EventStreamEventItem
+                  key={`${event.timestamp}-${index}`}
+                  event={event}
+                  toolResults={toolResults}
+                  hasStructuredLifecycleEvents={hasStructuredLifecycleEvents}
+                />
+              ))}
+              {streamingMessage && <StreamingContentRenderer message={streamingMessage} />}
+              {isRunning && isViewingLatest && (
+                <div
+                  className="flex items-center justify-start px-4 py-4"
+                  aria-label="Ralph is running"
+                  data-testid="ralph-running-spinner"
+                >
+                  <TopologySpinner />
+                </div>
+              )}
+            </>
+          }
+        </div>
       </div>
 
       <ScrollToBottomButton
