@@ -18,6 +18,8 @@ export interface MergeResult {
   success: boolean
   hadConflicts: boolean
   message: string
+  /** Files with merge conflicts (only populated when hadConflicts is true) */
+  conflictedFiles?: string[]
 }
 
 export interface CleanupResult {
@@ -167,10 +169,13 @@ export class WorktreeManager {
 
       // Check if it's a merge conflict
       if (errorMessage.includes("CONFLICT") || errorMessage.includes("Automatic merge failed")) {
+        // Get list of conflicted files
+        const conflictedFiles = await this.getConflictedFiles()
         return {
           success: false,
           hadConflicts: true,
           message: `Merge conflicts detected in ${branchName}`,
+          conflictedFiles,
         }
       }
 
@@ -639,6 +644,103 @@ export class WorktreeManager {
       branch: branchName,
       instanceId,
       instanceName,
+    }
+  }
+
+  /**
+   * Get list of files with merge conflicts in the main workspace.
+   *
+   * @returns Array of file paths with conflicts, empty if no conflicts
+   */
+  async getConflictedFiles(): Promise<string[]> {
+    try {
+      // git diff --name-only --diff-filter=U lists unmerged files
+      const output = await this.git(["diff", "--name-only", "--diff-filter=U"])
+      return output
+        .split("\n")
+        .map(f => f.trim())
+        .filter(Boolean)
+    } catch {
+      return []
+    }
+  }
+
+  /**
+   * Check if the main workspace is currently in a merge state.
+   *
+   * @returns true if a merge is in progress
+   */
+  async isMergeInProgress(): Promise<boolean> {
+    try {
+      // Check for MERGE_HEAD which exists during a merge
+      await this.git(["rev-parse", "--verify", "MERGE_HEAD"])
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Abort an in-progress merge in the main workspace.
+   *
+   * @throws Error if no merge is in progress
+   */
+  async abortMerge(): Promise<void> {
+    await this.git(["merge", "--abort"])
+  }
+
+  /**
+   * Mark a conflicted file as resolved after manual edits.
+   *
+   * @param filePath - Path to the file that was manually resolved
+   */
+  async markResolved(filePath: string): Promise<void> {
+    await this.git(["add", filePath])
+  }
+
+  /**
+   * Resolve a conflict by accepting one side's version.
+   *
+   * @param filePath - Path to the conflicted file
+   * @param strategy - "ours" to keep main's version, "theirs" to keep branch's version
+   */
+  async resolveConflict(filePath: string, strategy: "ours" | "theirs"): Promise<void> {
+    await this.git(["checkout", `--${strategy}`, filePath])
+    await this.git(["add", filePath])
+  }
+
+  /**
+   * Complete a merge after all conflicts have been resolved.
+   *
+   * @returns Result of the merge completion
+   */
+  async completeMerge(): Promise<MergeResult> {
+    // Check if there are still unresolved conflicts
+    const conflictedFiles = await this.getConflictedFiles()
+    if (conflictedFiles.length > 0) {
+      return {
+        success: false,
+        hadConflicts: true,
+        message: `Cannot complete merge: ${conflictedFiles.length} file(s) still have conflicts`,
+        conflictedFiles,
+      }
+    }
+
+    try {
+      // Complete the merge with commit
+      await this.git(["commit", "--no-edit"])
+      return {
+        success: true,
+        hadConflicts: false,
+        message: "Merge completed successfully",
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      return {
+        success: false,
+        hadConflicts: false,
+        message: `Failed to complete merge: ${errorMessage}`,
+      }
     }
   }
 

@@ -269,8 +269,242 @@ describe("WorktreeManager", () => {
 
       expect(result.success).toBe(false)
       expect(result.hadConflicts).toBe(true)
+      expect(result.conflictedFiles).toBeDefined()
+      expect(result.conflictedFiles).toContain("test.txt")
 
       // Clean up the merge state
+      await git(mainWorkspace, ["merge", "--abort"])
+    })
+  })
+
+  describe("merge conflict handling", () => {
+    it("getConflictedFiles returns empty array when no conflicts", async () => {
+      const conflictedFiles = await manager.getConflictedFiles()
+      expect(conflictedFiles).toEqual([])
+    })
+
+    it("getConflictedFiles returns conflicted file paths during merge", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Create conflicting changes
+      const { writeFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Try to merge
+      await manager.merge("abc123", "alice")
+
+      // Get conflicted files
+      const conflictedFiles = await manager.getConflictedFiles()
+      expect(conflictedFiles).toContain("conflict.txt")
+
+      // Clean up
+      await git(mainWorkspace, ["merge", "--abort"])
+    })
+
+    it("isMergeInProgress returns false when no merge is active", async () => {
+      const inProgress = await manager.isMergeInProgress()
+      expect(inProgress).toBe(false)
+    })
+
+    it("isMergeInProgress returns true during merge conflict", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Create conflicting changes
+      const { writeFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Try to merge (will fail with conflicts)
+      await manager.merge("abc123", "alice")
+
+      // Check that merge is in progress
+      const inProgress = await manager.isMergeInProgress()
+      expect(inProgress).toBe(true)
+
+      // Clean up
+      await git(mainWorkspace, ["merge", "--abort"])
+    })
+
+    it("abortMerge cancels an in-progress merge", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Create conflicting changes
+      const { writeFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Try to merge (will fail with conflicts)
+      await manager.merge("abc123", "alice")
+
+      // Abort the merge
+      await manager.abortMerge()
+
+      // Verify merge is no longer in progress
+      const inProgress = await manager.isMergeInProgress()
+      expect(inProgress).toBe(false)
+    })
+
+    it("resolveConflict with 'ours' keeps main version", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Create conflicting changes
+      const { writeFile, readFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Try to merge (will fail with conflicts)
+      await manager.merge("abc123", "alice")
+
+      // Resolve using "ours" (main's version)
+      await manager.resolveConflict("conflict.txt", "ours")
+
+      // Complete the merge
+      const result = await manager.completeMerge()
+      expect(result.success).toBe(true)
+
+      // Verify content is main's version
+      const content = await readFile(join(mainWorkspace, "conflict.txt"), "utf-8")
+      expect(content).toBe("main content")
+    })
+
+    it("resolveConflict with 'theirs' keeps branch version", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Create conflicting changes
+      const { writeFile, readFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Try to merge (will fail with conflicts)
+      await manager.merge("abc123", "alice")
+
+      // Resolve using "theirs" (alice's version)
+      await manager.resolveConflict("conflict.txt", "theirs")
+
+      // Complete the merge
+      const result = await manager.completeMerge()
+      expect(result.success).toBe(true)
+
+      // Verify content is alice's version
+      const content = await readFile(join(mainWorkspace, "conflict.txt"), "utf-8")
+      expect(content).toBe("alice content")
+    })
+
+    it("markResolved stages a manually resolved file", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Create conflicting changes
+      const { writeFile, readFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Try to merge (will fail with conflicts)
+      await manager.merge("abc123", "alice")
+
+      // Manually resolve by writing merged content
+      await writeFile(join(mainWorkspace, "conflict.txt"), "merged content")
+
+      // Mark as resolved
+      await manager.markResolved("conflict.txt")
+
+      // Complete the merge
+      const result = await manager.completeMerge()
+      expect(result.success).toBe(true)
+
+      // Verify content is the merged content
+      const content = await readFile(join(mainWorkspace, "conflict.txt"), "utf-8")
+      expect(content).toBe("merged content")
+    })
+
+    it("completeMerge fails when conflicts remain", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Create conflicting changes
+      const { writeFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Try to merge (will fail with conflicts)
+      await manager.merge("abc123", "alice")
+
+      // Try to complete without resolving
+      const result = await manager.completeMerge()
+      expect(result.success).toBe(false)
+      expect(result.hadConflicts).toBe(true)
+      expect(result.conflictedFiles).toContain("conflict.txt")
+
+      // Clean up
       await git(mainWorkspace, ["merge", "--abort"])
     })
   })
