@@ -414,6 +414,8 @@ export interface AppActions {
   createInstance: (id: string, name?: string, agentName?: string) => void
   /** Remove an instance from the instances Map (cannot remove the active instance) */
   removeInstance: (instanceId: string) => void
+  /** Clean up runtime state for an instance when it exits/stops (events, token usage, etc.) */
+  cleanupInstance: (instanceId: string) => void
 
   // Reset
   reset: () => void
@@ -1072,6 +1074,49 @@ export const useAppStore = create<AppState & AppActions>(set => ({
 
       const updatedInstances = new Map(state.instances)
       updatedInstances.delete(instanceId)
+
+      return {
+        instances: updatedInstances,
+      }
+    }),
+
+  cleanupInstance: instanceId =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(`[store] Cannot cleanup non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      // Reset instance runtime state while preserving identity
+      const cleanedInstance: RalphInstance = {
+        ...instance,
+        status: "stopped",
+        events: [],
+        tokenUsage: { input: 0, output: 0 },
+        contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+        iteration: { current: 0, total: 0 },
+        runStartedAt: null,
+        currentTaskId: null,
+      }
+
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, cleanedInstance)
+
+      // If cleaning up the active instance, also update flat fields for backward compatibility
+      if (state.activeInstanceId === instanceId) {
+        return {
+          instances: updatedInstances,
+          ralphStatus: "stopped" as const,
+          events: [],
+          tokenUsage: { input: 0, output: 0 },
+          contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+          iteration: { current: 0, total: 0 },
+          runStartedAt: null,
+          initialTaskCount: null,
+          viewingIterationIndex: null,
+        }
+      }
 
       return {
         instances: updatedInstances,

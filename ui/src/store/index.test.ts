@@ -739,6 +739,176 @@ describe("useAppStore", () => {
     })
   })
 
+  describe("cleanupInstance action", () => {
+    beforeEach(() => {
+      // Create additional instances for testing
+      useAppStore.getState().createInstance("instance-1", "First")
+      useAppStore.getState().createInstance("instance-2", "Second")
+      // Set instance-1 as active
+      useAppStore.getState().setActiveInstanceId("instance-1")
+    })
+
+    it("resets instance runtime state to initial values", () => {
+      // Set up some state on instance-1
+      const state = useAppStore.getState()
+      const instance = state.instances.get("instance-1")!
+      const updatedInstance = {
+        ...instance,
+        status: "running" as const,
+        events: [{ type: "test", timestamp: 123 }],
+        tokenUsage: { input: 1000, output: 500 },
+        contextWindow: { used: 50000, max: 200000 },
+        iteration: { current: 3, total: 5 },
+        runStartedAt: Date.now(),
+        currentTaskId: "task-123",
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-1", updatedInstance)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Cleanup the instance
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      // Verify state was reset
+      const newState = useAppStore.getState()
+      const cleanedInstance = newState.instances.get("instance-1")
+      expect(cleanedInstance?.status).toBe("stopped")
+      expect(cleanedInstance?.events).toEqual([])
+      expect(cleanedInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(cleanedInstance?.contextWindow.used).toBe(0)
+      expect(cleanedInstance?.iteration).toEqual({ current: 0, total: 0 })
+      expect(cleanedInstance?.runStartedAt).toBeNull()
+      expect(cleanedInstance?.currentTaskId).toBeNull()
+    })
+
+    it("preserves instance identity (id, name, agentName, createdAt)", () => {
+      const state = useAppStore.getState()
+      const instanceBefore = state.instances.get("instance-1")!
+
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      const instanceAfter = useAppStore.getState().instances.get("instance-1")
+      expect(instanceAfter?.id).toBe(instanceBefore.id)
+      expect(instanceAfter?.name).toBe(instanceBefore.name)
+      expect(instanceAfter?.agentName).toBe(instanceBefore.agentName)
+      expect(instanceAfter?.createdAt).toBe(instanceBefore.createdAt)
+    })
+
+    it("warns when cleaning up non-existent instance", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+      useAppStore.getState().cleanupInstance("non-existent")
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[store] Cannot cleanup non-existent instance: non-existent",
+      )
+      warnSpy.mockRestore()
+    })
+
+    it("updates flat fields when cleaning up the active instance", () => {
+      // Set up state on the active instance (instance-1)
+      useAppStore.getState().setRalphStatus("running")
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
+      useAppStore.getState().setTokenUsage({ input: 500, output: 250 })
+      useAppStore.getState().setContextWindow({ used: 25000, max: 200000 })
+      useAppStore.getState().setIteration({ current: 2, total: 4 })
+
+      // Cleanup the active instance
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      // Verify flat fields were also reset
+      const state = useAppStore.getState()
+      expect(state.ralphStatus).toBe("stopped")
+      expect(state.events).toEqual([])
+      expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(state.contextWindow.used).toBe(0)
+      expect(state.iteration).toEqual({ current: 0, total: 0 })
+      expect(state.runStartedAt).toBeNull()
+      expect(state.initialTaskCount).toBeNull()
+      expect(state.viewingIterationIndex).toBeNull()
+    })
+
+    it("does not affect flat fields when cleaning up a non-active instance", () => {
+      // Set up state on the active instance (instance-1)
+      useAppStore.getState().setRalphStatus("running")
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
+
+      // Set up state on instance-2
+      const state = useAppStore.getState()
+      const instance2 = state.instances.get("instance-2")!
+      const updatedInstance2 = {
+        ...instance2,
+        status: "running" as const,
+        events: [{ type: "test2", timestamp: 456 }],
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-2", updatedInstance2)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Cleanup instance-2 (non-active)
+      useAppStore.getState().cleanupInstance("instance-2")
+
+      // Verify flat fields were NOT affected
+      const newState = useAppStore.getState()
+      expect(newState.ralphStatus).toBe("running")
+      expect(newState.events).toHaveLength(1)
+    })
+
+    it("does not affect other instances when cleaning up one", () => {
+      // Set up state on instance-2
+      const state = useAppStore.getState()
+      const instance2 = state.instances.get("instance-2")!
+      const updatedInstance2 = {
+        ...instance2,
+        status: "running" as const,
+        events: [{ type: "test2", timestamp: 456 }],
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-2", updatedInstance2)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Cleanup instance-1 (active)
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      // Verify instance-2 was NOT affected
+      const newState = useAppStore.getState()
+      const stillInstance2 = newState.instances.get("instance-2")
+      expect(stillInstance2?.status).toBe("running")
+      expect(stillInstance2?.events).toHaveLength(1)
+    })
+
+    it("keeps instance in the Map after cleanup", () => {
+      const initialCount = useAppStore.getState().instances.size
+
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      expect(useAppStore.getState().instances.size).toBe(initialCount)
+      expect(useAppStore.getState().instances.has("instance-1")).toBe(true)
+    })
+
+    it("preserves worktreePath and branch during cleanup", () => {
+      // Set worktree and branch on instance
+      const state = useAppStore.getState()
+      const instance = state.instances.get("instance-1")!
+      const updatedInstance = {
+        ...instance,
+        worktreePath: "/path/to/worktree",
+        branch: "feature/test",
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-1", updatedInstance)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Cleanup
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      // Verify worktree and branch were preserved
+      const cleanedInstance = useAppStore.getState().instances.get("instance-1")
+      expect(cleanedInstance?.worktreePath).toBe("/path/to/worktree")
+      expect(cleanedInstance?.branch).toBe("feature/test")
+    })
+  })
+
   describe("flat field delegation to active instance", () => {
     it("setRalphStatus updates active instance status", () => {
       useAppStore.getState().setRalphStatus("running")
