@@ -26,12 +26,19 @@ import type { TaskCardTask, TaskGroup, TaskStatus } from "@/types"
  * - Each parent task sub-group is also collapsible independently
  */
 export function TaskList({
+  /** Array of tasks to display and organize */
   tasks,
+  /** Additional CSS classes to apply */
   className,
+  /** Callback when task status is changed */
   onStatusChange,
+  /** Callback when task is clicked */
   onTaskClick,
+  /** Default collapsed state for status groups */
   defaultCollapsed = {},
+  /** Whether to show empty status groups */
   showEmptyGroups = false,
+  /** Whether to persist collapsed state to localStorage */
   persistCollapsedState = true,
 }: TaskListProps) {
   const searchQuery = useAppStore(selectTaskSearchQuery)

@@ -364,14 +364,18 @@ export function TaskDetailsDialog({
     [handleAddLabel],
   )
 
-  // Focus label input when shown
+  /**
+   * Focuses the label input field when it becomes visible.
+   */
   useEffect(() => {
     if (showLabelInput && labelInputRef.current) {
       labelInputRef.current.focus()
     }
   }, [showLabelInput])
 
-  // Focus description textarea when entering edit mode
+  /**
+   * Focuses the description textarea when entering edit mode and moves cursor to the end.
+   */
   useEffect(() => {
     if (isEditingDescription && descriptionTextareaRef.current) {
       descriptionTextareaRef.current.focus()

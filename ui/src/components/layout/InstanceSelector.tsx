@@ -93,7 +93,9 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
         aria-haspopup="listbox"
         data-testid="instance-selector"
       >
-        {/* Status indicator */}
+        {/**
+         * Status indicator for active instance.
+         */}
         {activeInstance && (
           <span
             className={cn(
