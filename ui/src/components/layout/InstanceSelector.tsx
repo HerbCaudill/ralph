@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react"
-import { IconChevronDown, IconCheck, IconPlus } from "@tabler/icons-react"
+import { IconChevronDown, IconPlus } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { useAppStore, selectInstances, selectActiveInstanceId } from "@/store"
-import type { RalphInstance, RalphStatus } from "@/types"
+import type { RalphStatus } from "@/types"
 import { NewInstanceDialog } from "./NewInstanceDialog"
+import { InstanceOption } from "./InstanceOption"
 
 /**
  * Dropdown selector for switching between Ralph instances.
@@ -20,7 +21,9 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
   const activeInstance = instances.get(activeInstanceId)
   const instanceList = Array.from(instances.values())
 
-  // Close dropdown when clicking outside
+  /**
+   * Close dropdown when clicking outside.
+   */
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -63,9 +66,14 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
     },
   }
 
+  /**
+   * Get status configuration for the given status.
+   */
   const getStatusConfig = (status: RalphStatus) => statusConfig[status]
 
-  // Count running instances
+  /**
+   * Count running instances.
+   */
   const runningCount = instanceList.filter(
     i => i.status === "running" || i.status === "starting",
   ).length

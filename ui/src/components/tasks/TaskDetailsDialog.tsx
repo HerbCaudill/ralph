@@ -289,7 +289,9 @@ export function TaskDetailsDialog({
     }
   }, [task, onDelete, readOnly, onClose])
 
-  // Label handlers
+  /**
+   * Adds a new label to the task and clears the input field.
+   */
   const handleAddLabel = useCallback(async () => {
     if (!task || !newLabel.trim() || readOnly) return
 
@@ -316,6 +318,9 @@ export function TaskDetailsDialog({
     }
   }, [task, newLabel, readOnly])
 
+  /**
+   * Removes a label from the task with optimistic UI updates.
+   */
   const handleRemoveLabel = useCallback(
     async (labelToRemove: string) => {
       if (!task || readOnly) return
@@ -343,6 +348,9 @@ export function TaskDetailsDialog({
     [task, readOnly],
   )
 
+  /**
+   * Handles Enter and Escape keys in the label input field.
+   */
   const handleLabelInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
