@@ -1,15 +1,15 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { EventStream } from "./EventStream"
-import { useAppStore } from "@/store"
+import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
 import { TaskDialogProvider } from "@/contexts"
 
 // Helper to render EventStream with required providers
-function renderEventStream() {
+function renderEventStream(props?: { instanceId?: string; maxEvents?: number }) {
   const openTaskById = vi.fn()
   return render(
     <TaskDialogProvider openTaskById={openTaskById}>
-      <EventStream />
+      <EventStream {...props} />
     </TaskDialogProvider>,
   )
 }
@@ -743,6 +743,114 @@ describe("EventStream", () => {
     it("applies custom className", () => {
       const { container } = render(<EventStream className="custom-class" />)
       expect(container.firstChild).toHaveClass("custom-class")
+    })
+  })
+
+  describe("instanceId filtering", () => {
+    it("shows events from active instance when instanceId is not provided", () => {
+      // Add an event to the default/active instance
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000000,
+        message: "Active instance message",
+      })
+
+      renderEventStream()
+      expect(screen.getByText("Active instance message")).toBeInTheDocument()
+    })
+
+    it("shows events from specified instance when instanceId is provided", () => {
+      // Create a second instance
+      useAppStore.getState().createInstance("instance-2", "Second Instance")
+
+      // Add events to the second instance
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000000,
+        message: "Instance 2 message",
+      })
+
+      // Switch back to default instance
+      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
+
+      // Add an event to the default instance
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600001000,
+        message: "Default instance message",
+      })
+
+      // Render with instanceId pointing to instance-2
+      renderEventStream({ instanceId: "instance-2" })
+
+      // Should show instance-2's message
+      expect(screen.getByText("Instance 2 message")).toBeInTheDocument()
+      // Should NOT show default instance's message
+      expect(screen.queryByText("Default instance message")).not.toBeInTheDocument()
+    })
+
+    it("shows empty state when specified instance has no events", () => {
+      // Create a second instance (empty)
+      useAppStore.getState().createInstance("empty-instance", "Empty Instance")
+      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
+
+      // Add event to default instance
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000000,
+        message: "Default message",
+      })
+
+      // Render with instanceId pointing to the empty instance
+      renderEventStream({ instanceId: "empty-instance" })
+
+      // Should show empty state
+      expect(screen.getByText("No events yet")).toBeInTheDocument()
+      expect(screen.queryByText("Default message")).not.toBeInTheDocument()
+    })
+
+    it("shows status from specified instance when instanceId is provided", () => {
+      // Create a second instance
+      useAppStore.getState().createInstance("running-instance", "Running Instance")
+
+      // Add an event to make it non-empty
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000000,
+        message: "Test message",
+      })
+
+      // Set the second instance as running
+      useAppStore.getState().setRalphStatus("running")
+
+      // Switch back to default instance (which should be stopped)
+      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
+
+      // Render with instanceId pointing to the running instance
+      renderEventStream({ instanceId: "running-instance" })
+
+      // Should show the running spinner because we're viewing the running instance
+      expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
+    })
+
+    it("uses active instance events when instanceId is undefined", () => {
+      // Add events to default instance
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000000,
+        message: "First message",
+      })
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600001000,
+        message: "Second message",
+      })
+
+      // Render without instanceId (should use active instance)
+      renderEventStream({ instanceId: undefined })
+
+      expect(screen.getByText("First message")).toBeInTheDocument()
+      expect(screen.getByText("Second message")).toBeInTheDocument()
     })
   })
 

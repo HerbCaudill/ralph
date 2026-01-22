@@ -6,6 +6,8 @@ import {
   selectRalphStatus,
   selectViewingIterationIndex,
   selectTasks,
+  selectInstanceEvents,
+  selectInstanceStatus,
   getEventsForIteration,
   countIterations,
 } from "@/store"
@@ -23,14 +25,24 @@ import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton"
 /**
  * Scrollable container displaying real-time events from ralph.
  * Auto-scrolls to bottom, pauses on user interaction.
+ *
+ * When `instanceId` is provided, displays events from that specific instance.
+ * Otherwise, displays events from the currently active instance.
  */
-export function EventStream({ className, maxEvents = 1000 }: EventStreamProps) {
-  const allEvents = useAppStore(selectEvents)
+export function EventStream({ className, maxEvents = 1000, instanceId }: EventStreamProps) {
+  // When instanceId is provided, use instance-specific selectors
+  // Otherwise, use the default selectors that read from the active instance
+  const allEvents = useAppStore(state =>
+    instanceId ? selectInstanceEvents(state, instanceId) : selectEvents(state),
+  )
+  const ralphStatus = useAppStore(state =>
+    instanceId ? selectInstanceStatus(state, instanceId) : selectRalphStatus(state),
+  )
+
   const viewingIterationIndex = useAppStore(selectViewingIterationIndex)
   const goToPreviousIteration = useAppStore(state => state.goToPreviousIteration)
   const goToNextIteration = useAppStore(state => state.goToNextIteration)
   const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
-  const ralphStatus = useAppStore(selectRalphStatus)
   const tasks = useAppStore(selectTasks)
   const isRunning = ralphStatus === "running" || ralphStatus === "starting"
   const isViewingLatest = viewingIterationIndex === null
@@ -176,4 +188,9 @@ export type EventStreamProps = {
    * @default 1000
    */
   maxEvents?: number
+  /**
+   * Optional instance ID to display events from. When provided, shows events
+   * from the specified instance. When omitted, shows events from the active instance.
+   */
+  instanceId?: string
 }
