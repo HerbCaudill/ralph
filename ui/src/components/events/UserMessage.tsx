@@ -1,6 +1,10 @@
 import { cn } from "@/lib/utils"
 import type { UserMessageEvent } from "@/types"
 
+/**
+ * Renders a user-sent message in the event stream.
+ * Displays as a right-aligned bubble with muted background.
+ */
 export function UserMessage({ event, className }: Props) {
   return (
     <div className={cn("flex justify-end py-2 pr-4 pl-12", className)}>

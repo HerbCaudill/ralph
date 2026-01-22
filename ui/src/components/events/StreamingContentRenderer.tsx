@@ -1,6 +1,10 @@
 import { StreamingBlockRenderer } from "./StreamingBlockRenderer"
 import type { StreamingMessage } from "@/types"
 
+/**
+ * Renders all content blocks from a streaming message.
+ * Maps each block to a StreamingBlockRenderer for individual rendering.
+ */
 export function StreamingContentRenderer({ message }: Props) {
   return (
     <>

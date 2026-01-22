@@ -1,5 +1,9 @@
 import { cn } from "@/lib/utils"
 
+/**
+ * Renders a list of todo items with status indicators.
+ * Shows checkmarks for completed items, bullets for in-progress, and empty boxes for pending.
+ */
 export function TodoList({ todos, className }: Props) {
   return (
     <div className={cn("space-y-0.5", className)}>

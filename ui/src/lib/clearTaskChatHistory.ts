@@ -1,3 +1,6 @@
+/**
+ * Clear the task chat history by calling the server API.
+ */
 export async function clearTaskChatHistory(): Promise<{ ok: boolean; error?: string }> {
   try {
     const response = await fetch("/api/task-chat/clear", {

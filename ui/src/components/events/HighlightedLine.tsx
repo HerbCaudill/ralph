@@ -1,40 +1,12 @@
-import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
-import { highlight, getCurrentCustomThemeName } from "@/lib/theme/highlighter"
-import { useTheme } from "@/hooks/useTheme"
+import { useHighlightedCode } from "@/hooks/useHighlightedCode"
 
+/**
+ * Renders a single line of code with syntax highlighting based on the current theme.
+ * Uses the custom VS Code theme if configured, otherwise falls back to default themes.
+ */
 export function HighlightedLine({ content, language, className }: Props) {
-  const [html, setHtml] = useState<string>("")
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function doHighlight() {
-      try {
-        const themeName = getCurrentCustomThemeName()
-        const result = await highlight(content, language, {
-          theme: themeName ?? undefined,
-          isDark,
-        })
-        if (!cancelled) {
-          const match = result.match(/<code[^>]*>([\s\S]*?)<\/code>/)
-          setHtml(match ? match[1] : content)
-        }
-      } catch {
-        if (!cancelled) {
-          setHtml("")
-        }
-      }
-    }
-
-    doHighlight()
-
-    return () => {
-      cancelled = true
-    }
-  }, [content, language, isDark])
+  const html = useHighlightedCode(content, language)
 
   if (!html) {
     return <span className={cn("whitespace-pre", className)}>{content}</span>

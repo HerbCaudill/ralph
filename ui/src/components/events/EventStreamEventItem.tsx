@@ -15,6 +15,10 @@ import type {
   AssistantContentBlock,
 } from "@/types"
 
+/**
+ * Renders different types of Ralph events (user messages, task lifecycle events, assistant messages, errors).
+ * Routes each event type to the appropriate specialized component.
+ */
 export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycleEvents }: Props) {
   if (isUserMessageEvent(event)) {
     return <UserMessage event={event} />

@@ -5,6 +5,10 @@ import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
 import { unescapeJsonString } from "@/lib/unescapeJsonString"
 import type { AssistantTextEvent, StreamingContentBlock, ToolUseEvent } from "@/types"
 
+/**
+ * Renders a single streaming content block (text or tool use) from the Claude API.
+ * Handles parsing task lifecycle events from text and incomplete tool use JSON.
+ */
 export function StreamingBlockRenderer({ block, timestamp }: Props) {
   if (block.type === "text") {
     if (!block.text) return null
