@@ -505,10 +505,6 @@ export class RalphRegistry extends EventEmitter {
     return state.mergeConflict
   }
 
-  // ============================================================================
-  // Iteration State Persistence
-  // ============================================================================
-
   /**
    * Save the current iteration state for an instance.
    *
@@ -637,10 +633,6 @@ export class RalphRegistry extends EventEmitter {
 
     await Promise.all(savePromises)
   }
-
-  // ============================================================================
-  // End Iteration State Persistence
-  // ============================================================================
 
   /**
    * Dispose of an instance, stopping its RalphManager.
