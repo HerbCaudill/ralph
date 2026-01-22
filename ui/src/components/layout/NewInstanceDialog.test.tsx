@@ -6,13 +6,13 @@ import { useAppStore } from "@/store"
 
 // Mock fetch
 const mockFetch = vi.fn()
-global.fetch = mockFetch
 
 describe("NewInstanceDialog", () => {
   const mockOnOpenChange = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal("fetch", mockFetch)
     useAppStore.getState().reset()
     mockFetch.mockResolvedValue({
       ok: true,
@@ -31,6 +31,7 @@ describe("NewInstanceDialog", () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllGlobals()
   })
 
   describe("rendering", () => {
