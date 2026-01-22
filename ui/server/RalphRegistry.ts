@@ -5,6 +5,8 @@ import {
   type RalphEvent,
   type RalphStatus,
 } from "./RalphManager.js"
+import { type IterationStateStore, type PersistedIterationState } from "./IterationStateStore.js"
+import type { ConversationContext, ConversationMessage } from "./ClaudeAdapter.js"
 
 /**
  * Information about a merge conflict for an instance.
@@ -85,6 +87,188 @@ export interface RalphRegistryOptions {
 
   /** Maximum number of instances (0 = unlimited). Default: 10 */
   maxInstances?: number
+
+  /** Optional IterationStateStore for persisting iteration state */
+  iterationStateStore?: IterationStateStore
+}
+
+/**
+ * Convert RalphEvent[] to ConversationContext.
+ *
+ * This extracts conversation messages from the event stream to create
+ * a serializable context that can be persisted and restored.
+ *
+ * Event types handled:
+ * - user_message: User's input message
+ * - message: Assistant text response (from normalized events)
+ * - content_block_start/delta: Streaming text (accumulated into messages)
+ * - tool_use: Tool invocation
+ * - tool_result: Tool result
+ * - result: Final iteration result (contains usage stats)
+ */
+export function eventsToConversationContext(events: RalphEvent[]): ConversationContext {
+  const messages: ConversationMessage[] = []
+  let lastPrompt: string | undefined
+  let currentAssistantContent = ""
+  let currentAssistantTimestamp = 0
+  let currentToolUses: ConversationMessage["toolUses"] = []
+  const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+
+  for (const event of events) {
+    switch (event.type) {
+      case "user_message": {
+        // Flush any pending assistant message
+        if (currentAssistantContent || (currentToolUses && currentToolUses.length > 0)) {
+          messages.push({
+            role: "assistant",
+            content: currentAssistantContent,
+            timestamp: currentAssistantTimestamp || event.timestamp,
+            toolUses: currentToolUses.length > 0 ? currentToolUses : undefined,
+          })
+          currentAssistantContent = ""
+          currentAssistantTimestamp = 0
+          currentToolUses = []
+        }
+
+        // Add user message
+        const content = (event.message as string) || (event.content as string) || ""
+        if (content) {
+          messages.push({
+            role: "user",
+            content,
+            timestamp: event.timestamp,
+          })
+          lastPrompt = content
+        }
+        break
+      }
+
+      case "message": {
+        // Normalized message event from AgentAdapter
+        const content = (event.content as string) || ""
+        const isPartial = event.isPartial as boolean
+        if (!isPartial && content) {
+          currentAssistantContent = content
+          currentAssistantTimestamp = event.timestamp
+        } else if (isPartial) {
+          currentAssistantContent += content
+          if (!currentAssistantTimestamp) {
+            currentAssistantTimestamp = event.timestamp
+          }
+        }
+        break
+      }
+
+      case "content_block_start":
+      case "content_block_delta": {
+        // Streaming text from Claude SDK native events
+        const contentBlock = event.content_block as { type?: string; text?: string } | undefined
+        const delta = event.delta as { type?: string; text?: string } | undefined
+        if (contentBlock?.type === "text" || delta?.type === "text_delta") {
+          const text = contentBlock?.text || delta?.text || ""
+          currentAssistantContent += text
+          if (!currentAssistantTimestamp) {
+            currentAssistantTimestamp = event.timestamp
+          }
+        }
+        break
+      }
+
+      case "assistant": {
+        // Legacy event type for complete assistant message
+        const content = (event.content as string) || (event.text as string) || ""
+        if (content) {
+          currentAssistantContent = content
+          currentAssistantTimestamp = event.timestamp
+        }
+        break
+      }
+
+      case "tool_use": {
+        // Tool invocation
+        const toolUse = {
+          id: (event.toolUseId as string) || (event.id as string) || "",
+          name: (event.tool as string) || (event.name as string) || "",
+          input: (event.input as Record<string, unknown>) || {},
+        }
+        if (toolUse.id && toolUse.name) {
+          currentToolUses.push(toolUse)
+          if (!currentAssistantTimestamp) {
+            currentAssistantTimestamp = event.timestamp
+          }
+        }
+        break
+      }
+
+      case "tool_result": {
+        // Tool result - update the matching tool use
+        const toolUseId = (event.toolUseId as string) || (event.id as string) || ""
+        const output = (event.output as string) || (event.result as string)
+        const error = event.error as string | undefined
+        const isError = (event.isError as boolean) || !!error
+
+        const toolUse = currentToolUses.find(t => t.id === toolUseId)
+        if (toolUse) {
+          toolUse.result = {
+            output,
+            error,
+            isError,
+          }
+        }
+        break
+      }
+
+      case "result": {
+        // Final result with usage stats
+        const eventUsage = event.usage as
+          | { input_tokens?: number; output_tokens?: number }
+          | undefined
+        if (eventUsage) {
+          usage.inputTokens += eventUsage.input_tokens || 0
+          usage.outputTokens += eventUsage.output_tokens || 0
+          usage.totalTokens = usage.inputTokens + usage.outputTokens
+        }
+        break
+      }
+
+      case "message_start": {
+        // SDK message start may contain usage info
+        const messageUsage = (event.message as { usage?: { input_tokens?: number } })?.usage
+        if (messageUsage) {
+          usage.inputTokens += messageUsage.input_tokens || 0
+          usage.totalTokens = usage.inputTokens + usage.outputTokens
+        }
+        break
+      }
+
+      case "message_delta": {
+        // SDK message delta may contain final usage info
+        const deltaUsage = event.usage as { output_tokens?: number } | undefined
+        if (deltaUsage) {
+          usage.outputTokens += deltaUsage.output_tokens || 0
+          usage.totalTokens = usage.inputTokens + usage.outputTokens
+        }
+        break
+      }
+    }
+  }
+
+  // Flush any remaining assistant content
+  if (currentAssistantContent || (currentToolUses && currentToolUses.length > 0)) {
+    messages.push({
+      role: "assistant",
+      content: currentAssistantContent,
+      timestamp: currentAssistantTimestamp || Date.now(),
+      toolUses: currentToolUses.length > 0 ? currentToolUses : undefined,
+    })
+  }
+
+  return {
+    messages,
+    lastPrompt,
+    usage,
+    timestamp: Date.now(),
+  }
 }
 
 /**
@@ -121,10 +305,34 @@ export class RalphRegistry extends EventEmitter {
   /** Maximum events to keep per instance */
   private static readonly MAX_EVENT_HISTORY = 1000
 
+  /** Optional IterationStateStore for persisting iteration state */
+  private _iterationStateStore: IterationStateStore | null = null
+
+  /** Track pending save operations to avoid concurrent writes */
+  private _pendingSaves = new Map<string, Promise<void>>()
+
   constructor(options: RalphRegistryOptions = {}) {
     super()
     this._defaultManagerOptions = options.defaultManagerOptions ?? {}
     this._maxInstances = options.maxInstances ?? 10
+    this._iterationStateStore = options.iterationStateStore ?? null
+  }
+
+  /**
+   * Set the IterationStateStore for persisting iteration state.
+   * Can be called after construction to add state persistence.
+   *
+   * @param store - The IterationStateStore to use, or null to disable persistence
+   */
+  setIterationStateStore(store: IterationStateStore | null): void {
+    this._iterationStateStore = store
+  }
+
+  /**
+   * Get the current IterationStateStore, if any.
+   */
+  getIterationStateStore(): IterationStateStore | null {
+    return this._iterationStateStore
   }
 
   /**
@@ -297,8 +505,148 @@ export class RalphRegistry extends EventEmitter {
     return state.mergeConflict
   }
 
+  // ============================================================================
+  // Iteration State Persistence
+  // ============================================================================
+
+  /**
+   * Save the current iteration state for an instance.
+   *
+   * This captures the current conversation context (derived from event history),
+   * status, and task info, and persists it to the IterationStateStore.
+   *
+   * If no IterationStateStore is configured, this is a no-op.
+   *
+   * @param instanceId - The instance ID
+   * @returns Promise that resolves when save is complete
+   */
+  async saveIterationState(instanceId: string): Promise<void> {
+    if (!this._iterationStateStore) {
+      return
+    }
+
+    const state = this._instances.get(instanceId)
+    if (!state) {
+      return
+    }
+
+    // Avoid concurrent saves for the same instance
+    const pendingSave = this._pendingSaves.get(instanceId)
+    if (pendingSave) {
+      await pendingSave
+    }
+
+    const savePromise = this.doSaveIterationState(instanceId, state)
+    this._pendingSaves.set(instanceId, savePromise)
+
+    try {
+      await savePromise
+    } finally {
+      this._pendingSaves.delete(instanceId)
+    }
+  }
+
+  /**
+   * Internal method to perform the actual state save.
+   */
+  private async doSaveIterationState(instanceId: string, state: RalphInstanceState): Promise<void> {
+    if (!this._iterationStateStore) {
+      return
+    }
+
+    const events = this._eventHistory.get(instanceId) ?? []
+    const conversationContext = eventsToConversationContext(events)
+
+    const persistedState: PersistedIterationState = {
+      instanceId,
+      conversationContext,
+      status: state.manager.status,
+      currentTaskId: state.currentTaskId,
+      savedAt: Date.now(),
+      version: 1,
+    }
+
+    try {
+      await this._iterationStateStore.save(persistedState)
+    } catch (err) {
+      console.error(`[RalphRegistry] Failed to save iteration state for ${instanceId}:`, err)
+    }
+  }
+
+  /**
+   * Delete the persisted iteration state for an instance.
+   *
+   * Call this when an iteration completes successfully or when
+   * the instance is disposed.
+   *
+   * @param instanceId - The instance ID
+   * @returns Promise that resolves to true if state was deleted, false if not found
+   */
+  async deleteIterationState(instanceId: string): Promise<boolean> {
+    if (!this._iterationStateStore) {
+      return false
+    }
+
+    try {
+      return await this._iterationStateStore.delete(instanceId)
+    } catch (err) {
+      console.error(`[RalphRegistry] Failed to delete iteration state for ${instanceId}:`, err)
+      return false
+    }
+  }
+
+  /**
+   * Load persisted iteration state for an instance.
+   *
+   * @param instanceId - The instance ID
+   * @returns The persisted state, or null if not found
+   */
+  async loadIterationState(instanceId: string): Promise<PersistedIterationState | null> {
+    if (!this._iterationStateStore) {
+      return null
+    }
+
+    try {
+      return await this._iterationStateStore.load(instanceId)
+    } catch (err) {
+      console.error(`[RalphRegistry] Failed to load iteration state for ${instanceId}:`, err)
+      return null
+    }
+  }
+
+  /**
+   * Save iteration state for all running instances.
+   *
+   * Useful for graceful shutdown to ensure all state is persisted.
+   *
+   * @returns Promise that resolves when all saves are complete
+   */
+  async saveAllIterationStates(): Promise<void> {
+    if (!this._iterationStateStore) {
+      return
+    }
+
+    const savePromises: Promise<void>[] = []
+
+    for (const state of this._instances.values()) {
+      // Only save for instances that are running or paused (have active state)
+      if (state.manager.status === "running" || state.manager.status === "paused") {
+        savePromises.push(this.saveIterationState(state.id))
+      }
+    }
+
+    await Promise.all(savePromises)
+  }
+
+  // ============================================================================
+  // End Iteration State Persistence
+  // ============================================================================
+
   /**
    * Dispose of an instance, stopping its RalphManager.
+   *
+   * Before disposal, saves the iteration state (if store is configured)
+   * to enable potential restoration later.
    *
    * @param instanceId - The instance ID
    */
@@ -306,6 +654,11 @@ export class RalphRegistry extends EventEmitter {
     const state = this._instances.get(instanceId)
     if (!state) {
       return
+    }
+
+    // Save iteration state before stopping (for graceful shutdown)
+    if (state.manager.isRunning || state.manager.status === "paused") {
+      await this.saveIterationState(instanceId)
     }
 
     // Stop the manager if running
@@ -323,6 +676,7 @@ export class RalphRegistry extends EventEmitter {
     // Remove from registry
     this._instances.delete(instanceId)
     this._eventHistory.delete(instanceId)
+    this._pendingSaves.delete(instanceId)
 
     // Emit disposal event
     this.emit("instance:disposed", instanceId)
@@ -338,6 +692,11 @@ export class RalphRegistry extends EventEmitter {
 
   /**
    * Wire up event forwarding from a RalphManager.
+   *
+   * Also sets up automatic iteration state saving at key points:
+   * - After iteration completion events (result, ralph_task_completed)
+   * - On status changes (paused, stopped)
+   * - Before process exit
    */
   private wireManagerEvents(state: RalphInstanceState): void {
     const { id, manager } = state
@@ -351,10 +710,35 @@ export class RalphRegistry extends EventEmitter {
 
       // Forward event
       this.emit("instance:event", id, "ralph:event", event)
+
+      // Auto-save iteration state after key events
+      // - result: iteration/turn completed successfully
+      // - ralph_task_completed: task completed
+      // - message_stop: assistant message completed
+      if (
+        event.type === "result" ||
+        event.type === "ralph_task_completed" ||
+        event.type === "message_stop"
+      ) {
+        this.saveIterationState(id).catch(err => {
+          console.error(`[RalphRegistry] Auto-save failed for ${id} after ${event.type}:`, err)
+        })
+      }
     })
 
     manager.on("status", (status: RalphStatus) => {
       this.emit("instance:event", id, "ralph:status", status)
+
+      // Auto-save when paused or stopping (but not when fully stopped - exit handles that)
+      if (status === "paused" || status === "stopping_after_current") {
+        this.saveIterationState(id).catch(err => {
+          console.error(`[RalphRegistry] Auto-save failed for ${id} on status ${status}:`, err)
+        })
+      }
+
+      // Delete iteration state when iteration completes normally (stopped state)
+      // This is optional - we could keep it for debugging/replay purposes
+      // For now, we keep it to allow restoration on reconnect
     })
 
     manager.on("output", (line: string) => {
@@ -363,10 +747,23 @@ export class RalphRegistry extends EventEmitter {
 
     manager.on("error", (error: Error) => {
       this.emit("instance:event", id, "ralph:error", error)
+
+      // Save state on error to preserve context for debugging/retry
+      this.saveIterationState(id).catch(err => {
+        console.error(`[RalphRegistry] Auto-save failed for ${id} on error:`, err)
+      })
     })
 
     manager.on("exit", (info: { code: number | null; signal: string | null }) => {
-      this.emit("instance:event", id, "ralph:exit", info)
+      // Save state before emitting exit event
+      // This ensures state is captured even for unexpected exits
+      this.saveIterationState(id)
+        .catch(err => {
+          console.error(`[RalphRegistry] Auto-save failed for ${id} on exit:`, err)
+        })
+        .finally(() => {
+          this.emit("instance:event", id, "ralph:exit", info)
+        })
     })
   }
 

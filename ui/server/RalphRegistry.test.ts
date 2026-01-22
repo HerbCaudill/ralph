@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { EventEmitter } from "node:events"
-import { RalphRegistry, type CreateInstanceOptions } from "./RalphRegistry.js"
+import {
+  RalphRegistry,
+  type CreateInstanceOptions,
+  eventsToConversationContext,
+} from "./RalphRegistry.js"
 import type { RalphStatus } from "./RalphManager.js"
+import type { IterationStateStore, PersistedIterationState } from "./IterationStateStore.js"
 
 // Mock the RalphManager to avoid spawning real processes
 vi.mock("./RalphManager.js", async () => {
@@ -466,6 +471,9 @@ describe("RalphRegistry", () => {
       await state.manager.start()
       await state.manager.stop()
 
+      // Wait for async save to complete before exit is emitted
+      await new Promise(resolve => setTimeout(resolve, 20))
+
       expect(eventHandler).toHaveBeenCalledWith("test-instance", "ralph:exit", {
         code: 0,
         signal: null,
@@ -560,5 +568,465 @@ describe("RalphRegistry", () => {
       expect(history[0].type).toBe("event_100")
       expect(history[999].type).toBe("event_1099")
     })
+  })
+
+  describe("iteration state persistence", () => {
+    // Create a mock IterationStateStore
+    function createMockStore(): IterationStateStore & {
+      savedStates: Map<string, PersistedIterationState>
+      saveCalls: PersistedIterationState[]
+      deleteCalls: string[]
+      loadCalls: string[]
+    } {
+      const savedStates = new Map<string, PersistedIterationState>()
+      const saveCalls: PersistedIterationState[] = []
+      const deleteCalls: string[] = []
+      const loadCalls: string[] = []
+
+      return {
+        savedStates,
+        saveCalls,
+        deleteCalls,
+        loadCalls,
+        getWorkspacePath: () => "/test/workspace",
+        getStoreDir: () => "/test/workspace/.ralph/iterations",
+        exists: async () => true,
+        has: async (instanceId: string) => savedStates.has(instanceId),
+        load: async (instanceId: string) => {
+          loadCalls.push(instanceId)
+          return savedStates.get(instanceId) ?? null
+        },
+        save: async (state: PersistedIterationState) => {
+          saveCalls.push(state)
+          savedStates.set(state.instanceId, state)
+        },
+        delete: async (instanceId: string) => {
+          deleteCalls.push(instanceId)
+          return savedStates.delete(instanceId)
+        },
+        getAll: async () => Array.from(savedStates.values()),
+        getAllInstanceIds: async () => Array.from(savedStates.keys()),
+        count: async () => savedStates.size,
+        cleanupStale: async () => 0,
+        clear: async () => savedStates.clear(),
+      }
+    }
+
+    describe("setIterationStateStore and getIterationStateStore", () => {
+      it("can set and get the iteration state store", () => {
+        const mockStore = createMockStore()
+
+        registry.setIterationStateStore(mockStore)
+
+        expect(registry.getIterationStateStore()).toBe(mockStore)
+      })
+
+      it("can set store to null to disable persistence", () => {
+        const mockStore = createMockStore()
+
+        registry.setIterationStateStore(mockStore)
+        registry.setIterationStateStore(null)
+
+        expect(registry.getIterationStateStore()).toBeNull()
+      })
+
+      it("can pass store in constructor options", () => {
+        const mockStore = createMockStore()
+        const registryWithStore = new RalphRegistry({ iterationStateStore: mockStore })
+
+        expect(registryWithStore.getIterationStateStore()).toBe(mockStore)
+      })
+    })
+
+    describe("saveIterationState", () => {
+      it("does nothing when no store is configured", async () => {
+        registry.create(createTestOptions())
+
+        // Should not throw
+        await expect(registry.saveIterationState("test-instance")).resolves.toBeUndefined()
+      })
+
+      it("does nothing for non-existent instance", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        await registry.saveIterationState("nonexistent")
+
+        expect(mockStore.saveCalls).toHaveLength(0)
+      })
+
+      it("saves iteration state for an instance", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const state = registry.create(createTestOptions())
+        await state.manager.start()
+
+        await registry.saveIterationState("test-instance")
+
+        expect(mockStore.saveCalls).toHaveLength(1)
+        expect(mockStore.saveCalls[0].instanceId).toBe("test-instance")
+        expect(mockStore.saveCalls[0].status).toBe("running")
+      })
+
+      it("includes conversation context derived from event history", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        // Simulate a conversation
+        simulateEvent({ type: "user_message", timestamp: 1000, message: "Hello" })
+        simulateEvent({ type: "message", timestamp: 2000, content: "Hi there!" })
+
+        await registry.saveIterationState("test-instance")
+
+        expect(mockStore.saveCalls).toHaveLength(1)
+        const context = mockStore.saveCalls[0].conversationContext
+        expect(context.messages).toHaveLength(2)
+        expect(context.lastPrompt).toBe("Hello")
+      })
+    })
+
+    describe("deleteIterationState", () => {
+      it("returns false when no store is configured", async () => {
+        const result = await registry.deleteIterationState("test-instance")
+        expect(result).toBe(false)
+      })
+
+      it("returns true when state is deleted", async () => {
+        const mockStore = createMockStore()
+        mockStore.savedStates.set("test-instance", {
+          instanceId: "test-instance",
+          conversationContext: {
+            messages: [],
+            usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+            timestamp: Date.now(),
+          },
+          status: "running",
+          currentTaskId: null,
+          savedAt: Date.now(),
+          version: 1,
+        })
+        registry.setIterationStateStore(mockStore)
+
+        const result = await registry.deleteIterationState("test-instance")
+
+        expect(result).toBe(true)
+        expect(mockStore.deleteCalls).toContain("test-instance")
+      })
+
+      it("returns false when state does not exist", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const result = await registry.deleteIterationState("nonexistent")
+
+        expect(result).toBe(false)
+      })
+    })
+
+    describe("loadIterationState", () => {
+      it("returns null when no store is configured", async () => {
+        const result = await registry.loadIterationState("test-instance")
+        expect(result).toBeNull()
+      })
+
+      it("returns saved state when it exists", async () => {
+        const mockStore = createMockStore()
+        const savedState: PersistedIterationState = {
+          instanceId: "test-instance",
+          conversationContext: {
+            messages: [{ role: "user", content: "Hello", timestamp: 1000 }],
+            lastPrompt: "Hello",
+            usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+            timestamp: Date.now(),
+          },
+          status: "running",
+          currentTaskId: "task-123",
+          savedAt: Date.now(),
+          version: 1,
+        }
+        mockStore.savedStates.set("test-instance", savedState)
+        registry.setIterationStateStore(mockStore)
+
+        const result = await registry.loadIterationState("test-instance")
+
+        expect(result).toEqual(savedState)
+      })
+
+      it("returns null when state does not exist", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const result = await registry.loadIterationState("nonexistent")
+
+        expect(result).toBeNull()
+      })
+    })
+
+    describe("saveAllIterationStates", () => {
+      it("does nothing when no store is configured", async () => {
+        registry.create(createTestOptions({ id: "instance-1" }))
+
+        await expect(registry.saveAllIterationStates()).resolves.toBeUndefined()
+      })
+
+      it("saves state for all running instances", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const state1 = registry.create(createTestOptions({ id: "instance-1" }))
+        const state2 = registry.create(createTestOptions({ id: "instance-2" }))
+        registry.create(createTestOptions({ id: "instance-3" })) // Stopped
+
+        await state1.manager.start()
+        await state2.manager.start()
+
+        await registry.saveAllIterationStates()
+
+        expect(mockStore.saveCalls.map(s => s.instanceId).sort()).toEqual([
+          "instance-1",
+          "instance-2",
+        ])
+      })
+
+      it("includes paused instances", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const state1 = registry.create(createTestOptions({ id: "instance-1" }))
+        await state1.manager.start()
+        state1.manager.pause() // Now paused - this triggers auto-save
+
+        // Wait for auto-save from pause
+        await new Promise(resolve => setTimeout(resolve, 10))
+        mockStore.saveCalls.length = 0 // Clear auto-saves
+
+        await registry.saveAllIterationStates()
+
+        // Should have exactly one save from saveAllIterationStates
+        expect(mockStore.saveCalls).toHaveLength(1)
+        expect(mockStore.saveCalls[0].instanceId).toBe("instance-1")
+      })
+    })
+
+    describe("auto-save on events", () => {
+      it("auto-saves on result event", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        simulateEvent({ type: "result", timestamp: Date.now() })
+
+        // Wait for async save
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        expect(mockStore.saveCalls.length).toBeGreaterThan(0)
+      })
+
+      it("auto-saves on ralph_task_completed event", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        simulateEvent({ type: "ralph_task_completed", timestamp: Date.now(), taskId: "task-1" })
+
+        // Wait for async save
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        expect(mockStore.saveCalls.length).toBeGreaterThan(0)
+      })
+
+      it("auto-saves on status change to paused", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const state = registry.create(createTestOptions())
+        await state.manager.start()
+        mockStore.saveCalls.length = 0 // Clear saves from start
+
+        state.manager.pause()
+
+        // Wait for async save
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        expect(mockStore.saveCalls.length).toBeGreaterThan(0)
+      })
+    })
+
+    describe("auto-save on dispose", () => {
+      it("saves state before stopping running instance", async () => {
+        const mockStore = createMockStore()
+        registry.setIterationStateStore(mockStore)
+
+        const state = registry.create(createTestOptions())
+        await state.manager.start()
+        mockStore.saveCalls.length = 0 // Clear any saves from start
+
+        await registry.dispose("test-instance")
+
+        // Should have saved state before stopping
+        expect(mockStore.saveCalls.length).toBeGreaterThan(0)
+        expect(mockStore.saveCalls[0].instanceId).toBe("test-instance")
+      })
+    })
+  })
+})
+
+describe("eventsToConversationContext", () => {
+  it("converts user_message events to user messages", () => {
+    const events = [{ type: "user_message", timestamp: 1000, message: "Hello" }]
+
+    const context = eventsToConversationContext(events)
+
+    expect(context.messages).toHaveLength(1)
+    expect(context.messages[0]).toEqual({
+      role: "user",
+      content: "Hello",
+      timestamp: 1000,
+    })
+    expect(context.lastPrompt).toBe("Hello")
+  })
+
+  it("converts message events to assistant messages", () => {
+    const events = [
+      { type: "user_message", timestamp: 1000, message: "Hello" },
+      { type: "message", timestamp: 2000, content: "Hi there!", isPartial: false },
+    ]
+
+    const context = eventsToConversationContext(events)
+
+    expect(context.messages).toHaveLength(2)
+    expect(context.messages[1]).toEqual({
+      role: "assistant",
+      content: "Hi there!",
+      timestamp: 2000,
+    })
+  })
+
+  it("accumulates partial messages", () => {
+    const events = [
+      { type: "user_message", timestamp: 1000, message: "Hello" },
+      { type: "message", timestamp: 2000, content: "Hi ", isPartial: true },
+      { type: "message", timestamp: 2100, content: "there!", isPartial: true },
+    ]
+
+    const context = eventsToConversationContext(events)
+
+    // Should have accumulated the partial messages
+    expect(context.messages).toHaveLength(2)
+    expect(context.messages[1].content).toBe("Hi there!")
+  })
+
+  it("tracks tool uses in assistant messages", () => {
+    const events = [
+      { type: "user_message", timestamp: 1000, message: "Read file" },
+      {
+        type: "tool_use",
+        timestamp: 2000,
+        toolUseId: "tool-1",
+        tool: "Read",
+        input: { path: "/test" },
+      },
+      {
+        type: "tool_result",
+        timestamp: 3000,
+        toolUseId: "tool-1",
+        output: "file contents",
+        isError: false,
+      },
+    ]
+
+    const context = eventsToConversationContext(events)
+
+    expect(context.messages).toHaveLength(2)
+    const assistantMessage = context.messages[1]
+    expect(assistantMessage.toolUses).toHaveLength(1)
+    expect(assistantMessage.toolUses![0]).toEqual({
+      id: "tool-1",
+      name: "Read",
+      input: { path: "/test" },
+      result: {
+        output: "file contents",
+        error: undefined,
+        isError: false,
+      },
+    })
+  })
+
+  it("tracks usage stats from result events", () => {
+    const events = [
+      { type: "result", timestamp: 1000, usage: { input_tokens: 100, output_tokens: 50 } },
+    ]
+
+    const context = eventsToConversationContext(events)
+
+    expect(context.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 50,
+      totalTokens: 150,
+    })
+  })
+
+  it("tracks usage stats from message_start and message_delta", () => {
+    const events = [
+      { type: "message_start", timestamp: 1000, message: { usage: { input_tokens: 80 } } },
+      { type: "message_delta", timestamp: 2000, usage: { output_tokens: 40 } },
+    ]
+
+    const context = eventsToConversationContext(events)
+
+    expect(context.usage).toEqual({
+      inputTokens: 80,
+      outputTokens: 40,
+      totalTokens: 120,
+    })
+  })
+
+  it("handles content_block_start and content_block_delta for streaming", () => {
+    const events = [
+      {
+        type: "content_block_start",
+        timestamp: 1000,
+        content_block: { type: "text", text: "Hello " },
+      },
+      {
+        type: "content_block_delta",
+        timestamp: 1100,
+        delta: { type: "text_delta", text: "world" },
+      },
+    ]
+
+    const context = eventsToConversationContext(events)
+
+    // Should have accumulated the streaming text
+    expect(context.messages).toHaveLength(1)
+    expect(context.messages[0].content).toBe("Hello world")
+  })
+
+  it("returns empty context for empty events", () => {
+    const context = eventsToConversationContext([])
+
+    expect(context.messages).toEqual([])
+    expect(context.lastPrompt).toBeUndefined()
+    expect(context.usage).toEqual({ inputTokens: 0, outputTokens: 0, totalTokens: 0 })
   })
 })
