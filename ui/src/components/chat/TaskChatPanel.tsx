@@ -16,25 +16,8 @@ import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
 import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
-import type { TaskChatMessage, TaskChatToolUse, ToolName, ToolUseEvent } from "@/types"
-
-// Helper to convert TaskChatToolUse to ToolUseEvent for rendering
-function toToolUseEvent(toolUse: TaskChatToolUse): ToolUseEvent {
-  return {
-    type: "tool_use",
-    timestamp: toolUse.timestamp,
-    tool: toolUse.tool as ToolName,
-    input: toolUse.input,
-    output: toolUse.output,
-    error: toolUse.error,
-    status: toolUse.status,
-  }
-}
-
-// Content block types for unified rendering
-type MessageBlock = { type: "message"; data: TaskChatMessage }
-type ToolUseBlock = { type: "toolUse"; data: TaskChatToolUse }
-type ContentBlock = MessageBlock | ToolUseBlock
+import { toToolUseEvent } from "@/lib/toToolUseEvent"
+import type { TaskChatMessage, TaskChatToolUse } from "@/types"
 
 /**
  * Task chat panel for task management conversations with Claude.
@@ -258,7 +241,27 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   )
 }
 
-export type TaskChatPanelProps = {
+/**
+ * Content block types for unified rendering.
+ */
+type MessageBlock = { type: "message"; data: TaskChatMessage }
+
+/**
+ * Tool use block type for unified rendering.
+ */
+type ToolUseBlock = { type: "toolUse"; data: TaskChatToolUse }
+
+/**
+ * Union type for message and tool use blocks.
+ */
+type ContentBlock = MessageBlock | ToolUseBlock
+
+/**
+ * Props for TaskChatPanel component.
+ */
+type TaskChatPanelProps = {
+  /** Optional CSS class name to apply to the panel */
   className?: string
+  /** Optional callback when close button is clicked */
   onClose?: () => void
 }
