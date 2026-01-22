@@ -151,16 +151,6 @@ export function ControlBar({
       </TooltipButton>
 
       {error && <span className="text-status-error text-xs">{error}</span>}
-
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleStopAfterCurrent}
-        disabled={!buttonStates.stopAfterCurrent || isLoading}
-        className="text-muted-foreground ml-2 h-7 px-2 text-xs"
-      >
-        {status === "stopping_after_current" ? "Cancel" : "Stop after current"}
-      </Button>
     </div>
   )
 }
