@@ -1,6 +1,14 @@
 import type { DiffLine } from "@/types"
 
-export function parseDiff(oldString: string, newString: string): DiffLine[] {
+/**
+ * Parse the differences between two strings and return structured diff lines.
+ */
+export function parseDiff(
+  /** The original string */
+  oldString: string,
+  /** The modified string */
+  newString: string,
+): DiffLine[] {
   const oldLines = oldString.split("\n")
   const newLines = newString.split("\n")
   const result: DiffLine[] = []

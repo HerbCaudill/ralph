@@ -2,7 +2,12 @@
  * Convert an absolute file path to a relative path if it's within the workspace.
  * Returns the original path if workspace is null or the path is not within the workspace.
  */
-export function toRelativePath(absolutePath: string, workspace: string | null): string {
+export function toRelativePath(
+  /** The absolute file path to convert */
+  absolutePath: string,
+  /** The workspace root path, or null to return the absolute path unchanged */
+  workspace: string | null,
+): string {
   if (!workspace) return absolutePath
 
   // Normalize workspace path to ensure it ends with a slash
