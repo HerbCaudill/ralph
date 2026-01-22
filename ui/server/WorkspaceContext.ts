@@ -3,10 +3,12 @@ import { RalphManager, type RalphEvent, type RalphStatus } from "./RalphManager.
 import { BdProxy } from "./BdProxy.js"
 import {
   TaskChatManager,
+  type TaskChatEvent,
   type TaskChatMessage,
   type TaskChatStatus,
   type TaskChatToolUse,
 } from "./TaskChatManager.js"
+import { TaskChatEventLog } from "./TaskChatEventLog.js"
 
 /**
  * Maximum number of events to store in history buffer.
@@ -23,6 +25,8 @@ export interface WorkspaceContextOptions {
   watch?: boolean
   /** Additional environment variables */
   env?: Record<string, string>
+  /** Enable logging of task chat events to file */
+  enableTaskChatLogging?: boolean
 }
 
 /**
@@ -62,6 +66,9 @@ export class WorkspaceContext extends EventEmitter {
   /** TaskChatManager instance for this workspace */
   private _taskChatManager: TaskChatManager
 
+  /** TaskChatEventLog for persisting chat events */
+  private _taskChatEventLog: TaskChatEventLog | null = null
+
   /** Event history buffer */
   private _eventHistory: RalphEvent[] = []
 
@@ -94,6 +101,13 @@ export class WorkspaceContext extends EventEmitter {
       getBdProxy: () => this._bdProxy,
     })
     this.wireTaskChatManagerEvents()
+
+    // Create TaskChatEventLog if logging is enabled
+    if (options.enableTaskChatLogging) {
+      this._taskChatEventLog = new TaskChatEventLog({
+        workspacePath: options.workspacePath,
+      })
+    }
   }
 
   /**
@@ -118,6 +132,13 @@ export class WorkspaceContext extends EventEmitter {
   get taskChatManager(): TaskChatManager {
     this.assertNotDisposed()
     return this._taskChatManager
+  }
+
+  /**
+   * Get the TaskChatEventLog for this workspace (null if logging not enabled).
+   */
+  get taskChatEventLog(): TaskChatEventLog | null {
+    return this._taskChatEventLog
   }
 
   /**
@@ -172,6 +193,11 @@ export class WorkspaceContext extends EventEmitter {
       } catch {
         // Ignore errors during cleanup
       }
+    }
+
+    // End any active logging session
+    if (this._taskChatEventLog?.isLogging) {
+      this._taskChatEventLog.endSession()
     }
 
     // Remove all listeners
@@ -230,6 +256,8 @@ export class WorkspaceContext extends EventEmitter {
 
     this._taskChatManager.on("status", (status: TaskChatStatus) => {
       this.emit("task-chat:status", status)
+      // Start/end logging sessions based on status changes
+      this.handleTaskChatStatusForLogging(status)
     })
 
     this._taskChatManager.on("error", (error: Error) => {
@@ -246,6 +274,40 @@ export class WorkspaceContext extends EventEmitter {
 
     this._taskChatManager.on("tool_result", (toolUse: TaskChatToolUse) => {
       this.emit("task-chat:tool_result", toolUse)
+    })
+
+    // Log all events (for replay testing)
+    this._taskChatManager.on("event", (event: TaskChatEvent) => {
+      this.logTaskChatEvent(event)
+    })
+  }
+
+  /**
+   * Handle status changes for logging sessions.
+   * Starts a logging session when processing begins.
+   */
+  private handleTaskChatStatusForLogging(status: TaskChatStatus): void {
+    if (!this._taskChatEventLog) return
+
+    if (status === "processing" && !this._taskChatEventLog.isLogging) {
+      // Start a new logging session when processing begins
+      this._taskChatEventLog.startSession().catch(err => {
+        console.error("[task-chat-log] Failed to start logging session:", err)
+      })
+    }
+    // Note: We don't end the session on idle/error - the session continues
+    // so we can capture the full conversation. Call endSession() explicitly
+    // or dispose() to end logging.
+  }
+
+  /**
+   * Log a task chat event to the event log (if logging is enabled and session is active).
+   */
+  private logTaskChatEvent(event: TaskChatEvent): void {
+    if (!this._taskChatEventLog?.isLogging) return
+
+    this._taskChatEventLog.log(event).catch(err => {
+      console.error("[task-chat-log] Failed to log event:", err)
     })
   }
 

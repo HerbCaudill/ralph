@@ -60,6 +60,30 @@ vi.mock("./TaskChatManager.js", () => {
   }
 })
 
+vi.mock("./TaskChatEventLog.js", () => {
+  class MockTaskChatEventLog {
+    isLogging = false
+    currentSessionId: string | null = null
+
+    startSession = vi.fn().mockImplementation(async () => {
+      this.isLogging = true
+      this.currentSessionId = "mock-session-id"
+      return "mock-session-id"
+    })
+
+    log = vi.fn().mockResolvedValue(undefined)
+
+    endSession = vi.fn().mockImplementation(() => {
+      this.isLogging = false
+      this.currentSessionId = null
+    })
+  }
+
+  return {
+    TaskChatEventLog: MockTaskChatEventLog,
+  }
+})
+
 // Import WorkspaceContext after mocks are set up
 import { WorkspaceContext } from "./WorkspaceContext.js"
 
@@ -474,6 +498,126 @@ describe("WorkspaceContext", () => {
       // Cleanup
       await context1.dispose()
       await context2.dispose()
+    })
+  })
+
+  describe("task chat event logging", () => {
+    it("does not create TaskChatEventLog by default", () => {
+      expect(context.taskChatEventLog).toBeNull()
+    })
+
+    it("creates TaskChatEventLog when enableTaskChatLogging is true", async () => {
+      const loggingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableTaskChatLogging: true,
+      })
+
+      expect(loggingContext.taskChatEventLog).not.toBeNull()
+
+      await loggingContext.dispose()
+    })
+
+    it("starts logging session when status changes to processing", async () => {
+      const loggingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableTaskChatLogging: true,
+      })
+
+      const eventLog = loggingContext.taskChatEventLog!
+
+      // Emit processing status
+      loggingContext.taskChatManager.emit("status", "processing")
+
+      // Wait for the async startSession to complete
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      expect(eventLog.startSession).toHaveBeenCalled()
+      expect(eventLog.isLogging).toBe(true)
+
+      await loggingContext.dispose()
+    })
+
+    it("logs events when logging session is active", async () => {
+      const loggingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableTaskChatLogging: true,
+      })
+
+      const eventLog = loggingContext.taskChatEventLog!
+
+      // Start a logging session by emitting processing status
+      loggingContext.taskChatManager.emit("status", "processing")
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Emit a task chat event
+      const testEvent = { type: "test", timestamp: Date.now() }
+      loggingContext.taskChatManager.emit("event", testEvent)
+
+      // Wait for async log
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      expect(eventLog.log).toHaveBeenCalledWith(testEvent)
+
+      await loggingContext.dispose()
+    })
+
+    it("does not log events when no logging session is active", async () => {
+      const loggingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableTaskChatLogging: true,
+      })
+
+      const eventLog = loggingContext.taskChatEventLog!
+
+      // Don't start a session - just emit event directly
+      loggingContext.taskChatManager.emit("event", { type: "test", timestamp: Date.now() })
+
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      expect(eventLog.log).not.toHaveBeenCalled()
+
+      await loggingContext.dispose()
+    })
+
+    it("ends logging session on dispose", async () => {
+      const loggingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableTaskChatLogging: true,
+      })
+
+      const eventLog = loggingContext.taskChatEventLog!
+
+      // Start a logging session
+      loggingContext.taskChatManager.emit("status", "processing")
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      expect(eventLog.isLogging).toBe(true)
+
+      await loggingContext.dispose()
+
+      expect(eventLog.endSession).toHaveBeenCalled()
+    })
+
+    it("does not start a new session if one is already active", async () => {
+      const loggingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableTaskChatLogging: true,
+      })
+
+      const eventLog = loggingContext.taskChatEventLog!
+
+      // Start a logging session
+      loggingContext.taskChatManager.emit("status", "processing")
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Try to start another session
+      loggingContext.taskChatManager.emit("status", "processing")
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // startSession should only be called once
+      expect(eventLog.startSession).toHaveBeenCalledTimes(1)
+
+      await loggingContext.dispose()
     })
   })
 })
