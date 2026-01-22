@@ -78,6 +78,7 @@ describe("useAppStore", () => {
       expect(state.taskChatMessages).toEqual([])
       expect(state.taskChatLoading).toBe(false)
       expect(state.taskChatStreamingText).toBe("")
+      expect(state.taskChatEvents).toEqual([])
       expect(state.viewingIterationIndex).toBeNull()
     })
 
@@ -1550,13 +1551,20 @@ describe("useAppStore", () => {
 
     it("clears all workspace-specific data", () => {
       // Set up various workspace-specific state
-      const { addEvent, setTasks, setTokenUsage, setIteration, addTaskChatMessage } =
-        useAppStore.getState()
+      const {
+        addEvent,
+        setTasks,
+        setTokenUsage,
+        setIteration,
+        addTaskChatMessage,
+        addTaskChatEvent,
+      } = useAppStore.getState()
       addEvent({ type: "test", timestamp: 123 })
       setTasks([{ id: "1", title: "Task 1", status: "open" }])
       setTokenUsage({ input: 100, output: 50 })
       setIteration({ current: 2, total: 5 })
       addTaskChatMessage({ id: "msg-1", role: "user", content: "Hello", timestamp: 123 })
+      addTaskChatEvent({ type: "stream_event", timestamp: 456, event: {} })
       useAppStore.getState().setViewingIterationIndex(1)
 
       // Verify state was set
@@ -1565,6 +1573,7 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().tokenUsage.input).toBe(100)
       expect(useAppStore.getState().iteration.current).toBe(2)
       expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
       expect(useAppStore.getState().viewingIterationIndex).toBe(1)
 
       // Clear workspace data
@@ -1576,6 +1585,7 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
       expect(useAppStore.getState().iteration).toEqual({ current: 0, total: 0 })
       expect(useAppStore.getState().taskChatMessages).toEqual([])
+      expect(useAppStore.getState().taskChatEvents).toEqual([])
       expect(useAppStore.getState().viewingIterationIndex).toBeNull()
     })
   })
@@ -2203,6 +2213,61 @@ describe("useAppStore", () => {
       expect(state.taskChatStreamingText).toBe("")
       expect(state.taskChatLoading).toBe(false)
     })
+
+    it("adds a task chat event", () => {
+      const event = {
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: { type: "content_block_delta", delta: { text: "Hello" } },
+      }
+      useAppStore.getState().addTaskChatEvent(event)
+
+      const events = useAppStore.getState().taskChatEvents
+      expect(events).toHaveLength(1)
+      expect(events[0]).toEqual(event)
+    })
+
+    it("preserves task chat event order", () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: { type: "message_start" } })
+      addTaskChatEvent({
+        type: "stream_event",
+        timestamp: 2,
+        event: { type: "content_block_delta" },
+      })
+      addTaskChatEvent({ type: "assistant", timestamp: 3, message: { content: [] } })
+
+      const events = useAppStore.getState().taskChatEvents
+      expect(events).toHaveLength(3)
+      expect(events[0].timestamp).toBe(1)
+      expect(events[1].timestamp).toBe(2)
+      expect(events[2].timestamp).toBe(3)
+    })
+
+    it("clears task chat events", () => {
+      const { addTaskChatEvent, clearTaskChatEvents } = useAppStore.getState()
+
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: {} })
+      addTaskChatEvent({ type: "assistant", timestamp: 2, message: {} })
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(2)
+
+      clearTaskChatEvents()
+      expect(useAppStore.getState().taskChatEvents).toEqual([])
+    })
+
+    it("clearTaskChatMessages also clears task chat events", () => {
+      const { addTaskChatMessage, addTaskChatEvent, clearTaskChatMessages } = useAppStore.getState()
+
+      addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
+      addTaskChatEvent({ type: "stream_event", timestamp: 2, event: {} })
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
+
+      clearTaskChatMessages()
+      expect(useAppStore.getState().taskChatMessages).toEqual([])
+      expect(useAppStore.getState().taskChatEvents).toEqual([])
+    })
   })
 
   describe("sidebar width localStorage persistence", () => {
@@ -2511,6 +2576,7 @@ describe("useAppStore", () => {
       setTaskChatOpen(true)
       setTaskChatWidth(500)
       addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
+      useAppStore.getState().addTaskChatEvent({ type: "stream_event", timestamp: 1, event: {} })
       setTaskChatLoading(true)
 
       // Verify state is modified
@@ -2529,6 +2595,7 @@ describe("useAppStore", () => {
       expect(state.taskChatOpen).toBe(true)
       expect(state.taskChatWidth).toBe(500)
       expect(state.taskChatMessages).toHaveLength(1)
+      expect(state.taskChatEvents).toHaveLength(1)
       expect(state.taskChatLoading).toBe(true)
 
       // Reset
@@ -2550,6 +2617,7 @@ describe("useAppStore", () => {
       expect(state.taskChatOpen).toBe(true)
       expect(state.taskChatWidth).toBe(400)
       expect(state.taskChatMessages).toEqual([])
+      expect(state.taskChatEvents).toEqual([])
       expect(state.taskChatLoading).toBe(false)
       expect(state.taskChatStreamingText).toBe("")
       expect(state.viewingIterationIndex).toBeNull()

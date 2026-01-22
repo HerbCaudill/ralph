@@ -355,6 +355,9 @@ export interface AppState {
   // Search input visibility (hidden by default, shown on Cmd+F)
   isSearchVisible: boolean
 
+  // Task chat events (unified array like EventStream's events[])
+  taskChatEvents: RalphEvent[]
+
   // Reconnection state (for auto-resuming when reconnecting mid-iteration)
   /** Whether Ralph was running when the connection was lost */
   wasRunningBeforeDisconnect: boolean
@@ -436,6 +439,10 @@ export interface AppActions {
   addTaskChatToolUse: (toolUse: TaskChatToolUse) => void
   updateTaskChatToolUse: (toolUseId: string, updates: Partial<TaskChatToolUse>) => void
   clearTaskChatToolUses: () => void
+
+  // Task chat events (unified array)
+  addTaskChatEvent: (event: RalphEvent) => void
+  clearTaskChatEvents: () => void
 
   // Iteration view
   setViewingIterationIndex: (index: number | null) => void
@@ -642,6 +649,7 @@ const initialState: AppState = {
   showToolOutput: false,
   isSearchVisible: false,
   wasRunningBeforeDisconnect: false,
+  taskChatEvents: [],
 }
 
 // Create the store with localStorage initialization
@@ -819,11 +827,12 @@ export const useAppStore = create<AppState & AppActions>(set => ({
         runStartedAt: null,
         initialTaskCount: null,
         ralphStatus: "stopped" as const,
-        // Clear task chat messages and tool uses
+        // Clear task chat messages, tool uses, and events
         taskChatMessages: [],
         taskChatToolUses: [],
         taskChatLoading: false,
         taskChatStreamingText: "",
+        taskChatEvents: [],
         // Clear event log viewer state
         viewingEventLogId: null,
         viewingEventLog: null,
@@ -990,7 +999,8 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     set(state => ({
       taskChatMessages: state.taskChatMessages.filter(m => m.id !== id),
     })),
-  clearTaskChatMessages: () => set({ taskChatMessages: [], taskChatToolUses: [] }),
+  clearTaskChatMessages: () =>
+    set({ taskChatMessages: [], taskChatToolUses: [], taskChatEvents: [] }),
   setTaskChatLoading: loading => set({ taskChatLoading: loading }),
   setTaskChatStreamingText: text => set({ taskChatStreamingText: text }),
   appendTaskChatStreamingText: text =>
@@ -1025,6 +1035,13 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       ),
     })),
   clearTaskChatToolUses: () => set({ taskChatToolUses: [] }),
+
+  // Task chat events (unified array like EventStream)
+  addTaskChatEvent: event =>
+    set(state => ({
+      taskChatEvents: [...state.taskChatEvents, event],
+    })),
+  clearTaskChatEvents: () => set({ taskChatEvents: [] }),
 
   // Iteration view
   setViewingIterationIndex: index => set({ viewingIterationIndex: index }),
@@ -1574,6 +1591,7 @@ export const selectTaskChatMessages = (state: AppState) => state.taskChatMessage
 export const selectTaskChatToolUses = (state: AppState) => state.taskChatToolUses
 export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
 export const selectTaskChatStreamingText = (state: AppState) => state.taskChatStreamingText
+export const selectTaskChatEvents = (state: AppState) => state.taskChatEvents
 export const selectViewingIterationIndex = (state: AppState) => state.viewingIterationIndex
 export const selectIterationCount = (state: AppState) => countIterations(state.events)
 export const selectCurrentIterationEvents = (state: AppState) =>
