@@ -1061,3 +1061,76 @@ export const selectIterationTask = (state: AppState) => {
   return getTaskFromIterationEvents(iterationEvents)
 }
 export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
+
+// Per-instance selectors (take instanceId parameter)
+// These allow querying specific instances regardless of which is active
+
+export const selectInstanceStatus = (state: AppState, instanceId: string): RalphStatus => {
+  const instance = state.instances.get(instanceId)
+  return instance?.status ?? "stopped"
+}
+
+export const selectInstanceEvents = (state: AppState, instanceId: string): RalphEvent[] => {
+  const instance = state.instances.get(instanceId)
+  return instance?.events ?? []
+}
+
+export const selectInstanceTokenUsage = (state: AppState, instanceId: string): TokenUsage => {
+  const instance = state.instances.get(instanceId)
+  return instance?.tokenUsage ?? { input: 0, output: 0 }
+}
+
+export const selectInstanceContextWindow = (state: AppState, instanceId: string): ContextWindow => {
+  const instance = state.instances.get(instanceId)
+  return instance?.contextWindow ?? { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX }
+}
+
+export const selectInstanceIteration = (state: AppState, instanceId: string): IterationInfo => {
+  const instance = state.instances.get(instanceId)
+  return instance?.iteration ?? { current: 0, total: 0 }
+}
+
+export const selectInstanceRunStartedAt = (state: AppState, instanceId: string): number | null => {
+  const instance = state.instances.get(instanceId)
+  return instance?.runStartedAt ?? null
+}
+
+export const selectInstanceWorktreePath = (state: AppState, instanceId: string): string | null => {
+  const instance = state.instances.get(instanceId)
+  return instance?.worktreePath ?? null
+}
+
+export const selectInstanceBranch = (state: AppState, instanceId: string): string | null => {
+  const instance = state.instances.get(instanceId)
+  return instance?.branch ?? null
+}
+
+export const selectInstanceCurrentTaskId = (state: AppState, instanceId: string): string | null => {
+  const instance = state.instances.get(instanceId)
+  return instance?.currentTaskId ?? null
+}
+
+export const selectInstanceName = (state: AppState, instanceId: string): string => {
+  const instance = state.instances.get(instanceId)
+  return instance?.name ?? ""
+}
+
+export const selectInstanceAgentName = (state: AppState, instanceId: string): string => {
+  const instance = state.instances.get(instanceId)
+  return instance?.agentName ?? DEFAULT_AGENT_NAME
+}
+
+export const selectInstanceCreatedAt = (state: AppState, instanceId: string): number | null => {
+  const instance = state.instances.get(instanceId)
+  return instance?.createdAt ?? null
+}
+
+export const selectIsInstanceRunning = (state: AppState, instanceId: string): boolean => {
+  const instance = state.instances.get(instanceId)
+  return instance?.status === "running"
+}
+
+export const selectInstanceIterationCount = (state: AppState, instanceId: string): number => {
+  const instance = state.instances.get(instanceId)
+  return instance ? countIterations(instance.events) : 0
+}
