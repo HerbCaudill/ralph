@@ -2,8 +2,8 @@ node_modules
 dist
 .DS_Store
 *.log
-.ralph/events.jsonl
-.ralph/iterations/**/*
+**/.ralph/events.jsonl
+**/.ralph/iterations/**/*
 .test-results
 .test-workspace
 
