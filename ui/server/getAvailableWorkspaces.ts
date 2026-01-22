@@ -8,9 +8,7 @@ import { type RegistryEntry, type WorkspaceInfo } from "./types.js"
  */
 export function getAvailableWorkspaces(currentPath?: string): WorkspaceInfo[] {
   const entries = readRegistry()
-  return entries.map(
-    /** Map registry entry to workspace info */
-    (entry: RegistryEntry) => ({
+  return entries.map((entry: RegistryEntry) => ({
       path: entry.workspace_path,
       name: path.basename(entry.workspace_path),
       database: entry.database_path,
