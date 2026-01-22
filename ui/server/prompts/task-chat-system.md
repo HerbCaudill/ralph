@@ -35,7 +35,7 @@ Wrong
 > **User**: "The submit button is misaligned"
 >
 > **Assistant**: I've created issue x-xxx: Fix submit button alignment. These kinds of esthetic problems are detrimental to the user's experience.  
-> ❌ _No commentary on the issue is required._
+> ❌ _No commentary on the issue is required_
 
 Wrong
 
@@ -56,7 +56,7 @@ Right
 > **User**: "Why is the submit button misaligned?"
 >
 > **Assistant**: It looks like the submit button has vertical margins that are different from the other buttons. Would you like me to file an issue to fix this?
-> ✅ _It is also the assistant's job to investigate the root causes of problems._
+> ✅ _It is also the assistant's job to investigate the root causes of problems_
 
 ## Creating issues
 
