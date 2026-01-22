@@ -1242,10 +1242,12 @@ function attachWsServer(httpServer: Server): WebSocketServer {
     })
 
     // Send welcome message with current Ralph status and event history
+    // Use "default" instanceId to match the frontend store's DEFAULT_INSTANCE_ID
     const context = getActiveContext()
     ws.send(
       JSON.stringify({
         type: "connected",
+        instanceId: "default",
         timestamp: Date.now(),
         ralphStatus: context.ralphManager.status,
         events: context.eventHistory,
@@ -1485,11 +1487,16 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
       return
     }
 
+    // Use "default" instanceId for the legacy WorkspaceContextManager path
+    // This matches the DEFAULT_INSTANCE_ID in the frontend store
+    const instanceId = "default"
+
     switch (eventType) {
       case "ralph:event": {
         const event = args[0] as RalphEvent
         broadcast({
           type: "ralph:event",
+          instanceId,
           event,
           timestamp: Date.now(),
         })
@@ -1499,6 +1506,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const status = args[0] as RalphStatus
         broadcast({
           type: "ralph:status",
+          instanceId,
           status,
           timestamp: Date.now(),
         })
@@ -1508,6 +1516,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const line = args[0] as string
         broadcast({
           type: "ralph:output",
+          instanceId,
           line,
           timestamp: Date.now(),
         })
@@ -1517,6 +1526,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const error = args[0] as Error
         broadcast({
           type: "ralph:error",
+          instanceId,
           error: error.message,
           timestamp: Date.now(),
         })
@@ -1526,6 +1536,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const info = args[0] as { code: number | null; signal: string | null }
         broadcast({
           type: "ralph:exit",
+          instanceId,
           code: info.code,
           signal: info.signal,
           timestamp: Date.now(),
@@ -1536,6 +1547,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const message = args[0] as TaskChatMessage
         broadcast({
           type: "task-chat:message",
+          instanceId,
           message,
           timestamp: Date.now(),
         })
@@ -1545,6 +1557,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const text = args[0] as string
         broadcast({
           type: "task-chat:chunk",
+          instanceId,
           text,
           timestamp: Date.now(),
         })
@@ -1554,6 +1567,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const status = args[0] as TaskChatStatus
         broadcast({
           type: "task-chat:status",
+          instanceId,
           status,
           timestamp: Date.now(),
         })
@@ -1563,6 +1577,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const error = args[0] as Error
         broadcast({
           type: "task-chat:error",
+          instanceId,
           error: error.message,
           timestamp: Date.now(),
         })
@@ -1572,6 +1587,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const toolUse = args[0] as TaskChatToolUse
         broadcast({
           type: "task-chat:tool_use",
+          instanceId,
           toolUse,
           timestamp: Date.now(),
         })
@@ -1581,6 +1597,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const toolUse = args[0] as TaskChatToolUse
         broadcast({
           type: "task-chat:tool_update",
+          instanceId,
           toolUse,
           timestamp: Date.now(),
         })
@@ -1590,6 +1607,7 @@ function wireContextManagerEvents(manager: WorkspaceContextManager): void {
         const toolUse = args[0] as TaskChatToolUse
         broadcast({
           type: "task-chat:tool_result",
+          instanceId,
           toolUse,
           timestamp: Date.now(),
         })
@@ -1695,8 +1713,10 @@ export async function switchWorkspace(workspacePath: string): Promise<void> {
 
   // Broadcast workspace switch to all connected clients
   // This allows the frontend to sync with the new workspace's state
+  // Use "default" instanceId to match the frontend store's DEFAULT_INSTANCE_ID
   broadcast({
     type: "workspace_switched",
+    instanceId: "default",
     workspacePath,
     ralphStatus: context.ralphManager.status,
     events: context.eventHistory,

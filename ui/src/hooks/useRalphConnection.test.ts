@@ -762,4 +762,158 @@ describe("useRalphConnection", () => {
       expect(ralphConnection.maxReconnectAttempts).toBe(10)
     })
   })
+
+  describe("instanceId filtering", () => {
+    it("processes messages with instanceId matching active instance", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Default instance ID is "default"
+      const event = { type: "tool_use", timestamp: 1234, tool: "read" }
+
+      act(() => {
+        getWs()?.simulateMessage({ type: "ralph:event", instanceId: "default", event })
+      })
+
+      expect(useAppStore.getState().events).toContainEqual(event)
+    })
+
+    it("ignores messages with instanceId not matching active instance", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      const event = { type: "tool_use", timestamp: 1234, tool: "read" }
+
+      act(() => {
+        getWs()?.simulateMessage({ type: "ralph:event", instanceId: "other-instance", event })
+      })
+
+      // Event should NOT be added because instanceId doesn't match
+      expect(useAppStore.getState().events).not.toContainEqual(event)
+    })
+
+    it("processes messages without instanceId (backward compatibility)", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      const event = { type: "tool_use", timestamp: 1234, tool: "read" }
+
+      // Message without instanceId should still be processed
+      act(() => {
+        getWs()?.simulateMessage({ type: "ralph:event", event })
+      })
+
+      expect(useAppStore.getState().events).toContainEqual(event)
+    })
+
+    it("ignores ralph:status messages for other instances", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Ensure initial status is stopped
+      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "ralph:status",
+          instanceId: "other-instance",
+          status: "running",
+        })
+      })
+
+      // Status should NOT change because instanceId doesn't match
+      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+    })
+
+    it("processes ralph:status messages for active instance", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      act(() => {
+        getWs()?.simulateMessage({ type: "ralph:status", instanceId: "default", status: "running" })
+      })
+
+      expect(useAppStore.getState().ralphStatus).toBe("running")
+    })
+
+    it("processes connected message with instanceId", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "connected",
+          instanceId: "default",
+          ralphStatus: "running",
+          events: [{ type: "tool_use", timestamp: 1000, tool: "test" }],
+          timestamp: 1234,
+        })
+      })
+
+      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(useAppStore.getState().events).toHaveLength(1)
+    })
+
+    it("ignores connected message for other instances", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Ensure initial status is stopped
+      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "connected",
+          instanceId: "other-instance",
+          ralphStatus: "running",
+          events: [{ type: "tool_use", timestamp: 1000, tool: "test" }],
+          timestamp: 1234,
+        })
+      })
+
+      // Status and events should NOT change because instanceId doesn't match
+      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(useAppStore.getState().events).toHaveLength(0)
+    })
+
+    it("processes global messages without instanceId (pong, task updates)", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Task update messages are global and should be processed
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "task:updated",
+          issue: { id: "task-1", title: "Updated task" },
+        })
+      })
+
+      // These global messages should always be processed
+      // (The test verifies no errors are thrown - task:updated updates store.tasks)
+    })
+  })
 })

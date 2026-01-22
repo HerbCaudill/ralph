@@ -86,11 +86,40 @@ function setStatus(newStatus: ConnectionStatus): void {
 function handleMessage(event: MessageEvent): void {
   try {
     const data = JSON.parse(event.data)
-    const { type, timestamp } = data as { type?: string; timestamp?: number }
+    const { type, timestamp, instanceId } = data as {
+      type?: string
+      timestamp?: number
+      instanceId?: string
+    }
 
     if (!type) return
 
     const store = useAppStore.getState()
+
+    // For instance-scoped messages, only process if instanceId matches the active instance
+    // Messages without instanceId are global (pong, task updates, etc.) and always processed
+    const instanceScopedTypes = [
+      "connected",
+      "workspace_switched",
+      "ralph:event",
+      "ralph:status",
+      "ralph:output",
+      "ralph:error",
+      "ralph:exit",
+      "task-chat:message",
+      "task-chat:chunk",
+      "task-chat:status",
+      "task-chat:error",
+      "task-chat:tool_use",
+      "task-chat:tool_update",
+      "task-chat:tool_result",
+    ]
+
+    if (instanceScopedTypes.includes(type) && instanceId && instanceId !== store.activeInstanceId) {
+      // Message is for a different instance - skip processing
+      // Future enhancement: could update the specific instance in the instances Map
+      return
+    }
 
     switch (type) {
       case "connected":
