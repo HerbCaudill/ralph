@@ -1,15 +1,3 @@
-/**
- * AgentAdapter - Core abstraction for multi-agent support
- *
- * This module defines the interface that all agent adapters must implement,
- * as well as the normalized event types they emit. This allows the UI to work
- * with different agent backends (Claude CLI, Codex CLI, etc.) without knowing
- * the specifics of each agent's native event format.
- *
- * Event types and type guards are re-exported from @herbcaudill/ralph-shared
- * for backward compatibility.
- */
-
 import { EventEmitter } from "node:events"
 
 // Re-export event types from shared package for backward compatibility
@@ -36,8 +24,6 @@ export {
 
 // Import types we need for local use
 import type { AgentEvent, AgentStatus, AgentStatusEvent } from "@herbcaudill/ralph-shared"
-
-// Agent Adapter Interface
 
 /**
  * Configuration options for starting an agent.

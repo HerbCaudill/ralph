@@ -2,68 +2,6 @@ import { spawn } from "node:child_process"
 import { stat, mkdir, realpath } from "node:fs/promises"
 import { join, dirname, basename } from "node:path"
 
-export interface WorktreeInfo {
-  path: string
-  branch: string
-  instanceId: string
-  instanceName: string
-}
-
-export interface CreateWorktreeOptions {
-  instanceId: string
-  instanceName: string
-}
-
-export interface MergeResult {
-  success: boolean
-  hadConflicts: boolean
-  message: string
-  /** Files with merge conflicts (only populated when hadConflicts is true) */
-  conflictedFiles?: string[]
-}
-
-export interface CleanupResult {
-  /** Overall success - true only if merge and removal succeeded */
-  success: boolean
-  /** Result of the merge operation (null if no uncommitted changes or merge not needed) */
-  merge: MergeResult | null
-  /** Whether the worktree and branch were removed */
-  removed: boolean
-  /** Summary message */
-  message: string
-}
-
-export interface PostIterationResult {
-  /** Overall success - true only if both merge and rebase succeeded */
-  success: boolean
-  /** Result of the merge operation */
-  merge: MergeResult
-  /** Result of the rebase operation (only attempted if merge succeeded) */
-  rebase: MergeResult | null
-  /** Summary message */
-  message: string
-}
-
-/**
- * Status of a worktree's integrity.
- */
-export interface WorktreeStatus {
-  /** Does the worktree directory exist on disk? */
-  directoryExists: boolean
-
-  /** Is the worktree registered with git? */
-  gitRegistered: boolean
-
-  /** Does the branch exist? */
-  branchExists: boolean
-
-  /** Is the worktree valid and usable? */
-  isValid: boolean
-
-  /** Human-readable status message */
-  message: string
-}
-
 /**
  * Manages git worktrees for concurrent Ralph instances.
  *
@@ -118,11 +56,11 @@ export class WorktreeManager {
 
   /**
    * Create a new worktree for an instance.
-   *
-   * @param options - Instance ID and name
-   * @returns Info about the created worktree
    */
-  async create(options: CreateWorktreeOptions): Promise<WorktreeInfo> {
+  async create(
+    /** Instance ID and name */
+    options: CreateWorktreeOptions,
+  ): Promise<WorktreeInfo> {
     const { instanceId, instanceName } = options
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     const branchName = this.getBranchName(instanceId, instanceName)
@@ -143,12 +81,13 @@ export class WorktreeManager {
 
   /**
    * Merge the worktree branch back to main.
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @returns Result of the merge operation
    */
-  async merge(instanceId: string, instanceName: string): Promise<MergeResult> {
+  async merge(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<MergeResult> {
     const branchName = this.getBranchName(instanceId, instanceName)
 
     try {
@@ -189,12 +128,13 @@ export class WorktreeManager {
 
   /**
    * Rebase the worktree branch on top of main.
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @returns Result of the rebase operation
    */
-  async rebase(instanceId: string, instanceName: string): Promise<MergeResult> {
+  async rebase(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<MergeResult> {
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     const mainBranch = await this.getMainBranch()
 
@@ -243,12 +183,13 @@ export class WorktreeManager {
    *
    * If there are merge conflicts, the merge will fail and the caller
    * should handle conflict resolution before retrying.
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @returns Result of the post-iteration workflow
    */
-  async postIterationMerge(instanceId: string, instanceName: string): Promise<PostIterationResult> {
+  async postIterationMerge(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<PostIterationResult> {
     const branchName = this.getBranchName(instanceId, instanceName)
 
     // Step 1: Merge the instance branch to main
@@ -294,12 +235,15 @@ export class WorktreeManager {
 
   /**
    * Remove a worktree and optionally delete its branch.
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @param deleteBranch - Whether to delete the branch (default: true)
    */
-  async remove(instanceId: string, instanceName: string, deleteBranch = true): Promise<void> {
+  async remove(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+    /** Whether to delete the branch (default: true) */
+    deleteBranch = true,
+  ): Promise<void> {
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     const branchName = this.getBranchName(instanceId, instanceName)
 
@@ -338,12 +282,13 @@ export class WorktreeManager {
    *
    * If merge conflicts occur, the cleanup will fail and the caller
    * should handle conflict resolution before retrying.
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @returns Result of the cleanup operation
    */
-  async cleanup(instanceId: string, instanceName: string): Promise<CleanupResult> {
+  async cleanup(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<CleanupResult> {
     const branchName = this.getBranchName(instanceId, instanceName)
     const mainBranch = await this.getMainBranch()
 
@@ -511,12 +456,13 @@ export class WorktreeManager {
    * - The worktree directory was externally deleted
    * - The worktree is no longer registered with git
    * - The branch was deleted
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @returns Status information about the worktree
    */
-  async validate(instanceId: string, instanceName: string): Promise<WorktreeStatus> {
+  async validate(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<WorktreeStatus> {
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     const branchName = this.getBranchName(instanceId, instanceName)
 
@@ -605,12 +551,14 @@ export class WorktreeManager {
    * If the branch still exists, recreates the worktree pointing to that branch.
    * If the branch was also deleted, creates a fresh worktree with a new branch.
    *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @returns Info about the recreated worktree
-   * @throws Error if worktree already exists and is valid
+   * Throws Error if worktree already exists and is valid.
    */
-  async recreate(instanceId: string, instanceName: string): Promise<WorktreeInfo> {
+  async recreate(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<WorktreeInfo> {
     const status = await this.validate(instanceId, instanceName)
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     const branchName = this.getBranchName(instanceId, instanceName)
@@ -649,8 +597,6 @@ export class WorktreeManager {
 
   /**
    * Get list of files with merge conflicts in the main workspace.
-   *
-   * @returns Array of file paths with conflicts, empty if no conflicts
    */
   async getConflictedFiles(): Promise<string[]> {
     try {
@@ -667,8 +613,6 @@ export class WorktreeManager {
 
   /**
    * Check if the main workspace is currently in a merge state.
-   *
-   * @returns true if a merge is in progress
    */
   async isMergeInProgress(): Promise<boolean> {
     try {
@@ -683,7 +627,7 @@ export class WorktreeManager {
   /**
    * Abort an in-progress merge in the main workspace.
    *
-   * @throws Error if no merge is in progress
+   * Throws Error if no merge is in progress.
    */
   async abortMerge(): Promise<void> {
     await this.git(["merge", "--abort"])
@@ -691,28 +635,29 @@ export class WorktreeManager {
 
   /**
    * Mark a conflicted file as resolved after manual edits.
-   *
-   * @param filePath - Path to the file that was manually resolved
    */
-  async markResolved(filePath: string): Promise<void> {
+  async markResolved(
+    /** Path to the file that was manually resolved */
+    filePath: string,
+  ): Promise<void> {
     await this.git(["add", filePath])
   }
 
   /**
    * Resolve a conflict by accepting one side's version.
-   *
-   * @param filePath - Path to the conflicted file
-   * @param strategy - "ours" to keep main's version, "theirs" to keep branch's version
    */
-  async resolveConflict(filePath: string, strategy: "ours" | "theirs"): Promise<void> {
+  async resolveConflict(
+    /** Path to the conflicted file */
+    filePath: string,
+    /** "ours" to keep main's version, "theirs" to keep branch's version */
+    strategy: "ours" | "theirs",
+  ): Promise<void> {
     await this.git(["checkout", `--${strategy}`, filePath])
     await this.git(["add", filePath])
   }
 
   /**
    * Complete a merge after all conflicts have been resolved.
-   *
-   * @returns Result of the merge completion
    */
   async completeMerge(): Promise<MergeResult> {
     // Check if there are still unresolved conflicts
@@ -784,14 +729,22 @@ export class WorktreeManager {
   /**
    * Execute a git command in the main workspace.
    */
-  private git(args: string[]): Promise<string> {
+  private git(
+    /** Git command arguments */
+    args: string[],
+  ): Promise<string> {
     return this.gitInDir(this.mainWorkspacePath, args)
   }
 
   /**
    * Execute a git command in a specific directory.
    */
-  private gitInDir(cwd: string, args: string[]): Promise<string> {
+  private gitInDir(
+    /** Working directory for git command */
+    cwd: string,
+    /** Git command arguments */
+    args: string[],
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const proc = spawn("git", args, {
         cwd,
@@ -824,4 +777,103 @@ export class WorktreeManager {
       })
     })
   }
+}
+
+/**
+ * Information about a worktree.
+ */
+export interface WorktreeInfo {
+  /** Path to the worktree directory */
+  path: string
+
+  /** Git branch name */
+  branch: string
+
+  /** Instance ID */
+  instanceId: string
+
+  /** Instance name */
+  instanceName: string
+}
+
+/**
+ * Options for creating a worktree.
+ */
+export interface CreateWorktreeOptions {
+  /** Instance ID */
+  instanceId: string
+
+  /** Instance name */
+  instanceName: string
+}
+
+/**
+ * Result of a merge or rebase operation.
+ */
+export interface MergeResult {
+  /** Whether the operation succeeded */
+  success: boolean
+
+  /** Whether conflicts were detected */
+  hadConflicts: boolean
+
+  /** Human-readable message */
+  message: string
+
+  /** Files with merge conflicts (only populated when hadConflicts is true) */
+  conflictedFiles?: string[]
+}
+
+/**
+ * Result of a cleanup operation.
+ */
+export interface CleanupResult {
+  /** Overall success - true only if merge and removal succeeded */
+  success: boolean
+
+  /** Result of the merge operation (null if no uncommitted changes or merge not needed) */
+  merge: MergeResult | null
+
+  /** Whether the worktree and branch were removed */
+  removed: boolean
+
+  /** Summary message */
+  message: string
+}
+
+/**
+ * Result of post-iteration merge workflow.
+ */
+export interface PostIterationResult {
+  /** Overall success - true only if both merge and rebase succeeded */
+  success: boolean
+
+  /** Result of the merge operation */
+  merge: MergeResult
+
+  /** Result of the rebase operation (only attempted if merge succeeded) */
+  rebase: MergeResult | null
+
+  /** Summary message */
+  message: string
+}
+
+/**
+ * Status of a worktree's integrity.
+ */
+export interface WorktreeStatus {
+  /** Does the worktree directory exist on disk? */
+  directoryExists: boolean
+
+  /** Is the worktree registered with git? */
+  gitRegistered: boolean
+
+  /** Does the branch exist? */
+  branchExists: boolean
+
+  /** Is the worktree valid and usable? */
+  isValid: boolean
+
+  /** Human-readable status message */
+  message: string
 }

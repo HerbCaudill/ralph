@@ -1,10 +1,3 @@
-/**
- * CodexAdapter - AgentAdapter implementation for OpenAI Codex SDK
- *
- * Uses the Codex SDK to stream thread events and translates them into
- * normalized AgentEvent types.
- */
-
 import {
   Codex,
   type CodexOptions,
@@ -23,28 +16,6 @@ import {
   type AgentResultEvent,
   type AgentErrorEvent,
 } from "./AgentAdapter.js"
-
-// Types
-
-export type CodexFactory = (options?: CodexOptions) => Codex
-
-export interface CodexAdapterOptions {
-  /** Codex instance override (for testing) */
-  codex?: Codex
-  /** Custom Codex factory (for testing) */
-  createCodex?: CodexFactory
-  /** Override API key for Codex SDK */
-  apiKey?: string
-  /** Override base URL for Codex SDK */
-  baseUrl?: string
-  /** Override Codex binary path */
-  codexPathOverride?: string
-}
-
-type CodexNativeEvent = ThreadEvent
-type CodexItem = Extract<ThreadEvent, { item: ThreadItem }>["item"]
-
-// CodexAdapter
 
 /**
  * AgentAdapter implementation for the Codex SDK.
@@ -414,3 +385,23 @@ export class CodexAdapter extends AgentAdapter {
     this.emit("error", err)
   }
 }
+
+// Types
+
+export type CodexFactory = (options?: CodexOptions) => Codex
+
+export interface CodexAdapterOptions {
+  /** Codex instance override (for testing) */
+  codex?: Codex
+  /** Custom Codex factory (for testing) */
+  createCodex?: CodexFactory
+  /** Override API key for Codex SDK */
+  apiKey?: string
+  /** Override base URL for Codex SDK */
+  baseUrl?: string
+  /** Override Codex binary path */
+  codexPathOverride?: string
+}
+
+type CodexNativeEvent = ThreadEvent
+type CodexItem = Extract<ThreadEvent, { item: ThreadItem }>["item"]

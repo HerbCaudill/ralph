@@ -1,17 +1,8 @@
-/**
- * ThemeDiscovery - Scan VS Code extensions for theme files and read settings.
- *
- * This server-side class handles:
- * - Scanning ~/.vscode/extensions for user-installed theme extensions
- * - Scanning VS Code built-in themes from the application bundle
- * - Reading VS Code settings.json to get the current theme
- * - Providing theme metadata for the ThemePicker component
- */
-
 import { readdir, readFile, stat } from "node:fs/promises"
 import path from "node:path"
 import os from "node:os"
 import type { ThemeMeta } from "./lib/theme/types.js"
+import { stripJsonComments } from "./lib/stripJsonComments.js"
 
 /**
  * NLS (localization) strings for resolving placeholders like %themeLabel%
@@ -429,103 +420,4 @@ export class ThemeDiscovery {
     const themes = await this.discoverThemes()
     return themes.find(t => t.id === id) ?? null
   }
-}
-
-/**
- * Strip JSON comments from a string.
- * Handles both single-line (//) and multi-line (/* * /) comments.
- * Preserves strings that contain // or /* characters.
- */
-export function stripJsonComments(json: string): string {
-  let result = ""
-  let inString = false
-  let inSingleComment = false
-  let inMultiComment = false
-  let i = 0
-
-  while (i < json.length) {
-    const char = json[i]
-    const nextChar = json[i + 1]
-
-    // Handle string state
-    if (!inSingleComment && !inMultiComment) {
-      if (char === '"' && json[i - 1] !== "\\") {
-        inString = !inString
-        result += char
-        i++
-        continue
-      }
-    }
-
-    // If we're in a string, just copy characters
-    if (inString) {
-      result += char
-      i++
-      continue
-    }
-
-    // Handle comment start
-    if (!inSingleComment && !inMultiComment) {
-      if (char === "/" && nextChar === "/") {
-        inSingleComment = true
-        i += 2
-        continue
-      }
-      if (char === "/" && nextChar === "*") {
-        inMultiComment = true
-        i += 2
-        continue
-      }
-    }
-
-    // Handle single-line comment end
-    if (inSingleComment) {
-      if (char === "\n") {
-        inSingleComment = false
-        result += char // Keep the newline
-      }
-      i++
-      continue
-    }
-
-    // Handle multi-line comment end
-    if (inMultiComment) {
-      if (char === "*" && nextChar === "/") {
-        inMultiComment = false
-        i += 2
-        continue
-      }
-      i++
-      continue
-    }
-
-    // Regular character
-    result += char
-    i++
-  }
-
-  return result
-}
-
-/**
- * Singleton instance of ThemeDiscovery.
- */
-let themeDiscoveryInstance: ThemeDiscovery | null = null
-
-/**
- * Get the singleton ThemeDiscovery instance, initializing it if needed.
- */
-export async function getThemeDiscovery(): Promise<ThemeDiscovery> {
-  if (!themeDiscoveryInstance) {
-    themeDiscoveryInstance = new ThemeDiscovery()
-    await themeDiscoveryInstance.initialize()
-  }
-  return themeDiscoveryInstance
-}
-
-/**
- * Reset the ThemeDiscovery singleton (for testing).
- */
-export function resetThemeDiscovery(): void {
-  themeDiscoveryInstance = null
 }

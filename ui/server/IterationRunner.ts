@@ -1,12 +1,3 @@
-/**
- * IterationRunner - Runs agent iterations using any AgentAdapter
- *
- * This module provides a generic way to run iterations with different agents
- * (Claude, Codex, etc.) via the AgentAdapter interface. It handles the iteration
- * lifecycle, event processing, and provides a consistent API regardless of the
- * underlying agent.
- */
-
 import { EventEmitter } from "node:events"
 import type {
   AgentAdapter,

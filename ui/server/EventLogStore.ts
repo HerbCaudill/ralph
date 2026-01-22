@@ -4,8 +4,6 @@ import { join } from "node:path"
 import { homedir } from "node:os"
 import type { RalphEvent } from "./RalphManager.js"
 
-// Types
-
 export interface EventLogMetadata {
   taskId?: string
   title?: string
@@ -27,7 +25,9 @@ export interface EventLogStoreSummary {
   metadata?: EventLogMetadata
 }
 
-// Generate a short, URL-safe ID (8 chars)
+/**
+ * Generate a short, URL-safe ID (8 chars)
+ */
 function generateId(): string {
   return randomBytes(4).toString("hex")
 }
@@ -130,7 +130,9 @@ export class EventLogStore {
   }
 }
 
-// Singleton instance
+/**
+ * Singleton instance
+ */
 let eventLogStore: EventLogStore | null = null
 
 /**

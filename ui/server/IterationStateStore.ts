@@ -232,10 +232,11 @@ export class IterationStateStore {
    *
    * Removes states that are older than the stale threshold (default 1 hour).
    * Returns the number of states removed.
-   *
-   * @param thresholdMs - Maximum age in milliseconds (default: 1 hour)
    */
-  async cleanupStale(thresholdMs: number = STALE_THRESHOLD_MS): Promise<number> {
+  async cleanupStale(
+    /** Maximum age in milliseconds (default: 1 hour) */
+    thresholdMs: number = STALE_THRESHOLD_MS,
+  ): Promise<number> {
     const now = Date.now()
     let removed = 0
 
@@ -271,11 +272,11 @@ const iterationStateStores = new Map<string, IterationStateStore>()
 /**
  * Get the IterationStateStore for a workspace.
  * Creates a new store if one doesn't exist for the workspace.
- *
- * @param workspacePath - The workspace path
- * @returns The IterationStateStore for the workspace
  */
-export function getIterationStateStore(workspacePath: string): IterationStateStore {
+export function getIterationStateStore(
+  /** The workspace path */
+  workspacePath: string,
+): IterationStateStore {
   let store = iterationStateStores.get(workspacePath)
   if (!store) {
     store = new IterationStateStore(workspacePath)

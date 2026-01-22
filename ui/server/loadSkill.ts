@@ -81,16 +81,15 @@ function parseFrontmatter(content: string): { metadata: Record<string, unknown>;
 
 /**
  * Load a skill file with fallback to default.
- *
  * First checks for a customized skill in the project's .claude/skills/ directory.
  * Falls back to the bundled default skill if no customization exists.
- *
- * @param skillName - Name of the skill (e.g., "manage-tasks")
- * @param cwd - Working directory to look for custom skills (defaults to process.cwd())
- * @returns Loaded skill with content, metadata, and source info
- * @throws Error if skill cannot be found
  */
-export function loadSkill(skillName: string, cwd: string = process.cwd()): LoadSkillResult {
+export function loadSkill(
+  /** Name of the skill (e.g., "manage-tasks") */
+  skillName: string,
+  /** Working directory to look for custom skills (defaults to process.cwd()) */
+  cwd: string = process.cwd(),
+): LoadSkillResult {
   // Try custom skill location first
   const customPath = join(cwd, ".claude", "skills", skillName, "SKILL.md")
 

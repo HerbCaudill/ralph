@@ -1,15 +1,3 @@
-/**
- * Theme color mapper for VS Code themes.
- *
- * This module maps VS Code color tokens to CSS variables used by the application.
- * It uses fallback chains to handle themes that don't provide all color values.
- *
- * The mapper extracts colors from VS Code themes and maps them to:
- * - Status colors (success, warning, error, info, neutral)
- * - UI colors (background, foreground, accent, muted, border, selection)
- * - Component-specific colors (sidebar, card, popover, etc.)
- */
-
 import type { VSCodeTheme, StatusColors, AppTheme, ThemeMeta } from "./types.js"
 import { DEFAULT_DARK_STATUS_COLORS, DEFAULT_LIGHT_STATUS_COLORS } from "./types.js"
 import { isDarkTheme, getEssentialColors } from "./parser.js"

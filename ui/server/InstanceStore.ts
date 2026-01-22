@@ -285,11 +285,11 @@ const instanceStores = new Map<string, InstanceStore>()
 /**
  * Get the InstanceStore for a workspace.
  * Creates a new store if one doesn't exist for the workspace.
- *
- * @param workspacePath - The workspace path
- * @returns The InstanceStore for the workspace
  */
-export function getInstanceStore(workspacePath: string): InstanceStore {
+export function getInstanceStore(
+  /** The workspace path */
+  workspacePath: string,
+): InstanceStore {
   let store = instanceStores.get(workspacePath)
   if (!store) {
     store = new InstanceStore(workspacePath)

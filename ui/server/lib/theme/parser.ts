@@ -1,12 +1,3 @@
-/**
- * Parser and validator for VS Code theme JSON files.
- *
- * This module provides functions to:
- * - Parse raw JSON theme data into typed VSCodeTheme objects
- * - Validate theme structure and required fields
- * - Extract colors and tokenColors for application use
- */
-
 import type {
   VSCodeTheme,
   VSCodeTokenColor,
