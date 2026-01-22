@@ -2,14 +2,6 @@ import { existsSync, readFileSync } from "fs"
 import { join } from "path"
 import { execSync } from "child_process"
 
-export type ProgressData = {
-  type: "beads" | "todo" | "none"
-  /** Number of issues/tasks completed since startup */
-  completed: number
-  /** Total issues/tasks seen since startup (initial + created since) */
-  total: number
-}
-
 const beadsDir = join(process.cwd(), ".beads")
 const ralphDir = join(process.cwd(), ".ralph")
 const todoFile = join(ralphDir, "todo.md")
@@ -21,7 +13,12 @@ const todoFile = join(ralphDir, "todo.md")
  * issues closed and created since startup.
  * For todo.md workspaces: completed = checked items, total = all items
  */
-export const getProgress = (initialCount: number, startupTimestamp: string): ProgressData => {
+export const getProgress = (
+  /** Initial count of open + in_progress issues at startup */
+  initialCount: number,
+  /** RFC3339 timestamp for counting issues created after this time */
+  startupTimestamp: string,
+): ProgressData => {
   // Check for beads workspace first
   if (existsSync(beadsDir)) {
     return getBeadsProgress(initialCount, startupTimestamp)
@@ -35,7 +32,15 @@ export const getProgress = (initialCount: number, startupTimestamp: string): Pro
   return { type: "none", completed: 0, total: 0 }
 }
 
-const getBeadsProgress = (initialCount: number, startupTimestamp: string): ProgressData => {
+/**
+ * Get progress for a beads workspace by counting issues created and closed since startup.
+ */
+const getBeadsProgress = (
+  /** Initial count of open + in_progress issues */
+  initialCount: number,
+  /** RFC3339 timestamp for counting issues created after this time */
+  startupTimestamp: string,
+): ProgressData => {
   try {
     // Count issues created since startup
     const createdSinceStartup = parseInt(
@@ -75,6 +80,9 @@ const getBeadsProgress = (initialCount: number, startupTimestamp: string): Progr
   }
 }
 
+/**
+ * Get progress for a todo.md workspace by counting checked and unchecked items.
+ */
 const getTodoProgress = (): ProgressData => {
   try {
     const content = readFileSync(todoFile, "utf-8")
@@ -123,6 +131,9 @@ export const captureStartupSnapshot = (): StartupSnapshot | undefined => {
   return undefined
 }
 
+/**
+ * Capture a startup snapshot for a beads workspace.
+ */
 const captureBeadsSnapshot = (): StartupSnapshot | undefined => {
   try {
     const timestamp = new Date().toISOString()

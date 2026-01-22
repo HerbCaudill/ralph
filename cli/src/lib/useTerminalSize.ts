@@ -1,19 +1,17 @@
 import { useState, useEffect } from "react"
 import { useStdout } from "ink"
+import { getTerminalSize } from "./getTerminalSize"
 
+/**
+ * Hook to get the current terminal size and subscribe to resize events.
+ */
 export const useTerminalSize = () => {
   const { stdout } = useStdout()
-
-  const getSize = () => ({
-    columns: stdout?.columns ?? 80,
-    rows: stdout?.rows ?? 24,
-  })
-
-  const [size, setSize] = useState(getSize)
+  const [size, setSize] = useState(() => getTerminalSize(stdout))
 
   useEffect(() => {
     const handleResize = () => {
-      setSize(getSize())
+      setSize(getTerminalSize(stdout))
     }
 
     stdout?.on("resize", handleResize)

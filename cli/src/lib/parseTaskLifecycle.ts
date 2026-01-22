@@ -1,13 +1,4 @@
 /**
- * Result of parsing a task lifecycle event.
- */
-export interface TaskLifecycleInfo {
-  action: "starting" | "completed"
-  taskId?: string
-  taskTitle?: string
-}
-
-/**
  * Parse a text message to detect task lifecycle events.
  * Returns TaskLifecycleInfo if the text matches the pattern, null otherwise.
  *
@@ -15,7 +6,10 @@ export interface TaskLifecycleInfo {
  * - "<start_task>task-id</start_task>"
  * - "<end_task>task-id</end_task>"
  */
-export function parseTaskLifecycleEvent(text: string): TaskLifecycleInfo | null {
+export function parseTaskLifecycleEvent(
+  /** The text message to parse */
+  text: string,
+): TaskLifecycleInfo | null {
   // Match starting pattern: <start_task>task-id</start_task>
   const startingMatch = text.match(/<start_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/start_task>/i)
   if (startingMatch) {
@@ -35,4 +29,13 @@ export function parseTaskLifecycleEvent(text: string): TaskLifecycleInfo | null 
   }
 
   return null
+}
+
+/**
+ * Result of parsing a task lifecycle event.
+ */
+export interface TaskLifecycleInfo {
+  action: "starting" | "completed"
+  taskId?: string
+  taskTitle?: string
 }
