@@ -2,34 +2,11 @@
 
 You are running as an autonomous iteration agent. Follow this protocol exactly.
 
-## CRITICAL: Running tests
-
-**NEVER run test commands directly with Bash.** Always use a subagent.
-
-To run tests, first read the agent prompt, then spawn a Task:
-
-```
-# Step 1: Read the agent prompt
-Read .claude/agents/run-tests.md
-
-# Step 2: Spawn subagent with Task tool
-Task(
-  description: "Run tests",
-  subagent_type: "general-purpose",
-  model: "haiku",
-  prompt: "<paste run-tests.md content here>\n\nRun: pnpm test:all"
-)
-```
-
-The subagent runs tests and returns a summary. This keeps verbose output out of your context.
-
----
-
 ## Iteration lifecycle
 
 ### Step 1: Check for errors
 
-Spawn a **run-tests subagent** (see above) to check for build/test errors.
+Run the project's build/test command (defined in your workflow instructions below).
 
 - If errors exist: create a P1 bug issue documenting them. Skip to Step 4.
 - If no errors: proceed to Step 2.
@@ -69,31 +46,19 @@ When finished:
 
 ---
 
-## Other subagents
+## Subagents (optional)
 
-**Writing tests** - spawn make-tests subagent:
+You can delegate certain tasks to subagents that run on cheaper/faster models. To use a subagent:
 
-```
-Read .claude/agents/make-tests.md
-Task(
-  description: "Write tests for X",
-  subagent_type: "general-purpose",
-  model: "haiku",
-  prompt: "<make-tests.md content>\n\nWrite tests for: {description}"
-)
-```
+1. Read the agent prompt from `.claude/agents/`
+2. Use the Task tool with `subagent_type: "general-purpose"` and `model: "haiku"`
+3. Pass the agent prompt content plus your specific instructions
 
-**Writing documentation** - spawn write-docs subagent:
+Available agents:
 
-```
-Read .claude/agents/write-docs.md
-Task(
-  description: "Document X",
-  subagent_type: "general-purpose",
-  model: "haiku",
-  prompt: "<write-docs.md content>\n\nDocument: {description}"
-)
-```
+- **run-tests** - Runs tests and returns a summarized result
+- **make-tests** - Generates tests for specified code
+- **write-docs** - Writes documentation for specified code
 
 ---
 
