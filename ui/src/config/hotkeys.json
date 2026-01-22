@@ -70,7 +70,7 @@
     "toggleInputFocus": {
       "modifiers": [],
       "key": "Tab",
-      "description": "Toggle focus between task and chat input",
+      "description": "Cycle focus through inputs (task/search/chat)",
       "category": "Navigation"
     },
     "toggleTaskChat": {

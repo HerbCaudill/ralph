@@ -278,18 +278,31 @@ export function App() {
     chatInputRef.current?.focus()
   }, [])
 
-  // Toggle focus between task input and chat input
+  // Toggle focus between task input, search input (if visible), and chat input
   const handleToggleInputFocus = useCallback(() => {
-    // Check if task input is currently focused
     const activeElement = document.activeElement
     const taskInput = document.querySelector('[aria-label="New task title"]')
+    const searchInput = document.querySelector('[aria-label="Search tasks"]')
 
-    if (activeElement === taskInput) {
-      chatInputRef.current?.focus()
+    // When search is visible, rotate through all three inputs
+    // Order: task input -> search input -> chat input -> task input
+    if (isSearchVisible && searchInput) {
+      if (activeElement === taskInput) {
+        ;(searchInput as HTMLElement).focus()
+      } else if (activeElement === searchInput) {
+        chatInputRef.current?.focus()
+      } else {
+        quickTaskInputRef.current?.focus()
+      }
     } else {
-      quickTaskInputRef.current?.focus()
+      // When search is hidden, toggle between task input and chat input
+      if (activeElement === taskInput) {
+        chatInputRef.current?.focus()
+      } else {
+        quickTaskInputRef.current?.focus()
+      }
     }
-  }, [])
+  }, [isSearchVisible])
 
   const handleCycleTheme = useCallback(() => {
     cycleTheme()
