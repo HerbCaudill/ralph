@@ -1,5 +1,6 @@
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk"
 import { createDebugLogger } from "./debug.js"
+import { createUserMessage } from "./createUserMessage.js"
 
 const log = createDebugLogger("messagequeue")
 
@@ -13,6 +14,10 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
   private closed = false
   private nextCallCount = 0
 
+  /**
+   * Push a message to the queue. If there are pending resolvers waiting for the next message,
+   * resolve immediately. Otherwise, add to queue.
+   */
   push(message: SDKUserMessage): void {
     const messagePreview = this.getMessagePreview(message)
     log(`push() called with message: ${messagePreview}`)
@@ -32,6 +37,9 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
     }
   }
 
+  /**
+   * Close the queue. Resolve any pending resolvers with done=true.
+   */
   close(): void {
     if (this.closed) {
       log(`close() called but already closed - no-op`)
@@ -48,6 +56,9 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
     log(`close() complete`)
   }
 
+  /**
+   * Get a preview string of a message for debug logging.
+   */
   private getMessagePreview(message: SDKUserMessage): string {
     const content = message.message?.content
     if (Array.isArray(content) && content.length > 0) {
@@ -60,6 +71,9 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
     return `[${message.type} message]`
   }
 
+  /**
+   * Implement the async iterable protocol to allow iteration with for-await-of.
+   */
   [Symbol.asyncIterator](): AsyncIterator<SDKUserMessage> {
     return {
       next: (): Promise<IteratorResult<SDKUserMessage>> => {
@@ -86,15 +100,4 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
   }
 }
 
-/**
- * Create an SDKUserMessage from text.
- */
-export const createUserMessage = (text: string): SDKUserMessage => ({
-  type: "user",
-  session_id: "",
-  message: {
-    role: "user",
-    content: [{ type: "text", text }],
-  },
-  parent_tool_use_id: null,
-})
+export { createUserMessage }
