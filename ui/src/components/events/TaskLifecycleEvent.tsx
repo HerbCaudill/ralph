@@ -43,10 +43,10 @@ export function TaskLifecycleEvent({ event, className }: Props) {
         </span>
         <div className="flex items-baseline gap-2">
           {/* TaskIdLink expects a string that may contain task IDs - pass the ID as text */}
-          <TaskIdLink className="font-mono text-sm font-medium">{event.taskId}</TaskIdLink>
-          {event.taskTitle && (
-            <span className="text-muted-foreground truncate text-sm">{event.taskTitle}</span>
-          )}
+          <TaskIdLink className="text-muted-foreground shrink-0 font-mono text-xs">
+            {event.taskId}
+          </TaskIdLink>
+          {event.taskTitle && <span className="truncate text-xs">{event.taskTitle}</span>}
         </div>
       </div>
     </div>
