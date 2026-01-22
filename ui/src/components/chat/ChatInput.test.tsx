@@ -1,12 +1,19 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { ChatInput } from "./ChatInput"
 import { useAppStore } from "@/store"
+
+const TEST_STORAGE_KEY = "test-chat-input-draft"
 
 describe("ChatInput", () => {
   beforeEach(() => {
     // Reset the store before each test
     useAppStore.getState().setAccentColor(null)
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
   })
 
   describe("rendering", () => {
@@ -238,6 +245,71 @@ describe("ChatInput", () => {
       const button = screen.getByRole("button", { name: "Send message" })
       // Orange accent color with black text (light background)
       expect(button).toHaveStyle({ backgroundColor: "#FFA500", color: "#000000" })
+    })
+  })
+
+  describe("localStorage persistence", () => {
+    it("does not persist when storageKey is not provided", () => {
+      render(<ChatInput />)
+
+      const input = screen.getByRole("textbox")
+      fireEvent.change(input, { target: { value: "Test message" } })
+
+      // No localStorage key should be set
+      expect(localStorage.getItem(TEST_STORAGE_KEY)).toBeNull()
+    })
+
+    it("persists input value to localStorage as user types", () => {
+      render(<ChatInput storageKey={TEST_STORAGE_KEY} />)
+
+      const input = screen.getByRole("textbox")
+      fireEvent.change(input, { target: { value: "My draft message" } })
+
+      expect(localStorage.getItem(TEST_STORAGE_KEY)).toBe("My draft message")
+    })
+
+    it("restores input value from localStorage on mount", () => {
+      localStorage.setItem(TEST_STORAGE_KEY, "Saved draft message")
+
+      render(<ChatInput storageKey={TEST_STORAGE_KEY} />)
+
+      const input = screen.getByRole("textbox")
+      expect(input).toHaveValue("Saved draft message")
+    })
+
+    it("clears localStorage when input is cleared", () => {
+      render(<ChatInput storageKey={TEST_STORAGE_KEY} />)
+
+      const input = screen.getByRole("textbox")
+      fireEvent.change(input, { target: { value: "Some text" } })
+      expect(localStorage.getItem(TEST_STORAGE_KEY)).toBe("Some text")
+
+      fireEvent.change(input, { target: { value: "" } })
+      expect(localStorage.getItem(TEST_STORAGE_KEY)).toBeNull()
+    })
+
+    it("clears localStorage after successful submission", () => {
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} storageKey={TEST_STORAGE_KEY} />)
+
+      const input = screen.getByRole("textbox")
+      fireEvent.change(input, { target: { value: "Message to send" } })
+      expect(localStorage.getItem(TEST_STORAGE_KEY)).toBe("Message to send")
+
+      fireEvent.submit(input.closest("form")!)
+
+      expect(handleSubmit).toHaveBeenCalledWith("Message to send")
+      // After submit, input is cleared which triggers localStorage removal
+      expect(localStorage.getItem(TEST_STORAGE_KEY)).toBeNull()
+    })
+
+    it("does not read from localStorage without storageKey", () => {
+      localStorage.setItem(TEST_STORAGE_KEY, "Should not appear")
+
+      render(<ChatInput />)
+
+      const input = screen.getByRole("textbox")
+      expect(input).toHaveValue("")
     })
   })
 })

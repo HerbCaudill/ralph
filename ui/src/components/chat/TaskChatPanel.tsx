@@ -14,6 +14,7 @@ import { AssistantMessageBubble } from "./AssistantMessageBubble"
 import { UserMessageBubble } from "./UserMessageBubble"
 import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
+import { TASK_CHAT_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
 import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
 import type { TaskChatMessage, TaskChatToolUse, ToolName, ToolUseEvent } from "@/types"
@@ -252,6 +253,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
           disabled={!isConnected || isLoading}
           placeholder={inputPlaceholder}
           aria-label="Task chat input"
+          storageKey={TASK_CHAT_INPUT_DRAFT_STORAGE_KEY}
         />
       </div>
     </div>

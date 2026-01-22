@@ -16,6 +16,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     disabled = false,
     className,
     "aria-label": ariaLabel = "Message input",
+    storageKey,
   },
   ref,
 ) {
@@ -23,7 +24,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const buttonBgColor = accentColor ?? DEFAULT_INPUT_ACCENT_COLOR
   const buttonTextColor = getContrastingColor(buttonBgColor)
 
-  const [message, setMessage] = useState("")
+  const [message, setMessage] = useState(() => {
+    if (storageKey && typeof window !== "undefined") {
+      return localStorage.getItem(storageKey) ?? ""
+    }
+    return ""
+  })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const adjustTextareaHeight = useCallback(() => {
@@ -37,6 +43,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   useEffect(() => {
     adjustTextareaHeight()
   }, [message, adjustTextareaHeight])
+
+  // Persist message to localStorage when it changes
+  useEffect(() => {
+    if (storageKey && typeof window !== "undefined") {
+      if (message) {
+        localStorage.setItem(storageKey, message)
+      } else {
+        localStorage.removeItem(storageKey)
+      }
+    }
+  }, [message, storageKey])
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -115,6 +132,8 @@ export type ChatInputProps = {
   disabled?: boolean
   className?: string
   "aria-label"?: string
+  /** localStorage key to persist input text. If not provided, text is not persisted. */
+  storageKey?: string
 }
 
 export type ChatInputHandle = {
