@@ -635,5 +635,39 @@ describe("TaskChatPanel", () => {
       expect(userPos).toBeLessThan(toolPos)
       expect(toolPos).toBeLessThan(assistantPos)
     })
+
+    it("deduplicates tool uses with the same toolUseId", () => {
+      // Add a tool use with pending status (simulating content_block_start)
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-duplicate",
+        tool: "Bash",
+        input: {},
+        status: "pending",
+      })
+
+      // Add the same tool use again (simulating duplicate from assistant message)
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-duplicate",
+        tool: "Bash",
+        input: { command: "bd list" },
+        status: "running",
+      })
+
+      render(<TaskChatPanel />)
+
+      // Should only show one Bash tool use, not two
+      const bashElements = screen.getAllByText("Bash")
+      expect(bashElements).toHaveLength(1)
+
+      // Verify the state was updated, not duplicated
+      const toolUses = useAppStore.getState().taskChatToolUses
+      expect(toolUses.filter(t => t.toolUseId === "tool-duplicate")).toHaveLength(1)
+      // The status should be updated to the latest value
+      expect(toolUses.find(t => t.toolUseId === "tool-duplicate")?.status).toBe("running")
+      // The input should be updated to the latest value
+      expect(toolUses.find(t => t.toolUseId === "tool-duplicate")?.input).toEqual({
+        command: "bd list",
+      })
+    })
   })
 })

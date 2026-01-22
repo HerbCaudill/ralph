@@ -981,12 +981,25 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   appendTaskChatStreamingText: text =>
     set(state => ({ taskChatStreamingText: state.taskChatStreamingText + text })),
   addTaskChatToolUse: toolUse =>
-    set(state => ({
-      taskChatToolUses: [
-        ...state.taskChatToolUses,
-        { ...toolUse, timestamp: toolUse.timestamp ?? Date.now() },
-      ],
-    })),
+    set(state => {
+      // Check if this tool use already exists (by toolUseId)
+      const existingIndex = state.taskChatToolUses.findIndex(t => t.toolUseId === toolUse.toolUseId)
+      if (existingIndex !== -1) {
+        // Update existing tool use instead of adding duplicate
+        return {
+          taskChatToolUses: state.taskChatToolUses.map((t, i) =>
+            i === existingIndex ? { ...t, ...toolUse, timestamp: t.timestamp } : t,
+          ),
+        }
+      }
+      // Add new tool use
+      return {
+        taskChatToolUses: [
+          ...state.taskChatToolUses,
+          { ...toolUse, timestamp: toolUse.timestamp ?? Date.now() },
+        ],
+      }
+    }),
   updateTaskChatToolUse: (toolUseId, updates) =>
     set(state => ({
       taskChatToolUses: state.taskChatToolUses.map(t =>
