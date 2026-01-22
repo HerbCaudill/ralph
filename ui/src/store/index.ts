@@ -1684,6 +1684,22 @@ export const selectInstancesWithMergeConflicts = (state: AppState): RalphInstanc
   return result
 }
 
+/**
+ * Returns a sorted array of task IDs that are currently being actively worked on by any running instance.
+ * Returns an array (not a Set) to support shallow equality comparison with Zustand.
+ * Use with `shallow` equality: `useAppStore(selectActivelyWorkingTaskIds, shallow)`
+ */
+export const selectActivelyWorkingTaskIds = (state: AppState): string[] => {
+  const result: string[] = []
+  for (const instance of state.instances.values()) {
+    // Only include tasks from instances that are actually running
+    if (instance.currentTaskId && instance.status === "running") {
+      result.push(instance.currentTaskId)
+    }
+  }
+  return result.sort()
+}
+
 // Reconnection choice selectors
 export const selectShowReconnectionChoice = (state: AppState) => state.showReconnectionChoice
 export const selectWasRunningBeforeDisconnect = (state: AppState) =>

@@ -1,9 +1,11 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { cn } from "@/lib/utils"
 import {
   useAppStore,
   selectTaskSearchQuery,
   selectClosedTimeFilter,
+  selectActivelyWorkingTaskIds,
   getTimeFilterCutoff,
 } from "@/store"
 import { TaskCard } from "./TaskCard"
@@ -36,6 +38,11 @@ export function TaskList({
   const closedTimeFilter = useAppStore(selectClosedTimeFilter)
   const setClosedTimeFilter = useAppStore(state => state.setClosedTimeFilter)
   const setVisibleTaskIds = useAppStore(state => state.setVisibleTaskIds)
+  const activelyWorkingTaskIdsList = useAppStore(useShallow(selectActivelyWorkingTaskIds))
+  const activelyWorkingTaskIds = useMemo(
+    () => new Set(activelyWorkingTaskIdsList),
+    [activelyWorkingTaskIdsList],
+  )
 
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set())
   const previousTaskIdsRef = useRef<Set<string> | null>(null)
@@ -182,15 +189,20 @@ export function TaskList({
         })
       }
       return [...tasks].sort((a, b) => {
-        // Primary: priority (ascending)
+        // Top priority: actively working tasks come first
+        const aIsActive = activelyWorkingTaskIds.has(a.id)
+        const bIsActive = activelyWorkingTaskIds.has(b.id)
+        if (aIsActive && !bIsActive) return -1
+        if (!aIsActive && bIsActive) return 1
+        // Secondary: priority (ascending)
         const priorityDiff = (a.priority ?? 4) - (b.priority ?? 4)
         if (priorityDiff !== 0) return priorityDiff
-        // Secondary: bugs first within same priority
+        // Tertiary: bugs first within same priority
         const aIsBug = a.issue_type === "bug"
         const bIsBug = b.issue_type === "bug"
         if (aIsBug && !bIsBug) return -1
         if (!aIsBug && bIsBug) return 1
-        // Tertiary: created_at (oldest first)
+        // Quaternary: created_at (oldest first)
         const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
         const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
         return aTime - bTime
@@ -245,17 +257,29 @@ export function TaskList({
       // For parent groups, use parent priority; for ungrouped tasks, use first task's priority
       if (config.key !== "closed") {
         parentSubGroups.sort((a, b) => {
-          // Primary: priority (ascending)
+          // Helper to check if a group contains an actively working task
+          const groupHasActiveTask = (group: ParentSubGroup): boolean => {
+            if (group.parent && activelyWorkingTaskIds.has(group.parent.id)) return true
+            return group.tasks.some(t => activelyWorkingTaskIds.has(t.id))
+          }
+
+          // Top priority: groups with actively working tasks come first
+          const aHasActive = groupHasActiveTask(a)
+          const bHasActive = groupHasActiveTask(b)
+          if (aHasActive && !bHasActive) return -1
+          if (!aHasActive && bHasActive) return 1
+
+          // Secondary: priority (ascending)
           const aPriority = a.parent ? (a.parent.priority ?? 4) : (a.tasks[0]?.priority ?? 4)
           const bPriority = b.parent ? (b.parent.priority ?? 4) : (b.tasks[0]?.priority ?? 4)
           const priorityDiff = aPriority - bPriority
           if (priorityDiff !== 0) return priorityDiff
-          // Secondary: bugs first within same priority
+          // Tertiary: bugs first within same priority
           const aIsBug = a.parent ? a.parent.issue_type === "bug" : a.tasks[0]?.issue_type === "bug"
           const bIsBug = b.parent ? b.parent.issue_type === "bug" : b.tasks[0]?.issue_type === "bug"
           if (aIsBug && !bIsBug) return -1
           if (!aIsBug && bIsBug) return 1
-          // Tertiary: created_at (oldest first)
+          // Quaternary: created_at (oldest first)
           const aTime =
             a.parent ?
               a.parent.created_at ?
@@ -286,7 +310,7 @@ export function TaskList({
     }
 
     return result
-  }, [tasks, closedTimeFilter, searchQuery])
+  }, [tasks, closedTimeFilter, searchQuery, activelyWorkingTaskIds])
 
   const visibleStatusGroups = useMemo(() => {
     return statusGroups.filter(group => showEmptyGroups || group.totalCount > 0)
