@@ -396,5 +396,22 @@ describe("WorkspaceContextManager", () => {
       expect(eventHandler.mock.calls[0][0]).toBe("/path/to/workspace")
       expect(eventHandler.mock.calls[0][1]).toBe("ralph:event")
     })
+
+    it("forwards task-chat:event (raw SDK events)", () => {
+      const eventHandler = vi.fn()
+      manager.on("context:event", eventHandler)
+
+      const context = manager.setActiveContext("/path/to/workspace")
+      const sdkEvent = {
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [{ type: "text", text: "Hello from SDK" }],
+        },
+      }
+      context.emit("task-chat:event", sdkEvent)
+
+      expect(eventHandler).toHaveBeenCalledWith("/path/to/workspace", "task-chat:event", sdkEvent)
+    })
   })
 })

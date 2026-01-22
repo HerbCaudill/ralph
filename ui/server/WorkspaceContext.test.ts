@@ -368,6 +368,22 @@ describe("WorkspaceContext", () => {
 
       expect(handler).toHaveBeenCalledWith(toolUse)
     })
+
+    it("forwards task-chat:event (raw SDK events)", () => {
+      const handler = vi.fn()
+      context.on("task-chat:event", handler)
+
+      const event = {
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [{ type: "text", text: "Hello" }],
+        },
+      }
+      context.taskChatManager.emit("event", event)
+
+      expect(handler).toHaveBeenCalledWith(event)
+    })
   })
 
   describe("disposal", () => {

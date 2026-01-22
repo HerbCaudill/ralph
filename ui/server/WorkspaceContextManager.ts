@@ -228,6 +228,7 @@ export class WorkspaceContextManager extends EventEmitter {
       "task-chat:tool_use",
       "task-chat:tool_update",
       "task-chat:tool_result",
+      "task-chat:event",
     ]
 
     for (const eventType of eventTypes) {
