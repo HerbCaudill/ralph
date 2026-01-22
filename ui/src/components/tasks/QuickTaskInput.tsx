@@ -46,10 +46,16 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
       textarea.style.height = `${textarea.scrollHeight}px`
     }, [])
 
+    /**
+     * Adjusts textarea height whenever the title changes.
+     */
     useEffect(() => {
       adjustTextareaHeight()
     }, [title, adjustTextareaHeight])
 
+    /**
+     * Persists the current input value to localStorage.
+     */
     useEffect(() => {
       if (typeof window !== "undefined") {
         if (title) {
@@ -60,12 +66,18 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
       }
     }, [title])
 
+    /**
+     * Exposes focus method to parent components via ref.
+     */
     useImperativeHandle(ref, () => ({
       focus: () => {
         textareaRef.current?.focus()
       },
     }))
 
+    /**
+     * Refocuses the textarea after submission completes.
+     */
     useEffect(() => {
       if (!isSubmitting && shouldRefocusRef.current) {
         shouldRefocusRef.current = false

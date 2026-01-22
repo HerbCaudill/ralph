@@ -40,13 +40,17 @@ export function TaskDetailsDialog({
   onDelete,
   readOnly = false,
 }: TaskDetailsDialogProps) {
-  // Get events, workspace, issue prefix, and tasks from store
+  /**
+   * Get events, workspace, issue prefix, and tasks from store
+   */
   const events = useAppStore(state => state.events)
   const workspace = useAppStore(state => state.workspace)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const allTasks = useAppStore(selectTasks)
 
-  // Local state for editable fields
+  /**
+   * Local state for editable fields
+   */
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState<TaskStatus>("open")
@@ -55,7 +59,9 @@ export function TaskDetailsDialog({
   const [parent, setParent] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Track the last saved values to detect changes
+  /**
+   * Track the last saved values to detect changes
+   */
   const lastSavedRef = useRef<{
     title: string
     description: string
@@ -65,29 +71,41 @@ export function TaskDetailsDialog({
     parent: string | null
   } | null>(null)
 
-  // Debounce timer ref for text field autosave
+  /**
+   * Debounce timer ref for text field autosave
+   */
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Delete state
+  /**
+   * Delete state
+   */
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  // Labels state
+  /**
+   * Labels state
+   */
   const [labels, setLabels] = useState<string[]>([])
   const [newLabel, setNewLabel] = useState("")
   const [isAddingLabel, setIsAddingLabel] = useState(false)
   const [showLabelInput, setShowLabelInput] = useState(false)
   const labelInputRef = useRef<HTMLInputElement>(null)
 
-  // Title textarea ref for auto-sizing
+  /**
+   * Title textarea ref for auto-sizing
+   */
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Description edit mode state
+  /**
+   * Description edit mode state
+   */
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Fetch labels when task changes
+  /**
+   * Fetch labels when task changes
+   */
   useEffect(() => {
     if (task && open) {
       // Fetch labels from API
@@ -104,7 +122,9 @@ export function TaskDetailsDialog({
     }
   }, [task, open])
 
-  // Reset local state when task changes
+  /**
+   * Reset local state when task changes
+   */
   useEffect(() => {
     if (task) {
       const initialValues = {
@@ -132,7 +152,9 @@ export function TaskDetailsDialog({
     }
   }, [task])
 
-  // Cleanup autosave timer on unmount
+  /**
+   * Cleanup autosave timer on unmount
+   */
   useEffect(() => {
     return () => {
       if (autosaveTimerRef.current) {
