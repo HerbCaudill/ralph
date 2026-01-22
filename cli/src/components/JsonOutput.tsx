@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useApp, Text } from "ink"
 import { writeFileSync, readFileSync, existsSync } from "fs"
-import { join, dirname, basename } from "path"
-import { fileURLToPath } from "url"
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
+import { join, basename } from "path"
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { getProgress, captureStartupSnapshot, type StartupSnapshot } from "../lib/getProgress.js"
@@ -12,44 +9,12 @@ import { createDebugLogger } from "../lib/debug.js"
 import { getNextLogFile } from "../lib/getNextLogFile.js"
 import { createStdinCommandHandler } from "../lib/StdinCommandHandler.js"
 import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
+import { getPromptContent } from "../lib/getPromptContent.js"
+import { outputEvent } from "../lib/outputEvent.js"
 
 const log = createDebugLogger("iteration")
-const ralphDir = join(process.cwd(), ".ralph")
-const promptFile = join(ralphDir, "prompt.md")
-const todoFile = join(ralphDir, "todo.md")
-const beadsDir = join(process.cwd(), ".beads")
-const templatesDir = join(__dirname, "..", "..", "templates")
+const todoFile = join(process.cwd(), ".ralph", "todo.md")
 const repoName = basename(process.cwd())
-
-/**
- * Get the prompt content, falling back to templates if .ralph/prompt.md doesn't exist.
- * Uses the appropriate template based on the project setup:
- * - If .beads directory exists OR no .ralph/todo.md: use prompt-beads.md
- * - If .ralph/todo.md exists: use prompt-todos.md (todo-based workflow)
- */
-export const getPromptContent = (): string => {
-  // First, try to read from .ralph/prompt.md
-  if (existsSync(promptFile)) {
-    return readFileSync(promptFile, "utf-8")
-  }
-
-  // Fall back to templates based on project setup
-  const useBeadsTemplate = existsSync(beadsDir) || !existsSync(todoFile)
-  const templateFile = useBeadsTemplate ? "prompt-beads.md" : "prompt-todos.md"
-  const templatePath = join(templatesDir, templateFile)
-
-  if (existsSync(templatePath)) {
-    return readFileSync(templatePath, "utf-8")
-  }
-
-  // Last resort: return a minimal prompt
-  return "Work on the highest-priority task."
-}
-
-// Output an event as newline-delimited JSON to stdout
-const outputEvent = (event: Record<string, unknown>) => {
-  process.stdout.write(JSON.stringify(event) + "\n")
-}
 
 export const JsonOutput = ({ totalIterations, agent }: Props) => {
   const { exit } = useApp()

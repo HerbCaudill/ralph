@@ -1,61 +1,13 @@
 import { Text, Box } from "ink"
 import React, { useEffect, useState } from "react"
-import {
-  existsSync,
-  mkdirSync,
-  copyFileSync,
-  readFileSync,
-  appendFileSync,
-  writeFileSync,
-} from "fs"
+import { existsSync, readFileSync, appendFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
+import { copyTemplates } from "../lib/copyTemplates.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-type InitStatus = "checking" | "exists" | "creating" | "done"
-
-interface CopyResult {
-  created: string[]
-  skipped: string[]
-  errors: string[]
-}
-
-/**
- * Copy files from templates to destination, creating directories as needed.
- */
-const copyTemplates = (
-  templatesDir: string,
-  destDir: string,
-  files: Array<{ src: string; dest: string }>,
-): CopyResult => {
-  const result: CopyResult = { created: [], skipped: [], errors: [] }
-
-  for (const { src, dest } of files) {
-    const srcPath = join(templatesDir, src)
-    const destPath = join(destDir, dest)
-
-    // Create destination directory if needed
-    const destDirPath = dirname(destPath)
-    if (!existsSync(destDirPath)) {
-      mkdirSync(destDirPath, { recursive: true })
-    }
-
-    // Only copy if destination doesn't exist
-    if (existsSync(destPath)) {
-      result.skipped.push(dest)
-    } else if (existsSync(srcPath)) {
-      copyFileSync(srcPath, destPath)
-      result.created.push(dest)
-    } else {
-      result.errors.push(`Template not found: ${src}`)
-    }
-  }
-
-  return result
-}
-
-export const InitRalph = () => {
+export function InitRalph() {
   const [status, setStatus] = useState<InitStatus>("checking")
   const [createdFiles, setCreatedFiles] = useState<string[]>([])
   const [skippedFiles, setSkippedFiles] = useState<string[]>([])
@@ -202,3 +154,5 @@ export const InitRalph = () => {
     </Box>
   )
 }
+
+type InitStatus = "checking" | "exists" | "creating" | "done"
