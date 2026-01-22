@@ -7,7 +7,7 @@ import { promisify } from "node:util"
 import { WebSocketServer, type WebSocket, type RawData } from "ws"
 import { type RalphEvent, type RalphStatus } from "./RalphManager.js"
 import { BdProxy, type BdCreateOptions } from "./BdProxy.js"
-import { getAliveWorkspaces } from "./registry.js"
+import { getAliveWorkspaces } from "./getAliveWorkspaces.js"
 import { getEventLogStore, type EventLogMetadata } from "./EventLogStore.js"
 import {
   type TaskChatMessage,
