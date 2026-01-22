@@ -133,6 +133,13 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      case "instances:list":
+        // Hydrate store with full instance list from server
+        if (Array.isArray(data.instances)) {
+          store.hydrateInstances(data.instances)
+        }
+        break
+
       case "workspace_switched":
         // Workspace was switched on the server - sync state from new workspace
         // This happens when switching to a workspace that may already have Ralph running

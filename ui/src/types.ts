@@ -287,3 +287,19 @@ export interface RalphInstance {
   /** Timestamp when Ralph started running (null if not running) */
   runStartedAt: number | null
 }
+
+/**
+ * Serialized instance metadata from the server.
+ * Contains only persistent/identity fields, not runtime state like events.
+ */
+export interface SerializedInstance {
+  id: string
+  name: string
+  agentName: string
+  worktreePath: string | null
+  branch: string | null
+  createdAt: number
+  currentTaskId: string | null
+  currentTaskTitle: string | null
+  status: RalphStatus
+}

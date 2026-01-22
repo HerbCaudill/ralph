@@ -1253,6 +1253,17 @@ function attachWsServer(httpServer: Server): WebSocketServer {
         events: context.eventHistory,
       }),
     )
+
+    // Send full instance list so client can hydrate its store
+    const registry = getRalphRegistry()
+    const allInstances = registry.getAll().map(serializeInstanceState)
+    ws.send(
+      JSON.stringify({
+        type: "instances:list",
+        timestamp: Date.now(),
+        instances: allInstances,
+      }),
+    )
   })
 
   return wss

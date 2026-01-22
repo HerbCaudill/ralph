@@ -910,6 +910,189 @@ describe("useAppStore", () => {
     })
   })
 
+  describe("hydrateInstances action", () => {
+    it("creates new instances from server data", () => {
+      const initialCount = useAppStore.getState().instances.size
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "server-instance-1",
+          name: "Server Instance 1",
+          agentName: "Ralph-Server-1",
+          worktreePath: "/path/to/worktree1",
+          branch: "feature/branch1",
+          createdAt: 1700000000000,
+          currentTaskId: "task-1",
+          currentTaskTitle: "Fix bug",
+          status: "running",
+        },
+        {
+          id: "server-instance-2",
+          name: "Server Instance 2",
+          agentName: "Ralph-Server-2",
+          worktreePath: null,
+          branch: null,
+          createdAt: 1700000001000,
+          currentTaskId: null,
+          currentTaskTitle: null,
+          status: "stopped",
+        },
+      ])
+
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(initialCount + 2)
+      expect(state.instances.has("server-instance-1")).toBe(true)
+      expect(state.instances.has("server-instance-2")).toBe(true)
+
+      const instance1 = state.instances.get("server-instance-1")!
+      expect(instance1.name).toBe("Server Instance 1")
+      expect(instance1.agentName).toBe("Ralph-Server-1")
+      expect(instance1.worktreePath).toBe("/path/to/worktree1")
+      expect(instance1.branch).toBe("feature/branch1")
+      expect(instance1.status).toBe("running")
+      expect(instance1.currentTaskId).toBe("task-1")
+      expect(instance1.createdAt).toBe(1700000000000)
+      // Runtime state should be initialized to defaults
+      expect(instance1.events).toEqual([])
+      expect(instance1.tokenUsage).toEqual({ input: 0, output: 0 })
+    })
+
+    it("updates existing instances with server metadata while preserving runtime state", () => {
+      // Set up an instance with runtime state
+      useAppStore.getState().createInstance("existing-instance", "Old Name", "Old Agent")
+      const state = useAppStore.getState()
+      const instance = state.instances.get("existing-instance")!
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("existing-instance", {
+        ...instance,
+        events: [{ type: "test", timestamp: 123 }],
+        tokenUsage: { input: 1000, output: 500 },
+        contextWindow: { used: 50000, max: 200000 },
+      })
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Hydrate with server data
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "existing-instance",
+          name: "Updated Name",
+          agentName: "Updated Agent",
+          worktreePath: "/new/path",
+          branch: "feature/new",
+          createdAt: 1700000000000,
+          currentTaskId: "new-task",
+          currentTaskTitle: "New task title",
+          status: "running",
+        },
+      ])
+
+      const updatedInstance = useAppStore.getState().instances.get("existing-instance")!
+      // Metadata should be updated
+      expect(updatedInstance.name).toBe("Updated Name")
+      expect(updatedInstance.agentName).toBe("Updated Agent")
+      expect(updatedInstance.worktreePath).toBe("/new/path")
+      expect(updatedInstance.branch).toBe("feature/new")
+      expect(updatedInstance.status).toBe("running")
+      expect(updatedInstance.currentTaskId).toBe("new-task")
+      // Runtime state should be preserved
+      expect(updatedInstance.events).toHaveLength(1)
+      expect(updatedInstance.tokenUsage).toEqual({ input: 1000, output: 500 })
+      expect(updatedInstance.contextWindow.used).toBe(50000)
+    })
+
+    it("preserves activeInstanceId if it still exists after hydration", () => {
+      useAppStore.getState().createInstance("my-active-instance", "Active")
+      useAppStore.getState().setActiveInstanceId("my-active-instance")
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "my-active-instance",
+          name: "Updated Active",
+          agentName: "Ralph",
+          worktreePath: null,
+          branch: null,
+          createdAt: Date.now(),
+          currentTaskId: null,
+          currentTaskTitle: null,
+          status: "stopped",
+        },
+        {
+          id: "other-instance",
+          name: "Other",
+          agentName: "Ralph-2",
+          worktreePath: null,
+          branch: null,
+          createdAt: Date.now(),
+          currentTaskId: null,
+          currentTaskTitle: null,
+          status: "stopped",
+        },
+      ])
+
+      expect(useAppStore.getState().activeInstanceId).toBe("my-active-instance")
+    })
+
+    it("switches to first server instance if active instance becomes invalid", () => {
+      // Start with only the default instance
+      const state = useAppStore.getState()
+      expect(state.activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+
+      // Hydrate with a completely different set of instances
+      // The default instance doesn't exist in server data, but the store keeps local instances
+      // This test verifies that if the active instance doesn't exist in the result, it falls back
+      useAppStore.setState({ activeInstanceId: "non-existent-instance" })
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "server-instance",
+          name: "Server",
+          agentName: "Ralph",
+          worktreePath: null,
+          branch: null,
+          createdAt: Date.now(),
+          currentTaskId: null,
+          currentTaskTitle: null,
+          status: "stopped",
+        },
+      ])
+
+      // Since non-existent-instance is not in the merged instances, it should switch to server-instance
+      expect(useAppStore.getState().activeInstanceId).toBe("server-instance")
+    })
+
+    it("does nothing with empty instances array", () => {
+      const initialState = useAppStore.getState()
+      const initialCount = initialState.instances.size
+
+      useAppStore.getState().hydrateInstances([])
+
+      expect(useAppStore.getState().instances.size).toBe(initialCount)
+    })
+
+    it("syncs flat fields when active instance is updated", () => {
+      useAppStore.getState().createInstance("active", "Active Instance")
+      useAppStore.getState().setActiveInstanceId("active")
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "active",
+          name: "Updated Active",
+          agentName: "Ralph-Updated",
+          worktreePath: "/worktree",
+          branch: "main",
+          createdAt: 1700000000000,
+          currentTaskId: "task-1",
+          currentTaskTitle: "Task 1",
+          status: "running",
+        },
+      ])
+
+      const state = useAppStore.getState()
+      // Flat fields should be synced from the updated active instance
+      expect(state.ralphStatus).toBe("running")
+    })
+  })
+
   describe("flat field delegation to active instance", () => {
     it("setRalphStatus updates active instance status", () => {
       useAppStore.getState().setRalphStatus("running")

@@ -5,6 +5,7 @@ import type {
   RalphEvent,
   RalphInstance,
   RalphStatus,
+  SerializedInstance,
   Task,
   TaskChatMessage,
   TaskChatToolUse,
@@ -438,6 +439,8 @@ export interface AppActions {
   removeInstance: (instanceId: string) => void
   /** Clean up runtime state for an instance when it exits/stops (events, token usage, etc.) */
   cleanupInstance: (instanceId: string) => void
+  /** Hydrate instances from server data (on WebSocket connect) */
+  hydrateInstances: (serverInstances: SerializedInstance[]) => void
 
   // Reset
   reset: () => void
@@ -1158,6 +1161,77 @@ export const useAppStore = create<AppState & AppActions>(set => ({
 
       return {
         instances: updatedInstances,
+      }
+    }),
+
+  hydrateInstances: serverInstances =>
+    set(state => {
+      if (!Array.isArray(serverInstances) || serverInstances.length === 0) {
+        return state
+      }
+
+      const updatedInstances = new Map(state.instances)
+
+      for (const serverInstance of serverInstances) {
+        const existing = updatedInstances.get(serverInstance.id)
+
+        if (existing) {
+          // Update existing instance with server metadata, preserving runtime state
+          const updated: RalphInstance = {
+            ...existing,
+            name: serverInstance.name,
+            agentName: serverInstance.agentName,
+            worktreePath: serverInstance.worktreePath,
+            branch: serverInstance.branch,
+            createdAt: serverInstance.createdAt,
+            currentTaskId: serverInstance.currentTaskId,
+            status: serverInstance.status,
+          }
+          updatedInstances.set(serverInstance.id, updated)
+        } else {
+          // Create new instance from server data
+          const newInstance: RalphInstance = {
+            id: serverInstance.id,
+            name: serverInstance.name,
+            agentName: serverInstance.agentName,
+            status: serverInstance.status,
+            events: [],
+            tokenUsage: { input: 0, output: 0 },
+            contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+            iteration: { current: 0, total: 0 },
+            worktreePath: serverInstance.worktreePath,
+            branch: serverInstance.branch,
+            currentTaskId: serverInstance.currentTaskId,
+            createdAt: serverInstance.createdAt,
+            runStartedAt: null,
+          }
+          updatedInstances.set(serverInstance.id, newInstance)
+        }
+      }
+
+      // If current active instance is still valid, keep it; otherwise switch to first server instance
+      const activeInstanceId =
+        updatedInstances.has(state.activeInstanceId) ?
+          state.activeInstanceId
+        : (serverInstances[0]?.id ?? state.activeInstanceId)
+
+      // Get the (possibly updated) active instance for syncing flat fields
+      const activeInstance = updatedInstances.get(activeInstanceId)
+
+      return {
+        instances: updatedInstances,
+        activeInstanceId,
+        // Sync flat fields for backward compatibility if active instance changed
+        ...(activeInstance ?
+          {
+            ralphStatus: activeInstance.status,
+            events: activeInstance.events,
+            tokenUsage: activeInstance.tokenUsage,
+            contextWindow: activeInstance.contextWindow,
+            iteration: activeInstance.iteration,
+            runStartedAt: activeInstance.runStartedAt,
+          }
+        : {}),
       }
     }),
 
