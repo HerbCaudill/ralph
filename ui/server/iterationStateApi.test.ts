@@ -147,7 +147,7 @@ describe("Iteration State API endpoints", () => {
   let registry: RalphRegistry
   let tempDir: string
   let iterationStateStore: IterationStateStore
-  const port = 3097 // Use a unique port for iteration state API tests
+  const port = 3100 // Use a unique port for iteration state API tests
 
   beforeAll(async () => {
     // Create a temp directory for the iteration state store
