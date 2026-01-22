@@ -1,82 +1,8 @@
 import { EventEmitter } from "node:events"
-import { existsSync } from "node:fs"
-import { homedir } from "node:os"
-import { join } from "node:path"
+import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { loadTaskChatSkill } from "./systemPrompt.js"
 import type { BdProxy } from "./BdProxy.js"
-import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
-
-/**
- * Try to find the Claude Code executable in common locations.
- * Returns the path if found, undefined otherwise.
- */
-function findClaudeExecutable(): string | undefined {
-  const home = homedir()
-
-  // Common installation paths for Claude Code
-  const candidates = [
-    join(home, ".local", "bin", "claude"), // Linux/macOS npm global
-    join(home, ".claude", "local", "claude"), // Native installer location
-    "/usr/local/bin/claude", // System-wide installation
-    "/opt/homebrew/bin/claude", // Homebrew on Apple Silicon
-    "/usr/bin/claude", // Linux system
-  ]
-
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      return candidate
-    }
-  }
-
-  return undefined
-}
-
-// Types
-
-export type TaskChatStatus = "idle" | "processing" | "error"
-
-export interface TaskChatMessage {
-  role: "user" | "assistant"
-  content: string
-  timestamp: number
-}
-
-export interface TaskChatEvent {
-  type: string
-  timestamp: number
-  [key: string]: unknown
-}
-
-export interface TaskChatToolUse {
-  toolUseId: string
-  tool: string
-  input: Record<string, unknown>
-  output?: string
-  error?: string
-  status: "pending" | "running" | "success" | "error"
-  /** Timestamp when this tool use was created/emitted */
-  timestamp: number
-}
-
-/** Function to get the BdProxy instance (avoids circular dependency) */
-export type GetBdProxyFn = () => BdProxy
-
-export interface TaskChatManagerOptions {
-  /** Working directory for SDK query execution */
-  cwd?: string
-  /** Additional environment variables for SDK query execution */
-  env?: Record<string, string>
-  /** Model to use (default: "haiku" for fast, cheap responses) */
-  model?: string
-  /** Function to get the BdProxy instance */
-  getBdProxy?: GetBdProxyFn
-  /** Request timeout in ms (default: 600000 = 10 minutes) */
-  timeout?: number
-  /** Path to the Claude Code executable (auto-detected if not specified) */
-  pathToClaudeCodeExecutable?: string
-}
-
-// TaskChatManager
+import { findClaudeExecutable } from "./findClaudeExecutable.js"
 
 /**
  * Manages task chat conversations with Claude Agent SDK.
@@ -217,82 +143,15 @@ export class TaskChatManager extends EventEmitter {
         this.abortController = null
       }
 
-      // Use SDK query() instead of spawning CLI
-      ;(async () => {
-        try {
-          this.abortController = new AbortController()
-          let hasError = false
-          let errorMessage = ""
-
-          for await (const message of query({
-            prompt: conversationPrompt,
-            options: {
-              model: skillModel ?? this.options.model,
-              cwd: this.options.cwd,
-              env: this.options.env,
-              // Use Claude Code's default system prompt (includes CLAUDE.md, cwd awareness)
-              // and append our task chat instructions
-              systemPrompt: {
-                type: "preset",
-                preset: "claude_code",
-                append: appendSystemPrompt,
-              },
-              // Tools from skill metadata (with fallback defaults)
-              tools: skillTools,
-              permissionMode: "bypassPermissions",
-              allowDangerouslySkipPermissions: true,
-              includePartialMessages: true, // Enable streaming
-              maxTurns: 30, // Allow multiple turns for tool use (increased from 10 to handle longer queries)
-              abortController: this.abortController,
-              pathToClaudeCodeExecutable: this.options.pathToClaudeCodeExecutable,
-            },
-          })) {
-            // If cancelled, stop processing
-            if (this.cancelled) {
-              break
-            }
-
-            // Check if this is an error result
-            if (message.type === "result" && message.subtype !== "success") {
-              hasError = true
-              errorMessage = `Query failed: ${message.subtype}`
-            }
-
-            // Handle different SDK message types
-            this.handleSDKMessage(message)
-          }
-
-          // If we got an error result, reject
-          if (hasError) {
-            cleanup()
-            this.setStatus("error")
-            const err = new Error(errorMessage)
-            this.emit("error", err)
-            reject(err)
-            return
-          }
-
-          // After iteration completes, add assistant message to history
-          if (this.currentResponse) {
-            const assistantMsg: TaskChatMessage = {
-              role: "assistant",
-              content: this.currentResponse,
-              timestamp: Date.now(),
-            }
-            this._messages.push(assistantMsg)
-            this.emit("message", assistantMsg)
-          }
-
-          cleanup()
-          this.setStatus("idle")
-          resolve(this.currentResponse)
-        } catch (err) {
-          cleanup()
-          this.setStatus("error")
-          this.emit("error", err)
-          reject(err)
-        }
-      })()
+      this.executeQuery(
+        conversationPrompt,
+        appendSystemPrompt,
+        skillTools,
+        skillModel,
+        cleanup,
+        resolve,
+        reject,
+      )
     })
   }
 
@@ -304,6 +163,100 @@ export class TaskChatManager extends EventEmitter {
       this.cancelled = true
       this.abortController.abort()
       this.setStatus("idle")
+    }
+  }
+
+  /**
+   * Execute the query with the given parameters.
+   */
+  private async executeQuery(
+    /** The conversation prompt to send */
+    conversationPrompt: string,
+    /** System prompt to append */
+    appendSystemPrompt: string,
+    /** Tools to use */
+    skillTools: string[],
+    /** Model to use */
+    skillModel: string | undefined,
+    /** Cleanup function */
+    cleanup: () => void,
+    /** Promise resolve callback */
+    resolve: (value: string) => void,
+    /** Promise reject callback */
+    reject: (reason?: unknown) => void,
+  ): Promise<void> {
+    try {
+      this.abortController = new AbortController()
+      let hasError = false
+      let errorMessage = ""
+
+      for await (const message of query({
+        prompt: conversationPrompt,
+        options: {
+          model: skillModel ?? this.options.model,
+          cwd: this.options.cwd,
+          env: this.options.env,
+          // Use Claude Code's default system prompt (includes CLAUDE.md, cwd awareness)
+          // and append our task chat instructions
+          systemPrompt: {
+            type: "preset",
+            preset: "claude_code",
+            append: appendSystemPrompt,
+          },
+          // Tools from skill metadata (with fallback defaults)
+          tools: skillTools,
+          permissionMode: "bypassPermissions",
+          allowDangerouslySkipPermissions: true,
+          includePartialMessages: true, // Enable streaming
+          maxTurns: 30, // Allow multiple turns for tool use (increased from 10 to handle longer queries)
+          abortController: this.abortController,
+          pathToClaudeCodeExecutable: this.options.pathToClaudeCodeExecutable,
+        },
+      })) {
+        // If cancelled, stop processing
+        if (this.cancelled) {
+          break
+        }
+
+        // Check if this is an error result
+        if (message.type === "result" && message.subtype !== "success") {
+          hasError = true
+          errorMessage = `Query failed: ${message.subtype}`
+        }
+
+        // Handle different SDK message types
+        this.handleSDKMessage(message)
+      }
+
+      // If we got an error result, reject
+      if (hasError) {
+        cleanup()
+        this.setStatus("error")
+        const err = new Error(errorMessage)
+        this.emit("error", err)
+        reject(err)
+        return
+      }
+
+      // After iteration completes, add assistant message to history
+      if (this.currentResponse) {
+        const assistantMsg: TaskChatMessage = {
+          role: "assistant",
+          content: this.currentResponse,
+          timestamp: Date.now(),
+        }
+        this._messages.push(assistantMsg)
+        this.emit("message", assistantMsg)
+      }
+
+      cleanup()
+      this.setStatus("idle")
+      resolve(this.currentResponse)
+    } catch (err) {
+      cleanup()
+      this.setStatus("error")
+      this.emit("error", err)
+      reject(err)
     }
   }
 
@@ -588,4 +541,47 @@ export class TaskChatManager extends EventEmitter {
       this.emit("status", status)
     }
   }
+}
+
+export type TaskChatStatus = "idle" | "processing" | "error"
+
+export interface TaskChatMessage {
+  role: "user" | "assistant"
+  content: string
+  timestamp: number
+}
+
+export interface TaskChatEvent {
+  type: string
+  timestamp: number
+  [key: string]: unknown
+}
+
+export interface TaskChatToolUse {
+  toolUseId: string
+  tool: string
+  input: Record<string, unknown>
+  output?: string
+  error?: string
+  status: "pending" | "running" | "success" | "error"
+  /** Timestamp when this tool use was created/emitted */
+  timestamp: number
+}
+
+/** Function to get the BdProxy instance (avoids circular dependency) */
+export type GetBdProxyFn = () => BdProxy
+
+export interface TaskChatManagerOptions {
+  /** Working directory for SDK query execution */
+  cwd?: string
+  /** Additional environment variables for SDK query execution */
+  env?: Record<string, string>
+  /** Model to use (default: "haiku" for fast, cheap responses) */
+  model?: string
+  /** Function to get the BdProxy instance */
+  getBdProxy?: GetBdProxyFn
+  /** Request timeout in ms (default: 600000 = 10 minutes) */
+  timeout?: number
+  /** Path to the Claude Code executable (auto-detected if not specified) */
+  pathToClaudeCodeExecutable?: string
 }
