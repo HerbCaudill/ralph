@@ -54,6 +54,7 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
   )
 
   const iterationTask = useMemo(() => {
+    // First, try to find task from ralph_task_started event in iteration events
     for (const event of iterationEvents) {
       if (event.type === "ralph_task_started") {
         const taskId = (event as any).taskId as string | undefined
@@ -70,6 +71,14 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
         }
       }
     }
+
+    // Fallback: if no ralph_task_started event, show the first in-progress task from the store
+    // This handles the case where Claude updates task status but doesn't emit lifecycle events
+    const inProgressTask = tasks.find(t => t.status === "in_progress")
+    if (inProgressTask) {
+      return { id: inProgressTask.id, title: inProgressTask.title }
+    }
+
     return null
   }, [iterationEvents, tasks])
 

@@ -506,6 +506,63 @@ describe("EventStream", () => {
       const iterationBar = screen.getByTestId("iteration-bar")
       expect(iterationBar).toHaveTextContent("rui-unknown")
     })
+
+    it("shows in-progress task from store when no ralph_task_started event exists", () => {
+      // Set up tasks store with an in-progress task
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-in-progress",
+          title: "Current task being worked on",
+          status: "in_progress",
+        },
+        {
+          id: "rui-open",
+          title: "Another task",
+          status: "open",
+        },
+      ])
+
+      // Add some events but NO ralph_task_started event
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000500,
+        message: "Work on the task",
+      })
+
+      renderEventStream()
+
+      // Should show the in-progress task from the store as fallback
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-in-progress")
+      expect(iterationBar).toHaveTextContent("Current task being worked on")
+    })
+
+    it("prefers ralph_task_started event over in-progress task from store", () => {
+      // Set up tasks store with an in-progress task
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-in-progress",
+          title: "Task from store",
+          status: "in_progress",
+        },
+      ])
+
+      // Add a ralph_task_started event for a DIFFERENT task
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000500,
+        taskId: "rui-event-task",
+        taskTitle: "Task from event",
+      })
+
+      renderEventStream()
+
+      // Should show the task from the event, not the in-progress one from store
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-event-task")
+      expect(iterationBar).toHaveTextContent("Task from event")
+      expect(iterationBar).not.toHaveTextContent("Task from store")
+    })
   })
 
   describe("empty state", () => {
