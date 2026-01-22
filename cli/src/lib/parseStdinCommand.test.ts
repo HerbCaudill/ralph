@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { parseStdinCommand } from "./StdinCommandHandler.js"
+import { parseStdinCommand } from "./parseStdinCommand.js"
 
 describe("parseStdinCommand", () => {
   describe("message command", () => {

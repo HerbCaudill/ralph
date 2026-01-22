@@ -1,73 +1,9 @@
 import { createDebugLogger } from "./debug.js"
 import { MessageQueue, createUserMessage } from "./MessageQueue.js"
+import { parseStdinCommand } from "./parseStdinCommand.js"
 import { createInterface } from "readline"
 
 const log = createDebugLogger("stdin-command")
-
-/**
- * Stdin command types:
- * - {"type": "message", "text": "..."} - Send a message to Claude
- * - {"type": "stop"} - Request graceful stop after current iteration
- * - {"type": "pause"} - Pause after current iteration completes
- * - {"type": "resume"} - Resume from paused state
- */
-export type StdinCommand =
-  | { type: "message"; text: string }
-  | { type: "stop" }
-  | { type: "pause" }
-  | { type: "resume" }
-
-/**
- * Parse a JSON string into a StdinCommand.
- * Returns null if parsing fails or the command is invalid.
- */
-export const parseStdinCommand = (line: string): StdinCommand | null => {
-  const trimmed = line.trim()
-  if (!trimmed) return null
-
-  try {
-    const parsed = JSON.parse(trimmed)
-
-    if (typeof parsed !== "object" || parsed === null) {
-      log(`Invalid command - not an object: ${trimmed}`)
-      return null
-    }
-
-    if (parsed.type === "message") {
-      if (typeof parsed.text !== "string") {
-        log(`Invalid message command - missing or invalid text: ${trimmed}`)
-        return null
-      }
-      return { type: "message", text: parsed.text }
-    }
-
-    if (parsed.type === "stop") {
-      return { type: "stop" }
-    }
-
-    if (parsed.type === "pause") {
-      return { type: "pause" }
-    }
-
-    if (parsed.type === "resume") {
-      return { type: "resume" }
-    }
-
-    log(`Unknown command type: ${parsed.type}`)
-    return null
-  } catch (err) {
-    log(`Failed to parse command: ${err instanceof Error ? err.message : String(err)}`)
-    return null
-  }
-}
-
-export type StdinCommandHandlerOptions = {
-  messageQueue: MessageQueue | null
-  onStop: () => void
-  onPause?: () => void
-  onResume?: () => void
-  onMessage?: (text: string) => void
-}
 
 /**
  * Creates a stdin command handler that reads JSON commands from stdin.
@@ -80,6 +16,7 @@ export type StdinCommandHandlerOptions = {
  * - {"type": "resume"} - Resume from paused state
  */
 export const createStdinCommandHandler = (
+  /** Getter for handler options; called when a command is received */
   getOptions: () => StdinCommandHandlerOptions,
 ): (() => void) => {
   // Don't set up stdin handler if stdin is a TTY (interactive mode handles input differently)
@@ -131,4 +68,20 @@ export const createStdinCommandHandler = (
     rl.off("line", lineHandler)
     rl.close()
   }
+}
+
+/**
+ * Options for the stdin command handler
+ */
+export type StdinCommandHandlerOptions = {
+  /** The message queue to push user messages to, or null if not active */
+  messageQueue: MessageQueue | null
+  /** Callback invoked when a stop command is received */
+  onStop: () => void
+  /** Optional callback invoked when a pause command is received */
+  onPause?: () => void
+  /** Optional callback invoked when a resume command is received */
+  onResume?: () => void
+  /** Optional callback invoked when a user message is processed */
+  onMessage?: (text: string) => void
 }

@@ -2,26 +2,9 @@ import { spawn } from "node:child_process"
 import { stat, mkdir } from "node:fs/promises"
 import { join, dirname, basename } from "node:path"
 import { createDebugLogger } from "./debug.js"
+import { parseWorktreeFromBranch } from "./parseWorktreeFromBranch.js"
 
 const log = createDebugLogger("worktree")
-
-export interface WorktreeInfo {
-  path: string
-  branch: string
-  instanceId: string
-  instanceName: string
-}
-
-export interface CreateWorktreeOptions {
-  instanceId: string
-  instanceName: string
-}
-
-export interface MergeResult {
-  success: boolean
-  hadConflicts: boolean
-  message: string
-}
 
 /**
  * Manages git worktrees for concurrent Ralph instances.
@@ -70,11 +53,11 @@ export class WorktreeManager {
 
   /**
    * Create a new worktree for an instance.
-   *
-   * @param options - Instance ID and name
-   * @returns Info about the created worktree
    */
-  async create(options: CreateWorktreeOptions): Promise<WorktreeInfo> {
+  async create(
+    /** Instance ID and name */
+    options: CreateWorktreeOptions,
+  ): Promise<WorktreeInfo> {
     const { instanceId, instanceName } = options
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     const branchName = this.getBranchName(instanceId, instanceName)
@@ -99,12 +82,13 @@ export class WorktreeManager {
 
   /**
    * Merge the worktree branch back to main.
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @returns Result of the merge operation
    */
-  async merge(instanceId: string, instanceName: string): Promise<MergeResult> {
+  async merge(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<MergeResult> {
     const branchName = this.getBranchName(instanceId, instanceName)
 
     log(`Merging branch ${branchName} to main`)
@@ -148,12 +132,13 @@ export class WorktreeManager {
 
   /**
    * Rebase the worktree branch on top of main.
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @returns Result of the rebase operation
    */
-  async rebase(instanceId: string, instanceName: string): Promise<MergeResult> {
+  async rebase(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<MergeResult> {
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     const mainBranch = await this.getMainBranch()
 
@@ -202,12 +187,15 @@ export class WorktreeManager {
 
   /**
    * Remove a worktree and optionally delete its branch.
-   *
-   * @param instanceId - The instance ID
-   * @param instanceName - The instance name
-   * @param deleteBranch - Whether to delete the branch (default: true)
    */
-  async remove(instanceId: string, instanceName: string, deleteBranch = true): Promise<void> {
+  async remove(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+    /** Whether to delete the branch (default: true) */
+    deleteBranch = true,
+  ): Promise<void> {
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     const branchName = this.getBranchName(instanceId, instanceName)
 
@@ -257,33 +245,10 @@ export class WorktreeManager {
     let currentPath: string | null = null
     let currentBranch: string | null = null
 
-    const processWorktree = () => {
-      if (currentPath && currentBranch) {
-        // Check if this is a ralph worktree
-        if (currentBranch.startsWith("ralph/") && currentPath.startsWith(this.worktreesBasePath)) {
-          const branchParts = currentBranch.slice("ralph/".length)
-          // Parse {name}-{id} from branch name
-          const lastDash = branchParts.lastIndexOf("-")
-          if (lastDash > 0) {
-            const instanceName = branchParts.slice(0, lastDash)
-            const instanceId = branchParts.slice(lastDash + 1)
-            worktrees.push({
-              path: currentPath,
-              branch: currentBranch,
-              instanceId,
-              instanceName,
-            })
-          }
-        }
-      }
-      currentPath = null
-      currentBranch = null
-    }
-
     for (const line of lines) {
       if (line.startsWith("worktree ")) {
         // Process previous worktree before starting new one
-        processWorktree()
+        this.addWorktreeIfValid(currentPath, currentBranch, worktrees)
         currentPath = line.slice("worktree ".length)
       } else if (line.startsWith("branch refs/heads/")) {
         currentBranch = line.slice("branch refs/heads/".length)
@@ -291,7 +256,7 @@ export class WorktreeManager {
     }
 
     // Process the last worktree
-    processWorktree()
+    this.addWorktreeIfValid(currentPath, currentBranch, worktrees)
 
     log(`Found ${worktrees.length} worktrees`)
     return worktrees
@@ -300,7 +265,12 @@ export class WorktreeManager {
   /**
    * Check if a worktree exists for an instance.
    */
-  async exists(instanceId: string, instanceName: string): Promise<boolean> {
+  async exists(
+    /** The instance ID */
+    instanceId: string,
+    /** The instance name */
+    instanceName: string,
+  ): Promise<boolean> {
     const worktreePath = this.getWorktreePath(instanceId, instanceName)
     try {
       const stats = await stat(worktreePath)
@@ -316,6 +286,32 @@ export class WorktreeManager {
   async prune(): Promise<void> {
     log(`Pruning stale worktree entries`)
     await this.git(["worktree", "prune"])
+  }
+
+  /**
+   * Add a worktree to the list if it's a valid ralph worktree.
+   */
+  private addWorktreeIfValid(
+    /** Current path being processed */
+    currentPath: string | null,
+    /** Current branch being processed */
+    currentBranch: string | null,
+    /** Worktrees list to add to */
+    worktrees: WorktreeInfo[],
+  ): void {
+    if (currentPath && currentBranch) {
+      // Check if this is a ralph worktree
+      if (currentBranch.startsWith("ralph/") && currentPath.startsWith(this.worktreesBasePath)) {
+        const parsed = parseWorktreeFromBranch(currentBranch.slice("ralph/".length))
+        if (parsed) {
+          worktrees.push({
+            path: currentPath,
+            branch: currentBranch,
+            ...parsed,
+          })
+        }
+      }
+    }
   }
 
   /**
@@ -359,7 +355,12 @@ export class WorktreeManager {
   /**
    * Execute a git command in a specific directory.
    */
-  private gitInDir(cwd: string, args: string[]): Promise<string> {
+  private gitInDir(
+    /** Working directory for the git command */
+    cwd: string,
+    /** Git command arguments */
+    args: string[],
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       log(`Running: git ${args.join(" ")} in ${cwd}`)
 
@@ -394,4 +395,22 @@ export class WorktreeManager {
       })
     })
   }
+}
+
+export interface WorktreeInfo {
+  path: string
+  branch: string
+  instanceId: string
+  instanceName: string
+}
+
+export interface CreateWorktreeOptions {
+  instanceId: string
+  instanceName: string
+}
+
+export interface MergeResult {
+  success: boolean
+  hadConflicts: boolean
+  message: string
 }
