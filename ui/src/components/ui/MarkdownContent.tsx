@@ -20,16 +20,28 @@ export interface MarkdownContentProps {
   size?: "sm" | "base"
 }
 
-// Helper to process children and replace text nodes with links (task IDs and event logs)
-function processChildren(children: ReactNode): ReactNode {
+/**
+ * Process children and replace text nodes with links (task IDs and event logs).
+ */
+function processChildren(
+  /** The child element to process */
+  children: ReactNode,
+): ReactNode {
   if (typeof children === "string") {
     return <TextWithLinks>{children}</TextWithLinks>
   }
   return children
 }
 
-// Create markdown components with link support for task IDs and event logs
-function createMarkdownComponents(isDark: boolean, withCodeBlocks: boolean): Components {
+/**
+ * Create markdown components with link support for task IDs and event logs.
+ */
+function createMarkdownComponents(
+  /** Whether to use dark theme */
+  isDark: boolean,
+  /** Whether to render code blocks with syntax highlighting */
+  withCodeBlocks: boolean,
+): Components {
   return {
     // Process text in paragraph elements
     p(props) {
@@ -88,9 +100,13 @@ function createMarkdownComponents(isDark: boolean, withCodeBlocks: boolean): Com
  * task ID linking, event log linking, and optional syntax-highlighted code blocks.
  */
 export function MarkdownContent({
+  /** The markdown content to render */
   children,
+  /** Optional className for the container */
   className,
+  /** Whether to include code block syntax highlighting (default: true) */
   withCodeBlocks = true,
+  /** Size variant for typography (default: "sm") */
   size = "sm",
 }: MarkdownContentProps) {
   const { resolvedTheme } = useTheme()

@@ -18,13 +18,22 @@ export interface CodeBlockProps {
   className?: string
 }
 
+/**
+ * Syntax-highlighted code block with optional copy button.
+ */
 export function CodeBlock({
+  /** The code to highlight */
   code,
+  /** The language for syntax highlighting (default: "text") */
   language = "text",
+  /** Reserved for future use (default: false) */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  showLineNumbers: _showLineNumbers = false, // Reserved for future use
+  showLineNumbers: _showLineNumbers = false,
+  /** Whether to use dark theme (default: true) */
   isDark = true,
+  /** Whether to show the copy button (default: true) */
   showCopy = true,
+  /** Additional class names */
   className,
 }: CodeBlockProps) {
   const [html, setHtml] = useState<string>("")
@@ -144,7 +153,13 @@ export function CodeBlock({
   )
 }
 
-function escapeHtml(text: string): string {
+/**
+ * Escape HTML special characters to prevent XSS.
+ */
+function escapeHtml(
+  /** The text to escape */
+  text: string,
+): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

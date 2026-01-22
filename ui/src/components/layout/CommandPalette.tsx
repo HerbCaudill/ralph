@@ -35,7 +35,9 @@ export function CommandPalette({
     }
   }, [open])
 
-  // Handle Escape key to close the command palette
+  /**
+   * Handle Escape key to close the command palette.
+   */
   useEffect(() => {
     if (!open) return
 
@@ -122,6 +124,9 @@ export function CommandPalette({
     [ralphStatus, isConnected],
   )
 
+  /**
+   * Handle command selection and invoke the associated handler.
+   */
   const handleSelect = useCallback(
     (action: CommandAction) => {
       const handler = handlers[action]
@@ -133,6 +138,9 @@ export function CommandPalette({
     [handlers, onClose],
   )
 
+  /**
+   * Filter commands to only show those available in current state.
+   */
   const filteredCommands = useMemo(() => {
     return commands.filter(cmd => cmd.available?.() !== false)
   }, [commands])

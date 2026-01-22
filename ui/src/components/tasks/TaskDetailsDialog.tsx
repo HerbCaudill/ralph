@@ -141,7 +141,9 @@ export function TaskDetailsDialog({
     }
   }, [])
 
-  // Autosave function - saves only the fields that have changed since last save
+  /**
+   * Saves only the fields that have changed since last save. If closing the task, also saves the event log.
+   */
   const performAutosave = useCallback(
     async (currentValues: {
       title: string
@@ -187,7 +189,9 @@ export function TaskDetailsDialog({
     [task, onSave, readOnly, events, workspace],
   )
 
-  // Debounced autosave for text fields
+  /**
+   * Schedules an autosave with a 500ms debounce to avoid too many API calls.
+   */
   const scheduleAutosave = useCallback(
     (currentValues: {
       title: string
@@ -207,7 +211,9 @@ export function TaskDetailsDialog({
     [performAutosave],
   )
 
-  // Immediate autosave for non-text fields
+  /**
+   * Immediately autosaves for non-text fields, canceling any pending debounced save.
+   */
   const immediateAutosave = useCallback(
     (currentValues: {
       title: string
@@ -226,7 +232,9 @@ export function TaskDetailsDialog({
     [performAutosave],
   )
 
-  // Memoized current values for autosave
+  /**
+   * Memoized current values for autosave to avoid unnecessary callback updates.
+   */
   const currentValues = useMemo(
     () => ({
       title,
@@ -239,7 +247,9 @@ export function TaskDetailsDialog({
     [title, description, status, priority, issueType, parent],
   )
 
-  // Flush any pending saves before closing
+  /**
+   * Flushes any pending autosave before closing the dialog.
+   */
   const flushAndClose = useCallback(async () => {
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current)
@@ -250,11 +260,17 @@ export function TaskDetailsDialog({
     onClose()
   }, [performAutosave, currentValues, onClose])
 
+  /**
+   * Closes the dialog after resetting the delete confirmation state.
+   */
   const handleClose = useCallback(async () => {
     setIsConfirmingDelete(false)
     await flushAndClose()
   }, [flushAndClose])
 
+  /**
+   * Deletes the current task and closes the dialog on success.
+   */
   const handleDelete = useCallback(async () => {
     if (!task || !onDelete || readOnly) return
 

@@ -14,7 +14,12 @@ import { HotkeyRow } from "./HotkeyRow"
  * Dialog showing all available keyboard shortcuts.
  * Organized by category for easy reference.
  */
-export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
+export function HotkeysDialog({
+  /** Whether the dialog is open */
+  open,
+  /** Callback when dialog should close */
+  onClose,
+}: HotkeysDialogProps) {
   const groupedHotkeys = useMemo(() => buildHotkeyCategories(), [])
 
   return (
@@ -51,6 +56,9 @@ export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
   )
 }
 
+/**
+ * Props for the HotkeysDialog component
+ */
 export type HotkeysDialogProps = {
   open: boolean
   onClose: () => void
