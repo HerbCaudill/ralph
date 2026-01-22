@@ -7,6 +7,7 @@ import { Logo } from "./Logo"
 import { ThemeToggle } from "./ThemeToggle"
 import { InstanceCountBadge } from "./InstanceCountBadge"
 import { InstanceStatus } from "./InstanceStatus"
+import { MergeConflictNotification } from "./MergeConflictNotification"
 
 /**
  * Application header with logo, workspace picker, and theme toggle.
@@ -29,6 +30,7 @@ export function Header({ className }: HeaderProps) {
         <WorkspacePicker variant="header" textColor={textColor} />
         {instanceCount > 1 && <InstanceCountBadge count={instanceCount} />}
         <InstanceStatus textColor={textColor} />
+        <MergeConflictNotification textColor={textColor} />
       </div>
 
       <div className="flex items-center gap-2">

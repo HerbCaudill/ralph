@@ -2,6 +2,7 @@ import { create } from "zustand"
 import type { ConnectionStatus } from "../hooks/useWebSocket"
 import type {
   ClosedTasksTimeFilter,
+  MergeConflict,
   RalphEvent,
   RalphInstance,
   RalphStatus,
@@ -224,6 +225,7 @@ export function createRalphInstance(
     currentTaskTitle: null,
     createdAt: Date.now(),
     runStartedAt: null,
+    mergeConflict: null,
   }
 }
 
@@ -456,6 +458,10 @@ export interface AppActions {
   updateContextWindowUsedForInstance: (instanceId: string, used: number) => void
   /** Set iteration for a specific instance by ID */
   setIterationForInstance: (instanceId: string, iteration: IterationInfo) => void
+  /** Set merge conflict for a specific instance by ID */
+  setMergeConflictForInstance: (instanceId: string, conflict: MergeConflict | null) => void
+  /** Clear merge conflict for a specific instance by ID */
+  clearMergeConflictForInstance: (instanceId: string) => void
 
   // Reset
   reset: () => void
@@ -1155,6 +1161,7 @@ export const useAppStore = create<AppState & AppActions>(set => ({
         runStartedAt: null,
         currentTaskId: null,
         currentTaskTitle: null,
+        mergeConflict: null,
       }
 
       const updatedInstances = new Map(state.instances)
@@ -1203,6 +1210,7 @@ export const useAppStore = create<AppState & AppActions>(set => ({
             currentTaskId: serverInstance.currentTaskId,
             currentTaskTitle: serverInstance.currentTaskTitle,
             status: serverInstance.status,
+            mergeConflict: serverInstance.mergeConflict,
           }
           updatedInstances.set(serverInstance.id, updated)
         } else {
@@ -1222,6 +1230,7 @@ export const useAppStore = create<AppState & AppActions>(set => ({
             currentTaskTitle: serverInstance.currentTaskTitle,
             createdAt: serverInstance.createdAt,
             runStartedAt: null,
+            mergeConflict: serverInstance.mergeConflict,
           }
           updatedInstances.set(serverInstance.id, newInstance)
         }
@@ -1415,6 +1424,34 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       return { instances: updatedInstances }
     }),
 
+  setMergeConflictForInstance: (instanceId, conflict) =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(`[store] Cannot set merge conflict for non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, { ...instance, mergeConflict: conflict })
+
+      return { instances: updatedInstances }
+    }),
+
+  clearMergeConflictForInstance: instanceId =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(`[store] Cannot clear merge conflict for non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, { ...instance, mergeConflict: null })
+
+      return { instances: updatedInstances }
+    }),
+
   // Reset
   reset: () => set({ ...initialState, instances: createInitialInstances() }),
 }))
@@ -1585,4 +1622,36 @@ export const selectIsInstanceRunning = (state: AppState, instanceId: string): bo
 export const selectInstanceIterationCount = (state: AppState, instanceId: string): number => {
   const instance = state.instances.get(instanceId)
   return instance ? countIterations(instance.events) : 0
+}
+
+export const selectInstanceMergeConflict = (
+  state: AppState,
+  instanceId: string,
+): MergeConflict | null => {
+  const instance = state.instances.get(instanceId)
+  return instance?.mergeConflict ?? null
+}
+
+export const selectActiveInstanceMergeConflict = (state: AppState): MergeConflict | null => {
+  const activeInstance = state.instances.get(state.activeInstanceId)
+  return activeInstance?.mergeConflict ?? null
+}
+
+export const selectHasAnyMergeConflict = (state: AppState): boolean => {
+  for (const instance of state.instances.values()) {
+    if (instance.mergeConflict) {
+      return true
+    }
+  }
+  return false
+}
+
+export const selectInstancesWithMergeConflicts = (state: AppState): RalphInstance[] => {
+  const result: RalphInstance[] = []
+  for (const instance of state.instances.values()) {
+    if (instance.mergeConflict) {
+      result.push(instance)
+    }
+  }
+  return result
 }

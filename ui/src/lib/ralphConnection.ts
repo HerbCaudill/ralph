@@ -314,6 +314,19 @@ function handleMessage(event: MessageEvent): void {
         // Ping response, ignore
         break
 
+      // Instance lifecycle events
+      case "instance:merge_conflict":
+        // Merge conflict detected or cleared for an instance
+        if (targetInstanceId) {
+          const conflict = data.conflict as {
+            files: string[]
+            sourceBranch: string
+            timestamp: number
+          } | null
+          store.setMergeConflictForInstance(targetInstanceId, conflict)
+        }
+        break
+
       // Task update events
       case "task:updated":
         // Task was updated (e.g., via auto-titling) - update in store

@@ -7,6 +7,18 @@ import {
 } from "./RalphManager.js"
 
 /**
+ * Information about a merge conflict for an instance.
+ */
+export interface MergeConflict {
+  /** Files with conflicts that need resolution */
+  files: string[]
+  /** Branch being merged from */
+  sourceBranch: string
+  /** Timestamp when the conflict was detected */
+  timestamp: number
+}
+
+/**
  * State for a registered Ralph instance.
  */
 export interface RalphInstanceState {
@@ -36,6 +48,9 @@ export interface RalphInstanceState {
 
   /** Title of the current task being worked on */
   currentTaskTitle: string | null
+
+  /** Merge conflict info if instance is paused due to conflicts (null if no conflict) */
+  mergeConflict: MergeConflict | null
 }
 
 /**
@@ -146,6 +161,7 @@ export class RalphRegistry extends EventEmitter {
       createdAt: Date.now(),
       currentTaskId: null,
       currentTaskTitle: null,
+      mergeConflict: null,
     }
 
     // Initialize event history for this instance
@@ -250,6 +266,35 @@ export class RalphRegistry extends EventEmitter {
       taskId: state.currentTaskId,
       taskTitle: state.currentTaskTitle,
     }
+  }
+
+  /**
+   * Set a merge conflict on an instance.
+   *
+   * @param instanceId - The instance ID
+   * @param conflict - The merge conflict info, or null to clear
+   */
+  setMergeConflict(instanceId: string, conflict: MergeConflict | null): void {
+    const state = this._instances.get(instanceId)
+    if (!state) {
+      return
+    }
+    state.mergeConflict = conflict
+    this.emit("instance:merge_conflict", instanceId, conflict)
+  }
+
+  /**
+   * Get the merge conflict for an instance.
+   *
+   * @param instanceId - The instance ID
+   * @returns The merge conflict info, or undefined if instance not found
+   */
+  getMergeConflict(instanceId: string): MergeConflict | null | undefined {
+    const state = this._instances.get(instanceId)
+    if (!state) {
+      return undefined
+    }
+    return state.mergeConflict
   }
 
   /**

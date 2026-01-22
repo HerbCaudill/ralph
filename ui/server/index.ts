@@ -1428,6 +1428,21 @@ function wireRegistryEvents(registry: RalphRegistry): void {
       timestamp: Date.now(),
     })
   })
+
+  registry.on(
+    "instance:merge_conflict",
+    (
+      instanceId: string,
+      conflict: { files: string[]; sourceBranch: string; timestamp: number } | null,
+    ) => {
+      broadcast({
+        type: "instance:merge_conflict",
+        instanceId,
+        conflict,
+        timestamp: Date.now(),
+      })
+    },
+  )
 }
 
 /**
@@ -1447,6 +1462,7 @@ function serializeInstanceState(
     currentTaskId: state.currentTaskId,
     currentTaskTitle: state.currentTaskTitle,
     status: state.manager.status,
+    mergeConflict: state.mergeConflict,
   }
 }
 

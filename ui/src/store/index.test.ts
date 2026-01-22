@@ -925,6 +925,7 @@ describe("useAppStore", () => {
           currentTaskId: "task-1",
           currentTaskTitle: "Fix bug",
           status: "running",
+          mergeConflict: null,
         },
         {
           id: "server-instance-2",
@@ -936,6 +937,7 @@ describe("useAppStore", () => {
           currentTaskId: null,
           currentTaskTitle: null,
           status: "stopped",
+          mergeConflict: null,
         },
       ])
 
@@ -983,6 +985,7 @@ describe("useAppStore", () => {
           currentTaskId: "new-task",
           currentTaskTitle: "New task title",
           status: "running",
+          mergeConflict: null,
         },
       ])
 
@@ -1015,6 +1018,7 @@ describe("useAppStore", () => {
           currentTaskId: null,
           currentTaskTitle: null,
           status: "stopped",
+          mergeConflict: null,
         },
         {
           id: "other-instance",
@@ -1026,6 +1030,7 @@ describe("useAppStore", () => {
           currentTaskId: null,
           currentTaskTitle: null,
           status: "stopped",
+          mergeConflict: null,
         },
       ])
 
@@ -1053,6 +1058,7 @@ describe("useAppStore", () => {
           currentTaskId: null,
           currentTaskTitle: null,
           status: "stopped",
+          mergeConflict: null,
         },
       ])
 
@@ -1084,6 +1090,7 @@ describe("useAppStore", () => {
           currentTaskId: "task-1",
           currentTaskTitle: "Task 1",
           status: "running",
+          mergeConflict: null,
         },
       ])
 
@@ -2768,6 +2775,73 @@ describe("useAppStore", () => {
         useAppStore.getState().setIterationForInstance("instance-1", { current: 2, total: 4 })
 
         expect(useAppStore.getState().iteration).toEqual({ current: 2, total: 4 })
+      })
+    })
+
+    describe("setMergeConflictForInstance action", () => {
+      it("sets merge conflict for a specific instance", () => {
+        const conflict = {
+          files: ["file1.ts", "file2.ts"],
+          sourceBranch: "ralph/instance-2",
+          timestamp: Date.now(),
+        }
+        useAppStore.getState().setMergeConflictForInstance("instance-2", conflict)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.mergeConflict).toEqual(conflict)
+      })
+
+      it("clears merge conflict when set to null", () => {
+        const conflict = {
+          files: ["file1.ts"],
+          sourceBranch: "ralph/instance-1",
+          timestamp: Date.now(),
+        }
+        useAppStore.getState().setMergeConflictForInstance("instance-1", conflict)
+
+        const instance = useAppStore.getState().instances.get("instance-1")
+        expect(instance?.mergeConflict).toEqual(conflict)
+
+        useAppStore.getState().setMergeConflictForInstance("instance-1", null)
+
+        const updatedInstance = useAppStore.getState().instances.get("instance-1")
+        expect(updatedInstance?.mergeConflict).toBeNull()
+      })
+
+      it("does nothing for non-existent instance", () => {
+        const stateBefore = useAppStore.getState()
+        useAppStore.getState().setMergeConflictForInstance("non-existent", {
+          files: ["file1.ts"],
+          sourceBranch: "ralph/non-existent",
+          timestamp: Date.now(),
+        })
+        const stateAfter = useAppStore.getState()
+
+        // State should be unchanged (except possibly internal timestamps)
+        expect(stateAfter.instances.size).toBe(stateBefore.instances.size)
+      })
+    })
+
+    describe("clearMergeConflictForInstance action", () => {
+      it("clears merge conflict for a specific instance", () => {
+        const conflict = {
+          files: ["file1.ts"],
+          sourceBranch: "ralph/instance-1",
+          timestamp: Date.now(),
+        }
+        useAppStore.getState().setMergeConflictForInstance("instance-1", conflict)
+        useAppStore.getState().clearMergeConflictForInstance("instance-1")
+
+        const instance = useAppStore.getState().instances.get("instance-1")
+        expect(instance?.mergeConflict).toBeNull()
+      })
+
+      it("does nothing for non-existent instance", () => {
+        const stateBefore = useAppStore.getState()
+        useAppStore.getState().clearMergeConflictForInstance("non-existent")
+        const stateAfter = useAppStore.getState()
+
+        expect(stateAfter.instances.size).toBe(stateBefore.instances.size)
       })
     })
   })

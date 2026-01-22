@@ -247,6 +247,18 @@ export interface WorkspaceListEntry {
  * Represents a single Ralph instance with its per-instance state.
  * Used for concurrent Ralph support where multiple instances can run simultaneously.
  */
+/**
+ * Information about a merge conflict for an instance.
+ */
+export interface MergeConflict {
+  /** Files with conflicts that need resolution */
+  files: string[]
+  /** Branch being merged from */
+  sourceBranch: string
+  /** Timestamp when the conflict was detected */
+  timestamp: number
+}
+
 export interface RalphInstance {
   /** Unique identifier for the instance */
   id: string
@@ -289,6 +301,9 @@ export interface RalphInstance {
 
   /** Timestamp when Ralph started running (null if not running) */
   runStartedAt: number | null
+
+  /** Merge conflict info if instance is paused due to merge conflicts (null if no conflict) */
+  mergeConflict: MergeConflict | null
 }
 
 /**
@@ -305,4 +320,5 @@ export interface SerializedInstance {
   currentTaskId: string | null
   currentTaskTitle: string | null
   status: RalphStatus
+  mergeConflict: MergeConflict | null
 }
