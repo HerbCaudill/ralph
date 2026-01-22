@@ -469,6 +469,7 @@ describe("TaskChatPanel", () => {
         tool: "Bash",
         input: { command: "bd list" },
         status: "running",
+        timestamp: Date.now(),
       })
 
       render(<TaskChatPanel />)
@@ -483,6 +484,7 @@ describe("TaskChatPanel", () => {
         input: { file_path: "/test/file.ts" },
         output: "file contents here",
         status: "success",
+        timestamp: Date.now(),
       })
 
       render(<TaskChatPanel />)
@@ -497,6 +499,7 @@ describe("TaskChatPanel", () => {
         input: { command: "invalid" },
         error: "Command failed",
         status: "error",
+        timestamp: Date.now(),
       })
 
       render(<TaskChatPanel />)
@@ -510,6 +513,7 @@ describe("TaskChatPanel", () => {
         tool: "Bash",
         input: { command: "bd list" },
         status: "success",
+        timestamp: Date.now(),
       })
 
       mockFetch.mockResolvedValueOnce({
@@ -550,6 +554,7 @@ describe("TaskChatPanel", () => {
         tool: "Bash",
         input: { command: "bd list" },
         status: "success",
+        timestamp: Date.now(),
       })
 
       // Add assistant message (as would happen after tools complete)
@@ -576,6 +581,7 @@ describe("TaskChatPanel", () => {
         tool: "Grep",
         input: { pattern: "test" },
         status: "running",
+        timestamp: Date.now(),
       })
 
       render(<TaskChatPanel />)
@@ -637,12 +643,14 @@ describe("TaskChatPanel", () => {
     })
 
     it("deduplicates tool uses with the same toolUseId", () => {
+      const baseTime = Date.now()
       // Add a tool use with pending status (simulating content_block_start)
       useAppStore.getState().addTaskChatToolUse({
         toolUseId: "tool-duplicate",
         tool: "Bash",
         input: {},
         status: "pending",
+        timestamp: baseTime,
       })
 
       // Add the same tool use again (simulating duplicate from assistant message)
@@ -651,6 +659,7 @@ describe("TaskChatPanel", () => {
         tool: "Bash",
         input: { command: "bd list" },
         status: "running",
+        timestamp: baseTime + 1,
       })
 
       render(<TaskChatPanel />)

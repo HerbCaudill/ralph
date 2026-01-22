@@ -432,6 +432,7 @@ function handleMessage(event: MessageEvent): void {
             tool: string
             input: Record<string, unknown>
             status: "pending" | "running" | "success" | "error"
+            timestamp: number
           }
           store.addTaskChatToolUse(toolUse)
         }

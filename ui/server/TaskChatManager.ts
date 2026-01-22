@@ -54,6 +54,8 @@ export interface TaskChatToolUse {
   output?: string
   error?: string
   status: "pending" | "running" | "success" | "error"
+  /** Timestamp when this tool use was created/emitted */
+  timestamp: number
 }
 
 /** Function to get the BdProxy instance (avoids circular dependency) */
@@ -414,6 +416,7 @@ export class TaskChatManager extends EventEmitter {
                   tool: block.name,
                   input,
                   status: "running",
+                  timestamp,
                 } satisfies TaskChatToolUse)
               } else {
                 // No existing tool use - emit a new one (fallback for edge cases)
@@ -422,6 +425,7 @@ export class TaskChatManager extends EventEmitter {
                   tool: block.name,
                   input,
                   status: "running",
+                  timestamp,
                 } satisfies TaskChatToolUse)
               }
             }
@@ -456,6 +460,7 @@ export class TaskChatManager extends EventEmitter {
                 output: isError ? undefined : content,
                 error: isError ? content : undefined,
                 status: isError ? "error" : "success",
+                timestamp,
               } satisfies TaskChatToolUse)
 
               this.pendingToolUses.delete(toolUseId)
@@ -519,6 +524,7 @@ export class TaskChatManager extends EventEmitter {
             tool: contentBlock.name,
             input: {},
             status: "pending",
+            timestamp,
           } satisfies TaskChatToolUse)
         }
         break

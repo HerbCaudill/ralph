@@ -22,7 +22,7 @@ import type { TaskChatMessage, TaskChatToolUse, ToolName, ToolUseEvent } from "@
 function toToolUseEvent(toolUse: TaskChatToolUse): ToolUseEvent {
   return {
     type: "tool_use",
-    timestamp: toolUse.timestamp ?? Date.now(),
+    timestamp: toolUse.timestamp,
     tool: toolUse.tool as ToolName,
     input: toolUse.input,
     output: toolUse.output,
@@ -61,12 +61,8 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     const messageBlocks: ContentBlock[] = messages.map(m => ({ type: "message", data: m }))
     const toolUseBlocks: ContentBlock[] = toolUses.map(t => ({ type: "toolUse", data: t }))
     const allBlocks = [...messageBlocks, ...toolUseBlocks]
-    // Sort by timestamp to maintain proper ordering
-    return allBlocks.sort((a, b) => {
-      const tsA = a.type === "message" ? a.data.timestamp : (a.data.timestamp ?? 0)
-      const tsB = b.type === "message" ? b.data.timestamp : (b.data.timestamp ?? 0)
-      return tsA - tsB
-    })
+    // Sort by timestamp to maintain proper ordering (server timestamps ensure correct order)
+    return allBlocks.sort((a, b) => a.data.timestamp - b.data.timestamp)
   }, [messages, toolUses])
 
   const wasLoadingRef = useRef(false)
