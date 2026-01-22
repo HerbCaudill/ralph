@@ -27,6 +27,7 @@ import {
   selectVisibleTaskIds,
   selectShowReconnectionChoice,
   selectActiveInstanceId,
+  selectViewingIterationIndex,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -108,6 +109,8 @@ interface AgentViewProps {
 function AgentView({ chatInputRef }: AgentViewProps) {
   const { sendMessage, isConnected } = useRalphConnection()
   const isRalphRunning = useAppStore(selectIsRalphRunning)
+  const viewingIterationIndex = useAppStore(selectViewingIterationIndex)
+  const isViewingLatest = viewingIterationIndex === null
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -116,20 +119,22 @@ function AgentView({ chatInputRef }: AgentViewProps) {
         <EventStream />
       </div>
 
-      {/* Chat input */}
-      <div className="border-border border-t p-4">
-        <ChatInput
-          ref={chatInputRef}
-          onSubmit={sendMessage}
-          disabled={!isConnected || !isRalphRunning}
-          placeholder={
-            !isConnected ? "Connecting..."
-            : !isRalphRunning ?
-              "Start Ralph to send messages..."
-            : "Send Ralph a message..."
-          }
-        />
-      </div>
+      {/* Chat input - only show when viewing the latest iteration */}
+      {isViewingLatest && (
+        <div className="border-border border-t p-4">
+          <ChatInput
+            ref={chatInputRef}
+            onSubmit={sendMessage}
+            disabled={!isConnected || !isRalphRunning}
+            placeholder={
+              !isConnected ? "Connecting..."
+              : !isRalphRunning ?
+                "Start Ralph to send messages..."
+              : "Send Ralph a message..."
+            }
+          />
+        </div>
+      )}
     </div>
   )
 }
