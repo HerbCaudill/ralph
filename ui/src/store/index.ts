@@ -1034,8 +1034,19 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       const updatedInstances = new Map(state.instances)
       updatedInstances.set(id, newInstance)
 
+      // Auto-select the newly created instance
       return {
         instances: updatedInstances,
+        activeInstanceId: id,
+        // Sync flat fields from the new instance for backward compatibility
+        ralphStatus: newInstance.status,
+        runStartedAt: newInstance.runStartedAt,
+        events: newInstance.events,
+        tokenUsage: newInstance.tokenUsage,
+        contextWindow: newInstance.contextWindow,
+        iteration: newInstance.iteration,
+        // Reset iteration view when switching instances
+        viewingIterationIndex: null,
       }
     }),
 

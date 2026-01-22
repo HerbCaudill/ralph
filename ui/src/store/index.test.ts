@@ -617,12 +617,26 @@ describe("useAppStore", () => {
       expect(state.instances.get("test-instance")?.name).toBe("First")
     })
 
-    it("does not change activeInstanceId when creating new instance", () => {
+    it("auto-selects the newly created instance", () => {
       expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
 
       useAppStore.getState().createInstance("new-instance")
 
-      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+      expect(useAppStore.getState().activeInstanceId).toBe("new-instance")
+    })
+
+    it("syncs flat fields when auto-selecting newly created instance", () => {
+      useAppStore.getState().createInstance("new-instance", "My Instance", "My Agent")
+
+      const state = useAppStore.getState()
+      // Verify flat fields are synced from the new instance
+      expect(state.ralphStatus).toBe("stopped")
+      expect(state.events).toEqual([])
+      expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(state.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      expect(state.iteration).toEqual({ current: 0, total: 0 })
+      expect(state.runStartedAt).toBeNull()
+      expect(state.viewingIterationIndex).toBeNull()
     })
 
     it("can create multiple instances", () => {
@@ -677,27 +691,31 @@ describe("useAppStore", () => {
     })
 
     it("cannot remove the last instance", () => {
-      // Remove all instances except default (which is active)
+      // After beforeEach, active instance is "instance-2" (last created)
+      // Remove other instances first
       useAppStore.getState().removeInstance("instance-1")
-      useAppStore.getState().removeInstance("instance-2")
+      useAppStore.getState().removeInstance(DEFAULT_INSTANCE_ID)
 
       expect(useAppStore.getState().instances.size).toBe(1)
+      expect(useAppStore.getState().instances.has("instance-2")).toBe(true)
 
-      // Try to remove the last remaining instance - switch first
-      // But we can't switch because there's only one instance
-      // So we can't remove it anyway because it's active
+      // Try to remove the last remaining instance (which is also active)
+      // It should fail because it's the active instance
+      useAppStore.getState().removeInstance("instance-2")
+
       const state = useAppStore.getState()
       expect(state.instances.size).toBe(1)
-      expect(state.instances.has(DEFAULT_INSTANCE_ID)).toBe(true)
+      expect(state.instances.has("instance-2")).toBe(true)
     })
 
     it("preserves activeInstanceId after removing other instances", () => {
-      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+      // After beforeEach, active instance is "instance-2" (last created)
+      expect(useAppStore.getState().activeInstanceId).toBe("instance-2")
 
       useAppStore.getState().removeInstance("instance-1")
-      useAppStore.getState().removeInstance("instance-2")
+      useAppStore.getState().removeInstance(DEFAULT_INSTANCE_ID)
 
-      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+      expect(useAppStore.getState().activeInstanceId).toBe("instance-2")
     })
 
     it("does not affect other instances when removing one", () => {
