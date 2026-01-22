@@ -104,6 +104,19 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      case "workspace_switched":
+        // Workspace was switched on the server - sync state from new workspace
+        // This happens when switching to a workspace that may already have Ralph running
+        if (isRalphStatus(data.ralphStatus)) {
+          store.setRalphStatus(data.ralphStatus)
+        }
+        // Replace events with the new workspace's event history
+        // (clearWorkspaceData already cleared events, this restores from server)
+        if (Array.isArray(data.events)) {
+          store.setEvents(data.events)
+        }
+        break
+
       case "ralph:event":
         if (data.event && typeof data.event === "object") {
           const event = data.event as { type: string; timestamp: number; [key: string]: unknown }

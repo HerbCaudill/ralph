@@ -1215,11 +1215,13 @@ export function getCurrentTask(): { taskId?: string; taskTitle?: string } {
 /**
  * Switch to a different workspace.
  * Uses the WorkspaceContextManager to switch contexts, preserving the old context.
+ * The old workspace's Ralph process continues running independently.
  */
 export async function switchWorkspace(workspacePath: string): Promise<void> {
   const manager = getWorkspaceContextManager()
 
   // Switch to the new context (creates it if it doesn't exist)
+  // Note: This does NOT stop Ralph in the old context - it keeps running
   const context = manager.setActiveContext(workspacePath)
 
   // Start Ralph in watch mode if not already running
@@ -1231,6 +1233,16 @@ export async function switchWorkspace(workspacePath: string): Promise<void> {
       console.error("[server] Failed to auto-start Ralph in watch mode:", err)
     }
   }
+
+  // Broadcast workspace switch to all connected clients
+  // This allows the frontend to sync with the new workspace's state
+  broadcast({
+    type: "workspace_switched",
+    workspacePath,
+    ralphStatus: context.ralphManager.status,
+    events: context.eventHistory,
+    timestamp: Date.now(),
+  })
 }
 
 // Legacy reset functions for backwards compatibility in tests

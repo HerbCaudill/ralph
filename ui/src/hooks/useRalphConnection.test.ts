@@ -207,6 +207,69 @@ describe("useRalphConnection", () => {
       expect(useAppStore.getState().ralphStatus).toBe("running")
     })
 
+    it("handles workspace_switched message with ralph status and events", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Add some initial events
+      act(() => {
+        useAppStore.getState().addEvent({ type: "tool_use", timestamp: 1000, tool: "read" })
+      })
+      expect(useAppStore.getState().events).toHaveLength(1)
+
+      // Simulate workspace switch with new events from a different workspace
+      const newEvents = [
+        { type: "tool_use", timestamp: 2000, tool: "write" },
+        { type: "tool_use", timestamp: 2001, tool: "edit" },
+      ]
+
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "workspace_switched",
+          workspacePath: "/path/to/new/workspace",
+          ralphStatus: "running",
+          events: newEvents,
+          timestamp: 3000,
+        })
+      })
+
+      // Events should be replaced with new workspace's events
+      expect(useAppStore.getState().events).toEqual(newEvents)
+      expect(useAppStore.getState().ralphStatus).toBe("running")
+    })
+
+    it("handles workspace_switched message with empty events", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      // Add some initial events
+      act(() => {
+        useAppStore.getState().addEvent({ type: "tool_use", timestamp: 1000, tool: "read" })
+      })
+      expect(useAppStore.getState().events).toHaveLength(1)
+
+      // Simulate workspace switch to workspace with no events
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "workspace_switched",
+          workspacePath: "/path/to/new/workspace",
+          ralphStatus: "stopped",
+          events: [],
+          timestamp: 3000,
+        })
+      })
+
+      // Events should be empty (replaced with new workspace's empty events)
+      expect(useAppStore.getState().events).toEqual([])
+      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+    })
+
     it("handles ralph:output messages", () => {
       renderHook(() => useRalphConnection())
 
