@@ -1,10 +1,5 @@
 import { isAbsolute, relative } from "path"
-
-/**
- * Get the base working directory for relative path calculations.
- * Respects RALPH_CWD environment variable if set, otherwise uses current working directory.
- */
-const getBaseCwd = () => process.env.RALPH_CWD ?? process.cwd()
+import { getBaseCwd } from "./getBaseCwd.js"
 
 /**
  * Convert an absolute path to a relative path from the base working directory.
