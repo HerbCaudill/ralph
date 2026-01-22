@@ -607,6 +607,31 @@ function createInitialInstances(): Map<string, RalphInstance> {
   return new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
 }
 
+// Task chat events batching configuration
+// Events are collected over a short window and then applied in a single state update
+const TASK_CHAT_EVENTS_BATCH_INTERVAL_MS = 100
+
+// Batching state (module-level for singleton behavior)
+let taskChatEventsBatch: RalphEvent[] = []
+let taskChatEventsBatchTimeout: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Flush any pending batched task chat events to the store.
+ * Called automatically after the batch interval, or can be called manually.
+ */
+function flushTaskChatEventsBatch(): void {
+  if (taskChatEventsBatch.length === 0) return
+
+  const eventsToAdd = taskChatEventsBatch
+  taskChatEventsBatch = []
+  taskChatEventsBatchTimeout = null
+
+  // Apply all batched events in a single state update
+  useAppStore.setState(state => ({
+    taskChatEvents: [...state.taskChatEvents, ...eventsToAdd],
+  }))
+}
+
 const initialState: AppState = {
   // Multi-instance state
   instances: createInitialInstances(),
@@ -797,7 +822,13 @@ export const useAppStore = create<AppState & AppActions>(set => ({
 
   // Workspace
   setWorkspace: workspace => set({ workspace }),
-  clearWorkspaceData: () =>
+  clearWorkspaceData: () => {
+    // Clear any pending task chat events batch
+    taskChatEventsBatch = []
+    if (taskChatEventsBatchTimeout !== null) {
+      clearTimeout(taskChatEventsBatchTimeout)
+      taskChatEventsBatchTimeout = null
+    }
     set(state => {
       // Update active instance in the instances Map
       const activeInstance = state.instances.get(state.activeInstanceId)
@@ -841,7 +872,8 @@ export const useAppStore = create<AppState & AppActions>(set => ({
         // Updated instances Map
         instances: updatedInstances,
       }
-    }),
+    })
+  },
 
   // Accent color
   setAccentColor: color => set({ accentColor: color }),
@@ -999,8 +1031,15 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     set(state => ({
       taskChatMessages: state.taskChatMessages.filter(m => m.id !== id),
     })),
-  clearTaskChatMessages: () =>
-    set({ taskChatMessages: [], taskChatToolUses: [], taskChatEvents: [] }),
+  clearTaskChatMessages: () => {
+    // Clear any pending batch
+    taskChatEventsBatch = []
+    if (taskChatEventsBatchTimeout !== null) {
+      clearTimeout(taskChatEventsBatchTimeout)
+      taskChatEventsBatchTimeout = null
+    }
+    set({ taskChatMessages: [], taskChatToolUses: [], taskChatEvents: [] })
+  },
   setTaskChatLoading: loading => set({ taskChatLoading: loading }),
   setTaskChatStreamingText: text => set({ taskChatStreamingText: text }),
   appendTaskChatStreamingText: text =>
@@ -1037,11 +1076,28 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   clearTaskChatToolUses: () => set({ taskChatToolUses: [] }),
 
   // Task chat events (unified array like EventStream)
-  addTaskChatEvent: event =>
-    set(state => ({
-      taskChatEvents: [...state.taskChatEvents, event],
-    })),
-  clearTaskChatEvents: () => set({ taskChatEvents: [] }),
+  // Uses batching to reduce re-renders during rapid WebSocket events
+  addTaskChatEvent: event => {
+    // Add to batch instead of immediately updating state
+    taskChatEventsBatch.push(event)
+
+    // Schedule flush if not already scheduled
+    if (taskChatEventsBatchTimeout === null) {
+      taskChatEventsBatchTimeout = setTimeout(
+        flushTaskChatEventsBatch,
+        TASK_CHAT_EVENTS_BATCH_INTERVAL_MS,
+      )
+    }
+  },
+  clearTaskChatEvents: () => {
+    // Clear any pending batch
+    taskChatEventsBatch = []
+    if (taskChatEventsBatchTimeout !== null) {
+      clearTimeout(taskChatEventsBatchTimeout)
+      taskChatEventsBatchTimeout = null
+    }
+    set({ taskChatEvents: [] })
+  },
 
   // Iteration view
   setViewingIterationIndex: index => set({ viewingIterationIndex: index }),
@@ -1526,8 +1582,22 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     }),
 
   // Reset
-  reset: () => set({ ...initialState, instances: createInitialInstances() }),
+  reset: () => {
+    // Clear any pending task chat events batch
+    taskChatEventsBatch = []
+    if (taskChatEventsBatchTimeout !== null) {
+      clearTimeout(taskChatEventsBatchTimeout)
+      taskChatEventsBatchTimeout = null
+    }
+    set({ ...initialState, instances: createInitialInstances() })
+  },
 }))
+
+/**
+ * Flush any pending batched task chat events to the store immediately.
+ * Useful for testing or when you need events to be applied synchronously.
+ */
+export { flushTaskChatEventsBatch }
 
 export const selectInstances = (state: AppState) => state.instances
 export const selectActiveInstanceId = (state: AppState) => state.activeInstanceId

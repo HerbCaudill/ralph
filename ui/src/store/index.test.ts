@@ -49,6 +49,7 @@ import {
   selectInstanceCreatedAt,
   selectIsInstanceRunning,
   selectInstanceIterationCount,
+  flushTaskChatEventsBatch,
 } from "./index"
 import type { RalphEvent, Task, TaskChatMessage } from "@/types"
 
@@ -1565,6 +1566,7 @@ describe("useAppStore", () => {
       setIteration({ current: 2, total: 5 })
       addTaskChatMessage({ id: "msg-1", role: "user", content: "Hello", timestamp: 123 })
       addTaskChatEvent({ type: "stream_event", timestamp: 456, event: {} })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
       useAppStore.getState().setViewingIterationIndex(1)
 
       // Verify state was set
@@ -2221,6 +2223,7 @@ describe("useAppStore", () => {
         event: { type: "content_block_delta", delta: { text: "Hello" } },
       }
       useAppStore.getState().addTaskChatEvent(event)
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
 
       const events = useAppStore.getState().taskChatEvents
       expect(events).toHaveLength(1)
@@ -2237,6 +2240,7 @@ describe("useAppStore", () => {
         event: { type: "content_block_delta" },
       })
       addTaskChatEvent({ type: "assistant", timestamp: 3, message: { content: [] } })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
 
       const events = useAppStore.getState().taskChatEvents
       expect(events).toHaveLength(3)
@@ -2250,6 +2254,7 @@ describe("useAppStore", () => {
 
       addTaskChatEvent({ type: "stream_event", timestamp: 1, event: {} })
       addTaskChatEvent({ type: "assistant", timestamp: 2, message: {} })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
       expect(useAppStore.getState().taskChatEvents).toHaveLength(2)
 
       clearTaskChatEvents()
@@ -2261,11 +2266,69 @@ describe("useAppStore", () => {
 
       addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
       addTaskChatEvent({ type: "stream_event", timestamp: 2, event: {} })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
       expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
       expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
 
       clearTaskChatMessages()
       expect(useAppStore.getState().taskChatMessages).toEqual([])
+      expect(useAppStore.getState().taskChatEvents).toEqual([])
+    })
+
+    it("batches multiple addTaskChatEvent calls into a single state update", async () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      // Add multiple events without flushing
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: { type: "start" } })
+      addTaskChatEvent({ type: "stream_event", timestamp: 2, event: { type: "delta" } })
+      addTaskChatEvent({ type: "stream_event", timestamp: 3, event: { type: "end" } })
+
+      // Events should NOT be in state yet (still batched)
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(0)
+
+      // Flush the batch
+      flushTaskChatEventsBatch()
+
+      // Now all events should be in state
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(3)
+      expect(useAppStore.getState().taskChatEvents[0].timestamp).toBe(1)
+      expect(useAppStore.getState().taskChatEvents[1].timestamp).toBe(2)
+      expect(useAppStore.getState().taskChatEvents[2].timestamp).toBe(3)
+    })
+
+    it("auto-flushes batch after timeout", async () => {
+      vi.useFakeTimers()
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      // Add an event
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: { type: "test" } })
+
+      // Events should NOT be in state yet
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(0)
+
+      // Advance timers past the batch interval (100ms)
+      await vi.advanceTimersByTimeAsync(150)
+
+      // Now the event should be in state
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
+
+      vi.useRealTimers()
+    })
+
+    it("clearTaskChatEvents cancels pending batch", () => {
+      const { addTaskChatEvent, clearTaskChatEvents } = useAppStore.getState()
+
+      // Add events to batch
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: {} })
+      addTaskChatEvent({ type: "stream_event", timestamp: 2, event: {} })
+
+      // Clear should cancel the batch
+      clearTaskChatEvents()
+
+      // Flush should have no effect since batch was cleared
+      flushTaskChatEventsBatch()
+
+      // State should still be empty
       expect(useAppStore.getState().taskChatEvents).toEqual([])
     })
   })
@@ -2577,6 +2640,7 @@ describe("useAppStore", () => {
       setTaskChatWidth(500)
       addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
       useAppStore.getState().addTaskChatEvent({ type: "stream_event", timestamp: 1, event: {} })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
       setTaskChatLoading(true)
 
       // Verify state is modified

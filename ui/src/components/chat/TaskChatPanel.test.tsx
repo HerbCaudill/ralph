@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { TaskChatPanel } from "./TaskChatPanel"
-import { useAppStore } from "@/store"
+import { useAppStore, flushTaskChatEventsBatch } from "@/store"
 
 // Mock fetch
 const mockFetch = vi.fn()
@@ -10,6 +10,7 @@ global.fetch = mockFetch
 /**
  * Helper to add an assistant message via SDK events (the new unified model).
  * This simulates what happens when the server sends assistant content through WebSocket.
+ * Flushes the batch immediately so events are available synchronously in tests.
  */
 function addAssistantEvent(content: string, timestamp: number) {
   useAppStore.getState().addTaskChatEvent({
@@ -19,6 +20,8 @@ function addAssistantEvent(content: string, timestamp: number) {
       content: [{ type: "text", text: content }],
     },
   } as any)
+  // Flush the batch immediately so events are applied synchronously in tests
+  flushTaskChatEventsBatch()
 }
 
 describe("TaskChatPanel", () => {
@@ -567,6 +570,7 @@ describe("TaskChatPanel", () => {
           ],
         },
       } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
 
@@ -613,6 +617,7 @@ describe("TaskChatPanel", () => {
           ],
         },
       } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
 
@@ -700,6 +705,7 @@ describe("TaskChatPanel", () => {
           ],
         },
       } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
 
@@ -737,6 +743,7 @@ describe("TaskChatPanel", () => {
           content: [{ type: "tool_use", id: "tool-1", name: "Bash", input: { command: "test" } }],
         },
       } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
 
@@ -774,6 +781,7 @@ describe("TaskChatPanel", () => {
           ],
         },
       } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
 
