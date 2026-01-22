@@ -10,6 +10,17 @@ export type { MutationEvent } from "@herbcaudill/ralph-shared"
 
 const SOCKET_PATH = join(process.cwd(), ".beads", "bd.sock")
 
+type RPCRequest = {
+  operation: string
+  args: Record<string, unknown>
+}
+
+type RPCResponse = {
+  success: boolean
+  data?: unknown
+  error?: string
+}
+
 /**
  * Simple RPC client for beads daemon.
  * Connects to .beads/bd.sock and sends JSON-over-newline requests.
@@ -204,15 +215,4 @@ export function watchForNewIssues(
     }
     client?.close()
   }
-}
-
-type RPCRequest = {
-  operation: string
-  args: Record<string, unknown>
-}
-
-type RPCResponse = {
-  success: boolean
-  data?: unknown
-  error?: string
 }
