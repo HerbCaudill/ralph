@@ -607,10 +607,10 @@ export function TaskDetailsDialog({
                         }
                       }}
                       className={cn(
-                        "flex items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
+                        "flex items-center justify-center gap-1 border-l px-2 text-xs transition-colors first:rounded-l-md first:border-l-0 last:rounded-r-md",
                         isSelected ?
-                          cn("text-white", p.selectedBg)
-                        : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
+                          cn("border-transparent text-white", p.selectedBg)
+                        : cn(p.color, p.unselectedBg, p.unselectedHover, p.unselectedBorder),
                       )}
                       aria-pressed={isSelected}
                     >
@@ -676,10 +676,10 @@ export function TaskDetailsDialog({
                         }
                       }}
                       className={cn(
-                        "flex items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
+                        "flex items-center justify-center gap-1 border-l px-2 text-xs transition-colors first:rounded-l-md first:border-l-0 last:rounded-r-md",
                         isSelected ?
-                          cn("text-white", t.selectedBg)
-                        : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
+                          cn("border-transparent text-white", t.selectedBg)
+                        : cn(t.color, t.unselectedBg, t.unselectedHover, t.unselectedBorder),
                       )}
                       aria-pressed={isSelected}
                     >
@@ -856,6 +856,9 @@ const issueTypeOptions: {
   icon: typeof IconCheckbox
   color: string
   selectedBg: string
+  unselectedBg: string
+  unselectedHover: string
+  unselectedBorder: string
 }[] = [
   {
     value: "task",
@@ -863,14 +866,29 @@ const issueTypeOptions: {
     icon: IconCheckbox,
     color: "text-status-success",
     selectedBg: "bg-green-600",
+    unselectedBg: "bg-green-500/10",
+    unselectedHover: "hover:bg-green-500/20",
+    unselectedBorder: "border-green-500/30",
   },
-  { value: "bug", label: "Bug", icon: IconBug, color: "text-red-500", selectedBg: "bg-red-500" },
+  {
+    value: "bug",
+    label: "Bug",
+    icon: IconBug,
+    color: "text-red-500",
+    selectedBg: "bg-red-500",
+    unselectedBg: "bg-red-500/10",
+    unselectedHover: "hover:bg-red-500/20",
+    unselectedBorder: "border-red-500/30",
+  },
   {
     value: "epic",
     label: "Epic",
     icon: IconStack2,
     color: "text-indigo-500",
     selectedBg: "bg-indigo-500",
+    unselectedBg: "bg-indigo-500/10",
+    unselectedHover: "hover:bg-indigo-500/20",
+    unselectedBorder: "border-indigo-500/30",
   },
 ]
 
@@ -911,6 +929,9 @@ const priorityOptions = [
     short: "P0",
     color: "text-red-600",
     selectedBg: "bg-red-600",
+    unselectedBg: "bg-red-600/10",
+    unselectedHover: "hover:bg-red-600/20",
+    unselectedBorder: "border-red-600/30",
   },
   {
     value: 1,
@@ -918,6 +939,9 @@ const priorityOptions = [
     short: "P1",
     color: "text-orange-500",
     selectedBg: "bg-orange-500",
+    unselectedBg: "bg-orange-500/10",
+    unselectedHover: "hover:bg-orange-500/20",
+    unselectedBorder: "border-orange-500/30",
   },
   {
     value: 2,
@@ -925,6 +949,9 @@ const priorityOptions = [
     short: "P2",
     color: "text-amber-500",
     selectedBg: "bg-amber-500",
+    unselectedBg: "bg-amber-500/10",
+    unselectedHover: "hover:bg-amber-500/20",
+    unselectedBorder: "border-amber-500/30",
   },
   {
     value: 3,
@@ -932,6 +959,9 @@ const priorityOptions = [
     short: "P3",
     color: "text-yellow-500",
     selectedBg: "bg-yellow-500",
+    unselectedBg: "bg-yellow-500/10",
+    unselectedHover: "hover:bg-yellow-500/20",
+    unselectedBorder: "border-yellow-500/30",
   },
   {
     value: 4,
@@ -939,6 +969,9 @@ const priorityOptions = [
     short: "P4",
     color: "text-gray-500",
     selectedBg: "bg-gray-500",
+    unselectedBg: "bg-gray-500/10",
+    unselectedHover: "hover:bg-gray-500/20",
+    unselectedBorder: "border-gray-500/30",
   },
 ]
 
