@@ -137,7 +137,7 @@ describe("App", () => {
 
     // Verify start API hasn't been called yet
     expect(mockFetch).not.toHaveBeenCalledWith(
-      "/api/start",
+      "/api/ralph/default/start",
       expect.objectContaining({ method: "POST" }),
     )
 
@@ -149,7 +149,7 @@ describe("App", () => {
     // Wait for the auto-start to be triggered
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/start",
+        "/api/ralph/default/start",
         expect.objectContaining({ method: "POST" }),
       )
     })
@@ -165,7 +165,7 @@ describe("App", () => {
     // Wait for auto-start to be triggered on initial mount
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/start",
+        "/api/ralph/default/start",
         expect.objectContaining({ method: "POST" }),
       )
     })
@@ -187,7 +187,7 @@ describe("App", () => {
     // Wait a bit and verify start is NOT called again
     await new Promise(resolve => setTimeout(resolve, 100))
     expect(mockFetch).not.toHaveBeenCalledWith(
-      "/api/start",
+      "/api/ralph/default/start",
       expect.objectContaining({ method: "POST" }),
     )
   })

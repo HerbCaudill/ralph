@@ -1,6 +1,9 @@
+import { useAppStore } from "@/store"
+
 export async function startRalph(iterations?: number): Promise<{ ok: boolean; error?: string }> {
   try {
-    const response = await fetch("/api/start", {
+    const instanceId = useAppStore.getState().activeInstanceId
+    const response = await fetch(`/api/ralph/${instanceId}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ iterations }),

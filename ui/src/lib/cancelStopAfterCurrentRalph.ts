@@ -1,6 +1,9 @@
+import { useAppStore } from "@/store"
+
 export async function cancelStopAfterCurrentRalph(): Promise<{ ok: boolean; error?: string }> {
   try {
-    const response = await fetch("/api/cancel-stop-after-current", {
+    const instanceId = useAppStore.getState().activeInstanceId
+    const response = await fetch(`/api/ralph/${instanceId}/cancel-stop-after-current`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })

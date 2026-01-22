@@ -1,6 +1,9 @@
+import { useAppStore } from "@/store"
+
 export async function resumeRalph(): Promise<{ ok: boolean; error?: string }> {
   try {
-    const response = await fetch("/api/resume", {
+    const instanceId = useAppStore.getState().activeInstanceId
+    const response = await fetch(`/api/ralph/${instanceId}/resume`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     })

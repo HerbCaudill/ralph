@@ -37,69 +37,13 @@ import {
   useWorkspaces,
 } from "./hooks"
 import { TaskDialogProvider } from "./contexts"
+import { startRalph } from "./lib/startRalph"
+import { stopRalph } from "./lib/stopRalph"
+import { pauseRalph } from "./lib/pauseRalph"
+import { resumeRalph } from "./lib/resumeRalph"
+import { stopAfterCurrentRalph } from "./lib/stopAfterCurrentRalph"
 
 // API Functions (for hotkeys)
-
-async function startRalph(): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const response = await fetch("/api/start", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    })
-    return await response.json()
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to start" }
-  }
-}
-
-async function stopRalph(): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const response = await fetch("/api/stop", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    })
-    return await response.json()
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to stop" }
-  }
-}
-
-async function pauseRalph(): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const response = await fetch("/api/pause", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    })
-    return await response.json()
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to pause" }
-  }
-}
-
-async function resumeRalph(): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const response = await fetch("/api/resume", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    })
-    return await response.json()
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to resume" }
-  }
-}
-
-async function stopAfterCurrentRalph(): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const response = await fetch("/api/stop-after-current", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    })
-    return await response.json()
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to stop after current" }
-  }
-}
 
 async function clearTaskChatHistory(): Promise<{ ok: boolean; error?: string }> {
   try {

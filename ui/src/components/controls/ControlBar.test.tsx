@@ -190,7 +190,7 @@ describe("ControlBar", () => {
       useAppStore.getState().setRalphStatus("stopped")
     })
 
-    it("calls /api/start when Start is clicked", async () => {
+    it("calls /api/ralph/:instanceId/start when Start is clicked", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, status: "starting" }),
       })
@@ -199,7 +199,7 @@ describe("ControlBar", () => {
       fireEvent.click(screen.getByRole("button", { name: "Start" }))
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith("/api/start", {
+        expect(mockFetch).toHaveBeenCalledWith("/api/ralph/default/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
@@ -238,7 +238,7 @@ describe("ControlBar", () => {
       useAppStore.getState().setRalphStatus("running")
     })
 
-    it("calls /api/stop when Stop is clicked", async () => {
+    it("calls /api/ralph/:instanceId/stop when Stop is clicked", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, status: "stopping" }),
       })
@@ -247,7 +247,7 @@ describe("ControlBar", () => {
       fireEvent.click(screen.getByRole("button", { name: "Stop" }))
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith("/api/stop", {
+        expect(mockFetch).toHaveBeenCalledWith("/api/ralph/default/stop", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         })
@@ -274,7 +274,7 @@ describe("ControlBar", () => {
       useAppStore.getState().setRalphStatus("running")
     })
 
-    it("calls /api/pause when Pause is clicked", async () => {
+    it("calls /api/ralph/:instanceId/pause when Pause is clicked", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, status: "paused" }),
       })
@@ -283,7 +283,7 @@ describe("ControlBar", () => {
       fireEvent.click(screen.getByRole("button", { name: "Pause" }))
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith("/api/pause", {
+        expect(mockFetch).toHaveBeenCalledWith("/api/ralph/default/pause", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         })
@@ -310,7 +310,7 @@ describe("ControlBar", () => {
       useAppStore.getState().setRalphStatus("paused")
     })
 
-    it("calls /api/resume when Resume is clicked", async () => {
+    it("calls /api/ralph/:instanceId/resume when Resume is clicked", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, status: "running" }),
       })
@@ -319,7 +319,7 @@ describe("ControlBar", () => {
       fireEvent.click(screen.getByRole("button", { name: "Resume" }))
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith("/api/resume", {
+        expect(mockFetch).toHaveBeenCalledWith("/api/ralph/default/resume", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         })
@@ -346,7 +346,7 @@ describe("ControlBar", () => {
       useAppStore.getState().setRalphStatus("running")
     })
 
-    it("calls /api/stop-after-current when Stop after current is clicked", async () => {
+    it("calls /api/ralph/:instanceId/stop-after-current when Stop after current is clicked", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, status: "stopping_after_current" }),
       })
@@ -355,7 +355,7 @@ describe("ControlBar", () => {
       fireEvent.click(screen.getByRole("button", { name: "Stop after current" }))
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith("/api/stop-after-current", {
+        expect(mockFetch).toHaveBeenCalledWith("/api/ralph/default/stop-after-current", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         })
@@ -382,7 +382,7 @@ describe("ControlBar", () => {
       useAppStore.getState().setRalphStatus("stopping_after_current")
     })
 
-    it("calls /api/cancel-stop-after-current when button is clicked in stopping_after_current state", async () => {
+    it("calls /api/ralph/:instanceId/cancel-stop-after-current when button is clicked in stopping_after_current state", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, status: "running" }),
       })
@@ -391,7 +391,7 @@ describe("ControlBar", () => {
       fireEvent.click(screen.getByRole("button", { name: "Cancel stop after current" }))
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith("/api/cancel-stop-after-current", {
+        expect(mockFetch).toHaveBeenCalledWith("/api/ralph/default/cancel-stop-after-current", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         })
