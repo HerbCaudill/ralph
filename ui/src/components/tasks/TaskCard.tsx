@@ -362,23 +362,23 @@ const typeConfig: Record<string, TypeConfig> = {
 const priorityConfig: Record<number, PriorityConfig> = {
   0: {
     label: "P0",
-    color: "text-status-error",
-    bgColor: "bg-status-error/20",
+    color: "text-white",
+    bgColor: "bg-red-600",
   },
   1: {
     label: "P1",
-    color: "text-status-warning",
-    bgColor: "bg-status-warning/15",
+    color: "text-white",
+    bgColor: "bg-orange-600",
   },
   3: {
     label: "P3",
-    color: "text-status-neutral",
-    bgColor: "bg-status-neutral/10",
+    color: "text-white",
+    bgColor: "bg-yellow-500",
   },
   4: {
     label: "P4",
-    color: "text-muted-foreground",
-    bgColor: "bg-muted/50",
+    color: "text-white",
+    bgColor: "bg-yellow-400",
   },
 }
 
