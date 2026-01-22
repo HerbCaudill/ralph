@@ -145,6 +145,27 @@ describe("TaskIdLink", () => {
       expect(screen.getByRole("button", { name: "View task rui-abc.1" })).toBeInTheDocument()
     })
 
+    it("handles deeply nested task IDs with multiple decimal suffixes", () => {
+      const openTaskById = vi.fn()
+      renderWithContext(
+        <TaskIdLink>See rui-4vp.1.2 and rui-abc.1.2.3 for details</TaskIdLink>,
+        openTaskById,
+      )
+
+      const link1 = screen.getByRole("button", { name: "View task rui-4vp.1.2" })
+      const link2 = screen.getByRole("button", { name: "View task rui-abc.1.2.3" })
+      expect(link1).toBeInTheDocument()
+      expect(link2).toBeInTheDocument()
+      expect(link1).toHaveTextContent("4vp.1.2")
+      expect(link2).toHaveTextContent("abc.1.2.3")
+
+      fireEvent.click(link1)
+      expect(openTaskById).toHaveBeenCalledWith("rui-4vp.1.2")
+
+      fireEvent.click(link2)
+      expect(openTaskById).toHaveBeenCalledWith("rui-abc.1.2.3")
+    })
+
     it("preserves text before, between, and after task IDs", () => {
       const { container } = renderWithContext(<TaskIdLink>Start rui-1 middle rui-2 end</TaskIdLink>)
 
@@ -215,6 +236,12 @@ describe("containsTaskId", () => {
     expect(containsTaskId("Check rui-48s.5", "rui")).toBe(true)
     expect(containsTaskId("proj-abc.1", "proj")).toBe(true)
     expect(containsTaskId("rui-xyz.10", "rui")).toBe(true)
+  })
+
+  it("returns true for deeply nested task IDs with multiple decimal suffixes", () => {
+    expect(containsTaskId("Check rui-48s.1.2", "rui")).toBe(true)
+    expect(containsTaskId("proj-abc.1.2.3", "proj")).toBe(true)
+    expect(containsTaskId("rui-xyz.1.2.3.4.5", "rui")).toBe(true)
   })
 
   it("returns false for text without task IDs", () => {

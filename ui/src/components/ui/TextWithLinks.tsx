@@ -20,7 +20,8 @@ const EVENTLOG_PATTERN = /#eventlog=([a-f0-9]{8})(?![a-f0-9])/gi
 function createTaskIdPattern(prefix: string | null): RegExp | null {
   if (!prefix) return null
   const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  return new RegExp(`\\b(${escapedPrefix}-[a-z0-9]+(?:\\.\\d+)?)\\b`, "g")
+  // Match prefix-alphanumeric with optional decimal suffixes (e.g., rui-4vp.1 or rui-4vp.1.2.3)
+  return new RegExp(`\\b(${escapedPrefix}-[a-z0-9]+(?:\\.\\d+)*)\\b`, "g")
 }
 
 interface TextSegment {
