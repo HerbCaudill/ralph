@@ -1,5 +1,7 @@
 # Ralph Iteration Protocol
 
+> IMPORTANT: precede every response with an emoji.
+
 You are running as an autonomous iteration agent. Follow this protocol exactly.
 
 ## Iteration lifecycle
