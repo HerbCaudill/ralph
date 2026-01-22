@@ -363,7 +363,7 @@ describe("useHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
-    it("handles newChat hotkey (Cmd+N)", () => {
+    it("handles newChat hotkey (Cmd+Backspace)", () => {
       mockNavigator("MacIntel")
       const handler = vi.fn()
 
@@ -375,10 +375,10 @@ describe("useHotkeys", () => {
         }),
       )
 
-      // Simulate Cmd+N
+      // Simulate Cmd+Backspace
       act(() => {
         const event = new KeyboardEvent("keydown", {
-          key: "n",
+          key: "Backspace",
           metaKey: true,
           bubbles: true,
         })
