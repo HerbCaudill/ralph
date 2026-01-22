@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { mkdir, writeFile, rm } from "node:fs/promises"
 import path from "node:path"
-import { loadSystemPrompt, loadTaskChatSkill, getTaskChatAllowedTools, getTaskChatModel } from "./systemPrompt.js"
+import {
+  loadSystemPrompt,
+  loadTaskChatSkill,
+  getTaskChatAllowedTools,
+  getTaskChatModel,
+} from "./systemPrompt.js"
 
 describe("systemPrompt", () => {
   const testDir = path.join(import.meta.dirname, "__test_system_prompt__")
