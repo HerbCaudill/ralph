@@ -44,8 +44,9 @@ import { pauseRalph } from "./lib/pauseRalph"
 import { resumeRalph } from "./lib/resumeRalph"
 import { stopAfterCurrentRalph } from "./lib/stopAfterCurrentRalph"
 
-// API Functions (for hotkeys)
-
+/**
+ * Clear the task chat history by calling the server API.
+ */
 async function clearTaskChatHistory(): Promise<{ ok: boolean; error?: string }> {
   try {
     const response = await fetch("/api/task-chat/clear", {
@@ -58,8 +59,9 @@ async function clearTaskChatHistory(): Promise<{ ok: boolean; error?: string }> 
   }
 }
 
-// Tasks Sidebar
-
+/**
+ * Sidebar panel containing task list and quick task input.
+ */
 interface TasksSidebarPanelProps {
   quickInputRef?: React.RefObject<QuickTaskInputHandle | null>
   searchInputRef?: React.RefObject<SearchInputHandle | null>
@@ -98,6 +100,9 @@ function TasksSidebarPanel({
   )
 }
 
+/**
+ * Main agent view showing the event stream and chat input.
+ */
 interface AgentViewProps {
   chatInputRef?: React.RefObject<ChatInputHandle | null>
 }
@@ -135,8 +140,9 @@ function AgentView({ chatInputRef }: AgentViewProps) {
   )
 }
 
-// App Component
-
+/**
+ * Root application component.
+ */
 export function App() {
   const layoutRef = useRef<MainLayoutHandle>(null)
   const chatInputRef = useRef<ChatInputHandle>(null)

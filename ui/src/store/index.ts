@@ -18,14 +18,15 @@ import type {
 } from "@/types"
 import { TASK_LIST_CLOSED_FILTER_STORAGE_KEY } from "@/constants"
 
-// localStorage keys
 export const SIDEBAR_WIDTH_STORAGE_KEY = "ralph-ui-sidebar-width"
 export const TASK_CHAT_WIDTH_STORAGE_KEY = "ralph-ui-task-chat-width"
 export const TASK_CHAT_OPEN_STORAGE_KEY = "ralph-ui-task-chat-open"
 export const SHOW_TOOL_OUTPUT_STORAGE_KEY = "ralph-ui-show-tool-output"
 export const ACTIVE_INSTANCE_ID_STORAGE_KEY = "ralph-ui-active-instance-id"
 
-// Helper functions for localStorage
+/**
+ * Load sidebar width from localStorage with validation.
+ */
 function loadSidebarWidth(): number {
   try {
     const stored = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
@@ -41,6 +42,9 @@ function loadSidebarWidth(): number {
   return 320 // default
 }
 
+/**
+ * Save sidebar width to localStorage.
+ */
 function saveSidebarWidth(width: number): void {
   try {
     localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(width))
@@ -49,7 +53,9 @@ function saveSidebarWidth(width: number): void {
   }
 }
 
-// Task chat panel localStorage persistence
+/**
+ * Load task chat panel width from localStorage with validation.
+ */
 function loadTaskChatWidth(): number {
   try {
     const stored = localStorage.getItem(TASK_CHAT_WIDTH_STORAGE_KEY)
@@ -65,6 +71,9 @@ function loadTaskChatWidth(): number {
   return 400 // default
 }
 
+/**
+ * Save task chat panel width to localStorage.
+ */
 function saveTaskChatWidth(width: number): void {
   try {
     localStorage.setItem(TASK_CHAT_WIDTH_STORAGE_KEY, String(width))
@@ -73,7 +82,9 @@ function saveTaskChatWidth(width: number): void {
   }
 }
 
-// Task chat open/closed state localStorage persistence
+/**
+ * Load task chat open/closed state from localStorage.
+ */
 function loadTaskChatOpen(): boolean {
   try {
     const stored = localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)
@@ -85,6 +96,9 @@ function loadTaskChatOpen(): boolean {
   return true // default - open
 }
 
+/**
+ * Save task chat open/closed state to localStorage.
+ */
 function saveTaskChatOpen(open: boolean): void {
   try {
     localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, String(open))
@@ -93,7 +107,9 @@ function saveTaskChatOpen(open: boolean): void {
   }
 }
 
-// Closed time filter types and localStorage persistence
+/**
+ * List of valid closed time filter options.
+ */
 const CLOSED_TIME_FILTERS: ClosedTasksTimeFilter[] = [
   "past_hour",
   "past_day",
@@ -101,6 +117,9 @@ const CLOSED_TIME_FILTERS: ClosedTasksTimeFilter[] = [
   "all_time",
 ]
 
+/**
+ * Load closed time filter from localStorage with validation.
+ */
 function loadClosedTimeFilter(): ClosedTasksTimeFilter {
   try {
     const stored = localStorage.getItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY)
@@ -113,6 +132,9 @@ function loadClosedTimeFilter(): ClosedTasksTimeFilter {
   return "past_day" // default
 }
 
+/**
+ * Save closed time filter to localStorage.
+ */
 function saveClosedTimeFilter(filter: ClosedTasksTimeFilter): void {
   try {
     localStorage.setItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY, filter)
@@ -121,7 +143,9 @@ function saveClosedTimeFilter(filter: ClosedTasksTimeFilter): void {
   }
 }
 
-// Show tool output localStorage persistence
+/**
+ * Load tool output visibility setting from localStorage.
+ */
 function loadShowToolOutput(): boolean {
   try {
     const stored = localStorage.getItem(SHOW_TOOL_OUTPUT_STORAGE_KEY)
@@ -134,6 +158,9 @@ function loadShowToolOutput(): boolean {
   return false // default - collapsed
 }
 
+/**
+ * Save tool output visibility setting to localStorage.
+ */
 function saveShowToolOutput(show: boolean): void {
   try {
     localStorage.setItem(SHOW_TOOL_OUTPUT_STORAGE_KEY, String(show))
@@ -142,7 +169,9 @@ function saveShowToolOutput(show: boolean): void {
   }
 }
 
-// Active instance ID localStorage persistence
+/**
+ * Load active instance ID from localStorage.
+ */
 function loadActiveInstanceId(): string {
   try {
     const stored = localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)
@@ -155,6 +184,9 @@ function loadActiveInstanceId(): string {
   return DEFAULT_INSTANCE_ID // default
 }
 
+/**
+ * Save active instance ID to localStorage.
+ */
 function saveActiveInstanceId(instanceId: string): void {
   try {
     localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, instanceId)
@@ -176,8 +208,6 @@ export function getTimeFilterCutoff(filter: ClosedTasksTimeFilter): Date | null 
       return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   }
 }
-
-// Types
 
 export const RALPH_STATUSES = [
   "stopped",
@@ -228,8 +258,6 @@ export function createRalphInstance(
     mergeConflict: null,
   }
 }
-
-// Store State
 
 export interface AppState {
   // === Multi-instance state ===
@@ -477,8 +505,6 @@ export interface AppActions {
   reset: () => void
 }
 
-// Iteration boundary helpers
-
 /**
  * Checks if an event is an iteration boundary (system init event).
  */
@@ -557,8 +583,6 @@ export function getTaskFromIterationEvents(
   }
   return null
 }
-
-// Initial State
 
 const defaultSidebarWidth = 320
 const defaultTaskChatWidth = 400
@@ -641,8 +665,6 @@ const getInitialStateWithPersistence = (): AppState => {
     showToolOutput: loadShowToolOutput(),
   }
 }
-
-// Store
 
 export const useAppStore = create<AppState & AppActions>(set => ({
   ...getInitialStateWithPersistence(),
@@ -1487,9 +1509,6 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   reset: () => set({ ...initialState, instances: createInitialInstances() }),
 }))
 
-// Selectors
-
-// Instance selectors
 export const selectInstances = (state: AppState) => state.instances
 export const selectActiveInstanceId = (state: AppState) => state.activeInstanceId
 export const selectActiveInstance = (state: AppState) =>
@@ -1504,12 +1523,6 @@ export const selectActiveInstanceAgentName = (state: AppState) =>
 export const selectActiveInstanceCurrentTaskTitle = (state: AppState) =>
   state.instances.get(state.activeInstanceId)?.currentTaskTitle ?? null
 
-// Legacy selectors (delegate to active instance)
-// These selectors read from the active instance for backward compatibility.
-// The flat fields on AppState are kept in sync via actions for components that
-// read directly from state, but selectors should be preferred.
-// Note: These selectors are defensive and fall back to flat fields if instances
-// is not available (e.g., in tests with partial mock state).
 export const selectRalphStatus = (state: AppState) => {
   const activeInstance = state.instances?.get(state.activeInstanceId)
   return activeInstance?.status ?? state.ralphStatus
@@ -1573,9 +1586,6 @@ export const selectIterationTask = (state: AppState) => {
   return getTaskFromIterationEvents(iterationEvents)
 }
 export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
-
-// Per-instance selectors (take instanceId parameter)
-// These allow querying specific instances regardless of which is active
 
 export const selectInstanceStatus = (state: AppState, instanceId: string): RalphStatus => {
   const instance = state.instances.get(instanceId)

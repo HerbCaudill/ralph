@@ -245,10 +245,6 @@ export interface WorkspaceListEntry {
 }
 
 /**
- * Represents a single Ralph instance with its per-instance state.
- * Used for concurrent Ralph support where multiple instances can run simultaneously.
- */
-/**
  * Information about a merge conflict for an instance.
  */
 export interface MergeConflict {
@@ -260,6 +256,10 @@ export interface MergeConflict {
   timestamp: number
 }
 
+/**
+ * Represents a single Ralph instance with its per-instance state.
+ * Used for concurrent Ralph support where multiple instances can run simultaneously.
+ */
 export interface RalphInstance {
   /** Unique identifier for the instance */
   id: string
