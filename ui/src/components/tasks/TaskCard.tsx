@@ -17,16 +17,29 @@ import {
 } from "@tabler/icons-react"
 import type { TaskCardTask, TaskStatus } from "@/types"
 
+/**
+ * Card component for displaying an individual task with status indicator, title, and metadata.
+ * Supports status dropdown menu, collapsible subtasks, priority badges, and type indicators.
+ */
 export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskCard(
   {
+    /** The task data to display */
     task,
+    /** Additional CSS classes to apply */
     className,
+    /** Callback when task status is changed */
     onStatusChange,
+    /** Callback when task is clicked */
     onClick,
+    /** Whether to show new task animation */
     isNew = false,
+    /** Whether subtasks are collapsed */
     isCollapsed,
+    /** Callback to toggle subtask collapse state */
     onToggleCollapse,
+    /** Number of subtasks for this task */
     subtaskCount = 0,
+    /** Whether this task is actively being worked on */
     isActivelyWorking = false,
     ...props
   },
@@ -296,6 +309,9 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   )
 })
 
+/**
+ * Configuration for each task status with icon, label, and styling.
+ */
 const statusConfig: Record<TaskStatus, StatusConfig> = {
   open: {
     icon: IconCircle,
@@ -330,8 +346,14 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   },
 }
 
+/**
+ * List of all available task statuses for status dropdown menu.
+ */
 const availableStatuses: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
 
+/**
+ * Configuration for issue types (task, bug, feature, epic) with icons and colors.
+ */
 const typeConfig: Record<string, TypeConfig> = {
   task: {
     icon: IconCheckbox,
@@ -355,6 +377,9 @@ const typeConfig: Record<string, TypeConfig> = {
   },
 }
 
+/**
+ * Configuration for priority levels (P0 through P4) with colors and labels.
+ */
 const priorityConfig: Record<number, PriorityConfig> = {
   0: {
     label: "P0",
@@ -378,34 +403,64 @@ const priorityConfig: Record<number, PriorityConfig> = {
   },
 }
 
+/**
+ * Props for the TaskCard component.
+ */
 export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> & {
+  /** The task data to display */
   task: TaskCardTask
+  /** Callback when task status is changed via dropdown menu */
   onStatusChange?: (id: string, status: TaskStatus) => void
+  /** Callback when task is clicked for selection */
   onClick?: (id: string) => void
+  /** Whether to show new task animation */
   isNew?: boolean
+  /** Whether subtasks are collapsed */
   isCollapsed?: boolean
+  /** Callback to toggle subtask collapse state */
   onToggleCollapse?: () => void
+  /** Number of subtasks for epic tasks */
   subtaskCount?: number
   /** Whether this task is actively being worked on by a running instance */
   isActivelyWorking?: boolean
 }
 
+/**
+ * Configuration object for a task status.
+ */
 type StatusConfig = {
+  /** Tabler icon component */
   icon: TablerIcon
+  /** Human-readable label */
   label: string
+  /** Text color class */
   color: string
+  /** Background color class */
   bgColor: string
+  /** Optional animation class (e.g., "animate-spin") */
   animate?: string
 }
 
+/**
+ * Configuration object for an issue type.
+ */
 type TypeConfig = {
+  /** Tabler icon component */
   icon: TablerIcon
+  /** Human-readable label */
   label: string
+  /** Text color class */
   color: string
 }
 
+/**
+ * Configuration object for a priority level.
+ */
 type PriorityConfig = {
+  /** Priority label (e.g., "P0", "P1") */
   label: string
+  /** Text color class */
   color: string
+  /** Background color class */
   bgColor: string
 }
