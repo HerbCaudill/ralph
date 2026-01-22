@@ -107,6 +107,7 @@ function handleMessage(event: MessageEvent): void {
     // Task chat messages are only processed for the active instance
     // (since task chat state is not per-instance yet)
     const activeOnlyTypes = [
+      "task-chat:event",
       "task-chat:message",
       "task-chat:chunk",
       "task-chat:status",
@@ -374,7 +375,15 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
-      // Task chat events
+      // Task chat events - unified event model
+      case "task-chat:event":
+        // Raw SDK event for unified event stream
+        if (data.event && typeof data.event === "object") {
+          store.addTaskChatEvent(data.event)
+        }
+        break
+
+      // Task chat events - legacy handlers (kept for backward compatibility)
       case "task-chat:message":
         // Complete assistant message received
         if (data.message && typeof data.message === "object") {

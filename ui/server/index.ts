@@ -10,6 +10,7 @@ import { BdProxy, type BdCreateOptions } from "./BdProxy.js"
 import { getAliveWorkspaces } from "./getAliveWorkspaces.js"
 import { getEventLogStore, type EventLogMetadata } from "./EventLogStore.js"
 import {
+  type TaskChatEvent,
   type TaskChatMessage,
   type TaskChatStatus,
   type TaskChatToolUse,
@@ -1754,6 +1755,17 @@ function wireContextManagerEvents(
           type: "task-chat:tool_result",
           instanceId,
           toolUse,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:event": {
+        // Raw SDK events for unified event model
+        const event = args[0] as TaskChatEvent
+        broadcast({
+          type: "task-chat:event",
+          instanceId,
+          event,
           timestamp: Date.now(),
         })
         break
