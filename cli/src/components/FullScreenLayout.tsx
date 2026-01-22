@@ -4,10 +4,20 @@ import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 import { useTerminalSize } from "../lib/useTerminalSize.js"
 
-// Constants for layout calculations
-const HEADER_HEIGHT = 5 // BigText "tiny" font (4 rows) + separator
-const FOOTER_HEIGHT = 2 // Separator + content
-const BORDER_HEIGHT = 2 // Top and bottom borders
+/**
+ * BigText "tiny" font takes 4 rows, plus 1 for separator
+ */
+const HEADER_HEIGHT = 5
+
+/**
+ * Separator plus content row
+ */
+const FOOTER_HEIGHT = 2
+
+/**
+ * Top and bottom borders
+ */
+const BORDER_HEIGHT = 2
 
 /**
  * Calculate the available content height based on terminal size
