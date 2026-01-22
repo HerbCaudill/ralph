@@ -65,6 +65,25 @@ describe("RalphManager", () => {
       )
     })
 
+    it("uses custom cwd when provided", async () => {
+      const customManager = new RalphManager({
+        cwd: "/path/to/worktree",
+        spawn: mockSpawn as unknown as SpawnFn,
+      })
+
+      const startPromise = customManager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "npx",
+        ["@herbcaudill/ralph", "--json"],
+        expect.objectContaining({
+          cwd: "/path/to/worktree",
+        }),
+      )
+    })
+
     it("includes iterations argument when provided", async () => {
       const startPromise = manager.start(50)
       mockProcess.emit("spawn")
