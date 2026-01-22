@@ -2,6 +2,11 @@ import { useMemo } from "react"
 import { cn, stripAnsi } from "@/lib/utils"
 import { getPreviewInfo } from "@/lib/getPreviewInfo"
 
+/**
+ * Renders ANSI-formatted code output with optional line preview and expand functionality.
+ * Strips ANSI codes for display and shows a preview of the first few lines.
+ * When truncated, users can click to expand the full output.
+ */
 export function AnsiOutput({ code, isExpanded, onExpand, className }: Props) {
   const strippedCode = useMemo(() => stripAnsi(code), [code])
   const { preview, remainingLines } = useMemo(() => getPreviewInfo(strippedCode), [strippedCode])
@@ -28,9 +33,16 @@ export function AnsiOutput({ code, isExpanded, onExpand, className }: Props) {
   )
 }
 
+/**
+ * Props for the AnsiOutput component
+ */
 type Props = {
+  /** ANSI-formatted code string to display */
   code: string
+  /** Whether the output is expanded to show all lines */
   isExpanded: boolean
+  /** Callback invoked when user clicks to expand truncated output */
   onExpand?: () => void
+  /** Additional CSS classes to apply to the root container */
   className?: string
 }

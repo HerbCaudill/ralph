@@ -10,9 +10,16 @@ import {
 } from "@/store"
 import type { WorkspaceInfo, WorkspaceListEntry } from "@/types"
 
+/**
+ * Dropdown component to select and switch between workspaces.
+ * Fetches available workspaces from the server and displays workspace info.
+ */
 export function WorkspacePicker({
+  /** Optional CSS class name */
   className,
+  /** Display variant - "header" for colored header background */
   variant = "default",
+  /** Text color to use when variant is "header" */
   textColor,
 }: WorkspacePickerProps) {
   const workspace = useAppStore(selectWorkspace)
@@ -33,7 +40,9 @@ export function WorkspacePicker({
   const [error, setError] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Fetch workspace info from the server
+  /**
+   * Fetch workspace info from the server and update store state
+   */
   const fetchWorkspaceInfo = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -84,7 +93,9 @@ export function WorkspacePicker({
     setIssuePrefix,
   ])
 
-  // Fetch all available workspaces from the registry
+  /**
+   * Fetch all available workspaces from the registry
+   */
   const fetchAllWorkspaces = useCallback(async () => {
     setIsLoadingList(true)
     try {
@@ -103,7 +114,9 @@ export function WorkspacePicker({
     }
   }, [])
 
-  // Switch to a different workspace
+  /**
+   * Switch to a different workspace, clear workspace data, and refresh tasks
+   */
   const switchToWorkspace = useCallback(
     async (workspacePath: string) => {
       setIsLoading(true)
@@ -336,6 +349,9 @@ export function WorkspacePicker({
   )
 }
 
+/**
+ * Props for the WorkspacePicker component
+ */
 export type WorkspacePickerProps = {
   className?: string
   variant?: "default" | "header"

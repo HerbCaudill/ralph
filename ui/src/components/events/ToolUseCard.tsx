@@ -12,7 +12,18 @@ import { AnsiOutput } from "./AnsiOutput"
 import { DiffView } from "./DiffView"
 import { TodoList } from "./TodoList"
 
-export function ToolUseCard({ event, className, defaultExpanded = false }: ToolUseCardProps) {
+/**
+ * Render a tool use event with collapsible output, supporting multiple tool types.
+ * Handles Edit diffs, Bash output with ANSI codes, todo updates, and generic tool results.
+ */
+export function ToolUseCard({
+  /** The tool use event to display */
+  event,
+  /** Optional CSS class to apply to the root container */
+  className,
+  /** Whether the output preview should start expanded (default: false) */
+  defaultExpanded = false,
+}: ToolUseCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const workspace = useAppStore(selectWorkspace)
   const showToolOutput = useAppStore(state => state.showToolOutput)

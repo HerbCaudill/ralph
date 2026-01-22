@@ -26,11 +26,15 @@ export function NewInstanceDialog({ open, onOpenChange }: NewInstanceDialogProps
   const createInstance = useAppStore(state => state.createInstance)
   const setActiveInstanceId = useAppStore(state => state.setActiveInstanceId)
 
-  // Generate unique IDs for form elements
+  /**
+   * Generate unique IDs for form elements.
+   */
   const nameId = useId()
   const agentNameId = useId()
 
-  // Reset form when dialog opens
+  /**
+   * Reset form when dialog opens.
+   */
   useEffect(() => {
     if (open) {
       setName("")
@@ -40,12 +44,16 @@ export function NewInstanceDialog({ open, onOpenChange }: NewInstanceDialogProps
     }
   }, [open])
 
-  // Generate a unique instance ID
+  /**
+   * Generate a unique instance ID.
+   */
   const generateInstanceId = useCallback(() => {
     return `instance-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
   }, [])
 
-  // Handle form submission
+  /**
+   * Handle form submission to create a new instance.
+   */
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
@@ -100,7 +108,9 @@ export function NewInstanceDialog({ open, onOpenChange }: NewInstanceDialogProps
     [name, agentName, generateInstanceId, createInstance, setActiveInstanceId, onOpenChange],
   )
 
-  // Handle Enter key in inputs
+  /**
+   * Handle Enter key in inputs to submit the form.
+   */
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -125,7 +135,9 @@ export function NewInstanceDialog({ open, onOpenChange }: NewInstanceDialogProps
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name field */}
+          {/**
+           * Instance name input field.
+           */}
           <div className="space-y-2">
             <Label htmlFor={nameId}>Name</Label>
             <Input
@@ -141,7 +153,9 @@ export function NewInstanceDialog({ open, onOpenChange }: NewInstanceDialogProps
             <p className="text-muted-foreground text-xs">A descriptive name for this instance.</p>
           </div>
 
-          {/* Agent Name field */}
+          {/**
+           * Agent name input field (optional).
+           */}
           <div className="space-y-2">
             <Label htmlFor={agentNameId}>Agent Name (optional)</Label>
             <Input
@@ -158,7 +172,9 @@ export function NewInstanceDialog({ open, onOpenChange }: NewInstanceDialogProps
             </p>
           </div>
 
-          {/* Error message */}
+          {/**
+           * Error message display if creation fails.
+           */}
           {error && (
             <div
               className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm"
@@ -169,7 +185,9 @@ export function NewInstanceDialog({ open, onOpenChange }: NewInstanceDialogProps
             </div>
           )}
 
-          {/* Actions */}
+          {/**
+           * Form actions: Cancel and Create buttons.
+           */}
           <DialogFooter>
             <Button
               type="button"

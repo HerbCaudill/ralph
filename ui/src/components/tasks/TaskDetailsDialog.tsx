@@ -40,13 +40,17 @@ export function TaskDetailsDialog({
   onDelete,
   readOnly = false,
 }: TaskDetailsDialogProps) {
-  // Get events, workspace, issue prefix, and tasks from store
+  /**
+   * Get events, workspace, issue prefix, and tasks from store
+   */
   const events = useAppStore(state => state.events)
   const workspace = useAppStore(state => state.workspace)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const allTasks = useAppStore(selectTasks)
 
-  // Local state for editable fields
+  /**
+   * Local state for editable fields
+   */
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState<TaskStatus>("open")
@@ -55,7 +59,9 @@ export function TaskDetailsDialog({
   const [parent, setParent] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Track the last saved values to detect changes
+  /**
+   * Track the last saved values to detect changes
+   */
   const lastSavedRef = useRef<{
     title: string
     description: string
@@ -65,29 +71,41 @@ export function TaskDetailsDialog({
     parent: string | null
   } | null>(null)
 
-  // Debounce timer ref for text field autosave
+  /**
+   * Debounce timer ref for text field autosave
+   */
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Delete state
+  /**
+   * Delete state
+   */
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  // Labels state
+  /**
+   * Labels state
+   */
   const [labels, setLabels] = useState<string[]>([])
   const [newLabel, setNewLabel] = useState("")
   const [isAddingLabel, setIsAddingLabel] = useState(false)
   const [showLabelInput, setShowLabelInput] = useState(false)
   const labelInputRef = useRef<HTMLInputElement>(null)
 
-  // Title textarea ref for auto-sizing
+  /**
+   * Title textarea ref for auto-sizing
+   */
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Description edit mode state
+  /**
+   * Description edit mode state
+   */
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Fetch labels when task changes
+  /**
+   * Fetch labels when task changes
+   */
   useEffect(() => {
     if (task && open) {
       // Fetch labels from API
@@ -104,7 +122,9 @@ export function TaskDetailsDialog({
     }
   }, [task, open])
 
-  // Reset local state when task changes
+  /**
+   * Reset local state when task changes
+   */
   useEffect(() => {
     if (task) {
       const initialValues = {
@@ -132,7 +152,9 @@ export function TaskDetailsDialog({
     }
   }, [task])
 
-  // Cleanup autosave timer on unmount
+  /**
+   * Cleanup autosave timer on unmount
+   */
   useEffect(() => {
     return () => {
       if (autosaveTimerRef.current) {
@@ -141,7 +163,9 @@ export function TaskDetailsDialog({
     }
   }, [])
 
-  // Autosave function - saves only the fields that have changed since last save
+  /**
+   * Saves only the fields that have changed since last save. If closing the task, also saves the event log.
+   */
   const performAutosave = useCallback(
     async (currentValues: {
       title: string
@@ -187,7 +211,9 @@ export function TaskDetailsDialog({
     [task, onSave, readOnly, events, workspace],
   )
 
-  // Debounced autosave for text fields
+  /**
+   * Schedules an autosave with a 500ms debounce to avoid too many API calls.
+   */
   const scheduleAutosave = useCallback(
     (currentValues: {
       title: string
@@ -207,7 +233,9 @@ export function TaskDetailsDialog({
     [performAutosave],
   )
 
-  // Immediate autosave for non-text fields
+  /**
+   * Immediately autosaves for non-text fields, canceling any pending debounced save.
+   */
   const immediateAutosave = useCallback(
     (currentValues: {
       title: string
@@ -226,7 +254,9 @@ export function TaskDetailsDialog({
     [performAutosave],
   )
 
-  // Memoized current values for autosave
+  /**
+   * Memoized current values for autosave to avoid unnecessary callback updates.
+   */
   const currentValues = useMemo(
     () => ({
       title,
@@ -239,7 +269,9 @@ export function TaskDetailsDialog({
     [title, description, status, priority, issueType, parent],
   )
 
-  // Flush any pending saves before closing
+  /**
+   * Flushes any pending autosave before closing the dialog.
+   */
   const flushAndClose = useCallback(async () => {
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current)
@@ -250,11 +282,17 @@ export function TaskDetailsDialog({
     onClose()
   }, [performAutosave, currentValues, onClose])
 
+  /**
+   * Closes the dialog after resetting the delete confirmation state.
+   */
   const handleClose = useCallback(async () => {
     setIsConfirmingDelete(false)
     await flushAndClose()
   }, [flushAndClose])
 
+  /**
+   * Deletes the current task and closes the dialog on success.
+   */
   const handleDelete = useCallback(async () => {
     if (!task || !onDelete || readOnly) return
 
@@ -273,7 +311,9 @@ export function TaskDetailsDialog({
     }
   }, [task, onDelete, readOnly, onClose])
 
-  // Label handlers
+  /**
+   * Adds a new label to the task and clears the input field.
+   */
   const handleAddLabel = useCallback(async () => {
     if (!task || !newLabel.trim() || readOnly) return
 
@@ -300,6 +340,9 @@ export function TaskDetailsDialog({
     }
   }, [task, newLabel, readOnly])
 
+  /**
+   * Removes a label from the task with optimistic UI updates.
+   */
   const handleRemoveLabel = useCallback(
     async (labelToRemove: string) => {
       if (!task || readOnly) return
@@ -327,6 +370,9 @@ export function TaskDetailsDialog({
     [task, readOnly],
   )
 
+  /**
+   * Handles Enter and Escape keys in the label input field.
+   */
   const handleLabelInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
@@ -340,14 +386,18 @@ export function TaskDetailsDialog({
     [handleAddLabel],
   )
 
-  // Focus label input when shown
+  /**
+   * Focuses the label input field when it becomes visible.
+   */
   useEffect(() => {
     if (showLabelInput && labelInputRef.current) {
       labelInputRef.current.focus()
     }
   }, [showLabelInput])
 
-  // Focus description textarea when entering edit mode
+  /**
+   * Focuses the description textarea when entering edit mode and moves cursor to the end.
+   */
   useEffect(() => {
     if (isEditingDescription && descriptionTextareaRef.current) {
       descriptionTextareaRef.current.focus()
@@ -357,7 +407,9 @@ export function TaskDetailsDialog({
     }
   }, [isEditingDescription])
 
-  // Auto-size title textarea when title changes or dialog opens
+  /**
+   * Auto-sizes the title textarea when the title changes or dialog opens.
+   */
   useEffect(() => {
     if (titleTextareaRef.current) {
       titleTextareaRef.current.style.height = "auto"
@@ -365,11 +417,16 @@ export function TaskDetailsDialog({
     }
   }, [title, open])
 
-  // Handle description edit completion (blur or escape)
+  /**
+   * Exits description edit mode when the textarea loses focus.
+   */
   const handleDescriptionBlur = useCallback(() => {
     setIsEditingDescription(false)
   }, [])
 
+  /**
+   * Handles Escape key to discard description changes and exit edit mode.
+   */
   const handleDescriptionKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Escape") {
@@ -381,7 +438,9 @@ export function TaskDetailsDialog({
     [task],
   )
 
-  // Handle keyboard shortcuts: Cmd+Enter to close (saves automatically), Escape to close
+  /**
+   * Handles global keyboard shortcuts for the dialog: Escape to close, Cmd/Ctrl+Enter to close (saves automatically).
+   */
   useEffect(() => {
     if (!open) return
 
@@ -414,7 +473,9 @@ export function TaskDetailsDialog({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [open, readOnly, isSaving, handleClose])
 
-  // Don't render anything if there's no task or it's not open
+  /**
+   * Don't render anything if there's no task or it's not open
+   */
   if (!task || !open) return null
 
   const StatusIcon = statusConfig[status].icon
@@ -850,6 +911,9 @@ export function TaskDetailsDialog({
   )
 }
 
+/**
+ * Configuration options for issue type selector buttons.
+ */
 const issueTypeOptions: {
   value: IssueType
   label: string
@@ -892,6 +956,9 @@ const issueTypeOptions: {
   },
 ]
 
+/**
+ * Configuration for task status display (icons, labels, and colors).
+ */
 const statusConfig: Record<TaskStatus, StatusConfig> = {
   open: {
     icon: IconCircle,
@@ -920,8 +987,14 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   },
 }
 
+/**
+ * Available task status values for the status selector.
+ */
 const statusOptions: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
 
+/**
+ * Configuration options for priority selector buttons.
+ */
 const priorityOptions = [
   {
     value: 0,

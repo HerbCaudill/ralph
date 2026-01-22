@@ -1,8 +1,12 @@
-import { cn } from "@/lib/utils"
+import { cx } from "@/lib/utils"
 import { parseDiff } from "@/lib/parseDiff"
 import { TOOL_OUTPUT_PREVIEW_LINES } from "@/constants"
 import { HighlightedLine } from "./HighlightedLine"
 
+/**
+ * Display a visual diff between two strings with syntax highlighting.
+ * Shows added lines in green and removed lines in red. Can be expanded to show all lines.
+ */
 export function DiffView({ oldString, newString, language = "text", isExpanded, onExpand }: Props) {
   const lines = parseDiff(oldString, newString)
   const shouldTruncate = !isExpanded && lines.length > TOOL_OUTPUT_PREVIEW_LINES
@@ -11,7 +15,7 @@ export function DiffView({ oldString, newString, language = "text", isExpanded, 
 
   return (
     <div
-      className={cn(
+      className={cx(
         "bg-muted/30 overflow-x-auto rounded border font-mono text-xs",
         shouldTruncate && "cursor-pointer",
       )}
@@ -20,7 +24,7 @@ export function DiffView({ oldString, newString, language = "text", isExpanded, 
       {displayLines.map((line, i) => (
         <div
           key={i}
-          className={cn(
+          className={cx(
             "flex",
             line.type === "added" && "bg-status-success/20",
             line.type === "removed" && "bg-status-error/20",

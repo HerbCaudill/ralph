@@ -18,6 +18,9 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
   const [dependents, setDependents] = useState<RelatedTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
+  /**
+   * Extracts the current task from the tasks list.
+   */
   const currentTask = useMemo(() => {
     const task = allTasks.find(t => t.id === taskId)
     if (!task) return null
@@ -28,6 +31,9 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
     }
   }, [allTasks, taskId])
 
+  /**
+   * Extracts all child tasks of the current task.
+   */
   const childTasks: RelatedTask[] = useMemo(
     () =>
       allTasks
@@ -40,9 +46,15 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
     [allTasks, taskId],
   )
 
+  /**
+   * Fetches task blockers and dependents from the API.
+   */
   useEffect(() => {
     let cancelled = false
 
+    /**
+     * Fetches blocking and dependent tasks for the current task.
+     */
     async function fetchDependencies() {
       setIsLoading(true)
       try {
@@ -106,6 +118,9 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
     }
   }, [taskId])
 
+  /**
+   * Opens the task details dialog for a related task.
+   */
   const handleTaskClick = (id: string) => {
     taskDialogContext?.openTaskById(id)
   }

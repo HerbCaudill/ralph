@@ -15,7 +15,14 @@ import { groupThemesByType } from "@/lib/groupThemesByType"
  * Dropdown component to display and switch between VS Code themes.
  * Shows all installed VS Code themes grouped by dark/light with hover preview.
  */
-export function ThemePicker({ className, variant = "default", textColor }: ThemePickerProps) {
+export function ThemePicker({
+  /** Optional CSS class name */
+  className,
+  /** Display variant - "header" for colored header background */
+  variant = "default",
+  /** Text color to use when variant is "header" */
+  textColor,
+}: ThemePickerProps) {
   const {
     themes,
     activeThemeId,
@@ -213,7 +220,10 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
   )
 }
 
-type ThemePickerProps = {
+/**
+ * Props for the ThemePicker component
+ */
+export type ThemePickerProps = {
   className?: string
   /** Display variant - "header" for colored header background */
   variant?: "default" | "header"

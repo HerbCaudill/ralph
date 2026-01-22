@@ -44,7 +44,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     adjustTextareaHeight()
   }, [message, adjustTextareaHeight])
 
-  // Persist message to localStorage when it changes
+  /** Persist message to localStorage when it changes. */
   useEffect(() => {
     if (storageKey && typeof window !== "undefined") {
       if (message) {
@@ -55,6 +55,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     }
   }, [message, storageKey])
 
+  /** Expose focus method to parent components via ref. */
   useImperativeHandle(ref, () => ({
     focus: () => {
       textareaRef.current?.focus()
