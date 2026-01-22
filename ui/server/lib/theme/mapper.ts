@@ -398,6 +398,145 @@ export function applyThemeToElement(
   }
 }
 
+/**
+ * Get the first available color from a list of keys.
+ *
+ * @param theme - The theme to search
+ * @param keys - Keys to try in order
+ * @returns The first found color or undefined
+ */
+function getFirstColor(theme: VSCodeTheme, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const color = theme.colors[key]
+    if (color) {
+      return color
+    }
+  }
+  return undefined
+}
+
+/**
+ * Get default CSS variable values based on theme type.
+ *
+ * @param isDark - Whether the theme is dark
+ * @returns Default CSS variables
+ */
+function getDefaultCSSVariables(isDark: boolean): CSSVariables {
+  if (isDark) {
+    return {
+      "--background": "#1e1e1e",
+      "--foreground": "#d4d4d4",
+      "--card": "#252526",
+      "--card-foreground": "#d4d4d4",
+      "--popover": "#252526",
+      "--popover-foreground": "#d4d4d4",
+      "--primary": "#007acc",
+      "--primary-foreground": "#ffffff",
+      "--secondary": "#3c3c3c",
+      "--secondary-foreground": "#d4d4d4",
+      "--muted": "#3c3c3c",
+      "--muted-foreground": "#808080",
+      "--accent": "#264f78",
+      "--accent-foreground": "#ffffff",
+      "--destructive": "#f14c4c",
+      "--border": "#454545",
+      "--input": "#3c3c3c",
+      "--ring": "#007acc",
+      "--sidebar": "#252526",
+      "--sidebar-foreground": "#d4d4d4",
+      "--sidebar-primary": "#007acc",
+      "--sidebar-primary-foreground": "#ffffff",
+      "--sidebar-accent": "#37373d",
+      "--sidebar-accent-foreground": "#d4d4d4",
+      "--sidebar-border": "#454545",
+      "--sidebar-ring": "#007acc",
+      "--status-success": DEFAULT_DARK_STATUS_COLORS.success,
+      "--status-warning": DEFAULT_DARK_STATUS_COLORS.warning,
+      "--status-error": DEFAULT_DARK_STATUS_COLORS.error,
+      "--status-info": DEFAULT_DARK_STATUS_COLORS.info,
+      "--status-neutral": DEFAULT_DARK_STATUS_COLORS.neutral,
+    }
+  }
+
+  return {
+    "--background": "#ffffff",
+    "--foreground": "#333333",
+    "--card": "#ffffff",
+    "--card-foreground": "#333333",
+    "--popover": "#ffffff",
+    "--popover-foreground": "#333333",
+    "--primary": "#0066b8",
+    "--primary-foreground": "#ffffff",
+    "--secondary": "#f3f3f3",
+    "--secondary-foreground": "#333333",
+    "--muted": "#f3f3f3",
+    "--muted-foreground": "#6e6e6e",
+    "--accent": "#0066b8",
+    "--accent-foreground": "#ffffff",
+    "--destructive": "#d32f2f",
+    "--border": "#e5e5e5",
+    "--input": "#ffffff",
+    "--ring": "#0066b8",
+    "--sidebar": "#f3f3f3",
+    "--sidebar-foreground": "#333333",
+    "--sidebar-primary": "#0066b8",
+    "--sidebar-primary-foreground": "#ffffff",
+    "--sidebar-accent": "#e8e8e8",
+    "--sidebar-accent-foreground": "#333333",
+    "--sidebar-border": "#e5e5e5",
+    "--sidebar-ring": "#0066b8",
+    "--status-success": DEFAULT_LIGHT_STATUS_COLORS.success,
+    "--status-warning": DEFAULT_LIGHT_STATUS_COLORS.warning,
+    "--status-error": DEFAULT_LIGHT_STATUS_COLORS.error,
+    "--status-info": DEFAULT_LIGHT_STATUS_COLORS.info,
+    "--status-neutral": DEFAULT_LIGHT_STATUS_COLORS.neutral,
+  }
+}
+
+/**
+ * Adjust the brightness of a hex color.
+ *
+ * @param hex - The hex color to adjust
+ * @param amount - Amount to adjust (-1 to 1, negative = darker, positive = lighter)
+ * @returns Adjusted hex color
+ */
+function adjustColorBrightness(hex: string, amount: number): string {
+  // Remove # if present
+  const cleanHex = hex.replace("#", "")
+
+  // Handle shorthand hex (e.g., #fff)
+  const fullHex =
+    cleanHex.length === 3 ?
+      cleanHex
+        .split("")
+        .map(c => c + c)
+        .join("")
+    : cleanHex
+
+  // Parse RGB values
+  const r = parseInt(fullHex.substring(0, 2), 16)
+  const g = parseInt(fullHex.substring(2, 4), 16)
+  const b = parseInt(fullHex.substring(4, 6), 16)
+
+  // Check for NaN (invalid hex)
+  if (isNaN(r) || isNaN(g) || isNaN(b)) {
+    return hex
+  }
+
+  // Adjust brightness
+  const adjust = (value: number): number => {
+    const adjusted = Math.round(value + 255 * amount)
+    return Math.max(0, Math.min(255, adjusted))
+  }
+
+  const newR = adjust(r)
+  const newG = adjust(g)
+  const newB = adjust(b)
+
+  // Convert back to hex
+  const toHex = (n: number): string => n.toString(16).padStart(2, "0")
+  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`
+}
 
 /**
  * Check if a string is a valid hex color.
