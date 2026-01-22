@@ -357,6 +357,9 @@ describe("EventDisplay", () => {
     expect(iter2Pos).toBeLessThan(iter3Pos)
   })
 
+  /**
+   * Verify that round headers are shown correctly when transitioning from one round to the next
+   */
   it("shows new round header when transitioning between rounds", async () => {
     // Start with round 1
     const iter1Events = [
