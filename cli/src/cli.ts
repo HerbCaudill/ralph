@@ -88,10 +88,11 @@ program
    * Add a todo item and commit it. If description is provided as arguments,
    * use that; otherwise prompt interactively.
    */
-  .action(async (
-    /** The description parts from command arguments */
-    descriptionParts: string[],
-  ) => {
+  .action(
+    async (
+      /** The description parts from command arguments */
+      descriptionParts: string[],
+    ) => {
       let description = descriptionParts.join(" ").trim()
 
       if (!description) {

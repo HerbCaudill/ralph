@@ -20,19 +20,29 @@ import {
   type AgentMessage,
 } from "./AgentAdapter"
 
-// Mock Adapter for Testing
-
+/**
+ * Mock adapter implementation for testing the adapter registry.
+ */
 class MockAdapter extends AgentAdapter {
   private _available: boolean
   public startCalled = false
   public stopCalled = false
   public lastMessage: AgentMessage | null = null
 
-  constructor(options?: { available?: boolean }) {
+  /**
+   * Create a mock adapter with optional availability configuration.
+   */
+  constructor(
+    /** Configuration options */
+    options?: { available?: boolean },
+  ) {
     super()
     this._available = options?.available ?? true
   }
 
+  /**
+   * Get information about this mock adapter.
+   */
   getInfo(): AgentInfo {
     return {
       id: "mock",
@@ -47,26 +57,45 @@ class MockAdapter extends AgentAdapter {
     }
   }
 
+  /**
+   * Check if this mock adapter is available.
+   */
   async isAvailable(): Promise<boolean> {
     return this._available
   }
 
-  async start(_options?: AgentStartOptions): Promise<void> {
+  /**
+   * Start the mock adapter.
+   */
+  async start(
+    /** Start options (ignored in mock) */
+    _options?: AgentStartOptions,
+  ): Promise<void> {
     this.startCalled = true
     this.setStatus("running")
   }
 
-  send(message: AgentMessage): void {
+  /**
+   * Send a message to the mock adapter.
+   */
+  send(
+    /** The message to send */
+    message: AgentMessage,
+  ): void {
     this.lastMessage = message
   }
 
-  async stop(_force?: boolean): Promise<void> {
+  /**
+   * Stop the mock adapter.
+   */
+  async stop(
+    /** Whether to force stop (ignored in mock) */
+    _force?: boolean,
+  ): Promise<void> {
     this.stopCalled = true
     this.setStatus("stopped")
   }
 }
-
-// Tests
 
 describe("AdapterRegistry", () => {
   beforeEach(() => {
