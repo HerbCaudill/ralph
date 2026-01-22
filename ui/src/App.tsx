@@ -110,7 +110,7 @@ function AgentView({ chatInputRef }: AgentViewProps) {
   const isRalphRunning = useAppStore(selectIsRalphRunning)
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Event stream */}
       <div className="min-h-0 flex-1">
         <EventStream />
