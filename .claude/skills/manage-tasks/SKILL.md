@@ -97,7 +97,7 @@ bd close <id1> <id2> ...    # Close multiple
 
 bd dep add <issue> <depends-on>  # Add dependency
 bd blocked                  # Show blocked issues
-bd comments add <id> "..."  # Add comment
+bd comments add <id> "..." --author=Ralph  # Add comment
 ```
 
 Priority: 0-4 or P0-P4 (0=critical, 2=medium, 4=backlog).

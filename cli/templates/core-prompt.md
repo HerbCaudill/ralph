@@ -40,7 +40,7 @@ When finished:
 
 - Run wrap-up steps (see workflow instructions)
 - Close the issue: `bd close {id}`
-- Record a summary: `bd comments add {id} "..."`
+- Record a summary: `bd comments add {id} "..." --author=Ralph`
 - Output `<end_task>{id}</end_task>`
 - End your turn.
 
@@ -70,7 +70,7 @@ bd show {id}                # Detailed issue view
 bd update {id} --status=in_progress --assignee={agentName}
 bd close {id}               # Mark complete
 bd create --title="..." --type=task|bug|epic --priority=2
-bd comments add {id} "..."  # Add comment
+bd comments add {id} "..." --author=Ralph  # Add comment
 ```
 
 Priority: 0-4 (0=critical, 2=medium, 4=backlog). Use P0-P4 format.
