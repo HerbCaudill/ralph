@@ -36,8 +36,14 @@ export function copyTemplates(
   return result
 }
 
+/**
+ * Result of copying template files.
+ */
 interface CopyResult {
+  /** Files successfully created */
   created: string[]
+  /** Files that already existed and were skipped */
   skipped: string[]
+  /** Error messages for files that could not be copied */
   errors: string[]
 }
