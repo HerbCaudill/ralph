@@ -2,18 +2,6 @@ import { EventEmitter } from "node:events"
 import { WorkspaceContext, type WorkspaceContextOptions } from "./WorkspaceContext.js"
 
 /**
- * Options for creating a WorkspaceContextManager.
- */
-export interface WorkspaceContextManagerOptions {
-  /** Run RalphManager in watch mode for new contexts */
-  watch?: boolean
-  /** Additional environment variables for new contexts */
-  env?: Record<string, string>
-  /** Maximum number of contexts to keep (0 = unlimited). Default: 10 */
-  maxContexts?: number
-}
-
-/**
  * Manages multiple WorkspaceContext instances.
  *
  * Provides a registry pattern for managing workspace contexts, replacing
@@ -278,4 +266,16 @@ export class WorkspaceContextManager extends EventEmitter {
       })
     }
   }
+}
+
+/**
+ * Options for creating a WorkspaceContextManager.
+ */
+export interface WorkspaceContextManagerOptions {
+  /** Run RalphManager in watch mode for new contexts */
+  watch?: boolean
+  /** Additional environment variables for new contexts */
+  env?: Record<string, string>
+  /** Maximum number of contexts to keep (0 = unlimited). Default: 10 */
+  maxContexts?: number
 }
