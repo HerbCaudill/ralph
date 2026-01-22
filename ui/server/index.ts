@@ -14,7 +14,7 @@ import {
   type TaskChatStatus,
   type TaskChatToolUse,
 } from "./TaskChatManager.js"
-import { getThemeDiscovery } from "./ThemeDiscovery.js"
+import { getThemeDiscovery } from "./lib/getThemeDiscovery.js"
 import { parseThemeObject } from "./lib/theme/parser.js"
 import { mapThemeToCSSVariables, createAppTheme } from "./lib/theme/mapper.js"
 import { WorkspaceContextManager } from "./WorkspaceContextManager.js"
@@ -28,13 +28,14 @@ import { getIterationStateStore } from "./IterationStateStore.js"
 
 const execFileAsync = promisify(execFile)
 
-// Git Branch Reader
-
 /**
  * Get the current git branch name for a workspace.
  * Returns null if not a git repo or on any error.
  */
-export async function getGitBranch(workspacePath: string): Promise<string | null> {
+export async function getGitBranch(
+  /** The workspace path to check */
+  workspacePath: string,
+): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
       cwd: workspacePath,
@@ -46,13 +47,14 @@ export async function getGitBranch(workspacePath: string): Promise<string | null
   }
 }
 
-// Peacock Color Reader
-
 /**
  * Read the peacock accent color from .vscode/settings.json in the workspace.
  * Returns null if not found or on any error.
  */
-export async function readPeacockColor(workspacePath: string): Promise<string | null> {
+export async function readPeacockColor(
+  /** The workspace path to check */
+  workspacePath: string,
+): Promise<string | null> {
   try {
     const settingsPath = path.join(workspacePath, ".vscode", "settings.json")
     const content = await readFile(settingsPath, "utf-8")
@@ -63,8 +65,6 @@ export async function readPeacockColor(workspacePath: string): Promise<string | 
     return null
   }
 }
-
-// Configuration
 
 export interface ServerConfig {
   host: string
@@ -83,9 +83,13 @@ export function getConfig(): ServerConfig {
   }
 }
 
-// Express App
-
-function createApp(config: ServerConfig): Express {
+/**
+ * Create an Express application with all API endpoints configured.
+ */
+function createApp(
+  /** Server configuration */
+  config: ServerConfig,
+): Express {
   const app = express()
 
   // Disable x-powered-by header
@@ -208,10 +212,7 @@ function createApp(config: ServerConfig): Express {
     res.status(200).json({ ok: true, status: manager.status })
   })
 
-  // ============================================================================
-  // Instance-scoped API endpoints
-  // These endpoints operate on specific Ralph instances by ID
-  // ============================================================================
+  // Instance-scoped API endpoints (operate on specific Ralph instances by ID)
 
   // List all instances
   app.get("/api/instances", (_req: Request, res: Response) => {
@@ -461,9 +462,7 @@ function createApp(config: ServerConfig): Express {
     })
   })
 
-  // ============================================================================
   // Iteration State Restoration Endpoints
-  // ============================================================================
 
   // Get saved iteration state for an instance
   app.get("/api/ralph/:instanceId/iteration-state", async (req: Request, res: Response) => {
@@ -565,10 +564,6 @@ function createApp(config: ServerConfig): Express {
     }
   })
 
-  // ============================================================================
-  // End Iteration State Restoration Endpoints
-  // ============================================================================
-
   // Create a new instance
   app.post("/api/instances", async (req: Request, res: Response) => {
     try {
@@ -631,10 +626,6 @@ function createApp(config: ServerConfig): Express {
       res.status(500).json({ ok: false, error: message })
     }
   })
-
-  // ============================================================================
-  // End of instance-scoped API endpoints
-  // ============================================================================
 
   // Workspace info endpoint
   app.get("/api/workspace", async (_req: Request, res: Response) => {
@@ -1292,8 +1283,6 @@ function createApp(config: ServerConfig): Express {
   return app
 }
 
-// WebSocket Server
-
 export interface WsClient {
   ws: WebSocket
   isAlive: boolean
@@ -1308,7 +1297,13 @@ export function getClientCount(): number {
   return clients.size
 }
 
-function attachWsServer(httpServer: Server): WebSocketServer {
+/**
+ * Attach a WebSocket server to an HTTP server with heartbeat and message handling.
+ */
+function attachWsServer(
+  /** The HTTP server to attach to */
+  httpServer: Server,
+): WebSocketServer {
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" })
 
   // Heartbeat interval (30s)
@@ -1381,7 +1376,15 @@ function attachWsServer(httpServer: Server): WebSocketServer {
   return wss
 }
 
-function handleWsMessage(ws: WebSocket, data: RawData): void {
+/**
+ * Handle incoming WebSocket messages and dispatch to appropriate handlers.
+ */
+function handleWsMessage(
+  /** The WebSocket connection */
+  ws: WebSocket,
+  /** The raw message data */
+  data: RawData,
+): void {
   try {
     const message = JSON.parse(data.toString())
     console.log("[ws] received:", message.type)
@@ -1442,11 +1445,9 @@ export function broadcast(message: unknown): void {
   }
 }
 
-// ============================================================================
-// RalphRegistry Integration
-// ============================================================================
-
-// Singleton RalphRegistry instance
+/**
+ * Singleton RalphRegistry instance
+ */
 let ralphRegistry: RalphRegistry | null = null
 
 /**
@@ -1467,7 +1468,10 @@ export function getRalphRegistry(): RalphRegistry {
 /**
  * Wire up event forwarding from RalphRegistry to WebSocket clients.
  */
-function wireRegistryEvents(registry: RalphRegistry): void {
+function wireRegistryEvents(
+  /** The registry to wire up */
+  registry: RalphRegistry,
+): void {
   registry.on("instance:event", (instanceId: string, eventType: string, ...args: unknown[]) => {
     switch (eventType) {
       case "ralph:event": {
@@ -1562,6 +1566,7 @@ function wireRegistryEvents(registry: RalphRegistry): void {
  * Excludes the RalphManager reference since it can't be serialized.
  */
 function serializeInstanceState(
+  /** The instance state to serialize */
   state: RalphInstanceState,
 ): Omit<RalphInstanceState, "manager"> & { status: RalphStatus } {
   return {
@@ -1588,16 +1593,14 @@ export async function resetRalphRegistry(): Promise<void> {
   }
 }
 
-// ============================================================================
-// End RalphRegistry Integration
-// ============================================================================
-
-// WorkspaceContextManager Integration
-
-// Singleton WorkspaceContextManager instance
+/**
+ * Singleton WorkspaceContextManager instance
+ */
 let workspaceContextManager: WorkspaceContextManager | null = null
 
-// Configured workspace path (set by startServer)
+/**
+ * Configured workspace path (set by startServer)
+ */
 let configuredWorkspacePath: string | undefined
 
 /**
@@ -1619,7 +1622,10 @@ export function getWorkspaceContextManager(): WorkspaceContextManager {
 /**
  * Wire up event forwarding from WorkspaceContextManager to WebSocket clients.
  */
-function wireContextManagerEvents(manager: WorkspaceContextManager): void {
+function wireContextManagerEvents(
+  /** The manager to wire up */
+  manager: WorkspaceContextManager,
+): void {
   manager.on("context:event", (workspacePath: string, eventType: string, ...args: unknown[]) => {
     // Only forward events from the active context
     if (workspacePath !== manager.activeWorkspacePath) {
@@ -1783,11 +1789,9 @@ export async function resetWorkspaceContextManager(): Promise<void> {
   }
 }
 
-// Legacy accessor functions - delegate to active context
-// These maintain backwards compatibility with existing code
-
 /**
  * Get the BdProxy for the active workspace.
+ * (Legacy accessor - delegates to active context for backwards compatibility)
  */
 export function getBdProxy(): BdProxy {
   return getActiveContext().bdProxy
@@ -1833,7 +1837,10 @@ export function getCurrentTask(): { taskId?: string; taskTitle?: string } {
  * Uses the WorkspaceContextManager to switch contexts, preserving the old context.
  * The old workspace's Ralph process continues running independently.
  */
-export async function switchWorkspace(workspacePath: string): Promise<void> {
+export async function switchWorkspace(
+  /** The path to the new workspace */
+  workspacePath: string,
+): Promise<void> {
   const manager = getWorkspaceContextManager()
 
   // Switch to the new context (creates it if it doesn't exist)
@@ -1891,11 +1898,15 @@ export function resetTaskChatManager(): void {
   // No-op: contexts are managed by WorkspaceContextManager
 }
 
-// Port availability check
-
+/**
+ * Find an available port by trying consecutive ports starting from the given port.
+ */
 export async function findAvailablePort(
+  /** The host to check */
   host: string,
+  /** The starting port number */
   startPort: number,
+  /** Maximum number of port attempts */
   maxAttempts = 10,
 ): Promise<number> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -1911,7 +1922,15 @@ export async function findAvailablePort(
   )
 }
 
-function checkPortAvailable(host: string, port: number): Promise<boolean> {
+/**
+ * Check if a port is available for listening.
+ */
+function checkPortAvailable(
+  /** The host to check */
+  host: string,
+  /** The port number to check */
+  port: number,
+): Promise<boolean> {
   return new Promise(resolve => {
     const testServer = createServer()
     testServer.once("error", () => {
@@ -1925,14 +1944,20 @@ function checkPortAvailable(host: string, port: number): Promise<boolean> {
   })
 }
 
-// Main entry point
-
-// Default instance constants (must match frontend store/index.ts)
+/**
+ * Default instance constants (must match frontend store/index.ts)
+ */
 const DEFAULT_INSTANCE_ID = "default"
 const DEFAULT_INSTANCE_NAME = "Main"
 const DEFAULT_AGENT_NAME = "Ralph"
 
-export async function startServer(config: ServerConfig): Promise<void> {
+/**
+ * Start the server with the given configuration.
+ */
+export async function startServer(
+  /** Server configuration */
+  config: ServerConfig,
+): Promise<void> {
   // Set the configured workspace path for use by BdProxy, RalphManager, etc.
   configuredWorkspacePath = config.workspacePath
 
