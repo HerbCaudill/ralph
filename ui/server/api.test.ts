@@ -6,6 +6,10 @@ import { RalphManager, type RalphManagerOptions } from "./RalphManager.js"
 
 // Test setup - create app with mock RalphManager
 
+/**
+ * Create a mock child process for testing.
+ * Returns an event emitter with stdin, stdout, stderr, kill method, and pid property.
+ */
 function createMockChildProcess() {
   const proc = new EventEmitter() as EventEmitter & {
     stdin: { writable: boolean; write: (data: string) => void }
@@ -36,7 +40,14 @@ function createMockChildProcess() {
   return proc
 }
 
-function createTestApp(getManager: () => RalphManager): Express {
+/**
+ * Create an Express app with REST API endpoints for testing.
+ * Uses the provided manager getter to access the RalphManager instance.
+ */
+function createTestApp(
+  /** Function that returns the current RalphManager instance */
+  getManager: () => RalphManager,
+): Express {
   const app = express()
   app.use(express.json())
 
