@@ -32,6 +32,10 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
 
   const events = eventLog?.events ?? []
 
+  /**
+   * Build a map of tool results from the event log for rendering.
+   * Extracts tool_result items from message content and indexes by tool_use_id.
+   */
   const toolResults = new Map<string, { output?: string; error?: string }>()
   for (const event of events) {
     if (isToolResultEvent(event)) {
@@ -54,6 +58,9 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     }
   }
 
+  /**
+   * Check if the scroll container is at the bottom within a threshold.
+   */
   const checkIsAtBottom = useCallback(() => {
     const container = containerRef.current
     if (!container) return true
@@ -63,6 +70,9 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     return scrollBottom <= threshold
   }, [])
 
+  /**
+   * Handle scroll events to update auto-scroll state when container scrolls.
+   */
   const handleScroll = useCallback(() => {
     const atBottom = checkIsAtBottom()
     setIsAtBottom(atBottom)
@@ -72,6 +82,9 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     }
   }, [checkIsAtBottom, autoScroll])
 
+  /**
+   * Handle user scroll events (wheel/touch) to disable auto-scroll if user scrolls away from bottom.
+   */
   const handleUserScroll = useCallback(() => {
     const atBottom = checkIsAtBottom()
     if (!atBottom) {
@@ -86,6 +99,9 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     }
   }, [eventLog?.id])
 
+  /**
+   * Scroll the container to the bottom and enable auto-scroll.
+   */
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
@@ -94,6 +110,9 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
     }
   }, [])
 
+  /**
+   * Copy the shareable event log URL to clipboard.
+   */
   const handleCopyLink = useCallback(async () => {
     if (!viewingEventLogId) return
     const url = `${window.location.origin}${window.location.pathname}#eventlog=${viewingEventLogId}`
