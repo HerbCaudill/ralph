@@ -1,13 +1,19 @@
 import { execSync } from "child_process"
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import { join } from "path"
+import { insertTodo } from "./insertTodo"
 
 /**
  * Adds a todo item to the todo.md file and commits just that line.
  * Inserts the todo into the working directory, stages only that line, and commits.
  * Creates the file if it doesn't exist.
  */
-export const addTodo = (description: string, cwd: string = process.cwd()): void => {
+export const addTodo = (
+  /** The description of the todo item to add */
+  description: string,
+  /** The working directory to use (defaults to current directory) */
+  cwd: string = process.cwd(),
+): void => {
   const todoPath = join(cwd, ".ralph", "todo.md")
 
   // Read current working directory file (or empty string if it doesn't exist) and insert the new todo
@@ -52,28 +58,4 @@ export const addTodo = (description: string, cwd: string = process.cwd()): void 
   execSync(`git commit -m "todo: ${escapedDescription}"`, { cwd, stdio: "pipe" })
 
   console.log(`✅ added`)
-}
-
-/**
- * Inserts a todo item into the content, right after the "To do" header.
- */
-export const insertTodo = (content: string, description: string): string => {
-  const lines = content.split("\n")
-  const todoHeaderIndex = lines.findIndex(line => /^###?\s*To\s*do/i.test(line))
-
-  if (todoHeaderIndex === -1) {
-    // No "To do" section found, add one at the beginning
-    return `### To do\n\n- [ ] ${description}\n\n${content}`
-  }
-
-  // Find the first line after the header (skip empty lines)
-  let insertIndex = todoHeaderIndex + 1
-  while (insertIndex < lines.length && lines[insertIndex].trim() === "") {
-    insertIndex++
-  }
-
-  // Insert the new todo item
-  lines.splice(insertIndex, 0, `- [ ] ${description}`)
-
-  return lines.join("\n")
 }
