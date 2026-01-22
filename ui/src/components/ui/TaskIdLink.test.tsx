@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { TaskIdLink, containsTaskId } from "./TaskIdLink"
+import { TaskIdLink } from "./TaskIdLink"
+import { containsTaskId } from "../../lib/containsTaskId"
 import { TaskDialogProvider } from "@/contexts"
 import { useAppStore } from "@/store"
 

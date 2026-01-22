@@ -10,7 +10,7 @@ import type { ReactNode, MouseEvent } from "react"
  * @param prefix - The issue prefix for this workspace (e.g., "rui")
  * @returns A regex that matches task IDs like "rui-48s" or "rui-4vp.5", or null if no prefix
  */
-function createTaskIdPattern(prefix: string | null): RegExp | null {
+export function createTaskIdPattern(prefix: string | null): RegExp | null {
   if (!prefix) return null
   // Escape any special regex characters in the prefix (unlikely but safe)
   const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -107,17 +107,4 @@ export function TaskIdLink({ children, className }: TaskIdLinkProps) {
   }
 
   return <>{parts}</>
-}
-
-/**
- * Utility function to check if a string contains any task IDs with the given prefix.
- *
- * @param text - The text to check
- * @param prefix - The issue prefix (e.g., "rui")
- * @returns true if the text contains task IDs matching the prefix
- */
-export function containsTaskId(text: string, prefix: string | null): boolean {
-  const pattern = createTaskIdPattern(prefix)
-  if (!pattern) return false
-  return pattern.test(text)
 }
