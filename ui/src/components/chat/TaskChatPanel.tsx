@@ -41,7 +41,8 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const [error, setError] = useState<string | null>(null)
 
   // Create a unified content array that interleaves messages and tool uses
-  // Messages always come before tool uses within the same turn
+  // Server assigns sequence numbers: tool uses get seq 0, 1, 2... and assistant message gets final seq
+  // User messages don't have sequence, so they sort by timestamp and appear before sequenced items
   const contentBlocks = useMemo((): ContentBlock[] => {
     const messageBlocks: ContentBlock[] = messages.map(m => ({ type: "message", data: m }))
     const toolUseBlocks: ContentBlock[] = toolUses.map(t => ({ type: "toolUse", data: t }))
@@ -54,16 +55,17 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       const seqB = b.data.sequence
 
       // If both have sequence numbers, sort by sequence
+      // This orders: tool_use(0) → tool_use(1) → assistant_message(2)
       if (seqA !== undefined && seqB !== undefined) {
         return seqA - seqB
       }
 
-      // If only one has a sequence number, items without sequence come first (messages)
-      // This ensures user messages (which don't have sequence) appear before tool uses
+      // Items without sequence (user messages) come before items with sequence
+      // This ensures: user_message → tool_uses → assistant_message
       if (seqA !== undefined && seqB === undefined) return 1
       if (seqA === undefined && seqB !== undefined) return -1
 
-      // Fall back to timestamp
+      // Fall back to timestamp for items without sequence (multiple user messages)
       return a.data.timestamp - b.data.timestamp
     })
   }, [messages, toolUses])

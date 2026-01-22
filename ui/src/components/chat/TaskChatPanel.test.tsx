@@ -762,5 +762,61 @@ describe("TaskChatPanel", () => {
       // User message should appear before tool use since it has no sequence
       expect(userPos).toBeLessThan(toolPos)
     })
+
+    it("orders user message → tool uses → assistant message correctly", () => {
+      const baseTime = 1000000
+
+      // Add user message (no sequence)
+      useAppStore.getState().addTaskChatMessage({
+        id: "user-1",
+        role: "user",
+        content: "User question",
+        timestamp: baseTime,
+      })
+
+      // Add tool uses with sequence numbers
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-1",
+        tool: "Read",
+        input: { file_path: "/test.ts" },
+        status: "success",
+        timestamp: baseTime + 1,
+        sequence: 0,
+      })
+
+      useAppStore.getState().addTaskChatToolUse({
+        toolUseId: "tool-2",
+        tool: "Grep",
+        input: { pattern: "search" },
+        status: "success",
+        timestamp: baseTime + 2,
+        sequence: 1,
+      })
+
+      // Add assistant message with sequence (higher than tool uses)
+      // This simulates what happens when the server assigns a sequence to the final assistant message
+      useAppStore.getState().addTaskChatMessage({
+        id: "assistant-1",
+        role: "assistant",
+        content: "Here is my response",
+        timestamp: baseTime + 3,
+        sequence: 2, // Final sequence after all tool uses
+      })
+
+      render(<TaskChatPanel />)
+
+      const container = screen.getByRole("log", { name: "Task chat messages" })
+      const textContent = container.textContent || ""
+
+      // Verify order: user → Read → Grep → assistant
+      const userPos = textContent.indexOf("User question")
+      const readPos = textContent.indexOf("Read")
+      const grepPos = textContent.indexOf("Grep")
+      const assistantPos = textContent.indexOf("Here is my response")
+
+      expect(userPos).toBeLessThan(readPos)
+      expect(readPos).toBeLessThan(grepPos)
+      expect(grepPos).toBeLessThan(assistantPos)
+    })
   })
 })

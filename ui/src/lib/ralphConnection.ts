@@ -6,6 +6,7 @@
 import { useAppStore } from "../store"
 import { isRalphStatus } from "../store"
 import { checkForSavedIterationState, restoreIterationState } from "./iterationStateApi"
+import type { TaskChatToolUse } from "../types"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -377,7 +378,12 @@ function handleMessage(event: MessageEvent): void {
       case "task-chat:message":
         // Complete assistant message received
         if (data.message && typeof data.message === "object") {
-          const msg = data.message as { role: string; content: string; timestamp: number }
+          const msg = data.message as {
+            role: string
+            content: string
+            timestamp: number
+            sequence?: number
+          }
           if (msg.role === "assistant") {
             // Use atomic update to prevent brief duplicate (streaming text + final message)
             // Note: Tool uses are NOT cleared here - they stay visible until user sends next message
@@ -386,6 +392,7 @@ function handleMessage(event: MessageEvent): void {
               role: "assistant",
               content: msg.content,
               timestamp: msg.timestamp || Date.now(),
+              sequence: msg.sequence, // Pass through sequence for correct ordering
             })
           }
         }
@@ -426,27 +433,18 @@ function handleMessage(event: MessageEvent): void {
 
       case "task-chat:tool_use":
         // Task chat tool use started
+        // Use the full TaskChatToolUse type to preserve all fields including sequence
         if (data.toolUse && typeof data.toolUse === "object") {
-          const toolUse = data.toolUse as {
-            toolUseId: string
-            tool: string
-            input: Record<string, unknown>
-            status: "pending" | "running" | "success" | "error"
-            timestamp: number
-          }
+          const toolUse = data.toolUse as TaskChatToolUse
           store.addTaskChatToolUse(toolUse)
         }
         break
 
       case "task-chat:tool_update":
         // Task chat tool use updated (e.g., with full input after streaming)
+        // Use the full TaskChatToolUse type to preserve all fields
         if (data.toolUse && typeof data.toolUse === "object") {
-          const toolUse = data.toolUse as {
-            toolUseId: string
-            tool: string
-            input: Record<string, unknown>
-            status: "pending" | "running" | "success" | "error"
-          }
+          const toolUse = data.toolUse as TaskChatToolUse
           store.updateTaskChatToolUse(toolUse.toolUseId, {
             input: toolUse.input,
             status: toolUse.status,
@@ -456,15 +454,9 @@ function handleMessage(event: MessageEvent): void {
 
       case "task-chat:tool_result":
         // Task chat tool result received
+        // Use the full TaskChatToolUse type to preserve all fields
         if (data.toolUse && typeof data.toolUse === "object") {
-          const toolUse = data.toolUse as {
-            toolUseId: string
-            tool: string
-            input: Record<string, unknown>
-            output?: string
-            error?: string
-            status: "pending" | "running" | "success" | "error"
-          }
+          const toolUse = data.toolUse as TaskChatToolUse
           store.updateTaskChatToolUse(toolUse.toolUseId, {
             output: toolUse.output,
             error: toolUse.error,

@@ -246,10 +246,14 @@ export class TaskChatManager extends EventEmitter {
 
       // After iteration completes, add assistant message to history
       if (this.currentResponse) {
+        // Assign a sequence number that places this message AFTER all tool uses in the turn
+        // This ensures the final text appears at the end, after any interleaved tool uses
+        const sequence = this.sequenceCounter++
         const assistantMsg: TaskChatMessage = {
           role: "assistant",
           content: this.currentResponse,
           timestamp: Date.now(),
+          sequence,
         }
         this._messages.push(assistantMsg)
         this.emit("message", assistantMsg)
@@ -566,6 +570,8 @@ export interface TaskChatMessage {
   role: "user" | "assistant"
   content: string
   timestamp: number
+  /** Sequence number for ordering within a turn (assistant messages only) */
+  sequence?: number
 }
 
 export interface TaskChatEvent {
