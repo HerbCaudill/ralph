@@ -9,7 +9,9 @@ import type {
   BdComment,
 } from "@herbcaudill/ralph-shared"
 
-// Re-export beads domain types from shared package for backward compatibility
+/**
+ * Re-export beads domain types from shared package for backward compatibility.
+ */
 export type {
   IssueStatus,
   BdIssue,
@@ -24,7 +26,9 @@ export type {
   MutationEvent,
 } from "@herbcaudill/ralph-shared"
 
-// Local types specific to BdProxy
+/**
+ * Local types specific to BdProxy.
+ */
 export type SpawnFn = (
   command: string,
   args: string[],
@@ -43,8 +47,6 @@ export interface BdProxyOptions {
   /** Timeout in ms (default: 30000) */
   timeout?: number
 }
-
-// BdProxy
 
 /**
  * Proxy class to spawn bd commands and parse JSON output.
@@ -110,11 +112,11 @@ export class BdProxy {
    *
    * This includes both issues with status="blocked" AND open issues that have
    * unsatisfied blocking dependencies (open issues that depend on other open issues).
-   *
-   * @param parent - Optional parent to filter descendants
-   * @returns Array of blocked issues with blocked_by field populated
    */
-  async blocked(parent?: string): Promise<BdIssue[]> {
+  async blocked(
+    /** Optional parent to filter descendants */
+    parent?: string,
+  ): Promise<BdIssue[]> {
     const args = ["blocked", "--json"]
 
     if (parent) {
@@ -185,10 +187,11 @@ export class BdProxy {
 
   /**
    * Create a new issue.
-   *
-   * @returns The created issue
    */
-  async create(options: BdCreateOptions): Promise<BdIssue> {
+  async create(
+    /** Create options */
+    options: BdCreateOptions,
+  ): Promise<BdIssue> {
     const args = ["create", "--json", options.title]
 
     if (options.description) {
@@ -222,12 +225,13 @@ export class BdProxy {
 
   /**
    * Update one or more issues.
-   *
-   * @param ids - Issue ID(s) to update
-   * @param options - Fields to update
-   * @returns The updated issues
    */
-  async update(ids: string | string[], options: BdUpdateOptions): Promise<BdIssue[]> {
+  async update(
+    /** Issue ID(s) to update */
+    ids: string | string[],
+    /** Fields to update */
+    options: BdUpdateOptions,
+  ): Promise<BdIssue[]> {
     const idList = Array.isArray(ids) ? ids : [ids]
     const args = ["update", "--json", ...idList]
 
@@ -269,11 +273,11 @@ export class BdProxy {
 
   /**
    * Close one or more issues.
-   *
-   * @param ids - Issue ID(s) to close
-   * @returns The closed issues
    */
-  async close(ids: string | string[]): Promise<BdIssue[]> {
+  async close(
+    /** Issue ID(s) to close */
+    ids: string | string[],
+  ): Promise<BdIssue[]> {
     const idList = Array.isArray(ids) ? ids : [ids]
     const args = ["close", "--json", ...idList]
 
@@ -283,10 +287,11 @@ export class BdProxy {
 
   /**
    * Delete one or more issues.
-   *
-   * @param ids - Issue ID(s) to delete
    */
-  async delete(ids: string | string[]): Promise<void> {
+  async delete(
+    /** Issue ID(s) to delete */
+    ids: string | string[],
+  ): Promise<void> {
     const idList = Array.isArray(ids) ? ids : [ids]
     const args = ["delete", "--force", ...idList]
 
@@ -295,12 +300,15 @@ export class BdProxy {
 
   /**
    * Add a comment to an issue.
-   *
-   * @param id - Issue ID to add comment to
-   * @param comment - The comment text
-   * @param author - Optional author name (defaults to git user)
    */
-  async addComment(id: string, comment: string, author?: string): Promise<void> {
+  async addComment(
+    /** Issue ID to add comment to */
+    id: string,
+    /** The comment text */
+    comment: string,
+    /** Optional author name (defaults to git user) */
+    author?: string,
+  ): Promise<void> {
     const args = ["comments", "add", id, comment]
     if (author) {
       args.push("--author", author)
@@ -310,11 +318,11 @@ export class BdProxy {
 
   /**
    * Get comments for an issue.
-   *
-   * @param id - Issue ID to get comments for
-   * @returns Array of comments
    */
-  async getComments(id: string): Promise<BdComment[]> {
+  async getComments(
+    /** Issue ID to get comments for */
+    id: string,
+  ): Promise<BdComment[]> {
     const args = ["comments", id, "--json"]
     const result = await this.exec(args)
     return JSON.parse(result) as BdComment[]
@@ -322,8 +330,6 @@ export class BdProxy {
 
   /**
    * Get database info.
-   *
-   * @returns Database and daemon information
    */
   async getInfo(): Promise<BdInfo> {
     const args = ["info", "--json"]
@@ -333,11 +339,11 @@ export class BdProxy {
 
   /**
    * Get labels for an issue.
-   *
-   * @param id - Issue ID to get labels for
-   * @returns Array of label strings
    */
-  async getLabels(id: string): Promise<string[]> {
+  async getLabels(
+    /** Issue ID to get labels for */
+    id: string,
+  ): Promise<string[]> {
     const args = ["label", "list", id, "--json"]
     const result = await this.exec(args)
     return JSON.parse(result) as string[]
@@ -345,12 +351,13 @@ export class BdProxy {
 
   /**
    * Add a label to an issue.
-   *
-   * @param id - Issue ID to add label to
-   * @param label - Label to add
-   * @returns Result of the operation
    */
-  async addLabel(id: string, label: string): Promise<BdLabelResult> {
+  async addLabel(
+    /** Issue ID to add label to */
+    id: string,
+    /** Label to add */
+    label: string,
+  ): Promise<BdLabelResult> {
     const args = ["label", "add", id, label, "--json"]
     const result = await this.exec(args)
     const results = JSON.parse(result) as BdLabelResult[]
@@ -359,12 +366,13 @@ export class BdProxy {
 
   /**
    * Remove a label from an issue.
-   *
-   * @param id - Issue ID to remove label from
-   * @param label - Label to remove
-   * @returns Result of the operation
    */
-  async removeLabel(id: string, label: string): Promise<BdLabelResult> {
+  async removeLabel(
+    /** Issue ID to remove label from */
+    id: string,
+    /** Label to remove */
+    label: string,
+  ): Promise<BdLabelResult> {
     const args = ["label", "remove", id, label, "--json"]
     const result = await this.exec(args)
     const results = JSON.parse(result) as BdLabelResult[]
@@ -373,8 +381,6 @@ export class BdProxy {
 
   /**
    * List all unique labels in the database.
-   *
-   * @returns Array of all unique label strings
    */
   async listAllLabels(): Promise<string[]> {
     const args = ["label", "list-all", "--json"]
