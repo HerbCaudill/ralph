@@ -108,6 +108,7 @@ export function MarkdownContent({
         "prose-code:text-muted-foreground prose-code:text-xs prose-code:font-normal prose-code:font-mono",
         "prose-code:before:content-none prose-code:after:content-none",
         "prose-pre:my-2 prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0",
+        "prose-blockquote:not-italic",
         "prose-ul:my-1 prose-ol:my-1 prose-li:my-0",
         className,
       )}

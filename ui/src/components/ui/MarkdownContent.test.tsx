@@ -188,6 +188,12 @@ describe("MarkdownContent", () => {
       const wrapper = container.firstChild
       expect(wrapper).toHaveClass("prose-base")
     })
+
+    it("applies non-italic styling to blockquotes", () => {
+      const { container } = renderWithContext(<MarkdownContent>Test</MarkdownContent>)
+      const wrapper = container.firstChild
+      expect(wrapper).toHaveClass("prose-blockquote:not-italic")
+    })
   })
 
   describe("edge cases", () => {
