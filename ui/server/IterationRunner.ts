@@ -7,8 +7,6 @@ import type {
   AgentStatus,
 } from "./AgentAdapter.js"
 
-// Types
-
 export type IterationStatus = "idle" | "running" | "paused" | "stopping" | "stopped" | "error"
 
 export interface IterationRunnerOptions {
@@ -43,8 +41,6 @@ export interface IterationRunnerEvents {
   /** Iteration completed */
   complete: (info: { success: boolean; error?: Error }) => void
 }
-
-// IterationRunner
 
 /**
  * Manages agent iterations using an AgentAdapter.
