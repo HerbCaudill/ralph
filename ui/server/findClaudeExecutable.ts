@@ -9,7 +9,10 @@ import { join } from "node:path"
 export function findClaudeExecutable(): string | undefined {
   const home = homedir()
 
-  /** Common installation paths for Claude Code */
+  /**
+   * Common installation paths for Claude Code.
+   * Checked in order until one exists.
+   */
   const candidates = [
     join(home, ".local", "bin", "claude"), // Linux/macOS npm global
     join(home, ".claude", "local", "claude"), // Native installer location
