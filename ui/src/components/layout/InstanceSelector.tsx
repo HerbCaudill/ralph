@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react"
-import { IconChevronDown, IconCheck, IconPlayerPlay } from "@tabler/icons-react"
+import { IconChevronDown, IconCheck, IconPlus } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { useAppStore, selectInstances, selectActiveInstanceId } from "@/store"
 import type { RalphInstance, RalphStatus } from "@/types"
+import { NewInstanceDialog } from "./NewInstanceDialog"
 
 /**
  * Dropdown selector for switching between Ralph instances.
@@ -11,7 +12,9 @@ import type { RalphInstance, RalphStatus } from "@/types"
 export function InstanceSelector({ className, textColor }: InstanceSelectorProps) {
   const instances = useAppStore(selectInstances)
   const activeInstanceId = useAppStore(selectActiveInstanceId)
+  const setActiveInstanceId = useAppStore(state => state.setActiveInstanceId)
   const [isOpen, setIsOpen] = useState(false)
+  const [isNewInstanceDialogOpen, setIsNewInstanceDialogOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const activeInstance = instances.get(activeInstanceId)
@@ -121,8 +124,7 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
                   isActive={instance.id === activeInstanceId}
                   statusConfig={getStatusConfig(instance.status)}
                   onSelect={() => {
-                    // TODO: Implement setActiveInstanceId action in store
-                    // For now, just close the dropdown
+                    setActiveInstanceId(instance.id)
                     setIsOpen(false)
                   }}
                 />
@@ -134,8 +136,8 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
           <div className="border-border border-t p-1">
             <button
               onClick={() => {
-                // TODO: Implement new instance creation
                 setIsOpen(false)
+                setIsNewInstanceDialogOpen(true)
               }}
               className={cn(
                 "flex w-full items-center gap-2 rounded px-3 py-2 text-sm",
@@ -143,12 +145,15 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
               )}
               data-testid="instance-selector-new"
             >
-              <IconPlayerPlay className="text-muted-foreground size-3.5" />
+              <IconPlus className="text-muted-foreground size-3.5" />
               <span>New Instance</span>
             </button>
           </div>
         </div>
       )}
+
+      {/* New Instance Dialog */}
+      <NewInstanceDialog open={isNewInstanceDialogOpen} onOpenChange={setIsNewInstanceDialogOpen} />
     </div>
   )
 }
