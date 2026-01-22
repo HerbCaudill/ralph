@@ -111,7 +111,7 @@ describe("TaskChatManager", () => {
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           includePartialMessages: true,
-          maxTurns: 10,
+          maxTurns: 30,
         }),
       })
     })
