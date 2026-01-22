@@ -19,6 +19,7 @@ import {
   DEFAULT_INSTANCE_ID,
   DEFAULT_INSTANCE_NAME,
   DEFAULT_AGENT_NAME,
+  DEFAULT_CONTEXT_WINDOW_MAX,
   createRalphInstance,
   selectInstances,
   selectActiveInstanceId,
@@ -32,6 +33,21 @@ import {
   selectTokenUsage,
   selectContextWindow,
   selectIteration,
+  // Per-instance selectors
+  selectInstanceStatus,
+  selectInstanceEvents,
+  selectInstanceTokenUsage,
+  selectInstanceContextWindow,
+  selectInstanceIteration,
+  selectInstanceRunStartedAt,
+  selectInstanceWorktreePath,
+  selectInstanceBranch,
+  selectInstanceCurrentTaskId,
+  selectInstanceName,
+  selectInstanceAgentName,
+  selectInstanceCreatedAt,
+  selectIsInstanceRunning,
+  selectInstanceIterationCount,
 } from "./index"
 import type { RalphEvent, Task, TaskChatMessage } from "@/types"
 
@@ -192,6 +208,226 @@ describe("useAppStore", () => {
     it("selectInstanceCount returns number of instances", () => {
       const state = useAppStore.getState()
       expect(selectInstanceCount(state)).toBe(1)
+    })
+  })
+
+  describe("per-instance selectors", () => {
+    it("selectInstanceStatus returns status for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceStatus(state, DEFAULT_INSTANCE_ID)).toBe("stopped")
+    })
+
+    it("selectInstanceStatus returns stopped for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceStatus(state, "non-existent")).toBe("stopped")
+    })
+
+    it("selectInstanceStatus reflects status changes", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      expect(selectInstanceStatus(state, DEFAULT_INSTANCE_ID)).toBe("running")
+    })
+
+    it("selectInstanceEvents returns events for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceEvents(state, DEFAULT_INSTANCE_ID)).toEqual([])
+    })
+
+    it("selectInstanceEvents returns empty array for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceEvents(state, "non-existent")).toEqual([])
+    })
+
+    it("selectInstanceEvents reflects added events", () => {
+      const event = { type: "test", timestamp: 12345 }
+      useAppStore.getState().addEvent(event)
+      const state = useAppStore.getState()
+      expect(selectInstanceEvents(state, DEFAULT_INSTANCE_ID)).toHaveLength(1)
+      expect(selectInstanceEvents(state, DEFAULT_INSTANCE_ID)[0]).toEqual(event)
+    })
+
+    it("selectInstanceTokenUsage returns token usage for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceTokenUsage(state, DEFAULT_INSTANCE_ID)).toEqual({
+        input: 0,
+        output: 0,
+      })
+    })
+
+    it("selectInstanceTokenUsage returns defaults for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceTokenUsage(state, "non-existent")).toEqual({ input: 0, output: 0 })
+    })
+
+    it("selectInstanceTokenUsage reflects token usage changes", () => {
+      useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
+      const state = useAppStore.getState()
+      expect(selectInstanceTokenUsage(state, DEFAULT_INSTANCE_ID)).toEqual({
+        input: 1000,
+        output: 500,
+      })
+    })
+
+    it("selectInstanceContextWindow returns context window for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceContextWindow(state, DEFAULT_INSTANCE_ID)).toEqual({
+        used: 0,
+        max: DEFAULT_CONTEXT_WINDOW_MAX,
+      })
+    })
+
+    it("selectInstanceContextWindow returns defaults for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceContextWindow(state, "non-existent")).toEqual({
+        used: 0,
+        max: DEFAULT_CONTEXT_WINDOW_MAX,
+      })
+    })
+
+    it("selectInstanceContextWindow reflects context window changes", () => {
+      useAppStore.getState().setContextWindow({ used: 50000, max: 200000 })
+      const state = useAppStore.getState()
+      expect(selectInstanceContextWindow(state, DEFAULT_INSTANCE_ID)).toEqual({
+        used: 50000,
+        max: 200000,
+      })
+    })
+
+    it("selectInstanceIteration returns iteration for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceIteration(state, DEFAULT_INSTANCE_ID)).toEqual({
+        current: 0,
+        total: 0,
+      })
+    })
+
+    it("selectInstanceIteration returns defaults for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceIteration(state, "non-existent")).toEqual({ current: 0, total: 0 })
+    })
+
+    it("selectInstanceIteration reflects iteration changes", () => {
+      useAppStore.getState().setIteration({ current: 3, total: 10 })
+      const state = useAppStore.getState()
+      expect(selectInstanceIteration(state, DEFAULT_INSTANCE_ID)).toEqual({
+        current: 3,
+        total: 10,
+      })
+    })
+
+    it("selectInstanceRunStartedAt returns null for default instance initially", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceRunStartedAt(state, DEFAULT_INSTANCE_ID)).toBeNull()
+    })
+
+    it("selectInstanceRunStartedAt returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceRunStartedAt(state, "non-existent")).toBeNull()
+    })
+
+    it("selectInstanceRunStartedAt reflects when running", () => {
+      const before = Date.now()
+      useAppStore.getState().setRalphStatus("running")
+      const after = Date.now()
+      const state = useAppStore.getState()
+      const runStartedAt = selectInstanceRunStartedAt(state, DEFAULT_INSTANCE_ID)
+      expect(runStartedAt).toBeGreaterThanOrEqual(before)
+      expect(runStartedAt).toBeLessThanOrEqual(after)
+    })
+
+    it("selectInstanceWorktreePath returns null for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceWorktreePath(state, DEFAULT_INSTANCE_ID)).toBeNull()
+    })
+
+    it("selectInstanceWorktreePath returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceWorktreePath(state, "non-existent")).toBeNull()
+    })
+
+    it("selectInstanceBranch returns null for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceBranch(state, DEFAULT_INSTANCE_ID)).toBeNull()
+    })
+
+    it("selectInstanceBranch returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceBranch(state, "non-existent")).toBeNull()
+    })
+
+    it("selectInstanceCurrentTaskId returns null for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceCurrentTaskId(state, DEFAULT_INSTANCE_ID)).toBeNull()
+    })
+
+    it("selectInstanceCurrentTaskId returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceCurrentTaskId(state, "non-existent")).toBeNull()
+    })
+
+    it("selectInstanceName returns name for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceName(state, DEFAULT_INSTANCE_ID)).toBe(DEFAULT_INSTANCE_NAME)
+    })
+
+    it("selectInstanceName returns empty string for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceName(state, "non-existent")).toBe("")
+    })
+
+    it("selectInstanceAgentName returns agent name for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceAgentName(state, DEFAULT_INSTANCE_ID)).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("selectInstanceAgentName returns default for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceAgentName(state, "non-existent")).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("selectInstanceCreatedAt returns timestamp for default instance", () => {
+      const state = useAppStore.getState()
+      const createdAt = selectInstanceCreatedAt(state, DEFAULT_INSTANCE_ID)
+      expect(createdAt).toBeGreaterThan(0)
+    })
+
+    it("selectInstanceCreatedAt returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceCreatedAt(state, "non-existent")).toBeNull()
+    })
+
+    it("selectIsInstanceRunning returns false for default instance initially", () => {
+      const state = useAppStore.getState()
+      expect(selectIsInstanceRunning(state, DEFAULT_INSTANCE_ID)).toBe(false)
+    })
+
+    it("selectIsInstanceRunning returns false for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectIsInstanceRunning(state, "non-existent")).toBe(false)
+    })
+
+    it("selectIsInstanceRunning returns true when running", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      expect(selectIsInstanceRunning(state, DEFAULT_INSTANCE_ID)).toBe(true)
+    })
+
+    it("selectInstanceIterationCount returns 0 for default instance initially", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceIterationCount(state, DEFAULT_INSTANCE_ID)).toBe(0)
+    })
+
+    it("selectInstanceIterationCount returns 0 for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceIterationCount(state, "non-existent")).toBe(0)
+    })
+
+    it("selectInstanceIterationCount counts iteration boundaries in events", () => {
+      useAppStore.getState().addEvent({ type: "system", subtype: "init", timestamp: 1 })
+      useAppStore.getState().addEvent({ type: "assistant", timestamp: 2 })
+      useAppStore.getState().addEvent({ type: "system", subtype: "init", timestamp: 3 })
+      const state = useAppStore.getState()
+      expect(selectInstanceIterationCount(state, DEFAULT_INSTANCE_ID)).toBe(2)
     })
   })
 
