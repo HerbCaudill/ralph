@@ -7,8 +7,14 @@ import { spawn } from "node:child_process"
 
 /**
  * Helper to run git commands in a directory.
+ * Returns stdout as a trimmed string on success, throws on failure.
  */
-function git(cwd: string, args: string[]): Promise<string> {
+function git(
+  /** Working directory for the git command */
+  cwd: string,
+  /** Git command arguments (e.g., ["status", "-s"]) */
+  args: string[],
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn("git", args, {
       cwd,
