@@ -22,7 +22,10 @@ import { stopRalph } from "@/lib/stopRalph"
  * Control bar with buttons for Start, Pause, Stop, and Stop-after-current.
  * Button states are disabled based on ralph status.
  */
-export function ControlBar({ className }: ControlBarProps) {
+export function ControlBar({
+  /** Optional CSS class to apply to the container */
+  className,
+}: ControlBarProps) {
   const status = useAppStore(selectRalphStatus)
   const isConnected = useAppStore(selectIsConnected)
   const [isLoading, setIsLoading] = useState(false)
@@ -32,6 +35,9 @@ export function ControlBar({ className }: ControlBarProps) {
   const buttonStates = getControlBarButtonStates(status, isConnected)
   const isPaused = status === "paused"
 
+  /**
+   * Start a new Ralph iteration.
+   */
   const handleStart = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -42,6 +48,9 @@ export function ControlBar({ className }: ControlBarProps) {
     }
   }, [])
 
+  /**
+   * Pause the current Ralph iteration or resume if paused.
+   */
   const handlePause = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -53,6 +62,9 @@ export function ControlBar({ className }: ControlBarProps) {
     }
   }, [status])
 
+  /**
+   * Stop the current Ralph iteration immediately.
+   */
   const handleStop = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -63,6 +75,9 @@ export function ControlBar({ className }: ControlBarProps) {
     }
   }, [])
 
+  /**
+   * Stop Ralph after completing the current task, or cancel if already stopping after current.
+   */
   const handleStopAfterCurrent = useCallback(async () => {
     setIsLoading(true)
     setError(null)
