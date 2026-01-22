@@ -8,7 +8,7 @@ Run `pnpm test:all`. If there are build errors or test failures:
 
 ### Step 2: Check for open issues
 
-Run `bd ready` to list unblocked issues.
+Run `bd ready --assignee {agentName} --assignee ""` to list unblocked issues that are either unassigned or assigned to you
 
 If there are issues ready to be worked on, proceed to Step 3.
 
