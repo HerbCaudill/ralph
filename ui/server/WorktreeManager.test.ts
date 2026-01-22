@@ -320,6 +320,93 @@ describe("WorktreeManager", () => {
     })
   })
 
+  describe("postIterationMerge", () => {
+    it("successfully merges and rebases when no conflicts", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Make a commit in the worktree
+      await git(info.path, ["commit", "--allow-empty", "-m", "Work from alice"])
+
+      // Run post-iteration merge
+      const result = await manager.postIterationMerge("abc123", "alice")
+
+      expect(result.success).toBe(true)
+      expect(result.merge.success).toBe(true)
+      expect(result.merge.hadConflicts).toBe(false)
+      expect(result.rebase).not.toBeNull()
+      expect(result.rebase!.success).toBe(true)
+      expect(result.message).toContain("Successfully merged")
+    })
+
+    it("returns merge conflicts and does not attempt rebase", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Make a conflicting change in main
+      const { writeFile } = await import("node:fs/promises")
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "conflict.txt"), "main content")
+      await git(mainWorkspace, ["add", "conflict.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Add conflict.txt from main"])
+
+      // Make a conflicting commit in the worktree
+      await writeFile(join(info.path, "conflict.txt"), "alice content")
+      await git(info.path, ["add", "conflict.txt"])
+      await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
+
+      // Run post-iteration merge
+      const result = await manager.postIterationMerge("abc123", "alice")
+
+      expect(result.success).toBe(false)
+      expect(result.merge.success).toBe(false)
+      expect(result.merge.hadConflicts).toBe(true)
+      expect(result.rebase).toBeNull() // Rebase not attempted
+      expect(result.message).toContain("conflicts")
+
+      // Clean up the merge state
+      await git(mainWorkspace, ["merge", "--abort"])
+    })
+
+    it("handles non-conflicting divergent branches", async () => {
+      // Create a worktree
+      const info = await manager.create({
+        instanceId: "abc123",
+        instanceName: "alice",
+      })
+
+      // Make a commit in the worktree with a unique file
+      const { writeFile } = await import("node:fs/promises")
+      await writeFile(join(info.path, "alice.txt"), "alice content")
+      await git(info.path, ["add", "alice.txt"])
+      await git(info.path, ["commit", "-m", "Alice's work"])
+
+      // Make a commit in main AFTER the worktree was created with a different file
+      await git(mainWorkspace, ["checkout", "main"])
+      await writeFile(join(mainWorkspace, "main.txt"), "main content")
+      await git(mainWorkspace, ["add", "main.txt"])
+      await git(mainWorkspace, ["commit", "-m", "Main commit"])
+
+      // Run post-iteration merge
+      // 1. Merge alice's branch to main - should succeed (no conflicts, different files)
+      // 2. Rebase the worktree on main - should succeed
+      const result = await manager.postIterationMerge("abc123", "alice")
+
+      expect(result.success).toBe(true)
+      expect(result.merge.success).toBe(true)
+      expect(result.merge.hadConflicts).toBe(false)
+      expect(result.rebase).not.toBeNull()
+      expect(result.rebase!.success).toBe(true)
+      expect(result.message).toContain("Successfully merged")
+    })
+  })
+
   describe("validate", () => {
     it("returns valid status for existing worktree", async () => {
       await manager.create({

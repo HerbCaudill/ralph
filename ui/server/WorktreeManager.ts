@@ -20,6 +20,17 @@ export interface MergeResult {
   message: string
 }
 
+export interface PostIterationResult {
+  /** Overall success - true only if both merge and rebase succeeded */
+  success: boolean
+  /** Result of the merge operation */
+  merge: MergeResult
+  /** Result of the rebase operation (only attempted if merge succeeded) */
+  rebase: MergeResult | null
+  /** Summary message */
+  message: string
+}
+
 /**
  * Status of a worktree's integrity.
  */
@@ -204,6 +215,64 @@ export class WorktreeManager {
         hadConflicts: false,
         message: `Rebase failed: ${errorMessage}`,
       }
+    }
+  }
+
+  /**
+   * Perform the post-iteration merge workflow.
+   *
+   * This is the standard workflow after an iteration completes:
+   * 1. Merge the instance branch to main
+   * 2. If merge succeeds, rebase the worktree on the updated main
+   *
+   * If there are merge conflicts, the merge will fail and the caller
+   * should handle conflict resolution before retrying.
+   *
+   * @param instanceId - The instance ID
+   * @param instanceName - The instance name
+   * @returns Result of the post-iteration workflow
+   */
+  async postIterationMerge(instanceId: string, instanceName: string): Promise<PostIterationResult> {
+    const branchName = this.getBranchName(instanceId, instanceName)
+
+    // Step 1: Merge the instance branch to main
+    const mergeResult = await this.merge(instanceId, instanceName)
+
+    if (!mergeResult.success) {
+      // Merge failed (possibly conflicts)
+      return {
+        success: false,
+        merge: mergeResult,
+        rebase: null,
+        message:
+          mergeResult.hadConflicts ?
+            `Merge conflicts detected in ${branchName}. Resolve conflicts before continuing.`
+          : `Merge failed: ${mergeResult.message}`,
+      }
+    }
+
+    // Step 2: Rebase the worktree on the updated main
+    const rebaseResult = await this.rebase(instanceId, instanceName)
+
+    if (!rebaseResult.success) {
+      // Rebase failed (possibly conflicts)
+      return {
+        success: false,
+        merge: mergeResult,
+        rebase: rebaseResult,
+        message:
+          rebaseResult.hadConflicts ?
+            `Rebase conflicts detected after merge. Resolve conflicts in worktree.`
+          : `Rebase failed: ${rebaseResult.message}`,
+      }
+    }
+
+    // Both operations succeeded
+    return {
+      success: true,
+      merge: mergeResult,
+      rebase: rebaseResult,
+      message: `Successfully merged ${branchName} to main and rebased worktree.`,
     }
   }
 
