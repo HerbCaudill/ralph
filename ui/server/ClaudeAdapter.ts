@@ -1,10 +1,3 @@
-/**
- * ClaudeAdapter - AgentAdapter implementation for Claude Agent SDK
- *
- * Uses the Claude Agent SDK and translates its streaming events into
- * normalized AgentEvent types.
- */
-
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import {
   AgentAdapter,
@@ -17,8 +10,6 @@ import {
   type AgentResultEvent,
   type AgentErrorEvent,
 } from "./AgentAdapter.js"
-
-// Types
 
 export type QueryFn = typeof query
 
@@ -165,8 +156,6 @@ function calculateBackoffDelay(
   const jitter = clampedDelay * 0.1 * (Math.random() * 2 - 1)
   return Math.round(clampedDelay + jitter)
 }
-
-// ClaudeAdapter
 
 /**
  * AgentAdapter implementation for the Claude Agent SDK.
