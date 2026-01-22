@@ -15,7 +15,9 @@ describe("IterationStateStore", () => {
   let testDir: string
   let store: IterationStateStore
 
-  // Create a unique test directory for each test
+  /**
+   * Create a unique test directory for each test
+   */
   beforeEach(async () => {
     testDir = join(tmpdir(), `iteration-state-test-${randomBytes(8).toString("hex")}`)
     await mkdir(testDir, { recursive: true })
@@ -23,7 +25,9 @@ describe("IterationStateStore", () => {
     resetIterationStateStores()
   })
 
-  // Clean up after each test
+  /**
+   * Clean up after each test
+   */
   afterEach(async () => {
     try {
       await rm(testDir, { recursive: true, force: true })
@@ -32,7 +36,9 @@ describe("IterationStateStore", () => {
     }
   })
 
-  // Helper to create a test conversation context
+  /**
+   * Helper to create a test conversation context
+   */
   function createTestContext(overrides: Partial<ConversationContext> = {}): ConversationContext {
     return {
       messages: overrides.messages ?? [
@@ -49,7 +55,9 @@ describe("IterationStateStore", () => {
     }
   }
 
-  // Helper to create a test iteration state
+  /**
+   * Helper to create a test iteration state
+   */
   function createTestState(
     overrides: Partial<PersistedIterationState> = {},
   ): PersistedIterationState {

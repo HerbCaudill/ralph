@@ -1,7 +1,3 @@
-/**
- * Tests for IterationRunner
- */
-
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { EventEmitter } from "node:events"
 import { IterationRunner } from "./IterationRunner.js"
@@ -14,8 +10,9 @@ import type {
   AgentStatus,
 } from "./AgentAdapter.js"
 
-// Mock AgentAdapter for testing
-
+/**
+ * Mock AgentAdapter for testing
+ */
 class MockAdapter extends EventEmitter implements AgentAdapter {
   _status: AgentStatus = "idle"
   startCalled = false
@@ -89,8 +86,9 @@ class MockAdapter extends EventEmitter implements AgentAdapter {
     this.emit("exit", { code: force ? 1 : 0, signal: force ? "SIGKILL" : undefined })
   }
 
-  // Test helpers
-
+  /**
+   * Set status and emit status event
+   */
   setStatus(status: AgentStatus): void {
     if (this._status !== status) {
       this._status = status
@@ -98,16 +96,20 @@ class MockAdapter extends EventEmitter implements AgentAdapter {
     }
   }
 
+  /**
+   * Emit an agent event
+   */
   emitEvent(event: AgentEvent): void {
     this.emit("event", event)
   }
 
+  /**
+   * Emit an error event
+   */
   emitError(error: Error): void {
     this.emit("error", error)
   }
 }
-
-// Tests
 
 describe("IterationRunner", () => {
   let adapter: MockAdapter

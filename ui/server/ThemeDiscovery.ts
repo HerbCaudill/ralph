@@ -40,7 +40,10 @@ interface VSCodeSettings {
 /**
  * Map VS Code uiTheme values to our theme type system.
  */
-function mapUiThemeToType(uiTheme: string): ThemeMeta["type"] {
+function mapUiThemeToType(
+  /** The uiTheme value from VS Code (e.g., "vs", "vs-dark") */
+  uiTheme: string,
+): ThemeMeta["type"] {
   switch (uiTheme) {
     case "vs":
       return "light"
@@ -297,7 +300,10 @@ export class ThemeDiscovery {
   /**
    * Load NLS (localization) strings from package.nls.json if it exists.
    */
-  private async loadNlsStrings(extensionPath: string): Promise<NlsStrings> {
+  private async loadNlsStrings(
+    /** Path to the extension directory */
+    extensionPath: string,
+  ): Promise<NlsStrings> {
     const nlsPath = path.join(extensionPath, "package.nls.json")
     try {
       const content = await readFile(nlsPath, "utf-8")
@@ -310,7 +316,12 @@ export class ThemeDiscovery {
   /**
    * Resolve NLS placeholders like %themeLabel% using NLS strings.
    */
-  private resolveNlsString(value: string, nlsStrings: NlsStrings): string {
+  private resolveNlsString(
+    /** The value that may contain NLS placeholders (e.g., "%themeLabel%") */
+    value: string,
+    /** The NLS strings to use for resolving placeholders */
+    nlsStrings: NlsStrings,
+  ): string {
     // Match %key% pattern
     const match = /^%([^%]+)%$/.exec(value)
     if (match) {
@@ -322,11 +333,13 @@ export class ThemeDiscovery {
 
   /**
    * Scan a single extension directory for theme contributions.
-   * @param isBuiltin Whether this is a built-in VS Code theme
    */
   private async scanExtension(
+    /** Path to the extension directory */
     extensionPath: string,
+    /** Extension name (unused, reserved for future use) */
     _extensionName: string,
+    /** Whether this is a built-in VS Code theme */
     isBuiltin: boolean,
   ): Promise<ThemeMeta[]> {
     const themes: ThemeMeta[] = []
@@ -392,7 +405,10 @@ export class ThemeDiscovery {
    * Read a theme file and return its JSON content.
    * Returns null if the file cannot be read.
    */
-  async readThemeFile(themePath: string): Promise<unknown | null> {
+  async readThemeFile(
+    /** Path to the theme JSON file */
+    themePath: string,
+  ): Promise<unknown | null> {
     try {
       const content = await readFile(themePath, "utf-8")
       // Theme files are usually valid JSON, but some may have comments
@@ -407,7 +423,10 @@ export class ThemeDiscovery {
    * Find a theme by its label (the name shown in VS Code).
    * Returns null if not found.
    */
-  async findThemeByLabel(label: string): Promise<ThemeMeta | null> {
+  async findThemeByLabel(
+    /** The theme label to search for */
+    label: string,
+  ): Promise<ThemeMeta | null> {
     const themes = await this.discoverThemes()
     return themes.find(t => t.label === label) ?? null
   }
@@ -416,7 +435,10 @@ export class ThemeDiscovery {
    * Find a theme by its ID.
    * Returns null if not found.
    */
-  async findThemeById(id: string): Promise<ThemeMeta | null> {
+  async findThemeById(
+    /** The theme ID to search for */
+    id: string,
+  ): Promise<ThemeMeta | null> {
     const themes = await this.discoverThemes()
     return themes.find(t => t.id === id) ?? null
   }

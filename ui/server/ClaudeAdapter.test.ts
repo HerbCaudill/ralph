@@ -10,15 +10,7 @@ import type {
   AgentErrorEvent,
   AgentStatus,
 } from "./AgentAdapter"
-
-function createMessageStream(messages: SDKMessage[]) {
-  async function* stream() {
-    for (const message of messages) {
-      yield message
-    }
-  }
-  return stream()
-}
+import { createMessageStream } from "./lib/createMessageStream.js"
 
 describe("ClaudeAdapter", () => {
   let adapter: ClaudeAdapter

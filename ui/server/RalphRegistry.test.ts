@@ -76,6 +76,9 @@ vi.mock("./RalphManager.js", async () => {
 describe("RalphRegistry", () => {
   let registry: RalphRegistry
 
+  /**
+   * Create test options for creating a registry instance with optional overrides.
+   */
   const createTestOptions = (
     overrides: Partial<CreateInstanceOptions> = {},
   ): CreateInstanceOptions => ({
@@ -571,7 +574,9 @@ describe("RalphRegistry", () => {
   })
 
   describe("iteration state persistence", () => {
-    // Create a mock IterationStateStore
+    /**
+     * Create a mock IterationStateStore for testing iteration state persistence.
+     */
     function createMockStore(): IterationStateStore & {
       savedStates: Map<string, PersistedIterationState>
       saveCalls: PersistedIterationState[]

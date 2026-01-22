@@ -1,8 +1,8 @@
-import { randomBytes } from "node:crypto"
 import { mkdir, readFile, writeFile, readdir } from "node:fs/promises"
 import { join } from "node:path"
 import { homedir } from "node:os"
 import type { RalphEvent } from "./RalphManager.js"
+import { generateId } from "./lib/generateId.js"
 
 export interface EventLogMetadata {
   taskId?: string
@@ -23,13 +23,6 @@ export interface EventLogStoreSummary {
   createdAt: string
   eventCount: number
   metadata?: EventLogMetadata
-}
-
-/**
- * Generate a short, URL-safe ID (8 chars)
- */
-function generateId(): string {
-  return randomBytes(4).toString("hex")
 }
 
 /**

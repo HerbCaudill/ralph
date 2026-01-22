@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { EventEmitter } from "node:events"
 import { RalphManager, type RalphEvent, type SpawnFn } from "./RalphManager"
 
-// Create a mock process helper
+/**
+ * Create a mock process helper for testing RalphManager.
+ */
 function createMockProcess() {
   const proc = new EventEmitter() as EventEmitter & {
     stdin: { writable: boolean; write: ReturnType<typeof vi.fn> }

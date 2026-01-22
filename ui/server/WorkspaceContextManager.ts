@@ -33,7 +33,10 @@ export class WorkspaceContextManager extends EventEmitter {
   /** Event handler bound to current active context (for cleanup) */
   private _boundEventHandler: ((eventType: string, ...args: unknown[]) => void) | null = null
 
-  constructor(options: WorkspaceContextManagerOptions = {}) {
+  constructor(
+    /** Configuration options for the manager */
+    options: WorkspaceContextManagerOptions = {},
+  ) {
     super()
     this._defaultOptions = options
     this._maxContexts = options.maxContexts ?? 10
@@ -43,7 +46,10 @@ export class WorkspaceContextManager extends EventEmitter {
    * Get a context for the given workspace path, creating it if it doesn't exist.
    * Does NOT change the active context - use setActiveContext() for that.
    */
-  getOrCreate(workspacePath: string): WorkspaceContext {
+  getOrCreate(
+    /** The workspace path */
+    workspacePath: string,
+  ): WorkspaceContext {
     let context = this._contexts.get(workspacePath)
 
     if (!context || context.disposed) {
@@ -70,7 +76,10 @@ export class WorkspaceContextManager extends EventEmitter {
    * Get an existing context without creating one.
    * Returns undefined if no context exists for the given path.
    */
-  get(workspacePath: string): WorkspaceContext | undefined {
+  get(
+    /** The workspace path */
+    workspacePath: string,
+  ): WorkspaceContext | undefined {
     const context = this._contexts.get(workspacePath)
     return context?.disposed ? undefined : context
   }
@@ -78,7 +87,10 @@ export class WorkspaceContextManager extends EventEmitter {
   /**
    * Check if a context exists for the given workspace path.
    */
-  has(workspacePath: string): boolean {
+  has(
+    /** The workspace path */
+    workspacePath: string,
+  ): boolean {
     const context = this._contexts.get(workspacePath)
     return context !== undefined && !context.disposed
   }
@@ -123,7 +135,10 @@ export class WorkspaceContextManager extends EventEmitter {
    * Creates the context if it doesn't exist.
    * Returns the activated context.
    */
-  setActiveContext(workspacePath: string): WorkspaceContext {
+  setActiveContext(
+    /** The workspace path to make active */
+    workspacePath: string,
+  ): WorkspaceContext {
     // Unbind events from previous active context
     this.unbindActiveContextEvents()
 
@@ -144,7 +159,10 @@ export class WorkspaceContextManager extends EventEmitter {
    * Dispose of a specific context.
    * If disposing the active context, clears the active state.
    */
-  async dispose(workspacePath: string): Promise<void> {
+  async dispose(
+    /** The workspace path to dispose */
+    workspacePath: string,
+  ): Promise<void> {
     const context = this._contexts.get(workspacePath)
     if (!context) {
       return
@@ -185,7 +203,12 @@ export class WorkspaceContextManager extends EventEmitter {
   /**
    * Bind event forwarding from the active context.
    */
-  private bindActiveContextEvents(context: WorkspaceContext, workspacePath: string): void {
+  private bindActiveContextEvents(
+    /** The context to bind events from */
+    context: WorkspaceContext,
+    /** The workspace path for this context */
+    workspacePath: string,
+  ): void {
     // Create a handler that forwards all events with workspace path prefix
     this._boundEventHandler = (eventType: string, ...args: unknown[]) => {
       this.emit("context:event", workspacePath, eventType, ...args)

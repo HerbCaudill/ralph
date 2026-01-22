@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { EventEmitter } from "node:events"
 import { BdProxy, type SpawnFn, type BdIssue } from "./BdProxy"
 
-// Create a mock process helper
+/**
+ * Create a mock process helper for testing.
+ */
 function createMockProcess() {
   const proc = new EventEmitter() as EventEmitter & {
     stdout: EventEmitter

@@ -12,7 +12,9 @@ vi.mock("@anthropic-ai/claude-agent-sdk", () => ({
 // Import the mocked query function
 import { query as mockQuery } from "@anthropic-ai/claude-agent-sdk"
 
-// Create a mock SDK response generator
+/**
+ * Create a mock SDK response generator for testing TaskChatManager.
+ */
 async function* createMockSDKResponse(text: string): AsyncGenerator<SDKMessage> {
   // Emit streaming deltas
   for (const char of text) {
@@ -33,7 +35,9 @@ async function* createMockSDKResponse(text: string): AsyncGenerator<SDKMessage> 
   } as SDKMessage
 }
 
-// Create a mock BdProxy
+/**
+ * Create a mock BdProxy for testing TaskChatManager.
+ */
 function createMockBdProxy(issues: BdIssue[] = []): BdProxy {
   return {
     list: vi.fn().mockResolvedValue(issues),
@@ -60,7 +64,9 @@ describe("TaskChatManager", () => {
     vi.clearAllMocks()
   })
 
-  // Helper to send a message and simulate response
+  /**
+   * Helper to send a message and simulate response from the mock SDK.
+   */
   async function sendAndRespond(userMessage: string, response: string): Promise<string> {
     // Mock the SDK query function to return our mock response
     vi.mocked(mockQuery).mockReturnValueOnce(createMockSDKResponse(response) as any)

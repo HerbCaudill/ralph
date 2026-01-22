@@ -10,6 +10,8 @@ import {
   type AgentResultEvent,
   type AgentErrorEvent,
 } from "./AgentAdapter.js"
+import { isRetryableError } from "./lib/isRetryableError.js"
+import { calculateBackoffDelay } from "./lib/calculateBackoffDelay.js"
 
 export type QueryFn = typeof query
 
@@ -93,68 +95,6 @@ interface ClaudeNativeEvent {
   type: string
   timestamp?: number
   [key: string]: unknown
-}
-
-/**
- * Check if an error is retryable (network/connection errors, rate limits, server errors).
- */
-function isRetryableError(error: Error): boolean {
-  const message = error.message.toLowerCase()
-
-  // Connection/network errors
-  if (
-    message.includes("connection error") ||
-    message.includes("network error") ||
-    message.includes("econnreset") ||
-    message.includes("econnrefused") ||
-    message.includes("etimedout") ||
-    message.includes("socket hang up") ||
-    message.includes("failed to fetch") ||
-    message.includes("getaddrinfo") ||
-    message.includes("enotfound")
-  ) {
-    return true
-  }
-
-  // Rate limit errors
-  if (message.includes("rate limit") || message.includes("rate_limit") || message.includes("429")) {
-    return true
-  }
-
-  // Server errors (5xx)
-  if (
-    message.includes("server error") ||
-    message.includes("server_error") ||
-    message.includes("500") ||
-    message.includes("502") ||
-    message.includes("503") ||
-    message.includes("504")
-  ) {
-    return true
-  }
-
-  // Overloaded error
-  if (message.includes("overloaded")) {
-    return true
-  }
-
-  return false
-}
-
-/**
- * Calculate delay for exponential backoff with jitter.
- */
-function calculateBackoffDelay(
-  attempt: number,
-  initialDelayMs: number,
-  maxDelayMs: number,
-  multiplier: number,
-): number {
-  const exponentialDelay = initialDelayMs * Math.pow(multiplier, attempt)
-  const clampedDelay = Math.min(exponentialDelay, maxDelayMs)
-  // Add jitter (±10%) to prevent thundering herd
-  const jitter = clampedDelay * 0.1 * (Math.random() * 2 - 1)
-  return Math.round(clampedDelay + jitter)
 }
 
 /**

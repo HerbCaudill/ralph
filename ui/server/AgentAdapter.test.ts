@@ -20,17 +20,28 @@ import {
   isAgentStatusEvent,
 } from "./AgentAdapter"
 
-// Test implementation of AgentAdapter
+/**
+ * Test implementation of AgentAdapter for unit testing.
+ */
 class TestAdapter extends AgentAdapter {
   public startCalls: AgentStartOptions[] = []
   public sendCalls: AgentMessage[] = []
   public stopCalls: boolean[] = []
   private _isAvailable = true
 
-  setAvailable(value: boolean) {
+  /**
+   * Set the availability status of this test adapter.
+   */
+  setAvailable(
+    /** Whether the adapter should be available */
+    value: boolean,
+  ) {
     this._isAvailable = value
   }
 
+  /**
+   * Get information about this test adapter.
+   */
   getInfo(): AgentInfo {
     return {
       id: "test",
@@ -46,11 +57,20 @@ class TestAdapter extends AgentAdapter {
     }
   }
 
+  /**
+   * Check if this test adapter is available.
+   */
   async isAvailable(): Promise<boolean> {
     return this._isAvailable
   }
 
-  async start(options?: AgentStartOptions): Promise<void> {
+  /**
+   * Start the test adapter and record the call.
+   */
+  async start(
+    /** Start options */
+    options?: AgentStartOptions,
+  ): Promise<void> {
     this.startCalls.push(options ?? {})
     this.setStatus("starting")
     // Simulate async start
@@ -58,24 +78,46 @@ class TestAdapter extends AgentAdapter {
     this.setStatus("running")
   }
 
-  send(message: AgentMessage): void {
+  /**
+   * Send a message to the test adapter and record the call.
+   */
+  send(
+    /** The message to send */
+    message: AgentMessage,
+  ): void {
     this.sendCalls.push(message)
   }
 
-  async stop(force?: boolean): Promise<void> {
+  /**
+   * Stop the test adapter and record the call.
+   */
+  async stop(
+    /** Whether to force stop */
+    force?: boolean,
+  ): Promise<void> {
     this.stopCalls.push(force ?? false)
     this.setStatus("stopping")
     await Promise.resolve()
     this.setStatus("stopped")
   }
 
-  // Expose setStatus for testing
-  public testSetStatus(status: AgentStatus) {
+  /**
+   * Expose setStatus for testing purposes.
+   */
+  public testSetStatus(
+    /** The status to set */
+    status: AgentStatus,
+  ) {
     this.setStatus(status)
   }
 
-  // Expose event emission for testing
-  public testEmitEvent(event: AgentEvent) {
+  /**
+   * Expose event emission for testing purposes.
+   */
+  public testEmitEvent(
+    /** The event to emit */
+    event: AgentEvent,
+  ) {
     this.emit("event", event)
   }
 }

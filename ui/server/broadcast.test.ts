@@ -14,14 +14,23 @@ interface WsClient {
  * Creates a test server with WebSocket support and broadcast capabilities.
  * Mirrors the production server's broadcast integration with RalphManager.
  */
-function createTestServer(port: number) {
+function createTestServer(
+  /** Port number for the server to listen on */
+  port: number,
+) {
   const app = express()
   const server = createServer(app)
   const wss = new WebSocketServer({ server, path: "/ws" })
   const clients = new Set<WsClient>()
 
-  // Broadcast function matching production implementation
-  const broadcast = (message: unknown) => {
+  /**
+   * Broadcast a message to all connected WebSocket clients.
+   * Only sends to clients with open WebSocket connections.
+   */
+  const broadcast = (
+    /** Message to broadcast (will be JSON stringified) */
+    message: unknown,
+  ) => {
     const payload = JSON.stringify(message)
     for (const client of clients) {
       if (client.ws.readyState === WebSocket.OPEN) {
@@ -95,8 +104,14 @@ function createMockRalphManager(): RalphManager {
 
 /**
  * Wires up RalphManager events to broadcast, matching production implementation.
+ * Sets up listeners for event, status, output, error, and exit events.
  */
-function wireRalphToBroadcast(manager: RalphManager, broadcast: (msg: unknown) => void) {
+function wireRalphToBroadcast(
+  /** RalphManager instance to listen to */
+  manager: RalphManager,
+  /** Broadcast function to call with formatted messages */
+  broadcast: (msg: unknown) => void,
+) {
   manager.on("event", (event: RalphEvent) => {
     broadcast({
       type: "ralph:event",
