@@ -916,4 +916,210 @@ describe("useRalphConnection", () => {
       // (The test verifies no errors are thrown - task:updated updates store.tasks)
     })
   })
+
+  describe("multi-instance routing", () => {
+    it("routes events to non-active instance when instanceId is provided", () => {
+      renderHook(() => useRalphConnection())
+
+      // Create a second instance
+      act(() => {
+        useAppStore.getState().createInstance("instance-2", "Second Instance")
+        // Switch back to default so it's not the active one
+        useAppStore.getState().setActiveInstanceId("default")
+        getWs()?.simulateOpen()
+      })
+
+      const event = { type: "tool_use", timestamp: 1234, tool: "read" }
+
+      act(() => {
+        getWs()?.simulateMessage({ type: "ralph:event", instanceId: "instance-2", event })
+      })
+
+      // Event should NOT be in active instance events (flat field)
+      expect(useAppStore.getState().events).not.toContainEqual(event)
+
+      // Event SHOULD be in instance-2's events
+      const instance2 = useAppStore.getState().instances.get("instance-2")
+      expect(instance2?.events).toContainEqual(event)
+    })
+
+    it("routes status changes to non-active instance", () => {
+      renderHook(() => useRalphConnection())
+
+      // Create a second instance
+      act(() => {
+        useAppStore.getState().createInstance("instance-2", "Second Instance")
+        useAppStore.getState().setActiveInstanceId("default")
+        getWs()?.simulateOpen()
+      })
+
+      // Ensure initial statuses
+      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(useAppStore.getState().instances.get("instance-2")?.status).toBe("stopped")
+
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "ralph:status",
+          instanceId: "instance-2",
+          status: "running",
+        })
+      })
+
+      // Active instance status should NOT change
+      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+
+      // instance-2 status SHOULD change
+      expect(useAppStore.getState().instances.get("instance-2")?.status).toBe("running")
+    })
+
+    it("routes token usage to non-active instance from stream events", () => {
+      renderHook(() => useRalphConnection())
+
+      // Create a second instance
+      act(() => {
+        useAppStore.getState().createInstance("instance-2", "Second Instance")
+        useAppStore.getState().setActiveInstanceId("default")
+        getWs()?.simulateOpen()
+      })
+
+      // Ensure initial token usage is zero for both
+      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(useAppStore.getState().instances.get("instance-2")?.tokenUsage).toEqual({
+        input: 0,
+        output: 0,
+      })
+
+      // Simulate a message_delta event with token usage for instance-2
+      const streamEvent = {
+        type: "stream_event",
+        timestamp: 1234,
+        event: {
+          type: "message_delta",
+          usage: {
+            input_tokens: 100,
+            output_tokens: 50,
+          },
+        },
+      }
+
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "ralph:event",
+          instanceId: "instance-2",
+          event: streamEvent,
+        })
+      })
+
+      // Active instance token usage should NOT change
+      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+
+      // instance-2 token usage SHOULD update
+      expect(useAppStore.getState().instances.get("instance-2")?.tokenUsage).toEqual({
+        input: 100,
+        output: 50,
+      })
+    })
+
+    it("updates flat fields when routing to active instance via instanceId", () => {
+      renderHook(() => useRalphConnection())
+
+      act(() => {
+        getWs()?.simulateOpen()
+      })
+
+      const event = { type: "tool_use", timestamp: 1234, tool: "read" }
+
+      // Send message with instanceId matching active instance
+      act(() => {
+        getWs()?.simulateMessage({ type: "ralph:event", instanceId: "default", event })
+      })
+
+      // Both flat fields and instance should have the event
+      expect(useAppStore.getState().events).toContainEqual(event)
+      expect(useAppStore.getState().instances.get("default")?.events).toContainEqual(event)
+    })
+
+    it("routes connected message events to non-active instance", () => {
+      renderHook(() => useRalphConnection())
+
+      // Create a second instance
+      act(() => {
+        useAppStore.getState().createInstance("instance-2", "Second Instance")
+        useAppStore.getState().setActiveInstanceId("default")
+        getWs()?.simulateOpen()
+      })
+
+      const events = [{ type: "tool_use", timestamp: 1000, tool: "test" }]
+
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "connected",
+          instanceId: "instance-2",
+          ralphStatus: "running",
+          events,
+        })
+      })
+
+      // Active instance should NOT be affected
+      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(useAppStore.getState().events).toHaveLength(0)
+
+      // instance-2 SHOULD be updated
+      const instance2 = useAppStore.getState().instances.get("instance-2")
+      expect(instance2?.status).toBe("running")
+      expect(instance2?.events).toEqual(events)
+    })
+
+    it("routes output events to non-active instance", () => {
+      renderHook(() => useRalphConnection())
+
+      // Create a second instance
+      act(() => {
+        useAppStore.getState().createInstance("instance-2", "Second Instance")
+        useAppStore.getState().setActiveInstanceId("default")
+        getWs()?.simulateOpen()
+      })
+
+      act(() => {
+        getWs()?.simulateMessage({
+          type: "ralph:output",
+          instanceId: "instance-2",
+          line: "Some output from instance 2",
+          timestamp: 1234,
+        })
+      })
+
+      // Active instance events should be empty
+      expect(useAppStore.getState().events).toHaveLength(0)
+
+      // instance-2 should have the output event
+      const instance2 = useAppStore.getState().instances.get("instance-2")
+      expect(instance2?.events).toContainEqual(
+        expect.objectContaining({ type: "output", line: "Some output from instance 2" }),
+      )
+    })
+
+    it("auto-fixes stopped status to running when receiving events for non-active instance", () => {
+      renderHook(() => useRalphConnection())
+
+      // Create a second instance
+      act(() => {
+        useAppStore.getState().createInstance("instance-2", "Second Instance")
+        useAppStore.getState().setActiveInstanceId("default")
+        getWs()?.simulateOpen()
+      })
+
+      // Ensure instance-2 starts as stopped
+      expect(useAppStore.getState().instances.get("instance-2")?.status).toBe("stopped")
+
+      // Send an event for instance-2
+      const event = { type: "tool_use", timestamp: 1234, tool: "read" }
+      act(() => {
+        getWs()?.simulateMessage({ type: "ralph:event", instanceId: "instance-2", event })
+      })
+
+      // instance-2 status should auto-update to running
+      expect(useAppStore.getState().instances.get("instance-2")?.status).toBe("running")
+    })
+  })
 })

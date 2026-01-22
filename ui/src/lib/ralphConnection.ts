@@ -96,16 +96,15 @@ function handleMessage(event: MessageEvent): void {
 
     const store = useAppStore.getState()
 
-    // For instance-scoped messages, only process if instanceId matches the active instance
-    // Messages without instanceId are global (pong, task updates, etc.) and always processed
-    const instanceScopedTypes = [
-      "connected",
-      "workspace_switched",
-      "ralph:event",
-      "ralph:status",
-      "ralph:output",
-      "ralph:error",
-      "ralph:exit",
+    // Determine if this message is for a non-active instance
+    // Messages with instanceId are routed to that specific instance
+    // Messages without instanceId go to the active instance (backward compatibility)
+    const targetInstanceId = instanceId ?? store.activeInstanceId
+    const isForActiveInstance = targetInstanceId === store.activeInstanceId
+
+    // Task chat messages are only processed for the active instance
+    // (since task chat state is not per-instance yet)
+    const activeOnlyTypes = [
       "task-chat:message",
       "task-chat:chunk",
       "task-chat:status",
@@ -115,21 +114,29 @@ function handleMessage(event: MessageEvent): void {
       "task-chat:tool_result",
     ]
 
-    if (instanceScopedTypes.includes(type) && instanceId && instanceId !== store.activeInstanceId) {
-      // Message is for a different instance - skip processing
-      // Future enhancement: could update the specific instance in the instances Map
+    // Skip task chat messages for non-active instances
+    if (activeOnlyTypes.includes(type) && !isForActiveInstance) {
       return
     }
 
     switch (type) {
       case "connected":
         // Welcome message - sync Ralph status from server
+        // Route to correct instance based on instanceId
         if (isRalphStatus(data.ralphStatus)) {
-          store.setRalphStatus(data.ralphStatus)
+          if (isForActiveInstance) {
+            store.setRalphStatus(data.ralphStatus)
+          } else {
+            store.setStatusForInstance(targetInstanceId, data.ralphStatus)
+          }
         }
         // Restore event history from server (for page reloads)
         if (Array.isArray(data.events) && data.events.length > 0) {
-          store.setEvents(data.events)
+          if (isForActiveInstance) {
+            store.setEvents(data.events)
+          } else {
+            store.setEventsForInstance(targetInstanceId, data.events)
+          }
         }
         break
 
@@ -143,24 +150,45 @@ function handleMessage(event: MessageEvent): void {
       case "workspace_switched":
         // Workspace was switched on the server - sync state from new workspace
         // This happens when switching to a workspace that may already have Ralph running
+        // Route to correct instance based on instanceId
         if (isRalphStatus(data.ralphStatus)) {
-          store.setRalphStatus(data.ralphStatus)
+          if (isForActiveInstance) {
+            store.setRalphStatus(data.ralphStatus)
+          } else {
+            store.setStatusForInstance(targetInstanceId, data.ralphStatus)
+          }
         }
         // Replace events with the new workspace's event history
         // (clearWorkspaceData already cleared events, this restores from server)
         if (Array.isArray(data.events)) {
-          store.setEvents(data.events)
+          if (isForActiveInstance) {
+            store.setEvents(data.events)
+          } else {
+            store.setEventsForInstance(targetInstanceId, data.events)
+          }
         }
         break
 
       case "ralph:event":
         if (data.event && typeof data.event === "object") {
           const event = data.event as { type: string; timestamp: number; [key: string]: unknown }
-          store.addEvent(event)
-          // If we're receiving events, Ralph must be running - fix any inconsistent status
-          if (store.ralphStatus === "stopped") {
-            store.setRalphStatus("running")
+
+          // Route event to correct instance
+          if (isForActiveInstance) {
+            store.addEvent(event)
+            // If we're receiving events, Ralph must be running - fix any inconsistent status
+            if (store.ralphStatus === "stopped") {
+              store.setRalphStatus("running")
+            }
+          } else {
+            store.addEventForInstance(targetInstanceId, event)
+            // Also fix inconsistent status for non-active instances
+            const targetInstance = store.instances.get(targetInstanceId)
+            if (targetInstance?.status === "stopped") {
+              store.setStatusForInstance(targetInstanceId, "running")
+            }
           }
+
           // Extract token usage from stream events
           if (event.type === "stream_event") {
             const streamEvent = (event as any).event
@@ -173,11 +201,28 @@ function handleMessage(event: MessageEvent): void {
                 (usage.cache_read_input_tokens || 0)
               const outputTokens = usage.output_tokens || 0
               if (inputTokens > 0 || outputTokens > 0) {
-                store.addTokenUsage({ input: inputTokens, output: outputTokens })
-                // Update context window usage (total tokens used = input + output)
-                const totalTokens =
-                  store.tokenUsage.input + inputTokens + store.tokenUsage.output + outputTokens
-                store.updateContextWindowUsed(totalTokens)
+                if (isForActiveInstance) {
+                  store.addTokenUsage({ input: inputTokens, output: outputTokens })
+                  // Update context window usage (total tokens used = input + output)
+                  const totalTokens =
+                    store.tokenUsage.input + inputTokens + store.tokenUsage.output + outputTokens
+                  store.updateContextWindowUsed(totalTokens)
+                } else {
+                  store.addTokenUsageForInstance(targetInstanceId, {
+                    input: inputTokens,
+                    output: outputTokens,
+                  })
+                  // Update context window usage for non-active instance
+                  const targetInstance = store.instances.get(targetInstanceId)
+                  if (targetInstance) {
+                    const totalTokens =
+                      targetInstance.tokenUsage.input +
+                      inputTokens +
+                      targetInstance.tokenUsage.output +
+                      outputTokens
+                    store.updateContextWindowUsedForInstance(targetInstanceId, totalTokens)
+                  }
+                }
               }
             }
           }
@@ -186,37 +231,67 @@ function handleMessage(event: MessageEvent): void {
 
       case "ralph:status":
         if (isRalphStatus(data.status)) {
-          store.setRalphStatus(data.status)
+          if (isForActiveInstance) {
+            store.setRalphStatus(data.status)
+          } else {
+            store.setStatusForInstance(targetInstanceId, data.status)
+          }
         }
         break
 
       case "ralph:output":
-        store.addEvent({
-          type: "output",
-          timestamp: timestamp ?? Date.now(),
-          line: data.line,
-        })
-        // If we're receiving output, Ralph must be running - fix any inconsistent status
-        if (store.ralphStatus === "stopped") {
-          store.setRalphStatus("running")
+        {
+          const outputEvent = {
+            type: "output" as const,
+            timestamp: timestamp ?? Date.now(),
+            line: data.line,
+          }
+          if (isForActiveInstance) {
+            store.addEvent(outputEvent)
+            // If we're receiving output, Ralph must be running - fix any inconsistent status
+            if (store.ralphStatus === "stopped") {
+              store.setRalphStatus("running")
+            }
+          } else {
+            store.addEventForInstance(targetInstanceId, outputEvent)
+            // Also fix inconsistent status for non-active instances
+            const targetInstance = store.instances.get(targetInstanceId)
+            if (targetInstance?.status === "stopped") {
+              store.setStatusForInstance(targetInstanceId, "running")
+            }
+          }
         }
         break
 
       case "ralph:error":
-        store.addEvent({
-          type: "error",
-          timestamp: timestamp ?? Date.now(),
-          error: data.error,
-        })
+        {
+          const errorEvent = {
+            type: "error" as const,
+            timestamp: timestamp ?? Date.now(),
+            error: data.error,
+          }
+          if (isForActiveInstance) {
+            store.addEvent(errorEvent)
+          } else {
+            store.addEventForInstance(targetInstanceId, errorEvent)
+          }
+        }
         break
 
       case "ralph:exit":
-        store.addEvent({
-          type: "exit",
-          timestamp: timestamp ?? Date.now(),
-          code: data.code,
-          signal: data.signal,
-        })
+        {
+          const exitEvent = {
+            type: "exit" as const,
+            timestamp: timestamp ?? Date.now(),
+            code: data.code,
+            signal: data.signal,
+          }
+          if (isForActiveInstance) {
+            store.addEvent(exitEvent)
+          } else {
+            store.addEventForInstance(targetInstanceId, exitEvent)
+          }
+        }
         break
 
       case "user_message":

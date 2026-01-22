@@ -2587,4 +2587,188 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().isSearchVisible).toBe(false)
     })
   })
+
+  describe("per-instance actions", () => {
+    beforeEach(() => {
+      // Create two instances for testing
+      useAppStore.getState().createInstance("instance-1", "Instance 1", "Ralph-1")
+      useAppStore.getState().createInstance("instance-2", "Instance 2", "Ralph-2")
+      // Set instance-1 as active
+      useAppStore.getState().setActiveInstanceId("instance-1")
+    })
+
+    describe("addEventForInstance action", () => {
+      it("adds event to a specific instance", () => {
+        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("instance-2", event)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.events).toContainEqual(event)
+      })
+
+      it("does not affect other instances", () => {
+        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("instance-2", event)
+
+        const instance1 = useAppStore.getState().instances.get("instance-1")
+        expect(instance1?.events).not.toContainEqual(event)
+      })
+
+      it("updates flat fields when adding to active instance", () => {
+        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("instance-1", event)
+
+        expect(useAppStore.getState().events).toContainEqual(event)
+      })
+
+      it("does not update flat fields when adding to non-active instance", () => {
+        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("instance-2", event)
+
+        expect(useAppStore.getState().events).not.toContainEqual(event)
+      })
+
+      it("warns when adding to non-existent instance", () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("non-existent", event)
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          "[store] Cannot add event to non-existent instance: non-existent",
+        )
+        warnSpy.mockRestore()
+      })
+    })
+
+    describe("setEventsForInstance action", () => {
+      it("sets events for a specific instance", () => {
+        const events: RalphEvent[] = [
+          { type: "tool_use", timestamp: 1234 },
+          { type: "tool_result", timestamp: 1235 },
+        ]
+
+        useAppStore.getState().setEventsForInstance("instance-2", events)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.events).toEqual(events)
+      })
+
+      it("replaces existing events", () => {
+        // Add initial event
+        useAppStore.getState().addEventForInstance("instance-2", { type: "old", timestamp: 1000 })
+
+        // Replace with new events
+        const newEvents: RalphEvent[] = [{ type: "new", timestamp: 2000 }]
+        useAppStore.getState().setEventsForInstance("instance-2", newEvents)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.events).toEqual(newEvents)
+      })
+
+      it("updates flat fields when setting for active instance", () => {
+        const events: RalphEvent[] = [{ type: "tool_use", timestamp: 1234 }]
+
+        useAppStore.getState().setEventsForInstance("instance-1", events)
+
+        expect(useAppStore.getState().events).toEqual(events)
+      })
+    })
+
+    describe("setStatusForInstance action", () => {
+      it("sets status for a specific instance", () => {
+        useAppStore.getState().setStatusForInstance("instance-2", "running")
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.status).toBe("running")
+      })
+
+      it("sets runStartedAt when transitioning to running", () => {
+        useAppStore.getState().setStatusForInstance("instance-2", "running")
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.runStartedAt).not.toBeNull()
+      })
+
+      it("clears runStartedAt when transitioning to stopped", () => {
+        // First set to running
+        useAppStore.getState().setStatusForInstance("instance-2", "running")
+        expect(useAppStore.getState().instances.get("instance-2")?.runStartedAt).not.toBeNull()
+
+        // Then stop
+        useAppStore.getState().setStatusForInstance("instance-2", "stopped")
+        expect(useAppStore.getState().instances.get("instance-2")?.runStartedAt).toBeNull()
+      })
+
+      it("updates flat fields when setting for active instance", () => {
+        useAppStore.getState().setStatusForInstance("instance-1", "running")
+
+        expect(useAppStore.getState().ralphStatus).toBe("running")
+        expect(useAppStore.getState().runStartedAt).not.toBeNull()
+      })
+
+      it("does not update flat fields when setting for non-active instance", () => {
+        useAppStore.getState().setStatusForInstance("instance-2", "running")
+
+        expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      })
+    })
+
+    describe("addTokenUsageForInstance action", () => {
+      it("adds token usage to a specific instance", () => {
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 100, output: 50 })
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 100, output: 50 })
+      })
+
+      it("accumulates token usage", () => {
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 100, output: 50 })
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 200, output: 100 })
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 300, output: 150 })
+      })
+
+      it("updates flat fields when adding to active instance", () => {
+        useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 100, output: 50 })
+
+        expect(useAppStore.getState().tokenUsage).toEqual({ input: 100, output: 50 })
+      })
+    })
+
+    describe("updateContextWindowUsedForInstance action", () => {
+      it("updates context window for a specific instance", () => {
+        useAppStore.getState().updateContextWindowUsedForInstance("instance-2", 50000)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.contextWindow.used).toBe(50000)
+      })
+
+      it("updates flat fields when updating active instance", () => {
+        useAppStore.getState().updateContextWindowUsedForInstance("instance-1", 75000)
+
+        expect(useAppStore.getState().contextWindow.used).toBe(75000)
+      })
+    })
+
+    describe("setIterationForInstance action", () => {
+      it("sets iteration for a specific instance", () => {
+        useAppStore.getState().setIterationForInstance("instance-2", { current: 3, total: 5 })
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.iteration).toEqual({ current: 3, total: 5 })
+      })
+
+      it("updates flat fields when setting for active instance", () => {
+        useAppStore.getState().setIterationForInstance("instance-1", { current: 2, total: 4 })
+
+        expect(useAppStore.getState().iteration).toEqual({ current: 2, total: 4 })
+      })
+    })
+  })
 })

@@ -442,6 +442,20 @@ export interface AppActions {
   /** Hydrate instances from server data (on WebSocket connect) */
   hydrateInstances: (serverInstances: SerializedInstance[]) => void
 
+  // Per-instance actions (for routing WebSocket messages to specific instances)
+  /** Add an event to a specific instance by ID */
+  addEventForInstance: (instanceId: string, event: RalphEvent) => void
+  /** Set events for a specific instance by ID */
+  setEventsForInstance: (instanceId: string, events: RalphEvent[]) => void
+  /** Set status for a specific instance by ID */
+  setStatusForInstance: (instanceId: string, status: RalphStatus) => void
+  /** Add token usage for a specific instance by ID */
+  addTokenUsageForInstance: (instanceId: string, usage: TokenUsage) => void
+  /** Update context window usage for a specific instance by ID */
+  updateContextWindowUsedForInstance: (instanceId: string, used: number) => void
+  /** Set iteration for a specific instance by ID */
+  setIterationForInstance: (instanceId: string, iteration: IterationInfo) => void
+
   // Reset
   reset: () => void
 }
@@ -1233,6 +1247,168 @@ export const useAppStore = create<AppState & AppActions>(set => ({
           }
         : {}),
       }
+    }),
+
+  // Per-instance actions (for routing WebSocket messages to specific instances)
+  addEventForInstance: (instanceId, event) =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(`[store] Cannot add event to non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      const newEvents = [...instance.events, event]
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, { ...instance, events: newEvents })
+
+      // If this is the active instance, also update flat fields for backward compatibility
+      if (state.activeInstanceId === instanceId) {
+        return {
+          instances: updatedInstances,
+          events: newEvents,
+        }
+      }
+
+      return { instances: updatedInstances }
+    }),
+
+  setEventsForInstance: (instanceId, events) =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(`[store] Cannot set events for non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, { ...instance, events })
+
+      // If this is the active instance, also update flat fields for backward compatibility
+      if (state.activeInstanceId === instanceId) {
+        return {
+          instances: updatedInstances,
+          events,
+        }
+      }
+
+      return { instances: updatedInstances }
+    }),
+
+  setStatusForInstance: (instanceId, status) =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(`[store] Cannot set status for non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      const now = Date.now()
+      const isTransitioningToRunning = status === "running" && instance.status !== "running"
+      const isStopping = status === "stopped"
+
+      // Calculate new runStartedAt
+      const newRunStartedAt =
+        isTransitioningToRunning ? now
+        : isStopping ? null
+        : instance.runStartedAt
+
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, {
+        ...instance,
+        status,
+        runStartedAt: newRunStartedAt,
+      })
+
+      // If this is the active instance, also update flat fields for backward compatibility
+      if (state.activeInstanceId === instanceId) {
+        const newInitialTaskCount =
+          isTransitioningToRunning ? state.tasks.length
+          : isStopping ? null
+          : state.initialTaskCount
+
+        return {
+          instances: updatedInstances,
+          ralphStatus: status,
+          runStartedAt: newRunStartedAt,
+          initialTaskCount: newInitialTaskCount,
+        }
+      }
+
+      return { instances: updatedInstances }
+    }),
+
+  addTokenUsageForInstance: (instanceId, usage) =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(`[store] Cannot add token usage to non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      const newTokenUsage = {
+        input: instance.tokenUsage.input + usage.input,
+        output: instance.tokenUsage.output + usage.output,
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, { ...instance, tokenUsage: newTokenUsage })
+
+      // If this is the active instance, also update flat fields for backward compatibility
+      if (state.activeInstanceId === instanceId) {
+        return {
+          instances: updatedInstances,
+          tokenUsage: newTokenUsage,
+        }
+      }
+
+      return { instances: updatedInstances }
+    }),
+
+  updateContextWindowUsedForInstance: (instanceId, used) =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(
+          `[store] Cannot update context window for non-existent instance: ${instanceId}`,
+        )
+        return state
+      }
+
+      const newContextWindow = { ...instance.contextWindow, used }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, { ...instance, contextWindow: newContextWindow })
+
+      // If this is the active instance, also update flat fields for backward compatibility
+      if (state.activeInstanceId === instanceId) {
+        return {
+          instances: updatedInstances,
+          contextWindow: newContextWindow,
+        }
+      }
+
+      return { instances: updatedInstances }
+    }),
+
+  setIterationForInstance: (instanceId, iteration) =>
+    set(state => {
+      const instance = state.instances.get(instanceId)
+      if (!instance) {
+        console.warn(`[store] Cannot set iteration for non-existent instance: ${instanceId}`)
+        return state
+      }
+
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set(instanceId, { ...instance, iteration })
+
+      // If this is the active instance, also update flat fields for backward compatibility
+      if (state.activeInstanceId === instanceId) {
+        return {
+          instances: updatedInstances,
+          iteration,
+        }
+      }
+
+      return { instances: updatedInstances }
     }),
 
   // Reset
