@@ -3,21 +3,12 @@ import { join } from "path"
 import { existsSync } from "fs"
 import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
-// Re-export MutationEvent for backward compatibility
+/**
+ * Re-export MutationEvent for backward compatibility
+ */
 export type { MutationEvent } from "@herbcaudill/ralph-shared"
 
 const SOCKET_PATH = join(process.cwd(), ".beads", "bd.sock")
-
-type RPCRequest = {
-  operation: string
-  args: Record<string, unknown>
-}
-
-type RPCResponse = {
-  success: boolean
-  data?: unknown
-  error?: string
-}
 
 /**
  * Simple RPC client for beads daemon.
@@ -123,9 +114,11 @@ export class BeadsClient {
 
   /**
    * Get mutations since a given timestamp.
-   * @param since Unix timestamp in milliseconds (0 for all recent)
    */
-  async getMutations(since: number = 0): Promise<MutationEvent[]> {
+  async getMutations(
+    /** Unix timestamp in milliseconds (0 for all recent) */
+    since: number = 0,
+  ): Promise<MutationEvent[]> {
     const result = await this.execute<MutationEvent[]>("get_mutations", { since })
     return result ?? []
   }
@@ -211,4 +204,15 @@ export function watchForNewIssues(
     }
     client?.close()
   }
+}
+
+type RPCRequest = {
+  operation: string
+  args: Record<string, unknown>
+}
+
+type RPCResponse = {
+  success: boolean
+  data?: unknown
+  error?: string
 }
