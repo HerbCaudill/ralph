@@ -95,8 +95,14 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     }
   }, [isLoading])
 
+  /**
+   * Handle sending a message to the task chat.
+   */
   const handleSendMessage = useCallback(
-    async (message: string) => {
+    async (
+      /** The message text to send */
+      message: string,
+    ) => {
       const messageId = `user-${Date.now()}`
       setError(null)
 
@@ -148,6 +154,9 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     [addMessage, setLoading, setStreamingText, clearToolUses, removeMessage],
   )
 
+  /**
+   * Handle clearing the chat history.
+   */
   const handleClearHistory = useCallback(async () => {
     setLoading(true)
     setStreamingText("")

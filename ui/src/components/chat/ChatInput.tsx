@@ -32,6 +32,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  /**
+   * Adjust the textarea height to fit its content.
+   */
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current
     if (!textarea) return
@@ -62,8 +65,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     },
   }))
 
+  /**
+   * Handle form submission and send the message.
+   */
   const handleSubmit = useCallback(
-    (e?: FormEvent) => {
+    (
+      /** Optional form event */
+      e?: FormEvent,
+    ) => {
       e?.preventDefault()
 
       const trimmedMessage = message.trim()
@@ -75,8 +84,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     [message, disabled, onSubmit],
   )
 
+  /**
+   * Handle keydown events on the textarea, specifically Enter key for submission.
+   */
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    (
+      /** Keyboard event from the textarea */
+      e: KeyboardEvent<HTMLTextAreaElement>,
+    ) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault()
         handleSubmit()
@@ -128,15 +143,21 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 })
 
 export type ChatInputProps = {
+  /** Optional callback fired when a message is submitted */
   onSubmit?: (message: string) => void
+  /** Placeholder text for the input */
   placeholder?: string
+  /** Whether the input is disabled */
   disabled?: boolean
+  /** Optional CSS class name to apply to the form */
   className?: string
+  /** ARIA label for accessibility */
   "aria-label"?: string
   /** localStorage key to persist input text. If not provided, text is not persisted. */
   storageKey?: string
 }
 
 export type ChatInputHandle = {
+  /** Focus the input element */
   focus: () => void
 }
