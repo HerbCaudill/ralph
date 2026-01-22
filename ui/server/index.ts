@@ -460,6 +460,114 @@ function createApp(config: ServerConfig): Express {
     })
   })
 
+  // ============================================================================
+  // Iteration State Restoration Endpoints
+  // ============================================================================
+
+  // Get saved iteration state for an instance
+  app.get("/api/ralph/:instanceId/iteration-state", async (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+
+    if (!registry.has(instanceId)) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      const state = await registry.loadIterationState(instanceId)
+
+      if (!state) {
+        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        return
+      }
+
+      res.status(200).json({ ok: true, state })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load iteration state"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Restore conversation context from saved state
+  // This restores the event history and current task tracking from persisted state
+  app.post("/api/ralph/:instanceId/restore-state", async (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+
+    const instance = registry.get(instanceId)
+    if (!instance) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      const state = await registry.loadIterationState(instanceId)
+
+      if (!state) {
+        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        return
+      }
+
+      // Update the instance's current task from the saved state
+      if (state.currentTaskId !== null) {
+        // We need to update the instance state directly since there's no public setter
+        // This matches how task tracking is normally done via events
+        instance.currentTaskId = state.currentTaskId
+        instance.currentTaskTitle = state.currentTaskId // Title not stored separately in persisted state
+      }
+
+      // Note: The event history is managed per-instance by RalphRegistry and is cleared
+      // when a new iteration starts. For page reload survival, the client should use
+      // the saved conversationContext to show the previous state, and the next iteration
+      // will either continue from that context (if Claude SDK supports session resumption)
+      // or start fresh with the context available for reference.
+
+      res.status(200).json({
+        ok: true,
+        restored: {
+          instanceId: state.instanceId,
+          status: state.status,
+          currentTaskId: state.currentTaskId,
+          savedAt: state.savedAt,
+          messageCount: state.conversationContext.messages.length,
+        },
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to restore iteration state"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Delete saved iteration state (for "start fresh")
+  app.delete("/api/ralph/:instanceId/iteration-state", async (req: Request, res: Response) => {
+    const instanceId = req.params.instanceId as string
+    const registry = getRalphRegistry()
+
+    if (!registry.has(instanceId)) {
+      res.status(404).json({ ok: false, error: `Instance '${instanceId}' not found` })
+      return
+    }
+
+    try {
+      const deleted = await registry.deleteIterationState(instanceId)
+
+      if (!deleted) {
+        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        return
+      }
+
+      res.status(200).json({ ok: true })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete iteration state"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // ============================================================================
+  // End Iteration State Restoration Endpoints
+  // ============================================================================
+
   // Create a new instance
   app.post("/api/instances", async (req: Request, res: Response) => {
     try {
