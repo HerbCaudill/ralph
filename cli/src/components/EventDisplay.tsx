@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react"
 import { Box, Text, useInput } from "ink"
-import { formatIterationHeader } from "../lib/formatContentBlock.js"
+import { formatIterationHeader } from "../lib/formatIterationHeader.js"
 import { processEvents } from "./processEvents.js"
 import { blocksToLines } from "./blocksToLines.js"
 

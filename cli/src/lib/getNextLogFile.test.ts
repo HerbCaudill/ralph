@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
-import { getNextLogFile, getLatestLogFile } from "./getNextLogFile.js"
+import { getNextLogFile } from "./getNextLogFile.js"
+import { getLatestLogFile } from "./getLatestLogFile.js"
 import { mkdirSync, rmSync, writeFileSync, existsSync } from "fs"
 import { join } from "path"
 

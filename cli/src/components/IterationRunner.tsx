@@ -7,12 +7,9 @@ import { join, basename } from "path"
 import { query } from "@anthropic-ai/claude-agent-sdk"
 import { eventToBlocks } from "./eventToBlocks.js"
 import { addTodo } from "../lib/addTodo.js"
-import {
-  getProgress,
-  captureStartupSnapshot,
-  type ProgressData,
-  type StartupSnapshot,
-} from "../lib/getProgress.js"
+import { getProgress } from "../lib/getProgress.js"
+import { captureStartupSnapshot } from "../lib/captureStartupSnapshot.js"
+import type { ProgressData, StartupSnapshot } from "../lib/types.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { watchForNewIssues, type MutationEvent } from "../lib/beadsClient.js"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
