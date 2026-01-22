@@ -78,7 +78,7 @@ export function ControlBar({ className }: ControlBarProps) {
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <TooltipButton tooltip={`Start${getHotkeyDisplay("agentStart")}`}>
+      <TooltipButton tooltip="Start" hotkey={getHotkeyDisplay("agentStart")}>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -90,7 +90,10 @@ export function ControlBar({ className }: ControlBarProps) {
         </Button>
       </TooltipButton>
 
-      <TooltipButton tooltip={`${isPaused ? "Resume" : "Pause"}${getHotkeyDisplay("agentPause")}`}>
+      <TooltipButton
+        tooltip={isPaused ? "Resume" : "Pause"}
+        hotkey={getHotkeyDisplay("agentPause")}
+      >
         <Button
           variant="ghost"
           size="icon-sm"
@@ -102,7 +105,7 @@ export function ControlBar({ className }: ControlBarProps) {
         </Button>
       </TooltipButton>
 
-      <TooltipButton tooltip={`Stop${getHotkeyDisplay("agentStop")}`}>
+      <TooltipButton tooltip="Stop" hotkey={getHotkeyDisplay("agentStop")}>
         <Button
           variant="ghost"
           size="icon-sm"
