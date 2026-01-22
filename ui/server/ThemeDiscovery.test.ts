@@ -1,12 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { mkdir, writeFile, rm } from "node:fs/promises"
 import path from "node:path"
-import {
-  ThemeDiscovery,
-  stripJsonComments,
-  resetThemeDiscovery,
-  getThemeDiscovery,
-} from "./ThemeDiscovery.js"
+import { ThemeDiscovery } from "./ThemeDiscovery.js"
+import { stripJsonComments } from "./lib/stripJsonComments.js"
+import { resetThemeDiscovery, getThemeDiscovery } from "./lib/getThemeDiscovery.js"
 
 describe("ThemeDiscovery", () => {
   const testDir = path.join(import.meta.dirname, "__test_theme_discovery__")
