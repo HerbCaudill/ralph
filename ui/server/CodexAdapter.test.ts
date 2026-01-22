@@ -10,15 +10,7 @@ import type {
   AgentErrorEvent,
   AgentStatus,
 } from "./AgentAdapter"
-
-function createEventStream(events: ThreadEvent[]) {
-  async function* stream() {
-    for (const event of events) {
-      yield event
-    }
-  }
-  return stream()
-}
+import { createEventStream } from "./lib/createEventStream.js"
 
 describe("CodexAdapter", () => {
   let adapter: CodexAdapter
