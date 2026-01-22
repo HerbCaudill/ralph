@@ -184,7 +184,11 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   return (
     <div
       className={cn("flex h-screen w-screen flex-col", className)}
-      style={{ border: `2px solid ${borderColor}` }}
+      style={{
+        border: `6px solid ${borderColor}`,
+        borderBottomLeftRadius: "10px",
+        borderBottomRightRadius: "10px",
+      }}
     >
       {showHeader && (header || <Header />)}
       <div className="flex flex-1 overflow-hidden">

@@ -151,7 +151,7 @@ describe("MainLayout", () => {
       const { container } = render(<MainLayout />)
       const layoutDiv = container.firstChild as HTMLElement
       // Check border style is applied (jsdom converts hex to rgb)
-      expect(layoutDiv.style.border).toBe("2px solid rgb(55, 65, 81)")
+      expect(layoutDiv.style.border).toBe("6px solid rgb(55, 65, 81)")
 
       // Wait for workspace fetch to complete to avoid act() warning
       await waitFor(() => {
@@ -168,7 +168,7 @@ describe("MainLayout", () => {
       const { container } = render(<MainLayout />)
       const layoutDiv = container.firstChild as HTMLElement
       // Check border style is applied (jsdom converts hex to rgb)
-      expect(layoutDiv.style.border).toBe("2px solid rgb(255, 85, 0)")
+      expect(layoutDiv.style.border).toBe("6px solid rgb(255, 85, 0)")
 
       // Wait for workspace fetch to complete to avoid act() warning
       await waitFor(() => {
