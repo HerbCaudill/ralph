@@ -3,12 +3,12 @@ import { useTerminalSize } from "../lib/useTerminalSize.js"
 /**
  * BigText "tiny" font takes 4 rows, plus 1 for separator
  */
-const HEADER_HEIGHT = 5
+export const HEADER_HEIGHT = 5
 
 /**
  * Separator plus content row
  */
-const FOOTER_HEIGHT = 2
+export const FOOTER_HEIGHT = 2
 
 /**
  * Top and bottom borders

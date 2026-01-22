@@ -3,7 +3,7 @@ import { Box, Text } from "ink"
 import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 import { useTerminalSize } from "../lib/useTerminalSize.js"
-import { useContentHeight } from "./useContentHeight.js"
+import { useContentHeight, HEADER_HEIGHT, FOOTER_HEIGHT } from "./useContentHeight.js"
 
 /**
  * Full-screen layout component with header, content area, and optional footer

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react"
 import { Box, Text, useApp } from "ink"
 import { readFileSync } from "fs"
 import { EventDisplay } from "./EventDisplay.js"
-import { FullScreenLayout, useContentHeight } from "./FullScreenLayout.js"
+import { FullScreenLayout } from "./FullScreenLayout.js"
+import { useContentHeight } from "./useContentHeight.js"
 
 export const ReplayLog = ({
   /** The path to the replay log file */
