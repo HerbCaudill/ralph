@@ -1,8 +1,6 @@
 import { useEffect, useCallback, useRef } from "react"
 import { hotkeys, type HotkeyAction, type HotkeyConfig } from "@/config"
 
-// Types
-
 export type HotkeyHandler = () => void
 
 export interface UseHotkeysOptions {
@@ -18,8 +16,6 @@ export interface UseHotkeysReturn {
   /** All registered hotkeys with their descriptions */
   registeredHotkeys: Array<{ action: HotkeyAction; display: string; description: string }>
 }
-
-// Helpers
 
 /**
  * Check if the current platform is macOS
@@ -124,8 +120,6 @@ function isInputElement(target: EventTarget | null): boolean {
     (target as HTMLElement).isContentEditable
   )
 }
-
-// Hook
 
 /**
  * Hook for global keyboard hotkeys.

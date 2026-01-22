@@ -2,8 +2,6 @@ import { useCallback, useEffect } from "react"
 import { useAppStore, selectConnectionStatus, selectIsConnected } from "../store"
 import { ralphConnection, initRalphConnection } from "../lib/ralphConnection"
 
-// Types
-
 export interface UseRalphConnectionReturn {
   /**
    * Current connection status.
@@ -31,8 +29,6 @@ export interface UseRalphConnectionReturn {
    */
   disconnect: () => void
 }
-
-// Hook
 
 /**
  * Hook for accessing the Ralph WebSocket connection.
