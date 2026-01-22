@@ -1,9 +1,3 @@
-/**
- * Type Guards for Agent Events
- *
- * Type-safe predicates for narrowing AgentEvent to specific event types.
- */
-
 import type {
   AgentEvent,
   AgentMessageEvent,
