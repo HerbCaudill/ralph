@@ -88,7 +88,7 @@ export async function getIterationState(instanceId: string): Promise<IterationSt
 
 /**
  * Restore iteration state on the server (updates current task tracking etc.)
- * This should be called when the user chooses "Continue" in the reconnection dialog.
+ * This is called automatically on reconnection to resume the previous session.
  */
 export async function restoreIterationState(
   instanceId: string,
@@ -118,7 +118,7 @@ export async function restoreIterationState(
 
 /**
  * Delete saved iteration state.
- * This should be called when the user chooses "Start Fresh" in the reconnection dialog.
+ * This can be called to clear saved state when starting a new session.
  */
 export async function deleteIterationState(
   instanceId: string,
@@ -150,7 +150,7 @@ export async function deleteIterationState(
 
 /**
  * Check if there's a recent saved iteration state that can be restored.
- * This is called on reconnection to determine whether to show the ReconnectionChoiceDialog.
+ * This is called on reconnection to determine whether to auto-resume.
  *
  * The function checks the active instance by default, but can check a specific instance.
  */

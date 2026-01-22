@@ -328,8 +328,6 @@ export interface AppState {
   isSearchVisible: boolean
 
   // Reconnection state (for auto-resuming when reconnecting mid-iteration)
-  /** Whether the reconnection choice dialog is visible */
-  isReconnectionChoiceDialogVisible: boolean
   /** Whether Ralph was running when the connection was lost */
   wasRunningBeforeDisconnect: boolean
 }
@@ -438,11 +436,7 @@ export interface AppActions {
   showSearch: () => void
   hideSearch: () => void
 
-  // Reconnection choice
-  /** Show the reconnection choice dialog */
-  showReconnectionChoiceDialog: () => void
-  /** Hide the reconnection choice dialog */
-  hideReconnectionChoiceDialog: () => void
+  // Reconnection state (for auto-resuming when reconnecting mid-iteration)
   /** Mark that Ralph was running before disconnect (called when connection is lost) */
   markRunningBeforeDisconnect: () => void
   /** Clear the running-before-disconnect flag */
@@ -623,7 +617,6 @@ const initialState: AppState = {
   closedTimeFilter: "past_day",
   showToolOutput: false,
   isSearchVisible: false,
-  isReconnectionChoiceDialogVisible: false,
   wasRunningBeforeDisconnect: false,
 }
 
@@ -1075,10 +1068,7 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   showSearch: () => set({ isSearchVisible: true }),
   hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
 
-  // Reconnection choice
-  showReconnectionChoiceDialog: () => set({ isReconnectionChoiceDialogVisible: true }),
-  hideReconnectionChoiceDialog: () =>
-    set({ isReconnectionChoiceDialogVisible: false, wasRunningBeforeDisconnect: false }),
+  // Reconnection state (for auto-resuming when reconnecting mid-iteration)
   markRunningBeforeDisconnect: () =>
     set(state => ({
       wasRunningBeforeDisconnect: state.ralphStatus === "running" || state.ralphStatus === "paused",
@@ -1712,9 +1702,3 @@ export const selectActivelyWorkingTaskIds = (state: AppState): string[] => {
   }
   return result.sort()
 }
-
-// Reconnection choice selectors
-export const selectIsReconnectionChoiceDialogVisible = (state: AppState) =>
-  state.isReconnectionChoiceDialogVisible
-export const selectWasRunningBeforeDisconnect = (state: AppState) =>
-  state.wasRunningBeforeDisconnect

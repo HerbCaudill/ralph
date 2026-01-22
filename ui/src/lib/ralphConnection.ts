@@ -5,7 +5,7 @@
 
 import { useAppStore } from "../store"
 import { isRalphStatus } from "../store"
-import { checkForSavedIterationState } from "./iterationStateApi"
+import { checkForSavedIterationState, restoreIterationState } from "./iterationStateApi"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -499,23 +499,34 @@ function connect(): void {
     setStatus("connected")
     resetReconnectState() // Reset backoff on successful connection
 
-    // Check if we need to show the reconnection choice dialog
+    // Auto-resume iteration if Ralph was running before disconnect or has saved state
     // This happens in two cases:
     // 1. We reconnect after losing connection while Ralph was running (in-memory state)
     // 2. We have saved iteration state on the server (survives page reloads)
     const store = useAppStore.getState()
     if (store.wasRunningBeforeDisconnect) {
-      // In-memory state says Ralph was running - show dialog immediately
-      store.showReconnectionChoiceDialog()
+      // In-memory state says Ralph was running - auto-resume immediately
+      console.log("[ralphConnection] Auto-resuming: Ralph was running before disconnect")
+      restoreIterationState(store.activeInstanceId).then(result => {
+        if (!result.ok) {
+          console.warn("[ralphConnection] Failed to restore iteration state:", result.error)
+        }
+        // Clear the flag regardless of success
+        store.clearRunningBeforeDisconnect()
+      })
     } else {
       // Check server for saved iteration state (handles page reload case)
       checkForSavedIterationState().then(savedState => {
         if (savedState) {
-          // Found recent saved state on server - show reconnection choice
+          // Found recent saved state on server - auto-resume
           console.log(
-            `[ralphConnection] Found saved iteration state from ${new Date(savedState.savedAt).toLocaleTimeString()}`,
+            `[ralphConnection] Auto-resuming: found saved state from ${new Date(savedState.savedAt).toLocaleTimeString()}`,
           )
-          useAppStore.getState().showReconnectionChoiceDialog()
+          restoreIterationState(useAppStore.getState().activeInstanceId).then(result => {
+            if (!result.ok) {
+              console.warn("[ralphConnection] Failed to restore iteration state:", result.error)
+            }
+          })
         }
       })
     }
@@ -529,7 +540,7 @@ function connect(): void {
 
   ws.onclose = () => {
     // Before setting status to disconnected, mark if Ralph was running
-    // This is used to show the reconnection choice dialog when we reconnect
+    // This is used to auto-resume when we reconnect
     useAppStore.getState().markRunningBeforeDisconnect()
 
     setStatus("disconnected")

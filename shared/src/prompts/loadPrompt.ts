@@ -166,7 +166,9 @@ export type LoadIterationPromptResult = {
  * @returns Combined prompt with workflow merged in
  * @throws Error if core prompt cannot be found
  */
-export function loadIterationPrompt(options: LoadIterationPromptOptions): LoadIterationPromptResult {
+export function loadIterationPrompt(
+  options: LoadIterationPromptOptions,
+): LoadIterationPromptResult {
   const { templatesDir, cwd = process.cwd() } = options
 
   // Load core prompt (always from templates)

@@ -2846,32 +2846,7 @@ describe("useAppStore", () => {
     })
   })
 
-  describe("reconnection choice state", () => {
-    describe("showReconnectionChoiceDialog action", () => {
-      it("sets isReconnectionChoiceDialogVisible to true", () => {
-        useAppStore.getState().showReconnectionChoiceDialog()
-        expect(useAppStore.getState().isReconnectionChoiceDialogVisible).toBe(true)
-      })
-    })
-
-    describe("hideReconnectionChoiceDialog action", () => {
-      it("sets isReconnectionChoiceDialogVisible to false", () => {
-        useAppStore.getState().showReconnectionChoiceDialog()
-        useAppStore.getState().hideReconnectionChoiceDialog()
-        expect(useAppStore.getState().isReconnectionChoiceDialogVisible).toBe(false)
-      })
-
-      it("also clears wasRunningBeforeDisconnect", () => {
-        useAppStore.getState().setRalphStatus("running")
-        useAppStore.getState().markRunningBeforeDisconnect()
-        useAppStore.getState().showReconnectionChoiceDialog()
-        useAppStore.getState().hideReconnectionChoiceDialog()
-
-        expect(useAppStore.getState().isReconnectionChoiceDialogVisible).toBe(false)
-        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
-      })
-    })
-
+  describe("reconnection state (auto-resume)", () => {
     describe("markRunningBeforeDisconnect action", () => {
       it("sets wasRunningBeforeDisconnect to true when ralph is running", () => {
         useAppStore.getState().setRalphStatus("running")

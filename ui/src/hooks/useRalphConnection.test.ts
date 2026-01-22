@@ -1213,7 +1213,7 @@ describe("useRalphConnection", () => {
     })
   })
 
-  describe("reconnection choice dialog", () => {
+  describe("auto-resume on reconnection", () => {
     it("marks running state before disconnect when connection closes", () => {
       renderHook(() => useRalphConnection())
 
