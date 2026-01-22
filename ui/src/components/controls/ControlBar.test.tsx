@@ -23,7 +23,7 @@ describe("ControlBar", () => {
       expect(screen.getByRole("button", { name: "Start" })).toBeInTheDocument()
       expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
       expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument()
-      expect(screen.getByRole("button", { name: "Stop after current" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Stop after current action" })).toBeInTheDocument()
     })
 
     it("applies custom className", () => {
@@ -40,7 +40,7 @@ describe("ControlBar", () => {
       expect(screen.getByRole("button", { name: "Start" })).toBeDisabled()
       expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled()
       expect(screen.getByRole("button", { name: "Stop" })).toBeDisabled()
-      expect(screen.getByRole("button", { name: "Stop after current" })).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Stop after current action" })).toBeDisabled()
     })
   })
 
@@ -67,7 +67,7 @@ describe("ControlBar", () => {
 
     it("disables Stop after current button when stopped", () => {
       render(<ControlBar />)
-      expect(screen.getByRole("button", { name: "Stop after current" })).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Stop after current action" })).toBeDisabled()
     })
   })
 
@@ -83,7 +83,7 @@ describe("ControlBar", () => {
       expect(screen.getByRole("button", { name: "Start" })).toBeDisabled()
       expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled()
       expect(screen.getByRole("button", { name: "Stop" })).toBeDisabled()
-      expect(screen.getByRole("button", { name: "Stop after current" })).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Stop after current action" })).toBeDisabled()
     })
   })
 
@@ -110,7 +110,7 @@ describe("ControlBar", () => {
 
     it("enables Stop after current button when running", () => {
       render(<ControlBar />)
-      expect(screen.getByRole("button", { name: "Stop after current" })).not.toBeDisabled()
+      expect(screen.getByRole("button", { name: "Stop after current action" })).not.toBeDisabled()
     })
   })
 
@@ -137,7 +137,7 @@ describe("ControlBar", () => {
 
     it("enables Stop after current button when pausing", () => {
       render(<ControlBar />)
-      expect(screen.getByRole("button", { name: "Stop after current" })).not.toBeDisabled()
+      expect(screen.getByRole("button", { name: "Stop after current action" })).not.toBeDisabled()
     })
   })
 
@@ -164,7 +164,7 @@ describe("ControlBar", () => {
 
     it("enables Stop after current button when paused", () => {
       render(<ControlBar />)
-      expect(screen.getByRole("button", { name: "Stop after current" })).not.toBeDisabled()
+      expect(screen.getByRole("button", { name: "Stop after current action" })).not.toBeDisabled()
     })
   })
 
@@ -180,7 +180,7 @@ describe("ControlBar", () => {
       expect(screen.getByRole("button", { name: "Start" })).toBeDisabled()
       expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled()
       expect(screen.getByRole("button", { name: "Stop" })).toBeDisabled()
-      expect(screen.getByRole("button", { name: "Stop after current" })).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Stop after current action" })).toBeDisabled()
     })
   })
 
@@ -352,7 +352,7 @@ describe("ControlBar", () => {
       })
 
       render(<ControlBar />)
-      fireEvent.click(screen.getByRole("button", { name: "Stop after current" }))
+      fireEvent.click(screen.getByRole("button", { name: "Stop after current action" }))
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith("/api/ralph/default/stop-after-current", {
@@ -368,7 +368,7 @@ describe("ControlBar", () => {
       })
 
       render(<ControlBar />)
-      fireEvent.click(screen.getByRole("button", { name: "Stop after current" }))
+      fireEvent.click(screen.getByRole("button", { name: "Stop after current action" }))
 
       await waitFor(() => {
         expect(screen.getByText("Failed to stop after current")).toBeInTheDocument()

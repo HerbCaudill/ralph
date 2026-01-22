@@ -6,17 +6,14 @@ import {
   HotkeysDialog,
   CommandPalette,
 } from "./components/layout"
-import { ChatInput, type ChatInputHandle } from "./components/chat/ChatInput"
-import { EventStream, EventLogViewer } from "./components/events"
-import { TaskSidebar } from "./components/tasks/TaskSidebar"
-import { TaskList } from "./components/tasks/TaskList"
+import { type ChatInputHandle } from "./components/chat/ChatInput"
+import { EventLogViewer } from "./components/events"
 import { TaskDetailsDialog } from "./components/tasks/TaskDetailsDialog"
-import { QuickTaskInput, type QuickTaskInputHandle } from "./components/tasks/QuickTaskInput"
+import { type QuickTaskInputHandle } from "./components/tasks/QuickTaskInput"
 import { type SearchInputHandle } from "./components/tasks/SearchInput"
 import {
   useAppStore,
   selectRalphStatus,
-  selectIsRalphRunning,
   selectIsConnected,
   selectTaskChatOpen,
   selectTaskChatWidth,
@@ -24,11 +21,9 @@ import {
   selectIsSearchVisible,
   selectSelectedTaskId,
   selectVisibleTaskIds,
-  selectViewingIterationIndex,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
-  useRalphConnection,
   useHotkeys,
   useTheme,
   useTasks,
