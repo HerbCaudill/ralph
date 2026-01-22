@@ -9,8 +9,5 @@ export function getAliveWorkspaces(
   /** Optional current workspace path to mark as active */
   currentPath?: string,
 ): WorkspaceInfo[] {
-  return getAvailableWorkspaces(currentPath).filter(
-    /** Filter to only include workspaces with running processes */
-    ws => isProcessRunning(ws.pid),
-  )
+  return getAvailableWorkspaces(currentPath).filter(ws => isProcessRunning(ws.pid))
 }
