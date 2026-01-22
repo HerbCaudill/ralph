@@ -1800,12 +1800,30 @@ function checkPortAvailable(host: string, port: number): Promise<boolean> {
 
 // Main entry point
 
+// Default instance constants (must match frontend store/index.ts)
+const DEFAULT_INSTANCE_ID = "default"
+const DEFAULT_INSTANCE_NAME = "Main"
+const DEFAULT_AGENT_NAME = "Ralph"
+
 export async function startServer(config: ServerConfig): Promise<void> {
   // Set the configured workspace path for use by BdProxy, RalphManager, etc.
   configuredWorkspacePath = config.workspacePath
 
   if (configuredWorkspacePath) {
     console.log(`[server] Using workspace: ${configuredWorkspacePath}`)
+  }
+
+  // Create default instance in registry if it doesn't exist
+  const registry = getRalphRegistry()
+  if (!registry.has(DEFAULT_INSTANCE_ID)) {
+    registry.create({
+      id: DEFAULT_INSTANCE_ID,
+      name: DEFAULT_INSTANCE_NAME,
+      agentName: DEFAULT_AGENT_NAME,
+      worktreePath: null,
+      branch: null,
+    })
+    console.log(`[server] Created default instance: ${DEFAULT_INSTANCE_ID}`)
   }
 
   const app = createApp(config)
