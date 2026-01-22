@@ -41,7 +41,12 @@ export function ErrorEvent({ event, className }: Props) {
   )
 }
 
+/**
+ * Props for ErrorEvent component
+ */
 type Props = {
+  /** The error event data to display */
   event: ErrorEventData
+  /** Optional CSS class to apply to the container */
   className?: string
 }
