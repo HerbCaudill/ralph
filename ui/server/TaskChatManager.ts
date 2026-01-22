@@ -10,12 +10,14 @@ import { findClaudeExecutable } from "./findClaudeExecutable.js"
  * Uses Claude Agent SDK to handle task management conversations.
  *
  * Events emitted:
- * - "message" - New message (user or assistant)
- * - "chunk" - Streaming text chunk from Claude
+ * - "event" - Raw SDK event (stream_event, assistant, user, result)
+ * - "message" - New message (user or assistant) - legacy, for existing UI
+ * - "chunk" - Streaming text chunk from Claude - legacy, for existing UI
  * - "status" - Status changed
  * - "error" - Error from SDK
- * - "tool_use" - Tool use started
- * - "tool_result" - Tool use completed
+ * - "tool_use" - Tool use started - legacy, for existing UI
+ * - "tool_update" - Tool use updated - legacy, for existing UI
+ * - "tool_result" - Tool use completed - legacy, for existing UI
  */
 export class TaskChatManager extends EventEmitter {
   private _status: TaskChatStatus = "idle"
@@ -546,10 +548,11 @@ export class TaskChatManager extends EventEmitter {
         break
     }
 
-    // Emit the event as a task chat event for compatibility
+    // Emit stream event wrapped in SDK-compatible format
     this.emit("event", {
-      ...event,
+      type: "stream_event",
       timestamp,
+      event,
     })
   }
 

@@ -593,7 +593,13 @@ describe("TaskChatManager", () => {
 
       // Should have emitted events for the SDK messages
       expect(events.length).toBeGreaterThan(0)
-      expect(events.some(e => (e as any).type === "content_block_delta")).toBe(true)
+      // Stream events are wrapped: { type: "stream_event", event: { type: "content_block_delta" } }
+      expect(
+        events.some(
+          e =>
+            (e as any).type === "stream_event" && (e as any).event?.type === "content_block_delta",
+        ),
+      ).toBe(true)
       expect(events.some(e => (e as any).type === "result")).toBe(true)
     })
   })
