@@ -1,13 +1,4 @@
 /**
- * Normalized Agent Event Types
- *
- * These types define the standard event format used to communicate
- * between agent backends (Claude CLI, Codex CLI, etc.) and consumers
- * (CLI, UI, etc.). All agent adapters translate their native events
- * into these normalized types.
- */
-
-/**
  * Base properties for all agent events.
  */
 export interface AgentEventBase {
