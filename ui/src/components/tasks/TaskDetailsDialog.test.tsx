@@ -958,7 +958,9 @@ describe("TaskDetailsDialog", () => {
       // Get all focusable elements in the expected tab order
       const titleInput = screen.getByDisplayValue("Test Task")
       const statusSelect = screen.getByRole("combobox", { name: /status/i })
-      const prioritySelect = screen.getByRole("combobox", { name: /priority/i })
+
+      // Get the priority buttons - the selected one (P2) should be tabbable
+      const selectedPriorityButton = screen.getByRole("button", { pressed: true, name: /p2/i })
 
       // Get the type buttons - the selected one (Task) should be tabbable
       const selectedTypeButton = screen.getByRole("button", { pressed: true, name: /task/i })
@@ -975,7 +977,8 @@ describe("TaskDetailsDialog", () => {
       // Verify all interactive elements have appropriate tabIndex
       expect(titleInput).not.toHaveAttribute("tabindex", "-1")
       expect(statusSelect).not.toHaveAttribute("tabindex", "-1")
-      expect(prioritySelect).not.toHaveAttribute("tabindex", "-1")
+      // Only the selected priority button should be tabbable (tabindex 0)
+      expect(selectedPriorityButton).toHaveAttribute("tabindex", "0")
       // Only the selected type button should be tabbable (tabindex 0)
       expect(selectedTypeButton).toHaveAttribute("tabindex", "0")
       expect(parentButton).not.toHaveAttribute("tabindex", "-1")
@@ -1025,6 +1028,104 @@ describe("TaskDetailsDialog", () => {
           )
         expect(taskButton).toBeInTheDocument()
       })
+    })
+
+    it("allows arrow key navigation within priority button group", async () => {
+      globalThis.fetch = createMockFetch()
+
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      // Get the priority buttons - P2 is selected by default (mockTask has priority: 2)
+      const p2Button = screen
+        .getAllByRole("button")
+        .find(btn => btn.textContent?.includes("P2") && btn.getAttribute("aria-pressed") === "true")
+      expect(p2Button).toBeInTheDocument()
+
+      // Press ArrowRight to move to P3
+      fireEvent.keyDown(p2Button!, { key: "ArrowRight" })
+
+      // Wait for state update
+      await waitFor(() => {
+        const p3Button = screen
+          .getAllByRole("button")
+          .find(
+            btn => btn.textContent?.includes("P3") && btn.getAttribute("aria-pressed") === "true",
+          )
+        expect(p3Button).toBeInTheDocument()
+      })
+
+      // Press ArrowLeft to move back to P2
+      const p3Button = screen
+        .getAllByRole("button")
+        .find(btn => btn.textContent?.includes("P3") && btn.getAttribute("aria-pressed") === "true")
+      fireEvent.keyDown(p3Button!, { key: "ArrowLeft" })
+
+      await waitFor(() => {
+        const p2Button = screen
+          .getAllByRole("button")
+          .find(
+            btn => btn.textContent?.includes("P2") && btn.getAttribute("aria-pressed") === "true",
+          )
+        expect(p2Button).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe("priority button group", () => {
+    it("autosaves priority immediately when changed", async () => {
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      // Find and click the "P1" button in the priority button bar
+      const p1Button = screen.getByRole("button", { name: /p1/i })
+      await act(async () => {
+        fireEvent.click(p1Button)
+      })
+
+      // Should save immediately (no debounce for non-text fields)
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { priority: 1 })
+      })
+    })
+
+    it("displays all priority options as buttons", async () => {
+      await renderAndWait(
+        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+      )
+
+      // Check all priority buttons are present
+      expect(screen.getByRole("button", { name: /p0/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /p1/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /p2/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /p3/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /p4/i })).toBeInTheDocument()
+    })
+
+    it("shows correct priority as selected", async () => {
+      const highPriorityTask: TaskCardTask = {
+        ...mockTask,
+        priority: 1,
+      }
+
+      await renderAndWait(
+        <TaskDetailsDialog
+          task={highPriorityTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      )
+
+      // P1 should be selected
+      const p1Button = screen.getByRole("button", { name: /p1/i })
+      expect(p1Button).toHaveAttribute("aria-pressed", "true")
+
+      // Other priority buttons should not be selected
+      const p2Button = screen.getByRole("button", { name: /p2/i })
+      expect(p2Button).toHaveAttribute("aria-pressed", "false")
     })
   })
 

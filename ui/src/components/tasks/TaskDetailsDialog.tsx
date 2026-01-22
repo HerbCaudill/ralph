@@ -567,32 +567,58 @@ export function TaskDetailsDialog({
 
           {/* Priority */}
           <div className="flex flex-col gap-1">
-            <Label htmlFor="task-priority" className="text-muted-foreground text-xs">
-              Priority
-            </Label>
+            <Label className="text-muted-foreground text-xs">Priority</Label>
             {readOnly ?
               <span className="text-sm">
                 {priorityOptions.find(p => p.value === priority)?.label ?? `P${priority}`}
               </span>
-            : <Select
-                value={String(priority)}
-                onValueChange={value => {
-                  const newPriority = Number(value)
-                  setPriority(newPriority)
-                  immediateAutosave({ ...currentValues, priority: newPriority })
-                }}
+            : <div
+                className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
+                role="group"
               >
-                <SelectTrigger id="task-priority" className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {priorityOptions.map(p => (
-                    <SelectItem key={p.value} value={String(p.value)}>
-                      {p.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {priorityOptions.map((p, index) => {
+                  const isSelected = priority === p.value
+                  const handlePriorityChange = (newPriority: number) => {
+                    setPriority(newPriority)
+                    immediateAutosave({ ...currentValues, priority: newPriority })
+                  }
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => handlePriorityChange(p.value)}
+                      tabIndex={index === 0 || isSelected ? 0 : -1}
+                      onKeyDown={e => {
+                        if (e.key === "ArrowLeft") {
+                          e.preventDefault()
+                          const currentIndex = priorityOptions.findIndex(
+                            opt => opt.value === p.value,
+                          )
+                          const prevIndex =
+                            (currentIndex - 1 + priorityOptions.length) % priorityOptions.length
+                          handlePriorityChange(priorityOptions[prevIndex].value)
+                        } else if (e.key === "ArrowRight") {
+                          e.preventDefault()
+                          const currentIndex = priorityOptions.findIndex(
+                            opt => opt.value === p.value,
+                          )
+                          const nextIndex = (currentIndex + 1) % priorityOptions.length
+                          handlePriorityChange(priorityOptions[nextIndex].value)
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center justify-center gap-1 px-2 text-xs transition-colors first:rounded-l-md last:rounded-r-md",
+                        isSelected ?
+                          cn("bg-accent text-accent-foreground", p.color)
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground",
+                      )}
+                      aria-pressed={isSelected}
+                    >
+                      <span>{p.short}</span>
+                    </button>
+                  )
+                })}
+              </div>
             }
           </div>
 
@@ -866,11 +892,11 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
 const statusOptions: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
 
 const priorityOptions = [
-  { value: 0, label: "P0 - Critical" },
-  { value: 1, label: "P1 - High" },
-  { value: 2, label: "P2 - Medium" },
-  { value: 3, label: "P3 - Low" },
-  { value: 4, label: "P4 - Lowest" },
+  { value: 0, label: "P0 - Critical", short: "P0", color: "text-red-600" },
+  { value: 1, label: "P1 - High", short: "P1", color: "text-orange-500" },
+  { value: 2, label: "P2 - Medium", short: "P2", color: "text-amber-500" },
+  { value: 3, label: "P3 - Low", short: "P3", color: "text-yellow-500" },
+  { value: 4, label: "P4 - Lowest", short: "P4", color: "text-gray-500" },
 ]
 
 type TaskDetailsDialogProps = {
