@@ -91,6 +91,7 @@ async function main() {
     PW_BASE_URL: baseURL,
     RALPH_NO_OPEN: "1",
     PW_QUIET: "1", // Use dot reporter for minimal output
+    NO_COLOR: "1", // Suppress ANSI color codes
   }
 
   const devProcess = spawn("node", ["scripts/dev.js"], {
