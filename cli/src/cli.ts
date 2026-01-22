@@ -22,85 +22,105 @@ export const program = new Command()
   .option("--watch", "watch for new beads issues after completion")
   .option("--json", "output events as newline-delimited JSON to stdout")
   .option("--agent <name>", "agent to use (e.g., claude, codex)", "claude")
-  .action((iterationsArg: number | undefined, options) => {
-    // Use dynamic default if no iterations specified
-    const iterations = iterationsArg ?? getDefaultIterations()
-    const replayFile =
-      options.replay !== undefined ?
-        typeof options.replay === "string" ?
-          options.replay
-        : getLatestLogFile()
-      : undefined
+  .action(
+    (
+      /** The number of iterations to run, or undefined to use default */
+      iterationsArg: number | undefined,
+      /** Command options */
+      options,
+    ) => {
+      const iterations = iterationsArg ?? getDefaultIterations()
+      const replayFile =
+        options.replay !== undefined ?
+          typeof options.replay === "string" ?
+            options.replay
+          : getLatestLogFile()
+        : undefined
 
-    const claudeVersion = getClaudeVersion()
-    const ralphVersion = packageJson.version
-    const watch = options.watch === true
-    const json = options.json === true
-    const agent = options.agent as string
+      const claudeVersion = getClaudeVersion()
+      const ralphVersion = packageJson.version
+      const watch = options.watch === true
+      const json = options.json === true
+      const agent = options.agent as string
 
-    // Validate agent selection
-    const validAgents = ["claude", "codex"]
-    if (!validAgents.includes(agent)) {
-      console.error(`Error: Invalid agent "${agent}". Available agents: ${validAgents.join(", ")}`)
-      process.exit(1)
-    }
+      // Validate agent selection
+      const validAgents = ["claude", "codex"]
+      if (!validAgents.includes(agent)) {
+        console.error(
+          `Error: Invalid agent "${agent}". Available agents: ${validAgents.join(", ")}`,
+        )
+        process.exit(1)
+      }
 
-    // Clear the screen on startup (skip in JSON mode)
-    if (!json) {
-      process.stdout.write("\x1B[2J\x1B[H")
-    }
+      // Clear the screen on startup (skip in JSON mode)
+      if (!json) {
+        process.stdout.write("\x1B[2J\x1B[H")
+      }
 
-    render(
-      React.createElement(App, {
-        iterations,
-        replayFile,
-        claudeVersion,
-        ralphVersion,
-        watch,
-        json,
-        agent,
-      }),
-    )
-  })
+      render(
+        React.createElement(App, {
+          iterations,
+          replayFile,
+          claudeVersion,
+          ralphVersion,
+          watch,
+          json,
+          agent,
+        }),
+      )
+    },
+  )
 
 program
   .command("init")
   .description("initialize .ralph directory with templates")
-  .action(() => {
-    render(React.createElement(InitRalph))
-  })
+  .action(
+    /** Initialize the .ralph directory with templates */
+    () => {
+      render(React.createElement(InitRalph))
+    },
+  )
 
 program
   .command("todo [description...]")
   .description("add a todo item and commit it (safe to use while ralph is running)")
-  .action(async (descriptionParts: string[]) => {
-    let description = descriptionParts.join(" ").trim()
-
-    if (!description) {
-      // Prompt for description interactively
-      const readline = await import("readline")
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      })
-
-      description = await new Promise<string>(resolve => {
-        rl.question("Todo: ", answer => {
-          rl.close()
-          resolve(answer.trim())
-        })
-      })
+  .action(
+    /**
+     * Add a todo item and commit it. If description is provided as arguments,
+     * use that; otherwise prompt interactively.
+     */
+    async (
+      /** The description parts from command arguments */
+      descriptionParts: string[],
+    ) => {
+      let description = descriptionParts.join(" ").trim()
 
       if (!description) {
-        console.error("No todo description provided")
+        // Prompt for description interactively
+        const readline = await import("readline")
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        })
+
+        description = await new Promise<string>(resolve => {
+          rl.question("Todo: ", answer => {
+            rl.close()
+            resolve(answer.trim())
+          })
+        })
+
+        if (!description) {
+          console.error("No todo description provided")
+          process.exit(1)
+        }
+      }
+
+      try {
+        addTodo(description)
+      } catch (error) {
+        console.error(`Failed to add todo: ${error instanceof Error ? error.message : error}`)
         process.exit(1)
       }
-    }
-
-    try {
-      addTodo(description)
-    } catch (error) {
-      console.error(`Failed to add todo: ${error instanceof Error ? error.message : error}`)
-      process.exit(1)
-    }
-  })
+    },
+  )
