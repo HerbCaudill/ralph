@@ -26,6 +26,7 @@ import {
   selectSelectedTaskId,
   selectVisibleTaskIds,
   selectShowReconnectionChoice,
+  selectActiveInstanceId,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -44,6 +45,7 @@ import { stopRalph } from "./lib/stopRalph"
 import { pauseRalph } from "./lib/pauseRalph"
 import { resumeRalph } from "./lib/resumeRalph"
 import { stopAfterCurrentRalph } from "./lib/stopAfterCurrentRalph"
+import { restoreIterationState, deleteIterationState } from "./lib/iterationStateApi"
 
 // API Functions (for hotkeys)
 
@@ -412,22 +414,32 @@ export function App() {
     }
   }, [selectedTaskId, taskDialog])
 
+  // Get active instance ID for reconnection handlers
+  const activeInstanceId = useAppStore(selectActiveInstanceId)
+
   // Reconnection choice handlers
-  const handleReconnectionContinue = useCallback(() => {
+  const handleReconnectionContinue = useCallback(async () => {
     // User chose to continue from where they left off
-    // The server should already have preserved the iteration state,
-    // so we just close the dialog and let the agent continue
+    // Call the restore-state endpoint to restore server-side state
+    const result = await restoreIterationState(activeInstanceId)
+    if (!result.ok) {
+      console.warn("[App] Failed to restore iteration state:", result.error)
+      // Still close the dialog - user chose to continue even if restore failed
+    }
     hideReconnectionChoiceDialog()
-  }, [hideReconnectionChoiceDialog])
+  }, [hideReconnectionChoiceDialog, activeInstanceId])
 
   const handleReconnectionStartFresh = useCallback(async () => {
-    // User chose to start fresh - stop the current iteration and clear state
+    // User chose to start fresh - delete saved state and stop iteration
+    // First delete the saved state on the server
+    await deleteIterationState(activeInstanceId)
+    // Then close the dialog
     hideReconnectionChoiceDialog()
     // If Ralph is running, stop it to discard partial state
     if (ralphStatus === "running" || ralphStatus === "paused") {
       await stopRalph()
     }
-  }, [hideReconnectionChoiceDialog, ralphStatus])
+  }, [hideReconnectionChoiceDialog, ralphStatus, activeInstanceId])
 
   // Register hotkeys
   useHotkeys({

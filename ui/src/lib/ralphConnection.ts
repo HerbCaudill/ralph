@@ -5,6 +5,7 @@
 
 import { useAppStore } from "../store"
 import { isRalphStatus } from "../store"
+import { checkForSavedIterationState } from "./iterationStateApi"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -498,10 +499,24 @@ function connect(): void {
     resetReconnectState() // Reset backoff on successful connection
 
     // Check if we need to show the reconnection choice dialog
-    // This happens when we reconnect after losing connection while Ralph was running
+    // This happens in two cases:
+    // 1. We reconnect after losing connection while Ralph was running (in-memory state)
+    // 2. We have saved iteration state on the server (survives page reloads)
     const store = useAppStore.getState()
     if (store.wasRunningBeforeDisconnect) {
+      // In-memory state says Ralph was running - show dialog immediately
       store.showReconnectionChoiceDialog()
+    } else {
+      // Check server for saved iteration state (handles page reload case)
+      checkForSavedIterationState().then(savedState => {
+        if (savedState) {
+          // Found recent saved state on server - show reconnection choice
+          console.log(
+            `[ralphConnection] Found saved iteration state from ${new Date(savedState.savedAt).toLocaleTimeString()}`,
+          )
+          useAppStore.getState().showReconnectionChoiceDialog()
+        }
+      })
     }
   }
 

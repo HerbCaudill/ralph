@@ -1,0 +1,162 @@
+/**
+ * Client-side API for iteration state management.
+ * Used for saving and restoring iteration context across page reloads and reconnections.
+ */
+
+import { useAppStore } from "../store"
+
+/** Saved iteration state from the server */
+export interface IterationState {
+  instanceId: string
+  status: string
+  currentTaskId: string | null
+  savedAt: number
+  conversationContext: {
+    messages: Array<{ role: string; content: unknown }>
+    sessionId?: string
+  }
+}
+
+/** Response from GET /api/ralph/:instanceId/iteration-state */
+interface GetIterationStateResponse {
+  ok: boolean
+  state?: IterationState
+  error?: string
+}
+
+/** Response from POST /api/ralph/:instanceId/restore-state */
+interface RestoreStateResponse {
+  ok: boolean
+  restored?: {
+    instanceId: string
+    status: string
+    currentTaskId: string | null
+    savedAt: number
+    messageCount: number
+  }
+  error?: string
+}
+
+/** Response from DELETE /api/ralph/:instanceId/iteration-state */
+interface DeleteIterationStateResponse {
+  ok: boolean
+  error?: string
+}
+
+/** Maximum age (in milliseconds) for a saved state to be considered recent */
+const MAX_STATE_AGE_MS = 60 * 60 * 1000 // 1 hour
+
+/**
+ * Fetch saved iteration state for an instance.
+ * Returns null if no state exists or it's too old.
+ */
+export async function getIterationState(instanceId: string): Promise<IterationState | null> {
+  try {
+    const response = await fetch(`/api/ralph/${encodeURIComponent(instanceId)}/iteration-state`)
+
+    if (response.status === 404) {
+      // No saved state - this is normal
+      return null
+    }
+
+    if (!response.ok) {
+      console.warn(`[iterationStateApi] Failed to fetch iteration state: ${response.status}`)
+      return null
+    }
+
+    const data: GetIterationStateResponse = await response.json()
+
+    if (!data.ok || !data.state) {
+      return null
+    }
+
+    // Check if the state is recent enough to be useful
+    const stateAge = Date.now() - data.state.savedAt
+    if (stateAge > MAX_STATE_AGE_MS) {
+      console.log(
+        `[iterationStateApi] Saved state is too old (${Math.round(stateAge / 1000 / 60)} minutes), ignoring`,
+      )
+      return null
+    }
+
+    return data.state
+  } catch (err) {
+    console.error("[iterationStateApi] Error fetching iteration state:", err)
+    return null
+  }
+}
+
+/**
+ * Restore iteration state on the server (updates current task tracking etc.)
+ * This should be called when the user chooses "Continue" in the reconnection dialog.
+ */
+export async function restoreIterationState(
+  instanceId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/ralph/${encodeURIComponent(instanceId)}/restore-state`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+
+    const data: RestoreStateResponse = await response.json()
+
+    if (!data.ok) {
+      return { ok: false, error: data.error ?? "Failed to restore state" }
+    }
+
+    console.log(
+      `[iterationStateApi] Restored state for ${instanceId}: ${data.restored?.messageCount} messages`,
+    )
+    return { ok: true }
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Unknown error restoring state"
+    console.error("[iterationStateApi] Error restoring state:", err)
+    return { ok: false, error }
+  }
+}
+
+/**
+ * Delete saved iteration state.
+ * This should be called when the user chooses "Start Fresh" in the reconnection dialog.
+ */
+export async function deleteIterationState(
+  instanceId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/ralph/${encodeURIComponent(instanceId)}/iteration-state`, {
+      method: "DELETE",
+    })
+
+    if (response.status === 404) {
+      // No state to delete - this is fine
+      return { ok: true }
+    }
+
+    const data: DeleteIterationStateResponse = await response.json()
+
+    if (!data.ok) {
+      return { ok: false, error: data.error ?? "Failed to delete state" }
+    }
+
+    console.log(`[iterationStateApi] Deleted saved state for ${instanceId}`)
+    return { ok: true }
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Unknown error deleting state"
+    console.error("[iterationStateApi] Error deleting state:", err)
+    return { ok: false, error }
+  }
+}
+
+/**
+ * Check if there's a recent saved iteration state that can be restored.
+ * This is called on reconnection to determine whether to show the ReconnectionChoiceDialog.
+ *
+ * The function checks the active instance by default, but can check a specific instance.
+ */
+export async function checkForSavedIterationState(
+  instanceId?: string,
+): Promise<IterationState | null> {
+  const targetInstanceId = instanceId ?? useAppStore.getState().activeInstanceId
+  return getIterationState(targetInstanceId)
+}
