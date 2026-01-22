@@ -3,6 +3,10 @@ import { IterationRunner } from "./IterationRunner.js"
 import { ReplayLog } from "./ReplayLog.js"
 import { JsonOutput } from "./JsonOutput.js"
 
+/**
+ * Root application component that routes to the appropriate mode based on props.
+ * Supports replay mode, JSON output mode, and normal iteration mode.
+ */
 export const App = ({
   iterations,
   replayFile,
