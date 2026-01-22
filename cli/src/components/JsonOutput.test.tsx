@@ -1,20 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
 
-/**
- * Integration tests for JsonOutput task tracking.
- *
- * These tests verify that the parseTaskLifecycleEvent function correctly
- * detects task lifecycle events from assistant messages.
- *
- * Full integration testing of JsonOutput would require:
- * - Mocking the Claude SDK's query function
- * - Mocking file system operations
- * - Testing React component rendering with ink-testing-library
- *
- * For now, we test the task detection logic in isolation.
- */
-
 describe("JsonOutput task tracking", () => {
   it("detects task start events", () => {
     const text = "<start_task>r-abc1</start_task>"
