@@ -2,7 +2,7 @@
 
 ## Build and test
 
-Run this command to check for errors:
+Use the **run-tests** agent to check for errors. The test command for this project is:
 
 ```bash
 pnpm test:all
@@ -30,16 +30,17 @@ If a task will take more than a few minutes of focused work, break it into subta
 Before completing a task:
 
 1. Run `pnpm format` to format code
-2. Run `pnpm test:all && pnpm build` to verify everything works
-3. Add tests where applicable
-4. Update CLAUDE.md or README.md with relevant changes
+2. Use the **run-tests** agent to verify everything works
+3. Use the **make-tests** agent to add tests where applicable
+4. Use the **write-docs** agent to update CLAUDE.md or README.md with relevant changes
 5. Commit and push your changes (only files you modified)
 
 ## When to delegate
 
-Consider delegating to subagents for:
+Delegate to subagents for:
 
-- **Test writing**: When adding tests for existing code, use the make-tests agent
-- **Documentation**: When documenting APIs or adding README sections, use the write-docs agent
+- **Running tests**: Use the run-tests agent to check builds and get summarized failure info
+- **Writing tests**: Use the make-tests agent to generate tests for new or existing code
+- **Documentation**: Use the write-docs agent to document APIs or update README sections
 
-These run on faster/cheaper models and let you focus on the core implementation work.
+These run on faster/cheaper models and keep verbose output out of your context.
