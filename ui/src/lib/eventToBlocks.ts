@@ -1,12 +1,3 @@
-/**
- * eventToBlocks - Converts normalized AgentEvents to display blocks
- *
- * This module processes the normalized AgentEvent format (from AgentAdapter)
- * and converts them into display-friendly blocks for the UI. Since events are
- * pre-normalized by the adapter, this is simpler than the previous approach
- * of parsing raw SDK events.
- */
-
 import type {
   AgentEvent,
   AgentMessageEvent,
@@ -17,8 +8,6 @@ import type {
   AgentStatusEvent,
 } from "../../server/AgentAdapter.js"
 import type { AssistantTextEvent, ToolUseEvent, ToolName } from "@/types"
-
-// Display Block Types
 
 /**
  * A text message from the assistant (rendered as markdown)
@@ -68,8 +57,9 @@ export interface StatusBlock {
  */
 export type DisplayBlock = TextBlock | ToolUseBlock | ErrorBlock | StatusBlock
 
-// Conversion State
-
+/**
+ * State for tracking pending tool uses and streaming message content.
+ */
 interface ConversionState {
   /** Map of tool use ID to pending tool use info */
   pendingToolUses: Map<string, { tool: string; input: Record<string, unknown>; timestamp: number }>
@@ -79,6 +69,9 @@ interface ConversionState {
   isStreaming: boolean
 }
 
+/**
+ * Create a fresh conversion state with empty tracking data.
+ */
 function createInitialState(): ConversionState {
   return {
     pendingToolUses: new Map(),
@@ -87,50 +80,59 @@ function createInitialState(): ConversionState {
   }
 }
 
-// Event Type Guards
-
+/**
+ * Type guard for message events.
+ */
 export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
   return event.type === "message"
 }
 
+/**
+ * Type guard for tool use events.
+ */
 export function isAgentToolUseEvent(event: AgentEvent): event is AgentToolUseEvent {
   return event.type === "tool_use"
 }
 
+/**
+ * Type guard for tool result events.
+ */
 export function isAgentToolResultEvent(event: AgentEvent): event is AgentToolResultEvent {
   return event.type === "tool_result"
 }
 
+/**
+ * Type guard for result events.
+ */
 export function isAgentResultEvent(event: AgentEvent): event is AgentResultEvent {
   return event.type === "result"
 }
 
+/**
+ * Type guard for error events.
+ */
 export function isAgentErrorEvent(event: AgentEvent): event is AgentErrorEvent {
   return event.type === "error"
 }
 
+/**
+ * Type guard for status events.
+ */
 export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent {
   return event.type === "status"
 }
-
-// Main Conversion Function
 
 /**
  * Convert a stream of AgentEvents to display blocks.
  *
  * This function processes normalized events and produces display-ready blocks.
- * It handles:
- * - Streaming text messages (accumulating partial content)
- * - Tool uses and their results (matching by toolUseId)
- * - Error events
- * - Status changes (optional, for debugging)
- *
- * @param events - Array of normalized AgentEvents
- * @param options - Conversion options
- * @returns Array of display blocks
+ * It handles streaming text messages, tool uses with results, error events,
+ * and optional status changes for debugging.
  */
 export function eventToBlocks(
+  /** Array of normalized AgentEvents */
   events: AgentEvent[],
+  /** Conversion options */
   options: { includeStatusEvents?: boolean } = {},
 ): DisplayBlock[] {
   const { includeStatusEvents = false } = options
@@ -155,11 +157,14 @@ export function eventToBlocks(
 }
 
 /**
- * Process a single event and return any blocks it produces
+ * Process a single event and return any blocks it produces.
  */
 function processEvent(
+  /** The event to process */
   event: AgentEvent,
+  /** The current conversion state */
   state: ConversionState,
+  /** Conversion options */
   options: { includeStatusEvents: boolean },
 ): DisplayBlock[] {
   const blocks: DisplayBlock[] = []
@@ -255,12 +260,13 @@ function processEvent(
   return blocks
 }
 
-// Conversion to Legacy Event Types
-
 /**
- * Convert a TextBlock to AssistantTextEvent for existing component compatibility
+ * Convert a TextBlock to AssistantTextEvent for existing component compatibility.
  */
-export function toAssistantTextEvent(block: TextBlock): AssistantTextEvent {
+export function toAssistantTextEvent(
+  /** The text block to convert */
+  block: TextBlock,
+): AssistantTextEvent {
   return {
     type: "text",
     timestamp: block.timestamp,
@@ -269,9 +275,12 @@ export function toAssistantTextEvent(block: TextBlock): AssistantTextEvent {
 }
 
 /**
- * Convert a ToolUseBlock to ToolUseEvent for existing component compatibility
+ * Convert a ToolUseBlock to ToolUseEvent for existing component compatibility.
  */
-export function toToolUseEvent(block: ToolUseBlock): ToolUseEvent {
+export function toToolUseEvent(
+  /** The tool use block to convert */
+  block: ToolUseBlock,
+): ToolUseEvent {
   return {
     type: "tool_use",
     timestamp: block.timestamp,
@@ -283,29 +292,36 @@ export function toToolUseEvent(block: ToolUseBlock): ToolUseEvent {
   }
 }
 
-// Streaming State Helper
-
 /**
- * State for incremental event processing (useful for real-time updates)
+ * Stateful converter for incremental event processing (useful for real-time updates).
  */
 export class EventBlockConverter {
   private state: ConversionState
   private options: { includeStatusEvents: boolean }
 
-  constructor(options: { includeStatusEvents?: boolean } = {}) {
+  /**
+   * Initialize a new converter with optional settings.
+   */
+  constructor(
+    /** Converter options */
+    options: { includeStatusEvents?: boolean } = {},
+  ) {
     this.state = createInitialState()
     this.options = { includeStatusEvents: options.includeStatusEvents ?? false }
   }
 
   /**
-   * Process a single event and return any new blocks
+   * Process a single event and return any new blocks.
    */
-  processEvent(event: AgentEvent): DisplayBlock[] {
+  processEvent(
+    /** The event to process */
+    event: AgentEvent,
+  ): DisplayBlock[] {
     return processEvent(event, this.state, this.options)
   }
 
   /**
-   * Get any pending streaming content as a text block
+   * Get any pending streaming content as a text block.
    */
   getStreamingBlock(): TextBlock | null {
     if (this.state.currentMessageContent.trim()) {
@@ -319,7 +335,7 @@ export class EventBlockConverter {
   }
 
   /**
-   * Get all pending tool uses that haven't received results yet
+   * Get all pending tool uses that haven't received results yet.
    */
   getPendingToolUses(): ToolUseBlock[] {
     const blocks: ToolUseBlock[] = []
@@ -337,22 +353,22 @@ export class EventBlockConverter {
   }
 
   /**
-   * Reset the converter state
+   * Reset the converter state.
    */
   reset(): void {
     this.state = createInitialState()
   }
 }
 
-// Merging Helper for Tool Results
-
 /**
- * Merge tool results into existing blocks (for UI that keeps blocks in state)
+ * Merge tool results into existing blocks (for UI that keeps blocks in state).
  *
- * When a tool_result event comes in, find the matching tool_use block and update it
+ * When a tool_result event comes in, find the matching tool_use block and update it.
  */
 export function mergeToolResult(
+  /** The blocks to update */
   blocks: DisplayBlock[],
+  /** The result event to merge */
   result: AgentToolResultEvent,
 ): DisplayBlock[] {
   return blocks.map(block => {

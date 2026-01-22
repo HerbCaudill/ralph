@@ -1,9 +1,4 @@
-/**
- * Converts ANSI escape codes in terminal output to styled HTML spans.
- * Supports standard 16 colors, 256 colors, and true color (RGB) modes.
- */
-
-// ANSI color name to CSS color mapping
+/** ANSI color name to CSS color mapping */
 const STANDARD_COLORS: Record<string, string> = {
   "30": "#000000", // black
   "31": "#cd0000", // red
@@ -23,6 +18,7 @@ const STANDARD_COLORS: Record<string, string> = {
   "97": "#ffffff", // bright white
 }
 
+/** ANSI background color name to CSS color mapping */
 const BG_COLORS: Record<string, string> = {
   "40": "#000000",
   "41": "#cd0000",
@@ -42,8 +38,14 @@ const BG_COLORS: Record<string, string> = {
   "107": "#ffffff",
 }
 
-// 256-color palette (colors 16-231 are a 6x6x6 color cube, 232-255 are grayscale)
-function get256Color(n: number): string {
+/**
+ * Get the hex color for a 256-color ANSI code.
+ * Colors 16-231 are a 6x6x6 color cube, 232-255 are grayscale.
+ */
+function get256Color(
+  /** The color index (0-255) */
+  n: number,
+): string {
   if (n < 16) {
     // Standard colors 0-15
     const standardMap: Record<number, string> = {
@@ -84,6 +86,7 @@ function get256Color(n: number): string {
   }
 }
 
+/** State tracking ANSI text formatting attributes */
 interface AnsiState {
   color?: string
   bgColor?: string
@@ -93,7 +96,13 @@ interface AnsiState {
   underline?: boolean
 }
 
-function parseAnsiCodes(codes: string): Partial<AnsiState> {
+/**
+ * Parse ANSI escape codes and return the state changes they represent.
+ */
+function parseAnsiCodes(
+  /** Space-separated ANSI codes */
+  codes: string,
+): Partial<AnsiState> {
   const parts = codes.split(";").map(c => parseInt(c, 10))
   const state: Partial<AnsiState> = {}
 
@@ -168,7 +177,13 @@ function parseAnsiCodes(codes: string): Partial<AnsiState> {
   return state
 }
 
-function stateToStyle(state: AnsiState): string {
+/**
+ * Convert ANSI state to inline CSS style string.
+ */
+function stateToStyle(
+  /** The current ANSI state */
+  state: AnsiState,
+): string {
   const styles: string[] = []
   if (state.color) styles.push(`color:${state.color}`)
   if (state.bgColor) styles.push(`background-color:${state.bgColor}`)
@@ -179,7 +194,13 @@ function stateToStyle(state: AnsiState): string {
   return styles.join(";")
 }
 
-function escapeHtml(str: string): string {
+/**
+ * Escape HTML special characters to prevent injection.
+ */
+function escapeHtml(
+  /** The string to escape */
+  str: string,
+): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -190,10 +211,12 @@ function escapeHtml(str: string): string {
 
 /**
  * Converts a string containing ANSI escape codes to HTML with inline styles.
- * @param input The string with ANSI escape codes
- * @returns HTML string with styled spans
+ * Supports standard 16 colors, 256 colors, and true color (RGB) modes.
  */
-export function ansiToHtml(input: string): string {
+export function ansiToHtml(
+  /** The string with ANSI escape codes */
+  input: string,
+): string {
   // ANSI escape sequence regex: ESC [ ... m
   const ansiRegex = /\x1b\[([0-9;]*)m/g
 
@@ -252,18 +275,20 @@ export function ansiToHtml(input: string): string {
 
 /**
  * Strips ANSI escape codes from a string.
- * @param input The string with ANSI escape codes
- * @returns Plain text without ANSI codes
  */
-export function stripAnsi(input: string): string {
+export function stripAnsi(
+  /** The string with ANSI escape codes */
+  input: string,
+): string {
   return input.replace(/\x1b\[[0-9;]*m/g, "")
 }
 
 /**
  * Checks if a string contains ANSI escape codes.
- * @param input The string to check
- * @returns true if the string contains ANSI codes
  */
-export function hasAnsiCodes(input: string): boolean {
+export function hasAnsiCodes(
+  /** The string to check */
+  input: string,
+): boolean {
   return /\x1b\[/.test(input)
 }

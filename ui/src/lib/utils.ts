@@ -1,4 +1,3 @@
-// Re-export all utility functions from their individual modules
 export { ansiToHtml, stripAnsi, hasAnsiCodes } from "./ansiToHtml"
 export { cn } from "./cn"
 export { getContrastingColor } from "./getContrastingColor"
