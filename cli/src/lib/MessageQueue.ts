@@ -18,7 +18,10 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
    * Push a message to the queue. If there are pending resolvers waiting for the next message,
    * resolve immediately. Otherwise, add to queue.
    */
-  push(message: SDKUserMessage): void {
+  push(
+    /** The message to push to the queue */
+    message: SDKUserMessage,
+  ): void {
     const messagePreview = this.getMessagePreview(message)
     log(`push() called with message: ${messagePreview}`)
 
@@ -59,7 +62,10 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
   /**
    * Get a preview string of a message for debug logging.
    */
-  private getMessagePreview(message: SDKUserMessage): string {
+  private getMessagePreview(
+    /** The message to extract a preview from */
+    message: SDKUserMessage,
+  ): string {
     const content = message.message?.content
     if (Array.isArray(content) && content.length > 0) {
       const firstBlock = content[0]
