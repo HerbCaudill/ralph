@@ -571,29 +571,94 @@ export const useAppStore = create<AppState & AppActions>(set => ({
 
   // Ralph status
   setRalphStatus: status =>
-    set(state => ({
-      ralphStatus: status,
-      // Set runStartedAt when transitioning to running, clear when stopped
-      runStartedAt:
-        status === "running" && state.ralphStatus !== "running" ? Date.now()
-        : status === "stopped" ? null
-        : state.runStartedAt,
-      // Set initialTaskCount when transitioning to running, clear when stopped
-      initialTaskCount:
-        status === "running" && state.ralphStatus !== "running" ? state.tasks.length
-        : status === "stopped" ? null
-        : state.initialTaskCount,
-    })),
+    set(state => {
+      const now = Date.now()
+      const isTransitioningToRunning = status === "running" && state.ralphStatus !== "running"
+      const isStopping = status === "stopped"
+
+      // Calculate new runStartedAt
+      const newRunStartedAt =
+        isTransitioningToRunning ? now
+        : isStopping ? null
+        : state.runStartedAt
+
+      // Calculate new initialTaskCount
+      const newInitialTaskCount =
+        isTransitioningToRunning ? state.tasks.length
+        : isStopping ? null
+        : state.initialTaskCount
+
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          status,
+          runStartedAt: newRunStartedAt,
+        })
+      }
+
+      return {
+        ralphStatus: status,
+        runStartedAt: newRunStartedAt,
+        initialTaskCount: newInitialTaskCount,
+        instances: updatedInstances,
+      }
+    }),
 
   // Events
   addEvent: event =>
-    set(state => ({
-      events: [...state.events, event],
-    })),
+    set(state => {
+      const newEvents = [...state.events, event]
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          events: newEvents,
+        })
+      }
+      return {
+        events: newEvents,
+        instances: updatedInstances,
+      }
+    }),
 
-  setEvents: events => set({ events }),
+  setEvents: events =>
+    set(state => {
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          events,
+        })
+      }
+      return {
+        events,
+        instances: updatedInstances,
+      }
+    }),
 
-  clearEvents: () => set({ events: [] }),
+  clearEvents: () =>
+    set(state => {
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          events: [],
+        })
+      }
+      return {
+        events: [],
+        instances: updatedInstances,
+      }
+    }),
 
   // Tasks
   setTasks: tasks => set({ tasks }),
@@ -625,29 +690,48 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   // Workspace
   setWorkspace: workspace => set({ workspace }),
   clearWorkspaceData: () =>
-    set({
-      // Clear tasks immediately to avoid showing stale data
-      tasks: [],
-      // Clear events and iteration state
-      events: [],
-      viewingIterationIndex: null,
-      // Reset token and context window usage
-      tokenUsage: { input: 0, output: 0 },
-      contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-      iteration: { current: 0, total: 0 },
-      // Reset run state
-      runStartedAt: null,
-      initialTaskCount: null,
-      // Clear task chat messages and tool uses
-      taskChatMessages: [],
-      taskChatToolUses: [],
-      taskChatLoading: false,
-      taskChatStreamingText: "",
-      // Clear event log viewer state
-      viewingEventLogId: null,
-      viewingEventLog: null,
-      eventLogLoading: false,
-      eventLogError: null,
+    set(state => {
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          events: [],
+          tokenUsage: { input: 0, output: 0 },
+          contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+          iteration: { current: 0, total: 0 },
+          runStartedAt: null,
+          status: "stopped",
+        })
+      }
+      return {
+        // Clear tasks immediately to avoid showing stale data
+        tasks: [],
+        // Clear events and iteration state
+        events: [],
+        viewingIterationIndex: null,
+        // Reset token and context window usage
+        tokenUsage: { input: 0, output: 0 },
+        contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+        iteration: { current: 0, total: 0 },
+        // Reset run state
+        runStartedAt: null,
+        initialTaskCount: null,
+        ralphStatus: "stopped" as const,
+        // Clear task chat messages and tool uses
+        taskChatMessages: [],
+        taskChatToolUses: [],
+        taskChatLoading: false,
+        taskChatStreamingText: "",
+        // Clear event log viewer state
+        viewingEventLogId: null,
+        viewingEventLog: null,
+        eventLogLoading: false,
+        eventLogError: null,
+        // Updated instances Map
+        instances: updatedInstances,
+      }
     }),
 
   // Accent color
@@ -660,24 +744,95 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   setIssuePrefix: prefix => set({ issuePrefix: prefix }),
 
   // Token usage
-  setTokenUsage: usage => set({ tokenUsage: usage }),
+  setTokenUsage: usage =>
+    set(state => {
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          tokenUsage: usage,
+        })
+      }
+      return {
+        tokenUsage: usage,
+        instances: updatedInstances,
+      }
+    }),
   addTokenUsage: usage =>
-    set(state => ({
-      tokenUsage: {
+    set(state => {
+      const newTokenUsage = {
         input: state.tokenUsage.input + usage.input,
         output: state.tokenUsage.output + usage.output,
-      },
-    })),
+      }
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          tokenUsage: newTokenUsage,
+        })
+      }
+      return {
+        tokenUsage: newTokenUsage,
+        instances: updatedInstances,
+      }
+    }),
 
   // Context window
-  setContextWindow: contextWindow => set({ contextWindow }),
+  setContextWindow: contextWindow =>
+    set(state => {
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          contextWindow,
+        })
+      }
+      return {
+        contextWindow,
+        instances: updatedInstances,
+      }
+    }),
   updateContextWindowUsed: used =>
-    set(state => ({
-      contextWindow: { ...state.contextWindow, used },
-    })),
+    set(state => {
+      const newContextWindow = { ...state.contextWindow, used }
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          contextWindow: newContextWindow,
+        })
+      }
+      return {
+        contextWindow: newContextWindow,
+        instances: updatedInstances,
+      }
+    }),
 
   // Iteration
-  setIteration: iteration => set({ iteration }),
+  setIteration: iteration =>
+    set(state => {
+      // Update active instance in the instances Map
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      const updatedInstances = new Map(state.instances)
+      if (activeInstance) {
+        updatedInstances.set(state.activeInstanceId, {
+          ...activeInstance,
+          iteration,
+        })
+      }
+      return {
+        iteration,
+        instances: updatedInstances,
+      }
+    }),
 
   // Connection
   setConnectionStatus: status => set({ connectionStatus: status }),
@@ -837,18 +992,41 @@ export const selectInstance = (state: AppState, instanceId: string) =>
   state.instances.get(instanceId) ?? null
 export const selectInstanceCount = (state: AppState) => state.instances.size
 
-// Legacy selectors (use active instance)
-export const selectRalphStatus = (state: AppState) => state.ralphStatus
-export const selectRunStartedAt = (state: AppState) => state.runStartedAt
+// Legacy selectors (delegate to active instance)
+// These selectors read from the active instance for backward compatibility.
+// The flat fields on AppState are kept in sync via actions for components that
+// read directly from state, but selectors should be preferred.
+// Note: These selectors are defensive and fall back to flat fields if instances
+// is not available (e.g., in tests with partial mock state).
+export const selectRalphStatus = (state: AppState) => {
+  const activeInstance = state.instances?.get(state.activeInstanceId)
+  return activeInstance?.status ?? state.ralphStatus
+}
+export const selectRunStartedAt = (state: AppState) => {
+  const activeInstance = state.instances?.get(state.activeInstanceId)
+  return activeInstance?.runStartedAt ?? state.runStartedAt
+}
 export const selectInitialTaskCount = (state: AppState) => state.initialTaskCount
-export const selectEvents = (state: AppState) => state.events
+export const selectEvents = (state: AppState) => {
+  const activeInstance = state.instances?.get(state.activeInstanceId)
+  return activeInstance?.events ?? state.events
+}
 export const selectTasks = (state: AppState) => state.tasks
 export const selectWorkspace = (state: AppState) => state.workspace
 export const selectBranch = (state: AppState) => state.branch
 export const selectIssuePrefix = (state: AppState) => state.issuePrefix
-export const selectTokenUsage = (state: AppState) => state.tokenUsage
-export const selectContextWindow = (state: AppState) => state.contextWindow
-export const selectIteration = (state: AppState) => state.iteration
+export const selectTokenUsage = (state: AppState) => {
+  const activeInstance = state.instances?.get(state.activeInstanceId)
+  return activeInstance?.tokenUsage ?? state.tokenUsage
+}
+export const selectContextWindow = (state: AppState) => {
+  const activeInstance = state.instances?.get(state.activeInstanceId)
+  return activeInstance?.contextWindow ?? state.contextWindow
+}
+export const selectIteration = (state: AppState) => {
+  const activeInstance = state.instances?.get(state.activeInstanceId)
+  return activeInstance?.iteration ?? state.iteration
+}
 export const selectConnectionStatus = (state: AppState) => state.connectionStatus
 export const selectIsConnected = (state: AppState) => state.connectionStatus === "connected"
 export const selectIsRalphRunning = (state: AppState) => state.ralphStatus === "running"

@@ -25,6 +25,13 @@ import {
   selectActiveInstance,
   selectInstance,
   selectInstanceCount,
+  // Delegating selectors
+  selectRalphStatus,
+  selectRunStartedAt,
+  selectEvents,
+  selectTokenUsage,
+  selectContextWindow,
+  selectIteration,
 } from "./index"
 import type { RalphEvent, Task, TaskChatMessage } from "@/types"
 
@@ -185,6 +192,196 @@ describe("useAppStore", () => {
     it("selectInstanceCount returns number of instances", () => {
       const state = useAppStore.getState()
       expect(selectInstanceCount(state)).toBe(1)
+    })
+  })
+
+  describe("flat field delegation to active instance", () => {
+    it("setRalphStatus updates active instance status", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.status).toBe("running")
+    })
+
+    it("setRalphStatus updates active instance runStartedAt when transitioning to running", () => {
+      const before = Date.now()
+      useAppStore.getState().setRalphStatus("running")
+      const after = Date.now()
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.runStartedAt).toBeGreaterThanOrEqual(before)
+      expect(activeInstance?.runStartedAt).toBeLessThanOrEqual(after)
+    })
+
+    it("setRalphStatus clears active instance runStartedAt when stopped", () => {
+      useAppStore.getState().setRalphStatus("running")
+      let state = useAppStore.getState()
+      expect(state.instances.get(state.activeInstanceId)?.runStartedAt).not.toBeNull()
+
+      useAppStore.getState().setRalphStatus("stopped")
+      state = useAppStore.getState()
+      expect(state.instances.get(state.activeInstanceId)?.runStartedAt).toBeNull()
+    })
+
+    it("addEvent updates active instance events", () => {
+      const event = { type: "test", timestamp: 12345 }
+      useAppStore.getState().addEvent(event)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.events).toHaveLength(1)
+      expect(activeInstance?.events[0]).toEqual(event)
+    })
+
+    it("setEvents updates active instance events", () => {
+      const events = [
+        { type: "first", timestamp: 1 },
+        { type: "second", timestamp: 2 },
+      ]
+      useAppStore.getState().setEvents(events)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.events).toHaveLength(2)
+      expect(activeInstance?.events).toEqual(events)
+    })
+
+    it("clearEvents clears active instance events", () => {
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
+      let state = useAppStore.getState()
+      expect(state.instances.get(state.activeInstanceId)?.events).toHaveLength(1)
+
+      useAppStore.getState().clearEvents()
+      state = useAppStore.getState()
+      expect(state.instances.get(state.activeInstanceId)?.events).toEqual([])
+    })
+
+    it("setTokenUsage updates active instance tokenUsage", () => {
+      const usage = { input: 1000, output: 500 }
+      useAppStore.getState().setTokenUsage(usage)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual(usage)
+    })
+
+    it("addTokenUsage updates active instance tokenUsage", () => {
+      useAppStore.getState().addTokenUsage({ input: 100, output: 50 })
+      useAppStore.getState().addTokenUsage({ input: 200, output: 100 })
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual({ input: 300, output: 150 })
+    })
+
+    it("setContextWindow updates active instance contextWindow", () => {
+      const contextWindow = { used: 50000, max: 200000 }
+      useAppStore.getState().setContextWindow(contextWindow)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.contextWindow).toEqual(contextWindow)
+    })
+
+    it("updateContextWindowUsed updates active instance contextWindow", () => {
+      useAppStore.getState().updateContextWindowUsed(75000)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.contextWindow.used).toBe(75000)
+    })
+
+    it("setIteration updates active instance iteration", () => {
+      const iteration = { current: 3, total: 10 }
+      useAppStore.getState().setIteration(iteration)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.iteration).toEqual(iteration)
+    })
+
+    it("clearWorkspaceData resets active instance state", () => {
+      // Set up various state
+      useAppStore.getState().setRalphStatus("running")
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
+      useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
+      useAppStore.getState().setIteration({ current: 5, total: 10 })
+
+      // Verify state was set
+      let state = useAppStore.getState()
+      let instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.status).toBe("running")
+      expect(instance?.events).toHaveLength(1)
+      expect(instance?.tokenUsage.input).toBe(1000)
+
+      // Clear workspace data
+      useAppStore.getState().clearWorkspaceData()
+
+      // Verify instance was reset
+      state = useAppStore.getState()
+      instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.status).toBe("stopped")
+      expect(instance?.events).toEqual([])
+      expect(instance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(instance?.contextWindow).toEqual({ used: 0, max: 200_000 })
+      expect(instance?.iteration).toEqual({ current: 0, total: 0 })
+      expect(instance?.runStartedAt).toBeNull()
+    })
+  })
+
+  describe("delegating selectors read from active instance", () => {
+    it("selectRalphStatus reads from active instance", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      expect(selectRalphStatus(state)).toBe("running")
+      // Verify it matches the instance
+      expect(selectRalphStatus(state)).toBe(state.instances.get(state.activeInstanceId)?.status)
+    })
+
+    it("selectRunStartedAt reads from active instance", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      const runStartedAt = selectRunStartedAt(state)
+      expect(runStartedAt).not.toBeNull()
+      expect(runStartedAt).toBe(state.instances.get(state.activeInstanceId)?.runStartedAt)
+    })
+
+    it("selectEvents reads from active instance", () => {
+      const events = [
+        { type: "first", timestamp: 1 },
+        { type: "second", timestamp: 2 },
+      ]
+      useAppStore.getState().setEvents(events)
+      const state = useAppStore.getState()
+      expect(selectEvents(state)).toEqual(events)
+      expect(selectEvents(state)).toBe(state.instances.get(state.activeInstanceId)?.events)
+    })
+
+    it("selectTokenUsage reads from active instance", () => {
+      const usage = { input: 1000, output: 500 }
+      useAppStore.getState().setTokenUsage(usage)
+      const state = useAppStore.getState()
+      expect(selectTokenUsage(state)).toEqual(usage)
+      expect(selectTokenUsage(state)).toBe(state.instances.get(state.activeInstanceId)?.tokenUsage)
+    })
+
+    it("selectContextWindow reads from active instance", () => {
+      const contextWindow = { used: 50000, max: 200000 }
+      useAppStore.getState().setContextWindow(contextWindow)
+      const state = useAppStore.getState()
+      expect(selectContextWindow(state)).toEqual(contextWindow)
+      expect(selectContextWindow(state)).toBe(
+        state.instances.get(state.activeInstanceId)?.contextWindow,
+      )
+    })
+
+    it("selectIteration reads from active instance", () => {
+      const iteration = { current: 5, total: 10 }
+      useAppStore.getState().setIteration(iteration)
+      const state = useAppStore.getState()
+      expect(selectIteration(state)).toEqual(iteration)
+      expect(selectIteration(state)).toBe(state.instances.get(state.activeInstanceId)?.iteration)
     })
   })
 
