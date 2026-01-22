@@ -1,19 +1,25 @@
 import { describe, it, expect } from "vitest"
 
-// Note: Full integration testing of IterationRunner would require:
-// 1. Mocking child_process.spawn to simulate Claude CLI
-// 2. Mocking file system operations
-// 3. Testing React component rendering with ink-testing-library
-//
-// The getPromptContent function has been moved to its own module (../lib/getPromptContent.ts)
-// and can be tested there. These tests have been removed as they were testing
-// implementation details of the prompt loading logic.
-
+/**
+ * Tests for IterationRunner component.
+ *
+ * Full integration testing of IterationRunner would require:
+ * 1. Mocking child_process.spawn to simulate Claude CLI
+ * 2. Mocking file system operations
+ * 3. Testing React component rendering with ink-testing-library
+ *
+ * The getPromptContent function has been moved to its own module (../lib/getPromptContent.ts)
+ * and can be tested there. These tests have been removed as they were testing
+ * implementation details of the prompt loading logic.
+ */
 describe("IterationRunner", () => {
+  /**
+   * Placeholder test confirming IterationRunner is a React component.
+   * IterationRunner is primarily tested through integration tests and e2e tests
+   * that involve spawning the actual Claude CLI. Unit tests for isolated
+   * components (EventDisplay, Header, etc) are in their own files.
+   */
   it("is a React component", () => {
-    // Placeholder: IterationRunner is primarily tested through integration tests
-    // and e2e tests that involve spawning the actual Claude CLI.
-    // Unit tests for isolated components (EventDisplay, Header, etc) are in their own files.
     expect(true).toBe(true)
   })
 })

@@ -5,9 +5,13 @@ import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { copyTemplates } from "../lib/copyTemplates.js"
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-
+/**
+ * Initializes Ralph by copying workflow templates and agent configurations to the project.
+ * Creates .ralph/workflow.md, .claude/skills/, and .claude/agents/ directories with default files.
+ * Also adds .ralph/events-*.jsonl to .gitignore.
+ */
 export function InitRalph() {
+  const __dirname = dirname(fileURLToPath(import.meta.url))
   const [status, setStatus] = useState<InitStatus>("checking")
   const [createdFiles, setCreatedFiles] = useState<string[]>([])
   const [skippedFiles, setSkippedFiles] = useState<string[]>([])

@@ -22,12 +22,18 @@ const BORDER_HEIGHT = 2
 /**
  * Calculate the available content height based on terminal size
  */
-export const useContentHeight = (hasFooter: boolean = true): number => {
+export const useContentHeight = (
+  /** Whether the layout includes a footer */
+  hasFooter: boolean = true,
+): number => {
   const { rows } = useTerminalSize()
   const footerHeight = hasFooter ? FOOTER_HEIGHT : 0
   return Math.max(1, rows - HEADER_HEIGHT - footerHeight - BORDER_HEIGHT)
 }
 
+/**
+ * Full-screen layout component with header, content area, and optional footer
+ */
 export const FullScreenLayout = ({ title, children, footer, version }: Props) => {
   const { columns, rows } = useTerminalSize()
   const contentHeight = useContentHeight(!!footer)
@@ -91,8 +97,12 @@ export const FullScreenLayout = ({ title, children, footer, version }: Props) =>
 }
 
 type Props = {
+  /** Title text displayed in the header */
   title: string
+  /** Content to render in the main area */
   children: ReactNode
+  /** Optional footer content */
   footer?: ReactNode
+  /** Optional version string displayed in the footer */
   version?: string
 }
