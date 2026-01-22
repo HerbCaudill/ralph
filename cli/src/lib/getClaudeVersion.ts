@@ -1,5 +1,9 @@
 import { execSync } from "child_process"
 
+/**
+ * Get the installed Claude CLI version by executing `claude --version`.
+ * Returns the version string (e.g., "2.1.5") or "unknown" if unable to determine.
+ */
 export const getClaudeVersion = (): string => {
   try {
     const output = execSync("claude --version", {
