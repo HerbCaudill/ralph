@@ -21,6 +21,7 @@ export const SIDEBAR_WIDTH_STORAGE_KEY = "ralph-ui-sidebar-width"
 export const TASK_CHAT_WIDTH_STORAGE_KEY = "ralph-ui-task-chat-width"
 export const TASK_CHAT_OPEN_STORAGE_KEY = "ralph-ui-task-chat-open"
 export const SHOW_TOOL_OUTPUT_STORAGE_KEY = "ralph-ui-show-tool-output"
+export const ACTIVE_INSTANCE_ID_STORAGE_KEY = "ralph-ui-active-instance-id"
 
 // Helper functions for localStorage
 function loadSidebarWidth(): number {
@@ -134,6 +135,27 @@ function loadShowToolOutput(): boolean {
 function saveShowToolOutput(show: boolean): void {
   try {
     localStorage.setItem(SHOW_TOOL_OUTPUT_STORAGE_KEY, String(show))
+  } catch {
+    // localStorage may not be available
+  }
+}
+
+// Active instance ID localStorage persistence
+function loadActiveInstanceId(): string {
+  try {
+    const stored = localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)
+    if (stored && stored.trim().length > 0) {
+      return stored
+    }
+  } catch {
+    // localStorage may not be available (SSR, private mode, etc.)
+  }
+  return DEFAULT_INSTANCE_ID // default
+}
+
+function saveActiveInstanceId(instanceId: string): void {
+  try {
+    localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, instanceId)
   } catch {
     // localStorage may not be available
   }
@@ -564,16 +586,26 @@ const initialState: AppState = {
 }
 
 // Create the store with localStorage initialization
-const getInitialStateWithPersistence = (): AppState => ({
-  ...initialState,
+const getInitialStateWithPersistence = (): AppState => {
   // Create fresh instances Map to avoid shared state
-  instances: createInitialInstances(),
-  sidebarWidth: loadSidebarWidth(),
-  taskChatWidth: loadTaskChatWidth(),
-  taskChatOpen: loadTaskChatOpen(),
-  closedTimeFilter: loadClosedTimeFilter(),
-  showToolOutput: loadShowToolOutput(),
-})
+  const instances = createInitialInstances()
+
+  // Load activeInstanceId from localStorage, but validate it exists
+  // If the stored ID doesn't exist in instances, fall back to DEFAULT_INSTANCE_ID
+  const storedActiveId = loadActiveInstanceId()
+  const activeInstanceId = instances.has(storedActiveId) ? storedActiveId : DEFAULT_INSTANCE_ID
+
+  return {
+    ...initialState,
+    instances,
+    activeInstanceId,
+    sidebarWidth: loadSidebarWidth(),
+    taskChatWidth: loadTaskChatWidth(),
+    taskChatOpen: loadTaskChatOpen(),
+    closedTimeFilter: loadClosedTimeFilter(),
+    showToolOutput: loadShowToolOutput(),
+  }
+}
 
 // Store
 
@@ -1002,6 +1034,9 @@ export const useAppStore = create<AppState & AppActions>(set => ({
         return state
       }
 
+      // Persist to localStorage
+      saveActiveInstanceId(instanceId)
+
       // Get the new active instance to sync flat fields
       const instance = state.instances.get(instanceId)!
 
@@ -1035,6 +1070,9 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       )
       const updatedInstances = new Map(state.instances)
       updatedInstances.set(id, newInstance)
+
+      // Persist to localStorage (auto-select the newly created instance)
+      saveActiveInstanceId(id)
 
       // Auto-select the newly created instance
       return {

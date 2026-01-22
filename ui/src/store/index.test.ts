@@ -5,6 +5,7 @@ import {
   SIDEBAR_WIDTH_STORAGE_KEY,
   TASK_CHAT_WIDTH_STORAGE_KEY,
   TASK_CHAT_OPEN_STORAGE_KEY,
+  ACTIVE_INSTANCE_ID_STORAGE_KEY,
   isIterationBoundary,
   getIterationBoundaries,
   countIterations,
@@ -2170,6 +2171,118 @@ describe("useAppStore", () => {
       const { useAppStore: freshStore } = await import("./index")
 
       expect(freshStore.getState().taskChatOpen).toBe(true)
+    })
+  })
+
+  describe("activeInstanceId localStorage persistence", () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    it("persists activeInstanceId to localStorage when switching instances", () => {
+      // Create a second instance
+      const state = useAppStore.getState()
+      const newInstance = createRalphInstance("second-instance", "Second")
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to the new instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+
+      expect(localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)).toBe("second-instance")
+    })
+
+    it("persists activeInstanceId to localStorage when creating a new instance", () => {
+      useAppStore.getState().createInstance("new-instance", "New Instance")
+
+      expect(localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)).toBe("new-instance")
+    })
+
+    it("does not persist when switching to non-existent instance", () => {
+      // Set an initial value in localStorage
+      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "default")
+
+      // Try to switch to non-existent instance
+      useAppStore.getState().setActiveInstanceId("non-existent")
+
+      // Should still be the original value
+      expect(localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)).toBe("default")
+    })
+
+    it("does not persist when switching to the same instance", () => {
+      const originalActiveId = useAppStore.getState().activeInstanceId
+
+      // Clear localStorage to verify it's not being written
+      localStorage.removeItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)
+
+      // Switch to the same instance
+      useAppStore.getState().setActiveInstanceId(originalActiveId)
+
+      // Should not have written to localStorage
+      expect(localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)).toBeNull()
+    })
+
+    it("loads activeInstanceId from localStorage on store creation", async () => {
+      // First create an instance with this ID to make it valid
+      useAppStore.getState().createInstance("persisted-instance", "Persisted")
+
+      // Set localStorage before recreating store
+      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "persisted-instance")
+
+      vi.resetModules()
+      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
+        await import("./index")
+
+      // Since the fresh store doesn't have "persisted-instance" in its instances Map,
+      // it should fall back to DEFAULT_INSTANCE_ID
+      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
+    })
+
+    it("uses default ID when localStorage has non-existent instance ID", async () => {
+      // Set localStorage to an instance ID that won't exist in the fresh store
+      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "non-existent-instance")
+
+      vi.resetModules()
+      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
+        await import("./index")
+
+      // Should fall back to DEFAULT_INSTANCE_ID since the stored ID doesn't exist
+      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
+    })
+
+    it("uses default ID when localStorage is empty", async () => {
+      localStorage.clear()
+
+      vi.resetModules()
+      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
+        await import("./index")
+
+      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
+    })
+
+    it("uses default ID when localStorage has empty string", async () => {
+      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "")
+
+      vi.resetModules()
+      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
+        await import("./index")
+
+      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
+    })
+
+    it("uses default ID when localStorage has whitespace-only string", async () => {
+      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "   ")
+
+      vi.resetModules()
+      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
+        await import("./index")
+
+      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
     })
   })
 
