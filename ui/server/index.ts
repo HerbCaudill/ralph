@@ -24,6 +24,7 @@ import {
   type CreateInstanceOptions,
   type RalphInstanceState,
 } from "./RalphRegistry.js"
+import { getIterationStateStore } from "./IterationStateStore.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -1839,6 +1840,21 @@ export async function switchWorkspace(workspacePath: string): Promise<void> {
   // Note: This does NOT stop Ralph in the old context - it keeps running
   const context = manager.setActiveContext(workspacePath)
 
+  // Update the IterationStateStore for the new workspace
+  const registry = getRalphRegistry()
+  const iterationStateStore = getIterationStateStore(workspacePath)
+  registry.setIterationStateStore(iterationStateStore)
+
+  // Cleanup stale iteration states in the new workspace
+  try {
+    const removed = await iterationStateStore.cleanupStale()
+    if (removed > 0) {
+      console.log(`[server] Cleaned up ${removed} stale iteration state(s) in new workspace`)
+    }
+  } catch (err) {
+    console.warn("[server] Failed to cleanup stale iteration states:", err)
+  }
+
   // Start Ralph in watch mode if not already running
   if (!context.ralphManager.isRunning && context.ralphManager.status !== "paused") {
     try {
@@ -1924,8 +1940,25 @@ export async function startServer(config: ServerConfig): Promise<void> {
     console.log(`[server] Using workspace: ${configuredWorkspacePath}`)
   }
 
+  // Cleanup stale iteration states at startup (files older than 1 hour)
+  // and wire the IterationStateStore into the RalphRegistry for state persistence
+  const workspacePath = configuredWorkspacePath || process.cwd()
+  const iterationStateStore = getIterationStateStore(workspacePath)
+  try {
+    const removed = await iterationStateStore.cleanupStale()
+    if (removed > 0) {
+      console.log(`[server] Cleaned up ${removed} stale iteration state(s)`)
+    }
+  } catch (err) {
+    // Log but don't fail startup - stale state cleanup is not critical
+    console.warn("[server] Failed to cleanup stale iteration states:", err)
+  }
+
   // Create default instance in registry if it doesn't exist
   const registry = getRalphRegistry()
+
+  // Wire the IterationStateStore into the registry for state persistence
+  registry.setIterationStateStore(iterationStateStore)
   if (!registry.has(DEFAULT_INSTANCE_ID)) {
     registry.create({
       id: DEFAULT_INSTANCE_ID,
