@@ -112,3 +112,38 @@ export const Mixed: Story = {
     </ButtonGroup>
   ),
 }
+
+export const Separated: Story = {
+  render: () => (
+    <ButtonGroup separated className="border-input h-8 overflow-hidden rounded-md border">
+      <button className="flex h-full items-center justify-center px-3 text-sm transition-colors hover:bg-gray-100">
+        One
+      </button>
+      <button className="flex h-full items-center justify-center bg-blue-500 px-3 text-sm text-white transition-colors">
+        Two
+      </button>
+      <button className="flex h-full items-center justify-center px-3 text-sm transition-colors hover:bg-gray-100">
+        Three
+      </button>
+    </ButtonGroup>
+  ),
+}
+
+export const SeparatedWithIcons: Story = {
+  render: () => (
+    <ButtonGroup separated className="border-input h-8 overflow-hidden rounded-md border">
+      <button className="flex h-full items-center justify-center gap-1 px-2 text-sm transition-colors hover:bg-gray-100">
+        <IconAlignLeft className="size-4" />
+        <span>Left</span>
+      </button>
+      <button className="flex h-full items-center justify-center gap-1 bg-blue-500 px-2 text-sm text-white transition-colors">
+        <IconAlignCenter className="size-4" />
+        <span>Center</span>
+      </button>
+      <button className="flex h-full items-center justify-center gap-1 px-2 text-sm transition-colors hover:bg-gray-100">
+        <IconAlignRight className="size-4" />
+        <span>Right</span>
+      </button>
+    </ButtonGroup>
+  ),
+}
