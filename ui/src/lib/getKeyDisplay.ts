@@ -4,6 +4,8 @@ export function getKeyDisplay(key: string): string {
       return "⏎"
     case "escape":
       return "Esc"
+    case "backspace":
+      return "⌫"
     case "arrowup":
       return "↑"
     case "arrowdown":

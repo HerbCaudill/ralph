@@ -52,6 +52,8 @@ function getKeyDisplay(key: string): string {
       return "\u23CE"
     case "escape":
       return "Esc"
+    case "backspace":
+      return "\u232B"
     case "arrowup":
       return "\u2191"
     case "arrowdown":
