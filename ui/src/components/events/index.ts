@@ -1,6 +1,9 @@
 export { EventStream } from "./EventStream"
 export type { EventStreamProps } from "./EventStream"
 
+export { EventDisplay, useEventDisplayState } from "./EventDisplay"
+export type { EventDisplayProps, EventDisplayState } from "./EventDisplay"
+
 export { AssistantText } from "./AssistantText"
 
 export { UserMessage } from "./UserMessage"

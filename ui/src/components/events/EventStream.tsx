@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { cn } from "@/lib/utils"
 import {
   useAppStore,
@@ -12,15 +12,8 @@ import {
   countIterations,
 } from "@/store"
 import { TopologySpinner } from "@/components/ui/TopologySpinner"
-import { useAutoScroll } from "@/hooks/useAutoScroll"
-import { useStreamingState } from "@/hooks/useStreamingState"
-import { isRalphTaskCompletedEvent } from "@/lib/isRalphTaskCompletedEvent"
-import { isRalphTaskStartedEvent } from "@/lib/isRalphTaskStartedEvent"
-import { isToolResultEvent } from "@/lib/isToolResultEvent"
-import { EventStreamEventItem } from "./EventStreamEventItem"
+import { EventDisplay } from "./EventDisplay"
 import { EventStreamIterationBar } from "./EventStreamIterationBar"
-import { StreamingContentRenderer } from "./StreamingContentRenderer"
-import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton"
 
 /**
  * Scrollable container displaying real-time events from ralph.
@@ -28,6 +21,8 @@ import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton"
  *
  * When `instanceId` is provided, displays events from that specific instance.
  * Otherwise, displays events from the currently active instance.
+ *
+ * Uses EventDisplay for core event rendering, adding iteration navigation on top.
  */
 export function EventStream({ className, maxEvents = 1000, instanceId }: EventStreamProps) {
   // When instanceId is provided, use instance-specific selectors
@@ -82,57 +77,36 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
     return null
   }, [iterationEvents, tasks])
 
-  const events = iterationEvents
-
-  const { completedEvents, streamingMessage } = useStreamingState(events)
-
-  const displayedEvents = completedEvents.slice(-maxEvents)
-
-  const toolResults = new Map<string, { output?: string; error?: string }>()
-  let hasStructuredLifecycleEvents = false
-  for (const event of displayedEvents) {
-    if (isToolResultEvent(event)) {
-      const content = (event as any).message?.content
-      if (Array.isArray(content)) {
-        for (const item of content) {
-          if (item.type === "tool_result" && item.tool_use_id) {
-            toolResults.set(item.tool_use_id, {
-              output: typeof item.content === "string" ? item.content : undefined,
-              error:
-                item.is_error ?
-                  typeof item.content === "string" ?
-                    item.content
-                  : "Error"
-                : undefined,
-            })
-          }
-        }
-      }
-    }
-    if (isRalphTaskStartedEvent(event) || isRalphTaskCompletedEvent(event)) {
-      hasStructuredLifecycleEvents = true
-    }
-  }
-
-  // Use the shared auto-scroll hook
-  const { containerRef, isAtBottom, handleScroll, handleUserScroll, scrollToBottom } =
-    useAutoScroll({
-      dependencies: [events],
-      enabled: isViewingLatest,
-    })
+  // Track ref for scrolling to bottom on iteration change
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // When viewing a historical iteration, scroll to bottom on iteration change
   useEffect(() => {
     if (!isViewingLatest && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
+      // Find the scrollable container inside EventDisplay/ContentStreamContainer
+      const scrollContainer = containerRef.current.querySelector('[role="log"]')
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+      }
     }
-  }, [viewingIterationIndex, isViewingLatest, containerRef])
+  }, [viewingIterationIndex, isViewingLatest])
 
   const displayedIteration =
     viewingIterationIndex !== null ? viewingIterationIndex + 1 : iterationCount
 
+  const loadingIndicator =
+    isRunning && isViewingLatest ?
+      <div
+        className="flex items-center justify-start px-4 py-4"
+        aria-label="Ralph is running"
+        data-testid="ralph-running-spinner"
+      >
+        <TopologySpinner />
+      </div>
+    : null
+
   return (
-    <div className={cn("relative flex h-full flex-col", className)}>
+    <div ref={containerRef} className={cn("relative flex h-full flex-col", className)}>
       <EventStreamIterationBar
         iterationCount={iterationCount}
         displayedIteration={displayedIteration}
@@ -144,49 +118,18 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
         onLatest={goToLatestIteration}
       />
 
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        onWheel={handleUserScroll}
-        onTouchMove={handleUserScroll}
-        className={cn("bg-background flex-1 overflow-y-auto py-2")}
-        role="log"
-        aria-label="Event stream"
-        aria-live="polite"
-      >
-        <div className="max-w-4xl">
-          {allEvents.length === 0 ?
-            <div className="flex h-full items-center justify-start px-4 py-4">
-              <TopologySpinner />
-            </div>
-          : <>
-              {displayedEvents.map((event, index) => (
-                <EventStreamEventItem
-                  key={`${event.timestamp}-${index}`}
-                  event={event}
-                  toolResults={toolResults}
-                  hasStructuredLifecycleEvents={hasStructuredLifecycleEvents}
-                />
-              ))}
-              {streamingMessage && <StreamingContentRenderer message={streamingMessage} />}
-              {isRunning && isViewingLatest && (
-                <div
-                  className="flex items-center justify-start px-4 py-4"
-                  aria-label="Ralph is running"
-                  data-testid="ralph-running-spinner"
-                >
-                  <TopologySpinner />
-                </div>
-              )}
-            </>
-          }
-        </div>
-      </div>
-
-      <ScrollToBottomButton
-        isVisible={!isAtBottom}
-        onClick={scrollToBottom}
-        ariaLabel="Scroll to latest events"
+      <EventDisplay
+        events={iterationEvents}
+        maxEvents={maxEvents}
+        emptyState={
+          <div className="flex h-full items-center justify-start px-4 py-4">
+            <TopologySpinner />
+          </div>
+        }
+        loadingIndicator={loadingIndicator}
+        className="flex-1"
+        ariaLabel="Event stream"
+        autoScrollEnabled={isViewingLatest}
       />
     </div>
   )

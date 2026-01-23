@@ -1,8 +1,8 @@
 import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
+import { useEventDisplayState } from "@/components/events/EventDisplay"
+import { StreamingContentRenderer } from "@/components/events/StreamingContentRenderer"
 import { TASK_CHAT_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
-import { useStreamingState } from "@/hooks/useStreamingState"
 import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
-import { isToolResultEvent } from "@/lib/isToolResultEvent"
 import { renderEventContentBlock } from "@/lib/renderEventContentBlock"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
 import { cn } from "@/lib/utils"
@@ -16,7 +16,6 @@ import {
 import type { AssistantContentBlock, RalphEvent, TaskChatMessage } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { StreamingContentRenderer } from "@/components/events/StreamingContentRenderer"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
 import { UserMessageBubble } from "./UserMessageBubble"
 
@@ -24,8 +23,8 @@ import { UserMessageBubble } from "./UserMessageBubble"
  * Task chat panel for task management conversations with Claude.
  * Displays a chat interface with message history and input.
  *
- * Uses the unified event model (same as EventStream) for rendering assistant content,
- * which preserves proper interleaving of text and tool uses.
+ * Uses the shared EventDisplay logic via useEventDisplayState for processing
+ * assistant events, while adding user message rendering and chat input.
  */
 export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   // User messages (typed by the user)
@@ -42,34 +41,8 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const chatInputRef = useRef<ChatInputHandle>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Process events using the same hook as EventStream
-  const { completedEvents, streamingMessage } = useStreamingState(taskChatEvents)
-
-  // Build tool results map from user/tool_result events (same pattern as EventStream)
-  const toolResults = useMemo(() => {
-    const results = new Map<string, { output?: string; error?: string }>()
-    for (const event of completedEvents) {
-      if (isToolResultEvent(event)) {
-        const content = (event as any).message?.content
-        if (Array.isArray(content)) {
-          for (const item of content) {
-            if (item.type === "tool_result" && item.tool_use_id) {
-              results.set(item.tool_use_id, {
-                output: typeof item.content === "string" ? item.content : undefined,
-                error:
-                  item.is_error ?
-                    typeof item.content === "string" ?
-                      item.content
-                    : "Error"
-                  : undefined,
-              })
-            }
-          }
-        }
-      }
-    }
-    return results
-  }, [completedEvents])
+  // Use the shared hook from EventDisplay for event processing
+  const { completedEvents, streamingMessage, toolResults } = useEventDisplayState(taskChatEvents)
 
   // Create unified content list: user messages + assistant events, sorted by timestamp
   // User messages are explicitly typed by the user (rendered with UserMessageBubble)

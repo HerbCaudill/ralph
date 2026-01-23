@@ -793,7 +793,7 @@ describe("EventStream", () => {
       fireEvent.scroll(container)
 
       // Now the button should appear
-      expect(screen.getByLabelText("Scroll to latest events")).toBeInTheDocument()
+      expect(screen.getByLabelText("Scroll to latest event stream")).toBeInTheDocument()
     })
   })
 
