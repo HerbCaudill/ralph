@@ -507,7 +507,7 @@ export function TaskDetailsDialog({
                 scheduleAutosave({ ...currentValues, description: newDescription })
               }}
               placeholder="Add description..."
-              showToolbar={true}
+              showToolbar={false}
               size="sm"
             />
           }
