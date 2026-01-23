@@ -79,14 +79,6 @@ export function App() {
   // Command palette state
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
 
-  // Handle task click - open the dialog
-  const handleTaskClick = useCallback(
-    (taskId: string) => {
-      taskDialog.openDialogById(taskId)
-    },
-    [taskDialog],
-  )
-
   // Get state for hotkey conditions
   const ralphStatus = useAppStore(selectRalphStatus)
   const isConnected = useAppStore(selectIsConnected)
@@ -102,6 +94,15 @@ export function App() {
   const selectedTaskId = useAppStore(selectSelectedTaskId)
   const visibleTaskIds = useAppStore(selectVisibleTaskIds)
   const setSelectedTaskId = useAppStore(state => state.setSelectedTaskId)
+
+  // Handle task click - select the task and open the dialog
+  const handleTaskClick = useCallback(
+    (taskId: string) => {
+      setSelectedTaskId(taskId)
+      taskDialog.openDialogById(taskId)
+    },
+    [setSelectedTaskId, taskDialog],
+  )
 
   // Tool output visibility
   const toggleToolOutput = useAppStore(state => state.toggleToolOutput)
