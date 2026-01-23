@@ -162,3 +162,110 @@
     --tw-prose-td-borders: var(--border);
   }
 }
+
+/* MDXEditor theme overrides */
+.markdown-editor {
+  /* Map MDXEditor colors to our theme variables */
+  --accentBase: var(--accent);
+  --accentBgSubtle: var(--accent);
+  --accentBg: var(--accent);
+  --accentBgHover: var(--accent);
+  --accentBgActive: var(--accent);
+  --accentLine: var(--border);
+  --accentBorder: var(--border);
+  --accentBorderHover: var(--ring);
+  --accentSolid: var(--primary);
+  --accentSolidHover: var(--primary);
+  --accentText: var(--foreground);
+  --accentTextContrast: var(--primary-foreground);
+
+  --baseBase: var(--background);
+  --baseBgSubtle: var(--muted);
+  --baseBg: var(--background);
+  --baseBgHover: var(--muted);
+  --baseBgActive: var(--secondary);
+  --baseLine: var(--border);
+  --baseBorder: var(--border);
+  --baseBorderHover: var(--ring);
+  --baseSolid: var(--secondary);
+  --baseSolidHover: var(--secondary);
+  --baseText: var(--muted-foreground);
+  --baseTextContrast: var(--foreground);
+  --basePageBg: var(--background);
+
+  --font-mono: var(--font-mono);
+}
+
+.markdown-editor .mdxeditor {
+  --accentBase: var(--accent);
+  --baseBase: var(--background);
+  font-family: var(--font-sans);
+  background: transparent;
+  border-radius: var(--radius);
+}
+
+.markdown-editor .mdxeditor-toolbar {
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 0.25rem;
+  gap: 0.25rem;
+}
+
+.markdown-editor .mdxeditor-root-contenteditable {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 0.5rem;
+}
+
+.markdown-editor .mdxeditor-toolbar + .mdxeditor-root-contenteditable {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* When toolbar is not shown, full border radius */
+.markdown-editor:not(:has(.mdxeditor-toolbar)) .mdxeditor-root-contenteditable {
+  border-radius: var(--radius);
+}
+
+/* Smaller variant */
+.markdown-editor-sm .mdxeditor-root-contenteditable {
+  min-height: 60px;
+  padding: 0.375rem;
+}
+
+.markdown-editor-sm .mdxeditor-toolbar {
+  padding: 0.125rem;
+}
+
+/* Toolbar button styling */
+.markdown-editor [data-radix-collection-item] {
+  padding: 0.25rem 0.5rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.75rem;
+}
+
+.markdown-editor [data-radix-collection-item]:hover {
+  background: var(--accent);
+}
+
+.markdown-editor [data-radix-collection-item][data-state="on"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Popup styling */
+.markdown-editor .mdxeditor-popup-container {
+  z-index: 50;
+}
+
+.markdown-editor .mdxeditor-popup-container [data-radix-popper-content-wrapper] {
+  background: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
