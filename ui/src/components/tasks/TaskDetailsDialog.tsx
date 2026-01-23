@@ -16,13 +16,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { useAppStore, selectIssuePrefix, selectTasks } from "@/store"
 import type { TaskCardTask, TaskStatus, TaskUpdateData } from "@/types"
@@ -589,7 +582,7 @@ export function TaskDetailsDialog({
         {/* Metadata Grid - 2x2 layout */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
           {/* Status */}
-          <div className="flex flex-col gap-1">
+          <div className="col-span-2 flex flex-col gap-1">
             <Label htmlFor="task-status" className="text-muted-foreground text-xs">
               Status
             </Label>
@@ -598,32 +591,57 @@ export function TaskDetailsDialog({
                 <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[status].color)} />
                 <span className="text-sm">{statusConfig[status].label}</span>
               </div>
-            : <Select
-                value={status}
-                onValueChange={value => {
-                  const newStatus = value as TaskStatus
-                  setStatus(newStatus)
-                  immediateAutosave({ ...currentValues, status: newStatus })
-                }}
+            : <div
+                className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
+                role="group"
               >
-                <SelectTrigger id="task-status" className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map(s => {
-                    const config = statusConfig[s]
-                    const Icon = config.icon
-                    return (
-                      <SelectItem key={s} value={s}>
-                        <div className="flex items-center gap-2">
-                          <Icon className={cn("h-3.5 w-3.5", config.color)} />
-                          <span>{config.label}</span>
-                        </div>
-                      </SelectItem>
-                    )
-                  })}
-                </SelectContent>
-              </Select>
+                {statusOptions.map((s, index) => {
+                  const config = statusConfig[s]
+                  const Icon = config.icon
+                  const isSelected = status === s
+                  const handleStatusChange = (newStatus: TaskStatus) => {
+                    setStatus(newStatus)
+                    immediateAutosave({ ...currentValues, status: newStatus })
+                  }
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => handleStatusChange(s)}
+                      tabIndex={index === 0 || isSelected ? 0 : -1}
+                      onKeyDown={e => {
+                        if (e.key === "ArrowLeft") {
+                          e.preventDefault()
+                          const currentIndex = statusOptions.findIndex(opt => opt === s)
+                          const prevIndex =
+                            (currentIndex - 1 + statusOptions.length) % statusOptions.length
+                          handleStatusChange(statusOptions[prevIndex])
+                        } else if (e.key === "ArrowRight") {
+                          e.preventDefault()
+                          const currentIndex = statusOptions.findIndex(opt => opt === s)
+                          const nextIndex = (currentIndex + 1) % statusOptions.length
+                          handleStatusChange(statusOptions[nextIndex])
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center justify-center gap-1 border-l px-2 text-xs transition-colors first:rounded-l-md first:border-l-0 last:rounded-r-md",
+                        isSelected ?
+                          cn("border-transparent text-white", config.selectedBg)
+                        : cn(
+                            config.color,
+                            config.unselectedBg,
+                            config.unselectedHover,
+                            config.unselectedBorder,
+                          ),
+                      )}
+                      aria-pressed={isSelected}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{config.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             }
           </div>
 
@@ -968,26 +986,46 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     icon: IconCircle,
     label: "Open",
     color: "text-gray-500",
+    selectedBg: "bg-gray-500",
+    unselectedBg: "bg-transparent",
+    unselectedHover: "hover:bg-gray-500/20",
+    unselectedBorder: "border-transparent",
   },
   in_progress: {
     icon: IconCircleDot,
     label: "In Progress",
     color: "text-blue-500",
+    selectedBg: "bg-blue-500",
+    unselectedBg: "bg-transparent",
+    unselectedHover: "hover:bg-blue-500/20",
+    unselectedBorder: "border-transparent",
   },
   blocked: {
     icon: IconBan,
     label: "Blocked",
     color: "text-red-500",
+    selectedBg: "bg-red-500",
+    unselectedBg: "bg-transparent",
+    unselectedHover: "hover:bg-red-500/20",
+    unselectedBorder: "border-transparent",
   },
   deferred: {
     icon: IconClock,
     label: "Deferred",
     color: "text-amber-500",
+    selectedBg: "bg-amber-500",
+    unselectedBg: "bg-transparent",
+    unselectedHover: "hover:bg-amber-500/20",
+    unselectedBorder: "border-transparent",
   },
   closed: {
     icon: IconCircleCheck,
     label: "Closed",
     color: "text-green-500",
+    selectedBg: "bg-green-500",
+    unselectedBg: "bg-transparent",
+    unselectedHover: "hover:bg-green-500/20",
+    unselectedBorder: "border-transparent",
   },
 }
 
@@ -1067,4 +1105,8 @@ type StatusConfig = {
   icon: TablerIcon
   label: string
   color: string
+  selectedBg: string
+  unselectedBg: string
+  unselectedHover: string
+  unselectedBorder: string
 }

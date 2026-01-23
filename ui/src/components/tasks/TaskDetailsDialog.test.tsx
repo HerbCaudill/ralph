@@ -480,7 +480,7 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      const closeButton = screen.getByRole("button", { name: /close/i })
+      const closeButton = screen.getByRole("button", { name: /close panel/i })
       await act(async () => {
         fireEvent.click(closeButton)
       })
@@ -957,7 +957,9 @@ describe("TaskDetailsDialog", () => {
 
       // Get all focusable elements in the expected tab order
       const titleInput = screen.getByDisplayValue("Test Task")
-      const statusSelect = screen.getByRole("combobox", { name: /status/i })
+
+      // Get the status buttons - the selected one (Open) should be tabbable
+      const selectedStatusButton = screen.getByRole("button", { pressed: true, name: /open/i })
 
       // Get the priority buttons - the selected one (P2) should be tabbable
       const selectedPriorityButton = screen.getByRole("button", { pressed: true, name: /p2/i })
@@ -976,7 +978,8 @@ describe("TaskDetailsDialog", () => {
 
       // Verify all interactive elements have appropriate tabIndex
       expect(titleInput).not.toHaveAttribute("tabindex", "-1")
-      expect(statusSelect).not.toHaveAttribute("tabindex", "-1")
+      // Only the selected status button should be tabbable (tabindex 0)
+      expect(selectedStatusButton).toHaveAttribute("tabindex", "0")
       // Only the selected priority button should be tabbable (tabindex 0)
       expect(selectedPriorityButton).toHaveAttribute("tabindex", "0")
       // Only the selected type button should be tabbable (tabindex 0)
