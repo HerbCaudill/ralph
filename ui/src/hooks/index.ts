@@ -47,10 +47,13 @@ export {
 
 export {
   useVSCodeTheme,
+  getLastThemeIdForMode,
   type ThemeListResponse,
   type ThemeDetailResponse,
   type UseVSCodeThemeReturn,
 } from "./useVSCodeTheme"
+
+export { useThemeCoordinator, type UseThemeCoordinatorReturn } from "./useThemeCoordinator"
 
 export { useWorkspaces, type UseWorkspacesReturn } from "./useWorkspaces"
 

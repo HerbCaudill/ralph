@@ -3,12 +3,15 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { SettingsDropdown } from "./SettingsDropdown"
 import type { ThemeMeta } from "@/lib/theme"
 
-// Mock values for useVSCodeTheme
+// Mock values for useThemeCoordinator (combines useVSCodeTheme and useTheme)
 const mockFetchThemes = vi.fn()
 const mockApplyTheme = vi.fn()
 const mockPreviewTheme = vi.fn()
 const mockClearPreview = vi.fn()
 const mockResetToDefault = vi.fn()
+const mockSetTheme = vi.fn()
+const mockSetMode = vi.fn()
+const mockCycleTheme = vi.fn()
 
 let mockThemes: ThemeMeta[] = []
 let mockActiveThemeId: string | null = null
@@ -16,14 +19,12 @@ let mockCurrentVSCodeTheme: string | null = "Gruvbox Dark"
 let mockIsLoadingList = false
 let mockIsLoadingTheme = false
 let mockError: string | null = null
-
-// Mock values for useTheme
-const mockSetTheme = vi.fn()
 let mockTheme: "system" | "light" | "dark" = "system"
 
 // Mock the hooks
 vi.mock("@/hooks", () => ({
-  useVSCodeTheme: () => ({
+  useThemeCoordinator: () => ({
+    // VS Code theme values
     themes: mockThemes,
     activeTheme: null,
     activeThemeId: mockActiveThemeId,
@@ -37,12 +38,12 @@ vi.mock("@/hooks", () => ({
     previewTheme: mockPreviewTheme,
     clearPreview: mockClearPreview,
     resetToDefault: mockResetToDefault,
-  }),
-  useTheme: () => ({
+    // Light/dark theme values
     theme: mockTheme,
     resolvedTheme: mockTheme === "system" ? "dark" : mockTheme,
     setTheme: mockSetTheme,
-    cycleTheme: vi.fn(),
+    setMode: mockSetMode,
+    cycleTheme: mockCycleTheme,
   }),
 }))
 
@@ -87,6 +88,15 @@ describe("SettingsDropdown", () => {
     mockIsLoadingTheme = false
     mockError = null
     mockTheme = "system"
+    // Clear mock function calls
+    mockFetchThemes.mockClear()
+    mockApplyTheme.mockClear()
+    mockPreviewTheme.mockClear()
+    mockClearPreview.mockClear()
+    mockResetToDefault.mockClear()
+    mockSetTheme.mockClear()
+    mockSetMode.mockClear()
+    mockCycleTheme.mockClear()
   })
 
   afterEach(() => {
@@ -178,12 +188,26 @@ describe("SettingsDropdown", () => {
       expect(lightButton).toHaveClass("bg-accent")
     })
 
-    it("calls setTheme when clicking appearance mode button", () => {
+    it("calls setMode when clicking light/dark appearance mode button", () => {
       render(<SettingsDropdown />)
       fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
 
+      // Clicking dark should use setMode (triggers theme restoration)
       fireEvent.click(screen.getByTestId("settings-appearance-dark"))
-      expect(mockSetTheme).toHaveBeenCalledWith("dark")
+      expect(mockSetMode).toHaveBeenCalledWith("dark")
+
+      // Clicking light should also use setMode
+      fireEvent.click(screen.getByTestId("settings-appearance-light"))
+      expect(mockSetMode).toHaveBeenCalledWith("light")
+    })
+
+    it("calls setTheme when clicking system appearance mode button", () => {
+      render(<SettingsDropdown />)
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      // Clicking system should use setTheme directly (no theme restoration)
+      fireEvent.click(screen.getByTestId("settings-appearance-system"))
+      expect(mockSetTheme).toHaveBeenCalledWith("system")
     })
   })
 

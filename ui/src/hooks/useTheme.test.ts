@@ -253,4 +253,86 @@ describe("useTheme", () => {
       expect(useAppStore.getState().theme).toBe("dark")
     })
   })
+
+  describe("setMode", () => {
+    it("sets theme to light mode", () => {
+      const { result } = renderHook(() => useTheme())
+
+      act(() => {
+        result.current.setMode("light")
+      })
+
+      expect(result.current.theme).toBe("light")
+      expect(result.current.resolvedTheme).toBe("light")
+    })
+
+    it("sets theme to dark mode", () => {
+      const { result } = renderHook(() => useTheme())
+
+      act(() => {
+        result.current.setMode("dark")
+      })
+
+      expect(result.current.theme).toBe("dark")
+      expect(result.current.resolvedTheme).toBe("dark")
+    })
+
+    it("calls onModeSwitch callback when provided", () => {
+      const onModeSwitch = vi.fn()
+      const { result } = renderHook(() => useTheme(onModeSwitch))
+
+      act(() => {
+        result.current.setMode("light")
+      })
+
+      expect(onModeSwitch).toHaveBeenCalledWith("light")
+    })
+
+    it("persists mode to localStorage", () => {
+      const { result } = renderHook(() => useTheme())
+
+      act(() => {
+        result.current.setMode("light")
+      })
+
+      expect(window.localStorage.setItem).toHaveBeenCalledWith("ralph-ui-theme", "light")
+    })
+  })
+
+  describe("cycleTheme with callback", () => {
+    it("calls onModeSwitch callback when cycling to light or dark", () => {
+      const onModeSwitch = vi.fn()
+      const { result } = renderHook(() => useTheme(onModeSwitch))
+
+      // Cycle from system to light
+      act(() => {
+        result.current.cycleTheme()
+      })
+      expect(onModeSwitch).toHaveBeenCalledWith("light")
+
+      // Cycle from light to dark
+      act(() => {
+        result.current.cycleTheme()
+      })
+      expect(onModeSwitch).toHaveBeenCalledWith("dark")
+    })
+
+    it("does not call onModeSwitch when cycling to system", () => {
+      const onModeSwitch = vi.fn()
+      const { result } = renderHook(() => useTheme(onModeSwitch))
+
+      // Set to dark first
+      act(() => {
+        result.current.setTheme("dark")
+      })
+      onModeSwitch.mockClear()
+
+      // Cycle from dark to system
+      act(() => {
+        result.current.cycleTheme()
+      })
+      expect(onModeSwitch).not.toHaveBeenCalled()
+      expect(result.current.theme).toBe("system")
+    })
+  })
 })

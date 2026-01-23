@@ -3,9 +3,12 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { Header } from "./Header"
 import { useAppStore, createRalphInstance } from "@/store"
 
-// Mock the useVSCodeTheme hook used by SettingsDropdown
+// Mock the hooks used by theme components (ThemePicker, SettingsDropdown)
+// Import is needed inside the factory function to access useAppStore
 vi.mock("@/hooks", async importOriginal => {
   const actual = (await importOriginal()) as Record<string, unknown>
+  // Dynamically import store to access it from the mock
+  const { useAppStore, selectTheme } = await import("@/store")
   return {
     ...actual,
     useVSCodeTheme: () => ({
@@ -23,6 +26,34 @@ vi.mock("@/hooks", async importOriginal => {
       clearPreview: vi.fn(),
       resetToDefault: vi.fn(),
     }),
+    useThemeCoordinator: () => {
+      // Get current theme from store so it reflects updates
+      const theme = useAppStore(selectTheme)
+      const resolvedTheme = theme === "system" ? "dark" : theme
+      return {
+        // VS Code theme values
+        themes: [],
+        activeTheme: null,
+        activeThemeId: null,
+        currentVSCodeTheme: null,
+        variant: null,
+        isLoadingList: false,
+        isLoadingTheme: false,
+        error: null,
+        fetchThemes: vi.fn(),
+        applyTheme: vi.fn(),
+        previewTheme: vi.fn(),
+        clearPreview: vi.fn(),
+        resetToDefault: vi.fn(),
+        // Light/dark theme values - use real store integration
+        theme,
+        resolvedTheme,
+        setTheme: (newTheme: "system" | "light" | "dark") =>
+          useAppStore.getState().setTheme(newTheme),
+        setMode: (mode: "light" | "dark") => useAppStore.getState().setTheme(mode),
+        cycleTheme: vi.fn(),
+      }
+    },
   }
 })
 

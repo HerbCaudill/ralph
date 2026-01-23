@@ -7,7 +7,7 @@ import { useAppStore } from "./store"
 const mockFetch = vi.fn()
 ;(globalThis as { fetch: typeof fetch }).fetch = mockFetch
 
-// Mock the useVSCodeTheme hook used by ThemePicker (via Header)
+// Mock the hooks used by theme components (ThemePicker, SettingsDropdown)
 vi.mock("@/hooks", async importOriginal => {
   const actual = (await importOriginal()) as Record<string, unknown>
   return {
@@ -26,6 +26,28 @@ vi.mock("@/hooks", async importOriginal => {
       previewTheme: vi.fn(),
       clearPreview: vi.fn(),
       resetToDefault: vi.fn(),
+    }),
+    useThemeCoordinator: () => ({
+      // VS Code theme values
+      themes: [],
+      activeTheme: null,
+      activeThemeId: null,
+      currentVSCodeTheme: null,
+      variant: null,
+      isLoadingList: false,
+      isLoadingTheme: false,
+      error: null,
+      fetchThemes: vi.fn(),
+      applyTheme: vi.fn(),
+      previewTheme: vi.fn(),
+      clearPreview: vi.fn(),
+      resetToDefault: vi.fn(),
+      // Light/dark theme values
+      theme: "system",
+      resolvedTheme: "dark",
+      setTheme: vi.fn(),
+      setMode: vi.fn(),
+      cycleTheme: vi.fn(),
     }),
   }
 })

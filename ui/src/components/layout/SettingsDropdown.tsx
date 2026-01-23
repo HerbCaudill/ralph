@@ -8,13 +8,17 @@ import {
   IconDeviceDesktop,
 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import { useVSCodeTheme, useTheme } from "@/hooks"
+import { useThemeCoordinator } from "@/hooks"
 import { groupThemesByType } from "@/lib/groupThemesByType"
 import { Button } from "@/components/ui/button"
 
 /**
  * Settings dropdown accessed via a cog icon.
  * Contains the VS Code theme picker and light/dark/system appearance mode selector.
+ *
+ * Features:
+ * - When selecting a VS Code theme, automatically switches to matching light/dark mode
+ * - When switching between light/dark modes, restores the last used theme for that mode
  */
 export function SettingsDropdown({ className, textColor }: SettingsDropdownProps) {
   const {
@@ -29,9 +33,10 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
     previewTheme,
     clearPreview,
     resetToDefault,
-  } = useVSCodeTheme()
-
-  const { theme: appearanceMode, setTheme: setAppearanceMode } = useTheme()
+    theme: appearanceMode,
+    setTheme: setAppearanceMode,
+    setMode,
+  } = useThemeCoordinator()
 
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -128,7 +133,15 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
               {appearanceModes.map(({ value, Icon, label }) => (
                 <button
                   key={value}
-                  onClick={() => setAppearanceMode(value)}
+                  onClick={() => {
+                    // For light/dark, use setMode to trigger theme restoration
+                    // For system, just set the appearance mode directly
+                    if (value === "system") {
+                      setAppearanceMode(value)
+                    } else {
+                      setMode(value)
+                    }
+                  }}
                   className={cn(
                     "flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs",
                     "hover:bg-muted transition-colors",

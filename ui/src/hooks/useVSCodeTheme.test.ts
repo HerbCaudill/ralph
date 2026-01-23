@@ -610,4 +610,93 @@ describe("useVSCodeTheme", () => {
       expect(result.current.isLoadingTheme).toBe(false)
     })
   })
+
+  describe("mode change callback", () => {
+    it("calls onModeChange callback when applying a dark theme", async () => {
+      const onModeChange = vi.fn()
+
+      const { result } = renderHook(() => useVSCodeTheme(onModeChange))
+
+      await waitFor(() => {
+        expect(result.current.themes).toHaveLength(2)
+      })
+
+      await act(async () => {
+        await result.current.applyTheme("test.theme/Dark Theme")
+      })
+
+      expect(onModeChange).toHaveBeenCalledWith("dark")
+    })
+
+    it("calls onModeChange callback when applying a light theme", async () => {
+      const onModeChange = vi.fn()
+
+      // Update mock to return light theme data
+      const lightAppTheme = {
+        ...mockAppTheme,
+        meta: {
+          ...mockThemes[1],
+        },
+        vscodeTheme: {
+          ...mockAppTheme.vscodeTheme,
+          type: "light",
+        },
+      }
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url === "/api/themes") {
+          return Promise.resolve({
+            json: () =>
+              Promise.resolve({
+                ok: true,
+                themes: mockThemes,
+                currentTheme: null,
+                variant: "VS Code",
+              }),
+          })
+        }
+        if (url.startsWith("/api/themes/")) {
+          return Promise.resolve({
+            json: () =>
+              Promise.resolve({
+                ok: true,
+                theme: lightAppTheme,
+                cssVariables: mockCSSVariables,
+              }),
+          })
+        }
+        return Promise.reject(new Error("Unknown URL"))
+      })
+
+      const { result } = renderHook(() => useVSCodeTheme(onModeChange))
+
+      await waitFor(() => {
+        expect(result.current.themes).toHaveLength(2)
+      })
+
+      await act(async () => {
+        await result.current.applyTheme("test.theme/Light Theme")
+      })
+
+      expect(onModeChange).toHaveBeenCalledWith("light")
+    })
+
+    it("saves theme ID to last theme storage for corresponding mode", async () => {
+      const { result } = renderHook(() => useVSCodeTheme())
+
+      await waitFor(() => {
+        expect(result.current.themes).toHaveLength(2)
+      })
+
+      await act(async () => {
+        await result.current.applyTheme("test.theme/Dark Theme")
+      })
+
+      // Check that last dark theme was saved
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        "ralph-ui-last-dark-theme",
+        "test.theme/Dark Theme",
+      )
+    })
+  })
 })

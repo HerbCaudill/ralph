@@ -5,6 +5,10 @@ import type { CSSVariables } from "@/lib/theme/mapper"
 
 /** localStorage key for persisting VS Code theme preference */
 const VSCODE_THEME_STORAGE_KEY = "ralph-ui-vscode-theme"
+/** localStorage key for the last used dark theme */
+const LAST_DARK_THEME_KEY = "ralph-ui-last-dark-theme"
+/** localStorage key for the last used light theme */
+const LAST_LIGHT_THEME_KEY = "ralph-ui-last-light-theme"
 
 /**
  * Get the stored VS Code theme ID from localStorage
@@ -14,6 +18,30 @@ function getStoredThemeId(): string | null {
     return localStorage.getItem(VSCODE_THEME_STORAGE_KEY)
   } catch {
     return null
+  }
+}
+
+/**
+ * Get the last used theme ID for a given mode (dark or light)
+ */
+export function getLastThemeIdForMode(mode: "dark" | "light"): string | null {
+  try {
+    const key = mode === "dark" ? LAST_DARK_THEME_KEY : LAST_LIGHT_THEME_KEY
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Save the last used theme ID for a given mode
+ */
+function saveLastThemeIdForMode(mode: "dark" | "light", themeId: string): void {
+  try {
+    const key = mode === "dark" ? LAST_DARK_THEME_KEY : LAST_LIGHT_THEME_KEY
+    localStorage.setItem(key, themeId)
+  } catch {
+    // localStorage may not be available
   }
 }
 
@@ -104,8 +132,14 @@ function clearCSSVariables(): void {
  * - Supports theme switching and preview on hover
  * - Loads themes into Shiki for code highlighting
  * - Persists theme preference to localStorage
+ * - Automatically switches light/dark mode based on theme type
+ * - Remembers last used theme for each mode (dark/light)
+ *
+ * @param onModeChange - Optional callback when a theme is applied that changes the mode
  */
-export function useVSCodeTheme(): UseVSCodeThemeReturn {
+export function useVSCodeTheme(
+  onModeChange?: (mode: "dark" | "light") => void,
+): UseVSCodeThemeReturn {
   // State
   const [themes, setThemes] = useState<ThemeMeta[]>([])
   const [activeTheme, setActiveTheme] = useState<AppTheme | null>(null)
@@ -180,6 +214,17 @@ export function useVSCodeTheme(): UseVSCodeThemeReturn {
 
         // Persist to localStorage
         saveThemeId(themeId)
+
+        // Determine theme mode and save as last used for that mode
+        const themeType = data.theme.meta.type
+        const isDark = themeType === "dark" || themeType === "hcDark"
+        const mode = isDark ? "dark" : "light"
+        saveLastThemeIdForMode(mode, themeId)
+
+        // Notify of mode change so light/dark toggle can update
+        if (onModeChange) {
+          onModeChange(mode)
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to apply theme"
         setError(message)
@@ -187,7 +232,7 @@ export function useVSCodeTheme(): UseVSCodeThemeReturn {
         setIsLoadingTheme(false)
       }
     },
-    [fetchThemeDetails],
+    [fetchThemeDetails, onModeChange],
   )
 
   // Preview a theme (temporary application without saving)

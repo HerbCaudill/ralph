@@ -53,8 +53,11 @@ function saveTheme(theme: Theme) {
  * - Persists preference to localStorage
  * - Listens for system preference changes
  * - Applies theme by adding/removing 'dark' class on document.documentElement
+ *
+ * @param onModeSwitch - Optional callback when user manually switches between light/dark.
+ *                       Called with the new mode, allowing restoration of the last used VS Code theme.
  */
-export function useTheme(): UseThemeReturn {
+export function useTheme(onModeSwitch?: (mode: "dark" | "light") => void): UseThemeReturn {
   const theme = useAppStore(selectTheme)
   const storeSetTheme = useAppStore(state => state.setTheme)
 
@@ -70,14 +73,30 @@ export function useTheme(): UseThemeReturn {
     [storeSetTheme],
   )
 
+  // Set mode directly (light or dark) and optionally trigger VS Code theme restoration
+  const setMode = useCallback(
+    (mode: "dark" | "light") => {
+      setTheme(mode)
+      if (onModeSwitch) {
+        onModeSwitch(mode)
+      }
+    },
+    [setTheme, onModeSwitch],
+  )
+
   // Cycle through themes: system -> light -> dark -> system
+  // When cycling to light or dark, also trigger mode switch callback
   const cycleTheme = useCallback(() => {
     const nextTheme: Theme =
       theme === "system" ? "light"
       : theme === "light" ? "dark"
       : "system"
     setTheme(nextTheme)
-  }, [theme, setTheme])
+    // Trigger mode switch callback when going to light or dark (not system)
+    if (nextTheme !== "system" && onModeSwitch) {
+      onModeSwitch(nextTheme)
+    }
+  }, [theme, setTheme, onModeSwitch])
 
   // Initialize theme from localStorage on mount
   useEffect(() => {
@@ -111,6 +130,7 @@ export function useTheme(): UseThemeReturn {
     theme,
     resolvedTheme,
     setTheme,
+    setMode,
     cycleTheme,
   }
 }
@@ -122,6 +142,8 @@ export interface UseThemeReturn {
   resolvedTheme: "light" | "dark"
   /** Set the theme preference */
   setTheme: (theme: Theme) => void
+  /** Set light or dark mode directly (triggers VS Code theme restoration if callback provided) */
+  setMode: (mode: "dark" | "light") => void
   /** Toggle between light and dark (or system -> light -> dark -> system) */
   cycleTheme: () => void
 }
