@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest"
+import { vi } from "vitest"
 
 // Suppress React act() warnings (mostly from Radix UI internals)
 const originalError = console.error
@@ -36,3 +37,45 @@ Object.defineProperty(window, "ResizeObserver", {
 
 // Mock scrollIntoView for tests that use cmdk/command palette
 Element.prototype.scrollIntoView = () => {}
+
+// Mock MDXEditor to prevent jsdom CSS parsing errors with stitches
+vi.mock("@mdxeditor/editor", () => ({
+  MDXEditor: ({
+    markdown,
+    onChange,
+    onBlur,
+    placeholder,
+    readOnly,
+    autoFocus,
+  }: {
+    markdown: string
+    onChange?: (value: string) => void
+    onBlur?: () => void
+    placeholder?: string
+    readOnly?: boolean
+    autoFocus?: boolean
+  }) => {
+    const React = require("react")
+    return React.createElement("textarea", {
+      value: markdown,
+      onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => onChange?.(e.target.value),
+      onBlur,
+      placeholder,
+      readOnly,
+      autoFocus,
+      "data-testid": "mdx-editor-mock",
+    })
+  },
+  headingsPlugin: () => ({}),
+  listsPlugin: () => ({}),
+  quotePlugin: () => ({}),
+  thematicBreakPlugin: () => ({}),
+  markdownShortcutPlugin: () => ({}),
+  linkPlugin: () => ({}),
+  linkDialogPlugin: () => ({}),
+  toolbarPlugin: () => ({}),
+  BoldItalicUnderlineToggles: () => null,
+  ListsToggle: () => null,
+  BlockTypeSelect: () => null,
+  CreateLink: () => null,
+}))

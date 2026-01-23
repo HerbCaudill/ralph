@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { IconLoader2 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { MarkdownEditor } from "@/components/ui/MarkdownEditor"
 import { CommentItem } from "./CommentItem"
 import type { Comment } from "@/types"
 
@@ -13,7 +13,6 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
   const [error, setError] = useState<string | null>(null)
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const fetchComments = useCallback(async () => {
     try {
@@ -76,15 +75,11 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
     }
   }, [taskId, newComment, isSubmitting, fetchComments])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey && newComment.trim() && !isSubmitting) {
-        e.preventDefault()
-        handleAddComment()
-      }
-    },
-    [handleAddComment, newComment, isSubmitting],
-  )
+  const handleSubmit = useCallback(() => {
+    if (newComment.trim() && !isSubmitting) {
+      handleAddComment()
+    }
+  }, [handleAddComment, newComment, isSubmitting])
 
   return (
     <div className={cn("grid gap-2", className)}>
@@ -109,15 +104,14 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
 
       {!readOnly && (
         <div className="mt-2 space-y-2">
-          <Textarea
-            ref={textareaRef}
+          <MarkdownEditor
             value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onChange={setNewComment}
+            onSubmit={handleSubmit}
             placeholder="Add a comment (Enter to submit, Shift+Enter for new line)..."
-            rows={2}
-            disabled={isSubmitting}
-            className="resize-none"
+            showToolbar={false}
+            size="sm"
+            className={isSubmitting ? "pointer-events-none opacity-50" : ""}
           />
           <div className="flex justify-end">
             <Button

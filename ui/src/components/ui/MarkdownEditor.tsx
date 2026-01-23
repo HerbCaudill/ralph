@@ -26,6 +26,8 @@ export interface MarkdownEditorProps {
   onChange?: (markdown: string) => void
   /** Callback when the editor loses focus */
   onBlur?: () => void
+  /** Callback when Enter is pressed (without Shift) - for submitting comments, etc. */
+  onSubmit?: () => void
   /** Placeholder text when the editor is empty */
   placeholder?: string
   /** Whether the editor is read-only */
@@ -48,6 +50,7 @@ export function MarkdownEditor({
   value,
   onChange,
   onBlur,
+  onSubmit,
   placeholder = "Write your markdown here...",
   readOnly = false,
   showToolbar = true,
@@ -79,6 +82,23 @@ export function MarkdownEditor({
   const handleBlur = useCallback(() => {
     onBlur?.()
   }, [onBlur])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // Enter without Shift triggers submit
+      if (onSubmit && e.key === "Enter" && !e.shiftKey) {
+        // Allow Enter in lists and other block elements
+        const selection = window.getSelection()
+        if (selection?.anchorNode) {
+          const listItem = selection.anchorNode.parentElement?.closest("li")
+          if (listItem) return // Allow normal Enter in lists
+        }
+        e.preventDefault()
+        onSubmit()
+      }
+    },
+    [onSubmit],
+  )
 
   // Build plugins array based on props
   const plugins = [
@@ -113,6 +133,7 @@ export function MarkdownEditor({
         size === "sm" && "markdown-editor-sm",
         className,
       )}
+      onKeyDown={onSubmit ? handleKeyDown : undefined}
     >
       <MDXEditor
         ref={editorRef}
