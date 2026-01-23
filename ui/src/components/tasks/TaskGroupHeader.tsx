@@ -79,6 +79,7 @@ export function TaskGroupHeader({
 
 const closedTimeFilterLabels: Record<ClosedTasksTimeFilter, string> = {
   past_hour: "Past hour",
+  past_4_hours: "Past 4 hours",
   past_day: "Past day",
   past_week: "Past week",
   all_time: "All time",

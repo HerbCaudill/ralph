@@ -1,7 +1,12 @@
 import type { ThemeMeta } from "@/lib/theme"
 import type { HotkeyAction, HotkeyConfig } from "@/config"
 
-export type ClosedTasksTimeFilter = "past_hour" | "past_day" | "past_week" | "all_time"
+export type ClosedTasksTimeFilter =
+  | "past_hour"
+  | "past_4_hours"
+  | "past_day"
+  | "past_week"
+  | "all_time"
 
 export type RalphStatus =
   | "stopped"

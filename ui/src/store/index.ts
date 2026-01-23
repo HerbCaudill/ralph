@@ -111,6 +111,7 @@ function saveTaskChatOpen(open: boolean): void {
  */
 const CLOSED_TIME_FILTERS: ClosedTasksTimeFilter[] = [
   "past_hour",
+  "past_4_hours",
   "past_day",
   "past_week",
   "all_time",
@@ -201,6 +202,8 @@ export function getTimeFilterCutoff(filter: ClosedTasksTimeFilter): Date | null 
   switch (filter) {
     case "past_hour":
       return new Date(now.getTime() - 60 * 60 * 1000)
+    case "past_4_hours":
+      return new Date(now.getTime() - 4 * 60 * 60 * 1000)
     case "past_day":
       return new Date(now.getTime() - 24 * 60 * 60 * 1000)
     case "past_week":
