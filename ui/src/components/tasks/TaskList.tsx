@@ -8,13 +8,19 @@ import {
   selectActivelyWorkingTaskIds,
   getTimeFilterCutoff,
 } from "@/store"
-import { TaskCard } from "./TaskCard"
 import { TaskGroupHeader } from "./TaskGroupHeader"
+import { TaskSubtree } from "./TaskSubtree"
 import { loadParentCollapsedState } from "@/lib/loadParentCollapsedState"
 import { loadStatusCollapsedState } from "@/lib/loadStatusCollapsedState"
 import { matchesSearchQuery } from "@/lib/matchesSearchQuery"
 import { saveParentCollapsedState } from "@/lib/saveParentCollapsedState"
 import { saveStatusCollapsedState } from "@/lib/saveStatusCollapsedState"
+import {
+  buildTaskTree,
+  findRootAncestor,
+  countAllNodes,
+  type TaskTreeNode,
+} from "@/lib/buildTaskTree"
 import type { TaskCardTask, TaskGroup, TaskStatus } from "@/types"
 
 /**
@@ -123,224 +129,174 @@ export function TaskList({
 
   const statusGroups = useMemo(() => {
     const closedCutoff = getTimeFilterCutoff(closedTimeFilter)
+    const isClosedStatus = (status: TaskStatus) => status === "closed" || status === "deferred"
 
-    const parentTaskMap = new Map<string, TaskCardTask>()
-    const childTaskIds = new Set<string>()
+    // Build the task tree for efficient hierarchy lookup
+    const { roots, taskMap, childrenMap } = buildTaskTree(tasks)
 
-    for (const task of tasks) {
-      if (task.parent) {
-        childTaskIds.add(task.id)
-        const parentTask = tasks.find(t => t.id === task.parent)
-        if (parentTask && !parentTaskMap.has(parentTask.id)) {
-          parentTaskMap.set(parentTask.id, parentTask)
-        }
-      }
-    }
+    // Filter tasks by search query and time filter
+    const filteredTasks = tasks.filter(task => {
+      if (!matchesSearchQuery(task, searchQuery)) return false
 
-    const statusToParentTasks = new Map<TaskGroup, Map<string | null, TaskCardTask[]>>()
-
-    for (const config of groupConfigs) {
-      statusToParentTasks.set(config.key, new Map())
-    }
-
-    for (const task of tasks) {
-      if (!matchesSearchQuery(task, searchQuery)) continue
-
-      const parentTask = task.parent ? parentTaskMap.get(task.parent) : null
-      const isClosedStatus = (status: TaskStatus) => status === "closed" || status === "deferred"
-      const parentIsOpen = parentTask && !isClosedStatus(parentTask.status)
-
-      let config: GroupConfig | undefined
-      if (parentIsOpen) {
-        config = groupConfigs.find(g => g.taskFilter(parentTask))
-      } else {
-        config = groupConfigs.find(g => g.taskFilter(task))
-      }
-      if (!config) continue
-
-      const isInClosedGroup = config.key === "closed"
-      if (isInClosedGroup && closedCutoff && !searchQuery.trim()) {
+      // For closed tasks, apply time filter (unless searching)
+      if (isClosedStatus(task.status) && closedCutoff && !searchQuery.trim()) {
         const closedAt = task.closed_at ? new Date(task.closed_at) : null
         if (!closedAt || closedAt < closedCutoff) {
-          continue
+          return false
         }
       }
 
-      const parentTasksMap = statusToParentTasks.get(config.key)!
+      return true
+    })
 
-      if (parentTaskMap.has(task.id)) {
-        if (!parentTasksMap.has(task.id)) {
-          parentTasksMap.set(task.id, [])
-        }
-      } else if (task.parent && parentTaskMap.has(task.parent)) {
-        if (!parentTasksMap.has(task.parent)) {
-          parentTasksMap.set(task.parent, [])
-        }
-        parentTasksMap.get(task.parent)!.push(task)
+    // Build a set of filtered task IDs for quick lookup
+    const filteredTaskIds = new Set(filteredTasks.map(t => t.id))
+
+    // Helper to determine which status group a task tree belongs to
+    // Uses the root ancestor's status when it's open
+    const getStatusGroupForTask = (task: TaskCardTask): TaskGroup | null => {
+      const rootAncestor = findRootAncestor(task, taskMap)
+      const rootIsOpen = !isClosedStatus(rootAncestor.status)
+
+      if (rootIsOpen) {
+        // Use root's status group
+        const config = groupConfigs.find(g => g.taskFilter(rootAncestor))
+        return config?.key ?? null
       } else {
-        if (!parentTasksMap.has(null)) {
-          parentTasksMap.set(null, [])
-        }
-        parentTasksMap.get(null)!.push(task)
+        // Use task's own status
+        const config = groupConfigs.find(g => g.taskFilter(task))
+        return config?.key ?? null
       }
     }
 
-    const result: StatusGroupData[] = []
+    // Build filtered tree nodes from roots, only including visible tasks
+    const buildFilteredTree = (task: TaskCardTask, includeTask: boolean): TaskTreeNode | null => {
+      const children = childrenMap.get(task.id) ?? []
+      const filteredChildren: TaskTreeNode[] = []
 
-    /**
-     * Sort tasks within a group by priority, bug status, and creation time.
-     * Closed groups are sorted by closed_at date (most recent first).
-     */
-    const sortTasks = (
-      /** Tasks to sort */
-      tasks: TaskCardTask[],
-      /** The status group key */
-      groupKey: TaskGroup,
-    ): TaskCardTask[] => {
-      if (groupKey === "closed") {
-        return [...tasks].sort((a, b) => {
-          const aTime = a.closed_at ? new Date(a.closed_at).getTime() : 0
-          const bTime = b.closed_at ? new Date(b.closed_at).getTime() : 0
-          return bTime - aTime
-        })
+      for (const child of children) {
+        const childIsVisible = filteredTaskIds.has(child.id)
+        const childNode = buildFilteredTree(child, childIsVisible)
+        if (childNode) {
+          filteredChildren.push(childNode)
+        }
       }
-      return [...tasks].sort((a, b) => {
-        // Top priority: actively working tasks come first
-        const aIsActive = activelyWorkingTaskIds.has(a.id)
-        const bIsActive = activelyWorkingTaskIds.has(b.id)
-        if (aIsActive && !bIsActive) return -1
-        if (!aIsActive && bIsActive) return 1
-        // Secondary: priority (ascending)
-        const priorityDiff = (a.priority ?? 4) - (b.priority ?? 4)
+
+      // Include this node if it's visible OR has visible children
+      if (includeTask || filteredChildren.length > 0) {
+        return {
+          task,
+          children: filteredChildren,
+        }
+      }
+
+      return null
+    }
+
+    // Sort tree nodes by priority/closed_at
+    const sortTreeNodes = (nodes: TaskTreeNode[], groupKey: TaskGroup): TaskTreeNode[] => {
+      const sortedNodes = [...nodes].sort((a, b) => {
+        if (groupKey === "closed") {
+          const aTime = a.task.closed_at ? new Date(a.task.closed_at).getTime() : 0
+          const bTime = b.task.closed_at ? new Date(b.task.closed_at).getTime() : 0
+          return bTime - aTime // Most recent first
+        }
+
+        // Check for actively working tasks
+        const aHasActive = treeHasActiveTask(a)
+        const bHasActive = treeHasActiveTask(b)
+        if (aHasActive && !bHasActive) return -1
+        if (!aHasActive && bHasActive) return 1
+
+        // Priority (ascending)
+        const priorityDiff = (a.task.priority ?? 4) - (b.task.priority ?? 4)
         if (priorityDiff !== 0) return priorityDiff
-        // Tertiary: bugs first within same priority
-        const aIsBug = a.issue_type === "bug"
-        const bIsBug = b.issue_type === "bug"
+
+        // Bugs first
+        const aIsBug = a.task.issue_type === "bug"
+        const bIsBug = b.task.issue_type === "bug"
         if (aIsBug && !bIsBug) return -1
         if (!aIsBug && bIsBug) return 1
-        // Quaternary: created_at (oldest first)
-        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
-        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
+
+        // Created_at (oldest first)
+        const aTime = a.task.created_at ? new Date(a.task.created_at).getTime() : 0
+        const bTime = b.task.created_at ? new Date(b.task.created_at).getTime() : 0
         return aTime - bTime
       })
+
+      // Recursively sort children
+      return sortedNodes.map(node => ({
+        ...node,
+        children: sortTreeNodes(node.children, groupKey),
+      }))
     }
 
+    // Helper to check if a tree contains an actively working task
+    const treeHasActiveTask = (node: TaskTreeNode): boolean => {
+      if (activelyWorkingTaskIds.has(node.task.id)) return true
+      return node.children.some(child => treeHasActiveTask(child))
+    }
+
+    // Group tasks by status group
+    const statusToTrees = new Map<TaskGroup, TaskTreeNode[]>()
     for (const config of groupConfigs) {
-      const parentTasksMap = statusToParentTasks.get(config.key)!
-      const parentSubGroups: ParentSubGroup[] = []
+      statusToTrees.set(config.key, [])
+    }
 
-      const parentsInStatus = Array.from(parentTasksMap.keys())
-        .filter((id): id is string => id !== null)
-        .map(id => parentTaskMap.get(id)!)
-        .filter(Boolean)
-        .filter(parent => config.taskFilter(parent))
-        .sort((a, b) => {
-          // Primary: priority (ascending)
-          const priorityDiff = (a.priority ?? 4) - (b.priority ?? 4)
-          if (priorityDiff !== 0) return priorityDiff
-          // Secondary: bugs first within same priority
-          const aIsBug = a.issue_type === "bug"
-          const bIsBug = b.issue_type === "bug"
-          if (aIsBug && !bIsBug) return -1
-          if (!aIsBug && bIsBug) return 1
-          // Tertiary: created_at (oldest first)
-          const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
-          const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
-          return aTime - bTime
-        })
+    // Process each root and assign to appropriate status group
+    for (const root of roots) {
+      const rootIsVisible = filteredTaskIds.has(root.task.id)
+      const filteredRoot = buildFilteredTree(root.task, rootIsVisible)
 
-      for (const parent of parentsInStatus) {
-        const childTasks = sortTasks(parentTasksMap.get(parent.id) ?? [], config.key)
-        parentSubGroups.push({ parent, tasks: childTasks })
-      }
-
-      const ungroupedTasks = sortTasks(parentTasksMap.get(null) ?? [], config.key)
-      const orphanedTasks: TaskCardTask[] = []
-
-      for (const [parentId, tasks] of parentTasksMap.entries()) {
-        if (parentId !== null && !parentsInStatus.find(p => p.id === parentId)) {
-          orphanedTasks.push(...tasks)
+      if (filteredRoot) {
+        // Determine status group based on root task
+        const groupKey = getStatusGroupForTask(root.task)
+        if (groupKey) {
+          statusToTrees.get(groupKey)!.push(filteredRoot)
         }
       }
+    }
 
-      const allUngroupedTasks = sortTasks([...ungroupedTasks, ...orphanedTasks], config.key)
-      // Add each ungrouped task as its own group for proper priority interleaving
-      for (const task of allUngroupedTasks) {
-        parentSubGroups.push({ parent: null, tasks: [task] })
-      }
-
-      // Sort all groups (parent groups and ungrouped task groups) by priority or closed_at
-      // For parent groups, use parent priority/closed_at; for ungrouped tasks, use first task
-      if (config.key === "closed") {
-        // For closed groups, sort by most recently closed first
-        parentSubGroups.sort((a, b) => {
-          // Helper to get the most recent closed_at from a group
-          const getGroupClosedAt = (group: ParentSubGroup): number => {
-            // For parent groups, use the parent's closed_at
-            if (group.parent?.closed_at) {
-              return new Date(group.parent.closed_at).getTime()
+    // Also handle orphaned tasks (tasks whose parent is not in the list)
+    for (const task of filteredTasks) {
+      // If task has a parent that's not in taskMap, it's an orphan at this level
+      if (task.parent && !taskMap.has(task.parent)) {
+        // Check if this task is already included as a root
+        const alreadyIncluded = roots.some(r => r.task.id === task.id)
+        if (!alreadyIncluded) {
+          const groupKey = getStatusGroupForTask(task)
+          if (groupKey) {
+            const orphanNode: TaskTreeNode = {
+              task,
+              children: [],
             }
-            // For ungrouped tasks, use the first (only) task's closed_at
-            if (group.tasks[0]?.closed_at) {
-              return new Date(group.tasks[0].closed_at).getTime()
+            // Add children if they exist
+            const children = childrenMap.get(task.id) ?? []
+            for (const child of children) {
+              if (filteredTaskIds.has(child.id)) {
+                const childNode = buildFilteredTree(child, true)
+                if (childNode) orphanNode.children.push(childNode)
+              }
             }
-            return 0
+            statusToTrees.get(groupKey)!.push(orphanNode)
           }
-
-          const aTime = getGroupClosedAt(a)
-          const bTime = getGroupClosedAt(b)
-          return bTime - aTime // Most recent first
-        })
-      } else {
-        parentSubGroups.sort((a, b) => {
-          // Helper to check if a group contains an actively working task
-          const groupHasActiveTask = (group: ParentSubGroup): boolean => {
-            if (group.parent && activelyWorkingTaskIds.has(group.parent.id)) return true
-            return group.tasks.some(t => activelyWorkingTaskIds.has(t.id))
-          }
-
-          // Top priority: groups with actively working tasks come first
-          const aHasActive = groupHasActiveTask(a)
-          const bHasActive = groupHasActiveTask(b)
-          if (aHasActive && !bHasActive) return -1
-          if (!aHasActive && bHasActive) return 1
-
-          // Secondary: priority (ascending)
-          const aPriority = a.parent ? (a.parent.priority ?? 4) : (a.tasks[0]?.priority ?? 4)
-          const bPriority = b.parent ? (b.parent.priority ?? 4) : (b.tasks[0]?.priority ?? 4)
-          const priorityDiff = aPriority - bPriority
-          if (priorityDiff !== 0) return priorityDiff
-          // Tertiary: bugs first within same priority
-          const aIsBug = a.parent ? a.parent.issue_type === "bug" : a.tasks[0]?.issue_type === "bug"
-          const bIsBug = b.parent ? b.parent.issue_type === "bug" : b.tasks[0]?.issue_type === "bug"
-          if (aIsBug && !bIsBug) return -1
-          if (!aIsBug && bIsBug) return 1
-          // Quaternary: created_at (oldest first)
-          const aTime =
-            a.parent ?
-              a.parent.created_at ?
-                new Date(a.parent.created_at).getTime()
-              : 0
-            : a.tasks[0]?.created_at ? new Date(a.tasks[0].created_at).getTime()
-            : 0
-          const bTime =
-            b.parent ?
-              b.parent.created_at ?
-                new Date(b.parent.created_at).getTime()
-              : 0
-            : b.tasks[0]?.created_at ? new Date(b.tasks[0].created_at).getTime()
-            : 0
-          return aTime - bTime
-        })
+        }
       }
+    }
 
-      const totalCount = parentSubGroups.reduce((sum, g) => {
-        return sum + (g.parent ? 1 : 0) + g.tasks.length
-      }, 0)
+    // Build result
+    const result: StatusGroupData[] = []
+
+    for (const config of groupConfigs) {
+      const trees = statusToTrees.get(config.key)!
+      const sortedTrees = sortTreeNodes(trees, config.key)
+
+      // Count all tasks in the trees
+      const totalCount = sortedTrees.reduce((sum, tree) => sum + countAllNodes(tree), 0)
 
       result.push({
         config,
-        parentSubGroups,
+        trees: sortedTrees,
         totalCount,
       })
     }
@@ -354,19 +310,23 @@ export function TaskList({
 
   const visibleTaskIds = useMemo(() => {
     const ids: string[] = []
-    for (const { config, parentSubGroups } of visibleStatusGroups) {
+
+    // Recursively collect visible task IDs from a tree node
+    const collectVisibleIds = (node: TaskTreeNode) => {
+      ids.push(node.task.id)
+      const isCollapsed = parentCollapsedState[node.task.id] ?? false
+      if (!isCollapsed) {
+        for (const child of node.children) {
+          collectVisibleIds(child)
+        }
+      }
+    }
+
+    for (const { config, trees } of visibleStatusGroups) {
       const isStatusCollapsed = statusCollapsedState[config.key]
       if (!isStatusCollapsed) {
-        for (const { parent, tasks: childTasks } of parentSubGroups) {
-          if (parent) {
-            ids.push(parent.id)
-            const isParentCollapsed = parentCollapsedState[parent.id] ?? false
-            if (!isParentCollapsed) {
-              ids.push(...childTasks.map(t => t.id))
-            }
-          } else {
-            ids.push(...childTasks.map(t => t.id))
-          }
+        for (const tree of trees) {
+          collectVisibleIds(tree)
         }
       }
     }
@@ -396,7 +356,7 @@ export function TaskList({
 
   return (
     <div className={cn("h-full overflow-y-auto", className)} role="list" aria-label="Task list">
-      {visibleStatusGroups.map(({ config, parentSubGroups, totalCount }) => {
+      {visibleStatusGroups.map(({ config, trees, totalCount }) => {
         const isStatusCollapsed = statusCollapsedState[config.key]
 
         return (
@@ -411,52 +371,20 @@ export function TaskList({
             />
             {!isStatusCollapsed && (
               <div role="group" aria-label={`${config.label} tasks`}>
-                {parentSubGroups.length > 0 ?
-                  parentSubGroups.map(({ parent, tasks: childTasks }) => {
-                    if (parent) {
-                      const isParentCollapsed = parentCollapsedState[parent.id] ?? false
-                      return (
-                        <div key={parent.id} role="group" aria-label={`${parent.title} sub-group`}>
-                          <TaskCard
-                            task={parent}
-                            onStatusChange={onStatusChange}
-                            onClick={onTaskClick}
-                            isNew={newTaskIds.has(parent.id)}
-                            isCollapsed={isParentCollapsed}
-                            onToggleCollapse={() => toggleParentGroup(parent.id)}
-                            subtaskCount={childTasks.length}
-                            isActivelyWorking={activelyWorkingTaskIds.has(parent.id)}
-                          />
-                          {!isParentCollapsed && childTasks.length > 0 && (
-                            <div role="group" aria-label={`${parent.title} tasks`}>
-                              {childTasks.map(task => (
-                                <TaskCard
-                                  key={task.id}
-                                  task={task}
-                                  onStatusChange={onStatusChange}
-                                  onClick={onTaskClick}
-                                  isNew={newTaskIds.has(task.id)}
-                                  isActivelyWorking={activelyWorkingTaskIds.has(task.id)}
-                                  className="pl-6"
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    }
-
-                    return childTasks.map(task => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        onStatusChange={onStatusChange}
-                        onClick={onTaskClick}
-                        isNew={newTaskIds.has(task.id)}
-                        isActivelyWorking={activelyWorkingTaskIds.has(task.id)}
-                      />
-                    ))
-                  })
+                {trees.length > 0 ?
+                  trees.map(tree => (
+                    <TaskSubtree
+                      key={tree.task.id}
+                      node={tree}
+                      depth={0}
+                      onStatusChange={onStatusChange}
+                      onTaskClick={onTaskClick}
+                      newTaskIds={newTaskIds}
+                      activelyWorkingTaskIds={activelyWorkingTaskIds}
+                      collapsedState={parentCollapsedState}
+                      onToggleCollapse={toggleParentGroup}
+                    />
+                  ))
                 : <div className="text-muted-foreground px-3 py-3 text-center text-xs italic">
                     No tasks in this group
                   </div>
@@ -528,23 +456,13 @@ type GroupConfig = {
 }
 
 /**
- * A sub-group of tasks under a parent task within a status group.
- */
-type ParentSubGroup = {
-  /** The parent task (null if tasks are ungrouped) */
-  parent: TaskCardTask | null
-  /** Child tasks in this sub-group */
-  tasks: TaskCardTask[]
-}
-
-/**
- * A complete status group with all its parent sub-groups.
+ * A complete status group with its task trees.
  */
 type StatusGroupData = {
   /** Group configuration */
   config: GroupConfig
-  /** Sub-groups organized by parent task */
-  parentSubGroups: ParentSubGroup[]
+  /** Task trees (hierarchical structure) */
+  trees: TaskTreeNode[]
   /** Total count of all tasks in this status group */
   totalCount: number
 }

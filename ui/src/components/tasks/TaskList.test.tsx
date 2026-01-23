@@ -1572,4 +1572,229 @@ describe("TaskList", () => {
       expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
     })
   })
+
+  describe("deeply nested hierarchies (grandchildren)", () => {
+    it("renders grandchild tasks nested under their parent", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "grandparent", title: "Grandparent", status: "open", issue_type: "epic" },
+        { id: "parent", title: "Parent", status: "open", parent: "grandparent" },
+        { id: "child", title: "Child", status: "open", parent: "parent" },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // All three should be visible
+      expect(screen.getByText("Grandparent")).toBeInTheDocument()
+      expect(screen.getByText("Parent")).toBeInTheDocument()
+      expect(screen.getByText("Child")).toBeInTheDocument()
+
+      // Should have correct count in Open section (grandparent + parent + child = 3)
+      expect(screen.getByLabelText("Open section, 3 tasks")).toBeInTheDocument()
+    })
+
+    it("renders deeply nested hierarchy (great-grandchildren)", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "level-0", title: "Level 0", status: "open" },
+        { id: "level-1", title: "Level 1", status: "open", parent: "level-0" },
+        { id: "level-2", title: "Level 2", status: "open", parent: "level-1" },
+        { id: "level-3", title: "Level 3", status: "open", parent: "level-2" },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // All levels should be visible
+      expect(screen.getByText("Level 0")).toBeInTheDocument()
+      expect(screen.getByText("Level 1")).toBeInTheDocument()
+      expect(screen.getByText("Level 2")).toBeInTheDocument()
+      expect(screen.getByText("Level 3")).toBeInTheDocument()
+
+      // Should count all 4 tasks
+      expect(screen.getByLabelText("Open section, 4 tasks")).toBeInTheDocument()
+    })
+
+    it("collapses parent and hides all descendants", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "grandparent", title: "Grandparent", status: "open" },
+        { id: "parent", title: "Parent", status: "open", parent: "grandparent" },
+        { id: "child", title: "Child", status: "open", parent: "parent" },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // All should be visible initially
+      expect(screen.getByText("Grandparent")).toBeInTheDocument()
+      expect(screen.getByText("Parent")).toBeInTheDocument()
+      expect(screen.getByText("Child")).toBeInTheDocument()
+
+      // Collapse the grandparent (first collapse button)
+      const collapseButtons = screen.getAllByLabelText("Collapse subtasks")
+      fireEvent.click(collapseButtons[0])
+
+      // Grandparent should still be visible, but parent and child hidden
+      expect(screen.getByText("Grandparent")).toBeInTheDocument()
+      expect(screen.queryByText("Parent")).not.toBeInTheDocument()
+      expect(screen.queryByText("Child")).not.toBeInTheDocument()
+    })
+
+    it("collapsing middle parent hides only its descendants", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "grandparent", title: "Grandparent", status: "open" },
+        { id: "parent", title: "Parent", status: "open", parent: "grandparent" },
+        { id: "child", title: "Child", status: "open", parent: "parent" },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // Find the parent's collapse button (second one)
+      const collapseButtons = screen.getAllByLabelText("Collapse subtasks")
+      expect(collapseButtons).toHaveLength(2) // Grandparent and Parent have children
+
+      // Collapse the parent (second button)
+      fireEvent.click(collapseButtons[1])
+
+      // Grandparent and Parent should be visible, but Child hidden
+      expect(screen.getByText("Grandparent")).toBeInTheDocument()
+      expect(screen.getByText("Parent")).toBeInTheDocument()
+      expect(screen.queryByText("Child")).not.toBeInTheDocument()
+    })
+
+    it("counts all descendants for subtask badge", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "grandparent", title: "Grandparent", status: "open" },
+        { id: "parent-1", title: "Parent 1", status: "open", parent: "grandparent" },
+        { id: "parent-2", title: "Parent 2", status: "open", parent: "grandparent" },
+        { id: "child-1", title: "Child 1", status: "open", parent: "parent-1" },
+        { id: "child-2", title: "Child 2", status: "open", parent: "parent-1" },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // Grandparent should show 4 descendants (2 parents + 2 children)
+      const grandparentBadge = screen.getByLabelText("4 subtasks")
+      expect(grandparentBadge).toBeInTheDocument()
+      expect(grandparentBadge.textContent).toBe("4")
+
+      // Parent 1 should show 2 descendants
+      const parent1Badge = screen.getByLabelText("2 subtasks")
+      expect(parent1Badge).toBeInTheDocument()
+      expect(parent1Badge.textContent).toBe("2")
+    })
+
+    it("applies increasing indentation for each nesting level", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "level-0", title: "Level 0", status: "open" },
+        { id: "level-1", title: "Level 1", status: "open", parent: "level-0" },
+        { id: "level-2", title: "Level 2", status: "open", parent: "level-1" },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // Level 0 should have no padding
+      const level0 = screen.getByText("Level 0").closest("[data-task-id]")
+      expect(level0).not.toHaveClass("pl-6")
+
+      // Level 1 should have pl-6 class
+      const level1 = screen.getByText("Level 1").closest("[data-task-id]")
+      expect(level1).toHaveClass("pl-6")
+
+      // Level 2 should have pl-12 class
+      const level2 = screen.getByText("Level 2").closest("[data-task-id]")
+      expect(level2).toHaveClass("pl-12")
+    })
+
+    it("keeps deeply nested hierarchy under parent status group", () => {
+      const tasks: TaskCardTask[] = [
+        { id: "grandparent", title: "Grandparent", status: "in_progress" },
+        { id: "parent", title: "Parent", status: "open", parent: "grandparent" },
+        { id: "child", title: "Child", status: "blocked", parent: "parent" },
+        {
+          id: "closed-grandchild",
+          title: "Closed Grandchild",
+          status: "closed",
+          parent: "child",
+          closed_at: new Date().toISOString(),
+        },
+      ]
+
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ open: false, closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // All should be in Open section since root ancestor is in_progress (open status)
+      expect(screen.getByLabelText("Open section, 4 tasks")).toBeInTheDocument()
+
+      // All should be visible
+      expect(screen.getByText("Grandparent")).toBeInTheDocument()
+      expect(screen.getByText("Parent")).toBeInTheDocument()
+      expect(screen.getByText("Child")).toBeInTheDocument()
+      expect(screen.getByText("Closed Grandchild")).toBeInTheDocument()
+
+      // Closed section should not exist
+      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+    })
+
+    it("moves entire tree to closed when root is closed", () => {
+      const tasks: TaskCardTask[] = [
+        {
+          id: "grandparent",
+          title: "Closed Grandparent",
+          status: "closed",
+          closed_at: new Date().toISOString(),
+        },
+        {
+          id: "parent",
+          title: "Closed Parent",
+          status: "closed",
+          parent: "grandparent",
+          closed_at: new Date().toISOString(),
+        },
+        {
+          id: "child",
+          title: "Closed Child",
+          status: "closed",
+          parent: "parent",
+          closed_at: new Date().toISOString(),
+        },
+      ]
+
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // All should be in Closed section
+      expect(screen.getByLabelText("Closed section, 3 tasks")).toBeInTheDocument()
+
+      // All should be visible
+      expect(screen.getByText("Closed Grandparent")).toBeInTheDocument()
+      expect(screen.getByText("Closed Parent")).toBeInTheDocument()
+      expect(screen.getByText("Closed Child")).toBeInTheDocument()
+    })
+
+    it("handles middle parent with children appearing as top-level when parent is open", () => {
+      // This tests that a task with both parent AND children is properly nested
+      const tasks: TaskCardTask[] = [
+        { id: "epic", title: "Epic Task", status: "open", issue_type: "epic" },
+        { id: "middle", title: "Middle Task", status: "open", parent: "epic" },
+        { id: "leaf", title: "Leaf Task", status: "open", parent: "middle" },
+      ]
+
+      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      // Epic should be top level with 2 descendants
+      const epicBadge = screen.getByLabelText("2 subtasks")
+      expect(epicBadge).toBeInTheDocument()
+
+      // Middle should show 1 descendant
+      const middleBadge = screen.getByLabelText("1 subtask")
+      expect(middleBadge).toBeInTheDocument()
+    })
+  })
 })
