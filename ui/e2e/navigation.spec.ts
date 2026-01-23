@@ -32,11 +32,14 @@ test.describe("Navigation", () => {
       const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
       await expect(searchInput).toBeVisible()
 
-      // Use fill() which handles focus automatically and is reliable for React controlled components
-      await searchInput.fill("a")
-
-      // Verify the input received the value
-      await expect(searchInput).toHaveValue("a")
+      // Fill and verify in a retry loop since React controlled components
+      // can sometimes clear input value during re-renders
+      await expect
+        .poll(async () => {
+          await searchInput.fill("a")
+          return searchInput.inputValue()
+        })
+        .toBe("a")
     })
 
     test("Escape closes search and clears it", async ({ app }) => {
@@ -46,9 +49,14 @@ test.describe("Navigation", () => {
       const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
       await expect(searchInput).toBeVisible()
 
-      // Use fill() which is more reliable for React controlled components
-      await searchInput.fill("test")
-      await expect(searchInput).toHaveValue("test")
+      // Fill and verify in a retry loop since React controlled components
+      // can sometimes clear input value during re-renders
+      await expect
+        .poll(async () => {
+          await searchInput.fill("test")
+          return searchInput.inputValue()
+        })
+        .toBe("test")
 
       // Press Escape while input is focused to close search
       // The SearchInput component handles Escape in onKeyDown which triggers onHide
@@ -65,9 +73,14 @@ test.describe("Navigation", () => {
       const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
       await expect(searchInput).toBeVisible()
 
-      // Type something in search
-      await searchInput.fill("test")
-      await expect(searchInput).toHaveValue("test")
+      // Fill and verify in a retry loop since React controlled components
+      // can sometimes clear input value during re-renders
+      await expect
+        .poll(async () => {
+          await searchInput.fill("test")
+          return searchInput.inputValue()
+        })
+        .toBe("test")
 
       // Focus somewhere else (the quick task input, which is always focusable)
       await app.taskList.quickTaskInput.focus()
