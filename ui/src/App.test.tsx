@@ -42,6 +42,26 @@ vi.mock("./lib/ralphConnection", () => ({
   initRalphConnection: vi.fn(),
 }))
 
+// Mock MarkdownEditor to avoid CSS parsing issues in jsdom
+vi.mock("@/components/ui/MarkdownEditor", () => ({
+  MarkdownEditor: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string
+    onChange?: (value: string) => void
+    placeholder?: string
+  }) => (
+    <textarea
+      data-testid="markdown-editor"
+      value={value}
+      onChange={e => onChange?.(e.target.value)}
+      placeholder={placeholder}
+    />
+  ),
+}))
+
 // Mock matchMedia for theme detection
 const mockMatchMedia = vi.fn().mockImplementation((query: string) => ({
   matches: false,

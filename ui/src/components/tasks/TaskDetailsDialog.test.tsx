@@ -13,6 +13,26 @@ vi.mock("./CommentsSection", () => ({
   CommentsSection: () => null,
 }))
 
+// Mock MarkdownEditor to avoid CSS parsing issues in jsdom
+vi.mock("@/components/ui/MarkdownEditor", () => ({
+  MarkdownEditor: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string
+    onChange?: (value: string) => void
+    placeholder?: string
+  }) => (
+    <textarea
+      data-testid="markdown-editor"
+      value={value}
+      onChange={e => onChange?.(e.target.value)}
+      placeholder={placeholder}
+    />
+  ),
+}))
+
 // Helper functions
 
 function typeInInput(input: HTMLElement, value: string) {
@@ -525,18 +545,19 @@ describe("TaskDetailsDialog", () => {
     })
   })
 
-  describe("click-to-edit description", () => {
-    it("shows description as markdown text by default", async () => {
+  describe("description editing with MarkdownEditor", () => {
+    it("shows MarkdownEditor with description value", async () => {
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      // Description should be rendered as text, not as a textarea
-      expect(screen.getByText("This is a test description")).toBeInTheDocument()
-      expect(screen.queryByRole("textbox", { name: /description/i })).not.toBeInTheDocument()
+      // MarkdownEditor should be present with the description value
+      const descInput = screen.getByTestId("markdown-editor")
+      expect(descInput).toBeInTheDocument()
+      expect(descInput).toHaveValue("This is a test description")
     })
 
-    it("shows placeholder text when description is empty", async () => {
+    it("shows MarkdownEditor with placeholder when description is empty", async () => {
       const taskWithoutDescription: TaskCardTask = {
         id: "test-123",
         title: "Test Task",
@@ -552,99 +573,18 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      expect(screen.getByText("Add description...")).toBeInTheDocument()
-    })
-
-    it("switches to edit mode when description is clicked", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      // Click on the description
-      act(() => {
-        fireEvent.click(screen.getByText("This is a test description"))
-      })
-
-      // Now the textarea should appear
-      const descInput = await screen.findByPlaceholderText("Add description...")
+      const descInput = screen.getByTestId("markdown-editor")
       expect(descInput).toBeInTheDocument()
-      expect(descInput).toHaveValue("This is a test description")
+      expect(descInput).toHaveAttribute("placeholder", "Add description...")
     })
 
-    it("exits edit mode on blur", async () => {
+    it("triggers autosave when description changes", async () => {
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
-      // Click on the description to enter edit mode
-      act(() => {
-        fireEvent.click(screen.getByText("This is a test description"))
-      })
-
-      const descInput = await screen.findByPlaceholderText("Add description...")
-      expect(descInput).toBeInTheDocument()
-
-      // Blur the textarea
-      act(() => {
-        fireEvent.blur(descInput)
-      })
-
-      // Should exit edit mode and show text again
-      await waitFor(() => {
-        expect(screen.queryByPlaceholderText("Add description...")).not.toBeInTheDocument()
-      })
-      expect(screen.getByText("This is a test description")).toBeInTheDocument()
-    })
-
-    it("reverts changes on Escape key", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      // Click on the description to enter edit mode
-      act(() => {
-        fireEvent.click(screen.getByText("This is a test description"))
-      })
-
-      const descInput = await screen.findByPlaceholderText("Add description...")
-      typeInInput(descInput, "Changed description")
-      expect(descInput).toHaveValue("Changed description")
-
-      // Press Escape
-      act(() => {
-        fireEvent.keyDown(descInput, { key: "Escape" })
-      })
-
-      // Should exit edit mode and show original text
-      await waitFor(() => {
-        expect(screen.queryByPlaceholderText("Add description...")).not.toBeInTheDocument()
-      })
-      expect(screen.getByText("This is a test description")).toBeInTheDocument()
-    })
-
-    it("preserves changes on blur and triggers autosave", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      // Click on the description to enter edit mode
-      act(() => {
-        fireEvent.click(screen.getByText("This is a test description"))
-      })
-
-      const descInput = await screen.findByPlaceholderText("Add description...")
+      const descInput = screen.getByTestId("markdown-editor")
       typeInInput(descInput, "Updated description")
-
-      // Blur the textarea
-      act(() => {
-        fireEvent.blur(descInput)
-      })
-
-      // Should exit edit mode and show updated text
-      await waitFor(() => {
-        expect(screen.queryByPlaceholderText("Add description...")).not.toBeInTheDocument()
-      })
-      expect(screen.getByText("Updated description")).toBeInTheDocument()
 
       // Should trigger autosave (description autosaves after debounce)
       await waitFor(
@@ -674,7 +614,8 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      // Should not show "No description" or "Add description..." in read-only mode
+      // Should not show MarkdownEditor in read-only mode with empty description
+      expect(screen.queryByTestId("markdown-editor")).not.toBeInTheDocument()
       expect(screen.queryByText("No description")).not.toBeInTheDocument()
       expect(screen.queryByText("Add description...")).not.toBeInTheDocument()
     })

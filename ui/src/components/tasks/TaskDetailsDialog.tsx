@@ -22,6 +22,7 @@ import { useAppStore, selectIssuePrefix, selectTasks } from "@/store"
 import type { TaskCardTask, TaskStatus, TaskUpdateData } from "@/types"
 import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@/components/ui/MarkdownContent"
+import { MarkdownEditor } from "@/components/ui/MarkdownEditor"
 import { RelatedTasks } from "./RelatedTasks"
 import { ParentCombobox } from "./ParentCombobox"
 import { IterationLinks } from "./IterationLinks"
@@ -93,12 +94,6 @@ export function TaskDetailsDialog({
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   /**
-   * Description edit mode state
-   */
-  const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null)
-
-  /**
    * Fetch labels when task changes
    */
   useEffect(() => {
@@ -139,7 +134,6 @@ export function TaskDetailsDialog({
       setLabels(task.labels ?? [])
       setNewLabel("")
       setShowLabelInput(false)
-      setIsEditingDescription(false)
       setIsConfirmingDelete(false)
       setIsDeleting(false)
       setDeleteError(null)
@@ -391,18 +385,6 @@ export function TaskDetailsDialog({
   }, [showLabelInput])
 
   /**
-   * Focuses the description textarea when entering edit mode and moves cursor to the end.
-   */
-  useEffect(() => {
-    if (isEditingDescription && descriptionTextareaRef.current) {
-      descriptionTextareaRef.current.focus()
-      // Move cursor to end
-      const len = descriptionTextareaRef.current.value.length
-      descriptionTextareaRef.current.setSelectionRange(len, len)
-    }
-  }, [isEditingDescription])
-
-  /**
    * Auto-sizes the title textarea when the title changes or dialog opens.
    */
   useEffect(() => {
@@ -411,27 +393,6 @@ export function TaskDetailsDialog({
       titleTextareaRef.current.style.height = `${titleTextareaRef.current.scrollHeight}px`
     }
   }, [title, open])
-
-  /**
-   * Exits description edit mode when the textarea loses focus.
-   */
-  const handleDescriptionBlur = useCallback(() => {
-    setIsEditingDescription(false)
-  }, [])
-
-  /**
-   * Handles Escape key to discard description changes and exit edit mode.
-   */
-  const handleDescriptionKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Escape") {
-        // Reset to original value and exit edit mode
-        setDescription(task?.description ?? "")
-        setIsEditingDescription(false)
-      }
-    },
-    [task],
-  )
 
   /**
    * Handles global keyboard shortcuts for the dialog: Escape to close, Cmd/Ctrl+Enter to close (saves automatically).
@@ -539,44 +500,16 @@ export function TaskDetailsDialog({
                 {description}
               </MarkdownContent>
             : null
-          : isEditingDescription ?
-            <textarea
-              ref={descriptionTextareaRef}
-              id="task-description"
+          : <MarkdownEditor
               value={description}
-              onChange={e => {
-                const newDescription = e.target.value
+              onChange={newDescription => {
                 setDescription(newDescription)
-                // Auto-grow textarea
-                const target = e.target
-                target.style.height = "auto"
-                target.style.height = `${target.scrollHeight}px`
                 scheduleAutosave({ ...currentValues, description: newDescription })
               }}
-              onBlur={handleDescriptionBlur}
-              onKeyDown={handleDescriptionKeyDown}
               placeholder="Add description..."
-              className="text-muted-foreground placeholder:text-muted-foreground w-full resize-none overflow-hidden bg-transparent text-sm focus:outline-none"
-              style={{ minHeight: "1.5rem" }}
+              showToolbar={true}
+              size="sm"
             />
-          : <div
-              onClick={() => setIsEditingDescription(true)}
-              onKeyDown={e => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  setIsEditingDescription(true)
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              className={cn(
-                "text-muted-foreground min-h-[1.5rem] cursor-text text-sm transition-colors hover:opacity-80",
-              )}
-            >
-              {description ?
-                <MarkdownContent className="text-muted-foreground">{description}</MarkdownContent>
-              : "Add description..."}
-            </div>
           }
         </div>
 
