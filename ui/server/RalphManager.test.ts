@@ -38,6 +38,7 @@ describe("RalphManager", () => {
     it("starts with stopped status", () => {
       expect(manager.status).toBe("stopped")
       expect(manager.isRunning).toBe(false)
+      expect(manager.canAcceptMessages).toBe(false)
     })
 
     it("accepts custom options", () => {
@@ -553,6 +554,47 @@ describe("RalphManager", () => {
 
     it("throws if not running", () => {
       expect(() => manager.resume()).toThrow("Ralph is not running")
+    })
+  })
+
+  describe("canAcceptMessages", () => {
+    it("is false when stopped", () => {
+      expect(manager.canAcceptMessages).toBe(false)
+    })
+
+    it("is true when running", async () => {
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      expect(manager.canAcceptMessages).toBe(true)
+    })
+
+    it("is true when paused", async () => {
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      manager.pause()
+      // Simulate Ralph emitting the paused event
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+
+      expect(manager.status).toBe("paused")
+      expect(manager.isRunning).toBe(false)
+      expect(manager.canAcceptMessages).toBe(true)
+    })
+
+    it("is false when stopping", async () => {
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      const stopPromise = manager.stop()
+      expect(manager.status).toBe("stopping")
+      expect(manager.canAcceptMessages).toBe(false)
+
+      mockProcess.emit("exit", 0, null)
+      await stopPromise
     })
   })
 

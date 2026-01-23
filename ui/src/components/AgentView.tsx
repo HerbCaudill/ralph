@@ -1,6 +1,6 @@
 import { ChatInput, type ChatInputHandle } from "./chat/ChatInput"
 import { EventStream } from "./events"
-import { useAppStore, selectIsRalphRunning, selectViewingIterationIndex } from "@/store"
+import { useAppStore, selectCanAcceptMessages, selectViewingIterationIndex } from "@/store"
 import { useRalphConnection } from "@/hooks"
 
 /**
@@ -11,7 +11,7 @@ export function AgentView({
   chatInputRef,
 }: AgentViewProps) {
   const { sendMessage, isConnected } = useRalphConnection()
-  const isRalphRunning = useAppStore(selectIsRalphRunning)
+  const canAcceptMessages = useAppStore(selectCanAcceptMessages)
   const viewingIterationIndex = useAppStore(selectViewingIterationIndex)
   const isViewingLatest = viewingIterationIndex === null
 
@@ -28,10 +28,10 @@ export function AgentView({
           <ChatInput
             ref={chatInputRef}
             onSubmit={sendMessage}
-            disabled={!isConnected || !isRalphRunning}
+            disabled={!isConnected || !canAcceptMessages}
             placeholder={
               !isConnected ? "Connecting..."
-              : !isRalphRunning ?
+              : !canAcceptMessages ?
                 "Start Ralph to send messages..."
               : "Send Ralph a message..."
             }

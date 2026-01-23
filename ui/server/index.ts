@@ -1407,7 +1407,7 @@ function handleWsMessage(
           return
         }
 
-        if (!context.ralphManager.isRunning) {
+        if (!context.ralphManager.canAcceptMessages) {
           ws.send(
             JSON.stringify({ type: "error", error: "Ralph is not running", timestamp: Date.now() }),
           )

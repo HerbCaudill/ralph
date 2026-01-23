@@ -1599,6 +1599,9 @@ export const selectIteration = (state: AppState) => {
 export const selectConnectionStatus = (state: AppState) => state.connectionStatus
 export const selectIsConnected = (state: AppState) => state.connectionStatus === "connected"
 export const selectIsRalphRunning = (state: AppState) => state.ralphStatus === "running"
+/** Whether Ralph can accept user messages (running or paused) */
+export const selectCanAcceptMessages = (state: AppState) =>
+  state.ralphStatus === "running" || state.ralphStatus === "paused"
 export const selectAccentColor = (state: AppState) => state.accentColor
 export const selectSidebarOpen = (state: AppState) => state.sidebarOpen
 export const selectSidebarWidth = (state: AppState) => state.sidebarWidth

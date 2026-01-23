@@ -57,6 +57,14 @@ export class RalphManager extends EventEmitter {
   }
 
   /**
+   * Whether ralph can accept user messages.
+   * This is true when running or paused (allows redirecting ralph while paused).
+   */
+  get canAcceptMessages(): boolean {
+    return this._status === "running" || this._status === "paused"
+  }
+
+  /**
    * Start the ralph process.
    *
    * @param iterations - Number of iterations (optional)
