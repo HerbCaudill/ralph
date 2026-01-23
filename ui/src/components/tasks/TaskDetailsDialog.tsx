@@ -14,6 +14,7 @@ import {
   type TablerIcon,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn, stripTaskPrefix } from "@/lib/utils"
@@ -591,10 +592,7 @@ export function TaskDetailsDialog({
                 <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[status].color)} />
                 <span className="text-sm">{statusConfig[status].label}</span>
               </div>
-            : <div
-                className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
-                role="group"
-              >
+            : <ButtonGroup className="border-input bg-background h-8 rounded-md border">
                 {statusOptions.map(s => {
                   const config = statusConfig[s]
                   const Icon = config.icon
@@ -624,15 +622,10 @@ export function TaskDetailsDialog({
                         }
                       }}
                       className={cn(
-                        "flex items-center justify-center gap-1 border-l px-2 text-xs transition-colors first:rounded-l-md first:border-l-0 last:rounded-r-md",
+                        "flex h-full items-center justify-center gap-1 px-2 text-xs transition-colors",
                         isSelected ?
-                          cn("border-transparent text-white", config.selectedBg)
-                        : cn(
-                            config.color,
-                            config.unselectedBg,
-                            config.unselectedHover,
-                            config.unselectedBorder,
-                          ),
+                          cn("text-white", config.selectedBg)
+                        : cn(config.color, config.unselectedBg, config.unselectedHover),
                       )}
                       aria-pressed={isSelected}
                     >
@@ -641,7 +634,7 @@ export function TaskDetailsDialog({
                     </button>
                   )
                 })}
-              </div>
+              </ButtonGroup>
             }
           </div>
 
@@ -652,10 +645,7 @@ export function TaskDetailsDialog({
               <span className="text-sm">
                 {priorityOptions.find(p => p.value === priority)?.label ?? `P${priority}`}
               </span>
-            : <div
-                className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
-                role="group"
-              >
+            : <ButtonGroup className="border-input bg-background h-8 rounded-md border">
                 {priorityOptions.map(p => {
                   const isSelected = priority === p.value
                   const handlePriorityChange = (newPriority: number) => {
@@ -687,10 +677,10 @@ export function TaskDetailsDialog({
                         }
                       }}
                       className={cn(
-                        "flex items-center justify-center gap-1 border-l px-2 text-xs transition-colors first:rounded-l-md first:border-l-0 last:rounded-r-md",
+                        "flex h-full items-center justify-center gap-1 px-2 text-xs transition-colors",
                         isSelected ?
-                          cn("border-transparent text-white", p.selectedBg)
-                        : cn(p.color, p.unselectedBg, p.unselectedHover, p.unselectedBorder),
+                          cn("text-white", p.selectedBg)
+                        : cn(p.color, p.unselectedBg, p.unselectedHover),
                       )}
                       aria-pressed={isSelected}
                     >
@@ -698,7 +688,7 @@ export function TaskDetailsDialog({
                     </button>
                   )
                 })}
-              </div>
+              </ButtonGroup>
             }
           </div>
 
@@ -720,10 +710,7 @@ export function TaskDetailsDialog({
                   )
                 })()}
               </div>
-            : <div
-                className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
-                role="group"
-              >
+            : <ButtonGroup className="border-input bg-background h-8 rounded-md border">
                 {issueTypeOptions.map(t => {
                   const Icon = t.icon
                   const isSelected = issueType === t.value
@@ -756,10 +743,10 @@ export function TaskDetailsDialog({
                         }
                       }}
                       className={cn(
-                        "flex items-center justify-center gap-1 border-l px-2 text-xs transition-colors first:rounded-l-md first:border-l-0 last:rounded-r-md",
+                        "flex h-full items-center justify-center gap-1 px-2 text-xs transition-colors",
                         isSelected ?
-                          cn("border-transparent text-white", t.selectedBg)
-                        : cn(t.color, t.unselectedBg, t.unselectedHover, t.unselectedBorder),
+                          cn("text-white", t.selectedBg)
+                        : cn(t.color, t.unselectedBg, t.unselectedHover),
                       )}
                       aria-pressed={isSelected}
                     >
@@ -768,7 +755,7 @@ export function TaskDetailsDialog({
                     </button>
                   )
                 })}
-              </div>
+              </ButtonGroup>
             }
           </div>
 
@@ -884,22 +871,24 @@ export function TaskDetailsDialog({
                 {isConfirmingDelete ?
                   <>
                     <span className="text-destructive text-sm">Delete this task?</span>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? "Deleting..." : "Yes, delete"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsConfirmingDelete(false)}
-                      disabled={isDeleting}
-                    >
-                      Cancel
-                    </Button>
+                    <ButtonGroup>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? "Deleting..." : "Yes, delete"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsConfirmingDelete(false)}
+                        disabled={isDeleting}
+                      >
+                        Cancel
+                      </Button>
+                    </ButtonGroup>
                   </>
                 : <Button
                     variant="ghost"
@@ -944,7 +933,6 @@ const issueTypeOptions: {
   selectedBg: string
   unselectedBg: string
   unselectedHover: string
-  unselectedBorder: string
 }[] = [
   {
     value: "task",
@@ -954,7 +942,6 @@ const issueTypeOptions: {
     selectedBg: "bg-green-600",
     unselectedBg: "bg-green-500/5",
     unselectedHover: "hover:bg-green-500/20",
-    unselectedBorder: "border-border",
   },
   {
     value: "bug",
@@ -964,7 +951,6 @@ const issueTypeOptions: {
     selectedBg: "bg-red-500",
     unselectedBg: "bg-red-500/5",
     unselectedHover: "hover:bg-red-500/20",
-    unselectedBorder: "border-border",
   },
   {
     value: "epic",
@@ -974,7 +960,6 @@ const issueTypeOptions: {
     selectedBg: "bg-indigo-500",
     unselectedBg: "bg-indigo-500/5",
     unselectedHover: "hover:bg-indigo-500/20",
-    unselectedBorder: "border-border",
   },
 ]
 
@@ -989,7 +974,6 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     selectedBg: "bg-gray-500",
     unselectedBg: "bg-gray-500/5",
     unselectedHover: "hover:bg-gray-500/20",
-    unselectedBorder: "border-border",
   },
   in_progress: {
     icon: IconCircleDot,
@@ -998,7 +982,6 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     selectedBg: "bg-blue-500",
     unselectedBg: "bg-blue-500/5",
     unselectedHover: "hover:bg-blue-500/20",
-    unselectedBorder: "border-border",
   },
   blocked: {
     icon: IconBan,
@@ -1007,7 +990,6 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     selectedBg: "bg-red-500",
     unselectedBg: "bg-red-500/5",
     unselectedHover: "hover:bg-red-500/20",
-    unselectedBorder: "border-border",
   },
   deferred: {
     icon: IconClock,
@@ -1016,7 +998,6 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     selectedBg: "bg-amber-500",
     unselectedBg: "bg-amber-500/5",
     unselectedHover: "hover:bg-amber-500/20",
-    unselectedBorder: "border-border",
   },
   closed: {
     icon: IconCircleCheck,
@@ -1025,7 +1006,6 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     selectedBg: "bg-green-500",
     unselectedBg: "bg-green-500/5",
     unselectedHover: "hover:bg-green-500/20",
-    unselectedBorder: "border-border",
   },
 }
 
@@ -1046,7 +1026,6 @@ const priorityOptions = [
     selectedBg: "bg-red-600",
     unselectedBg: "bg-red-600/5",
     unselectedHover: "hover:bg-red-600/20",
-    unselectedBorder: "border-border",
   },
   {
     value: 1,
@@ -1056,7 +1035,6 @@ const priorityOptions = [
     selectedBg: "bg-orange-500",
     unselectedBg: "bg-orange-500/5",
     unselectedHover: "hover:bg-orange-500/20",
-    unselectedBorder: "border-border",
   },
   {
     value: 2,
@@ -1066,7 +1044,6 @@ const priorityOptions = [
     selectedBg: "bg-amber-500",
     unselectedBg: "bg-amber-500/5",
     unselectedHover: "hover:bg-amber-500/20",
-    unselectedBorder: "border-border",
   },
   {
     value: 3,
@@ -1076,7 +1053,6 @@ const priorityOptions = [
     selectedBg: "bg-yellow-500",
     unselectedBg: "bg-yellow-500/5",
     unselectedHover: "hover:bg-yellow-500/20",
-    unselectedBorder: "border-border",
   },
   {
     value: 4,
@@ -1086,7 +1062,6 @@ const priorityOptions = [
     selectedBg: "bg-gray-500",
     unselectedBg: "bg-gray-500/5",
     unselectedHover: "hover:bg-gray-500/20",
-    unselectedBorder: "border-border",
   },
 ]
 
@@ -1108,5 +1083,4 @@ type StatusConfig = {
   selectedBg: string
   unselectedBg: string
   unselectedHover: string
-  unselectedBorder: string
 }
