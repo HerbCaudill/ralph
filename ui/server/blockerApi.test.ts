@@ -6,16 +6,27 @@ import { BdProxy, type SpawnFn, type BdDepResult } from "./BdProxy.js"
 
 /**
  * Create a mock process helper for testing.
+ * Returns a process with a `spawned` promise that resolves when the process
+ * is returned from the mock spawn function (i.e., when listeners can be attached).
  */
 function createMockProcess() {
+  let resolveSpawned: () => void
+  const spawned = new Promise<void>(resolve => {
+    resolveSpawned = resolve
+  })
+
   const proc = new EventEmitter() as EventEmitter & {
     stdout: EventEmitter
     stderr: EventEmitter
     kill: ReturnType<typeof vi.fn>
+    spawned: Promise<void>
+    _signalSpawned: () => void
   }
   proc.stdout = new EventEmitter()
   proc.stderr = new EventEmitter()
   proc.kill = vi.fn()
+  proc.spawned = spawned
+  proc._signalSpawned = () => resolveSpawned()
   return proc
 }
 
@@ -80,7 +91,12 @@ describe("Blocker API endpoints", () => {
 
   beforeAll(async () => {
     mockProcess = createMockProcess()
-    mockSpawn = vi.fn().mockReturnValue(mockProcess)
+    mockSpawn = vi.fn().mockImplementation(() => {
+      // Signal that the process has been spawned (listeners will be attached after this returns)
+      // Use setImmediate to ensure the signal fires after the caller attaches listeners
+      setImmediate(() => mockProcess._signalSpawned())
+      return mockProcess
+    })
     bdProxy = new BdProxy({ spawn: mockSpawn as unknown as SpawnFn })
 
     const app = createTestApp(() => bdProxy)
@@ -120,7 +136,10 @@ describe("Blocker API endpoints", () => {
 
       // Create new mock process BEFORE making the request
       mockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(mockProcess)
+      mockSpawn.mockImplementation(() => {
+        setImmediate(() => mockProcess._signalSpawned())
+        return mockProcess
+      })
 
       // Make the request
       const fetchPromise = fetch(`http://localhost:${port}/api/tasks/rui-blocked/blockers`, {
@@ -129,8 +148,8 @@ describe("Blocker API endpoints", () => {
         body: JSON.stringify({ blockerId: "rui-blocker" }),
       })
 
-      // Wait a tick for the request to reach the server and spawn the process
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Wait for the process to be spawned and listeners to be attached
+      await mockProcess.spawned
 
       // Simulate successful response
       mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(expectedResult)))
@@ -170,7 +189,10 @@ describe("Blocker API endpoints", () => {
     it("returns 500 on bd command failure", async () => {
       // Create new mock process BEFORE making the request
       mockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(mockProcess)
+      mockSpawn.mockImplementation(() => {
+        setImmediate(() => mockProcess._signalSpawned())
+        return mockProcess
+      })
 
       // Make the request
       const fetchPromise = fetch(`http://localhost:${port}/api/tasks/rui-invalid/blockers`, {
@@ -179,8 +201,8 @@ describe("Blocker API endpoints", () => {
         body: JSON.stringify({ blockerId: "rui-blocker" }),
       })
 
-      // Wait a tick for the request to reach the server and spawn the process
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Wait for the process to be spawned and listeners to be attached
+      await mockProcess.spawned
 
       // Simulate error response
       mockProcess.stderr.emit("data", Buffer.from("Issue not found"))
@@ -205,7 +227,10 @@ describe("Blocker API endpoints", () => {
 
       // Create new mock process BEFORE making the request
       mockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(mockProcess)
+      mockSpawn.mockImplementation(() => {
+        setImmediate(() => mockProcess._signalSpawned())
+        return mockProcess
+      })
 
       // Make the request
       const fetchPromise = fetch(
@@ -215,8 +240,8 @@ describe("Blocker API endpoints", () => {
         },
       )
 
-      // Wait a tick for the request to reach the server and spawn the process
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Wait for the process to be spawned and listeners to be attached
+      await mockProcess.spawned
 
       // Simulate successful response
       mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(expectedResult)))
@@ -232,7 +257,10 @@ describe("Blocker API endpoints", () => {
     it("returns 500 on bd command failure", async () => {
       // Create new mock process BEFORE making the request
       mockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(mockProcess)
+      mockSpawn.mockImplementation(() => {
+        setImmediate(() => mockProcess._signalSpawned())
+        return mockProcess
+      })
 
       // Make the request
       const fetchPromise = fetch(
@@ -242,8 +270,8 @@ describe("Blocker API endpoints", () => {
         },
       )
 
-      // Wait a tick for the request to reach the server and spawn the process
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Wait for the process to be spawned and listeners to be attached
+      await mockProcess.spawned
 
       // Simulate error response
       mockProcess.stderr.emit("data", Buffer.from("Dependency not found"))
