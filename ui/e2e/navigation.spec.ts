@@ -126,12 +126,28 @@ test.describe("Navigation", () => {
       // Wait for the chat input to be enabled (connection established)
       await expect(taskChatInput).toBeEnabled({ timeout: 10000 })
 
-      // First, close the panel: click to focus, then press Cmd+J to close
-      await taskChatInput.click()
-      await expect(taskChatInput).toBeFocused()
+      // Panel should be open initially
+      await expect
+        .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
+        .toBeGreaterThan(0)
+
+      // Focus something else first (quick task input) using click for reliability
+      await app.taskList.quickTaskInput.click()
+      await expect(app.taskList.quickTaskInput).toBeFocused()
+
+      // First press: Focus the chat input (panel is open but input not focused)
       await app.page.keyboard.press("Meta+j")
 
-      // Wait for panel to close (CSS transition) - use poll to retry
+      // Chat input should now be focused (auto-retries)
+      await expect(taskChatInput).toBeFocused()
+
+      // Verify focus is stable before pressing again
+      await expect(taskChatInput).toBeFocused()
+
+      // Second press: Now toggle off (since input is focused)
+      await app.page.keyboard.press("Meta+j")
+
+      // Wait for panel to close - use poll to retry
       await expect
         .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
         .toBeLessThanOrEqual(1)
@@ -139,7 +155,7 @@ test.describe("Navigation", () => {
       // Now open it - should focus the input
       await app.page.keyboard.press("Meta+j")
 
-      // Wait for panel to open first (CSS transition)
+      // Wait for panel to open
       await expect
         .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
         .toBeGreaterThan(0)
