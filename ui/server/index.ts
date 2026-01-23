@@ -74,6 +74,8 @@ export interface ServerConfig {
   appDir: string
   /** Workspace directory for beads database. Defaults to process.cwd() if not set. */
   workspacePath?: string
+  /** Log ralph process events to console. Defaults to false. */
+  logRalphEvents?: boolean
 }
 
 export function getConfig(): ServerConfig {
@@ -82,6 +84,7 @@ export function getConfig(): ServerConfig {
     port: parseInt(process.env.PORT || "4242", 10),
     appDir: path.resolve(import.meta.dirname, ".."),
     workspacePath: process.env.WORKSPACE_PATH || undefined,
+    logRalphEvents: process.env.LOG_RALPH_EVENTS === "true",
   }
 }
 
@@ -1648,6 +1651,11 @@ let workspaceContextManager: WorkspaceContextManager | null = null
 let configuredWorkspacePath: string | undefined
 
 /**
+ * Whether to log ralph events to console (set by startServer)
+ */
+let configuredLogRalphEvents: boolean = false
+
+/**
  * Get the singleton WorkspaceContextManager instance, creating it if needed.
  */
 export function getWorkspaceContextManager(): WorkspaceContextManager {
@@ -1655,6 +1663,7 @@ export function getWorkspaceContextManager(): WorkspaceContextManager {
     workspaceContextManager = new WorkspaceContextManager({
       watch: true,
       env: process.env as Record<string, string>,
+      logRalphEvents: configuredLogRalphEvents,
     })
 
     // Wire up event forwarding from the context manager to WebSocket clients
@@ -2030,9 +2039,14 @@ export async function startServer(
 ): Promise<void> {
   // Set the configured workspace path for use by BdProxy, RalphManager, etc.
   configuredWorkspacePath = config.workspacePath
+  configuredLogRalphEvents = config.logRalphEvents ?? false
 
   if (configuredWorkspacePath) {
     console.log(`[server] Using workspace: ${configuredWorkspacePath}`)
+  }
+
+  if (configuredLogRalphEvents) {
+    console.log("[server] Ralph event logging enabled")
   }
 
   // Cleanup stale iteration states at startup (files older than 1 hour)

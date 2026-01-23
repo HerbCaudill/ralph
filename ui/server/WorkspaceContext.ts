@@ -33,6 +33,8 @@ export interface WorkspaceContextOptions {
   enableMutationPolling?: boolean
   /** Mutation polling interval in ms (default: 1000) */
   mutationPollingInterval?: number
+  /** Log ralph process events to console */
+  logRalphEvents?: boolean
 }
 
 /**
@@ -89,9 +91,13 @@ export class WorkspaceContext extends EventEmitter {
   /** Cleanup function for mutation watcher (if enabled) */
   private _stopMutationWatcher: (() => void) | null = null
 
+  /** Whether to log ralph events to console */
+  private _logRalphEvents: boolean
+
   constructor(options: WorkspaceContextOptions) {
     super()
     this.workspacePath = options.workspacePath
+    this._logRalphEvents = options.logRalphEvents ?? false
 
     // Create BdProxy
     this._bdProxy = new BdProxy({ cwd: options.workspacePath })
@@ -275,6 +281,11 @@ export class WorkspaceContext extends EventEmitter {
    */
   private wireRalphManagerEvents(): void {
     this._ralphManager.on("event", (event: RalphEvent) => {
+      // Log to console if enabled
+      if (this._logRalphEvents) {
+        console.log("[ralph-event]", JSON.stringify(event))
+      }
+
       // Update current task tracking
       this.updateCurrentTask(event)
 
@@ -286,18 +297,30 @@ export class WorkspaceContext extends EventEmitter {
     })
 
     this._ralphManager.on("status", (status: RalphStatus) => {
+      if (this._logRalphEvents) {
+        console.log("[ralph-status]", status)
+      }
       this.emit("ralph:status", status)
     })
 
     this._ralphManager.on("output", (line: string) => {
+      if (this._logRalphEvents) {
+        console.log("[ralph-output]", line)
+      }
       this.emit("ralph:output", line)
     })
 
     this._ralphManager.on("error", (error: Error) => {
+      if (this._logRalphEvents) {
+        console.log("[ralph-error]", error.message)
+      }
       this.emit("ralph:error", error)
     })
 
     this._ralphManager.on("exit", (info: { code: number | null; signal: string | null }) => {
+      if (this._logRalphEvents) {
+        console.log("[ralph-exit]", `code=${info.code} signal=${info.signal}`)
+      }
       this.emit("ralph:exit", info)
     })
   }

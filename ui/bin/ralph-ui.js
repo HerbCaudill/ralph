@@ -71,6 +71,7 @@ async function startServer(options) {
     ...process.env,
     HOST: options.host,
     PORT: String(options.port),
+    LOG_RALPH_EVENTS: options.logEvents ? "true" : "",
   }
 
   // Path to the server entry point
@@ -137,12 +138,14 @@ program
   .option("--open", "Open the browser after starting")
   .option("--host <addr>", "Bind to a specific host", "127.0.0.1")
   .option("--port <num>", "Bind to a specific port", "4242")
+  .option("--log-events", "Log ralph process events to console")
   .action(options => {
     startServer({
       debug: options.debug || false,
       open: options.open || false,
       host: options.host,
       port: parseInt(options.port, 10),
+      logEvents: options.logEvents || false,
     })
   })
 
@@ -160,12 +163,14 @@ program
   .option("--open", "Open the browser after restarting")
   .option("--host <addr>", "Bind to a specific host", "127.0.0.1")
   .option("--port <num>", "Bind to a specific port", "4242")
+  .option("--log-events", "Log ralph process events to console")
   .action(options => {
     restartServer({
       debug: options.debug || false,
       open: options.open || false,
       host: options.host,
       port: parseInt(options.port, 10),
+      logEvents: options.logEvents || false,
     })
   })
 

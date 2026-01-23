@@ -58,6 +58,7 @@ export class WorkspaceContextManager extends EventEmitter {
         workspacePath,
         watch: this._defaultOptions.watch,
         env: this._defaultOptions.env,
+        logRalphEvents: this._defaultOptions.logRalphEvents,
       }
       context = new WorkspaceContext(contextOptions)
       this._contexts.set(workspacePath, context)
@@ -303,4 +304,6 @@ export interface WorkspaceContextManagerOptions {
   env?: Record<string, string>
   /** Maximum number of contexts to keep (0 = unlimited). Default: 10 */
   maxContexts?: number
+  /** Log ralph process events to console. Defaults to false. */
+  logRalphEvents?: boolean
 }
