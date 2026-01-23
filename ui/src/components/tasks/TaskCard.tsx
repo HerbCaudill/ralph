@@ -255,26 +255,29 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           {/* Title */}
           <span
             className={cn(
-              "min-w-0 flex-1 truncate text-xs",
+              "min-w-0 shrink truncate text-xs",
               task.status === "closed" && "line-through",
             )}
           >
             {task.title}
           </span>
 
+          {/* Subtask count - flush against title */}
+          {hasSubtasks && (
+            <span
+              className="text-muted-foreground bg-muted shrink-0 rounded px-1.5 py-0.5 text-[10px] leading-none"
+              title={`${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`}
+              aria-label={`${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`}
+            >
+              {subtaskCount}
+            </span>
+          )}
+
+          {/* Spacer to push type and priority indicators to the right */}
+          <div className="flex-1" />
+
           {/* Type and Priority indicators (right side) */}
           <div className="flex shrink-0 items-center gap-1.5">
-            {/* Subtask count for epics */}
-            {hasSubtasks && (
-              <span
-                className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px] leading-none"
-                title={`${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`}
-                aria-label={`${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`}
-              >
-                {subtaskCount}
-              </span>
-            )}
-
             {/* Issue type icon (only for non-task types) */}
             {task.issue_type && task.issue_type !== "task" && typeConfig[task.issue_type] && (
               <span
