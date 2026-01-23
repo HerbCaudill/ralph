@@ -76,7 +76,7 @@ describe("Blocker API endpoints", () => {
   let mockProcess: ReturnType<typeof createMockProcess>
   let mockSpawn: ReturnType<typeof vi.fn>
   let bdProxy: BdProxy
-  const port = 3098 // Use a unique port for blocker API tests (different from index.test.ts)
+  let port: number
 
   beforeAll(async () => {
     mockProcess = createMockProcess()
@@ -86,8 +86,13 @@ describe("Blocker API endpoints", () => {
     const app = createTestApp(() => bdProxy)
     server = createServer(app)
 
+    // Use port 0 to let the OS assign an available port
     await new Promise<void>(resolve => {
-      server.listen(port, "localhost", () => resolve())
+      server.listen(0, "localhost", () => {
+        const address = server.address()
+        port = typeof address === "object" && address ? address.port : 0
+        resolve()
+      })
     })
   })
 
