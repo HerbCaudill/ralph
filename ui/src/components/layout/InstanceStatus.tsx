@@ -1,10 +1,5 @@
 import { cn } from "@/lib/utils"
-import {
-  useAppStore,
-  selectActiveInstanceAgentName,
-  selectActiveInstanceCurrentTaskTitle,
-  selectRalphStatus,
-} from "@/store"
+import { useAppStore, selectActiveInstanceCurrentTaskTitle, selectRalphStatus } from "@/store"
 
 export type InstanceStatusProps = {
   /** Text color for display */
@@ -14,11 +9,11 @@ export type InstanceStatusProps = {
 }
 
 /**
- * Displays the active instance's agent name and current task.
- * Shows agent name and status when running, e.g., "Ralph: running 'Fix login bug'"
+ * Displays the current task status in the header.
+ * Shows status when running, e.g., "running 'Fix login bug'"
+ * The agent name is not shown here as it's already displayed in the Logo.
  */
 export function InstanceStatus({ textColor, className }: InstanceStatusProps) {
-  const agentName = useAppStore(selectActiveInstanceAgentName)
   const taskTitle = useAppStore(selectActiveInstanceCurrentTaskTitle)
   const status = useAppStore(selectRalphStatus)
 
@@ -36,10 +31,9 @@ export function InstanceStatus({ textColor, className }: InstanceStatusProps) {
     <span
       className={cn("flex items-center gap-1.5 text-sm font-medium opacity-90", className)}
       style={{ color: textColor }}
-      title={`${agentName}: ${displayText}`}
+      title={displayText}
       data-testid="instance-status"
     >
-      <span className="font-semibold">{agentName}:</span>
       <span className="max-w-[200px] truncate">{displayText}</span>
     </span>
   )

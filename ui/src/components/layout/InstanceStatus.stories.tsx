@@ -101,7 +101,7 @@ export const Paused: Story = {
   ],
 }
 
-export const CustomAgentName: Story = {
+export const WorktreeInstance: Story = {
   args: {
     textColor: "white",
   },

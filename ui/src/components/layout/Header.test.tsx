@@ -445,7 +445,6 @@ describe("Header", () => {
 
       const status = screen.getByTestId("instance-status")
       expect(status).toBeInTheDocument()
-      expect(status).toHaveTextContent("Ralph:")
       expect(status).toHaveTextContent("running")
     })
 
@@ -470,7 +469,6 @@ describe("Header", () => {
 
       const status = screen.getByTestId("instance-status")
       expect(status).toBeInTheDocument()
-      expect(status).toHaveTextContent("Ralph:")
       expect(status).toHaveTextContent("running 'Fix login bug'")
     })
   })

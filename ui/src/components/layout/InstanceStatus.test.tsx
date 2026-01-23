@@ -1,7 +1,7 @@
 import { render, screen, act } from "@/test-utils"
 import { describe, it, expect, beforeEach } from "vitest"
 import { InstanceStatus } from "./InstanceStatus"
-import { useAppStore, createRalphInstance, DEFAULT_AGENT_NAME } from "@/store"
+import { useAppStore, createRalphInstance } from "@/store"
 
 describe("InstanceStatus", () => {
   beforeEach(() => {
@@ -29,11 +29,10 @@ describe("InstanceStatus", () => {
 
     const status = screen.getByTestId("instance-status")
     expect(status).toBeInTheDocument()
-    expect(status).toHaveTextContent(DEFAULT_AGENT_NAME)
     expect(status).toHaveTextContent("running")
   })
 
-  it("renders agent name and task title when running with task", () => {
+  it("renders task title when running with task", () => {
     act(() => {
       const store = useAppStore.getState()
       const instances = new Map(store.instances)
@@ -49,7 +48,6 @@ describe("InstanceStatus", () => {
 
     const status = screen.getByTestId("instance-status")
     expect(status).toBeInTheDocument()
-    expect(status).toHaveTextContent(DEFAULT_AGENT_NAME)
     expect(status).toHaveTextContent("running 'Fix login bug'")
   })
 
@@ -72,7 +70,7 @@ describe("InstanceStatus", () => {
     expect(status).toHaveTextContent("paused on 'Add feature'")
   })
 
-  it("shows custom agent name for non-default instance", () => {
+  it("shows task status for non-default instance", () => {
     act(() => {
       const store = useAppStore.getState()
       const instances = new Map(store.instances)
@@ -90,7 +88,6 @@ describe("InstanceStatus", () => {
 
     const status = screen.getByTestId("instance-status")
     expect(status).toBeInTheDocument()
-    expect(status).toHaveTextContent("Alice:")
     expect(status).toHaveTextContent("running 'Write tests'")
   })
 
