@@ -192,7 +192,10 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           aria-haspopup={onStatusChange ? "listbox" : undefined}
           aria-expanded={isStatusMenuOpen}
         >
-          <StatusIcon className={cn("size-3.5", config.color, shouldSpin && config.animate)} />
+          {/* Only show icon for non-open statuses - open status shows nothing to avoid looking like a checkbox */}
+          {task.status !== "open" ?
+            <StatusIcon className={cn("size-3.5", config.color, shouldSpin && config.animate)} />
+          : <span className="size-3.5" />}
 
           {/* Status dropdown menu */}
           {isStatusMenuOpen && (
