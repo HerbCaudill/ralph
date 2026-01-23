@@ -1,23 +1,30 @@
 import { cn } from "@/lib/utils"
 import { useAppStore, selectConnectionStatus } from "@/store"
 import type { ConnectionStatus } from "@/hooks/useWebSocket"
+import { IconCloud, IconCloudOff, IconLoader2 } from "@tabler/icons-react"
+import type { ComponentType } from "react"
+
+type IconProps = { className?: string; size?: number }
 
 const connectionStatusConfig: Record<
   ConnectionStatus,
-  { color: string; label: string; description: string }
+  { color: string; icon: ComponentType<IconProps>; label: string; description: string }
 > = {
   disconnected: {
-    color: "bg-status-error",
+    color: "text-status-error",
+    icon: IconCloudOff,
     label: "Disconnected",
     description: "Connection lost. Attempting to reconnect...",
   },
   connecting: {
-    color: "bg-status-warning animate-pulse",
+    color: "text-status-warning",
+    icon: IconLoader2,
     label: "Connecting",
     description: "Establishing connection to server...",
   },
   connected: {
-    color: "bg-status-success",
+    color: "text-status-success",
+    icon: IconCloud,
     label: "Connected",
     description: "Connected to server",
   },
@@ -25,7 +32,7 @@ const connectionStatusConfig: Record<
 
 /**
  * Visual indicator showing WebSocket connection status.
- * Shows connected/connecting/disconnected states with appropriate colors.
+ * Shows connected/connecting/disconnected states with appropriate icons and colors.
  * Only shows the label when not connected to draw attention to connection issues.
  */
 export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicatorProps) {
@@ -33,8 +40,11 @@ export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicat
   const config = connectionStatusConfig[connectionStatus]
 
   // Only show the full indicator (with label) when not connected
-  // When connected, just show the dot to minimize visual noise
+  // When connected, just show the icon to minimize visual noise
   const showLabel = connectionStatus !== "connected"
+
+  const Icon = config.icon
+  const isConnecting = connectionStatus === "connecting"
 
   return (
     <div
@@ -42,9 +52,10 @@ export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicat
       title={config.description}
       data-testid="connection-status-indicator"
     >
-      <span
-        className={cn("size-2 rounded-full", config.color)}
-        data-testid="connection-status-dot"
+      <Icon
+        className={cn(config.color, isConnecting && "animate-spin")}
+        size={14}
+        data-testid="connection-status-icon"
       />
       {showLabel && (
         <span className="text-muted-foreground text-xs" data-testid="connection-status-label">

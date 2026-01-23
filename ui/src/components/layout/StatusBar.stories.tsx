@@ -104,3 +104,29 @@ export const NoIteration: Story = {
     }),
   ],
 }
+
+export const Disconnected: Story = {
+  decorators: [
+    withStoreState({
+      connectionStatus: "disconnected",
+      ralphStatus: "stopped",
+      workspace: "/Users/dev/projects/my-app",
+      branch: "main",
+      tokenUsage: { input: 5000, output: 1500 },
+      iteration: { current: 0, total: 0 },
+    }),
+  ],
+}
+
+export const Connecting: Story = {
+  decorators: [
+    withStoreState({
+      connectionStatus: "connecting",
+      ralphStatus: "starting",
+      workspace: "/Users/dev/projects/my-app",
+      branch: "main",
+      tokenUsage: { input: 0, output: 0 },
+      iteration: { current: 0, total: 0 },
+    }),
+  ],
+}

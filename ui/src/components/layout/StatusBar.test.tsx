@@ -12,11 +12,11 @@ describe("StatusBar", () => {
   })
 
   describe("ConnectionStatusIndicator", () => {
-    it("shows only dot when connected", () => {
+    it("shows only icon when connected", () => {
       useAppStore.getState().setConnectionStatus("connected")
       render(<StatusBar />)
-      // Should have the dot but not the label text
-      expect(screen.getByTestId("connection-status-dot")).toBeInTheDocument()
+      // Should have the icon but not the label text
+      expect(screen.getByTestId("connection-status-icon")).toBeInTheDocument()
       expect(screen.queryByTestId("connection-status-label")).not.toBeInTheDocument()
     })
 
@@ -35,19 +35,19 @@ describe("StatusBar", () => {
     it("has success color when connected", () => {
       useAppStore.getState().setConnectionStatus("connected")
       render(<StatusBar />)
-      expect(screen.getByTestId("connection-status-dot")).toHaveClass("bg-status-success")
+      expect(screen.getByTestId("connection-status-icon")).toHaveClass("text-status-success")
     })
 
     it("has warning color when connecting", () => {
       useAppStore.getState().setConnectionStatus("connecting")
       render(<StatusBar />)
-      expect(screen.getByTestId("connection-status-dot")).toHaveClass("bg-status-warning")
+      expect(screen.getByTestId("connection-status-icon")).toHaveClass("text-status-warning")
     })
 
     it("has error color when disconnected", () => {
       useAppStore.getState().setConnectionStatus("disconnected")
       render(<StatusBar />)
-      expect(screen.getByTestId("connection-status-dot")).toHaveClass("bg-status-error")
+      expect(screen.getByTestId("connection-status-icon")).toHaveClass("text-status-error")
     })
   })
 
