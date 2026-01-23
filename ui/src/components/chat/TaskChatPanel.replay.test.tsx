@@ -89,7 +89,6 @@ async function replayEvents(
  */
 function clearTaskChatState(): void {
   useAppStore.getState().clearTaskChatMessages()
-  useAppStore.getState().clearTaskChatToolUses()
   useAppStore.getState().clearTaskChatEvents()
   useAppStore.getState().setTaskChatLoading(false)
   useAppStore.getState().setConnectionStatus("connected")

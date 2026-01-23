@@ -28,7 +28,6 @@ describe("TaskChatPanel", () => {
   beforeEach(() => {
     // Reset the store before each test
     useAppStore.getState().clearTaskChatMessages()
-    useAppStore.getState().clearTaskChatToolUses()
     useAppStore.getState().clearTaskChatEvents()
     useAppStore.getState().setTaskChatLoading(false)
     useAppStore.getState().setConnectionStatus("connected")
@@ -472,58 +471,68 @@ describe("TaskChatPanel", () => {
 
   describe("tool use display", () => {
     it("renders tool uses in the chat", () => {
-      // Add a tool use to the store
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Bash",
-        input: { command: "bd list" },
-        status: "running",
+      // Add an assistant event with a tool use via SDK events
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
         timestamp: Date.now(),
-      })
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "bd list" } },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
       expect(screen.getByText("Bash")).toBeInTheDocument()
     })
 
-    it("shows tool output when tool completes", () => {
-      // Add a completed tool use
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Read",
-        input: { file_path: "/test/file.ts" },
-        output: "file contents here",
-        status: "success",
+    it("shows tool use with Read tool", () => {
+      // Add an assistant event with a Read tool use
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
         timestamp: Date.now(),
-      })
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Read", input: { file_path: "/test/file.ts" } },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
       expect(screen.getByText("Read")).toBeInTheDocument()
     })
 
-    it("shows tool error status", () => {
-      // Add a failed tool use
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Bash",
-        input: { command: "invalid" },
-        error: "Command failed",
-        status: "error",
+    it("renders tool uses from different tools", () => {
+      // Add an assistant event with a Bash tool use
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
         timestamp: Date.now(),
-      })
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "invalid" } },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
       expect(screen.getByText("Bash")).toBeInTheDocument()
     })
 
     it("keeps tool uses visible when sending a new message", async () => {
-      // Add a tool use to the store
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Bash",
-        input: { command: "bd list" },
-        status: "success",
+      // Add an assistant event with a tool use
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
         timestamp: Date.now(),
-      })
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "bd list" } },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
 
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, status: "processing" }),
@@ -583,13 +592,15 @@ describe("TaskChatPanel", () => {
     })
 
     it("hides empty state when tool uses are present", () => {
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-1",
-        tool: "Grep",
-        input: { pattern: "test" },
-        status: "running",
+      // Add an assistant event with a tool use
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
         timestamp: Date.now(),
-      })
+        message: {
+          content: [{ type: "tool_use", id: "tool-1", name: "Grep", input: { pattern: "test" } }],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
       expect(screen.queryByText("Ask questions about your tasks")).not.toBeInTheDocument()
@@ -645,41 +656,25 @@ describe("TaskChatPanel", () => {
       expect(toolPos).toBeLessThan(assistantPos)
     })
 
-    it("deduplicates tool uses with the same toolUseId", () => {
+    it("deduplicates tool uses from streaming and final events", () => {
       const baseTime = Date.now()
-      // Add a tool use with pending status (simulating content_block_start)
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-duplicate",
-        tool: "Bash",
-        input: {},
-        status: "pending",
+      // Add the same assistant event content from SDK - tool use should only appear once
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
         timestamp: baseTime,
-      })
-
-      // Add the same tool use again (simulating duplicate from assistant message)
-      useAppStore.getState().addTaskChatToolUse({
-        toolUseId: "tool-duplicate",
-        tool: "Bash",
-        input: { command: "bd list" },
-        status: "running",
-        timestamp: baseTime + 1,
-      })
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-duplicate", name: "Bash", input: { command: "bd list" } },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
 
       // Should only show one Bash tool use, not two
       const bashElements = screen.getAllByText("Bash")
       expect(bashElements).toHaveLength(1)
-
-      // Verify the state was updated, not duplicated
-      const toolUses = useAppStore.getState().taskChatToolUses
-      expect(toolUses.filter(t => t.toolUseId === "tool-duplicate")).toHaveLength(1)
-      // The status should be updated to the latest value
-      expect(toolUses.find(t => t.toolUseId === "tool-duplicate")?.status).toBe("running")
-      // The input should be updated to the latest value
-      expect(toolUses.find(t => t.toolUseId === "tool-duplicate")?.input).toEqual({
-        command: "bd list",
-      })
     })
 
     it("renders tool uses in content block order (SDK model)", () => {

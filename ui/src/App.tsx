@@ -111,7 +111,6 @@ export function App() {
   const taskChatWidth = useAppStore(selectTaskChatWidth)
   const setTaskChatWidth = useAppStore(state => state.setTaskChatWidth)
   const clearTaskChatMessages = useAppStore(state => state.clearTaskChatMessages)
-  const setTaskChatStreamingText = useAppStore(state => state.setTaskChatStreamingText)
 
   // Event log viewer state
   const viewingEventLogId = useAppStore(selectViewingEventLogId)
@@ -304,9 +303,8 @@ export function App() {
     const result = await clearTaskChatHistory()
     if (result.ok) {
       clearTaskChatMessages()
-      setTaskChatStreamingText("")
     }
-  }, [clearTaskChatMessages, setTaskChatStreamingText])
+  }, [clearTaskChatMessages])
 
   // Task navigation handlers
   const handlePreviousTask = useCallback(() => {

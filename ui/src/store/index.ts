@@ -9,7 +9,6 @@ import type {
   SerializedInstance,
   Task,
   TaskChatMessage,
-  TaskChatToolUse,
   Theme,
   TokenUsage,
   ContextWindow,
@@ -330,9 +329,7 @@ export interface AppState {
   taskChatOpen: boolean
   taskChatWidth: number
   taskChatMessages: TaskChatMessage[]
-  taskChatToolUses: TaskChatToolUse[]
   taskChatLoading: boolean
-  taskChatStreamingText: string
 
   // Iteration view state (null = show current/latest iteration)
   viewingIterationIndex: number | null
@@ -429,16 +426,9 @@ export interface AppActions {
   toggleTaskChat: () => void
   setTaskChatWidth: (width: number) => void
   addTaskChatMessage: (message: TaskChatMessage) => void
-  /** Atomically adds a completed assistant message while clearing streaming state - prevents brief duplicates */
-  completeTaskChatMessage: (message: TaskChatMessage) => void
   removeTaskChatMessage: (id: string) => void
   clearTaskChatMessages: () => void
   setTaskChatLoading: (loading: boolean) => void
-  setTaskChatStreamingText: (text: string) => void
-  appendTaskChatStreamingText: (text: string) => void
-  addTaskChatToolUse: (toolUse: TaskChatToolUse) => void
-  updateTaskChatToolUse: (toolUseId: string, updates: Partial<TaskChatToolUse>) => void
-  clearTaskChatToolUses: () => void
 
   // Task chat events (unified array)
   addTaskChatEvent: (event: RalphEvent) => void
@@ -663,9 +653,7 @@ const initialState: AppState = {
   taskChatOpen: true,
   taskChatWidth: defaultTaskChatWidth,
   taskChatMessages: [],
-  taskChatToolUses: [],
   taskChatLoading: false,
-  taskChatStreamingText: "",
   viewingIterationIndex: null,
   taskSearchQuery: "",
   selectedTaskId: null,
@@ -858,11 +846,9 @@ export const useAppStore = create<AppState & AppActions>(set => ({
         runStartedAt: null,
         initialTaskCount: null,
         ralphStatus: "stopped" as const,
-        // Clear task chat messages, tool uses, and events
+        // Clear task chat messages and events
         taskChatMessages: [],
-        taskChatToolUses: [],
         taskChatLoading: false,
-        taskChatStreamingText: "",
         taskChatEvents: [],
         // Clear event log viewer state
         viewingEventLogId: null,
@@ -1021,12 +1007,6 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     set(state => ({
       taskChatMessages: [...state.taskChatMessages, message],
     })),
-  completeTaskChatMessage: message =>
-    set(state => ({
-      taskChatMessages: [...state.taskChatMessages, message],
-      taskChatStreamingText: "",
-      taskChatLoading: false,
-    })),
   removeTaskChatMessage: id =>
     set(state => ({
       taskChatMessages: state.taskChatMessages.filter(m => m.id !== id),
@@ -1038,42 +1018,9 @@ export const useAppStore = create<AppState & AppActions>(set => ({
       clearTimeout(taskChatEventsBatchTimeout)
       taskChatEventsBatchTimeout = null
     }
-    set({ taskChatMessages: [], taskChatToolUses: [], taskChatEvents: [] })
+    set({ taskChatMessages: [], taskChatEvents: [] })
   },
   setTaskChatLoading: loading => set({ taskChatLoading: loading }),
-  setTaskChatStreamingText: text => set({ taskChatStreamingText: text }),
-  appendTaskChatStreamingText: text =>
-    set(state => ({ taskChatStreamingText: state.taskChatStreamingText + text })),
-  addTaskChatToolUse: toolUse =>
-    set(state => {
-      // Check if this tool use already exists (by toolUseId)
-      const existingIndex = state.taskChatToolUses.findIndex(t => t.toolUseId === toolUse.toolUseId)
-      if (existingIndex !== -1) {
-        // Update existing tool use instead of adding duplicate
-        // Preserve original timestamp and sequence for ordering stability
-        return {
-          taskChatToolUses: state.taskChatToolUses.map((t, i) =>
-            i === existingIndex ?
-              { ...t, ...toolUse, timestamp: t.timestamp, sequence: t.sequence ?? toolUse.sequence }
-            : t,
-          ),
-        }
-      }
-      // Add new tool use
-      return {
-        taskChatToolUses: [
-          ...state.taskChatToolUses,
-          { ...toolUse, timestamp: toolUse.timestamp ?? Date.now() },
-        ],
-      }
-    }),
-  updateTaskChatToolUse: (toolUseId, updates) =>
-    set(state => ({
-      taskChatToolUses: state.taskChatToolUses.map(t =>
-        t.toolUseId === toolUseId ? { ...t, ...updates } : t,
-      ),
-    })),
-  clearTaskChatToolUses: () => set({ taskChatToolUses: [] }),
 
   // Task chat events (unified array like EventStream)
   // Uses batching to reduce re-renders during rapid WebSocket events
@@ -1658,9 +1605,7 @@ export const selectEventLogError = (state: AppState) => state.eventLogError
 export const selectTaskChatOpen = (state: AppState) => state.taskChatOpen
 export const selectTaskChatWidth = (state: AppState) => state.taskChatWidth
 export const selectTaskChatMessages = (state: AppState) => state.taskChatMessages
-export const selectTaskChatToolUses = (state: AppState) => state.taskChatToolUses
 export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
-export const selectTaskChatStreamingText = (state: AppState) => state.taskChatStreamingText
 export const selectTaskChatEvents = (state: AppState) => state.taskChatEvents
 export const selectViewingIterationIndex = (state: AppState) => state.viewingIterationIndex
 export const selectIterationCount = (state: AppState) => countIterations(state.events)

@@ -6,7 +6,6 @@
 import { useAppStore } from "../store"
 import { isRalphStatus } from "../store"
 import { checkForSavedIterationState, restoreIterationState } from "./iterationStateApi"
-import type { TaskChatToolUse } from "../types"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -383,53 +382,18 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
-      // Task chat events - legacy handlers (kept for backward compatibility)
-      case "task-chat:message":
-        // Complete assistant message received
-        if (data.message && typeof data.message === "object") {
-          const msg = data.message as {
-            role: string
-            content: string
-            timestamp: number
-            sequence?: number
-          }
-          if (msg.role === "assistant") {
-            // Use atomic update to prevent brief duplicate (streaming text + final message)
-            // Note: Tool uses are NOT cleared here - they stay visible until user sends next message
-            store.completeTaskChatMessage({
-              id: `assistant-${msg.timestamp || Date.now()}`,
-              role: "assistant",
-              content: msg.content,
-              timestamp: msg.timestamp || Date.now(),
-              sequence: msg.sequence, // Pass through sequence for correct ordering
-            })
-          }
-        }
-        break
-
-      case "task-chat:chunk":
-        // Streaming text chunk received
-        if (typeof data.text === "string") {
-          store.appendTaskChatStreamingText(data.text)
-        }
-        break
-
+      // Task chat status/error handlers (still needed for loading state)
       case "task-chat:status":
         // Task chat status change (idle, processing, streaming, error)
         if (typeof data.status === "string") {
           const isProcessing = data.status === "processing" || data.status === "streaming"
           store.setTaskChatLoading(isProcessing)
-          // Clear streaming text when idle or error
-          if (data.status === "idle" || data.status === "error") {
-            store.setTaskChatStreamingText("")
-          }
         }
         break
 
       case "task-chat:error":
         // Task chat error
         store.setTaskChatLoading(false)
-        store.setTaskChatStreamingText("")
         if (typeof data.error === "string") {
           store.addTaskChatMessage({
             id: `error-${Date.now()}`,
@@ -440,38 +404,14 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      // Deprecated legacy handlers - these message types are still emitted by server
+      // but we now get content from task-chat:event instead. Ignore them silently.
+      case "task-chat:message":
+      case "task-chat:chunk":
       case "task-chat:tool_use":
-        // Task chat tool use started
-        // Use the full TaskChatToolUse type to preserve all fields including sequence
-        if (data.toolUse && typeof data.toolUse === "object") {
-          const toolUse = data.toolUse as TaskChatToolUse
-          store.addTaskChatToolUse(toolUse)
-        }
-        break
-
       case "task-chat:tool_update":
-        // Task chat tool use updated (e.g., with full input after streaming)
-        // Use the full TaskChatToolUse type to preserve all fields
-        if (data.toolUse && typeof data.toolUse === "object") {
-          const toolUse = data.toolUse as TaskChatToolUse
-          store.updateTaskChatToolUse(toolUse.toolUseId, {
-            input: toolUse.input,
-            status: toolUse.status,
-          })
-        }
-        break
-
       case "task-chat:tool_result":
-        // Task chat tool result received
-        // Use the full TaskChatToolUse type to preserve all fields
-        if (data.toolUse && typeof data.toolUse === "object") {
-          const toolUse = data.toolUse as TaskChatToolUse
-          store.updateTaskChatToolUse(toolUse.toolUseId, {
-            output: toolUse.output,
-            error: toolUse.error,
-            status: toolUse.status,
-          })
-        }
+        // No longer needed - content comes through task-chat:event
         break
 
       default:

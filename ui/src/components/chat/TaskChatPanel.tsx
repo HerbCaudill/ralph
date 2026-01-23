@@ -11,13 +11,11 @@ import {
   selectTaskChatEvents,
   selectTaskChatLoading,
   selectTaskChatMessages,
-  selectTaskChatToolUses,
   useAppStore,
 } from "@/store"
-import type { AssistantContentBlock, RalphEvent, TaskChatMessage, TaskChatToolUse } from "@/types"
+import type { AssistantContentBlock, RalphEvent, TaskChatMessage } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ToolUseCard } from "@/components/events/ToolUseCard"
 import { StreamingContentRenderer } from "@/components/events/StreamingContentRenderer"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
 import { UserMessageBubble } from "./UserMessageBubble"
@@ -34,8 +32,6 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const userMessages = useAppStore(selectTaskChatMessages)
   // Raw SDK events (for assistant content with proper interleaving)
   const taskChatEvents = useAppStore(selectTaskChatEvents)
-  // Tool uses from the legacy model (still used by tests and some code paths)
-  const toolUses = useAppStore(selectTaskChatToolUses)
   const isLoading = useAppStore(selectTaskChatLoading)
   const isConnected = useAppStore(selectIsConnected)
   const addMessage = useAppStore(state => state.addTaskChatMessage)
@@ -78,7 +74,6 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   // Create unified content list: user messages + assistant events, sorted by timestamp
   // User messages are explicitly typed by the user (rendered with UserMessageBubble)
   // Assistant events come from SDK events with proper interleaving (rendered with renderEventContentBlock)
-  // Legacy tool uses from taskChatToolUses are included for backward compatibility during migration
   const contentItems = useMemo((): ContentItem[] => {
     const items: ContentItem[] = []
 
@@ -94,7 +89,6 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     }
 
     // Add assistant events from SDK events (text + tool use interleaved)
-    // This is the primary source for assistant content with proper interleaving
     for (const event of completedEvents) {
       if (event.type === "assistant") {
         items.push({
@@ -105,22 +99,9 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       }
     }
 
-    // Fallback: add tool uses from legacy model if no SDK events
-    // This ensures tool uses are still displayed during the migration period
-    if (completedEvents.filter(e => e.type === "assistant").length === 0 && toolUses.length > 0) {
-      for (const toolUse of toolUses) {
-        items.push({
-          type: "tool_use",
-          data: toolUse,
-          timestamp: toolUse.timestamp,
-          sequence: toolUse.sequence,
-        })
-      }
-    }
-
     // Sort by timestamp (user messages and assistant events)
     return items.sort((a, b) => a.timestamp - b.timestamp)
-  }, [userMessages, toolUses, completedEvents])
+  }, [userMessages, completedEvents])
 
   const hasContent = contentItems.length > 0 || streamingMessage !== null
 
@@ -279,23 +260,6 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
               switch (item.type) {
                 case "user_message":
                   return <UserMessageBubble key={item.data.id} message={item.data} />
-                case "tool_use":
-                  // Legacy tool use fallback (when no SDK events available)
-                  return (
-                    <ToolUseCard
-                      key={item.data.toolUseId}
-                      event={{
-                        type: "tool_use",
-                        timestamp: item.data.timestamp,
-                        tool: item.data.tool as any,
-                        input: item.data.input,
-                        output: item.data.output,
-                        error: item.data.error,
-                        status: item.data.status,
-                      }}
-                      className="text-sm"
-                    />
-                  )
                 case "assistant_event": {
                   // Use shared renderEventContentBlock for proper interleaved rendering
                   const content = (item.data as any).message?.content as
@@ -350,18 +314,12 @@ type UserMessageItem = {
   data: TaskChatMessage
   timestamp: number
 }
-type ToolUseItem = {
-  type: "tool_use"
-  data: TaskChatToolUse
-  timestamp: number
-  sequence?: number
-}
 type AssistantEventItem = {
   type: "assistant_event"
   data: RalphEvent
   timestamp: number
 }
-type ContentItem = UserMessageItem | ToolUseItem | AssistantEventItem
+type ContentItem = UserMessageItem | AssistantEventItem
 
 /**
  * Props for TaskChatPanel component.
