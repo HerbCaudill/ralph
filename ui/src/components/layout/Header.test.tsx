@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { Header } from "./Header"
 import { useAppStore, createRalphInstance } from "@/store"
 
-// Mock the useVSCodeTheme hook used by ThemePicker
+// Mock the useVSCodeTheme hook used by SettingsDropdown
 vi.mock("@/hooks", async importOriginal => {
   const actual = (await importOriginal()) as Record<string, unknown>
   return {
@@ -188,10 +188,10 @@ describe("Header", () => {
     })
   })
 
-  describe("theme toggle", () => {
-    it("renders theme toggle button", async () => {
+  describe("settings dropdown", () => {
+    it("renders settings dropdown button", async () => {
       render(<Header />)
-      expect(screen.getByTestId("theme-toggle")).toBeInTheDocument()
+      expect(screen.getByTestId("settings-dropdown-trigger")).toBeInTheDocument()
 
       // Wait for workspace fetch to complete to avoid act() warning
       await waitFor(() => {
@@ -199,68 +199,75 @@ describe("Header", () => {
       })
     })
 
-    it("shows monitor icon for system theme", async () => {
+    it("shows settings button with correct aria-label", async () => {
+      render(<Header />)
+
+      const button = screen.getByTestId("settings-dropdown-trigger")
+      expect(button).toHaveAttribute("aria-label", "Settings")
+
+      // Wait for workspace fetch to complete to avoid act() warning
+      await waitFor(() => {
+        expect(screen.getByText("my-project")).toBeInTheDocument()
+      })
+    })
+
+    it("opens settings dropdown when clicked", async () => {
+      render(<Header />)
+
+      // Wait for workspace fetch to complete to avoid act() warning
+      await waitFor(() => {
+        expect(screen.getByText("my-project")).toBeInTheDocument()
+      })
+
+      // Dropdown should be closed initially
+      expect(screen.queryByTestId("settings-dropdown")).not.toBeInTheDocument()
+
+      // Click the settings button
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      // Dropdown should be open
+      expect(screen.getByTestId("settings-dropdown")).toBeInTheDocument()
+    })
+
+    it("shows appearance mode options in settings dropdown", async () => {
+      render(<Header />)
+
+      // Wait for workspace fetch to complete
+      await waitFor(() => {
+        expect(screen.getByText("my-project")).toBeInTheDocument()
+      })
+
+      // Open the settings dropdown
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      // Should show appearance mode buttons
+      expect(screen.getByTestId("settings-appearance-system")).toBeInTheDocument()
+      expect(screen.getByTestId("settings-appearance-light")).toBeInTheDocument()
+      expect(screen.getByTestId("settings-appearance-dark")).toBeInTheDocument()
+    })
+
+    it("changes theme when clicking appearance mode", async () => {
       useAppStore.getState().setTheme("system")
       render(<Header />)
 
-      const button = screen.getByTestId("theme-toggle")
-      expect(button).toHaveAttribute("aria-label", "System theme")
-
-      // Wait for workspace fetch to complete to avoid act() warning
-      await waitFor(() => {
-        expect(screen.getByText("my-project")).toBeInTheDocument()
-      })
-    })
-
-    it("shows sun icon for light theme", async () => {
-      // Set localStorage so useTheme initializes with light
-      mockLocalStorage._setStore({ "ralph-ui-theme": "light" })
-      render(<Header />)
-
-      const button = screen.getByTestId("theme-toggle")
-      expect(button).toHaveAttribute("aria-label", "Light theme")
-
-      // Wait for workspace fetch to complete to avoid act() warning
-      await waitFor(() => {
-        expect(screen.getByText("my-project")).toBeInTheDocument()
-      })
-    })
-
-    it("shows moon icon for dark theme", async () => {
-      // Set localStorage so useTheme initializes with dark
-      mockLocalStorage._setStore({ "ralph-ui-theme": "dark" })
-      render(<Header />)
-
-      const button = screen.getByTestId("theme-toggle")
-      expect(button).toHaveAttribute("aria-label", "Dark theme")
-
-      // Wait for workspace fetch to complete to avoid act() warning
-      await waitFor(() => {
-        expect(screen.getByText("my-project")).toBeInTheDocument()
-      })
-    })
-
-    it("cycles theme when clicked: system -> light -> dark -> system", async () => {
-      useAppStore.getState().setTheme("system")
-      render(<Header />)
-
       // Wait for workspace fetch to complete to avoid act() warning
       await waitFor(() => {
         expect(screen.getByText("my-project")).toBeInTheDocument()
       })
 
-      const button = screen.getByTestId("theme-toggle")
+      // Open the settings dropdown
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
 
-      // system -> light
-      fireEvent.click(button)
+      // Click light theme
+      fireEvent.click(screen.getByTestId("settings-appearance-light"))
       expect(useAppStore.getState().theme).toBe("light")
 
-      // light -> dark
-      fireEvent.click(button)
+      // Click dark theme
+      fireEvent.click(screen.getByTestId("settings-appearance-dark"))
       expect(useAppStore.getState().theme).toBe("dark")
 
-      // dark -> system
-      fireEvent.click(button)
+      // Click system theme
+      fireEvent.click(screen.getByTestId("settings-appearance-system"))
       expect(useAppStore.getState().theme).toBe("system")
     })
   })

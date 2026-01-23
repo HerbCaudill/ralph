@@ -18,22 +18,27 @@ test.describe("Layout", () => {
       await expect(workspacePicker).toBeVisible()
     })
 
-    test("displays theme toggle in header", async ({ app }) => {
-      const themeToggle = app.page.getByTestId("theme-toggle")
-      await expect(themeToggle).toBeVisible()
+    test("displays settings dropdown in header", async ({ app }) => {
+      const settingsDropdown = app.page.getByTestId("settings-dropdown-trigger")
+      await expect(settingsDropdown).toBeVisible()
     })
 
-    test("can cycle theme via toggle", async ({ app }) => {
-      const themeToggle = app.page.getByTestId("theme-toggle")
+    test("can access theme controls via settings dropdown", async ({ app }) => {
+      const settingsDropdown = app.page.getByTestId("settings-dropdown-trigger")
 
-      // Get initial state
-      const initialLabel = await themeToggle.getAttribute("aria-label")
+      // Open settings dropdown
+      await settingsDropdown.click()
 
-      // Click to cycle theme
-      await themeToggle.click()
+      // Appearance mode buttons should be visible
+      await expect(app.page.getByTestId("settings-appearance-system")).toBeVisible()
+      await expect(app.page.getByTestId("settings-appearance-light")).toBeVisible()
+      await expect(app.page.getByTestId("settings-appearance-dark")).toBeVisible()
 
-      // Theme should have changed (aria-label should be different)
-      await expect(themeToggle).not.toHaveAttribute("aria-label", initialLabel!)
+      // Can change theme by clicking an appearance mode button
+      await app.page.getByTestId("settings-appearance-light").click()
+
+      // Dropdown should remain open and light button should be highlighted
+      await expect(app.page.getByTestId("settings-dropdown")).toBeVisible()
     })
   })
 

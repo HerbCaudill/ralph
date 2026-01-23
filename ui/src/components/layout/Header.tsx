@@ -2,9 +2,8 @@ import { cn, getContrastingColor } from "@/lib/utils"
 import { useAppStore, selectAccentColor, selectInstanceCount } from "@/store"
 import { DEFAULT_ACCENT_COLOR } from "@/constants"
 import { WorkspacePicker } from "./WorkspacePicker"
-import { ThemePicker } from "./ThemePicker"
 import { Logo } from "./Logo"
-import { ThemeToggle } from "./ThemeToggle"
+import { SettingsDropdown } from "./SettingsDropdown"
 import { InstanceCountBadge } from "./InstanceCountBadge"
 import { MergeConflictNotification } from "./MergeConflictNotification"
 
@@ -32,8 +31,7 @@ export function Header({ className }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <ThemePicker variant="header" textColor={textColor} />
-        <ThemeToggle textColor={textColor} />
+        <SettingsDropdown textColor={textColor} />
       </div>
     </header>
   )

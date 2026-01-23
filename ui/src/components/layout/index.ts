@@ -8,3 +8,4 @@ export { CommandPalette, type CommandPaletteProps, type CommandAction } from "./
 export { InstanceCountBadge, type InstanceCountBadgeProps } from "./InstanceCountBadge"
 export { InstanceSelector, type InstanceSelectorProps } from "./InstanceSelector"
 export { NewInstanceDialog, type NewInstanceDialogProps } from "./NewInstanceDialog"
+export { SettingsDropdown, type SettingsDropdownProps } from "./SettingsDropdown"
