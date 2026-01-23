@@ -6,6 +6,13 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Repo accent color - set dynamically via MainLayout.tsx inline styles */
+  --color-repo-accent: var(--repo-accent, var(--primary));
+  --color-repo-accent-foreground: var(--repo-accent-foreground, var(--primary-foreground));
+
+  --accent: repo-accent;
+  --accent-foreground: repo-accent-foreground;
+
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "IBM Plex Serif", ui-serif, Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -52,9 +59,6 @@
   --color-status-error: var(--status-error);
   --color-status-info: var(--status-info);
   --color-status-neutral: var(--status-neutral);
-  /* Repo accent color - set dynamically via MainLayout.tsx inline styles */
-  --color-repo-accent: var(--repo-accent, var(--primary));
-  --color-repo-accent-foreground: var(--repo-accent-foreground, var(--primary-foreground));
 }
 
 :root {
