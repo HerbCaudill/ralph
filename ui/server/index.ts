@@ -995,6 +995,48 @@ function createApp(
     }
   })
 
+  // Add a blocker to a task (the blocker blocks this task)
+  app.post("/api/tasks/:id/blockers", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string
+      const { blockerId } = req.body as { blockerId?: string }
+
+      if (!blockerId?.trim()) {
+        res.status(400).json({ ok: false, error: "Blocker ID is required" })
+        return
+      }
+
+      const bdProxy = getBdProxy()
+      const result = await bdProxy.addBlocker(id, blockerId.trim())
+
+      res.status(201).json({ ok: true, result })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to add blocker"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
+  // Remove a blocker from a task
+  app.delete("/api/tasks/:id/blockers/:blockerId", async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string
+      const blockerId = req.params.blockerId as string
+
+      if (!blockerId?.trim()) {
+        res.status(400).json({ ok: false, error: "Blocker ID is required" })
+        return
+      }
+
+      const bdProxy = getBdProxy()
+      const result = await bdProxy.removeBlocker(id, blockerId.trim())
+
+      res.status(200).json({ ok: true, result })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to remove blocker"
+      res.status(500).json({ ok: false, error: message })
+    }
+  })
+
   // List all unique labels in the database
   app.get("/api/labels", async (_req: Request, res: Response) => {
     try {
