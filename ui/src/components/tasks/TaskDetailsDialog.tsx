@@ -30,6 +30,7 @@ import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@/components/ui/MarkdownContent"
 import { RelatedTasks } from "./RelatedTasks"
 import { ParentCombobox } from "./ParentCombobox"
+import { IterationLinks } from "./IterationLinks"
 import { saveEventLogAndAddComment } from "@/lib/saveEventLogAndAddComment"
 
 export function TaskDetailsDialog({
@@ -848,6 +849,9 @@ export function TaskDetailsDialog({
 
         {/* Related Tasks (text list - children and blockers) */}
         <RelatedTasks taskId={task.id} />
+
+        {/* Iteration Links - links to iteration logs for this task */}
+        <IterationLinks taskId={task.id} />
 
         {/* Comments Section - more space */}
         <CommentsSection taskId={task.id} readOnly={readOnly} />

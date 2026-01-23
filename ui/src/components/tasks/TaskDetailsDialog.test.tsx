@@ -1131,8 +1131,9 @@ describe("TaskDetailsDialog", () => {
 
   describe("event log capture on close", () => {
     it("does not save event log when task is already closed", async () => {
-      // Track calls to eventlogs endpoint
-      let eventLogsCalled = false
+      // Track POST calls to eventlogs endpoint (creating new event logs)
+      // GET requests (listing event logs for IterationLinks) are fine
+      let eventLogPostCalled = false
       const mockFetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
         // Handle labels fetch
         if (typeof url === "string" && url.includes("/api/tasks/") && url.includes("/labels")) {
@@ -1147,12 +1148,23 @@ describe("TaskDetailsDialog", () => {
             json: () => Promise.resolve({ ok: true, labels: [] }),
           })
         }
-        // Handle event log fetch
-        if (typeof url === "string" && url.includes("/api/eventlogs")) {
-          eventLogsCalled = true
+        // Handle event log POST (creating new event log)
+        if (
+          typeof url === "string" &&
+          url.includes("/api/eventlogs") &&
+          options?.method === "POST"
+        ) {
+          eventLogPostCalled = true
           return Promise.resolve({
             ok: true,
             json: () => Promise.resolve({ ok: true, eventlog: { id: "mock-event-log-123" } }),
+          })
+        }
+        // Handle event log GET (listing event logs for IterationLinks)
+        if (typeof url === "string" && url.includes("/api/eventlogs")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, eventlogs: [] }),
           })
         }
         return Promise.resolve({
@@ -1190,7 +1202,8 @@ describe("TaskDetailsDialog", () => {
       )
 
       // Verify event log was NOT saved (task was already closed)
-      expect(eventLogsCalled).toBe(false)
+      // Note: GET requests to /api/eventlogs may still occur for IterationLinks
+      expect(eventLogPostCalled).toBe(false)
     })
   })
 })
