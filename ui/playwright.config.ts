@@ -10,10 +10,9 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  retries: 3,
   // Limit workers to reduce flakiness from resource contention
-  // CI uses 1 worker (sequential), local uses 2 for reasonable parallelism
-  workers: process.env.CI ? 1 : 2,
+  workers: process.env.CI ? 1 : undefined,
   // Use dot reporter for minimal output (via PW_QUIET), html for interactive debugging
   reporter: process.env.PW_QUIET || process.env.CI ? "dot" : "html",
   globalSetup: "./e2e/global-setup.ts",
