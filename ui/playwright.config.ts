@@ -16,6 +16,7 @@ export default defineConfig({
   // Use dot reporter for minimal output (via PW_QUIET), html for interactive debugging
   reporter: process.env.PW_QUIET || process.env.CI ? "dot" : "html",
   globalSetup: "./e2e/global-setup.ts",
+  globalTeardown: "./e2e/global-teardown.ts",
   // Increase default timeout for actions to be more resilient under load
   timeout: 30000,
   expect: {

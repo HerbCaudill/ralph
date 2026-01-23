@@ -2,7 +2,7 @@
 /**
  * Runs Playwright with dynamic server/UI ports, using scripts/dev.js to start services.
  */
-import { spawn } from "node:child_process"
+import { spawn, execSync } from "node:child_process"
 import { createWriteStream } from "node:fs"
 import { mkdir } from "node:fs/promises"
 import { createServer } from "node:net"
@@ -113,6 +113,12 @@ async function main() {
     }
     cleanedUp = true
     devProcess.kill("SIGTERM")
+    // Stop the bd daemon for the test workspace to clean up registry entry
+    try {
+      execSync(`bd daemon stop "${testWorkspacePath}"`, { stdio: "pipe" })
+    } catch {
+      // Daemon may not be running, that's fine
+    }
   }
 
   process.on("SIGINT", () => {
