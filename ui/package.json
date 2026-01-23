@@ -13,7 +13,7 @@
     "storybook": "storybook dev -p 6006",
     "preview": "vite preview",
     "prepublishOnly": "pnpm build",
-    "format": "prettier --write .",
+    "format": "prettier --write . --log-level silent",
     "dev:server": "tsx server/main.ts",
     "dev": "vite --open",
     "dev:headless": "vite",
