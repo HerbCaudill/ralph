@@ -7,6 +7,7 @@ export type {
   BdUpdateOptions,
   BdInfo,
   BdLabelResult,
+  BdDepResult,
   BdComment,
   MutationType,
   MutationEvent,

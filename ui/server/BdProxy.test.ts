@@ -969,6 +969,73 @@ describe("BdProxy", () => {
     })
   })
 
+  describe("addBlocker", () => {
+    it("adds a blocking dependency", async () => {
+      const addBlockerPromise = proxy.addBlocker("rui-blocked", "rui-blocker")
+
+      const depResult = {
+        issue_id: "rui-blocked",
+        depends_on_id: "rui-blocker",
+        status: "added",
+        type: "blocks",
+      }
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(depResult)))
+      mockProcess.emit("close", 0)
+
+      const result = await addBlockerPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "bd",
+        ["dep", "add", "rui-blocked", "rui-blocker", "--json"],
+        expect.anything(),
+      )
+      expect(result).toEqual(depResult)
+    })
+
+    it("rejects on command failure", async () => {
+      const addBlockerPromise = proxy.addBlocker("rui-invalid", "rui-blocker")
+
+      mockProcess.stderr.emit("data", Buffer.from("Issue not found"))
+      mockProcess.emit("close", 1)
+
+      await expect(addBlockerPromise).rejects.toThrow("bd exited with code 1: Issue not found")
+    })
+  })
+
+  describe("removeBlocker", () => {
+    it("removes a blocking dependency", async () => {
+      const removeBlockerPromise = proxy.removeBlocker("rui-blocked", "rui-blocker")
+
+      const depResult = {
+        issue_id: "rui-blocked",
+        depends_on_id: "rui-blocker",
+        status: "removed",
+      }
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(depResult)))
+      mockProcess.emit("close", 0)
+
+      const result = await removeBlockerPromise
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "bd",
+        ["dep", "remove", "rui-blocked", "rui-blocker", "--json"],
+        expect.anything(),
+      )
+      expect(result).toEqual(depResult)
+    })
+
+    it("rejects on command failure", async () => {
+      const removeBlockerPromise = proxy.removeBlocker("rui-blocked", "rui-invalid")
+
+      mockProcess.stderr.emit("data", Buffer.from("Dependency not found"))
+      mockProcess.emit("close", 1)
+
+      await expect(removeBlockerPromise).rejects.toThrow(
+        "bd exited with code 1: Dependency not found",
+      )
+    })
+  })
+
   describe("listWithParents", () => {
     it("returns empty array when no issues", async () => {
       const listPromise = proxy.listWithParents()

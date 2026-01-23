@@ -6,6 +6,7 @@ import type {
   BdUpdateOptions,
   BdInfo,
   BdLabelResult,
+  BdDepResult,
   BdComment,
 } from "@herbcaudill/ralph-shared"
 
@@ -21,6 +22,7 @@ export type {
   BdUpdateOptions,
   BdInfo,
   BdLabelResult,
+  BdDepResult,
   BdComment,
   MutationType,
   MutationEvent,
@@ -386,6 +388,35 @@ export class BdProxy {
     const args = ["label", "list-all", "--json"]
     const result = await this.exec(args)
     return JSON.parse(result) as string[]
+  }
+
+  /**
+   * Add a blocking dependency between two issues.
+   * The blocker issue blocks the blocked issue (blocked depends on blocker).
+   */
+  async addBlocker(
+    /** Issue ID that will be blocked */
+    blockedId: string,
+    /** Issue ID that blocks the first issue */
+    blockerId: string,
+  ): Promise<BdDepResult> {
+    const args = ["dep", "add", blockedId, blockerId, "--json"]
+    const result = await this.exec(args)
+    return JSON.parse(result) as BdDepResult
+  }
+
+  /**
+   * Remove a blocking dependency between two issues.
+   */
+  async removeBlocker(
+    /** Issue ID that was blocked */
+    blockedId: string,
+    /** Issue ID that was blocking */
+    blockerId: string,
+  ): Promise<BdDepResult> {
+    const args = ["dep", "remove", blockedId, blockerId, "--json"]
+    const result = await this.exec(args)
+    return JSON.parse(result) as BdDepResult
   }
 
   /**

@@ -110,6 +110,16 @@ export interface BdLabelResult {
 }
 
 /**
+ * Result of a dependency operation.
+ */
+export interface BdDepResult {
+  issue_id: string
+  depends_on_id: string
+  status: "added" | "removed"
+  type?: string
+}
+
+/**
  * A comment on an issue.
  */
 export interface BdComment {
