@@ -595,7 +595,7 @@ export function TaskDetailsDialog({
                 className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
                 role="group"
               >
-                {statusOptions.map((s, index) => {
+                {statusOptions.map(s => {
                   const config = statusConfig[s]
                   const Icon = config.icon
                   const isSelected = status === s
@@ -608,7 +608,7 @@ export function TaskDetailsDialog({
                       key={s}
                       type="button"
                       onClick={() => handleStatusChange(s)}
-                      tabIndex={index === 0 || isSelected ? 0 : -1}
+                      tabIndex={isSelected ? 0 : -1}
                       onKeyDown={e => {
                         if (e.key === "ArrowLeft") {
                           e.preventDefault()
@@ -656,7 +656,7 @@ export function TaskDetailsDialog({
                 className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
                 role="group"
               >
-                {priorityOptions.map((p, index) => {
+                {priorityOptions.map(p => {
                   const isSelected = priority === p.value
                   const handlePriorityChange = (newPriority: number) => {
                     setPriority(newPriority)
@@ -667,7 +667,7 @@ export function TaskDetailsDialog({
                       key={p.value}
                       type="button"
                       onClick={() => handlePriorityChange(p.value)}
-                      tabIndex={index === 0 || isSelected ? 0 : -1}
+                      tabIndex={isSelected ? 0 : -1}
                       onKeyDown={e => {
                         if (e.key === "ArrowLeft") {
                           e.preventDefault()
@@ -724,7 +724,7 @@ export function TaskDetailsDialog({
                 className="border-input bg-background inline-flex h-8 w-fit rounded-md border"
                 role="group"
               >
-                {issueTypeOptions.map((t, index) => {
+                {issueTypeOptions.map(t => {
                   const Icon = t.icon
                   const isSelected = issueType === t.value
                   const handleTypeChange = (newType: IssueType) => {
@@ -736,7 +736,7 @@ export function TaskDetailsDialog({
                       key={t.value}
                       type="button"
                       onClick={() => handleTypeChange(t.value)}
-                      tabIndex={index === 0 || isSelected ? 0 : -1}
+                      tabIndex={isSelected ? 0 : -1}
                       onKeyDown={e => {
                         if (e.key === "ArrowLeft") {
                           e.preventDefault()
