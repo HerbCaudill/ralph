@@ -41,7 +41,7 @@
       "description": "Toggle sidebar visibility",
       "category": "Navigation",
       "commandPalette": {
-        "label": "Toggle Sidebar",
+        "label": "Toggle sidebar",
         "icon": "LayoutSidebar",
         "keywords": ["sidebar", "panel", "show", "hide", "collapse", "expand"]
       }
@@ -61,7 +61,7 @@
       "description": "Focus quick task input",
       "category": "Navigation",
       "commandPalette": {
-        "label": "New Task",
+        "label": "New task",
         "icon": "ListCheck",
         "keywords": ["task", "create", "add", "new", "issue", "todo"]
       }
@@ -71,17 +71,17 @@
       "description": "Focus chat input",
       "category": "Navigation",
       "commandPalette": {
-        "label": "Focus Chat",
+        "label": "Focus chat",
         "icon": "Message",
         "keywords": ["chat", "message", "input", "type", "send"]
       }
     },
     "cycleTheme": {
-      "key": "cmd+shift+t",
+      "key": "ctrl+t",
       "description": "Cycle theme (system → light → dark)",
       "category": "Appearance",
       "commandPalette": {
-        "label": "Toggle Theme",
+        "label": "Toggle theme",
         "icon": "Sun",
         "keywords": ["theme", "dark", "light", "mode", "appearance", "color"]
       }
@@ -91,7 +91,7 @@
       "description": "Show keyboard shortcuts",
       "category": "Help",
       "commandPalette": {
-        "label": "Keyboard Shortcuts",
+        "label": "Keyboard shortcuts",
         "icon": "Keyboard",
         "keywords": ["hotkeys", "keys", "bindings", "help", "shortcuts"]
       }
@@ -106,7 +106,7 @@
       "description": "Toggle task chat panel and focus input",
       "category": "Navigation",
       "commandPalette": {
-        "label": "Toggle Task Chat",
+        "label": "Toggle task chat",
         "icon": "Terminal",
         "keywords": ["task", "chat", "panel", "show", "hide"]
       }
