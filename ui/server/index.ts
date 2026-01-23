@@ -26,6 +26,7 @@ import {
   type RalphInstanceState,
 } from "./RalphRegistry.js"
 import { getIterationStateStore } from "./IterationStateStore.js"
+import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
 const execFileAsync = promisify(execFile)
 
@@ -1808,6 +1809,17 @@ function wireContextManagerEvents(
           type: "task-chat:event",
           instanceId,
           event,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "mutation:event": {
+        // Mutation events from beads daemon (task list changes)
+        const mutationEvent = args[0] as MutationEvent
+        broadcast({
+          type: "mutation:event",
+          instanceId,
+          event: mutationEvent,
           timestamp: Date.now(),
         })
         break

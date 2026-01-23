@@ -413,5 +413,27 @@ describe("WorkspaceContextManager", () => {
 
       expect(eventHandler).toHaveBeenCalledWith("/path/to/workspace", "task-chat:event", sdkEvent)
     })
+
+    it("forwards mutation:event (beads daemon mutation events)", () => {
+      const eventHandler = vi.fn()
+      manager.on("context:event", eventHandler)
+
+      const context = manager.setActiveContext("/path/to/workspace")
+      const mutationEvent = {
+        Timestamp: new Date().toISOString(),
+        Type: "update" as const,
+        IssueID: "r-123",
+        Title: "Test issue",
+        old_status: "open",
+        new_status: "in_progress",
+      }
+      context.emit("mutation:event", mutationEvent)
+
+      expect(eventHandler).toHaveBeenCalledWith(
+        "/path/to/workspace",
+        "mutation:event",
+        mutationEvent,
+      )
+    })
   })
 })
