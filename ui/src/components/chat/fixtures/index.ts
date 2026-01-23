@@ -1017,6 +1017,129 @@ export const toolUseErrorFixture: TaskChatFixture = {
 }
 
 // ============================================================================
+// Full Streaming with Deduplication Fixture
+// ============================================================================
+
+/**
+ * Full streaming scenario with message_start/message_stop that tests deduplication.
+ * This represents the real event flow from the SDK which sends both streaming events
+ * AND a final assistant event. The hook should deduplicate to avoid rendering twice.
+ */
+export const fullStreamingFixture: TaskChatFixture = {
+  metadata: {
+    name: "Full Streaming with Deduplication",
+    description:
+      "Complete streaming flow with message_start/stop AND assistant event - tests deduplication",
+    expectedBehavior:
+      "Should render content only once, not duplicated from streaming and assistant",
+  },
+  entries: [
+    {
+      sessionId: "test0007",
+      loggedAt: "2026-01-22T16:00:00.000Z",
+      event: {
+        type: "user",
+        timestamp: 1737561600000,
+        message: {
+          role: "user",
+          content: "Hello",
+        },
+      },
+    },
+    // message_start begins the streaming message
+    {
+      sessionId: "test0007",
+      loggedAt: "2026-01-22T16:00:00.050Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737561600050,
+        event: {
+          type: "message_start",
+          message: { role: "assistant" },
+        },
+      },
+    },
+    {
+      sessionId: "test0007",
+      loggedAt: "2026-01-22T16:00:00.100Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737561600100,
+        event: {
+          type: "content_block_start",
+          index: 0,
+          content_block: { type: "text", text: "" },
+        },
+      },
+    },
+    {
+      sessionId: "test0007",
+      loggedAt: "2026-01-22T16:00:00.150Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737561600150,
+        event: {
+          type: "content_block_delta",
+          index: 0,
+          delta: { type: "text_delta", text: "Hi there! How can I help you today?" },
+        },
+      },
+    },
+    {
+      sessionId: "test0007",
+      loggedAt: "2026-01-22T16:00:00.200Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737561600200,
+        event: {
+          type: "content_block_stop",
+          index: 0,
+        },
+      },
+    },
+    // message_stop ends the streaming - hook synthesizes assistant event here
+    {
+      sessionId: "test0007",
+      loggedAt: "2026-01-22T16:00:00.250Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737561600250,
+        event: {
+          type: "message_stop",
+        },
+      },
+    },
+    // Server also sends assistant event - this should be deduplicated
+    {
+      sessionId: "test0007",
+      loggedAt: "2026-01-22T16:00:00.300Z",
+      event: {
+        type: "assistant",
+        timestamp: 1737561600300,
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: "Hi there! How can I help you today?",
+            },
+          ],
+        },
+      },
+    },
+    {
+      sessionId: "test0007",
+      loggedAt: "2026-01-22T16:00:00.350Z",
+      event: {
+        type: "result",
+        timestamp: 1737561600350,
+        result: "Hi there! How can I help you today?",
+      },
+    },
+  ],
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -1031,6 +1154,7 @@ export function getAllFixtures(): TaskChatFixture[] {
     outOfOrderFixture,
     multipleToolUsesFixture,
     toolUseErrorFixture,
+    fullStreamingFixture,
   ]
 }
 

@@ -10,13 +10,14 @@ import {
   outOfOrderFixture,
   multipleToolUsesFixture,
   toolUseErrorFixture,
+  fullStreamingFixture,
 } from "./index"
 
 describe("TaskChatPanel fixtures", () => {
   describe("getAllFixtures", () => {
     it("returns all fixtures", () => {
       const fixtures = getAllFixtures()
-      expect(fixtures).toHaveLength(6)
+      expect(fixtures).toHaveLength(7)
     })
 
     it("includes all fixture types", () => {
@@ -28,6 +29,7 @@ describe("TaskChatPanel fixtures", () => {
       expect(names).toContain("Out of Order Events")
       expect(names).toContain("Multiple Tool Uses")
       expect(names).toContain("Tool Use Error")
+      expect(names).toContain("Full Streaming with Deduplication")
     })
   })
 
@@ -228,6 +230,33 @@ describe("TaskChatPanel fixtures", () => {
       const eventsAfterError = toolUseErrorFixture.entries.slice(errorIndex + 1)
       const hasAssistantAfter = eventsAfterError.some(e => e.event.type === "assistant")
       expect(hasAssistantAfter).toBe(true)
+    })
+  })
+
+  describe("fullStreamingFixture", () => {
+    it("contains message_start event", () => {
+      const hasMessageStart = fullStreamingFixture.entries.some(
+        e =>
+          e.event.type === "stream_event" &&
+          (e.event.event as { type: string })?.type === "message_start",
+      )
+      expect(hasMessageStart).toBe(true)
+    })
+
+    it("contains message_stop event", () => {
+      const hasMessageStop = fullStreamingFixture.entries.some(
+        e =>
+          e.event.type === "stream_event" &&
+          (e.event.event as { type: string })?.type === "message_stop",
+      )
+      expect(hasMessageStop).toBe(true)
+    })
+
+    it("contains both streaming and assistant events for deduplication testing", () => {
+      const hasStreaming = fullStreamingFixture.entries.some(e => e.event.type === "stream_event")
+      const hasAssistant = fullStreamingFixture.entries.some(e => e.event.type === "assistant")
+      expect(hasStreaming).toBe(true)
+      expect(hasAssistant).toBe(true)
     })
   })
 

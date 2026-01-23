@@ -4,6 +4,11 @@ import type { RalphEvent, StreamingMessage } from "@/types"
 interface StreamState {
   currentMessage: StreamingMessage | null
   currentBlockIndex: number
+  /**
+   * Flag to skip the next assistant event after we've synthesized one from streaming.
+   * This prevents duplication when the server sends both stream events AND an assistant event.
+   */
+  skipNextAssistant: boolean
 }
 
 /**
@@ -20,11 +25,18 @@ export function useStreamingState(events: RalphEvent[]): {
     const state: StreamState = {
       currentMessage: null,
       currentBlockIndex: -1,
+      skipNextAssistant: false,
     }
 
     for (const event of events) {
       if (event.type !== "stream_event") {
-        // Non-stream events pass through directly
+        // Non-stream events pass through directly, but skip assistant events that
+        // were already synthesized from streaming (to avoid duplicates)
+        if (event.type === "assistant" && state.skipNextAssistant) {
+          // Skip - we already created this from streaming
+          state.skipNextAssistant = false
+          continue
+        }
         completedEvents.push(event)
         continue
       }
@@ -107,6 +119,8 @@ export function useStreamingState(events: RalphEvent[]): {
               timestamp: state.currentMessage.timestamp,
               message: { content },
             })
+            // Skip the next assistant event - it's the duplicate from the server
+            state.skipNextAssistant = true
           }
           state.currentMessage = null
           state.currentBlockIndex = -1

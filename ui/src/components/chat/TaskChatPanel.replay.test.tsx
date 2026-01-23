@@ -17,6 +17,7 @@ import {
   outOfOrderFixture,
   multipleToolUsesFixture,
   toolUseErrorFixture,
+  fullStreamingFixture,
   extractEvents,
   type TaskChatFixture,
 } from "./fixtures"
@@ -420,6 +421,24 @@ describe("TaskChatPanel replay tests", () => {
       // There should be exactly one Bash tool use card
       const bashElements = screen.getAllByText("Bash")
       expect(bashElements).toHaveLength(1)
+    })
+
+    it("deduplicates when both message_stop and assistant event are present", async () => {
+      // This tests the real-world scenario where SDK sends both streaming events
+      // (with message_start/message_stop) AND a final assistant event
+      await act(async () => {
+        await replayEvents(fullStreamingFixture.entries)
+      })
+
+      render(<TaskChatPanel />)
+
+      const container = screen.getByRole("log", { name: "Task chat messages" })
+      const textContent = container.textContent || ""
+
+      // The greeting should appear exactly once, not duplicated
+      const greetingOccurrences = (textContent.match(/Hi there! How can I help you today\?/g) || [])
+        .length
+      expect(greetingOccurrences).toBe(1)
     })
   })
 
