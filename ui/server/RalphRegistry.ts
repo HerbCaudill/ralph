@@ -6,6 +6,7 @@ import {
   type RalphStatus,
 } from "./RalphManager.js"
 import { type IterationStateStore, type PersistedIterationState } from "./IterationStateStore.js"
+import type { EventLogStore, EventLogMetadata, EventLog } from "./EventLogStore.js"
 import type { ConversationContext, ConversationMessage } from "./ClaudeAdapter.js"
 
 /**
@@ -90,6 +91,9 @@ export interface RalphRegistryOptions {
 
   /** Optional IterationStateStore for persisting iteration state */
   iterationStateStore?: IterationStateStore
+
+  /** Optional EventLogStore for permanently storing completed iteration events */
+  eventLogStore?: EventLogStore
 }
 
 /**
@@ -308,6 +312,9 @@ export class RalphRegistry extends EventEmitter {
   /** Optional IterationStateStore for persisting iteration state */
   private _iterationStateStore: IterationStateStore | null = null
 
+  /** Optional EventLogStore for permanently storing completed iteration events */
+  private _eventLogStore: EventLogStore | null = null
+
   /** Track pending save operations to avoid concurrent writes */
   private _pendingSaves = new Map<string, Promise<void>>()
 
@@ -316,6 +323,7 @@ export class RalphRegistry extends EventEmitter {
     this._defaultManagerOptions = options.defaultManagerOptions ?? {}
     this._maxInstances = options.maxInstances ?? 10
     this._iterationStateStore = options.iterationStateStore ?? null
+    this._eventLogStore = options.eventLogStore ?? null
   }
 
   /**
@@ -333,6 +341,23 @@ export class RalphRegistry extends EventEmitter {
    */
   getIterationStateStore(): IterationStateStore | null {
     return this._iterationStateStore
+  }
+
+  /**
+   * Set the EventLogStore for permanently storing completed iteration events.
+   * Can be called after construction to enable event logging.
+   *
+   * @param store - The EventLogStore to use, or null to disable event logging
+   */
+  setEventLogStore(store: EventLogStore | null): void {
+    this._eventLogStore = store
+  }
+
+  /**
+   * Get the current EventLogStore, if any.
+   */
+  getEventLogStore(): EventLogStore | null {
+    return this._eventLogStore
   }
 
   /**
@@ -635,6 +660,56 @@ export class RalphRegistry extends EventEmitter {
   }
 
   /**
+   * Save iteration events to the EventLogStore for permanent storage.
+   *
+   * Call this when an iteration completes (task closed or COMPLETE signal)
+   * to create a permanent record for history browsing.
+   *
+   * If no EventLogStore is configured, this is a no-op.
+   *
+   * @param instanceId - The instance ID
+   * @param taskId - Optional task ID of the completed task
+   * @param taskTitle - Optional task title
+   * @returns Promise that resolves to the created EventLog, or null if not saved
+   */
+  async saveIterationEventLog(
+    instanceId: string,
+    taskId?: string,
+    taskTitle?: string,
+  ): Promise<EventLog | null> {
+    if (!this._eventLogStore) {
+      return null
+    }
+
+    const state = this._instances.get(instanceId)
+    if (!state) {
+      return null
+    }
+
+    const events = this._eventHistory.get(instanceId) ?? []
+    if (events.length === 0) {
+      return null // Don't save empty event histories
+    }
+
+    const metadata: EventLogMetadata = {
+      taskId,
+      title: taskTitle,
+      workspacePath: state.worktreePath ?? undefined,
+    }
+
+    try {
+      const eventLog = await this._eventLogStore.create([...events], metadata)
+      console.log(
+        `[RalphRegistry] Saved iteration event log for ${instanceId}: ${eventLog.id} (${events.length} events)`,
+      )
+      return eventLog
+    } catch (err) {
+      console.error(`[RalphRegistry] Failed to save iteration event log for ${instanceId}:`, err)
+      return null
+    }
+  }
+
+  /**
    * Dispose of an instance, stopping its RalphManager.
    *
    * Before disposal, saves the iteration state (if store is configured)
@@ -714,6 +789,15 @@ export class RalphRegistry extends EventEmitter {
       ) {
         this.saveIterationState(id).catch(err => {
           console.error(`[RalphRegistry] Auto-save failed for ${id} after ${event.type}:`, err)
+        })
+      }
+
+      // Save to EventLogStore on task completion for permanent history
+      if (event.type === "ralph_task_completed") {
+        const taskId = event.taskId as string | undefined
+        const taskTitle = event.taskTitle as string | undefined
+        this.saveIterationEventLog(id, taskId, taskTitle).catch(err => {
+          console.error(`[RalphRegistry] Failed to save event log for ${id}:`, err)
         })
       }
     })

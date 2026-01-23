@@ -894,6 +894,136 @@ describe("RalphRegistry", () => {
       })
     })
   })
+
+  describe("EventLogStore integration", () => {
+    function createMockEventLogStore() {
+      const createCalls: Array<{ events: unknown[]; metadata: unknown }> = []
+      return {
+        createCalls,
+        create: async (events: unknown[], metadata: unknown) => {
+          createCalls.push({ events, metadata })
+          return {
+            id: "log-123",
+            createdAt: new Date().toISOString(),
+            events,
+            metadata,
+          }
+        },
+        get: async () => null,
+        list: async () => [],
+      }
+    }
+
+    it("setEventLogStore and getEventLogStore work correctly", () => {
+      const mockStore = createMockEventLogStore()
+
+      expect(registry.getEventLogStore()).toBeNull()
+
+      registry.setEventLogStore(mockStore)
+      expect(registry.getEventLogStore()).toBe(mockStore)
+
+      registry.setEventLogStore(null)
+      expect(registry.getEventLogStore()).toBeNull()
+    })
+
+    it("saves to EventLogStore on ralph_task_completed event", async () => {
+      const mockStore = createMockEventLogStore()
+      registry.setEventLogStore(mockStore)
+
+      const state = registry.create(createTestOptions())
+      const simulateEvent = (
+        state.manager as unknown as {
+          simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+        }
+      ).simulateEvent.bind(state.manager)
+
+      // First add some events to history
+      simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+      simulateEvent({ type: "message", timestamp: Date.now(), content: "Hi there!" })
+
+      // Then complete a task
+      simulateEvent({
+        type: "ralph_task_completed",
+        timestamp: Date.now(),
+        taskId: "task-123",
+        taskTitle: "Fix the bug",
+      })
+
+      // Wait for async save
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      expect(mockStore.createCalls.length).toBe(1)
+      expect(mockStore.createCalls[0].metadata).toEqual({
+        taskId: "task-123",
+        title: "Fix the bug",
+        workspacePath: undefined,
+      })
+      // Should have all 3 events
+      expect(mockStore.createCalls[0].events).toHaveLength(3)
+    })
+
+    it("does not save to EventLogStore if no store is configured", async () => {
+      const state = registry.create(createTestOptions())
+      const simulateEvent = (
+        state.manager as unknown as {
+          simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+        }
+      ).simulateEvent.bind(state.manager)
+
+      // Complete a task without configuring an event log store
+      simulateEvent({
+        type: "ralph_task_completed",
+        timestamp: Date.now(),
+        taskId: "task-123",
+      })
+
+      // Wait for async operation (nothing should happen)
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // No errors thrown, test passes
+    })
+
+    it("saveIterationEventLog returns null for empty event history", async () => {
+      const mockStore = createMockEventLogStore()
+      registry.setEventLogStore(mockStore)
+
+      registry.create(createTestOptions())
+
+      // Try to save with empty history
+      const result = await registry.saveIterationEventLog("test-instance", "task-1", "Test Task")
+
+      expect(result).toBeNull()
+      expect(mockStore.createCalls.length).toBe(0)
+    })
+
+    it("saveIterationEventLog includes worktreePath in metadata", async () => {
+      const mockStore = createMockEventLogStore()
+      registry.setEventLogStore(mockStore)
+
+      const state = registry.create({
+        ...createTestOptions(),
+        worktreePath: "/path/to/worktree",
+      })
+      const simulateEvent = (
+        state.manager as unknown as {
+          simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+        }
+      ).simulateEvent.bind(state.manager)
+
+      // Add an event to history
+      simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+
+      // Save manually
+      const result = await registry.saveIterationEventLog("test-instance", "task-1", "Test Task")
+
+      expect(result).not.toBeNull()
+      expect(mockStore.createCalls[0].metadata).toEqual({
+        taskId: "task-1",
+        title: "Test Task",
+        workspacePath: "/path/to/worktree",
+      })
+    })
+  })
 })
 
 describe("eventsToConversationContext", () => {

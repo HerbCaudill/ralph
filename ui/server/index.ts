@@ -1996,6 +1996,10 @@ export async function startServer(
 
   // Wire the IterationStateStore into the registry for state persistence
   registry.setIterationStateStore(iterationStateStore)
+
+  // Wire the EventLogStore into the registry for permanent event history
+  const eventLogStore = getEventLogStore()
+  registry.setEventLogStore(eventLogStore)
   if (!registry.has(DEFAULT_INSTANCE_ID)) {
     registry.create({
       id: DEFAULT_INSTANCE_ID,
