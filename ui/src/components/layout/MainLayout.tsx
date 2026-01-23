@@ -197,11 +197,15 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   return (
     <div
       className={cn("flex h-screen w-screen flex-col", className)}
-      style={{
-        border: `6px solid ${borderColor}`,
-        borderBottomLeftRadius: "10px",
-        borderBottomRightRadius: "10px",
-      }}
+      style={
+        {
+          border: `6px solid ${borderColor}`,
+          borderBottomLeftRadius: "10px",
+          borderBottomRightRadius: "10px",
+          // Set CSS custom property for accent color, used by prose/markdown text
+          "--repo-accent": borderColor,
+        } as React.CSSProperties
+      }
     >
       {showHeader && (header || <Header />)}
       <div className="flex flex-1 overflow-hidden">

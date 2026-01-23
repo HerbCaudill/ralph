@@ -1,7 +1,8 @@
-import type { ReactNode, MouseEvent } from "react"
+import type { ReactNode, MouseEvent, CSSProperties } from "react"
 import { useTaskDialogContext } from "@/contexts"
-import { useAppStore, selectIssuePrefix } from "@/store"
+import { useAppStore, selectIssuePrefix, selectAccentColor } from "@/store"
 import { stripTaskPrefix } from "@/lib/utils"
+import { DEFAULT_ACCENT_COLOR } from "@/constants"
 
 /**
  * Regex pattern that matches eventlog references.
@@ -126,10 +127,12 @@ export interface TextWithLinksProps {
 export function TextWithLinks({ children, className }: TextWithLinksProps) {
   const taskDialogContext = useTaskDialogContext()
   const issuePrefix = useAppStore(selectIssuePrefix)
+  const accentColor = useAppStore(selectAccentColor)
+  const linkColor = accentColor ?? DEFAULT_ACCENT_COLOR
 
-  const linkClassName =
-    className ??
-    "cursor-pointer text-cyan-600 hover:text-cyan-700 hover:underline dark:text-cyan-400 dark:hover:text-cyan-300"
+  // Use accent color for links, with hover underline
+  const linkClassName = className ?? "cursor-pointer hover:underline"
+  const linkStyle: CSSProperties = { color: linkColor }
 
   const segments = parseTextSegments(children, issuePrefix)
 
@@ -159,6 +162,7 @@ export function TextWithLinks({ children, className }: TextWithLinksProps) {
           key={`taskId-${index}`}
           onClick={handleClick}
           className={linkClassName}
+          style={linkStyle}
           type="button"
           aria-label={`View task ${taskId}`}
         >
@@ -181,6 +185,7 @@ export function TextWithLinks({ children, className }: TextWithLinksProps) {
         key={`eventLog-${index}`}
         onClick={handleClick}
         className={linkClassName}
+        style={linkStyle}
         type="button"
         aria-label={`View event log ${eventLogId}`}
       >

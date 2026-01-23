@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils"
 import { TextWithLinks } from "@/components/ui/TextWithLinks"
 import { CodeBlock } from "@/components/ui/code-block"
 import { useTheme } from "@/hooks/useTheme"
+import { useAppStore, selectAccentColor } from "@/store"
+import { DEFAULT_ACCENT_COLOR } from "@/constants"
 import type { Components } from "react-markdown"
 import type { ReactNode } from "react"
 
@@ -111,6 +113,8 @@ export function MarkdownContent({
 }: MarkdownContentProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
+  const accentColor = useAppStore(selectAccentColor)
+  const linkColor = accentColor ?? DEFAULT_ACCENT_COLOR
   const components = createMarkdownComponents(isDark, withCodeBlocks)
 
   return (
@@ -120,7 +124,7 @@ export function MarkdownContent({
         size === "sm" ? "prose-sm" : "prose-base",
         "prose-p:my-1 prose-p:leading-snug",
         "prose-strong:font-medium",
-        "prose-a:text-cyan-600 dark:prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline",
+        "prose-a:no-underline hover:prose-a:underline",
         "prose-code:text-muted-foreground prose-code:text-xs prose-code:font-normal prose-code:font-mono",
         "prose-code:before:content-none prose-code:after:content-none",
         "prose-pre:my-2 prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0",
@@ -128,6 +132,7 @@ export function MarkdownContent({
         "prose-ul:my-1 prose-ol:my-1 prose-li:my-0",
         className,
       )}
+      style={{ "--tw-prose-links": linkColor } as React.CSSProperties}
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {children}
