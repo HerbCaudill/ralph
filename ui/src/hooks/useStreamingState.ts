@@ -5,10 +5,10 @@ interface StreamState {
   currentMessage: StreamingMessage | null
   currentBlockIndex: number
   /**
-   * Flag to skip the next assistant event after we've synthesized one from streaming.
-   * This prevents duplication when the server sends both stream events AND an assistant event.
+   * Timestamp of the last synthesized assistant event.
+   * Used to deduplicate assistant events that come after message_stop.
    */
-  skipNextAssistant: boolean
+  lastSynthesizedTimestamp: number | null
 }
 
 /**
@@ -25,17 +25,25 @@ export function useStreamingState(events: RalphEvent[]): {
     const state: StreamState = {
       currentMessage: null,
       currentBlockIndex: -1,
-      skipNextAssistant: false,
+      lastSynthesizedTimestamp: null,
     }
 
     for (const event of events) {
       if (event.type !== "stream_event") {
         // Non-stream events pass through directly, but skip assistant events that
-        // were already synthesized from streaming (to avoid duplicates)
-        if (event.type === "assistant" && state.skipNextAssistant) {
-          // Skip - we already created this from streaming
-          state.skipNextAssistant = false
-          continue
+        // were already synthesized from streaming (to avoid duplicates).
+        // We detect duplicates by checking if we synthesized an assistant event
+        // from message_stop that occurred shortly before this assistant event.
+        if (event.type === "assistant" && state.lastSynthesizedTimestamp !== null) {
+          // The SDK sends assistant event right after message_stop (typically within 100ms).
+          // If we synthesized an assistant event recently, skip this duplicate.
+          const timeSinceSynthesized = event.timestamp - state.lastSynthesizedTimestamp
+          if (timeSinceSynthesized >= 0 && timeSinceSynthesized < 1000) {
+            // Skip - we already created this from streaming
+            // Clear the timestamp so we don't skip subsequent legitimate assistant events
+            state.lastSynthesizedTimestamp = null
+            continue
+          }
         }
         completedEvents.push(event)
         continue
@@ -119,8 +127,9 @@ export function useStreamingState(events: RalphEvent[]): {
               timestamp: state.currentMessage.timestamp,
               message: { content },
             })
-            // Skip the next assistant event - it's the duplicate from the server
-            state.skipNextAssistant = true
+            // Record the timestamp so we can skip the duplicate assistant event
+            // that the server sends after message_stop
+            state.lastSynthesizedTimestamp = event.timestamp
           }
           state.currentMessage = null
           state.currentBlockIndex = -1

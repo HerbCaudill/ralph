@@ -18,6 +18,7 @@ import {
   multipleToolUsesFixture,
   toolUseErrorFixture,
   fullStreamingFixture,
+  multiToolFullStreamingFixture,
   extractEvents,
   type TaskChatFixture,
 } from "./fixtures"
@@ -439,6 +440,37 @@ describe("TaskChatPanel replay tests", () => {
       const greetingOccurrences = (textContent.match(/Hi there! How can I help you today\?/g) || [])
         .length
       expect(greetingOccurrences).toBe(1)
+    })
+
+    it("deduplicates multiple tool uses in multi-turn conversation (r-3mjn)", async () => {
+      // This reproduces the exact scenario from issue r-3mjn:
+      // User asks "how many tasks", Claude responds with text + 3 Bash commands,
+      // then gives final summary. Each tool use should appear exactly once.
+      await act(async () => {
+        await replayEvents(multiToolFullStreamingFixture.entries)
+      })
+
+      render(<TaskChatPanel />)
+
+      const container = screen.getByRole("log", { name: "Task chat messages" })
+      const textContent = container.textContent || ""
+
+      // "Let me check" should appear exactly once (Turn 1 text)
+      const checkOccurrences = (textContent.match(/Let me check your current task counts\./g) || [])
+        .length
+      expect(checkOccurrences).toBe(1)
+
+      // Each Bash tool use should appear exactly once
+      // In the fixture, we have 3 different bash commands
+      // The tool name "Bash" appears in each tool card
+      const bashElements = screen.getAllByText("Bash")
+      expect(bashElements).toHaveLength(3)
+
+      // The final response should appear once
+      const finalOccurrences = (
+        textContent.match(/You have 27 open tasks, with 0 in progress and 0 blocked\./g) || []
+      ).length
+      expect(finalOccurrences).toBe(1)
     })
   })
 

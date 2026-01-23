@@ -11,13 +11,14 @@ import {
   multipleToolUsesFixture,
   toolUseErrorFixture,
   fullStreamingFixture,
+  multiToolFullStreamingFixture,
 } from "./index"
 
 describe("TaskChatPanel fixtures", () => {
   describe("getAllFixtures", () => {
     it("returns all fixtures", () => {
       const fixtures = getAllFixtures()
-      expect(fixtures).toHaveLength(7)
+      expect(fixtures).toHaveLength(8)
     })
 
     it("includes all fixture types", () => {
@@ -30,6 +31,7 @@ describe("TaskChatPanel fixtures", () => {
       expect(names).toContain("Multiple Tool Uses")
       expect(names).toContain("Tool Use Error")
       expect(names).toContain("Full Streaming with Deduplication")
+      expect(names).toContain("Multi-Tool Full Streaming")
     })
   })
 
@@ -257,6 +259,37 @@ describe("TaskChatPanel fixtures", () => {
       const hasAssistant = fullStreamingFixture.entries.some(e => e.event.type === "assistant")
       expect(hasStreaming).toBe(true)
       expect(hasAssistant).toBe(true)
+    })
+  })
+
+  describe("multiToolFullStreamingFixture", () => {
+    it("contains multiple tool uses", () => {
+      const toolUseStarts = multiToolFullStreamingFixture.entries.filter(
+        e =>
+          e.event.type === "stream_event" &&
+          (e.event.event as { type: string; content_block?: { type: string } })?.content_block
+            ?.type === "tool_use",
+      )
+      expect(toolUseStarts.length).toBe(3) // 3 Bash commands
+    })
+
+    it("has two turns (tool use + final response)", () => {
+      const messageStops = multiToolFullStreamingFixture.entries.filter(
+        e =>
+          e.event.type === "stream_event" &&
+          (e.event.event as { type: string })?.type === "message_stop",
+      )
+      expect(messageStops.length).toBe(2) // Turn 1 and Turn 2
+    })
+
+    it("has tool results between turns", () => {
+      const toolResults = multiToolFullStreamingFixture.entries.filter(e => {
+        if (e.event.type !== "user") return false
+        const message = e.event.message as { content?: unknown[] }
+        if (!Array.isArray(message?.content)) return false
+        return message.content.some(c => (c as { type?: string }).type === "tool_result")
+      })
+      expect(toolResults.length).toBe(1) // One user event with 3 tool results
     })
   })
 

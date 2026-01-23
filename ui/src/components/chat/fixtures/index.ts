@@ -1140,6 +1140,375 @@ export const fullStreamingFixture: TaskChatFixture = {
 }
 
 // ============================================================================
+// Multi-Tool Full Streaming Fixture (Issue r-3mjn reproduction)
+// ============================================================================
+
+/**
+ * Full streaming scenario with multiple tool uses and message_start/message_stop.
+ * This reproduces the exact scenario from issue r-3mjn where the first response
+ * was being duplicated (text + tool uses appearing twice).
+ *
+ * The sequence is:
+ * 1. User asks "how many tasks"
+ * 2. Claude responds with text + 3 Bash tool uses
+ * 3. Tools run, results come back
+ * 4. Claude gives final summary
+ *
+ * Without proper deduplication, Turn 1's content would appear twice.
+ */
+export const multiToolFullStreamingFixture: TaskChatFixture = {
+  metadata: {
+    name: "Multi-Tool Full Streaming",
+    description: "Multiple tool uses with full streaming - reproduces r-3mjn duplication bug",
+    expectedBehavior: "Each tool use should appear exactly once, not duplicated",
+  },
+  entries: [
+    // Turn 1: User message + Claude's response with 3 tool uses
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.000Z",
+      event: {
+        type: "user",
+        timestamp: 1737626400000,
+        message: {
+          role: "user",
+          content: "how many tasks do i have",
+        },
+      },
+    },
+    // message_start for turn 1
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.050Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400050,
+        event: {
+          type: "message_start",
+          message: { role: "assistant" },
+        },
+      },
+    },
+    // Text: "Let me check"
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.100Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400100,
+        event: {
+          type: "content_block_start",
+          index: 0,
+          content_block: { type: "text", text: "" },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.120Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400120,
+        event: {
+          type: "content_block_delta",
+          index: 0,
+          delta: { type: "text_delta", text: "Let me check your current task counts." },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.140Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400140,
+        event: {
+          type: "content_block_stop",
+          index: 0,
+        },
+      },
+    },
+    // Tool use 1: Bash (open tasks)
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.160Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400160,
+        event: {
+          type: "content_block_start",
+          index: 1,
+          content_block: { type: "tool_use", id: "toolu_open", name: "Bash" },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.180Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400180,
+        event: {
+          type: "content_block_delta",
+          index: 1,
+          delta: {
+            type: "input_json_delta",
+            partial_json: '{"command":"bd list --status=open | wc -l"}',
+          },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.200Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400200,
+        event: {
+          type: "content_block_stop",
+          index: 1,
+        },
+      },
+    },
+    // Tool use 2: Bash (in_progress tasks)
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.220Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400220,
+        event: {
+          type: "content_block_start",
+          index: 2,
+          content_block: { type: "tool_use", id: "toolu_progress", name: "Bash" },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.240Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400240,
+        event: {
+          type: "content_block_delta",
+          index: 2,
+          delta: {
+            type: "input_json_delta",
+            partial_json: '{"command":"bd list --status=in_progress | wc -l"}',
+          },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.260Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400260,
+        event: {
+          type: "content_block_stop",
+          index: 2,
+        },
+      },
+    },
+    // Tool use 3: Bash (blocked tasks)
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.280Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400280,
+        event: {
+          type: "content_block_start",
+          index: 3,
+          content_block: { type: "tool_use", id: "toolu_blocked", name: "Bash" },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.300Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400300,
+        event: {
+          type: "content_block_delta",
+          index: 3,
+          delta: {
+            type: "input_json_delta",
+            partial_json: '{"command":"bd list --status=blocked | wc -l"}',
+          },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.320Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400320,
+        event: {
+          type: "content_block_stop",
+          index: 3,
+        },
+      },
+    },
+    // message_stop for turn 1
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.340Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626400340,
+        event: {
+          type: "message_stop",
+        },
+      },
+    },
+    // Complete assistant message for turn 1 (should be deduplicated)
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:00.360Z",
+      event: {
+        type: "assistant",
+        timestamp: 1737626400360,
+        message: {
+          role: "assistant",
+          content: [
+            { type: "text", text: "Let me check your current task counts." },
+            {
+              type: "tool_use",
+              id: "toolu_open",
+              name: "Bash",
+              input: { command: "bd list --status=open | wc -l" },
+            },
+            {
+              type: "tool_use",
+              id: "toolu_progress",
+              name: "Bash",
+              input: { command: "bd list --status=in_progress | wc -l" },
+            },
+            {
+              type: "tool_use",
+              id: "toolu_blocked",
+              name: "Bash",
+              input: { command: "bd list --status=blocked | wc -l" },
+            },
+          ],
+        },
+      },
+    },
+    // Tool results
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:01.000Z",
+      event: {
+        type: "user",
+        timestamp: 1737626401000,
+        message: {
+          role: "user",
+          content: [
+            { type: "tool_result", tool_use_id: "toolu_open", content: "27" },
+            { type: "tool_result", tool_use_id: "toolu_progress", content: "0" },
+            { type: "tool_result", tool_use_id: "toolu_blocked", content: "0" },
+          ],
+        },
+      },
+    },
+    // Turn 2: Final response
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:01.050Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626401050,
+        event: {
+          type: "message_start",
+          message: { role: "assistant" },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:01.100Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626401100,
+        event: {
+          type: "content_block_start",
+          index: 0,
+          content_block: { type: "text", text: "" },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:01.150Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626401150,
+        event: {
+          type: "content_block_delta",
+          index: 0,
+          delta: {
+            type: "text_delta",
+            text: "You have 27 open tasks, with 0 in progress and 0 blocked.",
+          },
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:01.200Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626401200,
+        event: {
+          type: "content_block_stop",
+          index: 0,
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:01.250Z",
+      event: {
+        type: "stream_event",
+        timestamp: 1737626401250,
+        event: {
+          type: "message_stop",
+        },
+      },
+    },
+    // Complete assistant message for turn 2 (should be deduplicated)
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:01.300Z",
+      event: {
+        type: "assistant",
+        timestamp: 1737626401300,
+        message: {
+          role: "assistant",
+          content: [
+            { type: "text", text: "You have 27 open tasks, with 0 in progress and 0 blocked." },
+          ],
+        },
+      },
+    },
+    {
+      sessionId: "test0008",
+      loggedAt: "2026-01-23T10:00:01.350Z",
+      event: {
+        type: "result",
+        timestamp: 1737626401350,
+        result: "You have 27 open tasks, with 0 in progress and 0 blocked.",
+      },
+    },
+  ],
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -1155,6 +1524,7 @@ export function getAllFixtures(): TaskChatFixture[] {
     multipleToolUsesFixture,
     toolUseErrorFixture,
     fullStreamingFixture,
+    multiToolFullStreamingFixture,
   ]
 }
 
