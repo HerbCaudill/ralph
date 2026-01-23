@@ -424,6 +424,14 @@ function handleMessage(event: MessageEvent): void {
         // No longer needed - content comes through task-chat:event
         break
 
+      // Mutation events from beads daemon - refresh task list on any task mutation
+      case "mutation:event":
+        // Mutation event contains: Type (create/update/delete/status/etc), IssueID, Title, etc.
+        // Instead of incrementally updating, just refresh the full task list for simplicity
+        // This ensures we have the latest data including computed fields like blocked_by
+        store.refreshTasks()
+        break
+
       default:
         console.log("[ralphConnection] unknown message type:", type)
     }

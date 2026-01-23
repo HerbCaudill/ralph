@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import type { TaskCardTask, TaskStatus } from "@/types"
 import { useAppStore } from "@/store"
 
@@ -11,7 +11,11 @@ export interface UseTasksOptions {
   ready?: boolean
   /** Include closed tasks */
   all?: boolean
-  /** Polling interval in ms (default: 5000, 0 to disable) */
+  /**
+   * Polling interval in ms (default: 0 to disable).
+   * Polling is generally not needed since mutation events from the beads daemon
+   * trigger automatic task list refreshes via WebSocket.
+   */
   pollInterval?: number
 }
 
@@ -89,23 +93,39 @@ export async function fetchBlockedTasks(parent?: string): Promise<TasksResponse>
 
 /**
  * Hook to fetch and manage tasks from the beads API.
+ *
+ * Tasks are automatically refreshed when mutation events arrive from the beads daemon
+ * via WebSocket. Polling is disabled by default but can be enabled as a fallback.
+ *
+ * The hook subscribes to the global store's task list, which is updated by:
+ * 1. Initial fetch when the hook mounts
+ * 2. Mutation events from the beads daemon (create, update, delete, status changes)
+ * 3. Manual refresh calls
+ * 4. Optional polling (disabled by default)
  */
 export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
-  const { status, ready, all, pollInterval = 5000 } = options
+  const { status, ready, all, pollInterval = 0 } = options
 
-  const [tasks, setTasks] = useState<TaskCardTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Get the store's setTasks to sync tasks to global state
+  // Subscribe to tasks from the global store
+  // Tasks are updated by mutation events in ralphConnection.ts
+  const storeTasks = useAppStore(state => state.tasks)
   const setStoreTasks = useAppStore(state => state.setTasks)
 
+  // Memoize filtered tasks to avoid creating new array references on every render
+  const tasks = useMemo(
+    () => filterTasks(storeTasks, { status, ready, all }),
+    [storeTasks, status, ready, all],
+  )
+
   const refresh = useCallback(async () => {
-    const result = await fetchTasks({ status, ready, all })
+    const result = await fetchTasks({ status: undefined, ready: undefined, all: true })
 
     if (result.ok && result.issues) {
-      setTasks(result.issues)
-      // Sync tasks to global store so StatusBar can access current task
+      // Always fetch all tasks and store in global state
+      // Filtering is done locally based on the options
       setStoreTasks(result.issues)
       setError(null)
     } else {
@@ -113,14 +133,14 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
     }
 
     setIsLoading(false)
-  }, [status, ready, all, setStoreTasks])
+  }, [setStoreTasks])
 
   // Initial fetch
   useEffect(() => {
     refresh()
   }, [refresh])
 
-  // Polling
+  // Optional polling (disabled by default since mutation events handle updates)
   useEffect(() => {
     if (pollInterval <= 0) return
 
@@ -129,4 +149,36 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
   }, [refresh, pollInterval])
 
   return { tasks, isLoading, error, refresh }
+}
+
+/**
+ * Filter tasks based on options.
+ * Matches the server-side filtering logic.
+ */
+function filterTasks(
+  tasks: TaskCardTask[],
+  options: Pick<UseTasksOptions, "status" | "ready" | "all">,
+): TaskCardTask[] {
+  const { status, ready, all } = options
+
+  return tasks.filter(task => {
+    // Filter by status if specified
+    if (status && task.status !== status) {
+      return false
+    }
+
+    // Filter for ready tasks (open and unblocked)
+    if (ready) {
+      if (task.status !== "open") return false
+      // Check if task is blocked by dependencies
+      if (task.blocked_by && task.blocked_by.length > 0) return false
+    }
+
+    // Exclude closed tasks unless 'all' is specified
+    if (!all && task.status === "closed") {
+      return false
+    }
+
+    return true
+  })
 }
