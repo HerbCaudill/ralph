@@ -8,6 +8,7 @@ import {
 import { type IterationStateStore, type PersistedIterationState } from "./IterationStateStore.js"
 import type { EventLogStore, EventLogMetadata, EventLog } from "./EventLogStore.js"
 import type { ConversationContext, ConversationMessage } from "./ClaudeAdapter.js"
+import type { BdProxy } from "./BdProxy.js"
 
 /**
  * Information about a merge conflict for an instance.
@@ -94,6 +95,9 @@ export interface RalphRegistryOptions {
 
   /** Optional EventLogStore for permanently storing completed iteration events */
   eventLogStore?: EventLogStore
+
+  /** Optional BdProxy for updating beads issues (e.g., adding iteration log links) */
+  bdProxy?: BdProxy
 }
 
 /**
@@ -315,6 +319,9 @@ export class RalphRegistry extends EventEmitter {
   /** Optional EventLogStore for permanently storing completed iteration events */
   private _eventLogStore: EventLogStore | null = null
 
+  /** Optional BdProxy for updating beads issues (e.g., adding iteration log links) */
+  private _bdProxy: BdProxy | null = null
+
   /** Track pending save operations to avoid concurrent writes */
   private _pendingSaves = new Map<string, Promise<void>>()
 
@@ -324,6 +331,7 @@ export class RalphRegistry extends EventEmitter {
     this._maxInstances = options.maxInstances ?? 10
     this._iterationStateStore = options.iterationStateStore ?? null
     this._eventLogStore = options.eventLogStore ?? null
+    this._bdProxy = options.bdProxy ?? null
   }
 
   /**
@@ -358,6 +366,23 @@ export class RalphRegistry extends EventEmitter {
    */
   getEventLogStore(): EventLogStore | null {
     return this._eventLogStore
+  }
+
+  /**
+   * Set the BdProxy for updating beads issues.
+   * Can be called after construction to enable issue updates (e.g., adding iteration log links).
+   *
+   * @param proxy - The BdProxy to use, or null to disable issue updates
+   */
+  setBdProxy(proxy: BdProxy | null): void {
+    this._bdProxy = proxy
+  }
+
+  /**
+   * Get the current BdProxy, if any.
+   */
+  getBdProxy(): BdProxy | null {
+    return this._bdProxy
   }
 
   /**
@@ -702,6 +727,22 @@ export class RalphRegistry extends EventEmitter {
       console.log(
         `[RalphRegistry] Saved iteration event log for ${instanceId}: ${eventLog.id} (${events.length} events)`,
       )
+
+      // If we have a task ID and a BdProxy, add a comment linking to the iteration log
+      if (taskId && this._bdProxy) {
+        try {
+          const comment = `🔗 Iteration log: \`${eventLog.id}\``
+          await this._bdProxy.addComment(taskId, comment, "Ralph")
+          console.log(`[RalphRegistry] Added iteration log link to task ${taskId}: ${eventLog.id}`)
+        } catch (commentErr) {
+          // Log but don't fail - the event log was already saved
+          console.error(
+            `[RalphRegistry] Failed to add iteration log comment to task ${taskId}:`,
+            commentErr,
+          )
+        }
+      }
+
       return eventLog
     } catch (err) {
       console.error(`[RalphRegistry] Failed to save iteration event log for ${instanceId}:`, err)

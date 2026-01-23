@@ -1023,6 +1023,134 @@ describe("RalphRegistry", () => {
         workspacePath: "/path/to/worktree",
       })
     })
+
+    describe("BdProxy integration for iteration log linking", () => {
+      function createMockBdProxy() {
+        const addCommentCalls: Array<{ id: string; comment: string; author?: string }> = []
+        return {
+          addCommentCalls,
+          addComment: async (id: string, comment: string, author?: string) => {
+            addCommentCalls.push({ id, comment, author })
+          },
+        }
+      }
+
+      it("setBdProxy and getBdProxy work correctly", () => {
+        const mockProxy = createMockBdProxy()
+
+        expect(registry.getBdProxy()).toBeNull()
+
+        registry.setBdProxy(mockProxy as unknown as import("./BdProxy.js").BdProxy)
+        expect(registry.getBdProxy()).toBe(mockProxy)
+
+        registry.setBdProxy(null)
+        expect(registry.getBdProxy()).toBeNull()
+      })
+
+      it("adds comment to task when saving iteration log with taskId", async () => {
+        const mockStore = createMockEventLogStore()
+        const mockProxy = createMockBdProxy()
+        registry.setEventLogStore(mockStore)
+        registry.setBdProxy(mockProxy as unknown as import("./BdProxy.js").BdProxy)
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        // Add an event to history
+        simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+
+        // Save with taskId
+        await registry.saveIterationEventLog("test-instance", "task-123", "Test Task")
+
+        expect(mockProxy.addCommentCalls.length).toBe(1)
+        expect(mockProxy.addCommentCalls[0].id).toBe("task-123")
+        expect(mockProxy.addCommentCalls[0].comment).toContain("log-123")
+        expect(mockProxy.addCommentCalls[0].author).toBe("Ralph")
+      })
+
+      it("does not add comment when saving without taskId", async () => {
+        const mockStore = createMockEventLogStore()
+        const mockProxy = createMockBdProxy()
+        registry.setEventLogStore(mockStore)
+        registry.setBdProxy(mockProxy as unknown as import("./BdProxy.js").BdProxy)
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        // Add an event to history
+        simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+
+        // Save without taskId
+        await registry.saveIterationEventLog("test-instance")
+
+        expect(mockProxy.addCommentCalls.length).toBe(0)
+      })
+
+      it("does not add comment when no BdProxy is configured", async () => {
+        const mockStore = createMockEventLogStore()
+        registry.setEventLogStore(mockStore)
+        // No BdProxy configured
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        // Add an event to history
+        simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+
+        // Save with taskId - should not throw even without BdProxy
+        const result = await registry.saveIterationEventLog(
+          "test-instance",
+          "task-123",
+          "Test Task",
+        )
+
+        expect(result).not.toBeNull()
+        expect(result!.id).toBe("log-123")
+      })
+
+      it("still returns event log when adding comment fails", async () => {
+        const mockStore = createMockEventLogStore()
+        const failingProxy = {
+          addComment: async () => {
+            throw new Error("Network error")
+          },
+        }
+        registry.setEventLogStore(mockStore)
+        registry.setBdProxy(failingProxy as unknown as import("./BdProxy.js").BdProxy)
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        // Add an event to history
+        simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+
+        // Save with taskId - should succeed even if comment fails
+        const result = await registry.saveIterationEventLog(
+          "test-instance",
+          "task-123",
+          "Test Task",
+        )
+
+        expect(result).not.toBeNull()
+        expect(result!.id).toBe("log-123")
+      })
+    })
   })
 })
 

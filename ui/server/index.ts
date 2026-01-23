@@ -1859,10 +1859,14 @@ export async function switchWorkspace(
   // Note: This does NOT stop Ralph in the old context - it keeps running
   const context = manager.setActiveContext(workspacePath)
 
-  // Update the IterationStateStore for the new workspace
+  // Update the IterationStateStore and BdProxy for the new workspace
   const registry = getRalphRegistry()
   const iterationStateStore = getIterationStateStore(workspacePath)
   registry.setIterationStateStore(iterationStateStore)
+
+  // Update the BdProxy to point to the new workspace
+  const bdProxy = new BdProxy({ cwd: workspacePath })
+  registry.setBdProxy(bdProxy)
 
   // Cleanup stale iteration states in the new workspace
   try {
@@ -2000,6 +2004,11 @@ export async function startServer(
   // Wire the EventLogStore into the registry for permanent event history
   const eventLogStore = getEventLogStore()
   registry.setEventLogStore(eventLogStore)
+
+  // Wire the BdProxy into the registry for adding iteration log links to tasks
+  const bdProxy = new BdProxy({ cwd: workspacePath })
+  registry.setBdProxy(bdProxy)
+
   if (!registry.has(DEFAULT_INSTANCE_ID)) {
     registry.create({
       id: DEFAULT_INSTANCE_ID,
