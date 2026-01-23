@@ -229,7 +229,7 @@ describe("TaskDetailsDialog", () => {
       expect(screen.getByText("Test Task")).toBeInTheDocument()
     })
 
-    it("does not show Done button in read-only mode", async () => {
+    it("does not show footer in read-only mode", async () => {
       await renderAndWait(
         <TaskDetailsDialog
           task={mockTask}
@@ -240,7 +240,8 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      expect(screen.queryByRole("button", { name: /done/i })).not.toBeInTheDocument()
+      // Footer with delete button should not be present in read-only mode
+      expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument()
     })
   })
 
@@ -482,19 +483,6 @@ describe("TaskDetailsDialog", () => {
   })
 
   describe("closing", () => {
-    it("calls onClose when Done is clicked", async () => {
-      await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
-      )
-
-      const doneButton = screen.getByRole("button", { name: /done/i })
-      await act(async () => {
-        fireEvent.click(doneButton)
-      })
-
-      expect(mockOnClose).toHaveBeenCalled()
-    })
-
     it("calls onClose when X button is clicked", async () => {
       await renderAndWait(
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,

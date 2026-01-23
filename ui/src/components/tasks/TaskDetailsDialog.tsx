@@ -796,7 +796,7 @@ export function TaskDetailsDialog({
       </div>
 
       {!readOnly && (
-        <div className="flex shrink-0 flex-col gap-2 border-t p-4 sm:flex-row sm:justify-between">
+        <div className="flex shrink-0 flex-col gap-2 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Delete section - left side */}
           {onDelete && (
             <div className="flex flex-col gap-1">
@@ -842,13 +842,8 @@ export function TaskDetailsDialog({
             </div>
           )}
 
-          {/* Done button - right side */}
-          <div className="flex items-center gap-2">
-            {isSaving && <span className="text-muted-foreground text-sm">Saving...</span>}
-            <Button onClick={handleClose} disabled={isSaving || isDeleting}>
-              Done
-            </Button>
-          </div>
+          {/* Saving indicator - right side */}
+          {isSaving && <span className="text-muted-foreground text-sm">Saving...</span>}
         </div>
       )}
     </div>
