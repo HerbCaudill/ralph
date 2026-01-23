@@ -6,7 +6,6 @@ import { ThemePicker } from "./ThemePicker"
 import { Logo } from "./Logo"
 import { ThemeToggle } from "./ThemeToggle"
 import { InstanceCountBadge } from "./InstanceCountBadge"
-import { InstanceStatus } from "./InstanceStatus"
 import { MergeConflictNotification } from "./MergeConflictNotification"
 
 /**
@@ -29,7 +28,6 @@ export function Header({ className }: HeaderProps) {
         <Logo textColor={textColor} />
         <WorkspacePicker variant="header" textColor={textColor} />
         {instanceCount > 1 && <InstanceCountBadge count={instanceCount} />}
-        <InstanceStatus textColor={textColor} />
         <MergeConflictNotification textColor={textColor} />
       </div>
 
