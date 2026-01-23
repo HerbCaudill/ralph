@@ -76,7 +76,7 @@ describe("Blocker API endpoints", () => {
   let mockProcess: ReturnType<typeof createMockProcess>
   let mockSpawn: ReturnType<typeof vi.fn>
   let bdProxy: BdProxy
-  const port = 3099 // Use a unique port for blocker API tests
+  const port = 3098 // Use a unique port for blocker API tests (different from index.test.ts)
 
   beforeAll(async () => {
     mockProcess = createMockProcess()
@@ -113,6 +113,10 @@ describe("Blocker API endpoints", () => {
         type: "blocks",
       }
 
+      // Create new mock process BEFORE making the request
+      mockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(mockProcess)
+
       // Make the request
       const fetchPromise = fetch(`http://localhost:${port}/api/tasks/rui-blocked/blockers`, {
         method: "POST",
@@ -120,11 +124,7 @@ describe("Blocker API endpoints", () => {
         body: JSON.stringify({ blockerId: "rui-blocker" }),
       })
 
-      // Create new mock process for this request
-      mockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(mockProcess)
-
-      // Wait a tick for the request to reach the server
+      // Wait a tick for the request to reach the server and spawn the process
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // Simulate successful response
@@ -163,6 +163,10 @@ describe("Blocker API endpoints", () => {
     })
 
     it("returns 500 on bd command failure", async () => {
+      // Create new mock process BEFORE making the request
+      mockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(mockProcess)
+
       // Make the request
       const fetchPromise = fetch(`http://localhost:${port}/api/tasks/rui-invalid/blockers`, {
         method: "POST",
@@ -170,11 +174,7 @@ describe("Blocker API endpoints", () => {
         body: JSON.stringify({ blockerId: "rui-blocker" }),
       })
 
-      // Create new mock process for this request
-      mockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(mockProcess)
-
-      // Wait a tick for the request to reach the server
+      // Wait a tick for the request to reach the server and spawn the process
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // Simulate error response
@@ -198,6 +198,10 @@ describe("Blocker API endpoints", () => {
         status: "removed",
       }
 
+      // Create new mock process BEFORE making the request
+      mockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(mockProcess)
+
       // Make the request
       const fetchPromise = fetch(
         `http://localhost:${port}/api/tasks/rui-blocked/blockers/rui-blocker`,
@@ -206,11 +210,7 @@ describe("Blocker API endpoints", () => {
         },
       )
 
-      // Create new mock process for this request
-      mockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(mockProcess)
-
-      // Wait a tick for the request to reach the server
+      // Wait a tick for the request to reach the server and spawn the process
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // Simulate successful response
@@ -225,6 +225,10 @@ describe("Blocker API endpoints", () => {
     })
 
     it("returns 500 on bd command failure", async () => {
+      // Create new mock process BEFORE making the request
+      mockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(mockProcess)
+
       // Make the request
       const fetchPromise = fetch(
         `http://localhost:${port}/api/tasks/rui-blocked/blockers/rui-invalid`,
@@ -233,11 +237,7 @@ describe("Blocker API endpoints", () => {
         },
       )
 
-      // Create new mock process for this request
-      mockProcess = createMockProcess()
-      mockSpawn.mockReturnValue(mockProcess)
-
-      // Wait a tick for the request to reach the server
+      // Wait a tick for the request to reach the server and spawn the process
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // Simulate error response
