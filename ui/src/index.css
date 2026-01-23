@@ -12,6 +12,8 @@
 
   --accent: repo-accent;
   --accent-foreground: repo-accent-foreground;
+  --sidebar-accent: repo-accent;
+  --sidebar-accent-foreground: repo-accent-foreground;
 
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "IBM Plex Serif", ui-serif, Georgia, serif;
