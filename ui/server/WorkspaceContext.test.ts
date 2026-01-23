@@ -84,6 +84,27 @@ vi.mock("./TaskChatEventLog.js", () => {
   }
 })
 
+// Track active watchers and their callbacks for testing
+let mockWatcherCallback: ((event: MutationEvent) => void) | null = null
+let mockWatcherStopped = false
+const mockStopWatcher = vi.fn().mockImplementation(() => {
+  mockWatcherStopped = true
+  mockWatcherCallback = null
+})
+
+vi.mock("./BeadsClient.js", () => {
+  return {
+    watchMutations: vi.fn().mockImplementation((callback: (event: MutationEvent) => void) => {
+      mockWatcherCallback = callback
+      mockWatcherStopped = false
+      return mockStopWatcher
+    }),
+  }
+})
+
+// Import MutationEvent type for mock
+import type { MutationEvent } from "@herbcaudill/ralph-shared"
+
 // Import WorkspaceContext after mocks are set up
 import { WorkspaceContext } from "./WorkspaceContext.js"
 
@@ -634,6 +655,152 @@ describe("WorkspaceContext", () => {
       expect(eventLog.startSession).toHaveBeenCalledTimes(1)
 
       await loggingContext.dispose()
+    })
+  })
+
+  describe("mutation polling", () => {
+    beforeEach(() => {
+      // Reset mock state before each test
+      mockWatcherCallback = null
+      mockWatcherStopped = false
+      mockStopWatcher.mockClear()
+    })
+
+    it("does not start mutation polling by default", () => {
+      expect(context.isMutationPollingActive).toBe(false)
+    })
+
+    it("starts mutation polling when enableMutationPolling is true", async () => {
+      const { watchMutations } = await import("./BeadsClient.js")
+
+      const pollingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableMutationPolling: true,
+      })
+
+      expect(watchMutations).toHaveBeenCalled()
+      expect(pollingContext.isMutationPollingActive).toBe(true)
+
+      await pollingContext.dispose()
+    })
+
+    it("passes custom polling interval to watchMutations", async () => {
+      const { watchMutations } = await import("./BeadsClient.js")
+
+      const pollingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableMutationPolling: true,
+        mutationPollingInterval: 2000,
+      })
+
+      expect(watchMutations).toHaveBeenCalledWith(expect.any(Function), {
+        workspacePath: "/test/workspace",
+        interval: 2000,
+      })
+
+      await pollingContext.dispose()
+    })
+
+    it("emits mutation:event when mutation is received", async () => {
+      const pollingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableMutationPolling: true,
+      })
+
+      const handler = vi.fn()
+      pollingContext.on("mutation:event", handler)
+
+      // Simulate a mutation event from the watcher
+      const mutationEvent: MutationEvent = {
+        Timestamp: new Date().toISOString(),
+        Type: "create",
+        IssueID: "test-123",
+        Title: "Test Issue",
+      }
+
+      // Call the callback that was passed to watchMutations
+      mockWatcherCallback?.(mutationEvent)
+
+      expect(handler).toHaveBeenCalledWith(mutationEvent)
+
+      await pollingContext.dispose()
+    })
+
+    it("can manually start mutation polling", async () => {
+      const { watchMutations } = await import("./BeadsClient.js")
+      ;(watchMutations as ReturnType<typeof vi.fn>).mockClear()
+
+      expect(context.isMutationPollingActive).toBe(false)
+
+      context.startMutationPolling(500)
+
+      expect(watchMutations).toHaveBeenCalledWith(expect.any(Function), {
+        workspacePath: "/test/workspace",
+        interval: 500,
+      })
+      expect(context.isMutationPollingActive).toBe(true)
+    })
+
+    it("can manually stop mutation polling", async () => {
+      const pollingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableMutationPolling: true,
+      })
+
+      expect(pollingContext.isMutationPollingActive).toBe(true)
+
+      pollingContext.stopMutationPolling()
+
+      expect(mockStopWatcher).toHaveBeenCalled()
+      expect(pollingContext.isMutationPollingActive).toBe(false)
+
+      await pollingContext.dispose()
+    })
+
+    it("stops mutation polling on dispose", async () => {
+      mockStopWatcher.mockClear()
+
+      const pollingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableMutationPolling: true,
+      })
+
+      expect(pollingContext.isMutationPollingActive).toBe(true)
+
+      await pollingContext.dispose()
+
+      expect(mockStopWatcher).toHaveBeenCalled()
+    })
+
+    it("stops existing watcher when starting new one", async () => {
+      const pollingContext = new WorkspaceContext({
+        workspacePath: "/test/workspace",
+        enableMutationPolling: true,
+      })
+
+      mockStopWatcher.mockClear()
+
+      // Start a new watcher
+      pollingContext.startMutationPolling(2000)
+
+      expect(mockStopWatcher).toHaveBeenCalled()
+
+      await pollingContext.dispose()
+    })
+
+    it("throws when starting mutation polling after disposal", async () => {
+      await context.dispose()
+
+      expect(() => context.startMutationPolling()).toThrow("WorkspaceContext has been disposed")
+    })
+
+    it("stopMutationPolling is safe to call when not polling", () => {
+      expect(context.isMutationPollingActive).toBe(false)
+
+      // Should not throw
+      context.stopMutationPolling()
+
+      expect(context.isMutationPollingActive).toBe(false)
     })
   })
 })

@@ -9,6 +9,8 @@ import {
   type TaskChatToolUse,
 } from "./TaskChatManager.js"
 import { TaskChatEventLog } from "./TaskChatEventLog.js"
+import { watchMutations } from "./BeadsClient.js"
+import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
 /**
  * Maximum number of events to store in history buffer.
@@ -27,6 +29,10 @@ export interface WorkspaceContextOptions {
   env?: Record<string, string>
   /** Enable logging of task chat events to file */
   enableTaskChatLogging?: boolean
+  /** Enable polling for mutation events from beads daemon */
+  enableMutationPolling?: boolean
+  /** Mutation polling interval in ms (default: 1000) */
+  mutationPollingInterval?: number
 }
 
 /**
@@ -52,6 +58,7 @@ export interface WorkspaceContextOptions {
  * - "task-chat:tool_use" - Tool use started
  * - "task-chat:tool_update" - Tool use updated
  * - "task-chat:tool_result" - Tool use completed
+ * - "mutation:event" - Mutation event from beads daemon
  */
 export class WorkspaceContext extends EventEmitter {
   /** Workspace directory path */
@@ -78,6 +85,9 @@ export class WorkspaceContext extends EventEmitter {
 
   /** Whether this context has been disposed */
   private _disposed = false
+
+  /** Cleanup function for mutation watcher (if enabled) */
+  private _stopMutationWatcher: (() => void) | null = null
 
   constructor(options: WorkspaceContextOptions) {
     super()
@@ -108,6 +118,53 @@ export class WorkspaceContext extends EventEmitter {
         workspacePath: options.workspacePath,
       })
     }
+
+    // Start mutation polling if enabled
+    if (options.enableMutationPolling) {
+      this.startMutationPolling(options.mutationPollingInterval)
+    }
+  }
+
+  /**
+   * Start polling for mutation events from the beads daemon.
+   * Emits 'mutation:event' for each mutation detected.
+   *
+   * @param interval - Polling interval in ms (default: 1000)
+   */
+  startMutationPolling(interval: number = 1000): void {
+    this.assertNotDisposed()
+
+    // Stop existing watcher if any
+    if (this._stopMutationWatcher) {
+      this._stopMutationWatcher()
+    }
+
+    this._stopMutationWatcher = watchMutations(
+      (event: MutationEvent) => {
+        this.emit("mutation:event", event)
+      },
+      {
+        workspacePath: this.workspacePath,
+        interval,
+      },
+    )
+  }
+
+  /**
+   * Stop polling for mutation events.
+   */
+  stopMutationPolling(): void {
+    if (this._stopMutationWatcher) {
+      this._stopMutationWatcher()
+      this._stopMutationWatcher = null
+    }
+  }
+
+  /**
+   * Whether mutation polling is currently active.
+   */
+  get isMutationPollingActive(): boolean {
+    return this._stopMutationWatcher !== null
   }
 
   /**
@@ -199,6 +256,9 @@ export class WorkspaceContext extends EventEmitter {
     if (this._taskChatEventLog?.isLogging) {
       this._taskChatEventLog.endSession()
     }
+
+    // Stop mutation polling
+    this.stopMutationPolling()
 
     // Remove all listeners
     this._ralphManager.removeAllListeners()
