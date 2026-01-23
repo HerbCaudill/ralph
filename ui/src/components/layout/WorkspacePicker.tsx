@@ -105,7 +105,15 @@ export function WorkspacePicker({
       }
       const data = await response.json()
       if (data.ok && data.workspaces) {
-        setAllWorkspaces(data.workspaces)
+        // Filter out test workspaces unless running in automation (Playwright)
+        const isAutomated = navigator.webdriver === true
+        const workspaces =
+          isAutomated ?
+            data.workspaces
+          : data.workspaces.filter(
+              (ws: WorkspaceListEntry) => !ws.path.includes("/e2e/test-workspace"),
+            )
+        setAllWorkspaces(workspaces)
       }
     } catch (err) {
       console.error("Failed to fetch workspaces:", err)

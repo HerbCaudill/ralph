@@ -380,4 +380,120 @@ describe("WorkspacePicker", () => {
     // Should still show "No workspace" after fetch completes with null workspace
     expect(screen.getByText("No workspace")).toBeInTheDocument()
   })
+
+  describe("test workspace filtering", () => {
+    const mockWorkspacesWithTest = {
+      ok: true,
+      workspaces: [
+        {
+          path: "/Users/test/my-project",
+          name: "my-project",
+          database: "/Users/test/my-project/.beads/beads.db",
+          isActive: true,
+          accentColor: "#ff0000",
+        },
+        {
+          path: "/Users/test/e2e/test-workspace",
+          name: "test-workspace",
+          database: "/Users/test/e2e/test-workspace/.beads/beads.db",
+          isActive: false,
+          accentColor: "#00ff00",
+        },
+        {
+          path: "/Users/test/another-project",
+          name: "another-project",
+          database: "/Users/test/another-project/.beads/beads.db",
+          isActive: false,
+          accentColor: "#0000ff",
+        },
+      ],
+      currentPath: "/Users/test/my-project",
+    }
+
+    it("filters out test workspaces from dropdown in normal mode", async () => {
+      // Ensure webdriver is false (normal mode)
+      Object.defineProperty(navigator, "webdriver", {
+        value: false,
+        configurable: true,
+      })
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url === "/api/workspace") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockWorkspaceResponse),
+          })
+        }
+        if (url === "/api/workspaces") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockWorkspacesWithTest),
+          })
+        }
+        return Promise.reject(new Error("Unknown URL"))
+      })
+
+      render(<WorkspacePicker />)
+
+      await waitFor(() => {
+        expect(screen.getByText("my-project")).toBeInTheDocument()
+      })
+
+      // Open dropdown
+      const workspaceButton = screen.getByRole("button", { expanded: false })
+      fireEvent.click(workspaceButton)
+
+      // Should show my-project and another-project but NOT test-workspace
+      await waitFor(() => {
+        expect(screen.getByText("another-project")).toBeInTheDocument()
+      })
+      expect(screen.queryByText("test-workspace")).not.toBeInTheDocument()
+    })
+
+    it("shows test workspaces in dropdown when running under automation", async () => {
+      // Simulate Playwright automation
+      Object.defineProperty(navigator, "webdriver", {
+        value: true,
+        configurable: true,
+      })
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url === "/api/workspace") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockWorkspaceResponse),
+          })
+        }
+        if (url === "/api/workspaces") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockWorkspacesWithTest),
+          })
+        }
+        return Promise.reject(new Error("Unknown URL"))
+      })
+
+      render(<WorkspacePicker />)
+
+      await waitFor(() => {
+        expect(screen.getByText("my-project")).toBeInTheDocument()
+      })
+
+      // Open dropdown
+      const workspaceButton = screen.getByRole("button", { expanded: false })
+      fireEvent.click(workspaceButton)
+
+      // Should show all workspaces including test-workspace
+      await waitFor(() => {
+        expect(screen.getByText("test-workspace")).toBeInTheDocument()
+        expect(screen.getByText("another-project")).toBeInTheDocument()
+      })
+
+      // Clean up
+      Object.defineProperty(navigator, "webdriver", {
+        value: false,
+        configurable: true,
+      })
+    })
+  })
 })
