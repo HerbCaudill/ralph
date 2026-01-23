@@ -287,7 +287,7 @@ describe("useHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
-    it("handles cycleTheme hotkey (Cmd+Shift+T)", () => {
+    it("handles cycleTheme hotkey (Ctrl+T)", () => {
       mockNavigator("MacIntel")
       const handler = vi.fn()
 
@@ -299,12 +299,11 @@ describe("useHotkeys", () => {
         }),
       )
 
-      // Simulate Cmd+Shift+T
+      // Simulate Ctrl+T (not Cmd, as per hotkeys.json config)
       act(() => {
         const event = new KeyboardEvent("keydown", {
           key: "t",
-          metaKey: true,
-          shiftKey: true,
+          ctrlKey: true,
           bubbles: true,
         })
         window.dispatchEvent(event)
@@ -607,12 +606,11 @@ describe("useHotkeys", () => {
       document.body.appendChild(input)
       input.focus()
 
-      // Simulate Cmd+Shift+T while focused on input
+      // Simulate Ctrl+T while focused on input (as per hotkeys.json config)
       act(() => {
         const event = new KeyboardEvent("keydown", {
           key: "t",
-          metaKey: true,
-          shiftKey: true,
+          ctrlKey: true,
           bubbles: true,
         })
         Object.defineProperty(event, "target", { value: input })

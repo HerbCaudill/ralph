@@ -48,12 +48,12 @@ describe("CommandPalette", () => {
       )
 
       expect(screen.getByText("Start Ralph")).toBeInTheDocument()
-      expect(screen.getByText("Toggle Sidebar")).toBeInTheDocument()
-      expect(screen.getByText("Toggle Theme")).toBeInTheDocument()
-      expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument()
-      expect(screen.getByText("New Task")).toBeInTheDocument()
-      expect(screen.getByText("Focus Chat")).toBeInTheDocument()
-      expect(screen.getByText("Toggle Task Chat")).toBeInTheDocument()
+      expect(screen.getByText("Toggle sidebar")).toBeInTheDocument()
+      expect(screen.getByText("Toggle theme")).toBeInTheDocument()
+      expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument()
+      expect(screen.getByText("New task")).toBeInTheDocument()
+      expect(screen.getByText("Focus chat")).toBeInTheDocument()
+      expect(screen.getByText("Toggle task chat")).toBeInTheDocument()
     })
 
     it("displays command descriptions from hotkeys config", () => {
@@ -218,9 +218,9 @@ describe("CommandPalette", () => {
       fireEvent.change(input, { target: { value: "sidebar" } })
 
       // Commands containing "sidebar" should be visible
-      expect(screen.getByText("Toggle Sidebar")).toBeInTheDocument()
+      expect(screen.getByText("Toggle sidebar")).toBeInTheDocument()
       // Other commands should be hidden
-      expect(screen.queryByText("Toggle Theme")).not.toBeInTheDocument()
+      expect(screen.queryByText("Toggle theme")).not.toBeInTheDocument()
     })
 
     it("filters commands by keywords", () => {
@@ -231,7 +231,7 @@ describe("CommandPalette", () => {
       fireEvent.change(input, { target: { value: "dark" } })
 
       // Theme command has "dark" as a keyword
-      expect(screen.getByText("Toggle Theme")).toBeInTheDocument()
+      expect(screen.getByText("Toggle theme")).toBeInTheDocument()
     })
 
     it("shows empty state when no commands match", () => {
