@@ -16,9 +16,48 @@ import { getShortcut } from "@/lib/getShortcut"
 import type { RalphStatus } from "@/types"
 import { Kbd } from "@/components/ui/tooltip"
 
+/** Map icon names from config to React components */
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  PlayerPlay: IconPlayerPlay,
+  PlayerStop: IconPlayerStop,
+  PlayerPause: IconPlayerPause,
+  LayoutSidebar: IconLayoutSidebar,
+  Sun: IconSun,
+  Keyboard: IconKeyboard,
+  Message: IconMessage,
+  ListCheck: IconListCheck,
+  Terminal: IconTerminal,
+}
+
+/** Get icon component from config icon name */
+function getIcon(iconName: string): React.ReactNode {
+  const IconComponent = iconMap[iconName]
+  if (IconComponent) {
+    return <IconComponent className="h-4 w-4" />
+  }
+  return null
+}
+
+/** Availability rules for commands based on app state */
+type AvailabilityRule = (ralphStatus: RalphStatus, isConnected: boolean) => boolean
+
+const availabilityRules: Partial<Record<CommandAction, AvailabilityRule>> = {
+  agentStart: (status, connected) => status === "stopped" && connected,
+  agentStop: (status, connected) => status === "running" && connected,
+  agentPause: (status, connected) => (status === "running" || status === "paused") && connected,
+}
+
+/** Dynamic label overrides based on app state */
+type LabelOverride = (ralphStatus: RalphStatus) => string
+
+const labelOverrides: Partial<Record<CommandAction, LabelOverride>> = {
+  agentPause: status => (status === "paused" ? "Resume Ralph" : "Pause Ralph"),
+}
+
 /**
  * Command palette for quick access to application actions.
  * Opens with Cmd+; and provides fuzzy search across all commands.
+ * Commands are driven by the hotkeys configuration file.
  */
 export function CommandPalette({
   open,
@@ -52,77 +91,40 @@ export function CommandPalette({
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [open, onClose])
 
-  const commands: CommandItem[] = useMemo(
-    () => [
-      {
-        id: "agentStart",
-        label: "Start Ralph",
-        description: "Start the Ralph agent",
-        icon: <IconPlayerPlay className="h-4 w-4" />,
-        keywords: ["run", "begin", "launch", "agent"],
-        available: () => ralphStatus === "stopped" && isConnected,
-      },
-      {
-        id: "agentStop",
-        label: "Stop Ralph",
-        description: "Stop the Ralph agent",
-        icon: <IconPlayerStop className="h-4 w-4" />,
-        keywords: ["halt", "end", "terminate", "agent"],
-        available: () => ralphStatus === "running" && isConnected,
-      },
-      {
-        id: "agentPause",
-        label: ralphStatus === "paused" ? "Resume Ralph" : "Pause Ralph",
-        description: ralphStatus === "paused" ? "Resume the Ralph agent" : "Pause the Ralph agent",
-        icon: <IconPlayerPause className="h-4 w-4" />,
-        keywords: ["pause", "resume", "suspend", "agent"],
-        available: () => (ralphStatus === "running" || ralphStatus === "paused") && isConnected,
-      },
-      {
-        id: "toggleSidebar",
-        label: "Toggle Sidebar",
-        description: "Show or hide the sidebar",
-        icon: <IconLayoutSidebar className="h-4 w-4" />,
-        keywords: ["sidebar", "panel", "show", "hide", "collapse", "expand"],
-      },
-      {
-        id: "cycleTheme",
-        label: "Toggle Theme",
-        description: "Cycle through light, dark, and system themes",
-        icon: <IconSun className="h-4 w-4" />,
-        keywords: ["theme", "dark", "light", "mode", "appearance", "color"],
-      },
-      {
-        id: "showHotkeys",
-        label: "Keyboard Shortcuts",
-        description: "Show all keyboard shortcuts",
-        icon: <IconKeyboard className="h-4 w-4" />,
-        keywords: ["hotkeys", "keys", "bindings", "help", "shortcuts"],
-      },
-      {
-        id: "focusTaskInput",
-        label: "New Task",
-        description: "Focus the quick task input",
-        icon: <IconListCheck className="h-4 w-4" />,
-        keywords: ["task", "create", "add", "new", "issue", "todo"],
-      },
-      {
-        id: "focusChatInput",
-        label: "Focus Chat",
-        description: "Focus the chat input",
-        icon: <IconMessage className="h-4 w-4" />,
-        keywords: ["chat", "message", "input", "type", "send"],
-      },
-      {
-        id: "toggleTaskChat",
-        label: "Toggle Task Chat",
-        description: "Show or hide the task chat panel",
-        icon: <IconTerminal className="h-4 w-4" />,
-        keywords: ["task", "chat", "panel", "show", "hide"],
-      },
-    ],
-    [ralphStatus, isConnected],
-  )
+  /**
+   * Build commands from hotkeys configuration.
+   * Only includes hotkeys that have commandPalette config.
+   */
+  const commands: CommandItem[] = useMemo(() => {
+    const items: CommandItem[] = []
+
+    for (const [action, config] of Object.entries(hotkeys)) {
+      if (!config.commandPalette) continue
+
+      const actionId = action as CommandAction
+      const { label, icon, keywords } = config.commandPalette
+
+      // Apply dynamic label override if exists
+      const labelOverride = labelOverrides[actionId]
+      const displayLabel = labelOverride ? labelOverride(ralphStatus) : label
+
+      // Apply availability rule if exists
+      const availabilityRule = availabilityRules[actionId]
+      const available =
+        availabilityRule ? () => availabilityRule(ralphStatus, isConnected) : undefined
+
+      items.push({
+        id: actionId,
+        label: displayLabel,
+        description: config.description,
+        icon: getIcon(icon),
+        keywords,
+        available,
+      })
+    }
+
+    return items
+  }, [ralphStatus, isConnected])
 
   /**
    * Handle command selection and invoke the associated handler.

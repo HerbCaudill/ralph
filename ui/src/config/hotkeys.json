@@ -4,17 +4,32 @@
     "agentStart": {
       "key": "cmd+Enter",
       "description": "Start Ralph agent",
-      "category": "Agent Control"
+      "category": "Agent Control",
+      "commandPalette": {
+        "label": "Start Ralph",
+        "icon": "PlayerPlay",
+        "keywords": ["run", "begin", "launch", "agent"]
+      }
     },
     "agentStop": {
       "key": "ctrl+c",
       "description": "Stop Ralph agent",
-      "category": "Agent Control"
+      "category": "Agent Control",
+      "commandPalette": {
+        "label": "Stop Ralph",
+        "icon": "PlayerStop",
+        "keywords": ["halt", "end", "terminate", "agent"]
+      }
     },
     "agentPause": {
       "key": "cmd+.",
       "description": "Pause/Resume Ralph agent",
-      "category": "Agent Control"
+      "category": "Agent Control",
+      "commandPalette": {
+        "label": "Pause Ralph",
+        "icon": "PlayerPause",
+        "keywords": ["pause", "resume", "suspend", "agent"]
+      }
     },
     "agentStopAfterCurrent": {
       "key": "cmd+shift+.",
@@ -24,7 +39,12 @@
     "toggleSidebar": {
       "key": "cmd+b",
       "description": "Toggle sidebar visibility",
-      "category": "Navigation"
+      "category": "Navigation",
+      "commandPalette": {
+        "label": "Toggle Sidebar",
+        "icon": "LayoutSidebar",
+        "keywords": ["sidebar", "panel", "show", "hide", "collapse", "expand"]
+      }
     },
     "focusSidebar": {
       "key": "cmd+1",
@@ -39,22 +59,42 @@
     "focusTaskInput": {
       "key": "cmd+k",
       "description": "Focus quick task input",
-      "category": "Navigation"
+      "category": "Navigation",
+      "commandPalette": {
+        "label": "New Task",
+        "icon": "ListCheck",
+        "keywords": ["task", "create", "add", "new", "issue", "todo"]
+      }
     },
     "focusChatInput": {
       "key": "cmd+l",
       "description": "Focus chat input",
-      "category": "Navigation"
+      "category": "Navigation",
+      "commandPalette": {
+        "label": "Focus Chat",
+        "icon": "Message",
+        "keywords": ["chat", "message", "input", "type", "send"]
+      }
     },
     "cycleTheme": {
       "key": "cmd+shift+t",
       "description": "Cycle theme (system → light → dark)",
-      "category": "Appearance"
+      "category": "Appearance",
+      "commandPalette": {
+        "label": "Toggle Theme",
+        "icon": "Sun",
+        "keywords": ["theme", "dark", "light", "mode", "appearance", "color"]
+      }
     },
     "showHotkeys": {
       "key": "cmd+/",
       "description": "Show keyboard shortcuts",
-      "category": "Help"
+      "category": "Help",
+      "commandPalette": {
+        "label": "Keyboard Shortcuts",
+        "icon": "Keyboard",
+        "keywords": ["hotkeys", "keys", "bindings", "help", "shortcuts"]
+      }
     },
     "toggleInputFocus": {
       "key": "Tab",
@@ -64,7 +104,12 @@
     "toggleTaskChat": {
       "key": "cmd+j",
       "description": "Toggle task chat panel and focus input",
-      "category": "Navigation"
+      "category": "Navigation",
+      "commandPalette": {
+        "label": "Toggle Task Chat",
+        "icon": "Terminal",
+        "keywords": ["task", "chat", "panel", "show", "hide"]
+      }
     },
     "focusTaskChatInput": {
       "key": "cmd+3",

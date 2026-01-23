@@ -56,7 +56,7 @@ describe("CommandPalette", () => {
       expect(screen.getByText("Toggle Task Chat")).toBeInTheDocument()
     })
 
-    it("displays command descriptions", () => {
+    it("displays command descriptions from hotkeys config", () => {
       const onClose = vi.fn()
       render(
         <CommandPalette
@@ -68,8 +68,9 @@ describe("CommandPalette", () => {
         />,
       )
 
-      expect(screen.getByText("Start the Ralph agent")).toBeInTheDocument()
-      expect(screen.getByText("Show or hide the sidebar")).toBeInTheDocument()
+      // Descriptions come from hotkeys.json config
+      expect(screen.getByText("Start Ralph agent")).toBeInTheDocument()
+      expect(screen.getByText("Toggle sidebar visibility")).toBeInTheDocument()
     })
 
     it("displays keyboard shortcuts for commands", () => {

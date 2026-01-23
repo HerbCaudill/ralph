@@ -2,11 +2,19 @@ import hotkeysConfig from "./hotkeys.json"
 
 export type HotkeyModifier = "cmd" | "ctrl" | "alt" | "shift"
 
+/** Command palette configuration for a hotkey */
+export interface CommandPaletteConfig {
+  label: string
+  icon: string
+  keywords?: string[]
+}
+
 export interface HotkeyConfig {
   key: string
   modifiers: HotkeyModifier[]
   description: string
   category: string
+  commandPalette?: CommandPaletteConfig
 }
 
 /** Raw hotkey entry from JSON file using VS Code format */
@@ -14,6 +22,11 @@ interface RawHotkeyConfig {
   key: string // VS Code format like "cmd+shift+t" or just "Enter"
   description: string
   category: string
+  commandPalette?: {
+    label: string
+    icon: string
+    keywords?: string[]
+  }
 }
 
 /**
@@ -57,6 +70,7 @@ function loadHotkeys(): HotkeysConfig {
       modifiers,
       description: config.description,
       category: config.category,
+      commandPalette: config.commandPalette,
     }
   }
 

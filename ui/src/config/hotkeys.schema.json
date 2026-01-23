@@ -30,6 +30,26 @@
         "category": {
           "type": "string",
           "description": "Category for grouping hotkeys in the keyboard shortcuts dialog"
+        },
+        "commandPalette": {
+          "type": "object",
+          "description": "Configuration for command palette appearance. If present, the hotkey will appear in the command palette.",
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "Display label in the command palette"
+            },
+            "icon": {
+              "type": "string",
+              "description": "Icon name from @tabler/icons-react (e.g., 'PlayerPlay', 'LayoutSidebar')"
+            },
+            "keywords": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Additional search keywords for fuzzy matching"
+            }
+          },
+          "required": ["label", "icon"]
         }
       },
       "required": ["key", "description", "category"]
