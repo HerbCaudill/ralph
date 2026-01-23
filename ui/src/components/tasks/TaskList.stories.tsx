@@ -94,6 +94,16 @@ export const Empty: Story = {
   },
 }
 
+/**
+ * Shows the loading skeleton displayed while tasks are being fetched.
+ */
+export const Loading: Story = {
+  args: {
+    tasks: [],
+    isLoading: true,
+  },
+}
+
 export const ShowEmptyGroups: Story = {
   args: {
     tasks: [

@@ -22,6 +22,7 @@ import {
   type TaskTreeNode,
 } from "@/lib/buildTaskTree"
 import type { TaskCardTask, TaskGroup, TaskStatus } from "@/types"
+import { TaskListSkeleton } from "./TaskListSkeleton"
 
 /**
  * List component for displaying tasks grouped by status and parent.
@@ -46,6 +47,8 @@ export function TaskList({
   showEmptyGroups = false,
   /** Whether to persist collapsed state to localStorage */
   persistCollapsedState = true,
+  /** Whether tasks are currently loading */
+  isLoading = false,
 }: TaskListProps) {
   const searchQuery = useAppStore(selectTaskSearchQuery)
   const closedTimeFilter = useAppStore(selectClosedTimeFilter)
@@ -339,6 +342,11 @@ export function TaskList({
 
   const hasTasks = statusGroups.some(g => g.totalCount > 0)
 
+  // Show skeleton while loading
+  if (isLoading) {
+    return <TaskListSkeleton className={className} />
+  }
+
   if (!hasTasks && !showEmptyGroups) {
     return (
       <div
@@ -441,6 +449,8 @@ export type TaskListProps = {
   showEmptyGroups?: boolean
   /** Whether to persist collapsed state to localStorage */
   persistCollapsedState?: boolean
+  /** Whether tasks are currently loading */
+  isLoading?: boolean
 }
 
 /**

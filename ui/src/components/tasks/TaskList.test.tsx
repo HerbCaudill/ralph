@@ -35,6 +35,18 @@ describe("TaskList", () => {
       expect(screen.getByRole("list", { name: "Task list" })).toBeInTheDocument()
     })
 
+    it("renders loading skeleton when isLoading is true", () => {
+      render(<TaskList tasks={[]} isLoading={true} />)
+      expect(screen.getByRole("status", { name: "Loading tasks" })).toBeInTheDocument()
+      expect(screen.queryByRole("list", { name: "Task list" })).not.toBeInTheDocument()
+    })
+
+    it("renders task list when isLoading is false", () => {
+      render(<TaskList tasks={sampleTasks} isLoading={false} />)
+      expect(screen.getByRole("list", { name: "Task list" })).toBeInTheDocument()
+      expect(screen.queryByRole("status", { name: "Loading tasks" })).not.toBeInTheDocument()
+    })
+
     it("renders all group headers", () => {
       render(<TaskList tasks={sampleTasks} />)
       expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()

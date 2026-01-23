@@ -24,7 +24,7 @@ export function TasksSidebarPanel({
   /** Handler to hide the search input */
   onHideSearch,
 }: TasksSidebarPanelProps) {
-  const { tasks, refresh } = useTasks({ all: true })
+  const { tasks, isLoading, refresh } = useTasks({ all: true })
 
   const handleTaskCreated = useCallback(async () => {
     await refresh()
@@ -34,7 +34,9 @@ export function TasksSidebarPanel({
   return (
     <TaskSidebar
       quickInput={<QuickTaskInput ref={quickInputRef} onTaskCreated={handleTaskCreated} />}
-      taskList={<TaskList tasks={tasks} onTaskClick={onTaskClick} showEmptyGroups />}
+      taskList={
+        <TaskList tasks={tasks} onTaskClick={onTaskClick} showEmptyGroups isLoading={isLoading} />
+      }
       searchInputRef={searchInputRef}
       onOpenTask={onOpenTask}
       isSearchVisible={isSearchVisible}
