@@ -63,7 +63,7 @@ export function EventStreamIterationBar({
             {!isViewingLatest && (
               <button
                 onClick={onLatest}
-                className="bg-primary text-primary-foreground rounded px-2 py-0.5 text-xs font-medium hover:opacity-90"
+                className="bg-repo-accent text-repo-accent-foreground rounded px-2 py-0.5 text-xs font-medium hover:opacity-90"
               >
                 Latest
               </button>

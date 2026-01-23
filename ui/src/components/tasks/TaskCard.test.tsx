@@ -297,18 +297,18 @@ describe("TaskCard", () => {
       expect(typeIndicator).toHaveClass("text-status-error")
     })
 
-    it("displays feature icon with primary color", () => {
+    it("displays feature icon with repo accent color", () => {
       render(<TaskCard task={{ ...baseTask, issue_type: "feature" }} />)
       const typeIndicator = screen.getByLabelText("Type: Feature")
       expect(typeIndicator).toBeInTheDocument()
-      expect(typeIndicator).toHaveClass("text-primary")
+      expect(typeIndicator).toHaveClass("text-repo-accent")
     })
 
-    it("displays epic icon with primary color", () => {
+    it("displays epic icon with repo accent color", () => {
       render(<TaskCard task={{ ...baseTask, issue_type: "epic" }} />)
       const typeIndicator = screen.getByLabelText("Type: Epic")
       expect(typeIndicator).toBeInTheDocument()
-      expect(typeIndicator).toHaveClass("text-primary")
+      expect(typeIndicator).toHaveClass("text-repo-accent")
     })
 
     it("does not display task icon (default type)", () => {

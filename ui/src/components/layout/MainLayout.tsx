@@ -1,8 +1,17 @@
-import { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect } from "react"
+import {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  useCallback,
+  useState,
+  useEffect,
+  useMemo,
+} from "react"
 import { cn } from "@/lib/utils"
 import { Header } from "./Header"
 import { useAppStore, selectSidebarOpen, selectSidebarWidth, selectAccentColor } from "@/store"
 import { DEFAULT_ACCENT_COLOR } from "@/constants"
+import { getContrastingColor } from "@/lib/getContrastingColor"
 
 /**
  * Main application layout with header, sidebar, main content area, and status bar.
@@ -35,6 +44,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   const setSidebarWidth = useAppStore(state => state.setSidebarWidth)
   const accentColor = useAppStore(selectAccentColor)
   const borderColor = accentColor ?? DEFAULT_ACCENT_COLOR
+  const accentForeground = useMemo(() => getContrastingColor(borderColor), [borderColor])
   const sidebarRef = useRef<HTMLElement>(null)
   const mainRef = useRef<HTMLDivElement>(null)
   const leftPanelRef = useRef<HTMLDivElement>(null)
@@ -202,8 +212,9 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           border: `6px solid ${borderColor}`,
           borderBottomLeftRadius: "10px",
           borderBottomRightRadius: "10px",
-          // Set CSS custom property for accent color, used by prose/markdown text
+          // Set CSS custom properties for accent color and its contrasting foreground
           "--repo-accent": borderColor,
+          "--repo-accent-foreground": accentForeground,
         } as React.CSSProperties
       }
     >

@@ -371,12 +371,12 @@ const typeConfig: Record<string, TypeConfig> = {
   feature: {
     icon: IconSparkles,
     label: "Feature",
-    color: "text-primary",
+    color: "text-repo-accent",
   },
   epic: {
     icon: IconStack2,
     label: "Epic",
-    color: "text-primary",
+    color: "text-repo-accent",
   },
 }
 

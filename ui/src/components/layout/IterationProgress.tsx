@@ -14,7 +14,7 @@ export function IterationProgress({}: Props) {
     >
       <div className="bg-muted h-1.5 w-16 overflow-hidden rounded-full">
         <div
-          className="bg-primary h-full transition-all duration-300"
+          className="bg-repo-accent h-full transition-all duration-300"
           style={{ width: `${Math.min(progress, 100)}%` }}
         />
       </div>

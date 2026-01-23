@@ -52,6 +52,9 @@
   --color-status-error: var(--status-error);
   --color-status-info: var(--status-info);
   --color-status-neutral: var(--status-neutral);
+  /* Repo accent color - set dynamically via MainLayout.tsx inline styles */
+  --color-repo-accent: var(--repo-accent, var(--primary));
+  --color-repo-accent-foreground: var(--repo-accent-foreground, var(--primary-foreground));
 }
 
 :root {

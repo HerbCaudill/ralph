@@ -17,7 +17,7 @@ export function ScrollToBottomButton({
     <button
       onClick={onClick}
       className={cn(
-        "bg-primary text-primary-foreground absolute right-4 bottom-4 rounded-full p-2 shadow-lg transition-opacity hover:opacity-90",
+        "bg-repo-accent text-repo-accent-foreground absolute right-4 bottom-4 rounded-full p-2 shadow-lg transition-opacity hover:opacity-90",
         "flex items-center gap-1.5",
         className,
       )}
