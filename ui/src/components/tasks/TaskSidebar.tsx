@@ -2,6 +2,7 @@ import type { ReactNode, RefObject } from "react"
 import { cn } from "@/lib/utils"
 import { TaskProgressBar } from "./TaskProgressBar"
 import { SearchInput, type SearchInputHandle } from "./SearchInput"
+import { IterationHistorySheet } from "@/components/events"
 
 /**
  * Sidebar container for task management.
@@ -43,6 +44,10 @@ export function TaskSidebar({
             No tasks yet
           </div>
         )}
+      </div>
+
+      <div className="border-border flex items-center justify-between border-t px-4 py-2">
+        <IterationHistorySheet />
       </div>
 
       <TaskProgressBar />

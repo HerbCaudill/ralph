@@ -53,3 +53,10 @@ export {
 } from "./useVSCodeTheme"
 
 export { useWorkspaces, type UseWorkspacesReturn } from "./useWorkspaces"
+
+export {
+  useEventLogs,
+  type EventLogSummary,
+  type UseEventLogsOptions,
+  type UseEventLogsResult,
+} from "./useEventLogs"

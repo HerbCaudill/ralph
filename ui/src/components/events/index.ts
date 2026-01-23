@@ -11,6 +11,12 @@ export type { ToolUseCardProps } from "./ToolUseCard"
 export { EventLogViewer } from "./EventLogViewer"
 export type { EventLogViewerProps } from "./EventLogViewer"
 
+export { IterationHistoryPanel } from "./IterationHistoryPanel"
+export type { IterationHistoryPanelProps } from "./IterationHistoryPanel"
+
+export { IterationHistorySheet } from "./IterationHistorySheet"
+export type { IterationHistorySheetProps } from "./IterationHistorySheet"
+
 export { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 export { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
 export type {
