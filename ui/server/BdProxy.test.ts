@@ -1194,5 +1194,169 @@ describe("BdProxy", () => {
       expect(result[0].dependencies![0].id).toBe("rui-blocker")
       expect(result[0].dependencies![0].dependency_type).toBe("blocks")
     })
+
+    it("sets status to blocked when task has open blocking dependencies", async () => {
+      // First call: list returns task with status "open"
+      const listIssue: BdIssue = {
+        id: "rui-task",
+        title: "Blocked Task",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+        created_at: "2026-01-18T12:00:00Z",
+        updated_at: "2026-01-18T12:00:00Z",
+      }
+
+      // Second call: show returns details with open blocking dependency
+      const showIssue: BdIssue = {
+        ...listIssue,
+        dependencies: [
+          {
+            id: "rui-blocker",
+            title: "Blocking Task",
+            status: "open", // Open blocker = blocked
+            priority: 1,
+            issue_type: "task",
+            created_at: "2026-01-18T12:00:00Z",
+            updated_at: "2026-01-18T12:00:00Z",
+            dependency_type: "blocks",
+          },
+        ],
+      }
+
+      const listPromise = proxy.listWithParents()
+
+      // First spawn: list command
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
+      mockProcess.emit("close", 0)
+
+      // Create new mock process for second command
+      const secondMockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(secondMockProcess)
+
+      // Give time for second spawn
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      // Second spawn: show command
+      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
+      secondMockProcess.emit("close", 0)
+
+      const result = await listPromise
+
+      expect(result).toHaveLength(1)
+      expect(result[0].status).toBe("blocked")
+      expect(result[0].blocked_by_count).toBe(1)
+      expect(result[0].blocked_by).toEqual(["rui-blocker"])
+    })
+
+    it("does not change status when blocking dependency is closed", async () => {
+      // First call: list returns task with status "open"
+      const listIssue: BdIssue = {
+        id: "rui-task",
+        title: "Unblocked Task",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+        created_at: "2026-01-18T12:00:00Z",
+        updated_at: "2026-01-18T12:00:00Z",
+      }
+
+      // Second call: show returns details with closed blocking dependency (no longer blocking)
+      const showIssue: BdIssue = {
+        ...listIssue,
+        dependencies: [
+          {
+            id: "rui-blocker",
+            title: "Completed Blocker",
+            status: "closed", // Closed blocker = not blocked
+            priority: 1,
+            issue_type: "task",
+            created_at: "2026-01-18T12:00:00Z",
+            updated_at: "2026-01-18T12:00:00Z",
+            dependency_type: "blocks",
+          },
+        ],
+      }
+
+      const listPromise = proxy.listWithParents()
+
+      // First spawn: list command
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
+      mockProcess.emit("close", 0)
+
+      // Create new mock process for second command
+      const secondMockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(secondMockProcess)
+
+      // Give time for second spawn
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      // Second spawn: show command
+      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
+      secondMockProcess.emit("close", 0)
+
+      const result = await listPromise
+
+      expect(result).toHaveLength(1)
+      expect(result[0].status).toBe("open") // Status unchanged
+      expect(result[0].blocked_by_count).toBeUndefined()
+      expect(result[0].blocked_by).toBeUndefined()
+    })
+
+    it("does not change status of in_progress task when blocked", async () => {
+      // First call: list returns task with status "in_progress"
+      const listIssue: BdIssue = {
+        id: "rui-task",
+        title: "In Progress Task",
+        status: "in_progress",
+        priority: 2,
+        issue_type: "task",
+        created_at: "2026-01-18T12:00:00Z",
+        updated_at: "2026-01-18T12:00:00Z",
+      }
+
+      // Second call: show returns details with open blocking dependency
+      const showIssue: BdIssue = {
+        ...listIssue,
+        dependencies: [
+          {
+            id: "rui-blocker",
+            title: "Blocking Task",
+            status: "open",
+            priority: 1,
+            issue_type: "task",
+            created_at: "2026-01-18T12:00:00Z",
+            updated_at: "2026-01-18T12:00:00Z",
+            dependency_type: "blocks",
+          },
+        ],
+      }
+
+      const listPromise = proxy.listWithParents()
+
+      // First spawn: list command
+      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([listIssue])))
+      mockProcess.emit("close", 0)
+
+      // Create new mock process for second command
+      const secondMockProcess = createMockProcess()
+      mockSpawn.mockReturnValue(secondMockProcess)
+
+      // Give time for second spawn
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      // Second spawn: show command
+      secondMockProcess.stdout.emit("data", Buffer.from(JSON.stringify([showIssue])))
+      secondMockProcess.emit("close", 0)
+
+      const result = await listPromise
+
+      expect(result).toHaveLength(1)
+      // in_progress status should not be overwritten to blocked
+      expect(result[0].status).toBe("in_progress")
+      // But blocked_by info should still be set
+      expect(result[0].blocked_by_count).toBe(1)
+      expect(result[0].blocked_by).toEqual(["rui-blocker"])
+    })
   })
 })

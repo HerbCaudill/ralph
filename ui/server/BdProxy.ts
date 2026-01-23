@@ -167,7 +167,7 @@ export class BdProxy {
       detailsMap.set(issue.id, issue)
     }
 
-    // Enrich each issue with parent and dependencies fields from the detailed issue
+    // Enrich each issue with parent, dependencies, and blocked_by_count fields
     // The `bd show` command returns these fields directly when an issue
     // has dependency relationships
     return issues.map(issue => {
@@ -182,6 +182,21 @@ export class BdProxy {
       }
       if (details.dependencies) {
         enriched.dependencies = details.dependencies
+
+        // Compute blocked_by_count: count dependencies with type "blocks" that are not closed
+        // A task is blocked if it has any open blocking dependencies
+        const blockers = details.dependencies.filter(
+          dep => dep.dependency_type === "blocks" && dep.status !== "closed",
+        )
+        if (blockers.length > 0) {
+          enriched.blocked_by_count = blockers.length
+          enriched.blocked_by = blockers.map(b => b.id)
+          // Set status to "blocked" for display purposes if the task is open but has blockers
+          // This allows the UI to show the correct blocked status icon
+          if (enriched.status === "open") {
+            enriched.status = "blocked"
+          }
+        }
       }
       return enriched
     })
