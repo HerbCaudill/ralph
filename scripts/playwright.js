@@ -83,8 +83,11 @@ async function main() {
   await mkdir(logDir, { recursive: true })
   const devLogStream = createWriteStream(devLogPath, { flags: "w" })
 
+  // Create env without FORCE_COLOR and suppress Node warnings to avoid
+  // "NO_COLOR ignored due to FORCE_COLOR" warnings from Playwright workers
+  const { FORCE_COLOR: _, ...baseEnv } = process.env
   const env = {
-    ...process.env,
+    ...baseEnv,
     PORT: String(serverPort),
     RALPH_UI_PORT: String(uiPort),
     WORKSPACE_PATH: testWorkspacePath,
@@ -92,6 +95,7 @@ async function main() {
     RALPH_NO_OPEN: "1",
     PW_QUIET: "1", // Use dot reporter for minimal output
     NO_COLOR: "1", // Suppress ANSI color codes
+    NODE_NO_WARNINGS: "1", // Suppress Node.js warnings from Playwright workers
   }
 
   const devProcess = spawn("node", ["scripts/dev.js"], {
