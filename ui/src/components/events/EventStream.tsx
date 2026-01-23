@@ -156,8 +156,8 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       >
         <div className="max-w-4xl">
           {allEvents.length === 0 ?
-            <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-              No events yet
+            <div className="flex h-full items-center justify-start px-4 py-4">
+              <TopologySpinner />
             </div>
           : <>
               {displayedEvents.map((event, index) => (

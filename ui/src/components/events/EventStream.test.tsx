@@ -566,9 +566,10 @@ describe("EventStream", () => {
   })
 
   describe("empty state", () => {
-    it("shows empty message when no events", () => {
+    it("shows spinner when no events", () => {
       renderEventStream()
-      expect(screen.getByText("No events yet")).toBeInTheDocument()
+      // When there are no events, show a spinner instead of "No events yet" text
+      expect(screen.getByRole("log").querySelector("svg")).toBeInTheDocument()
     })
 
     it("has correct ARIA attributes", () => {
@@ -861,8 +862,8 @@ describe("EventStream", () => {
       // Render with instanceId pointing to the empty instance
       renderEventStream({ instanceId: "empty-instance" })
 
-      // Should show empty state
-      expect(screen.getByText("No events yet")).toBeInTheDocument()
+      // Should show spinner (empty state now shows spinner instead of text)
+      expect(screen.getByRole("log").querySelector("svg")).toBeInTheDocument()
       expect(screen.queryByText("Default message")).not.toBeInTheDocument()
     })
 
@@ -957,12 +958,11 @@ describe("EventStream", () => {
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
     })
 
-    it("does not show spinner when there are no events (empty state)", () => {
+    it("shows spinner in empty state (replaces 'no events yet' message)", () => {
       useAppStore.getState().setRalphStatus("running")
       renderEventStream()
-      // Empty state shows "No events yet" instead
-      expect(screen.getByText("No events yet")).toBeInTheDocument()
-      expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
+      // Empty state now shows a spinner instead of "No events yet" text
+      expect(screen.getByRole("log").querySelector("svg")).toBeInTheDocument()
     })
 
     it("does not show spinner when viewing a completed iteration", () => {

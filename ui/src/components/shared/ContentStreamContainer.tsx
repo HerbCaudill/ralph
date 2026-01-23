@@ -13,7 +13,7 @@ import { ScrollToBottomButton } from "./ScrollToBottomButton"
  * <ContentStreamContainer
  *   ariaLabel="Event stream"
  *   dependencies={[events]}
- *   emptyState={<div>No events yet</div>}
+ *   emptyState={<Spinner />}
  * >
  *   {events.map(e => <EventItem key={e.id} event={e} />)}
  * </ContentStreamContainer>
