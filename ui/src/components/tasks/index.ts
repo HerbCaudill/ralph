@@ -9,5 +9,6 @@ export {
 } from "./QuickTaskInput"
 export { TaskProgressBar, type TaskProgressBarProps } from "./TaskProgressBar"
 export { RelatedTasks, type RelatedTasksProps } from "./RelatedTasks"
+export { BlockerCombobox } from "./BlockerCombobox"
 export { RelationshipGraph, type RelationshipGraphProps } from "./RelationshipGraph"
 export type { TaskCardTask, TaskStatus, TaskGroup } from "@/types"

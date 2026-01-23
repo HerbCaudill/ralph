@@ -866,7 +866,7 @@ export function TaskDetailsDialog({
         </div>
 
         {/* Related Tasks (text list - children and blockers) */}
-        <RelatedTasks taskId={task.id} />
+        <RelatedTasks taskId={task.id} task={task} readOnly={readOnly} />
 
         {/* Iteration Links - links to iteration logs for this task */}
         <IterationLinks taskId={task.id} />

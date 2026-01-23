@@ -337,4 +337,259 @@ describe("RelatedTasks", () => {
       expect(taskTitle).toHaveClass("line-through")
     })
   })
+
+  describe("blocker management", () => {
+    const mockTask = {
+      id: "rui-123",
+      title: "Main task",
+      status: "open" as const,
+      priority: 2,
+    }
+
+    const renderWithTask = (taskId: string, task: typeof mockTask, readOnly = false) => {
+      return render(
+        <TaskDialogProvider openTaskById={mockOpenTaskById}>
+          <RelatedTasks taskId={taskId} task={task} readOnly={readOnly} />
+        </TaskDialogProvider>,
+      )
+    }
+
+    it("shows add blocker button when not read-only and task is provided", async () => {
+      mockTasks = [{ id: "rui-999", title: "Available task", status: "open" }]
+
+      mockFetch.mockResolvedValueOnce({
+        json: () =>
+          Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
+      })
+
+      renderWithTask("rui-123", mockTask)
+
+      await waitFor(() => {
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
+      })
+
+      expect(screen.getByText("Add blocker")).toBeInTheDocument()
+    })
+
+    it("does not show add blocker button when read-only", async () => {
+      mockTasks = [{ id: "rui-999", title: "Available task", status: "open" }]
+
+      mockFetch.mockResolvedValueOnce({
+        json: () =>
+          Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
+      })
+
+      renderWithTask("rui-123", mockTask, true)
+
+      await waitFor(() => {
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
+      })
+
+      expect(screen.queryByText("Add blocker")).not.toBeInTheDocument()
+    })
+
+    it("shows remove button on hover for blockers when not read-only", async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            issue: {
+              id: "rui-123",
+              dependencies: [
+                {
+                  id: "rui-100",
+                  title: "Blocking task",
+                  status: "open",
+                  dependency_type: "blocks",
+                },
+              ],
+              dependents: [],
+            },
+          }),
+      })
+
+      renderWithTask("rui-123", mockTask)
+
+      await waitFor(() => {
+        expect(screen.getByText("Blocking task")).toBeInTheDocument()
+      })
+
+      // The remove button should be present (visible on hover via CSS)
+      const removeButton = screen.getByRole("button", { name: /remove rui-100 as blocker/i })
+      expect(removeButton).toBeInTheDocument()
+    })
+
+    it("does not show remove button when read-only", async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            issue: {
+              id: "rui-123",
+              dependencies: [
+                {
+                  id: "rui-100",
+                  title: "Blocking task",
+                  status: "open",
+                  dependency_type: "blocks",
+                },
+              ],
+              dependents: [],
+            },
+          }),
+      })
+
+      renderWithTask("rui-123", mockTask, true)
+
+      await waitFor(() => {
+        expect(screen.getByText("Blocking task")).toBeInTheDocument()
+      })
+
+      expect(
+        screen.queryByRole("button", { name: /remove rui-100 as blocker/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it("calls API to add a blocker when selected from combobox", async () => {
+      mockTasks = [{ id: "rui-999", title: "Available task", status: "open" }]
+
+      mockFetch
+        .mockResolvedValueOnce({
+          json: () =>
+            Promise.resolve({
+              ok: true,
+              issue: { id: "rui-123", dependencies: [], dependents: [] },
+            }),
+        })
+        .mockResolvedValueOnce({
+          json: () => Promise.resolve({ ok: true }),
+        })
+        .mockResolvedValueOnce({
+          json: () =>
+            Promise.resolve({
+              ok: true,
+              issue: {
+                id: "rui-123",
+                dependencies: [
+                  {
+                    id: "rui-999",
+                    title: "Available task",
+                    status: "open",
+                    dependency_type: "blocks",
+                  },
+                ],
+                dependents: [],
+              },
+            }),
+        })
+
+      renderWithTask("rui-123", mockTask)
+
+      await waitFor(() => {
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
+      })
+
+      // Click the add blocker button
+      const addButton = screen.getByText("Add blocker")
+      await act(async () => {
+        fireEvent.click(addButton)
+      })
+
+      // Wait for the combobox to open and find the task
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Search tasks...")).toBeInTheDocument()
+      })
+
+      // Select the available task
+      const taskOption = screen.getByText("Available task")
+      await act(async () => {
+        fireEvent.click(taskOption)
+      })
+
+      // Verify the API was called
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-123/blockers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blockerId: "rui-999" }),
+        })
+      })
+    })
+
+    it("calls API to remove a blocker when remove button is clicked", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          json: () =>
+            Promise.resolve({
+              ok: true,
+              issue: {
+                id: "rui-123",
+                dependencies: [
+                  {
+                    id: "rui-100",
+                    title: "Blocking task",
+                    status: "open",
+                    dependency_type: "blocks",
+                  },
+                ],
+                dependents: [],
+              },
+            }),
+        })
+        .mockResolvedValueOnce({
+          json: () => Promise.resolve({ ok: true }),
+        })
+
+      renderWithTask("rui-123", mockTask)
+
+      await waitFor(() => {
+        expect(screen.getByText("Blocking task")).toBeInTheDocument()
+      })
+
+      // Click the remove button
+      const removeButton = screen.getByRole("button", { name: /remove rui-100 as blocker/i })
+      await act(async () => {
+        fireEvent.click(removeButton)
+      })
+
+      // Verify the API was called
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-123/blockers/rui-100", {
+          method: "DELETE",
+        })
+      })
+    })
+
+    it("does not show remove button for parent-child dependencies", async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: () =>
+          Promise.resolve({
+            ok: true,
+            issue: {
+              id: "rui-123",
+              dependencies: [
+                {
+                  id: "rui-parent",
+                  title: "Parent epic",
+                  status: "open",
+                  dependency_type: "parent-child",
+                },
+              ],
+              dependents: [],
+            },
+          }),
+      })
+
+      renderWithTask("rui-123", mockTask)
+
+      await waitFor(() => {
+        expect(screen.getByText("Parent epic")).toBeInTheDocument()
+      })
+
+      // No remove button for parent-child dependencies
+      expect(
+        screen.queryByRole("button", { name: /remove rui-parent as blocker/i }),
+      ).not.toBeInTheDocument()
+    })
+  })
 })

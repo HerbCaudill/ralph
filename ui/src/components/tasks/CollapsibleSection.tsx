@@ -1,9 +1,16 @@
 import { useState } from "react"
-import { IconChevronDown, IconChevronUp } from "@tabler/icons-react"
+import { IconChevronDown, IconChevronUp, IconX } from "@tabler/icons-react"
 import { TaskLink } from "./TaskLink"
 import type { RelatedTask } from "@/types"
 
-export function CollapsibleSection({ label, tasks, issuePrefix, defaultExpanded = true }: Props) {
+export function CollapsibleSection({
+  label,
+  tasks,
+  issuePrefix,
+  defaultExpanded = true,
+  onRemove,
+  removableIds = [],
+}: Props) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   if (tasks.length === 0) return null
@@ -23,7 +30,19 @@ export function CollapsibleSection({ label, tasks, issuePrefix, defaultExpanded 
       {isExpanded && (
         <div className="space-y-0.5">
           {tasks.map(task => (
-            <TaskLink key={task.id} task={task} issuePrefix={issuePrefix} />
+            <div key={task.id} className="group flex items-center">
+              <TaskLink task={task} issuePrefix={issuePrefix} />
+              {onRemove && removableIds.includes(task.id) && (
+                <button
+                  type="button"
+                  onClick={() => onRemove(task.id)}
+                  className="text-muted-foreground hover:text-destructive ml-1 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
+                  aria-label={`Remove ${task.id} as blocker`}
+                >
+                  <IconX className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -36,4 +55,6 @@ type Props = {
   tasks: RelatedTask[]
   issuePrefix: string | null
   defaultExpanded?: boolean
+  onRemove?: (taskId: string) => void
+  removableIds?: string[]
 }
