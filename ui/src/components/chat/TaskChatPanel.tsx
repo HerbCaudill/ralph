@@ -206,7 +206,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const inputPlaceholder =
     !isConnected ? "Connecting..."
     : isLoading ? "Waiting for response..."
-    : "Send a message to Ralph"
+    : "How can I help?"
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
@@ -246,9 +246,9 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
         emptyState={
           <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
             <IconMessageChatbot className="size-8 opacity-50" />
-            <p>Ask questions about your tasks</p>
+            <p>Manage your tasks</p>
             <p className="text-xs opacity-70">
-              Get help organizing, prioritizing, and managing your issues
+              Get help researching issues and creating and working with tasks
             </p>
           </div>
         }

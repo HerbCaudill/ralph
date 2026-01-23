@@ -33,7 +33,7 @@ export function AgentView({
               !isConnected ? "Connecting..."
               : !canAcceptMessages ?
                 "Start Ralph to send messages..."
-              : "Send Ralph a message..."
+              : "Send a message..."
             }
           />
         </div>

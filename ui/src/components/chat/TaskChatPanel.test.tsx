@@ -46,7 +46,7 @@ describe("TaskChatPanel", () => {
 
     it("renders empty state when no messages", () => {
       render(<TaskChatPanel />)
-      expect(screen.getByText("Ask questions about your tasks")).toBeInTheDocument()
+      expect(screen.getByText("Manage your tasks")).toBeInTheDocument()
     })
 
     it("renders chat input", () => {
@@ -128,7 +128,7 @@ describe("TaskChatPanel", () => {
       })
 
       render(<TaskChatPanel />)
-      expect(screen.queryByText("Ask questions about your tasks")).not.toBeInTheDocument()
+      expect(screen.queryByText("Manage your tasks")).not.toBeInTheDocument()
     })
   })
 
@@ -357,7 +357,7 @@ describe("TaskChatPanel", () => {
 
       await waitFor(() => {
         expect(screen.queryByText("Hello")).not.toBeInTheDocument()
-        expect(screen.getByText("Ask questions about your tasks")).toBeInTheDocument()
+        expect(screen.getByText("Manage your tasks")).toBeInTheDocument()
       })
     })
   })
@@ -603,7 +603,7 @@ describe("TaskChatPanel", () => {
       flushTaskChatEventsBatch()
 
       render(<TaskChatPanel />)
-      expect(screen.queryByText("Ask questions about your tasks")).not.toBeInTheDocument()
+      expect(screen.queryByText("Manage your tasks")).not.toBeInTheDocument()
     })
 
     it("interleaves messages and tool uses in timestamp order", () => {

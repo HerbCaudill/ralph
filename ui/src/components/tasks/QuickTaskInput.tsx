@@ -12,13 +12,7 @@ import { DEFAULT_INPUT_ACCENT_COLOR, TASK_INPUT_DRAFT_STORAGE_KEY } from "@/cons
  */
 export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputProps>(
   function QuickTaskInput(
-    {
-      onTaskCreated,
-      onError,
-      placeholder = "Tell Ralph what you want to do",
-      disabled = false,
-      className,
-    },
+    { onTaskCreated, onError, placeholder = "Add a task...", disabled = false, className },
     ref,
   ) {
     const accentColor = useAppStore(selectAccentColor)
