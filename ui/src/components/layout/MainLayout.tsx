@@ -173,12 +173,25 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     }
   }, [detailPanelOpen, onDetailPanelClose])
 
+  // Utility function to focus the first focusable element within a container
+  const focusFirstFocusable = (container: HTMLElement | null) => {
+    if (!container) return
+    const focusable = container.querySelector<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    if (focusable) {
+      focusable.focus()
+    } else {
+      container.focus()
+    }
+  }
+
   useImperativeHandle(ref, () => ({
-    focusSidebar: () => sidebarRef.current?.focus(),
-    focusMain: () => mainRef.current?.focus(),
-    focusLeftPanel: () => leftPanelRef.current?.focus(),
-    focusRightPanel: () => rightPanelRef.current?.focus(),
-    focusDetailPanel: () => detailPanelRef.current?.focus(),
+    focusSidebar: () => focusFirstFocusable(sidebarRef.current),
+    focusMain: () => focusFirstFocusable(mainRef.current),
+    focusLeftPanel: () => focusFirstFocusable(leftPanelRef.current),
+    focusRightPanel: () => focusFirstFocusable(rightPanelRef.current),
+    focusDetailPanel: () => focusFirstFocusable(detailPanelRef.current),
   }))
 
   return (
