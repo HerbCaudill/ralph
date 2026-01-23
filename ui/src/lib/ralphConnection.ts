@@ -3,7 +3,7 @@
  * Lives outside React to survive HMR and StrictMode remounts.
  */
 
-import { useAppStore } from "../store"
+import { useAppStore, flushTaskChatEventsBatch } from "../store"
 import { isRalphStatus } from "../store"
 import { checkForSavedIterationState, restoreIterationState } from "./iterationStateApi"
 
@@ -378,7 +378,11 @@ function handleMessage(event: MessageEvent): void {
       case "task-chat:event":
         // Raw SDK event for unified event stream
         if (data.event && typeof data.event === "object") {
-          store.addTaskChatEvent(data.event)
+          // Ensure the event has required properties
+          const event = data.event as { type?: string; timestamp?: number }
+          if (typeof event.type === "string" && typeof event.timestamp === "number") {
+            store.addTaskChatEvent(data.event)
+          }
         }
         break
 
@@ -388,6 +392,12 @@ function handleMessage(event: MessageEvent): void {
         if (typeof data.status === "string") {
           const isProcessing = data.status === "processing" || data.status === "streaming"
           store.setTaskChatLoading(isProcessing)
+
+          // When transitioning to idle, ensure all events are flushed immediately
+          // so the final response is visible without waiting for the batch timeout
+          if (data.status === "idle") {
+            flushTaskChatEventsBatch()
+          }
         }
         break
 

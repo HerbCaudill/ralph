@@ -610,11 +610,18 @@ let taskChatEventsBatchTimeout: ReturnType<typeof setTimeout> | null = null
  * Called automatically after the batch interval, or can be called manually.
  */
 function flushTaskChatEventsBatch(): void {
+  // Clear timeout first to prevent race conditions
+  if (taskChatEventsBatchTimeout !== null) {
+    clearTimeout(taskChatEventsBatchTimeout)
+    taskChatEventsBatchTimeout = null
+  }
+
+  // Early exit if nothing to flush
   if (taskChatEventsBatch.length === 0) return
 
+  // Capture and clear batch atomically
   const eventsToAdd = taskChatEventsBatch
   taskChatEventsBatch = []
-  taskChatEventsBatchTimeout = null
 
   // Apply all batched events in a single state update
   useAppStore.setState(state => ({
