@@ -206,12 +206,12 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
 
   return (
     <div
-      className={cn("flex h-screen w-screen flex-col", className)}
+      className={cn("flex h-screen w-screen flex-col overflow-hidden", className)}
       style={
         {
           border: `6px solid ${borderColor}`,
-          borderBottomLeftRadius: "10px",
-          borderBottomRightRadius: "10px",
+          borderBottomLeftRadius: "20px",
+          borderBottomRightRadius: "20px",
           // Set CSS custom properties for accent color and its contrasting foreground
           "--repo-accent": borderColor,
           "--repo-accent-foreground": accentForeground,
