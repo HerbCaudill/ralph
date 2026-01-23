@@ -110,28 +110,21 @@ export function CodeBlock({
     }
   }, [code])
 
-  if (isLoading) {
-    return (
-      <div className={cn("group relative", className)}>
-        <pre
-          className={cn(
-            "border-border bg-muted overflow-x-auto rounded-md border p-3 font-mono text-xs",
-          )}
-        >
-          <code>{code}</code>
-        </pre>
-      </div>
-    )
-  }
+  // Container styles that apply to both loading and highlighted states
+  // This ensures no layout shift occurs when highlighting completes
+  const containerStyles = cn(
+    "group relative overflow-hidden rounded-md",
+    "[&_code]:text-xs [&_pre]:!m-0 [&_pre]:overflow-x-auto [&_pre]:!p-3 [&_pre]:text-xs",
+    className,
+  )
 
   return (
-    <div
-      className={cn(
-        "group relative overflow-hidden rounded-md [&_code]:text-xs [&_pre]:!m-0 [&_pre]:overflow-x-auto [&_pre]:!p-3 [&_pre]:text-xs",
-        className,
-      )}
-    >
-      <div dangerouslySetInnerHTML={{ __html: html }} />
+    <div className={containerStyles}>
+      {isLoading ?
+        <pre className="bg-muted m-0 overflow-x-auto p-3 text-xs">
+          <code className="text-xs">{code}</code>
+        </pre>
+      : <div dangerouslySetInnerHTML={{ __html: html }} />}
       {showCopy && (
         <button
           type="button"

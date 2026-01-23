@@ -93,17 +93,22 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
     const atBottom = checkIsAtBottom()
     setIsAtBottom(atBottom)
 
-    if (atBottom && !autoScroll) {
-      setAutoScroll(true)
-    }
-  }, [checkIsAtBottom, autoScroll])
+    // Don't re-enable autoScroll here - only track position.
+    // Re-enabling autoScroll on every scroll event that happens to be near bottom
+    // can cause jittering loops when content height changes (e.g., syntax highlighting).
+    // autoScroll is only re-enabled via scrollToBottom() or when user scrolls to bottom
+    // via wheel/touch (handleUserScroll).
+  }, [checkIsAtBottom])
 
   const handleUserScroll = useCallback(() => {
     const atBottom = checkIsAtBottom()
     if (!atBottom) {
       setAutoScroll(false)
+    } else if (!autoScroll) {
+      // User explicitly scrolled back to bottom, re-enable auto-scroll
+      setAutoScroll(true)
     }
-  }, [checkIsAtBottom])
+  }, [checkIsAtBottom, autoScroll])
 
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) {

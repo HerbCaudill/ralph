@@ -117,7 +117,37 @@ describe("useAutoScroll", () => {
   })
 
   describe("handleScroll", () => {
-    it("re-enables autoScroll when user scrolls back to bottom", () => {
+    it("updates isAtBottom but does not re-enable autoScroll (prevents jittering)", () => {
+      const { result } = renderHook(() => useAutoScroll())
+
+      // First, disable autoScroll by scrolling away via user action
+      const containerAway = createMockContainer(200, 1000, 500)
+      ;(result.current.containerRef as any).current = containerAway
+
+      act(() => {
+        result.current.handleUserScroll()
+      })
+      expect(result.current.autoScroll).toBe(false)
+
+      // handleScroll (fires on any scroll event including layout shifts)
+      // should update isAtBottom but NOT re-enable autoScroll
+      // This prevents jittering loops when content height changes
+      const containerAtBottom = createMockContainer(450, 1000, 500)
+      ;(result.current.containerRef as any).current = containerAtBottom
+
+      act(() => {
+        result.current.handleScroll()
+      })
+
+      expect(result.current.isAtBottom).toBe(true)
+      // autoScroll should NOT be re-enabled by handleScroll
+      // Only handleUserScroll (wheel/touch) or scrollToBottom should re-enable it
+      expect(result.current.autoScroll).toBe(false)
+    })
+  })
+
+  describe("handleUserScroll re-enables autoScroll", () => {
+    it("re-enables autoScroll when user scrolls back to bottom via wheel/touch", () => {
       const { result } = renderHook(() => useAutoScroll())
 
       // First, disable autoScroll by scrolling away
@@ -129,12 +159,12 @@ describe("useAutoScroll", () => {
       })
       expect(result.current.autoScroll).toBe(false)
 
-      // Now scroll back to bottom
+      // User scrolls back to bottom via wheel/touch
       const containerAtBottom = createMockContainer(450, 1000, 500)
       ;(result.current.containerRef as any).current = containerAtBottom
 
       act(() => {
-        result.current.handleScroll()
+        result.current.handleUserScroll()
       })
 
       expect(result.current.autoScroll).toBe(true)
