@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Hotkeys Configuration",
-  "description": "Keyboard hotkeys configuration for ralph-ui",
+  "description": "Keyboard hotkeys configuration for ralph-ui using VS Code key binding format",
   "type": "object",
   "properties": {
     "$schema": {
@@ -21,15 +21,7 @@
       "properties": {
         "key": {
           "type": "string",
-          "description": "The key to press (e.g., 'Enter', 'a', '1', '.')"
-        },
-        "modifiers": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": ["cmd", "ctrl", "alt", "shift"]
-          },
-          "description": "Modifier keys required. 'cmd' maps to Cmd on Mac and Ctrl on Windows/Linux."
+          "description": "VS Code-style key binding (e.g., 'cmd+shift+t', 'ctrl+c', 'Enter'). Modifiers: cmd, ctrl, alt, shift. Use '+' to combine."
         },
         "description": {
           "type": "string",
@@ -40,7 +32,7 @@
           "description": "Category for grouping hotkeys in the keyboard shortcuts dialog"
         }
       },
-      "required": ["key", "modifiers", "description", "category"]
+      "required": ["key", "description", "category"]
     }
   }
 }

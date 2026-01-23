@@ -1,10 +1,5 @@
 import hotkeysConfig from "./hotkeys.json"
 
-/**
- * Load hotkeys configuration from JSON.
- */
-export const hotkeys: HotkeysConfig = hotkeysConfig.hotkeys as HotkeysConfig
-
 export type HotkeyModifier = "cmd" | "ctrl" | "alt" | "shift"
 
 export interface HotkeyConfig {
@@ -13,6 +8,62 @@ export interface HotkeyConfig {
   description: string
   category: string
 }
+
+/** Raw hotkey entry from JSON file using VS Code format */
+interface RawHotkeyConfig {
+  key: string // VS Code format like "cmd+shift+t" or just "Enter"
+  description: string
+  category: string
+}
+
+/**
+ * Parse a VS Code-style key binding into key and modifiers.
+ * e.g., "cmd+shift+t" -> { key: "t", modifiers: ["cmd", "shift"] }
+ */
+function parseKeyBinding(keyBinding: string): { key: string; modifiers: HotkeyModifier[] } {
+  const parts = keyBinding.split("+")
+  const modifiers: HotkeyModifier[] = []
+  let key = ""
+
+  for (const part of parts) {
+    const lowerPart = part.toLowerCase()
+    if (
+      lowerPart === "cmd" ||
+      lowerPart === "ctrl" ||
+      lowerPart === "alt" ||
+      lowerPart === "shift"
+    ) {
+      modifiers.push(lowerPart as HotkeyModifier)
+    } else {
+      // The last non-modifier part is the key
+      key = part
+    }
+  }
+
+  return { key, modifiers }
+}
+
+/**
+ * Load hotkeys configuration from JSON and parse VS Code-style key bindings.
+ */
+function loadHotkeys(): HotkeysConfig {
+  const rawHotkeys = hotkeysConfig.hotkeys as Record<string, RawHotkeyConfig>
+  const result: Partial<HotkeysConfig> = {}
+
+  for (const [action, config] of Object.entries(rawHotkeys)) {
+    const { key, modifiers } = parseKeyBinding(config.key)
+    result[action as HotkeyAction] = {
+      key,
+      modifiers,
+      description: config.description,
+      category: config.category,
+    }
+  }
+
+  return result as HotkeysConfig
+}
+
+export const hotkeys: HotkeysConfig = loadHotkeys()
 
 export type HotkeyAction =
   | "agentStart"
