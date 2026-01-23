@@ -21,6 +21,7 @@ import {
   selectIsSearchVisible,
   selectSelectedTaskId,
   selectVisibleTaskIds,
+  selectHotkeysDialogOpen,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -73,8 +74,10 @@ export function App() {
   // Workspace navigation
   const { goToPreviousWorkspace, goToNextWorkspace } = useWorkspaces()
 
-  // Hotkeys dialog state
-  const [hotkeysDialogOpen, setHotkeysDialogOpen] = useState(false)
+  // Hotkeys dialog state from store
+  const hotkeysDialogOpen = useAppStore(selectHotkeysDialogOpen)
+  const openHotkeysDialog = useAppStore(state => state.openHotkeysDialog)
+  const closeHotkeysDialog = useAppStore(state => state.closeHotkeysDialog)
 
   // Command palette state
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
@@ -214,12 +217,12 @@ export function App() {
   }, [cycleTheme])
 
   const handleShowHotkeys = useCallback(() => {
-    setHotkeysDialogOpen(true)
-  }, [])
+    openHotkeysDialog()
+  }, [openHotkeysDialog])
 
   const handleCloseHotkeysDialog = useCallback(() => {
-    setHotkeysDialogOpen(false)
-  }, [])
+    closeHotkeysDialog()
+  }, [closeHotkeysDialog])
 
   const handleShowCommandPalette = useCallback(() => {
     setCommandPaletteOpen(true)

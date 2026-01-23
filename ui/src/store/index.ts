@@ -355,6 +355,9 @@ export interface AppState {
   // Search input visibility (hidden by default, shown on Cmd+F)
   isSearchVisible: boolean
 
+  // Hotkeys dialog visibility
+  hotkeysDialogOpen: boolean
+
   // Task chat events (unified array like EventStream's events[])
   taskChatEvents: RalphEvent[]
 
@@ -463,6 +466,11 @@ export interface AppActions {
   setSearchVisible: (visible: boolean) => void
   showSearch: () => void
   hideSearch: () => void
+
+  // Hotkeys dialog
+  setHotkeysDialogOpen: (open: boolean) => void
+  openHotkeysDialog: () => void
+  closeHotkeysDialog: () => void
 
   // Reconnection state (for auto-resuming when reconnecting mid-iteration)
   /** Mark that Ralph was running before disconnect (called when connection is lost) */
@@ -671,6 +679,7 @@ const initialState: AppState = {
   closedTimeFilter: "past_day",
   showToolOutput: false,
   isSearchVisible: false,
+  hotkeysDialogOpen: false,
   wasRunningBeforeDisconnect: false,
   taskChatEvents: [],
 }
@@ -1122,6 +1131,11 @@ export const useAppStore = create<AppState & AppActions>(set => ({
   setSearchVisible: visible => set({ isSearchVisible: visible }),
   showSearch: () => set({ isSearchVisible: true }),
   hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
+
+  // Hotkeys dialog
+  setHotkeysDialogOpen: open => set({ hotkeysDialogOpen: open }),
+  openHotkeysDialog: () => set({ hotkeysDialogOpen: true }),
+  closeHotkeysDialog: () => set({ hotkeysDialogOpen: false }),
 
   // Reconnection state (for auto-resuming when reconnecting mid-iteration)
   markRunningBeforeDisconnect: () =>
@@ -1635,6 +1649,7 @@ export const selectIterationTask = (state: AppState) => {
   return getTaskFromIterationEvents(iterationEvents)
 }
 export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
+export const selectHotkeysDialogOpen = (state: AppState) => state.hotkeysDialogOpen
 
 export const selectInstanceStatus = (state: AppState, instanceId: string): RalphStatus => {
   const instance = state.instances.get(instanceId)

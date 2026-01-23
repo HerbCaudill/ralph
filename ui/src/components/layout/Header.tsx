@@ -4,6 +4,7 @@ import { DEFAULT_ACCENT_COLOR } from "@/constants"
 import { WorkspacePicker } from "./WorkspacePicker"
 import { Logo } from "./Logo"
 import { SettingsDropdown } from "./SettingsDropdown"
+import { HelpButton } from "./HelpButton"
 import { InstanceCountBadge } from "./InstanceCountBadge"
 import { MergeConflictNotification } from "./MergeConflictNotification"
 
@@ -31,6 +32,7 @@ export function Header({ className }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        <HelpButton textColor={textColor} />
         <SettingsDropdown textColor={textColor} />
       </div>
     </header>
