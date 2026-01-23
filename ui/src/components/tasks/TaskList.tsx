@@ -269,9 +269,29 @@ export function TaskList({
         parentSubGroups.push({ parent: null, tasks: [task] })
       }
 
-      // Sort all groups (parent groups and ungrouped task groups) by priority
-      // For parent groups, use parent priority; for ungrouped tasks, use first task's priority
-      if (config.key !== "closed") {
+      // Sort all groups (parent groups and ungrouped task groups) by priority or closed_at
+      // For parent groups, use parent priority/closed_at; for ungrouped tasks, use first task
+      if (config.key === "closed") {
+        // For closed groups, sort by most recently closed first
+        parentSubGroups.sort((a, b) => {
+          // Helper to get the most recent closed_at from a group
+          const getGroupClosedAt = (group: ParentSubGroup): number => {
+            // For parent groups, use the parent's closed_at
+            if (group.parent?.closed_at) {
+              return new Date(group.parent.closed_at).getTime()
+            }
+            // For ungrouped tasks, use the first (only) task's closed_at
+            if (group.tasks[0]?.closed_at) {
+              return new Date(group.tasks[0].closed_at).getTime()
+            }
+            return 0
+          }
+
+          const aTime = getGroupClosedAt(a)
+          const bTime = getGroupClosedAt(b)
+          return bTime - aTime // Most recent first
+        })
+      } else {
         parentSubGroups.sort((a, b) => {
           // Helper to check if a group contains an actively working task
           const groupHasActiveTask = (group: ParentSubGroup): boolean => {

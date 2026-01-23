@@ -393,6 +393,53 @@ describe("TaskList", () => {
       // Reset to default
       useAppStore.getState().setClosedTimeFilter("past_day")
     })
+
+    it("sorts closed parent groups by most recently closed first", () => {
+      const now = new Date()
+      const tasks: TaskCardTask[] = [
+        // Parent closed earlier (will appear second)
+        {
+          id: "parent-old",
+          title: "Parent closed earlier",
+          status: "closed",
+          issue_type: "epic",
+          closed_at: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
+        },
+        {
+          id: "child-old",
+          title: "Child of old parent",
+          status: "closed",
+          parent: "parent-old",
+          closed_at: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+        },
+        // Parent closed more recently (will appear first)
+        {
+          id: "parent-new",
+          title: "Parent closed later",
+          status: "closed",
+          issue_type: "epic",
+          closed_at: new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
+        },
+        {
+          id: "child-new",
+          title: "Child of new parent",
+          status: "closed",
+          parent: "parent-new",
+          closed_at: new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString(),
+        },
+      ]
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // Get parent titles in order - they should be sorted by closed_at (most recent first)
+      const parentTitles = screen.getAllByText(/Parent closed/).map(el => el.textContent)
+      expect(parentTitles).toEqual(["Parent closed later", "Parent closed earlier"])
+    })
   })
 
   describe("collapse/expand", () => {
