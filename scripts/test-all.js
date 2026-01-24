@@ -11,6 +11,13 @@ import Table from "cli-table3"
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "..")
 
+/** ANSI style helpers */
+const style = {
+  bold: s => `\x1b[1m${s}\x1b[0m`,
+  blue: s => `\x1b[34m${s}\x1b[0m`,
+  boldBlue: s => `\x1b[1;34m${s}\x1b[0m`,
+}
+
 /** Test suite configuration */
 const testSuites = [
   { name: "typecheck", type: "typecheck", filter: null, command: "typecheck" },
@@ -146,9 +153,9 @@ async function runTestSuite(suite) {
  */
 function printBoxHeading(text) {
   const width = text.length + 2
-  console.log(`\n┌${"─".repeat(width)}┐`)
-  console.log(`│ ${text} │`)
-  console.log(`└${"─".repeat(width)}┘\n`)
+  console.log(style.boldBlue(`\n┌${"─".repeat(width)}┐`))
+  console.log(style.boldBlue(`│ ${text} │`))
+  console.log(style.boldBlue(`└${"─".repeat(width)}┘\n`))
 }
 
 /**
@@ -171,7 +178,7 @@ function printSummary() {
 
   // Per-package results table (no borders)
   const packageTable = new Table({
-    head: ["", "Package", "Type", "Passed", "Failed", "Time"],
+    head: ["", "Package", "Type", "Passed", "Failed", "Time"].map(h => style.bold(h)),
     colAligns: ["left", "left", "left", "right", "right", "right"],
     style: { head: [], border: [], "padding-left": 1, "padding-right": 1 },
     chars: {
@@ -212,15 +219,12 @@ function printSummary() {
     ])
   }
 
-  // Add total row
-  packageTable.push([
-    "",
-    "Total",
-    "",
-    String(totalPassed),
-    String(totalFailed),
-    formatDuration(totalDuration),
-  ])
+  // Add total row (bold)
+  packageTable.push(
+    ["", "Total", "", String(totalPassed), String(totalFailed), formatDuration(totalDuration)].map(
+      c => style.bold(c),
+    ),
+  )
 
   console.log(packageTable.toString())
 
