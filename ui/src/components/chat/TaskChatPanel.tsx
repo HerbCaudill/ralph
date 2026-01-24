@@ -1,9 +1,7 @@
 import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
-import { useEventDisplayState } from "@/components/events/EventDisplay"
-import { StreamingContentRenderer } from "@/components/events/StreamingContentRenderer"
+import { EventList, useEventListState } from "@/components/events/EventList"
 import { TASK_CHAT_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
-import { renderEventContentBlock } from "@/lib/renderEventContentBlock"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
 import { cn } from "@/lib/utils"
 import {
@@ -13,18 +11,35 @@ import {
   selectTaskChatMessages,
   useAppStore,
 } from "@/store"
-import type { AssistantContentBlock, ChatEvent, TaskChatMessage } from "@/types"
+import type { ChatEvent, TaskChatMessage } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
-import { UserMessageBubble } from "./UserMessageBubble"
+
+/**
+ * Converts TaskChatMessage objects to ChatEvent format for unified rendering.
+ * Only converts user messages - assistant content comes from SDK events.
+ */
+function toChatEvents(userMessages: TaskChatMessage[], taskChatEvents: ChatEvent[]): ChatEvent[] {
+  // Convert user TaskChatMessages to ChatEvent format
+  const userEvents: ChatEvent[] = userMessages
+    .filter(msg => msg.role === "user")
+    .map(msg => ({
+      type: "user_message",
+      timestamp: msg.timestamp,
+      message: msg.content,
+    }))
+
+  // Merge with task chat events and sort by timestamp
+  return [...userEvents, ...taskChatEvents].sort((a, b) => a.timestamp - b.timestamp)
+}
 
 /**
  * Task chat panel for task management conversations with Claude.
  * Displays a chat interface with message history and input.
  *
- * Uses the shared EventDisplay logic via useEventDisplayState for processing
- * assistant events, while adding user message rendering and chat input.
+ * Uses the shared EventList component for rendering events, converting
+ * user messages to ChatEvent format for unified display.
  */
 export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   // User messages (typed by the user)
@@ -41,42 +56,14 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   const chatInputRef = useRef<ChatInputHandle>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Use the shared hook from EventDisplay for event processing
-  const { completedEvents, streamingMessage, toolResults } = useEventDisplayState(taskChatEvents)
+  // Convert user messages to ChatEvent format and merge with task chat events
+  const allEvents = useMemo(
+    () => toChatEvents(userMessages, taskChatEvents),
+    [userMessages, taskChatEvents],
+  )
 
-  // Create unified content list: user messages + assistant events, sorted by timestamp
-  // User messages are explicitly typed by the user (rendered with UserMessageBubble)
-  // Assistant events come from SDK events with proper interleaving (rendered with renderEventContentBlock)
-  const contentItems = useMemo((): ContentItem[] => {
-    const items: ContentItem[] = []
-
-    // Add user messages (only user role - assistant content comes from SDK events)
-    for (const msg of userMessages) {
-      if (msg.role === "user") {
-        items.push({
-          type: "user_message",
-          data: msg,
-          timestamp: msg.timestamp,
-        })
-      }
-    }
-
-    // Add assistant events from SDK events (text + tool use interleaved)
-    for (const event of completedEvents) {
-      if (event.type === "assistant") {
-        items.push({
-          type: "assistant_event",
-          data: event,
-          timestamp: event.timestamp,
-        })
-      }
-    }
-
-    // Sort by timestamp (user messages and assistant events)
-    return items.sort((a, b) => a.timestamp - b.timestamp)
-  }, [userMessages, completedEvents])
-
-  const hasContent = contentItems.length > 0 || streamingMessage !== null
+  // Use the shared EventList state hook for content detection
+  const { hasContent, streamingMessage } = useEventListState(allEvents)
 
   const wasLoadingRef = useRef(false)
 
@@ -215,7 +202,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
       <ContentStreamContainer
         className="flex-1 overflow-hidden"
         ariaLabel="Task chat messages"
-        dependencies={[contentItems, streamingMessage]}
+        dependencies={[allEvents]}
         emptyState={
           <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
             <IconMessageChatbot className="size-8 opacity-50" />
@@ -227,40 +214,17 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
         }
       >
         {hasContent ?
-          <>
-            {/* Render user messages and assistant events using shared rendering */}
-            {contentItems.map(item => {
-              switch (item.type) {
-                case "user_message":
-                  return <UserMessageBubble key={item.data.id} message={item.data} />
-                case "assistant_event": {
-                  // Use shared renderEventContentBlock for proper interleaved rendering
-                  const content = (item.data as any).message?.content as
-                    | AssistantContentBlock[]
-                    | undefined
-                  if (!content || content.length === 0) return null
-                  return (
-                    <div key={`assistant-${item.timestamp}`}>
-                      {content.map((block, index) =>
-                        renderEventContentBlock(block, index, item.timestamp, toolResults),
-                      )}
-                    </div>
-                  )
-                }
-                default:
-                  return null
-              }
-            })}
-            {/* Streaming response using shared StreamingContentRenderer */}
-            {streamingMessage && <StreamingContentRenderer message={streamingMessage} />}
-            {/* Loading indicator */}
-            {isLoading && !streamingMessage && (
-              <div className="flex items-center gap-2 px-4 py-2">
-                <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
-                <span className="text-muted-foreground text-xs">Thinking...</span>
-              </div>
-            )}
-          </>
+          <EventList
+            events={allEvents}
+            loadingIndicator={
+              isLoading && !streamingMessage ?
+                <div className="flex items-center gap-2 px-4 py-2">
+                  <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
+                  <span className="text-muted-foreground text-xs">Thinking...</span>
+                </div>
+              : null
+            }
+          />
         : null}
       </ContentStreamContainer>
 
@@ -278,21 +242,6 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
     </div>
   )
 }
-
-/**
- * Content item types for unified rendering in the chat timeline.
- */
-type UserMessageItem = {
-  type: "user_message"
-  data: TaskChatMessage
-  timestamp: number
-}
-type AssistantEventItem = {
-  type: "assistant_event"
-  data: ChatEvent
-  timestamp: number
-}
-type ContentItem = UserMessageItem | AssistantEventItem
 
 /**
  * Props for TaskChatPanel component.
