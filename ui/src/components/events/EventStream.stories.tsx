@@ -6,9 +6,7 @@ import { useEffect } from "react"
 const meta: Meta<typeof EventStream> = {
   title: "Collections/EventStream",
   component: EventStream,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="border-border h-[600px] overflow-hidden rounded-md border">

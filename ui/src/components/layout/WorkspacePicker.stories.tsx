@@ -6,9 +6,7 @@ import { useEffect } from "react"
 const meta: Meta<typeof WorkspacePicker> = {
   title: "Selectors/WorkspacePicker",
   component: WorkspacePicker,
-  parameters: {
-    
-  },
+  parameters: {},
 }
 
 export default meta

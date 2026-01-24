@@ -6,9 +6,7 @@ import { useEffect } from "react"
 const meta: Meta<typeof TextWithLinks> = {
   title: "Content/TextWithLinks",
   component: TextWithLinks,
-  parameters: {
-    
-  },
+  parameters: {},
 }
 
 export default meta

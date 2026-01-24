@@ -4,9 +4,7 @@ import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 const meta: Meta<typeof TaskLifecycleEvent> = {
   title: "Feedback/TaskLifecycleEvent",
   component: TaskLifecycleEvent,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-2xl">

@@ -6,9 +6,7 @@ import { fn } from "storybook/test"
 const meta: Meta<typeof TaskList> = {
   title: "Collections/TaskList",
   component: TaskList,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="border-border h-[500px] max-w-md overflow-hidden rounded-md border">

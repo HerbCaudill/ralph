@@ -4,9 +4,7 @@ import { CodeBlock } from "./code-block"
 const meta: Meta<typeof CodeBlock> = {
   title: "Content/CodeBlock",
   component: CodeBlock,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-2xl">

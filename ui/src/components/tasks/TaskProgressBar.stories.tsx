@@ -7,9 +7,7 @@ import type { Task } from "@/types"
 const meta: Meta<typeof TaskProgressBar> = {
   title: "Indicators/TaskProgressBar",
   component: TaskProgressBar,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="w-80">

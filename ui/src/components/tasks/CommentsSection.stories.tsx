@@ -4,9 +4,7 @@ import { CommentsSection } from "./CommentsSection"
 const meta: Meta<typeof CommentsSection> = {
   title: "Collections/CommentsSection",
   component: CommentsSection,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-md">

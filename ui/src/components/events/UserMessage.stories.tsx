@@ -4,9 +4,7 @@ import { UserMessage } from "./UserMessage"
 const meta: Meta<typeof UserMessage> = {
   title: "Feedback/UserMessage",
   component: UserMessage,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-2xl">

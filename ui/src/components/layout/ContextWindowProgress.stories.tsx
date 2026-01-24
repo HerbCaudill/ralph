@@ -6,9 +6,7 @@ import { useEffect } from "react"
 const meta: Meta<typeof ContextWindowProgress> = {
   title: "Indicators/ContextWindowProgress",
   component: ContextWindowProgress,
-  parameters: {
-    
-  },
+  parameters: {},
 }
 
 export default meta

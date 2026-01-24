@@ -5,9 +5,7 @@ import { fn } from "storybook/test"
 const meta: Meta<typeof AnsiOutput> = {
   title: "Feedback/AnsiOutput",
   component: AnsiOutput,
-  parameters: {
-    
-  },
+  parameters: {},
   args: {
     isExpanded: false,
     onExpand: fn(),

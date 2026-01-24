@@ -8,9 +8,7 @@ import type { Task } from "@/types"
 const meta: Meta<typeof SearchInput> = {
   title: "Inputs/SearchInput",
   component: SearchInput,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="w-80">

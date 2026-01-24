@@ -4,9 +4,7 @@ import { MarkdownContent } from "./MarkdownContent"
 const meta: Meta<typeof MarkdownContent> = {
   title: "Content/MarkdownContent",
   component: MarkdownContent,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-2xl">

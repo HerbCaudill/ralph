@@ -7,9 +7,7 @@ import type { Task } from "@/types"
 const meta: Meta<typeof RelationshipGraph> = {
   title: "Collections/RelationshipGraph",
   component: RelationshipGraph,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-2xl">

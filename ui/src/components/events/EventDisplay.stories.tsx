@@ -6,9 +6,7 @@ import type { ChatEvent } from "@/types"
 const meta: Meta<typeof EventDisplay> = {
   title: "Collections/EventDisplay",
   component: EventDisplay,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="border-border h-[500px] overflow-hidden rounded-md border">

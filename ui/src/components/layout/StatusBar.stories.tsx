@@ -5,9 +5,7 @@ import { withStoreState } from "../../../.storybook/decorators"
 const meta: Meta<typeof StatusBar> = {
   title: "Layout/StatusBar",
   component: StatusBar,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="border-border bg-background w-full rounded-md border p-2">

@@ -4,9 +4,7 @@ import { AssistantText } from "./AssistantText"
 const meta: Meta<typeof AssistantText> = {
   title: "Feedback/AssistantText",
   component: AssistantText,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-2xl">

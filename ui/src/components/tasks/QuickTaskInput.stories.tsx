@@ -7,9 +7,7 @@ import { TASK_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 const meta: Meta<typeof QuickTaskInput> = {
   title: "Inputs/QuickTaskInput",
   component: QuickTaskInput,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-md">

@@ -6,9 +6,7 @@ import { useEffect } from "react"
 const meta: Meta<typeof IterationLinks> = {
   title: "Collections/IterationLinks",
   component: IterationLinks,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-md">

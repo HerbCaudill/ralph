@@ -5,9 +5,7 @@ import type { ChatEvent } from "@/types"
 const meta: Meta<typeof EventList> = {
   title: "Collections/EventList",
   component: EventList,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="border-border h-[500px] overflow-y-auto rounded-md border">

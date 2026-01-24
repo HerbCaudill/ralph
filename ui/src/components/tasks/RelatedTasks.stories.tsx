@@ -7,9 +7,7 @@ import type { Task, TaskCardTask } from "@/types"
 const meta: Meta<typeof RelatedTasks> = {
   title: "Collections/RelatedTasks",
   component: RelatedTasks,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-md">

@@ -4,9 +4,7 @@ import { ThemePicker } from "./ThemePicker"
 const meta: Meta<typeof ThemePicker> = {
   title: "Selectors/ThemePicker",
   component: ThemePicker,
-  parameters: {
-    
-  },
+  parameters: {},
 }
 
 export default meta

@@ -6,9 +6,7 @@ import { useEffect } from "react"
 const meta: Meta<typeof TokenUsageDisplay> = {
   title: "Indicators/TokenUsageDisplay",
   component: TokenUsageDisplay,
-  parameters: {
-    
-  },
+  parameters: {},
 }
 
 export default meta

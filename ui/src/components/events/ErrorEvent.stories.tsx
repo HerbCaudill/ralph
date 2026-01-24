@@ -4,9 +4,7 @@ import { ErrorEvent } from "./ErrorEvent"
 const meta: Meta<typeof ErrorEvent> = {
   title: "Feedback/ErrorEvent",
   component: ErrorEvent,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-2xl">

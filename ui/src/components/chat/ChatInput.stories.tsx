@@ -5,9 +5,7 @@ import { fn } from "storybook/test"
 const meta: Meta<typeof ChatInput> = {
   title: "Inputs/ChatInput",
   component: ChatInput,
-  parameters: {
-    
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="max-w-lg rounded-lg border p-2">
