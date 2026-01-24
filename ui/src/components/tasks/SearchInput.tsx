@@ -1,13 +1,18 @@
 import { forwardRef, useImperativeHandle, useRef, useCallback } from "react"
 import type { KeyboardEvent } from "react"
 import { IconSearch, IconX } from "@tabler/icons-react"
-import { cn } from "@/lib/utils"
 import {
   useAppStore,
   selectTaskSearchQuery,
   selectSelectedTaskId,
   selectVisibleTaskIds,
 } from "@/store"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupButton,
+} from "@/components/ui/input-group"
 
 /**
  * Search input for filtering tasks in the task list.
@@ -95,11 +100,11 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
   }, [clearQuery, clearSelectedTaskId, onHide])
 
   return (
-    <div className={cn("relative", className)}>
-      <div className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2">
-        <IconSearch className="h-4 w-4" />
-      </div>
-      <input
+    <InputGroup data-disabled={disabled} className={className}>
+      <InputGroupAddon>
+        <IconSearch className="size-4" />
+      </InputGroupAddon>
+      <InputGroupInput
         ref={inputRef}
         type="text"
         value={query}
@@ -108,24 +113,21 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
         placeholder={placeholder}
         disabled={disabled}
         aria-label="Search tasks"
-        className={cn(
-          "border-border bg-background text-foreground h-9 w-full rounded-md border pr-9 pl-9 text-sm",
-          "placeholder:text-muted-foreground",
-          "focus:ring-ring focus:ring-2 focus:outline-none",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-        )}
       />
       {query && (
-        <button
-          type="button"
-          onClick={handleClear}
-          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
-          aria-label="Clear search"
-        >
-          <IconX className="h-4 w-4" />
-        </button>
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            type="button"
+            onClick={handleClear}
+            size="icon-xs"
+            variant="ghost"
+            aria-label="Clear search"
+          >
+            <IconX className="size-4" />
+          </InputGroupButton>
+        </InputGroupAddon>
       )}
-    </div>
+    </InputGroup>
   )
 })
 
