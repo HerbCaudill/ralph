@@ -43,6 +43,10 @@ const JITTER_FACTOR = 0.3 // +/- 30% jitter
 let reconnectAttempts = 0
 let currentReconnectDelay = INITIAL_RECONNECT_DELAY
 
+// Event index tracking for reconnection sync
+// Maps instanceId to the last known event index for that instance
+const lastEventIndices: Map<string, number> = new Map()
+
 /**
  * Calculate the next reconnection delay using exponential backoff with jitter.
  * Jitter helps prevent thundering herd when many clients reconnect simultaneously.
@@ -149,6 +153,49 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      case "pending_events":
+        // Response to reconnect message - contains events we missed while disconnected
+        {
+          const pendingInstanceId = (data.instanceId as string) || "default"
+          const pendingEvents = data.events as Array<{
+            type: string
+            timestamp: number
+            [key: string]: unknown
+          }>
+          const totalEvents = data.totalEvents as number | undefined
+
+          // Update our tracking with the latest event index
+          if (typeof totalEvents === "number" && totalEvents > 0) {
+            lastEventIndices.set(pendingInstanceId, totalEvents - 1)
+          }
+
+          // Sync Ralph status if provided
+          if (isRalphStatus(data.ralphStatus)) {
+            const isPendingActive = pendingInstanceId === store.activeInstanceId
+            if (isPendingActive) {
+              store.setRalphStatus(data.ralphStatus)
+            } else {
+              store.setStatusForInstance(pendingInstanceId, data.ralphStatus)
+            }
+          }
+
+          // Add missed events to the store
+          if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
+            console.log(
+              `[ralphConnection] Processing ${pendingEvents.length} pending events for instance: ${pendingInstanceId}`,
+            )
+            const isPendingActive = pendingInstanceId === store.activeInstanceId
+            for (const event of pendingEvents) {
+              if (isPendingActive) {
+                store.addEvent(event)
+              } else {
+                store.addEventForInstance(pendingInstanceId, event)
+              }
+            }
+          }
+        }
+        break
+
       case "workspace_switched":
         // Workspace was switched on the server - sync state from new workspace
         // This happens when switching to a workspace that may already have Ralph running
@@ -174,6 +221,12 @@ function handleMessage(event: MessageEvent): void {
       case "ralph:event":
         if (data.event && typeof data.event === "object") {
           const event = data.event as { type: string; timestamp: number; [key: string]: unknown }
+
+          // Track the event index for reconnection sync
+          const eventIndex = data.eventIndex as number | undefined
+          if (typeof eventIndex === "number") {
+            lastEventIndices.set(targetInstanceId, eventIndex)
+          }
 
           // Route event to correct instance
           if (isForActiveInstance) {
@@ -458,11 +511,27 @@ function connect(): void {
     setStatus("connected")
     resetReconnectState() // Reset backoff on successful connection
 
+    const store = useAppStore.getState()
+    const instanceId = store.activeInstanceId
+
+    // Send reconnect message if we have a previous event index
+    // This allows the server to send us any events we missed while disconnected
+    const lastEventIndex = lastEventIndices.get(instanceId)
+    if (typeof lastEventIndex === "number") {
+      console.log(
+        `[ralphConnection] Reconnecting with lastEventIndex: ${lastEventIndex} for instance: ${instanceId}`,
+      )
+      send({
+        type: "reconnect",
+        instanceId,
+        lastEventIndex,
+      })
+    }
+
     // Auto-resume iteration if Ralph was running before disconnect or has saved state
     // This happens in two cases:
     // 1. We reconnect after losing connection while Ralph was running (in-memory state)
     // 2. We have saved iteration state on the server (survives page reloads)
-    const store = useAppStore.getState()
     if (store.wasRunningBeforeDisconnect) {
       // In-memory state says Ralph was running - auto-resume immediately
       console.log("[ralphConnection] Auto-resuming: Ralph was running before disconnect")
@@ -567,6 +636,7 @@ function reset(): void {
   initialized = false
   intentionalClose = false
   resetReconnectState()
+  lastEventIndices.clear()
 }
 
 /**
@@ -576,6 +646,22 @@ function reset(): void {
 function reconnect(): void {
   resetReconnectState()
   connect()
+}
+
+/**
+ * Get the last known event index for an instance.
+ * Used for testing and debugging.
+ */
+export function getLastEventIndex(instanceId: string): number | undefined {
+  return lastEventIndices.get(instanceId)
+}
+
+/**
+ * Clear event indices for all instances.
+ * Called when switching workspaces to start fresh.
+ */
+export function clearEventIndices(): void {
+  lastEventIndices.clear()
 }
 
 // Export singleton manager
