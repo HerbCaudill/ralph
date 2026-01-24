@@ -1,17 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { useArgs } from "storybook/preview-api"
 import { DiffView } from "./DiffView"
-import { fn } from "storybook/test"
 
 const meta: Meta<typeof DiffView> = {
   title: "Feedback/DiffView",
   component: DiffView,
-  parameters: {
-    
-  },
+  parameters: {},
   args: {
     isExpanded: false,
-    onExpand: fn(),
   },
+  decorators: [
+    Story => {
+      const [args, setArgs] = useArgs()
+      return <Story args={{ ...args, onExpand: () => setArgs({ isExpanded: true }) }} />
+    },
+  ],
 }
 
 export default meta
