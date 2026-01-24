@@ -18,12 +18,7 @@ Run `bd ready --assignee {agentName} --assignee ""` to list issues that are eith
 - Unassigned, or
 - Assigned to you
 
-**Skip tasks assigned to other agents.**
-
-If no issues are ready:
-
-- Output `<promise>COMPLETE</promise>`
-- End your turn immediately.
+If no issues are ready, output `<promise>COMPLETE</promise>` and end your turn.
 
 ### Step 3: Claim and work on one task
 
