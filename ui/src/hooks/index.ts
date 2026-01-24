@@ -63,3 +63,9 @@ export {
   type UseEventLogsOptions,
   type UseEventLogsResult,
 } from "./useEventLogs"
+
+export {
+  useIterationPersistence,
+  type UseIterationPersistenceOptions,
+  type UseIterationPersistenceResult,
+} from "./useIterationPersistence"
