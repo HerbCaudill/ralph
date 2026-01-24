@@ -23,10 +23,15 @@ describe("useStoreHydration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.getState().reset()
+    // Suppress expected console output during tests
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
   afterEach(() => {
     useAppStore.getState().reset()
+    vi.restoreAllMocks()
   })
 
   it("should initialize database on mount", async () => {

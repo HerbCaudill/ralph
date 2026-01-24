@@ -268,6 +268,9 @@ describe("WorkspacePicker", () => {
   })
 
   it("shows error state when fetch fails", async () => {
+    // Suppress expected console.error from the component
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
     // Mock both endpoints - workspace fails, workspaces also fails
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/workspace") {
@@ -297,9 +300,14 @@ describe("WorkspacePicker", () => {
       // Error is shown in both button and dropdown
       expect(screen.getAllByText("Server not running")).toHaveLength(2)
     })
+
+    consoleSpy.mockRestore()
   })
 
   it("shows server not running message with help text when server is down", async () => {
+    // Suppress expected console.error from the component
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
     // Mock both endpoints failing (server is down)
     mockFetch.mockImplementation(() => {
       return Promise.reject(new Error("Failed to fetch"))
@@ -320,6 +328,8 @@ describe("WorkspacePicker", () => {
     await waitFor(() => {
       expect(screen.getByText(/pnpm dev/)).toBeInTheDocument()
     })
+
+    consoleSpy.mockRestore()
   })
 
   it("has refresh button in dropdown", async () => {

@@ -57,6 +57,14 @@ describe("useAppStore", () => {
   beforeEach(() => {
     // Reset store to initial state before each test
     useAppStore.getState().reset()
+    // Suppress expected console output during tests
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   describe("initial state", () => {

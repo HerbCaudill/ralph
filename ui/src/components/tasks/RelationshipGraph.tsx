@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react"
 import { useAppStore, selectTasks, selectIssuePrefix } from "@/store"
-import { useTaskDialogContext } from "@/contexts"
 import { Label } from "@/components/ui/label"
 import { RelationshipGraphEdge } from "./RelationshipGraphEdge"
 import { RelationshipGraphNode } from "./RelationshipGraphNode"
@@ -13,7 +12,6 @@ import type { RelatedTask, Task, TaskStatus } from "@/types"
 export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
   const allTasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
-  const taskDialogContext = useTaskDialogContext()
   const [blockers, setBlockers] = useState<RelatedTask[]>([])
   const [dependents, setDependents] = useState<RelatedTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -117,13 +115,6 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
       cancelled = true
     }
   }, [taskId])
-
-  /**
-   * Opens the task details dialog for a related task.
-   */
-  const handleTaskClick = (id: string) => {
-    taskDialogContext?.openTaskById(id)
-  }
 
   const hasParent = parent != null
   const hasChildren = childTasks.length > 0
@@ -236,11 +227,7 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
               <div className="mb-4 flex justify-center">
                 <div className="flex flex-col items-center">
                   <span className="text-muted-foreground mb-1 text-[10px]">Parent</span>
-                  <RelationshipGraphNode
-                    task={parent}
-                    issuePrefix={issuePrefix}
-                    onClick={() => handleTaskClick(parent.id)}
-                  />
+                  <RelationshipGraphNode task={parent} issuePrefix={issuePrefix} />
                 </div>
               </div>
             )}
@@ -250,12 +237,7 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
                 <div className="flex flex-col items-end gap-1">
                   <span className="text-muted-foreground text-[10px]">Blocked by</span>
                   {blockers.map(task => (
-                    <RelationshipGraphNode
-                      key={task.id}
-                      task={task}
-                      issuePrefix={issuePrefix}
-                      onClick={() => handleTaskClick(task.id)}
-                    />
+                    <RelationshipGraphNode key={task.id} task={task} issuePrefix={issuePrefix} />
                   ))}
                 </div>
               )}
@@ -280,7 +262,6 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
                 <RelationshipGraphNode
                   task={currentTask}
                   issuePrefix={issuePrefix}
-                  onClick={() => handleTaskClick(currentTask.id)}
                   isCurrent
                   size="md"
                 />
@@ -305,12 +286,7 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
                 <div className="flex flex-col items-start gap-1">
                   <span className="text-muted-foreground text-[10px]">Blocks</span>
                   {dependents.map(task => (
-                    <RelationshipGraphNode
-                      key={task.id}
-                      task={task}
-                      issuePrefix={issuePrefix}
-                      onClick={() => handleTaskClick(task.id)}
-                    />
+                    <RelationshipGraphNode key={task.id} task={task} issuePrefix={issuePrefix} />
                   ))}
                 </div>
               )}
@@ -321,12 +297,7 @@ export function RelationshipGraph({ taskId, parent }: RelationshipGraphProps) {
                 <span className="text-muted-foreground mb-1 text-[10px]">Children</span>
                 <div className="flex flex-wrap justify-center gap-2">
                   {childTasks.map(task => (
-                    <RelationshipGraphNode
-                      key={task.id}
-                      task={task}
-                      issuePrefix={issuePrefix}
-                      onClick={() => handleTaskClick(task.id)}
-                    />
+                    <RelationshipGraphNode key={task.id} task={task} issuePrefix={issuePrefix} />
                   ))}
                 </div>
               </div>
