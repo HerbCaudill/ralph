@@ -27,6 +27,9 @@ import {
   selectTokenUsage,
   selectContextWindow,
   selectIteration,
+  selectTaskChatMessages,
+  selectTaskChatEvents,
+  selectCurrentTask,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -39,6 +42,7 @@ import {
   useWorkspaces,
   useStoreHydration,
   useIterationPersistence,
+  useTaskChatPersistence,
 } from "./hooks"
 import { TaskDialogProvider } from "./contexts"
 import { startRalph } from "./lib/startRalph"
@@ -79,6 +83,20 @@ export function App() {
     tokenUsage,
     contextWindow,
     iteration,
+  })
+
+  // Subscribe to state for task chat persistence
+  const taskChatMessages = useAppStore(selectTaskChatMessages)
+  const taskChatEvents = useAppStore(selectTaskChatEvents)
+  const currentTask = useAppStore(selectCurrentTask)
+
+  // Persist task chat sessions to IndexedDB (auto-saves on new messages/events)
+  useTaskChatPersistence({
+    instanceId: activeInstanceId,
+    taskId: currentTask?.id ?? null,
+    taskTitle: currentTask?.title ?? null,
+    messages: taskChatMessages,
+    events: taskChatEvents,
   })
 
   // Task list refresh
