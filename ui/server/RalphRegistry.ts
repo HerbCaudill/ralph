@@ -7,6 +7,7 @@ import {
 } from "./RalphManager.js"
 import { type IterationStateStore, type PersistedIterationState } from "./IterationStateStore.js"
 import type { EventLogStore, EventLogMetadata, EventLog } from "./EventLogStore.js"
+import type { IterationEventPersister } from "./IterationEventPersister.js"
 import type { ConversationContext, ConversationMessage } from "./ClaudeAdapter.js"
 import type { BdProxy } from "./BdProxy.js"
 
@@ -95,6 +96,9 @@ export interface RalphRegistryOptions {
 
   /** Optional EventLogStore for permanently storing completed iteration events */
   eventLogStore?: EventLogStore
+
+  /** Optional IterationEventPersister for persisting events during active iterations */
+  iterationEventPersister?: IterationEventPersister
 
   /** Optional BdProxy for updating beads issues (e.g., adding iteration log links) */
   bdProxy?: BdProxy
@@ -319,6 +323,9 @@ export class RalphRegistry extends EventEmitter {
   /** Optional EventLogStore for permanently storing completed iteration events */
   private _eventLogStore: EventLogStore | null = null
 
+  /** Optional IterationEventPersister for persisting events during active iterations */
+  private _iterationEventPersister: IterationEventPersister | null = null
+
   /** Optional BdProxy for updating beads issues (e.g., adding iteration log links) */
   private _bdProxy: BdProxy | null = null
 
@@ -331,6 +338,7 @@ export class RalphRegistry extends EventEmitter {
     this._maxInstances = options.maxInstances ?? 10
     this._iterationStateStore = options.iterationStateStore ?? null
     this._eventLogStore = options.eventLogStore ?? null
+    this._iterationEventPersister = options.iterationEventPersister ?? null
     this._bdProxy = options.bdProxy ?? null
   }
 
@@ -366,6 +374,23 @@ export class RalphRegistry extends EventEmitter {
    */
   getEventLogStore(): EventLogStore | null {
     return this._eventLogStore
+  }
+
+  /**
+   * Set the IterationEventPersister for persisting events during active iterations.
+   * Can be called after construction to enable event persistence.
+   *
+   * @param persister - The IterationEventPersister to use, or null to disable event persistence
+   */
+  setIterationEventPersister(persister: IterationEventPersister | null): void {
+    this._iterationEventPersister = persister
+  }
+
+  /**
+   * Get the current IterationEventPersister, if any.
+   */
+  getIterationEventPersister(): IterationEventPersister | null {
+    return this._iterationEventPersister
   }
 
   /**
@@ -498,12 +523,21 @@ export class RalphRegistry extends EventEmitter {
   /**
    * Clear the event history for an instance.
    *
+   * Also clears any persisted events file via IterationEventPersister if configured.
+   *
    * @param instanceId - The instance ID
    */
   clearEventHistory(instanceId: string): void {
     const history = this._eventHistory.get(instanceId)
     if (history) {
       history.length = 0
+    }
+
+    // Also clear persisted events file
+    if (this._iterationEventPersister) {
+      this._iterationEventPersister.clear(instanceId).catch(err => {
+        console.error(`[RalphRegistry] Failed to clear persisted events for ${instanceId}:`, err)
+      })
     }
   }
 
@@ -886,6 +920,8 @@ export class RalphRegistry extends EventEmitter {
 
   /**
    * Add an event to the history for an instance.
+   *
+   * Also persists the event to disk via IterationEventPersister if configured.
    */
   private addEventToHistory(instanceId: string, event: RalphEvent): void {
     const history = this._eventHistory.get(instanceId)
@@ -898,6 +934,13 @@ export class RalphRegistry extends EventEmitter {
     // Trim to max size
     if (history.length > RalphRegistry.MAX_EVENT_HISTORY) {
       history.splice(0, history.length - RalphRegistry.MAX_EVENT_HISTORY)
+    }
+
+    // Persist event to disk for page reload recovery
+    if (this._iterationEventPersister) {
+      this._iterationEventPersister.appendEvent(instanceId, event).catch(err => {
+        console.error(`[RalphRegistry] Failed to persist event for ${instanceId}:`, err)
+      })
     }
   }
 

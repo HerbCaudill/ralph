@@ -26,6 +26,7 @@ import {
   type RalphInstanceState,
 } from "./RalphRegistry.js"
 import { getIterationStateStore } from "./IterationStateStore.js"
+import { getIterationEventPersister } from "./IterationEventPersister.js"
 import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
 const execFileAsync = promisify(execFile)
@@ -1922,10 +1923,14 @@ export async function switchWorkspace(
   // Note: This does NOT stop Ralph in the old context - it keeps running
   const context = manager.setActiveContext(workspacePath)
 
-  // Update the IterationStateStore and BdProxy for the new workspace
+  // Update the IterationStateStore, IterationEventPersister, and BdProxy for the new workspace
   const registry = getRalphRegistry()
   const iterationStateStore = getIterationStateStore(workspacePath)
   registry.setIterationStateStore(iterationStateStore)
+
+  // Update the IterationEventPersister to point to the new workspace
+  const iterationEventPersister = getIterationEventPersister(workspacePath)
+  registry.setIterationEventPersister(iterationEventPersister)
 
   // Update the BdProxy to point to the new workspace
   const bdProxy = new BdProxy({ cwd: workspacePath })
@@ -2072,6 +2077,10 @@ export async function startServer(
   // Wire the EventLogStore into the registry for permanent event history
   const eventLogStore = getEventLogStore()
   registry.setEventLogStore(eventLogStore)
+
+  // Wire the IterationEventPersister into the registry for live event persistence
+  const iterationEventPersister = getIterationEventPersister(workspacePath)
+  registry.setIterationEventPersister(iterationEventPersister)
 
   // Wire the BdProxy into the registry for adding iteration log links to tasks
   const bdProxy = new BdProxy({ cwd: workspacePath })
