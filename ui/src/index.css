@@ -153,6 +153,12 @@
     @apply bg-background text-foreground font-sans;
   }
 
+  /* Ensure input placeholders use muted foreground color */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted-foreground);
+  }
+
   /* Override prose typography colors to use theme variables */
   .prose {
     --tw-prose-body: var(--foreground);
