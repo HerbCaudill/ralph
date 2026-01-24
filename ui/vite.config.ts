@@ -7,18 +7,32 @@ import path from "path"
 // Server port - matches the default in server/index.ts
 const serverPort = process.env.PORT || "4242"
 
-// Custom logger that filters out WebSocket proxy errors (EPIPE, ECONNRESET)
-// These errors occur during rapid reconnects in tests and are not actionable
+// Custom logger that filters out proxy errors during tests
+// These errors occur when tests make API calls without a backend server
 const logger = createLogger()
 const originalError = logger.error.bind(logger)
+const originalWarn = logger.warn.bind(logger)
 logger.error = (msg, options) => {
-  if (typeof msg === "string" && msg.includes("ws proxy") && msg.includes("EPIPE")) {
-    return // Silently ignore WebSocket proxy EPIPE errors
-  }
-  if (typeof msg === "string" && msg.includes("ws proxy") && msg.includes("ECONNRESET")) {
-    return // Silently ignore WebSocket proxy ECONNRESET errors
+  if (typeof msg === "string") {
+    // Ignore WebSocket proxy errors (EPIPE, ECONNRESET) from rapid reconnects
+    if (msg.includes("ws proxy") && (msg.includes("EPIPE") || msg.includes("ECONNRESET"))) {
+      return
+    }
+    // Ignore HTTP proxy errors when backend isn't running (e.g., during Storybook tests)
+    if (msg.includes("http proxy error")) {
+      return
+    }
   }
   originalError(msg, options)
+}
+logger.warn = (msg, options) => {
+  if (typeof msg === "string") {
+    // Ignore HTTP proxy errors when backend isn't running
+    if (msg.includes("http proxy error")) {
+      return
+    }
+  }
+  originalWarn(msg, options)
 }
 
 export default defineConfig({
