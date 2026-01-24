@@ -8,11 +8,11 @@ import type { RalphStatus } from "@/types"
 export function InstanceBadge({ status, name, showLabel = true, className }: Props) {
   const statusConfig: Record<RalphStatus, { color: string; label: string }> = {
     stopped: {
-      color: "bg-status-neutral",
+      color: "bg-status-error",
       label: "Stopped",
     },
     starting: {
-      color: "bg-status-warning animate-pulse",
+      color: "bg-status-success/50 animate-pulse",
       label: "Starting",
     },
     running: {
@@ -20,7 +20,7 @@ export function InstanceBadge({ status, name, showLabel = true, className }: Pro
       label: "Running",
     },
     pausing: {
-      color: "bg-status-warning animate-pulse",
+      color: "bg-status-warning/50 animate-pulse",
       label: "Pausing",
     },
     paused: {
@@ -28,11 +28,11 @@ export function InstanceBadge({ status, name, showLabel = true, className }: Pro
       label: "Paused",
     },
     stopping: {
-      color: "bg-status-warning animate-pulse",
+      color: "bg-status-error/70 animate-pulse",
       label: "Stopping",
     },
     stopping_after_current: {
-      color: "bg-status-warning",
+      color: "bg-status-error/70 animate-pulse",
       label: "Stopping after task",
     },
   }
