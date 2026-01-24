@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { cn } from "@/lib/utils"
-import { highlight, normalizeLanguage, getCurrentCustomThemeName } from "@/lib/theme/highlighter"
+import { highlight, normalizeLanguage } from "@/lib/theme/highlighter"
+import { useTheme } from "@/hooks/useTheme"
 import { IconCopy, IconCheck } from "@tabler/icons-react"
 
 export interface CodeBlockProps {
@@ -27,8 +28,8 @@ export function CodeBlock({
   /** Reserved for future use (default: false) */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   showLineNumbers: _showLineNumbers = false,
-  /** Whether to use dark theme (default: true) */
-  isDark = true,
+  /** Whether to use dark theme (auto-detected from app theme if not provided) */
+  isDark,
   /** Whether to show the copy button (default: true) */
   showCopy = true,
   /** Additional class names */
@@ -37,6 +38,10 @@ export function CodeBlock({
   const [html, setHtml] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
   const [copied, setCopied] = useState(false)
+  const { resolvedTheme } = useTheme()
+
+  // Use provided isDark prop or auto-detect from resolved theme
+  const effectiveIsDark = isDark ?? resolvedTheme === "dark"
 
   // Normalize language using the centralized function
   const normalizedLang = useMemo(() => normalizeLanguage(language), [language])
@@ -47,7 +52,8 @@ export function CodeBlock({
     async function doHighlight() {
       try {
         // Use the centralized highlight function which supports VS Code themes
-        const result = await highlight(code, normalizedLang, { isDark })
+        // The highlighter validates that the custom theme type matches the requested mode
+        const result = await highlight(code, normalizedLang, { isDark: effectiveIsDark })
 
         if (!cancelled) {
           setHtml(result)
@@ -67,36 +73,7 @@ export function CodeBlock({
     return () => {
       cancelled = true
     }
-  }, [code, normalizedLang, isDark])
-
-  // Re-highlight when the VS Code theme changes
-  useEffect(() => {
-    // Check for theme changes by polling the current theme name
-    // This is a simple approach that works with the existing architecture
-    const themeName = getCurrentCustomThemeName()
-    if (themeName && !isLoading) {
-      // Theme changed, re-highlight
-      let cancelled = false
-      const themeToUse = themeName // Capture for closure
-
-      async function rehighlight() {
-        try {
-          const result = await highlight(code, normalizedLang, { theme: themeToUse })
-          if (!cancelled) {
-            setHtml(result)
-          }
-        } catch {
-          // Keep existing highlight on error
-        }
-      }
-
-      rehighlight()
-
-      return () => {
-        cancelled = true
-      }
-    }
-  }, [code, normalizedLang, isLoading])
+  }, [code, normalizedLang, effectiveIsDark])
 
   const handleCopy = useCallback(async () => {
     try {

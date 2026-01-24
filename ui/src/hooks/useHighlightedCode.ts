@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react"
-import { highlight, getCurrentCustomThemeName } from "@/lib/theme/highlighter"
+import { highlight } from "@/lib/theme/highlighter"
 import { useTheme } from "@/hooks/useTheme"
 
 /**
  * Hook to syntax-highlight code content using the current theme.
  * Returns the highlighted HTML string ready for rendering.
+ *
+ * The highlighter automatically uses VS Code custom themes when loaded,
+ * but validates that the theme type matches the requested mode.
  */
 export function useHighlightedCode(
   /** The code content to highlight */
@@ -21,11 +24,10 @@ export function useHighlightedCode(
 
     async function doHighlight() {
       try {
-        const themeName = getCurrentCustomThemeName()
-        const result = await highlight(content, language, {
-          theme: themeName ?? undefined,
-          isDark,
-        })
+        // Let the highlighter decide which theme to use based on isDark
+        // It will use the custom VS Code theme if loaded and type matches,
+        // otherwise falls back to default themes
+        const result = await highlight(content, language, { isDark })
         if (!cancelled) {
           const match = result.match(/<code[^>]*>([\s\S]*?)<\/code>/)
           setHtml(match ? match[1] : content)

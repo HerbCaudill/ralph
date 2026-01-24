@@ -17,6 +17,9 @@ let highlighterInstance: Highlighter | null = null
 // Currently loaded custom theme ID
 let currentThemeId: string | null = null
 
+// Type of the currently loaded custom theme (light or dark)
+let currentThemeType: "dark" | "light" | null = null
+
 // Default bundled themes
 const DEFAULT_LIGHT_THEME = "github-light"
 const DEFAULT_DARK_THEME = "github-dark"
@@ -138,6 +141,8 @@ export async function loadTheme(theme: VSCodeTheme, themeId: string): Promise<st
   })
 
   currentThemeId = themeId
+  currentThemeType = theme.type === "light" || theme.type === "hcLight" ? "light" : "dark"
+
   return customThemeName
 }
 
@@ -151,6 +156,24 @@ export function getCurrentCustomThemeName(): string | null {
     return null
   }
   return `${CUSTOM_THEME_PREFIX}${currentThemeId}`
+}
+
+/**
+ * Get the type (light/dark) of the currently loaded custom theme.
+ *
+ * @returns "light" or "dark" if a custom theme is loaded, null otherwise
+ */
+export function getCurrentThemeType(): "dark" | "light" | null {
+  return currentThemeType
+}
+
+/**
+ * Clear the currently loaded custom theme.
+ * After calling this, highlighting will fall back to default themes.
+ */
+export function clearCustomTheme(): void {
+  currentThemeId = null
+  currentThemeType = null
 }
 
 /**
@@ -191,11 +214,19 @@ export async function highlight(
   const langToUse = loadedLangs.includes(normalizedLang) ? normalizedLang : "text"
 
   // Determine theme to use
+  // If a custom theme is loaded, only use it if the theme type matches the requested mode
   let themeName: string
   if (options.theme) {
     themeName = options.theme
-  } else if (currentThemeId) {
-    themeName = `${CUSTOM_THEME_PREFIX}${currentThemeId}`
+  } else if (currentThemeId && currentThemeType) {
+    const requestedMode = options.isDark !== false ? "dark" : "light"
+    if (currentThemeType === requestedMode) {
+      // Custom theme matches requested mode, use it
+      themeName = `${CUSTOM_THEME_PREFIX}${currentThemeId}`
+    } else {
+      // Custom theme doesn't match requested mode, fall back to default
+      themeName = requestedMode === "dark" ? DEFAULT_DARK_THEME : DEFAULT_LIGHT_THEME
+    }
   } else {
     themeName = options.isDark !== false ? DEFAULT_DARK_THEME : DEFAULT_LIGHT_THEME
   }
