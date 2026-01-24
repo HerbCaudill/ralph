@@ -268,9 +268,18 @@ describe("WorkspacePicker", () => {
   })
 
   it("shows error state when fetch fails", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: () => Promise.resolve({ ok: false, error: "Connection failed" }),
+    // Mock both endpoints - workspace fails, workspaces also fails
+    mockFetch.mockImplementation((url: string) => {
+      if (url === "/api/workspace") {
+        return Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ ok: false, error: "Connection failed" }),
+        })
+      }
+      if (url === "/api/workspaces") {
+        return Promise.reject(new Error("Failed to fetch"))
+      }
+      return Promise.reject(new Error("Unknown URL"))
     })
 
     render(<WorkspacePicker />)
@@ -291,7 +300,10 @@ describe("WorkspacePicker", () => {
   })
 
   it("shows server not running message with help text when server is down", async () => {
-    mockFetch.mockRejectedValueOnce(new Error("Failed to fetch"))
+    // Mock both endpoints failing (server is down)
+    mockFetch.mockImplementation(() => {
+      return Promise.reject(new Error("Failed to fetch"))
+    })
 
     render(<WorkspacePicker />)
 

@@ -81,3 +81,9 @@ export {
   type UseStoreHydrationOptions,
   type UseStoreHydrationResult,
 } from "./useStoreHydration"
+
+export {
+  useTaskChatSessions,
+  type UseTaskChatSessionsOptions,
+  type UseTaskChatSessionsResult,
+} from "./useTaskChatSessions"

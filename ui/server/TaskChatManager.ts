@@ -467,7 +467,7 @@ export class TaskChatManager extends EventEmitter {
         })
         break
 
-      case "result":
+      case "result": {
         // Final result
         if (message.subtype === "success" && message.result) {
           this.currentResponse = message.result
@@ -475,14 +475,25 @@ export class TaskChatManager extends EventEmitter {
         // Clear pending tool uses on completion
         this.pendingToolUses.clear()
         // Note: error results are handled in sendMessage() to properly reject the promise
+        // Extract usage data from SDK result message
+        const usage = message.usage as { input_tokens?: number; output_tokens?: number } | undefined
         // Emit as task chat event
         this.emit("event", {
           type: "result",
           timestamp,
           result: message.subtype === "success" ? message.result : undefined,
           error: message.subtype !== "success" ? message.subtype : undefined,
+          usage:
+            usage ?
+              {
+                inputTokens: usage.input_tokens ?? 0,
+                outputTokens: usage.output_tokens ?? 0,
+                totalTokens: (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0),
+              }
+            : undefined,
         })
         break
+      }
 
       default:
         // Emit other message types as events
