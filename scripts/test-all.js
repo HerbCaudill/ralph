@@ -84,8 +84,9 @@ function parsePlaywrightOutput(output) {
 
 /**
  * Run a test suite and capture output.
+ * If silent is true, buffer output instead of streaming it.
  */
-async function runTestSuite(suite) {
+async function runTestSuite(suite, { silent = false } = {}) {
   const startTime = Date.now()
 
   return new Promise(resolve => {
@@ -96,8 +97,8 @@ async function runTestSuite(suite) {
       // Run playwright via our script
       args = ["node", "scripts/playwright.js"]
     } else if (suite.type === "typecheck") {
-      // Run typecheck across all packages
-      args = ["pnpm", "typecheck"]
+      // Run typecheck across all packages in parallel
+      args = ["pnpm", "-r", "--parallel", "typecheck"]
     } else {
       // Run vitest via pnpm filter
       args = ["pnpm", "--filter", suite.filter, suite.command]
@@ -115,13 +116,13 @@ async function runTestSuite(suite) {
     child.stdout?.on("data", data => {
       const text = data.toString()
       stdout += text
-      process.stdout.write(text)
+      if (!silent) process.stdout.write(text)
     })
 
     child.stderr?.on("data", data => {
       const text = data.toString()
       stderr += text
-      process.stderr.write(text)
+      if (!silent) process.stderr.write(text)
     })
 
     child.on("close", code => {
@@ -142,6 +143,7 @@ async function runTestSuite(suite) {
         type: suite.type,
         exitCode: code,
         duration,
+        output,
         ...counts,
       })
     })
@@ -237,17 +239,50 @@ async function main() {
 
   console.log("Running all tests...\n")
 
-  for (const suite of testSuites) {
-    printBoxHeading(`Running ${suite.name} (${suite.type})`)
-
-    const result = await runTestSuite(suite)
+  // Phase 1: Run typecheck (must pass before tests make sense)
+  const typecheckSuite = testSuites.find(s => s.type === "typecheck")
+  if (typecheckSuite) {
+    printBoxHeading(`Running ${typecheckSuite.name} (${typecheckSuite.type})`)
+    const result = await runTestSuite(typecheckSuite)
     results.suites.push(result)
-
-    // Stop on first failure unless CI mode
     if (result.exitCode !== 0 && !process.env.CI) {
-      console.log(`\n⚠ ${suite.name} failed, stopping early.`)
-      break
+      console.log(`\n⚠ ${typecheckSuite.name} failed, stopping early.`)
+      results.endTime = Date.now()
+      process.exit(printSummary())
     }
+  }
+
+  // Phase 2: Run all vitest suites in parallel
+  const vitestSuites = testSuites.filter(s => s.type === "vitest")
+  if (vitestSuites.length > 0) {
+    printBoxHeading(`Running vitest suites in parallel (${vitestSuites.map(s => s.name).join(", ")})`)
+
+    const vitestResults = await Promise.all(vitestSuites.map(s => runTestSuite(s, { silent: true })))
+
+    // Print results in order
+    for (const result of vitestResults) {
+      const status = result.exitCode === 0 ? "✓" : "✗"
+      console.log(`${status} ${result.name}: ${result.passed} passed, ${result.failed} failed (${formatDuration(result.duration)})`)
+      results.suites.push(result)
+    }
+
+    // Check for failures
+    const failed = vitestResults.find(r => r.exitCode !== 0)
+    if (failed && !process.env.CI) {
+      console.log(`\n⚠ ${failed.name} failed. Output:`)
+      console.log(failed.output)
+      console.log("Stopping early.")
+      results.endTime = Date.now()
+      process.exit(printSummary())
+    }
+  }
+
+  // Phase 3: Run playwright (needs dev server isolation)
+  const playwrightSuite = testSuites.find(s => s.type === "playwright")
+  if (playwrightSuite) {
+    printBoxHeading(`Running ${playwrightSuite.name} (${playwrightSuite.type})`)
+    const result = await runTestSuite(playwrightSuite)
+    results.suites.push(result)
   }
 
   results.endTime = Date.now()
