@@ -40,9 +40,6 @@ export function TopologySpinner({ className, interval = 300 }: TopologySpinnerPr
   const Icon = TOPOLOGY_ICONS[iconIndex]
 
   return (
-    <Icon
-      className={cn("text-muted-foreground size-4 animate-spin", className)}
-      aria-hidden="true"
-    />
+    <Icon className={cn("text-repo-accent size-4 animate-spin", className)} aria-hidden="true" />
   )
 }
