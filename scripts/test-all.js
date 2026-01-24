@@ -140,10 +140,9 @@ async function runTestSuite(suite) {
 }
 
 /**
- * Format duration in human-readable format.
+ * Format duration in seconds.
  */
 function formatDuration(ms) {
-  if (ms < 1000) return `${ms}ms`
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
   const minutes = Math.floor(ms / 60000)
   const seconds = ((ms % 60000) / 1000).toFixed(1)
