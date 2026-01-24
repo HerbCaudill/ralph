@@ -392,8 +392,6 @@ export const IterationRunner = ({
               ...process.env,
               // Disable LSP plugins to avoid crashes when TypeScript LSP server errors
               ENABLE_LSP_TOOL: "0",
-              // Signal that Ralph is running so tests can use minimal output
-              RALPH_RUNNING: "1",
             },
           },
         })) {

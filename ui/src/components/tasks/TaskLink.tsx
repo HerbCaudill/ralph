@@ -1,5 +1,5 @@
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
+import { useTaskDialogContext } from "@/contexts"
 import {
   IconCircle,
   IconCircleDot,
@@ -11,12 +11,18 @@ import {
 import type { RelatedTask, TaskStatus } from "@/types"
 
 export function TaskLink({ task, issuePrefix }: Props) {
+  const taskDialogContext = useTaskDialogContext()
   const config = statusConfig[task.status] || statusConfig.open
   const StatusIcon = config.icon
 
+  const handleClick = () => {
+    taskDialogContext?.openTaskById(task.id)
+  }
+
   return (
-    <a
-      href={buildTaskIdPath(task.id)}
+    <button
+      type="button"
+      onClick={handleClick}
       className={cn(
         "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm transition-colors",
         "hover:bg-muted",
@@ -33,7 +39,7 @@ export function TaskLink({ task, issuePrefix }: Props) {
       <span className={cn("min-w-0 flex-1 truncate", task.status === "closed" && "line-through")}>
         {task.title}
       </span>
-    </a>
+    </button>
   )
 }
 

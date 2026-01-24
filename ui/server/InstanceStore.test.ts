@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { mkdir, rm, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
@@ -22,17 +22,12 @@ describe("InstanceStore", () => {
     await mkdir(testDir, { recursive: true })
     store = new InstanceStore(testDir)
     resetInstanceStores()
-    // Suppress expected console output during tests
-    vi.spyOn(console, "log").mockImplementation(() => {})
-    vi.spyOn(console, "warn").mockImplementation(() => {})
-    vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
   /**
    * Clean up after each test
    */
   afterEach(async () => {
-    vi.restoreAllMocks()
     try {
       await rm(testDir, { recursive: true, force: true })
     } catch {

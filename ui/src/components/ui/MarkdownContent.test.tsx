@@ -1,12 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { MarkdownContent } from "./MarkdownContent"
+import { TaskDialogProvider } from "@/contexts"
 import { useAppStore } from "@/store"
 
 // Mock useTheme hook
 vi.mock("@/hooks/useTheme", () => ({
   useTheme: () => ({ resolvedTheme: "light" }),
 }))
+
+// Helper to render with context
+function renderWithContext(ui: React.ReactNode, openTaskById = vi.fn()) {
+  return render(<TaskDialogProvider openTaskById={openTaskById}>{ui}</TaskDialogProvider>)
+}
 
 describe("MarkdownContent", () => {
   beforeEach(() => {
@@ -16,43 +22,43 @@ describe("MarkdownContent", () => {
 
   describe("basic markdown rendering", () => {
     it("renders plain text", () => {
-      render(<MarkdownContent>Hello world</MarkdownContent>)
+      renderWithContext(<MarkdownContent>Hello world</MarkdownContent>)
       expect(screen.getByText("Hello world")).toBeInTheDocument()
     })
 
     it("renders bold text", () => {
-      render(<MarkdownContent>This is **bold** text</MarkdownContent>)
+      renderWithContext(<MarkdownContent>This is **bold** text</MarkdownContent>)
       const strong = screen.getByText("bold")
       expect(strong.tagName).toBe("STRONG")
     })
 
     it("renders italic text", () => {
-      render(<MarkdownContent>This is *italic* text</MarkdownContent>)
+      renderWithContext(<MarkdownContent>This is *italic* text</MarkdownContent>)
       const em = screen.getByText("italic")
       expect(em.tagName).toBe("EM")
     })
 
     it("renders inline code", () => {
-      render(<MarkdownContent>Use `console.log()`</MarkdownContent>)
+      renderWithContext(<MarkdownContent>Use `console.log()`</MarkdownContent>)
       const code = screen.getByText("console.log()")
       expect(code.tagName).toBe("CODE")
     })
 
     it("renders links", () => {
-      render(<MarkdownContent>Visit [Google](https://google.com)</MarkdownContent>)
+      renderWithContext(<MarkdownContent>Visit [Google](https://google.com)</MarkdownContent>)
       const link = screen.getByRole("link", { name: "Google" })
       expect(link).toHaveAttribute("href", "https://google.com")
     })
 
     it("renders bullet lists", () => {
-      render(<MarkdownContent>{`- Item 1\n- Item 2\n- Item 3`}</MarkdownContent>)
+      renderWithContext(<MarkdownContent>{`- Item 1\n- Item 2\n- Item 3`}</MarkdownContent>)
       expect(screen.getByText("Item 1")).toBeInTheDocument()
       expect(screen.getByText("Item 2")).toBeInTheDocument()
       expect(screen.getByText("Item 3")).toBeInTheDocument()
     })
 
     it("renders numbered lists", () => {
-      render(<MarkdownContent>{`1. First\n2. Second\n3. Third`}</MarkdownContent>)
+      renderWithContext(<MarkdownContent>{`1. First\n2. Second\n3. Third`}</MarkdownContent>)
       expect(screen.getByText("First")).toBeInTheDocument()
       expect(screen.getByText("Second")).toBeInTheDocument()
       expect(screen.getByText("Third")).toBeInTheDocument()
@@ -61,13 +67,13 @@ describe("MarkdownContent", () => {
 
   describe("GFM (GitHub Flavored Markdown)", () => {
     it("renders strikethrough text", () => {
-      render(<MarkdownContent>This is ~~deleted~~ text</MarkdownContent>)
+      renderWithContext(<MarkdownContent>This is ~~deleted~~ text</MarkdownContent>)
       const del = screen.getByText("deleted")
       expect(del.tagName).toBe("DEL")
     })
 
     it("renders task lists", () => {
-      render(<MarkdownContent>{`- [x] Done\n- [ ] Not done`}</MarkdownContent>)
+      renderWithContext(<MarkdownContent>{`- [x] Done\n- [ ] Not done`}</MarkdownContent>)
       const checkboxes = screen.getAllByRole("checkbox")
       expect(checkboxes).toHaveLength(2)
       expect(checkboxes[0]).toBeChecked()
@@ -78,7 +84,7 @@ describe("MarkdownContent", () => {
       const markdown = `| Header 1 | Header 2 |
 | --- | --- |
 | Cell 1 | Cell 2 |`
-      render(<MarkdownContent>{markdown}</MarkdownContent>)
+      renderWithContext(<MarkdownContent>{markdown}</MarkdownContent>)
       expect(screen.getByText("Header 1")).toBeInTheDocument()
       expect(screen.getByText("Cell 1")).toBeInTheDocument()
     })
@@ -86,39 +92,63 @@ describe("MarkdownContent", () => {
 
   describe("task ID linking", () => {
     it("converts task IDs to clickable links", () => {
-      render(<MarkdownContent>Check out rui-48s for details</MarkdownContent>)
+      const openTaskById = vi.fn()
+      renderWithContext(
+        <MarkdownContent>Check out rui-48s for details</MarkdownContent>,
+        openTaskById,
+      )
 
-      const link = screen.getByRole("link", { name: "View task rui-48s" })
+      const link = screen.getByRole("button", { name: "View task rui-48s" })
       expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute("href", "/issue/rui-48s")
+    })
+
+    it("calls openTaskById when task link is clicked", () => {
+      const openTaskById = vi.fn()
+      renderWithContext(<MarkdownContent>See rui-48s</MarkdownContent>, openTaskById)
+
+      const link = screen.getByRole("button", { name: "View task rui-48s" })
+      fireEvent.click(link)
+
+      expect(openTaskById).toHaveBeenCalledWith("rui-48s")
     })
 
     it("handles task IDs in bold text", () => {
-      render(<MarkdownContent>**Important: rui-48s**</MarkdownContent>)
+      const openTaskById = vi.fn()
+      renderWithContext(<MarkdownContent>**Important: rui-48s**</MarkdownContent>, openTaskById)
 
-      expect(screen.getByRole("link", { name: "View task rui-48s" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-48s" })).toBeInTheDocument()
     })
 
     it("handles task IDs in list items", () => {
-      render(<MarkdownContent>{`- Task rui-48s\n- Task rui-123`}</MarkdownContent>)
+      const openTaskById = vi.fn()
+      renderWithContext(
+        <MarkdownContent>{`- Task rui-48s\n- Task rui-123`}</MarkdownContent>,
+        openTaskById,
+      )
 
-      expect(screen.getByRole("link", { name: "View task rui-48s" })).toBeInTheDocument()
-      expect(screen.getByRole("link", { name: "View task rui-123" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-48s" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-123" })).toBeInTheDocument()
     })
 
     it("handles task IDs with decimal suffixes", () => {
-      render(<MarkdownContent>See rui-4vp.5 for the subtask</MarkdownContent>)
+      const openTaskById = vi.fn()
+      renderWithContext(
+        <MarkdownContent>See rui-4vp.5 for the subtask</MarkdownContent>,
+        openTaskById,
+      )
 
-      const link = screen.getByRole("link", { name: "View task rui-4vp.5" })
+      const link = screen.getByRole("button", { name: "View task rui-4vp.5" })
       expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute("href", "/issue/rui-4vp.5")
+
+      fireEvent.click(link)
+      expect(openTaskById).toHaveBeenCalledWith("rui-4vp.5")
     })
   })
 
   describe("code blocks", () => {
     it("renders fenced code blocks with syntax highlighting when withCodeBlocks is true", () => {
       const markdown = "```javascript\nconst x = 1;\n```"
-      render(<MarkdownContent withCodeBlocks={true}>{markdown}</MarkdownContent>)
+      renderWithContext(<MarkdownContent withCodeBlocks={true}>{markdown}</MarkdownContent>)
 
       // CodeBlock component should render the code
       expect(screen.getByText(/const/)).toBeInTheDocument()
@@ -126,7 +156,7 @@ describe("MarkdownContent", () => {
 
     it("renders fenced code blocks as plain code when withCodeBlocks is false", () => {
       const markdown = "```javascript\nconst x = 1;\n```"
-      render(<MarkdownContent withCodeBlocks={false}>{markdown}</MarkdownContent>)
+      renderWithContext(<MarkdownContent withCodeBlocks={false}>{markdown}</MarkdownContent>)
 
       expect(screen.getByText("const x = 1;")).toBeInTheDocument()
     })
@@ -134,31 +164,33 @@ describe("MarkdownContent", () => {
 
   describe("styling", () => {
     it("applies prose classes for typography", () => {
-      const { container } = render(<MarkdownContent>Test</MarkdownContent>)
+      const { container } = renderWithContext(<MarkdownContent>Test</MarkdownContent>)
       const wrapper = container.firstChild
       expect(wrapper).toHaveClass("prose", "dark:prose-invert")
     })
 
     it("applies custom className", () => {
-      const { container } = render(<MarkdownContent className="custom-class">Test</MarkdownContent>)
+      const { container } = renderWithContext(
+        <MarkdownContent className="custom-class">Test</MarkdownContent>,
+      )
       const wrapper = container.firstChild
       expect(wrapper).toHaveClass("custom-class")
     })
 
     it("applies prose-sm for small size", () => {
-      const { container } = render(<MarkdownContent size="sm">Test</MarkdownContent>)
+      const { container } = renderWithContext(<MarkdownContent size="sm">Test</MarkdownContent>)
       const wrapper = container.firstChild
       expect(wrapper).toHaveClass("prose-sm")
     })
 
     it("applies prose-base for base size", () => {
-      const { container } = render(<MarkdownContent size="base">Test</MarkdownContent>)
+      const { container } = renderWithContext(<MarkdownContent size="base">Test</MarkdownContent>)
       const wrapper = container.firstChild
       expect(wrapper).toHaveClass("prose-base")
     })
 
     it("applies non-italic styling to blockquotes", () => {
-      const { container } = render(<MarkdownContent>Test</MarkdownContent>)
+      const { container } = renderWithContext(<MarkdownContent>Test</MarkdownContent>)
       const wrapper = container.firstChild
       expect(wrapper).toHaveClass("prose-blockquote:not-italic")
     })
@@ -166,24 +198,24 @@ describe("MarkdownContent", () => {
 
   describe("edge cases", () => {
     it("handles empty string", () => {
-      const { container } = render(<MarkdownContent>{""}</MarkdownContent>)
+      const { container } = renderWithContext(<MarkdownContent>{""}</MarkdownContent>)
       // Should render without errors
       expect(container.querySelector(".prose")).toBeInTheDocument()
     })
 
     it("handles string with only whitespace", () => {
-      render(<MarkdownContent>{"   "}</MarkdownContent>)
+      renderWithContext(<MarkdownContent>{"   "}</MarkdownContent>)
       // Should render without errors
     })
 
     it("handles string with HTML entities", () => {
-      render(<MarkdownContent>{"&amp; &lt; &gt;"}</MarkdownContent>)
+      renderWithContext(<MarkdownContent>{"&amp; &lt; &gt;"}</MarkdownContent>)
       // react-markdown handles HTML entities
       expect(screen.getByText("& < >")).toBeInTheDocument()
     })
 
     it("escapes HTML tags in markdown", () => {
-      render(<MarkdownContent>{"<script>alert('xss')</script>"}</MarkdownContent>)
+      renderWithContext(<MarkdownContent>{"<script>alert('xss')</script>"}</MarkdownContent>)
       // Script tags should be rendered as text, not executed
       expect(screen.queryByRole("script")).not.toBeInTheDocument()
     })

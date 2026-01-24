@@ -1,5 +1,4 @@
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 import {
   IconCircle,
   IconCircleDot,
@@ -13,6 +12,7 @@ import type { RelatedTask, TaskStatus } from "@/types"
 export function RelationshipGraphNode({
   task,
   issuePrefix,
+  onClick,
   isCurrent = false,
   size = "sm",
 }: Props) {
@@ -20,8 +20,9 @@ export function RelationshipGraphNode({
   const StatusIcon = config.icon
 
   return (
-    <a
-      href={buildTaskIdPath(task.id)}
+    <button
+      type="button"
+      onClick={onClick}
       title={task.title}
       className={cn(
         "flex items-center gap-1.5 rounded-md border-2 transition-all",
@@ -39,10 +40,10 @@ export function RelationshipGraphNode({
       <span className={cn("shrink-0 font-mono", config.textColor)}>
         {stripTaskPrefix(task.id, issuePrefix)}
       </span>
-      <span className={cn("max-w-30 truncate", task.status === "closed" && "line-through")}>
+      <span className={cn("max-w-[120px] truncate", task.status === "closed" && "line-through")}>
         {task.title}
       </span>
-    </a>
+    </button>
   )
 }
 
@@ -95,6 +96,7 @@ type StatusConfig = {
 type Props = {
   task: RelatedTask
   issuePrefix: string | null
+  onClick: () => void
   isCurrent?: boolean
   size?: "sm" | "md"
 }

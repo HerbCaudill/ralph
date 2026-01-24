@@ -12,11 +12,12 @@ describe("StatusBar", () => {
   })
 
   describe("ConnectionStatusIndicator", () => {
-    it("shows 'Connected' label when connected", () => {
+    it("shows only icon when connected", () => {
       useAppStore.getState().setConnectionStatus("connected")
       render(<StatusBar />)
+      // Should have the icon but not the label text
       expect(screen.getByTestId("connection-status-icon")).toBeInTheDocument()
-      expect(screen.getByTestId("connection-status-label")).toHaveTextContent("Connected")
+      expect(screen.queryByTestId("connection-status-label")).not.toBeInTheDocument()
     })
 
     it("shows 'Connecting' label when connecting", () => {

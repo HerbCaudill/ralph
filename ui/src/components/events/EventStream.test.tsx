@@ -1,11 +1,17 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { EventStream } from "./EventStream"
 import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
+import { TaskDialogProvider } from "@/contexts"
 
-// Helper to render EventStream
+// Helper to render EventStream with required providers
 function renderEventStream(props?: { instanceId?: string; maxEvents?: number }) {
-  return render(<EventStream {...props} />)
+  const openTaskById = vi.fn()
+  return render(
+    <TaskDialogProvider openTaskById={openTaskById}>
+      <EventStream {...props} />
+    </TaskDialogProvider>,
+  )
 }
 
 describe("EventStream", () => {
@@ -455,7 +461,7 @@ describe("EventStream", () => {
       expect(iterationBar).toHaveTextContent("Support pausing via stdin")
 
       // Should not show any task ID link
-      expect(screen.queryByRole("link", { name: /View task/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: /View task/ })).not.toBeInTheDocument()
     })
 
     it("looks up task title from store when ralph_task_started event has only taskId", () => {

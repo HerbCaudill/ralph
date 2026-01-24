@@ -33,10 +33,15 @@ const connectionStatusConfig: Record<
 /**
  * Visual indicator showing WebSocket connection status.
  * Shows connected/connecting/disconnected states with appropriate icons and colors.
+ * Only shows the label when not connected to draw attention to connection issues.
  */
 export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicatorProps) {
   const connectionStatus = useAppStore(selectConnectionStatus)
   const config = connectionStatusConfig[connectionStatus]
+
+  // Only show the full indicator (with label) when not connected
+  // When connected, just show the icon to minimize visual noise
+  const showLabel = connectionStatus !== "connected"
 
   const Icon = config.icon
   const isConnecting = connectionStatus === "connecting"
@@ -52,9 +57,11 @@ export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicat
         size={14}
         data-testid="connection-status-icon"
       />
-      <span className="text-muted-foreground text-xs" data-testid="connection-status-label">
-        {config.label}
-      </span>
+      {showLabel && (
+        <span className="text-muted-foreground text-xs" data-testid="connection-status-label">
+          {config.label}
+        </span>
+      )}
     </div>
   )
 }

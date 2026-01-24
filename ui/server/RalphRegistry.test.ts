@@ -93,14 +93,9 @@ describe("RalphRegistry", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     registry = new RalphRegistry()
-    // Suppress expected console output during tests
-    vi.spyOn(console, "log").mockImplementation(() => {})
-    vi.spyOn(console, "warn").mockImplementation(() => {})
-    vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
   afterEach(async () => {
-    vi.restoreAllMocks()
     await registry.disposeAll()
   })
 

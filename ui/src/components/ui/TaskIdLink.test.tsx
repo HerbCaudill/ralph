@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { TaskIdLink } from "./TaskIdLink"
 import { containsTaskId } from "../../lib/containsTaskId"
+import { TaskDialogProvider } from "@/contexts"
 import { useAppStore } from "@/store"
+
+// Helper to render with context
+function renderWithContext(ui: React.ReactNode, openTaskById = vi.fn()) {
+  return render(<TaskDialogProvider openTaskById={openTaskById}>{ui}</TaskDialogProvider>)
+}
 
 describe("TaskIdLink", () => {
   beforeEach(() => {
@@ -12,10 +18,10 @@ describe("TaskIdLink", () => {
     useAppStore.getState().setIssuePrefix("rui")
   })
 
-  describe("basic rendering", () => {
-    it("renders text without task IDs unchanged", () => {
-      render(<TaskIdLink>Hello world</TaskIdLink>)
-      expect(screen.getByText("Hello world")).toBeInTheDocument()
+  describe("without context", () => {
+    it("renders text without changes when no context is provided", () => {
+      render(<TaskIdLink>Check out rui-48s for details</TaskIdLink>)
+      expect(screen.getByText("Check out rui-48s for details")).toBeInTheDocument()
     })
 
     it("renders empty string correctly", () => {
@@ -24,123 +30,194 @@ describe("TaskIdLink", () => {
     })
   })
 
-  describe("task ID linking", () => {
-    it("converts task ID to clickable link with stripped prefix", () => {
-      render(<TaskIdLink>Check out rui-48s for details</TaskIdLink>)
+  describe("with context", () => {
+    it("renders text without task IDs unchanged", () => {
+      renderWithContext(<TaskIdLink>Hello world</TaskIdLink>)
+      expect(screen.getByText("Hello world")).toBeInTheDocument()
+    })
 
-      const link = screen.getByRole("link", { name: "View task rui-48s" })
+    it("converts task ID to clickable link with stripped prefix", () => {
+      const openTaskById = vi.fn()
+      renderWithContext(<TaskIdLink>Check out rui-48s for details</TaskIdLink>, openTaskById)
+
+      const link = screen.getByRole("button", { name: "View task rui-48s" })
       expect(link).toBeInTheDocument()
+      // Display shows stripped prefix
       expect(link).toHaveTextContent("48s")
-      expect(link).toHaveAttribute("href", "/issue/rui-48s")
+    })
+
+    it("calls openTaskById when task link is clicked", () => {
+      const openTaskById = vi.fn()
+      renderWithContext(<TaskIdLink>Check rui-48s</TaskIdLink>, openTaskById)
+
+      const link = screen.getByRole("button", { name: "View task rui-48s" })
+      fireEvent.click(link)
+
+      expect(openTaskById).toHaveBeenCalledWith("rui-48s")
+      expect(openTaskById).toHaveBeenCalledTimes(1)
     })
 
     it("handles multiple task IDs in same text", () => {
-      render(<TaskIdLink>See rui-48s and also rui-26f for details</TaskIdLink>)
+      const openTaskById = vi.fn()
+      renderWithContext(
+        <TaskIdLink>See rui-48s and also rui-26f for details</TaskIdLink>,
+        openTaskById,
+      )
 
-      const link1 = screen.getByRole("link", { name: "View task rui-48s" })
-      const link2 = screen.getByRole("link", { name: "View task rui-26f" })
+      const link1 = screen.getByRole("button", { name: "View task rui-48s" })
+      const link2 = screen.getByRole("button", { name: "View task rui-26f" })
 
       expect(link1).toBeInTheDocument()
-      expect(link1).toHaveAttribute("href", "/issue/rui-48s")
       expect(link2).toBeInTheDocument()
-      expect(link2).toHaveAttribute("href", "/issue/rui-26f")
+
+      fireEvent.click(link1)
+      expect(openTaskById).toHaveBeenCalledWith("rui-48s")
+
+      fireEvent.click(link2)
+      expect(openTaskById).toHaveBeenCalledWith("rui-26f")
     })
 
     it("only matches task IDs with the configured prefix", () => {
-      render(<TaskIdLink>Tasks: proj-abc123, foo-1, bar-xyz, rui-123</TaskIdLink>)
+      const openTaskById = vi.fn()
+      // With prefix "rui", only rui-xxx should match
+      renderWithContext(
+        <TaskIdLink>Tasks: proj-abc123, foo-1, bar-xyz, rui-123</TaskIdLink>,
+        openTaskById,
+      )
 
       // Only rui-123 should be a link since prefix is "rui"
-      expect(screen.getByRole("link", { name: "View task rui-123" })).toBeInTheDocument()
-      expect(screen.queryByRole("link", { name: "View task proj-abc123" })).not.toBeInTheDocument()
-      expect(screen.queryByRole("link", { name: "View task foo-1" })).not.toBeInTheDocument()
-      expect(screen.queryByRole("link", { name: "View task bar-xyz" })).not.toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-123" })).toBeInTheDocument()
+      expect(
+        screen.queryByRole("button", { name: "View task proj-abc123" }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: "View task foo-1" })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: "View task bar-xyz" })).not.toBeInTheDocument()
     })
 
     it("matches task IDs when prefix is changed", () => {
+      const openTaskById = vi.fn()
       useAppStore.getState().setIssuePrefix("proj")
-      render(<TaskIdLink>Tasks: proj-abc123, rui-123, foo-1</TaskIdLink>)
+      renderWithContext(<TaskIdLink>Tasks: proj-abc123, rui-123, foo-1</TaskIdLink>, openTaskById)
 
       // Only proj-abc123 should be a link since prefix is "proj"
-      expect(screen.getByRole("link", { name: "View task proj-abc123" })).toBeInTheDocument()
-      expect(screen.queryByRole("link", { name: "View task rui-123" })).not.toBeInTheDocument()
-      expect(screen.queryByRole("link", { name: "View task foo-1" })).not.toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task proj-abc123" })).toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: "View task rui-123" })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: "View task foo-1" })).not.toBeInTheDocument()
     })
 
     it("does not linkify anything when no prefix is configured", () => {
       useAppStore.getState().setIssuePrefix(null)
-      render(<TaskIdLink>Check rui-48s and proj-123</TaskIdLink>)
+      renderWithContext(<TaskIdLink>Check rui-48s and proj-123</TaskIdLink>)
 
-      const links = screen.queryAllByRole("link")
-      expect(links).toHaveLength(0)
+      const buttons = screen.queryAllByRole("button")
+      expect(buttons).toHaveLength(0)
     })
 
     it("handles task IDs with decimal suffixes", () => {
-      render(<TaskIdLink>See rui-4vp.5 for the subtask</TaskIdLink>)
+      const openTaskById = vi.fn()
+      renderWithContext(<TaskIdLink>See rui-4vp.5 for the subtask</TaskIdLink>, openTaskById)
 
-      const link = screen.getByRole("link", { name: "View task rui-4vp.5" })
+      const link = screen.getByRole("button", { name: "View task rui-4vp.5" })
       expect(link).toBeInTheDocument()
+      // Display shows stripped prefix
       expect(link).toHaveTextContent("4vp.5")
-      expect(link).toHaveAttribute("href", "/issue/rui-4vp.5")
+
+      fireEvent.click(link)
+      expect(openTaskById).toHaveBeenCalledWith("rui-4vp.5")
     })
 
     it("handles multiple decimal suffix task IDs", () => {
-      render(<TaskIdLink>Tasks rui-abc.1, rui-abc.2, and rui-xyz.10</TaskIdLink>)
+      const openTaskById = vi.fn()
+      renderWithContext(
+        <TaskIdLink>Tasks rui-abc.1, rui-abc.2, and rui-xyz.10</TaskIdLink>,
+        openTaskById,
+      )
 
-      expect(screen.getByRole("link", { name: "View task rui-abc.1" })).toBeInTheDocument()
-      expect(screen.getByRole("link", { name: "View task rui-abc.2" })).toBeInTheDocument()
-      expect(screen.getByRole("link", { name: "View task rui-xyz.10" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-abc.1" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-abc.2" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-xyz.10" })).toBeInTheDocument()
     })
 
     it("handles mix of task IDs with and without decimal suffixes", () => {
-      render(<TaskIdLink>Parent rui-abc and child rui-abc.1</TaskIdLink>)
+      const openTaskById = vi.fn()
+      renderWithContext(<TaskIdLink>Parent rui-abc and child rui-abc.1</TaskIdLink>, openTaskById)
 
-      expect(screen.getByRole("link", { name: "View task rui-abc" })).toBeInTheDocument()
-      expect(screen.getByRole("link", { name: "View task rui-abc.1" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-abc" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-abc.1" })).toBeInTheDocument()
     })
 
     it("handles deeply nested task IDs with multiple decimal suffixes", () => {
-      render(<TaskIdLink>See rui-4vp.1.2 and rui-abc.1.2.3 for details</TaskIdLink>)
+      const openTaskById = vi.fn()
+      renderWithContext(
+        <TaskIdLink>See rui-4vp.1.2 and rui-abc.1.2.3 for details</TaskIdLink>,
+        openTaskById,
+      )
 
-      const link1 = screen.getByRole("link", { name: "View task rui-4vp.1.2" })
-      const link2 = screen.getByRole("link", { name: "View task rui-abc.1.2.3" })
+      const link1 = screen.getByRole("button", { name: "View task rui-4vp.1.2" })
+      const link2 = screen.getByRole("button", { name: "View task rui-abc.1.2.3" })
       expect(link1).toBeInTheDocument()
       expect(link2).toBeInTheDocument()
       expect(link1).toHaveTextContent("4vp.1.2")
       expect(link2).toHaveTextContent("abc.1.2.3")
+
+      fireEvent.click(link1)
+      expect(openTaskById).toHaveBeenCalledWith("rui-4vp.1.2")
+
+      fireEvent.click(link2)
+      expect(openTaskById).toHaveBeenCalledWith("rui-abc.1.2.3")
     })
 
     it("preserves text before, between, and after task IDs", () => {
-      const { container } = render(<TaskIdLink>Start rui-1 middle rui-2 end</TaskIdLink>)
+      const { container } = renderWithContext(<TaskIdLink>Start rui-1 middle rui-2 end</TaskIdLink>)
 
-      // Task IDs are displayed without prefix
+      // Check the full text content - task IDs are displayed without prefix
       expect(container.textContent).toBe("Start 1 middle 2 end")
 
-      // Verify both task IDs are links
-      expect(screen.getByRole("link", { name: "View task rui-1" })).toBeInTheDocument()
-      expect(screen.getByRole("link", { name: "View task rui-2" })).toBeInTheDocument()
+      // Verify both task IDs are clickable (aria-label uses full ID)
+      expect(screen.getByRole("button", { name: "View task rui-1" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View task rui-2" })).toBeInTheDocument()
     })
 
     it("does not linkify uppercase task IDs", () => {
-      render(<TaskIdLink>RUI-48S is not a valid task ID</TaskIdLink>)
+      renderWithContext(<TaskIdLink>RUI-48S is not a valid task ID</TaskIdLink>)
 
-      const links = screen.queryAllByRole("link")
-      expect(links).toHaveLength(0)
+      const buttons = screen.queryAllByRole("button")
+      expect(buttons).toHaveLength(0)
     })
 
     it("does not linkify IDs with only prefix", () => {
-      render(<TaskIdLink>rui- is incomplete</TaskIdLink>)
+      renderWithContext(<TaskIdLink>rui- is incomplete</TaskIdLink>)
 
-      const links = screen.queryAllByRole("link")
-      expect(links).toHaveLength(0)
+      const buttons = screen.queryAllByRole("button")
+      expect(buttons).toHaveLength(0)
     })
 
     it("does not linkify arbitrary hyphenated words", () => {
-      render(
+      renderWithContext(
         <TaskIdLink>Words like self-contained or high-quality should not be linkified</TaskIdLink>,
       )
 
-      const links = screen.queryAllByRole("link")
-      expect(links).toHaveLength(0)
+      const buttons = screen.queryAllByRole("button")
+      expect(buttons).toHaveLength(0)
+    })
+
+    it("stops event propagation when clicking task link", () => {
+      const openTaskById = vi.fn()
+      const parentClick = vi.fn()
+
+      render(
+        <TaskDialogProvider openTaskById={openTaskById}>
+          <div onClick={parentClick}>
+            <TaskIdLink>Click rui-48s here</TaskIdLink>
+          </div>
+        </TaskDialogProvider>,
+      )
+
+      const link = screen.getByRole("button", { name: "View task rui-48s" })
+      fireEvent.click(link)
+
+      expect(openTaskById).toHaveBeenCalled()
+      expect(parentClick).not.toHaveBeenCalled()
     })
   })
 })
@@ -181,6 +258,7 @@ describe("containsTaskId", () => {
   })
 
   it("does not match hyphenated words when prefix doesn't match", () => {
+    // With prefix "rui", words like "self-contained" or "high-quality" won't match
     expect(containsTaskId("self-contained", "rui")).toBe(false)
     expect(containsTaskId("high-quality work", "rui")).toBe(false)
     expect(containsTaskId("This is a well-known fact", "rui")).toBe(false)

@@ -99,10 +99,6 @@ const mockMatchMedia = vi.fn().mockImplementation((query: string) => ({
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Suppress expected console output during tests
-    vi.spyOn(console, "log").mockImplementation(() => {})
-    vi.spyOn(console, "warn").mockImplementation(() => {})
-    vi.spyOn(console, "error").mockImplementation(() => {})
     mockFetch.mockResolvedValue({
       ok: true,
       json: () =>

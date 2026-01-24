@@ -1,12 +1,18 @@
 import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { EventDisplay, useEventDisplayState } from "./EventDisplay"
+import { TaskDialogProvider } from "@/contexts"
 import type { ChatEvent } from "@/types"
 import { renderHook } from "@testing-library/react"
 
-// Helper to render EventDisplay
+// Helper to render EventDisplay with required providers
 function renderEventDisplay(props: Parameters<typeof EventDisplay>[0]) {
-  return render(<EventDisplay {...props} />)
+  const openTaskById = vi.fn()
+  return render(
+    <TaskDialogProvider openTaskById={openTaskById}>
+      <EventDisplay {...props} />
+    </TaskDialogProvider>,
+  )
 }
 
 describe("EventDisplay", () => {

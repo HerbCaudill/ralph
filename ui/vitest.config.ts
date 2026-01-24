@@ -5,13 +5,9 @@ import react from "@vitejs/plugin-react"
 import path from "path"
 import viteConfig from "./vite.config"
 
-/** Use minimal output when Ralph is running to save tokens */
-const isRalphRunning = !!process.env.RALPH_RUNNING
-
 /**
- * Vitest configuration with three projects:
+ * Vitest configuration with two projects:
  * - Unit tests: Run with jsdom environment
- * - Server tests: Run with node environment
  * - Storybook tests: Run in real browser via Playwright
  */
 export default mergeConfig(
@@ -24,21 +20,12 @@ export default mergeConfig(
       },
     },
     test: {
-      globals: true,
-      exclude: ["node_modules", "e2e"],
-      hookTimeout: 60000,
-      testTimeout: 60000,
-      slowTestThreshold: Infinity,
-      ...(isRalphRunning && {
-        reporter: ["dot"],
-        silent: "passed-only",
-      }),
       projects: [
         // Frontend unit tests with jsdom
         {
           extends: true,
           test: {
-            name: "ui",
+            name: "unit",
             environment: "jsdom",
             globals: true,
             setupFiles: ["./src/vitest-setup.ts"],

@@ -44,6 +44,7 @@ import {
   useIterationPersistence,
   useTaskChatPersistence,
 } from "./hooks"
+import { TaskDialogProvider } from "./contexts"
 import { startRalph } from "./lib/startRalph"
 import { stopRalph } from "./lib/stopRalph"
 import { pauseRalph } from "./lib/pauseRalph"
@@ -430,7 +431,7 @@ export function App() {
   }, [])
 
   return (
-    <>
+    <TaskDialogProvider openTaskById={taskDialog.openDialogById}>
       <MainLayout
         ref={layoutRef}
         sidebar={
@@ -483,6 +484,6 @@ export function App() {
         ralphStatus={ralphStatus}
         isConnected={isConnected}
       />
-    </>
+    </TaskDialogProvider>
   )
 }

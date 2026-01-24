@@ -1,12 +1,18 @@
 import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { EventList, useEventListState } from "./EventList"
+import { TaskDialogProvider } from "@/contexts"
 import type { ChatEvent } from "@/types"
 import { renderHook } from "@testing-library/react"
 
-// Helper to render EventList
+// Helper to render EventList with required providers
 function renderEventList(props: Parameters<typeof EventList>[0]) {
-  return render(<EventList {...props} />)
+  const openTaskById = vi.fn()
+  return render(
+    <TaskDialogProvider openTaskById={openTaskById}>
+      <EventList {...props} />
+    </TaskDialogProvider>,
+  )
 }
 
 describe("EventList", () => {

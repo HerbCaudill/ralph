@@ -435,4 +435,3 @@ pnpm ui:test           # Run UI tests only
 - `PORT` - Server port (default: 4242)
 - `RALPH_DEBUG` - Enable debug logging (see Debug Logging section)
 - `RALPH_CWD` - Override base path for relative path rendering
-- `RALPH_RUNNING` - Set automatically when Ralph spawns Claude; causes vitest and Playwright to use minimal output

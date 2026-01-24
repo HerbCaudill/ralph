@@ -144,7 +144,7 @@ describe("TaskChatPanel", () => {
       })
 
       render(<TaskChatPanel />)
-      expect(screen.getByTestId("thinking-spinner")).toBeInTheDocument()
+      expect(screen.getByText("Thinking...")).toBeInTheDocument()
     })
 
     it("shows waiting placeholder when loading", () => {
