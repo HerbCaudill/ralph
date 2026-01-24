@@ -6,6 +6,7 @@
 import { spawn } from "node:child_process"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import Table from "cli-table3"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "..")
@@ -150,36 +151,30 @@ function formatDuration(ms) {
 }
 
 /**
- * Print summary report.
+ * Print summary report using cli-table3.
  */
 function printSummary() {
   const totalDuration = results.endTime - results.startTime
 
-  console.log("\n" + "═".repeat(60))
-  console.log("TEST SUMMARY")
-  console.log("═".repeat(60))
+  console.log("\n")
 
-  // Per-package results
-  console.log("\nBy Package:")
-  console.log("─".repeat(60))
-  console.log(
-    `${"Package".padEnd(20)} ${"Type".padEnd(12)} ${"Passed".padStart(8)} ${"Failed".padStart(8)} ${"Time".padStart(10)}`,
-  )
-  console.log("─".repeat(60))
+  // Per-package results table
+  const packageTable = new Table({
+    head: ["", "Package", "Type", "Passed", "Failed", "Time"],
+    colAligns: ["left", "left", "left", "right", "right", "right"],
+    style: { head: [], border: [] },
+  })
 
   for (const suite of results.suites) {
     const status = suite.exitCode === 0 ? "✓" : "✗"
     const passed = suite.type === "typecheck" ? "-" : String(suite.passed)
     const failed = suite.type === "typecheck" ? "-" : String(suite.failed)
-    console.log(
-      `${status} ${suite.name.padEnd(18)} ${suite.type.padEnd(12)} ${passed.padStart(8)} ${failed.padStart(8)} ${formatDuration(suite.duration).padStart(10)}`,
-    )
+    packageTable.push([status, suite.name, suite.type, passed, failed, formatDuration(suite.duration)])
   }
 
-  // By type totals
-  console.log("\nBy Type:")
-  console.log("─".repeat(60))
+  console.log(packageTable.toString())
 
+  // Aggregate by type
   const byType = {}
   for (const suite of results.suites) {
     if (!byType[suite.type]) {
@@ -190,26 +185,29 @@ function printSummary() {
     byType[suite.type].duration += suite.duration
   }
 
+  // By type totals table
+  const typeTable = new Table({
+    head: ["Type", "Passed", "Failed", "Time"],
+    colAligns: ["left", "right", "right", "right"],
+    style: { head: [], border: [] },
+  })
+
   for (const [type, counts] of Object.entries(byType)) {
     if (type === "typecheck") {
-      console.log(`  ${type.padEnd(18)} ${formatDuration(counts.duration).padStart(10)}`)
+      typeTable.push([type, "-", "-", formatDuration(counts.duration)])
     } else {
-      console.log(
-        `  ${type.padEnd(18)} ${String(counts.passed).padStart(8)} passed  ${String(counts.failed).padStart(8)} failed  ${formatDuration(counts.duration).padStart(10)}`,
-      )
+      typeTable.push([type, String(counts.passed), String(counts.failed), formatDuration(counts.duration)])
     }
   }
+
+  console.log("\n" + typeTable.toString())
 
   // Grand totals
   const totalPassed = results.suites.reduce((sum, s) => sum + s.passed, 0)
   const totalFailed = results.suites.reduce((sum, s) => sum + s.failed, 0)
   const allPassed = results.suites.every(s => s.exitCode === 0)
 
-  console.log("\n" + "═".repeat(60))
-  console.log(
-    `TOTAL: ${totalPassed} passed, ${totalFailed} failed in ${formatDuration(totalDuration)}`,
-  )
-  console.log("═".repeat(60))
+  console.log(`\nTotal: ${totalPassed} passed, ${totalFailed} failed in ${formatDuration(totalDuration)}`)
 
   return allPassed ? 0 : 1
 }
