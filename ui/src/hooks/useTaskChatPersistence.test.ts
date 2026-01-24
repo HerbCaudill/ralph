@@ -1,0 +1,519 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { renderHook, act } from "@testing-library/react"
+import {
+  useTaskChatPersistence,
+  type UseTaskChatPersistenceOptions,
+} from "./useTaskChatPersistence"
+import { eventDatabase } from "@/lib/persistence"
+import type { ChatEvent, TaskChatMessage } from "@/types"
+
+// Mock the eventDatabase
+vi.mock("@/lib/persistence", () => ({
+  eventDatabase: {
+    init: vi.fn().mockResolvedValue(undefined),
+    saveTaskChatSession: vi.fn().mockResolvedValue(undefined),
+    deleteTaskChatSession: vi.fn().mockResolvedValue(undefined),
+  },
+}))
+
+describe("useTaskChatPersistence", () => {
+  const createUserMessage = (id: string, content: string): TaskChatMessage => ({
+    id,
+    role: "user",
+    content,
+    timestamp: Date.now(),
+  })
+
+  const createAssistantMessage = (id: string, content: string): TaskChatMessage => ({
+    id,
+    role: "assistant",
+    content,
+    timestamp: Date.now(),
+  })
+
+  const createAssistantEvent = (timestamp: number, text: string): ChatEvent => ({
+    type: "assistant",
+    timestamp,
+    message: {
+      content: [{ type: "text", text }],
+    },
+  })
+
+  const createUserEvent = (timestamp: number, text: string): ChatEvent => ({
+    type: "user",
+    timestamp,
+    message: {
+      role: "user",
+      content: text,
+    },
+  })
+
+  const defaultOptions: UseTaskChatPersistenceOptions = {
+    instanceId: "default",
+    taskId: "task-123",
+    taskTitle: "Test Task",
+    messages: [],
+    events: [],
+    enabled: true,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  describe("initialization", () => {
+    it("initializes the database on mount", async () => {
+      renderHook(() => useTaskChatPersistence(defaultOptions))
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(eventDatabase.init).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not initialize when disabled", async () => {
+      renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          enabled: false,
+        }),
+      )
+
+      // Wait a tick to ensure effect ran
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(eventDatabase.init).not.toHaveBeenCalled()
+    })
+
+    it("returns null currentSessionId when no messages or events", () => {
+      const { result } = renderHook(() => useTaskChatPersistence(defaultOptions))
+      expect(result.current.currentSessionId).toBeNull()
+    })
+  })
+
+  describe("session creation", () => {
+    it("creates a session when messages are added", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          messages,
+          events,
+        }),
+      )
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).not.toBeNull()
+      expect(result.current.currentSessionId).toMatch(/^default-task-task-123-\d+$/)
+    })
+
+    it("generates stable session IDs based on instance, task, and timestamp", async () => {
+      vi.setSystemTime(new Date(1706123456789))
+
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          instanceId: "instance-1",
+          taskId: "task-abc",
+          messages,
+          events,
+        }),
+      )
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).toBe("instance-1-task-task-abc-1706123456789")
+    })
+
+    it("uses 'untitled' for null taskId", async () => {
+      vi.setSystemTime(new Date(1706123456789))
+
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          taskId: null,
+          messages,
+          events,
+        }),
+      )
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).toBe("default-task-untitled-1706123456789")
+    })
+  })
+
+  describe("debounced auto-save", () => {
+    it("saves session after debounce interval when events are added", async () => {
+      const { rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        { initialProps: defaultOptions },
+      )
+
+      // Add initial message to create session
+      const messages1: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events1: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      rerender({ ...defaultOptions, messages: messages1, events: events1 })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100) // Not enough time
+      })
+
+      expect(eventDatabase.saveTaskChatSession).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500) // Now enough time
+      })
+
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledTimes(1)
+    })
+
+    it("resets debounce timer on new events", async () => {
+      const { rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        { initialProps: defaultOptions },
+      )
+
+      // Add first event
+      const messages1: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events1: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      rerender({ ...defaultOptions, messages: messages1, events: events1 })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300) // Partial wait
+      })
+
+      // Add second event - should reset timer
+      const events2 = [...events1, createAssistantEvent(Date.now() + 100, "Hi there")]
+
+      rerender({ ...defaultOptions, messages: messages1, events: events2 })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300) // Another partial wait
+      })
+
+      // Should not have saved yet (timer was reset)
+      expect(eventDatabase.saveTaskChatSession).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300) // Complete the debounce
+      })
+
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("manual save", () => {
+    it("allows manual save of current session", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          messages,
+          events,
+        }),
+      )
+
+      // Allow session to be created
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).not.toBeNull()
+
+      await act(async () => {
+        await result.current.saveCurrentSession()
+      })
+
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instanceId: "default",
+          taskId: "task-123",
+          taskTitle: "Test Task",
+          messages,
+          events,
+        }),
+      )
+    })
+
+    it("does nothing on manual save when disabled", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          enabled: false,
+          messages,
+        }),
+      )
+
+      await act(async () => {
+        await result.current.saveCurrentSession()
+      })
+
+      expect(eventDatabase.saveTaskChatSession).not.toHaveBeenCalled()
+    })
+
+    it("cancels pending debounced save on manual save", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      const { result, rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        { initialProps: { ...defaultOptions, messages, events } },
+      )
+
+      // Allow session to be created
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).not.toBeNull()
+
+      // Trigger a debounced save
+      const events2 = [...events, createAssistantEvent(Date.now() + 100, "Response")]
+      rerender({ ...defaultOptions, messages, events: events2 })
+
+      // Manual save before debounce completes
+      await act(async () => {
+        await result.current.saveCurrentSession()
+      })
+
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledTimes(1)
+
+      // Wait for debounce to complete - should not trigger another save
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("clear session", () => {
+    it("clears the session from IndexedDB", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          messages,
+          events,
+        }),
+      )
+
+      // Allow session to be created
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).not.toBeNull()
+      const sessionId = result.current.currentSessionId
+
+      await act(async () => {
+        await result.current.clearSession()
+      })
+
+      expect(eventDatabase.deleteTaskChatSession).toHaveBeenCalledWith(sessionId)
+      expect(result.current.currentSessionId).toBeNull()
+    })
+
+    it("cancels pending debounced save on clear", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      const { result, rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        { initialProps: { ...defaultOptions, messages, events } },
+      )
+
+      // Allow session to be created
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).not.toBeNull()
+
+      // Trigger a debounced save
+      const events2 = [...events, createAssistantEvent(Date.now() + 100, "Response")]
+      rerender({ ...defaultOptions, messages, events: events2 })
+
+      // Clear before debounce completes
+      await act(async () => {
+        await result.current.clearSession()
+      })
+
+      // Wait for debounce to complete - should not trigger save
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(eventDatabase.saveTaskChatSession).not.toHaveBeenCalled()
+    })
+
+    it("does nothing on clear when disabled", async () => {
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          enabled: false,
+        }),
+      )
+
+      await act(async () => {
+        await result.current.clearSession()
+      })
+
+      expect(eventDatabase.deleteTaskChatSession).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("task change", () => {
+    it("saves previous session and starts new one when task changes", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      const { result, rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        {
+          initialProps: {
+            ...defaultOptions,
+            taskId: "task-1",
+            messages,
+            events,
+          },
+        },
+      )
+
+      // Allow session to be created
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).not.toBeNull()
+      const firstSessionId = result.current.currentSessionId
+
+      // Switch to a different task
+      rerender({
+        ...defaultOptions,
+        taskId: "task-2",
+        messages,
+        events,
+      })
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).not.toBe(firstSessionId)
+
+      // Should have saved the previous session
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalled()
+    })
+  })
+
+  describe("disabled state", () => {
+    it("does not save when disabled", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          enabled: false,
+          messages,
+          events,
+        }),
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(eventDatabase.saveTaskChatSession).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("session data", () => {
+    it("includes correct metadata in saved session", async () => {
+      vi.setSystemTime(new Date(1706123456789))
+
+      const messages: TaskChatMessage[] = [
+        createUserMessage("msg-1", "Hello"),
+        createAssistantMessage("msg-2", "Hi there"),
+      ]
+      const events: ChatEvent[] = [
+        createUserEvent(1706123456789, "Hello"),
+        createAssistantEvent(1706123456790, "Hi there"),
+      ]
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          instanceId: "test-instance",
+          taskId: "task-abc",
+          taskTitle: "My Task",
+          messages,
+          events,
+        }),
+      )
+
+      // Allow session to be created
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(result.current.currentSessionId).not.toBeNull()
+
+      await act(async () => {
+        await result.current.saveCurrentSession()
+      })
+
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instanceId: "test-instance",
+          taskId: "task-abc",
+          taskTitle: "My Task",
+          messageCount: 2,
+          eventCount: 2,
+          lastEventSequence: 1,
+          messages,
+          events,
+        }),
+      )
+    })
+  })
+})

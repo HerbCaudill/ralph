@@ -69,3 +69,9 @@ export {
   type UseIterationPersistenceOptions,
   type UseIterationPersistenceResult,
 } from "./useIterationPersistence"
+
+export {
+  useTaskChatPersistence,
+  type UseTaskChatPersistenceOptions,
+  type UseTaskChatPersistenceResult,
+} from "./useTaskChatPersistence"
