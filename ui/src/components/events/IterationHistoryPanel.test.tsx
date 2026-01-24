@@ -240,4 +240,207 @@ describe("IterationHistoryPanel", () => {
       expect(list).toBeInTheDocument()
     })
   })
+
+  describe("search functionality", () => {
+    it("shows search input when event logs exist", () => {
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: mockEventLogs,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      expect(screen.getByLabelText("Search iterations")).toBeInTheDocument()
+      expect(screen.getByPlaceholderText("Search by task ID or title...")).toBeInTheDocument()
+    })
+
+    it("does not show search input when no event logs", () => {
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: [],
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      expect(screen.queryByLabelText("Search iterations")).not.toBeInTheDocument()
+    })
+
+    it("filters by task title", () => {
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: mockEventLogs,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      const searchInput = screen.getByLabelText("Search iterations")
+      fireEvent.change(searchInput, { target: { value: "authentication" } })
+
+      // Should show only matching result
+      expect(screen.getByText("Fix authentication bug")).toBeInTheDocument()
+      expect(screen.queryByText("Add new feature")).not.toBeInTheDocument()
+      expect(screen.queryByText("No task")).not.toBeInTheDocument()
+    })
+
+    it("filters by task ID", () => {
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: mockEventLogs,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      const searchInput = screen.getByLabelText("Search iterations")
+      fireEvent.change(searchInput, { target: { value: "test.2" } })
+
+      // Should show only matching result
+      expect(screen.getByText("Add new feature")).toBeInTheDocument()
+      expect(screen.queryByText("Fix authentication bug")).not.toBeInTheDocument()
+    })
+
+    it("shows no results message when filter matches nothing", () => {
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: mockEventLogs,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      const searchInput = screen.getByLabelText("Search iterations")
+      fireEvent.change(searchInput, { target: { value: "nonexistent" } })
+
+      expect(screen.getByText("No matching iterations found.")).toBeInTheDocument()
+    })
+
+    it("clears search when clear button is clicked", () => {
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: mockEventLogs,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      const searchInput = screen.getByLabelText("Search iterations")
+      fireEvent.change(searchInput, { target: { value: "authentication" } })
+
+      // Only one result visible
+      expect(screen.queryByText("Add new feature")).not.toBeInTheDocument()
+
+      // Click clear button
+      fireEvent.click(screen.getByLabelText("Clear search"))
+
+      // All results visible again
+      expect(screen.getByText("Fix authentication bug")).toBeInTheDocument()
+      expect(screen.getByText("Add new feature")).toBeInTheDocument()
+    })
+
+    it("is case-insensitive", () => {
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: mockEventLogs,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      const searchInput = screen.getByLabelText("Search iterations")
+      fireEvent.change(searchInput, { target: { value: "AUTHENTICATION" } })
+
+      // Should still find the result
+      expect(screen.getByText("Fix authentication bug")).toBeInTheDocument()
+    })
+  })
+
+  describe("date grouping", () => {
+    it("groups iterations by date", () => {
+      // Create logs with different dates relative to "today"
+      const today = new Date()
+      const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+      const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)
+
+      const logsWithDates: EventLogSummary[] = [
+        {
+          id: "today1",
+          createdAt: today.toISOString(),
+          eventCount: 10,
+          metadata: { taskId: "r-1", title: "Today task" },
+        },
+        {
+          id: "yesterday1",
+          createdAt: yesterday.toISOString(),
+          eventCount: 20,
+          metadata: { taskId: "r-2", title: "Yesterday task" },
+        },
+        {
+          id: "older1",
+          createdAt: twoDaysAgo.toISOString(),
+          eventCount: 30,
+          metadata: { taskId: "r-3", title: "Older task" },
+        },
+      ]
+
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: logsWithDates,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      // Should show date group headers
+      expect(screen.getByText("Today")).toBeInTheDocument()
+      expect(screen.getByText("Yesterday")).toBeInTheDocument()
+      // Older dates show full date format - just verify the task is there
+      expect(screen.getByText("Older task")).toBeInTheDocument()
+    })
+
+    it("groups multiple iterations under the same date", () => {
+      const today = new Date()
+
+      const logsWithSameDate: EventLogSummary[] = [
+        {
+          id: "today1",
+          createdAt: new Date(today.getTime() - 1000).toISOString(),
+          eventCount: 10,
+          metadata: { taskId: "r-1", title: "First today task" },
+        },
+        {
+          id: "today2",
+          createdAt: new Date(today.getTime() - 2000).toISOString(),
+          eventCount: 20,
+          metadata: { taskId: "r-2", title: "Second today task" },
+        },
+      ]
+
+      mockUseEventLogs.mockReturnValue({
+        eventLogs: logsWithSameDate,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+      })
+
+      render(<IterationHistoryPanel />)
+
+      // Should have one "Today" header with both tasks under it
+      const todayHeaders = screen.getAllByText("Today")
+      expect(todayHeaders.length).toBe(1)
+
+      expect(screen.getByText("First today task")).toBeInTheDocument()
+      expect(screen.getByText("Second today task")).toBeInTheDocument()
+    })
+  })
 })

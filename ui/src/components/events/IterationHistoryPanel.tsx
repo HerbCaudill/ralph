@@ -1,18 +1,89 @@
-import { useCallback } from "react"
-import { IconHistory, IconChevronRight, IconClock, IconFile } from "@tabler/icons-react"
+import { useCallback, useState, useMemo } from "react"
+import {
+  IconHistory,
+  IconChevronRight,
+  IconClock,
+  IconFile,
+  IconSearch,
+  IconX,
+} from "@tabler/icons-react"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { useEventLogs, useEventLogRouter, type EventLogSummary } from "@/hooks"
-import { formatEventLogDate } from "@/lib/formatEventLogDate"
+import { formatEventLogDate, formatEventLogTime } from "@/lib/formatEventLogDate"
 import { useAppStore, selectIssuePrefix } from "@/store"
 
 /**
+ * Groups event logs by date (Today, Yesterday, or specific date).
+ */
+function groupEventLogsByDate(
+  eventLogs: EventLogSummary[],
+): Array<{ dateLabel: string; logs: EventLogSummary[] }> {
+  const groups = new Map<string, EventLogSummary[]>()
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+
+  for (const log of eventLogs) {
+    const logDate = new Date(log.createdAt)
+    const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
+
+    let dateLabel: string
+    if (logDay.getTime() === today.getTime()) {
+      dateLabel = "Today"
+    } else if (logDay.getTime() === yesterday.getTime()) {
+      dateLabel = "Yesterday"
+    } else {
+      dateLabel = logDay.toLocaleDateString(undefined, {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    }
+
+    const existing = groups.get(dateLabel)
+    if (existing) {
+      existing.push(log)
+    } else {
+      groups.set(dateLabel, [log])
+    }
+  }
+
+  // Convert to array (order preserved from original eventLogs which are sorted newest first)
+  return Array.from(groups.entries()).map(([dateLabel, logs]) => ({ dateLabel, logs }))
+}
+
+/**
+ * Filters event logs by search query (matches task ID or title).
+ */
+function filterEventLogs(eventLogs: EventLogSummary[], query: string): EventLogSummary[] {
+  const trimmedQuery = query.trim().toLowerCase()
+  if (!trimmedQuery) return eventLogs
+
+  return eventLogs.filter(log => {
+    const taskId = log.metadata?.taskId?.toLowerCase() ?? ""
+    const title = log.metadata?.title?.toLowerCase() ?? ""
+    return taskId.includes(trimmedQuery) || title.includes(trimmedQuery)
+  })
+}
+
+/**
  * Panel for browsing iteration history.
- * Shows a list of all past iterations with their metadata.
+ * Shows a list of all past iterations grouped by date with search/filter.
  */
 export function IterationHistoryPanel({ className }: IterationHistoryPanelProps) {
   const { eventLogs, isLoading, error, refresh } = useEventLogs()
   const { navigateToEventLog } = useEventLogRouter()
   const issuePrefix = useAppStore(selectIssuePrefix)
+  const [searchQuery, setSearchQuery] = useState("")
+
+  const filteredLogs = useMemo(
+    () => filterEventLogs(eventLogs, searchQuery),
+    [eventLogs, searchQuery],
+  )
+
+  const groupedLogs = useMemo(() => groupEventLogsByDate(filteredLogs), [filteredLogs])
 
   const handleItemClick = useCallback(
     (id: string) => {
@@ -20,6 +91,14 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
     },
     [navigateToEventLog],
   )
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+  }, [])
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("")
+  }, [])
 
   if (isLoading) {
     return (
@@ -63,6 +142,39 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
         <span className="text-muted-foreground text-xs">({eventLogs.length})</span>
       </div>
 
+      {/* Search input */}
+      {eventLogs.length > 0 && (
+        <div className="border-border border-b px-4 py-2">
+          <div className="relative">
+            <div className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2">
+              <IconSearch className="h-4 w-4" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              placeholder="Search by task ID or title..."
+              aria-label="Search iterations"
+              className={cn(
+                "border-border bg-background text-foreground h-8 w-full rounded-md border pr-8 pl-9 text-sm",
+                "placeholder:text-muted-foreground",
+                "focus:ring-ring focus:ring-2 focus:outline-none",
+              )}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
+                aria-label="Clear search"
+              >
+                <IconX className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto">
         {eventLogs.length === 0 ?
           <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm">
@@ -70,16 +182,31 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
             <br />
             Completed iterations will appear here.
           </div>
-        : <ul className="divide-border divide-y" role="list" aria-label="Iteration history">
-            {eventLogs.map(log => (
-              <IterationHistoryItem
-                key={log.id}
-                log={log}
-                issuePrefix={issuePrefix}
-                onClick={handleItemClick}
-              />
+        : filteredLogs.length === 0 ?
+          <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm">
+            No matching iterations found.
+          </div>
+        : <div role="list" aria-label="Iteration history">
+            {groupedLogs.map(({ dateLabel, logs }) => (
+              <div key={dateLabel} role="group" aria-label={`Iterations from ${dateLabel}`}>
+                <div className="bg-muted/30 border-border sticky top-0 border-b px-4 py-2">
+                  <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                    {dateLabel}
+                  </span>
+                </div>
+                <ul className="divide-border divide-y">
+                  {logs.map(log => (
+                    <IterationHistoryItem
+                      key={log.id}
+                      log={log}
+                      issuePrefix={issuePrefix}
+                      onClick={handleItemClick}
+                    />
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         }
       </div>
     </div>
@@ -125,7 +252,7 @@ function IterationHistoryItem({
           <div className="text-muted-foreground mt-1 flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1">
               <IconClock className="size-3" />
-              {formatEventLogDate(log.createdAt)}
+              {formatEventLogTime(log.createdAt)}
             </span>
             <span className="flex items-center gap-1">
               <IconFile className="size-3" />
