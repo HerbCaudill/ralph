@@ -129,6 +129,11 @@ export function TextWithLinks({ children, className }: TextWithLinksProps) {
   const accentColor = useAppStore(selectAccentColor)
   const linkColor = accentColor ?? DEFAULT_ACCENT_COLOR
 
+  // Handle undefined/empty children
+  if (!children) {
+    return null
+  }
+
   // Use accent color for links, with hover underline
   const linkClassName = className ?? "cursor-pointer hover:underline"
   const linkStyle: CSSProperties = { color: linkColor }

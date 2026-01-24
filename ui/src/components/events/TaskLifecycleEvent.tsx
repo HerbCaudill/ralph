@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 import { IconPlayerPlay, IconCheck } from "@tabler/icons-react"
-import { TaskIdLink } from "@/components/ui/TaskIdLink"
+import { TextWithLinks } from "@/components/ui/TextWithLinks"
 import type { TaskLifecycleEventData } from "@/types"
 
 /**  Renders a task lifecycle event (starting or completing a task) with special styling. */
@@ -41,9 +41,9 @@ export function TaskLifecycleEvent({ event, className }: Props) {
         </span>
         <div className="flex items-baseline gap-2">
           {/* TaskIdLink expects a string that may contain task IDs - pass the ID as text */}
-          <TaskIdLink className="text-muted-foreground shrink-0 font-mono text-xs">
+          <TextWithLinks className="text-muted-foreground shrink-0 font-mono text-xs">
             {event.taskId}
-          </TaskIdLink>
+          </TextWithLinks>
           {event.taskTitle && <span className="truncate text-xs">{event.taskTitle}</span>}
         </div>
       </div>

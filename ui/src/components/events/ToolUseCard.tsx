@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { useAppStore, selectWorkspace } from "@/store"
-import { TaskIdLink } from "@/components/ui/TaskIdLink"
+import { TextWithLinks } from "@/components/ui/TextWithLinks"
 import { getLanguageFromFilePath } from "@/lib/getLanguageFromFilePath"
 import { getOutputSummary } from "@/lib/getOutputSummary"
 import { getPreviewInfo } from "@/lib/getPreviewInfo"
@@ -68,7 +68,7 @@ export function ToolUseCard({
 
           {summary && (
             <span className="text-foreground/80 min-w-0 flex-1 truncate font-mono text-xs">
-              <TaskIdLink>{summary}</TaskIdLink>
+              <TextWithLinks>{summary}</TextWithLinks>
             </span>
           )}
         </div>
@@ -121,7 +121,7 @@ export function ToolUseCard({
                         !isExpanded && remainingLines > 0 && "cursor-pointer",
                       )}
                     >
-                      <TaskIdLink>{isExpanded ? event.output : preview}</TaskIdLink>
+                      <TextWithLinks>{isExpanded ? event.output : preview}</TextWithLinks>
                       {!isExpanded && remainingLines > 0 && (
                         <>
                           {"\n"}
