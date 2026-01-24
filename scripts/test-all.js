@@ -44,7 +44,9 @@ function parseVitestOutput(output) {
   const clean = stripAnsi(output)
 
   // Match "Tests  X passed" or "Tests  X failed | Y passed"
-  const testsMatch = clean.match(/Tests\s+(?:(\d+)\s+failed\s*\|\s*)?(\d+)\s+passed(?:\s*\|\s*(\d+)\s+skipped)?/i)
+  const testsMatch = clean.match(
+    /Tests\s+(?:(\d+)\s+failed\s*\|\s*)?(\d+)\s+passed(?:\s*\|\s*(\d+)\s+skipped)?/i,
+  )
   if (testsMatch) {
     counts.failed = parseInt(testsMatch[1] || "0", 10)
     counts.passed = parseInt(testsMatch[2] || "0", 10)
@@ -145,7 +147,7 @@ async function runTestSuite(suite) {
 function formatDuration(ms) {
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
   const minutes = Math.floor(ms / 60000)
-  const seconds = ((ms % 60000) / 1000).toFixed(1)
+  const seconds = ((ms % 60000) / 1000).toFixed(0)
   return `${minutes}m ${seconds}s`
 }
 
@@ -168,7 +170,14 @@ function printSummary() {
     const status = suite.exitCode === 0 ? "✓" : "✗"
     const passed = suite.type === "typecheck" ? "-" : String(suite.passed)
     const failed = suite.type === "typecheck" ? "-" : String(suite.failed)
-    packageTable.push([status, suite.name, suite.type, passed, failed, formatDuration(suite.duration)])
+    packageTable.push([
+      status,
+      suite.name,
+      suite.type,
+      passed,
+      failed,
+      formatDuration(suite.duration),
+    ])
   }
 
   console.log(packageTable.toString())
@@ -184,6 +193,11 @@ function printSummary() {
     byType[suite.type].duration += suite.duration
   }
 
+  // Grand totals
+  const totalPassed = results.suites.reduce((sum, s) => sum + s.passed, 0)
+  const totalFailed = results.suites.reduce((sum, s) => sum + s.failed, 0)
+  const allPassed = results.suites.every(s => s.exitCode === 0)
+
   // By type totals table
   const typeTable = new Table({
     head: ["Type", "Passed", "Failed", "Time"],
@@ -195,18 +209,19 @@ function printSummary() {
     if (type === "typecheck") {
       typeTable.push([type, "-", "-", formatDuration(counts.duration)])
     } else {
-      typeTable.push([type, String(counts.passed), String(counts.failed), formatDuration(counts.duration)])
+      typeTable.push([
+        type,
+        String(counts.passed),
+        String(counts.failed),
+        formatDuration(counts.duration),
+      ])
     }
   }
 
+  // Add total row with wall-clock time
+  typeTable.push(["Total", String(totalPassed), String(totalFailed), formatDuration(totalDuration)])
+
   console.log("\n" + typeTable.toString())
-
-  // Grand totals
-  const totalPassed = results.suites.reduce((sum, s) => sum + s.passed, 0)
-  const totalFailed = results.suites.reduce((sum, s) => sum + s.failed, 0)
-  const allPassed = results.suites.every(s => s.exitCode === 0)
-
-  console.log(`\nTotal: ${totalPassed} passed, ${totalFailed} failed in ${formatDuration(totalDuration)}`)
 
   return allPassed ? 0 : 1
 }
