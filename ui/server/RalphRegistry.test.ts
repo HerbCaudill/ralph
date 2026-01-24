@@ -1151,6 +1151,105 @@ describe("RalphRegistry", () => {
         expect(result!.id).toBe("log-123")
       })
     })
+
+    describe("IterationEventPersister cleanup", () => {
+      function createMockIterationEventPersister() {
+        const clearCalls: string[] = []
+        return {
+          clearCalls,
+          clear: async (instanceId: string) => {
+            clearCalls.push(instanceId)
+            return true
+          },
+          appendEvent: async () => {},
+        }
+      }
+
+      it("clears iteration events file after saving to EventLogStore", async () => {
+        const mockStore = createMockEventLogStore()
+        const mockPersister = createMockIterationEventPersister()
+        registry.setEventLogStore(mockStore)
+        registry.setIterationEventPersister(
+          mockPersister as unknown as import("./IterationEventPersister.js").IterationEventPersister,
+        )
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        // Add an event to history
+        simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+
+        // Save to EventLogStore
+        await registry.saveIterationEventLog("test-instance", "task-123", "Test Task")
+
+        // Verify the iteration events file was cleared
+        expect(mockPersister.clearCalls).toContain("test-instance")
+      })
+
+      it("does not fail if clearing iteration events file fails", async () => {
+        const mockStore = createMockEventLogStore()
+        const failingPersister = {
+          clear: async () => {
+            throw new Error("Disk error")
+          },
+          appendEvent: async () => {},
+        }
+        registry.setEventLogStore(mockStore)
+        registry.setIterationEventPersister(
+          failingPersister as unknown as import("./IterationEventPersister.js").IterationEventPersister,
+        )
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        // Add an event to history
+        simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+
+        // Save should succeed even if clearing fails
+        const result = await registry.saveIterationEventLog(
+          "test-instance",
+          "task-123",
+          "Test Task",
+        )
+
+        expect(result).not.toBeNull()
+        expect(result!.id).toBe("log-123")
+      })
+
+      it("does not clear if no IterationEventPersister is configured", async () => {
+        const mockStore = createMockEventLogStore()
+        registry.setEventLogStore(mockStore)
+        // No IterationEventPersister configured
+
+        const state = registry.create(createTestOptions())
+        const simulateEvent = (
+          state.manager as unknown as {
+            simulateEvent: (e: { type: string; timestamp: number; [k: string]: unknown }) => void
+          }
+        ).simulateEvent.bind(state.manager)
+
+        // Add an event to history
+        simulateEvent({ type: "user_message", timestamp: Date.now(), message: "Hello" })
+
+        // Save should succeed without errors
+        const result = await registry.saveIterationEventLog(
+          "test-instance",
+          "task-123",
+          "Test Task",
+        )
+
+        expect(result).not.toBeNull()
+        expect(result!.id).toBe("log-123")
+      })
+    })
   })
 })
 

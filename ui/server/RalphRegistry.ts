@@ -762,6 +762,20 @@ export class RalphRegistry extends EventEmitter {
         `[RalphRegistry] Saved iteration event log for ${instanceId}: ${eventLog.id} (${events.length} events)`,
       )
 
+      // Clean up iteration events file now that events are archived
+      if (this._iterationEventPersister) {
+        try {
+          await this._iterationEventPersister.clear(instanceId)
+          console.log(`[RalphRegistry] Cleaned up iteration events file for ${instanceId}`)
+        } catch (cleanupErr) {
+          // Log but don't fail - the event log was already saved
+          console.error(
+            `[RalphRegistry] Failed to clean up iteration events file for ${instanceId}:`,
+            cleanupErr,
+          )
+        }
+      }
+
       // If we have a task ID and a BdProxy, add a comment linking to the iteration log
       if (taskId && this._bdProxy) {
         try {
