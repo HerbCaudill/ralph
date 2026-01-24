@@ -25,8 +25,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
     themes,
     activeThemeId,
     currentVSCodeTheme,
-    isLoadingList,
-    isLoadingTheme,
     error,
     fetchThemes,
     applyTheme,
@@ -93,8 +91,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
     clearPreview()
   }
 
-  const isLoading = isLoadingList || isLoadingTheme
-
   const appearanceModes = [
     { value: "system" as const, Icon: IconDeviceDesktop, label: "System" },
     { value: "light" as const, Icon: IconSun, label: "Light" },
@@ -111,9 +107,8 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
         aria-label="Settings"
         aria-expanded={isOpen}
         aria-haspopup="true"
-        disabled={isLoading}
         data-testid="settings-dropdown-trigger"
-        className={cn("hover:bg-white/20", isLoading && "opacity-70")}
+        className={cn("hover:bg-white/20")}
         style={{ color: textColor }}
       >
         <IconSettings className="size-4" />
