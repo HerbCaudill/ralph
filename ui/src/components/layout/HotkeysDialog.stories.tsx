@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, within, userEvent, fn } from "storybook/test"
+import { expect, within, userEvent, fn, waitFor } from "storybook/test"
 import { HotkeysDialog } from "./HotkeysDialog"
 
 const meta: Meta<typeof HotkeysDialog> = {
@@ -39,9 +39,14 @@ export const ShowsTitle: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Dialog should be visible with title
-    const heading = await canvas.findByRole("heading", { name: "Keyboard Shortcuts" })
-    await expect(heading).toBeVisible()
+    // Wait for dialog animation to complete before checking visibility
+    await waitFor(
+      async () => {
+        const heading = await canvas.findByRole("heading", { name: "Keyboard Shortcuts" })
+        await expect(heading).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
   },
 }
 
@@ -53,11 +58,16 @@ export const ShowsCategories: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Should show Navigation category (use findByText for async waiting)
-    await expect(await canvas.findByText("Navigation")).toBeVisible()
-
-    // Should show Agent Control category
-    await expect(await canvas.findByText("Agent Control")).toBeVisible()
+    // Wait for dialog animation to complete before checking visibility
+    await waitFor(
+      async () => {
+        // Should show Navigation category
+        await expect(await canvas.findByText("Navigation")).toBeVisible()
+        // Should show Agent Control category
+        await expect(await canvas.findByText("Agent Control")).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
   },
 }
 
@@ -69,9 +79,14 @@ export const EscapeClosesDialog: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Dialog should be visible
-    const dialog = await canvas.findByRole("dialog")
-    await expect(dialog).toBeVisible()
+    // Wait for dialog animation to complete before interacting
+    await waitFor(
+      async () => {
+        const dialog = await canvas.findByRole("dialog")
+        await expect(dialog).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
 
     // Press Escape
     await userEvent.keyboard("{Escape}")
@@ -89,10 +104,16 @@ export const ShowsIterationNavigationHotkeys: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Verify iteration navigation hotkeys are documented (use findByText for async waiting)
-    await expect(await canvas.findByText(/previous iteration/i)).toBeVisible()
-    await expect(await canvas.findByText(/next iteration/i)).toBeVisible()
-    await expect(await canvas.findByText(/latest iteration/i)).toBeVisible()
+    // Wait for dialog animation to complete before checking visibility
+    await waitFor(
+      async () => {
+        // Verify iteration navigation hotkeys are documented
+        await expect(await canvas.findByText(/previous iteration/i)).toBeVisible()
+        await expect(await canvas.findByText(/next iteration/i)).toBeVisible()
+        await expect(await canvas.findByText(/latest iteration/i)).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
   },
 }
 
@@ -104,9 +125,15 @@ export const ShowsTaskNavigationHotkeys: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Verify task navigation hotkeys are documented (use findByText for async waiting)
-    await expect(await canvas.findByText(/select previous task/i)).toBeVisible()
-    await expect(await canvas.findByText(/select next task/i)).toBeVisible()
-    await expect(await canvas.findByText(/open selected task/i)).toBeVisible()
+    // Wait for dialog animation to complete before checking visibility
+    await waitFor(
+      async () => {
+        // Verify task navigation hotkeys are documented
+        await expect(await canvas.findByText(/select previous task/i)).toBeVisible()
+        await expect(await canvas.findByText(/select next task/i)).toBeVisible()
+        await expect(await canvas.findByText(/open selected task/i)).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
   },
 }
