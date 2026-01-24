@@ -278,3 +278,18 @@
     0 10px 15px -3px rgb(0 0 0 / 0.1),
     0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
+
+/* Align placeholder with actual text position */
+.markdown-editor [class*="_placeholder_"] {
+  /* Match the padding of .mdxeditor-root-contenteditable (0.5rem) plus prose-p:my-1 margin */
+  padding: calc(0.5rem + 0.25em) 0.5rem !important;
+}
+
+.markdown-editor [class*="_placeholder_"] p {
+  margin: 0;
+}
+
+.markdown-editor-sm [class*="_placeholder_"] {
+  /* Match the sm variant padding (0.375rem) plus prose-p:my-1 margin */
+  padding: calc(0.375rem + 0.25em) 0.375rem !important;
+}
