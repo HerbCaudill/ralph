@@ -101,7 +101,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   )
 
   return (
-    <form onSubmit={handleSubmit} className={cn("flex flex-col gap-2", className)}>
+    <form onSubmit={handleSubmit} className={cn("relative", className)}>
       <textarea
         ref={textareaRef}
         value={message}
@@ -112,32 +112,31 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         rows={1}
         className={cn(
           "placeholder:text-muted-foreground bg-transparent",
-          "w-full resize-none border-0 px-0 py-2 text-sm",
+          "w-full resize-none border-0 py-2 pr-10 text-sm",
           "focus:ring-0 focus:outline-none",
           "disabled:cursor-not-allowed disabled:opacity-50",
           "overflow-hidden",
         )}
         aria-label={ariaLabel}
       />
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={disabled || !message.trim()}
-          className={cn(
-            "inline-flex shrink-0 items-center justify-center rounded-md p-1.5",
-            "focus-visible:ring-ring/50 focus:outline-none focus-visible:ring-[3px]",
-            "disabled:pointer-events-none disabled:opacity-50",
-            "transition-opacity",
-          )}
-          style={{
-            backgroundColor: buttonBgColor,
-            color: buttonTextColor,
-          }}
-          aria-label="Send message"
-        >
-          <IconArrowUp className="size-5" aria-hidden="true" />
-        </button>
-      </div>
+      <button
+        type="submit"
+        disabled={disabled || !message.trim()}
+        className={cn(
+          "absolute right-0 bottom-1.5",
+          "inline-flex shrink-0 items-center justify-center rounded-md p-1.5",
+          "focus-visible:ring-ring/50 focus:outline-none focus-visible:ring-[3px]",
+          "disabled:pointer-events-none disabled:opacity-50",
+          "transition-opacity",
+        )}
+        style={{
+          backgroundColor: buttonBgColor,
+          color: buttonTextColor,
+        }}
+        aria-label="Send message"
+      >
+        <IconArrowUp className="size-5" aria-hidden="true" />
+      </button>
     </form>
   )
 })
