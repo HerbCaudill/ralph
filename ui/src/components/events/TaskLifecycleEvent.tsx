@@ -13,8 +13,8 @@ export function TaskLifecycleEvent({ event, className }: Props) {
       className={cn(
         "mx-4 my-2 flex items-center gap-3 rounded-lg border px-4 py-3",
         isStarting ?
-          "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50"
-        : "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50",
+          "border-blue-500 dark:border-blue-800"
+        : "border-green-500 dark:border-green-800",
         className,
       )}
       data-testid="task-lifecycle-event"
@@ -39,12 +39,12 @@ export function TaskLifecycleEvent({ event, className }: Props) {
         >
           {isStarting ? "Starting" : "Completed"}
         </span>
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-2 text-xs">
           {/* TaskIdLink expects a string that may contain task IDs - pass the ID as text */}
-          <TextWithLinks className="text-muted-foreground shrink-0 font-mono text-xs">
-            {event.taskId}
-          </TextWithLinks>
-          {event.taskTitle && <span className="truncate text-xs">{event.taskTitle}</span>}
+          <span className="text-muted-foreground shrink-0 font-mono text-xs">
+            <TextWithLinks>{event.taskId}</TextWithLinks>
+          </span>
+          {event.taskTitle && <span className="truncate">{event.taskTitle}</span>}
         </div>
       </div>
     </div>
