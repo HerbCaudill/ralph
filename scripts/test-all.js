@@ -185,7 +185,7 @@ function printSummary() {
   const passedStr = style.green(`${totalPassed} passed`)
   const failedStr =
     totalFailed > 0 ? style.red(`${totalFailed} failed`) : style.dim(`${totalFailed} failed`)
-  const durationStr = style.dim(`(${formatDuration(totalDuration)})`)
+  const durationStr = style.yellow(`(${formatDuration(totalDuration)})`)
 
   console.log(`\n  ${style.bold("Total")} ${passedStr}, ${failedStr} ${durationStr}`)
 
@@ -198,7 +198,7 @@ function printSummary() {
 function printResultLine(result) {
   const status = result.exitCode === 0 ? style.green("✓") : style.red("✗")
   const name = style.bold(result.name)
-  const durationStr = style.dim(`(${formatDuration(result.duration)})`)
+  const durationStr = style.yellow(`(${formatDuration(result.duration)})`)
 
   if (result.type === "typecheck") {
     console.log(`  ${status} ${name} ${durationStr}`)
