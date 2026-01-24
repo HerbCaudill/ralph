@@ -23,6 +23,10 @@ import {
   selectVisibleTaskIds,
   selectHotkeysDialogOpen,
   selectActiveInstanceId,
+  selectEvents,
+  selectTokenUsage,
+  selectContextWindow,
+  selectIteration,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -34,6 +38,7 @@ import {
   useEventLogRouter,
   useWorkspaces,
   useStoreHydration,
+  useIterationPersistence,
 } from "./hooks"
 import { TaskDialogProvider } from "./contexts"
 import { startRalph } from "./lib/startRalph"
@@ -60,6 +65,21 @@ export function App() {
 
   // Hydrate store from IndexedDB on startup (restores events and task chat from last session)
   useStoreHydration({ instanceId: activeInstanceId })
+
+  // Subscribe to state for iteration persistence
+  const events = useAppStore(selectEvents)
+  const tokenUsage = useAppStore(selectTokenUsage)
+  const contextWindow = useAppStore(selectContextWindow)
+  const iteration = useAppStore(selectIteration)
+
+  // Persist iteration events to IndexedDB (auto-saves on iteration boundaries and completion)
+  useIterationPersistence({
+    instanceId: activeInstanceId,
+    events,
+    tokenUsage,
+    contextWindow,
+    iteration,
+  })
 
   // Task list refresh
   const { refresh: refreshTaskList } = useTasks({ all: true })
