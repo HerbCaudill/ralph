@@ -5,8 +5,8 @@ import type { ToolUseEvent, ToolName } from "@/types"
 const meta: Meta<typeof ToolUseCard> = {
   title: "Feedback/ToolUseCard",
   component: ToolUseCard,
-  parameters: {
-    
+  args: {
+    defaultExpanded: true,
   },
   decorators: [
     Story => (
@@ -257,6 +257,7 @@ export const AllTools: Story = {
       ).map((tool, i) => (
         <ToolUseCard
           key={tool}
+          defaultExpanded={true}
           event={{
             type: "tool_use",
             timestamp: Date.now() - (10 - i) * 1000,
@@ -282,6 +283,7 @@ export const AllStatuses: Story = {
   render: () => (
     <div className="space-y-0">
       <ToolUseCard
+        defaultExpanded={true}
         event={{
           type: "tool_use",
           timestamp: Date.now() - 4000,
@@ -291,6 +293,7 @@ export const AllStatuses: Story = {
         }}
       />
       <ToolUseCard
+        defaultExpanded={true}
         event={{
           type: "tool_use",
           timestamp: Date.now() - 3000,
@@ -300,6 +303,7 @@ export const AllStatuses: Story = {
         }}
       />
       <ToolUseCard
+        defaultExpanded={true}
         event={{
           type: "tool_use",
           timestamp: Date.now() - 2000,
@@ -311,6 +315,7 @@ export const AllStatuses: Story = {
         }}
       />
       <ToolUseCard
+        defaultExpanded={true}
         event={{
           type: "tool_use",
           timestamp: Date.now() - 1000,
