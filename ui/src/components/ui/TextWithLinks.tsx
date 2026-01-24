@@ -1,7 +1,7 @@
 import type { ReactNode, MouseEvent, CSSProperties } from "react"
-import { useTaskDialogContext } from "@/contexts"
 import { useAppStore, selectIssuePrefix, selectAccentColor } from "@/store"
 import { stripTaskPrefix } from "@/lib/utils"
+import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 import { DEFAULT_ACCENT_COLOR } from "@/constants"
 
 /**
@@ -125,7 +125,6 @@ export interface TextWithLinksProps {
  * - Eventlog references (#eventlog=abcdef12) navigate to view the event log
  */
 export function TextWithLinks({ children, className }: TextWithLinksProps) {
-  const taskDialogContext = useTaskDialogContext()
   const issuePrefix = useAppStore(selectIssuePrefix)
   const accentColor = useAppStore(selectAccentColor)
   const linkColor = accentColor ?? DEFAULT_ACCENT_COLOR
@@ -151,23 +150,16 @@ export function TextWithLinks({ children, className }: TextWithLinksProps) {
       const taskId = segment.id!
       const displayId = stripTaskPrefix(taskId, issuePrefix)
 
-      const handleClick = (e: MouseEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        taskDialogContext?.openTaskById(taskId)
-      }
-
       return (
-        <button
+        <a
           key={`taskId-${index}`}
-          onClick={handleClick}
+          href={buildTaskIdPath(taskId)}
           className={linkClassName}
           style={linkStyle}
-          type="button"
           aria-label={`View task ${taskId}`}
         >
           {displayId}
-        </button>
+        </a>
       )
     }
 

@@ -1,21 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { fn } from "storybook/test"
 import { TaskIdLink } from "./TaskIdLink"
 import { useAppStore } from "@/store"
-import { TaskDialogProvider } from "@/contexts"
 import { useEffect } from "react"
 
 const meta: Meta<typeof TaskIdLink> = {
   title: "Content/TaskIdLink",
   component: TaskIdLink,
   parameters: {},
-  decorators: [
-    Story => (
-      <TaskDialogProvider openTaskById={fn()}>
-        <Story />
-      </TaskDialogProvider>
-    ),
-  ],
 }
 
 export default meta

@@ -1,17 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, beforeEach, vi } from "vitest"
+import { describe, it, expect, beforeEach } from "vitest"
 import { EventStream } from "./EventStream"
 import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
-import { TaskDialogProvider } from "@/contexts"
 
-// Helper to render EventStream with required providers
+// Helper to render EventStream
 function renderEventStream(props?: { instanceId?: string; maxEvents?: number }) {
-  const openTaskById = vi.fn()
-  return render(
-    <TaskDialogProvider openTaskById={openTaskById}>
-      <EventStream {...props} />
-    </TaskDialogProvider>,
-  )
+  return render(<EventStream {...props} />)
 }
 
 describe("EventStream", () => {

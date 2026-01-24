@@ -1,32 +1,22 @@
-import { useTaskDialogContext } from "@/contexts"
 import { useAppStore, selectIssuePrefix } from "@/store"
 import { stripTaskPrefix } from "@/lib/utils"
-import type { ReactNode, MouseEvent } from "react"
+import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
+import type { ReactNode } from "react"
 import { createTaskIdPattern } from "./createTaskIdPattern"
-
-// TaskIdLink Component
 
 /**
  * Renders text with task IDs converted to clickable links.
- * Task IDs matching the pattern (e.g., rui-48s) become links that open
- * the task details dialog when clicked.
+ * Task IDs matching the pattern (e.g., rui-48s) become links that navigate
+ * to the task details URL.
  */
 export function TaskIdLink({ children, className }: TaskIdLinkProps) {
-  const taskDialogContext = useTaskDialogContext()
   const issuePrefix = useAppStore(selectIssuePrefix)
-
-  // If no task dialog context is available, just render the text
-  if (!taskDialogContext) {
-    return <>{children}</>
-  }
 
   // If no issue prefix is configured, don't try to match any task IDs
   const pattern = createTaskIdPattern(issuePrefix)
   if (!pattern) {
     return <>{children}</>
   }
-
-  const { openTaskById } = taskDialogContext
 
   // Parse the text and replace task IDs with links
   const parts: ReactNode[] = []
@@ -45,29 +35,21 @@ export function TaskIdLink({ children, className }: TaskIdLinkProps) {
       parts.push(children.slice(lastIndex, startIndex))
     }
 
-    // Add the clickable task ID link
-    const handleClick = (e: MouseEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      openTaskById(taskId)
-    }
-
     // Display the task ID without the prefix for cleaner UI
     const displayId = stripTaskPrefix(taskId, issuePrefix)
 
     parts.push(
-      <button
+      <a
         key={`${taskId}-${startIndex}`}
-        onClick={handleClick}
+        href={buildTaskIdPath(taskId)}
         className={
           className ??
           "cursor-pointer text-cyan-600 hover:text-cyan-700 hover:underline dark:text-cyan-400 dark:hover:text-cyan-300"
         }
-        type="button"
         aria-label={`View task ${taskId}`}
       >
         {displayId}
-      </button>,
+      </a>,
     )
 
     lastIndex = startIndex + match[0].length

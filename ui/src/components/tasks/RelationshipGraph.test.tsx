@@ -1,7 +1,6 @@
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { RelationshipGraph } from "./RelationshipGraph"
-import { TaskDialogProvider } from "@/contexts"
 import type { Task } from "@/types"
 
 // Mock fetch
@@ -53,11 +52,8 @@ const sampleTaskWithDependencies = {
 }
 
 describe("RelationshipGraph", () => {
-  const mockOpenTaskById = vi.fn()
-
   beforeEach(() => {
     mockFetch.mockReset()
-    mockOpenTaskById.mockReset()
     mockTasks = []
   })
 
@@ -73,11 +69,7 @@ describe("RelationshipGraph", () => {
       status: "open" | "in_progress" | "blocked" | "deferred" | "closed"
     } | null,
   ) => {
-    return render(
-      <TaskDialogProvider openTaskById={mockOpenTaskById}>
-        <RelationshipGraph taskId={taskId} parent={parent} />
-      </TaskDialogProvider>,
-    )
+    return render(<RelationshipGraph taskId={taskId} parent={parent} />)
   }
 
   describe("loading state", () => {
@@ -150,7 +142,7 @@ describe("RelationshipGraph", () => {
       expect(screen.getByText("100")).toBeInTheDocument()
     })
 
-    it("opens parent task when clicked", async () => {
+    it("renders parent task as link with correct href", async () => {
       mockTasks = [{ id: "rui-123", title: "Current task", status: "open" }]
       mockFetch.mockResolvedValueOnce({
         json: () =>
@@ -163,11 +155,9 @@ describe("RelationshipGraph", () => {
         expect(screen.getByText("Parent epic")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Parent epic"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-100")
+      // Parent should be a link with correct href
+      const link = screen.getByRole("link", { name: /Parent epic/ })
+      expect(link).toHaveAttribute("href", "/issue/rui-100")
     })
 
     it("does not show parent section when no parent", async () => {
@@ -213,7 +203,7 @@ describe("RelationshipGraph", () => {
       expect(screen.queryByText("Unrelated task")).not.toBeInTheDocument()
     })
 
-    it("opens child task when clicked", async () => {
+    it("renders child task as link with correct href", async () => {
       mockTasks = [
         { id: "rui-123", title: "Current task", status: "open" },
         { id: "rui-123.1", title: "Child task 1", status: "open", parent: "rui-123" },
@@ -230,11 +220,9 @@ describe("RelationshipGraph", () => {
         expect(screen.getByText("Child task 1")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Child task 1"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-123.1")
+      // Child should be a link with correct href
+      const link = screen.getByRole("link", { name: /Child task 1/ })
+      expect(link).toHaveAttribute("href", "/issue/rui-123.1")
     })
   })
 
@@ -253,7 +241,7 @@ describe("RelationshipGraph", () => {
       expect(screen.getByText("Blocking task 1")).toBeInTheDocument()
     })
 
-    it("opens blocker task when clicked", async () => {
+    it("renders blocker task as link with correct href", async () => {
       mockTasks = [{ id: "rui-123", title: "Current task", status: "open" }]
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
@@ -265,11 +253,9 @@ describe("RelationshipGraph", () => {
         expect(screen.getByText("Blocking task 1")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Blocking task 1"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-100")
+      // Blocker should be a link with correct href
+      const link = screen.getByRole("link", { name: /Blocking task 1/ })
+      expect(link).toHaveAttribute("href", "/issue/rui-100")
     })
   })
 
@@ -288,7 +274,7 @@ describe("RelationshipGraph", () => {
       })
     })
 
-    it("opens dependent task when clicked", async () => {
+    it("renders dependent task as link with correct href", async () => {
       mockTasks = [{ id: "rui-123", title: "Current task", status: "open" }]
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
@@ -300,11 +286,9 @@ describe("RelationshipGraph", () => {
         expect(screen.getByText("Depends on main task")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Depends on main task"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-200")
+      // Dependent should be a link with correct href
+      const link = screen.getByRole("link", { name: /Depends on main task/ })
+      expect(link).toHaveAttribute("href", "/issue/rui-200")
     })
   })
 

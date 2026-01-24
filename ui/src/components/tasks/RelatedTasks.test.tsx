@@ -1,7 +1,6 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { RelatedTasks } from "./RelatedTasks"
-import { TaskDialogProvider } from "@/contexts"
 import type { Task } from "@/types"
 
 // Mock fetch
@@ -59,11 +58,8 @@ const sampleTaskWithDependencies = {
 }
 
 describe("RelatedTasks", () => {
-  const mockOpenTaskById = vi.fn()
-
   beforeEach(() => {
     mockFetch.mockReset()
-    mockOpenTaskById.mockReset()
     mockTasks = []
   })
 
@@ -72,11 +68,7 @@ describe("RelatedTasks", () => {
   })
 
   const renderWithContext = (taskId: string) => {
-    return render(
-      <TaskDialogProvider openTaskById={mockOpenTaskById}>
-        <RelatedTasks taskId={taskId} />
-      </TaskDialogProvider>,
-    )
+    return render(<RelatedTasks taskId={taskId} />)
   }
 
   describe("loading state", () => {
@@ -198,7 +190,7 @@ describe("RelatedTasks", () => {
       })
     })
 
-    it("opens task dialog when task is clicked", async () => {
+    it("renders task as link with correct href", async () => {
       mockTasks = [{ id: "rui-123.1", title: "Child task", status: "open", parent: "rui-123" }]
 
       mockFetch.mockResolvedValueOnce({
@@ -211,11 +203,9 @@ describe("RelatedTasks", () => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Child task"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-123.1")
+      // Task should be a link with correct href
+      const link = screen.getByRole("link", { name: /Child task/ })
+      expect(link).toHaveAttribute("href", "/issue/rui-123.1")
     })
   })
 
@@ -347,11 +337,7 @@ describe("RelatedTasks", () => {
     }
 
     const renderWithTask = (taskId: string, task: typeof mockTask, readOnly = false) => {
-      return render(
-        <TaskDialogProvider openTaskById={mockOpenTaskById}>
-          <RelatedTasks taskId={taskId} task={task} readOnly={readOnly} />
-        </TaskDialogProvider>,
-      )
+      return render(<RelatedTasks taskId={taskId} task={task} readOnly={readOnly} />)
     }
 
     it("shows add blocker button when not read-only and task is provided", async () => {
