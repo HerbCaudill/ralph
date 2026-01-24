@@ -21,7 +21,7 @@ type Story = StoryObj<typeof meta>
 
 export const BasicText: Story = {
   args: {
-    children: "This is a simple paragraph of text rendered with markdown support.",
+    children: `This is **normal** text with \`code\` and a [link](https://example.com).`,
   },
 }
 
@@ -36,16 +36,6 @@ export const BaseSize: Story = {
   args: {
     children: `This is **base size** text with \`code\` and a [link](https://example.com).`,
     size: "base",
-  },
-}
-
-export const Table: Story = {
-  args: {
-    children: `| Feature | Status | Notes |
-| ------- | ------ | ----- |
-| Auth | Done | Using OAuth |
-| API | In Progress | RESTful design |
-| UI | Planned | React + Tailwind |`,
   },
 }
 
