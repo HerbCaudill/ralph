@@ -9,31 +9,21 @@ export function ErrorEvent({ event, className }: Props) {
   return (
     <div
       className={cn(
-        "mx-4 my-2 flex items-center gap-3 rounded-lg border px-4 py-3",
-        "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50",
+        "mx-4 my-2 flex items-start gap-3 rounded-lg border px-4 py-3",
+        "bg-status-error/5 border-status-error text-status-error",
         className,
       )}
       data-testid="error-event"
       data-error-type={event.type}
     >
-      <div
-        className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-full",
-          "bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400",
-        )}
-      >
-        <IconAlertTriangle className="size-4" />
+      <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-full")}>
+        <IconAlertTriangle className="size-8" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <span
-          className={cn(
-            "text-xs font-medium tracking-wide uppercase",
-            "text-red-600 dark:text-red-400",
-          )}
-        >
+        <span className={cn("text-xs font-medium tracking-wide uppercase", "text-status")}>
           {isServerError ? "Server Error" : "Error"}
         </span>
-        <span className="text-status-error text-sm">{event.error}</span>
+        <span className="text-foreground text-sm">{event.error}</span>
       </div>
     </div>
   )

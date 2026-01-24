@@ -1,6 +1,6 @@
 import type { ReactNode, MouseEvent } from "react"
 import { useAppStore, selectIssuePrefix } from "@/store"
-import { stripTaskPrefix } from "@/lib/utils"
+import { cn, stripTaskPrefix } from "@/lib/utils"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 
 /**
@@ -125,13 +125,17 @@ export interface TextWithLinksProps {
  */
 export function TextWithLinks({ children, className }: TextWithLinksProps) {
   const issuePrefix = useAppStore(selectIssuePrefix)
+  // const accentColor = useAppStore(selectAccentColor)
+  // const linkColor = accentColor ?? DEFAULT_ACCENT_COLOR
 
   // Handle undefined/empty children
   if (!children) {
     return null
   }
 
-  const linkClassName = className ?? "cursor-pointer hover:underline"
+  // Use accent color for links, with hover underline
+  const linkClassName = cn("cursor-pointer hover:underline text-link", className)
+  // const linkStyle: CSSProperties = { color: linkColor }
 
   const segments = parseTextSegments(children, issuePrefix)
 
@@ -155,6 +159,7 @@ export function TextWithLinks({ children, className }: TextWithLinksProps) {
           key={`taskId-${index}`}
           href={buildTaskIdPath(taskId)}
           className={linkClassName}
+          // style={linkStyle}
           aria-label={`View task ${taskId}`}
         >
           {displayId}
