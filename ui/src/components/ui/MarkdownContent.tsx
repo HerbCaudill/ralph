@@ -121,7 +121,7 @@ export function MarkdownContent({
         "prose-p:my-1 prose-p:leading-snug",
         "prose-strong:font-medium",
         "prose-a:text-link prose-a:no-underline hover:prose-a:underline",
-        "prose-code:text-status-success prose-code:font-normal prose-code:font-mono prose-code:bg-muted/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded",
+        "prose-code:text-status-success prose-code:font-normal prose-code:font-mono",
         size === "sm" ? "prose-code:text-xs" : "prose-code:text-sm",
         "prose-code:before:content-none prose-code:after:content-none",
         "prose-pre:my-2 prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0",
