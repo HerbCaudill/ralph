@@ -170,14 +170,20 @@
     --tw-prose-th-borders: var(--border);
     --tw-prose-td-borders: var(--border);
 
-    /* Inline code uses success color (green) */
+    /* Inline code uses link color (blue) */
     :where(code):not(:where(pre code)) {
-      color: var(--status-success);
+      color: var(--link);
     }
 
-    /* Links use link color (blue) */
+    /* Links use link color (blue) and are underlined */
     :where(a) {
       color: var(--link);
+      text-decoration: underline;
+    }
+
+    /* List items should have the same leading as paragraphs */
+    :where(li) {
+      line-height: var(--leading-snug);
     }
   }
 }
