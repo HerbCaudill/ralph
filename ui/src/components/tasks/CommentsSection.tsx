@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from "react"
-import { IconLoader2 } from "@tabler/icons-react"
+import { useState, useEffect, useCallback, useRef, type KeyboardEvent } from "react"
+import { IconArrowUp, IconLoader2 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { MarkdownEditor } from "@/components/ui/MarkdownEditor"
+import { InputGroup, InputGroupAddon, InputGroupButton } from "@/components/ui/input-group"
 import { CommentItem } from "./CommentItem"
 import type { Comment } from "@/types"
 
@@ -13,6 +12,7 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
   const [error, setError] = useState<string | null>(null)
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const fetchComments = useCallback(async () => {
     try {
@@ -81,6 +81,37 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
     }
   }, [handleAddComment, newComment, isSubmitting])
 
+  /**
+   * Adjusts textarea height to fit content automatically.
+   */
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    textarea.style.height = "auto"
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [])
+
+  /**
+   * Adjusts textarea height whenever the comment text changes.
+   */
+  useEffect(() => {
+    adjustTextareaHeight()
+  }, [newComment, adjustTextareaHeight])
+
+  /**
+   * Handles Enter key to submit the comment (Shift+Enter creates new line).
+   */
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault()
+        handleSubmit()
+      }
+    },
+    [handleSubmit],
+  )
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Label>Comments</Label>
@@ -103,28 +134,41 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
       )}
 
       {!readOnly && (
-        <div className="mt-2 space-y-2">
-          <MarkdownEditor
-            value={newComment}
-            onChange={setNewComment}
-            onSubmit={handleSubmit}
-            placeholder="Add a comment (Enter to submit, Shift+Enter for new line)..."
-            showToolbar={false}
-            size="sm"
-            className={isSubmitting ? "pointer-events-none opacity-50" : ""}
-          />
-          <div className="flex justify-end">
-            <Button
-              onClick={handleAddComment}
-              disabled={!newComment.trim() || isSubmitting}
-              className="min-w-[80px]"
+        <div className="mt-2">
+          <InputGroup data-disabled={isSubmitting}>
+            <textarea
+              ref={textareaRef}
+              data-slot="input-group-control"
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Add a comment (Enter to submit, Shift+Enter for new line)..."
+              disabled={isSubmitting}
               aria-label="Add comment"
-            >
-              {isSubmitting ?
-                <IconLoader2 className="h-4 w-4 animate-spin" />
-              : "Add"}
-            </Button>
-          </div>
+              rows={1}
+              className={cn(
+                "placeholder:text-muted-foreground flex-1 bg-transparent",
+                "w-full resize-none border-0 px-3 py-2 text-sm",
+                "focus:ring-0 focus:outline-none",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                "overflow-hidden",
+              )}
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                type="button"
+                onClick={handleAddComment}
+                disabled={!newComment.trim() || isSubmitting}
+                size="icon-xs"
+                className="rounded-md"
+                aria-label="Add comment"
+              >
+                {isSubmitting ?
+                  <IconLoader2 className="size-4 animate-spin" />
+                : <IconArrowUp className="size-4" />}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
         </div>
       )}
     </div>
