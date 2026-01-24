@@ -4,11 +4,51 @@ import type { ChatEvent, StreamingMessage } from "@/types"
 interface StreamState {
   currentMessage: StreamingMessage | null
   currentBlockIndex: number
-  /**
-   * Timestamp of the last synthesized assistant event.
-   * Used to deduplicate assistant events that come after message_stop.
-   */
-  lastSynthesizedTimestamp: number | null
+}
+
+/**
+ * Find all message_start/message_stop pairs in the events to build a set of
+ * streaming message timestamp ranges. This is used to deduplicate SDK assistant
+ * events that correspond to streamed messages.
+ *
+ * Returns a Set of message_stop timestamps that have corresponding streaming content.
+ */
+function findStreamingMessageStopTimestamps(events: ChatEvent[]): Set<number> {
+  const messageStopTimestamps = new Set<number>()
+  let hasCurrentMessage = false
+
+  for (const event of events) {
+    if (event.type !== "stream_event") continue
+    const streamEvent = (event as { event?: { type?: string } }).event
+    if (!streamEvent) continue
+
+    if (streamEvent.type === "message_start") {
+      hasCurrentMessage = true
+    } else if (streamEvent.type === "message_stop" && hasCurrentMessage) {
+      messageStopTimestamps.add(event.timestamp)
+      hasCurrentMessage = false
+    }
+  }
+
+  return messageStopTimestamps
+}
+
+/**
+ * Check if an assistant event should be deduplicated because it corresponds to
+ * a streamed message. An assistant event is a duplicate if there's a message_stop
+ * event within 1000ms before or after it.
+ */
+function shouldDeduplicateAssistant(
+  assistantTimestamp: number,
+  messageStopTimestamps: Set<number>,
+): boolean {
+  for (const stopTimestamp of messageStopTimestamps) {
+    const diff = Math.abs(assistantTimestamp - stopTimestamp)
+    if (diff < 1000) {
+      return true
+    }
+  }
+  return false
 }
 
 /**
@@ -21,27 +61,23 @@ export function useStreamingState(events: ChatEvent[]): {
   streamingMessage: StreamingMessage | null
 } {
   return useMemo(() => {
+    // First pass: find all message_stop timestamps from streaming messages
+    const messageStopTimestamps = findStreamingMessageStopTimestamps(events)
+
     const completedEvents: ChatEvent[] = []
     const state: StreamState = {
       currentMessage: null,
       currentBlockIndex: -1,
-      lastSynthesizedTimestamp: null,
     }
 
     for (const event of events) {
       if (event.type !== "stream_event") {
         // Non-stream events pass through directly, but skip assistant events that
         // were already synthesized from streaming (to avoid duplicates).
-        // We detect duplicates by checking if we synthesized an assistant event
-        // from message_stop that occurred shortly before this assistant event.
-        if (event.type === "assistant" && state.lastSynthesizedTimestamp !== null) {
-          // The SDK sends assistant event right after message_stop (typically within 100ms).
-          // If we synthesized an assistant event recently, skip this duplicate.
-          const timeSinceSynthesized = event.timestamp - state.lastSynthesizedTimestamp
-          if (timeSinceSynthesized >= 0 && timeSinceSynthesized < 1000) {
-            // Skip - we already created this from streaming
-            // Clear the timestamp so we don't skip subsequent legitimate assistant events
-            state.lastSynthesizedTimestamp = null
+        // We check if there's a message_stop event nearby (within 1000ms) to detect duplicates.
+        if (event.type === "assistant") {
+          if (shouldDeduplicateAssistant(event.timestamp, messageStopTimestamps)) {
+            // Skip - this is a duplicate of a streamed message
             continue
           }
         }
@@ -127,9 +163,6 @@ export function useStreamingState(events: ChatEvent[]): {
               timestamp: state.currentMessage.timestamp,
               message: { content },
             })
-            // Record the timestamp so we can skip the duplicate assistant event
-            // that the server sends after message_stop
-            state.lastSynthesizedTimestamp = event.timestamp
           }
           state.currentMessage = null
           state.currentBlockIndex = -1
