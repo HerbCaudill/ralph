@@ -1,27 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, act } from "@testing-library/react"
+import { describe, it, expect, vi } from "vitest"
+import { render, fireEvent } from "@testing-library/react"
 import { TopologySpinner } from "./TopologySpinner"
 
 describe("TopologySpinner", () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it("renders an icon", () => {
     render(<TopologySpinner />)
-    // The SVG is hidden from assistive tech but should be present
     const svg = document.querySelector("svg")
     expect(svg).toBeInTheDocument()
   })
 
-  it("has the animate-spin class", () => {
+  it("has the animate-spin-pulse class", () => {
     render(<TopologySpinner />)
     const svg = document.querySelector("svg")
-    expect(svg).toHaveClass("animate-spin")
+    expect(svg).toHaveClass("animate-spin-pulse")
   })
 
   it("applies custom className", () => {
@@ -30,62 +21,58 @@ describe("TopologySpinner", () => {
     expect(svg).toHaveClass("custom-class")
   })
 
-  it("cycles through icons at the specified interval", () => {
-    const { container } = render(<TopologySpinner interval={100} />)
-
-    // Get initial icon
-    const initialIcon = container.querySelector("svg")?.innerHTML
-
-    // Advance timer by one interval
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
-
-    // Icon should have changed
-    const nextIcon = container.querySelector("svg")?.innerHTML
-    expect(nextIcon).not.toBe(initialIcon)
+  it("applies duration as inline style", () => {
+    render(<TopologySpinner duration={500} />)
+    const svg = document.querySelector("svg")
+    expect(svg).toHaveStyle({ animationDuration: "500ms" })
   })
 
-  it("cycles back to first icon after all icons", () => {
-    const { container } = render(<TopologySpinner interval={100} />)
-
-    // Get initial icon
-    const initialIcon = container.querySelector("svg")?.innerHTML
-
-    // Advance through all 6 icons
-    act(() => {
-      vi.advanceTimersByTime(600)
-    })
-
-    // Should be back to initial icon
-    const cycledIcon = container.querySelector("svg")?.innerHTML
-    expect(cycledIcon).toBe(initialIcon)
+  it("uses default duration of 1000ms", () => {
+    render(<TopologySpinner />)
+    const svg = document.querySelector("svg")
+    expect(svg).toHaveStyle({ animationDuration: "1000ms" })
   })
 
-  it("uses default interval of 300ms", () => {
+  it("changes icon on animation iteration", () => {
+    vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0) // initial icon index 0
+      .mockReturnValueOnce(0.5) // next icon will be different
+
     const { container } = render(<TopologySpinner />)
     const initialIcon = container.querySelector("svg")?.innerHTML
 
-    // Advance by less than default interval
-    act(() => {
-      vi.advanceTimersByTime(200)
-    })
-    expect(container.querySelector("svg")?.innerHTML).toBe(initialIcon)
+    // Simulate animation iteration
+    const svg = container.querySelector("svg")!
+    fireEvent.animationIteration(svg)
 
-    // Advance past default interval
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
-    expect(container.querySelector("svg")?.innerHTML).not.toBe(initialIcon)
+    const nextIcon = container.querySelector("svg")?.innerHTML
+    expect(nextIcon).not.toBe(initialIcon)
+
+    vi.restoreAllMocks()
   })
 
-  it("cleans up interval on unmount", () => {
-    const clearIntervalSpy = vi.spyOn(global, "clearInterval")
-    const { unmount } = render(<TopologySpinner />)
+  it("always picks a different icon on iteration", () => {
+    // Mock random to return same index repeatedly, forcing the retry logic
+    vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0.1) // initial: index 0
+      .mockReturnValueOnce(0.1) // first try: same index, should retry
+      .mockReturnValueOnce(0.5) // second try: different index
 
-    unmount()
+    const { container } = render(<TopologySpinner />)
+    const initialIcon = container.querySelector("svg")?.innerHTML
 
-    expect(clearIntervalSpy).toHaveBeenCalled()
-    clearIntervalSpy.mockRestore()
+    const svg = container.querySelector("svg")!
+    fireEvent.animationIteration(svg)
+
+    const nextIcon = container.querySelector("svg")?.innerHTML
+    expect(nextIcon).not.toBe(initialIcon)
+
+    vi.restoreAllMocks()
+  })
+
+  it("is hidden from assistive technology", () => {
+    render(<TopologySpinner />)
+    const svg = document.querySelector("svg")
+    expect(svg).toHaveAttribute("aria-hidden", "true")
   })
 })
