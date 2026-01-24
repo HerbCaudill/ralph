@@ -37,6 +37,7 @@ export interface CSSVariables {
   "--destructive": string
   "--border": string
   "--input": string
+  "--input-placeholder": string
   "--ring": string
 
   // Sidebar colors
@@ -221,6 +222,10 @@ const CSS_VARIABLE_FALLBACKS: Record<keyof CSSVariables, FallbackChain> = {
       }
       return undefined
     },
+  },
+  "--input-placeholder": {
+    keys: ["input.placeholderForeground"],
+    derive: resolved => resolved["--muted-foreground"],
   },
   "--ring": {
     keys: ["focusBorder"],
@@ -447,6 +452,7 @@ function getDefaultCSSVariables(
       "--destructive": "#f14c4c",
       "--border": "#454545",
       "--input": "#3c3c3c",
+      "--input-placeholder": "#808080",
       "--ring": "#007acc",
       "--sidebar": "#252526",
       "--sidebar-foreground": "#d4d4d4",
@@ -482,6 +488,7 @@ function getDefaultCSSVariables(
     "--destructive": "#d32f2f",
     "--border": "#e5e5e5",
     "--input": "#ffffff",
+    "--input-placeholder": "#6e6e6e",
     "--ring": "#0066b8",
     "--sidebar": "#f3f3f3",
     "--sidebar-foreground": "#333333",

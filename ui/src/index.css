@@ -153,10 +153,10 @@
     @apply bg-background text-foreground font-sans;
   }
 
-  /* Ensure input placeholders use muted foreground color */
+  /* Ensure input placeholders use proper color from theme */
   input::placeholder,
   textarea::placeholder {
-    color: var(--muted-foreground);
+    color: var(--input-placeholder, var(--muted-foreground));
   }
 
   /* Override prose typography colors to use theme variables */
@@ -323,13 +323,13 @@
 /* Combined spin and pulse animation for TopologySpinner */
 @keyframes spin-pulse {
   0% {
-    transform: rotate(0deg) scale(0.5);
+    transform: rotate(0deg) scale(0.6);
   }
   50% {
-    transform: rotate(180deg) scale(1.2);
+    transform: rotate(180deg) scale(1);
   }
   100% {
-    transform: rotate(360deg) scale(0.5);
+    transform: rotate(360deg) scale(0.6);
   }
 }
 
