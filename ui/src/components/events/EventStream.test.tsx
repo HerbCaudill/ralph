@@ -563,6 +563,131 @@ describe("EventStream", () => {
       expect(iterationBar).toHaveTextContent("Task from event")
       expect(iterationBar).not.toHaveTextContent("Task from store")
     })
+
+    it("shows task from instance currentTaskId/currentTaskTitle on page reload", () => {
+      // Simulate page reload scenario where server sends instance info
+      // with currentTaskId/currentTaskTitle but events might not include ralph_task_started
+      useAppStore.getState().hydrateInstances([
+        {
+          id: DEFAULT_INSTANCE_ID,
+          name: "Default",
+          agentName: "Ralph",
+          status: "running",
+          worktreePath: null,
+          branch: null,
+          currentTaskId: "rui-restored",
+          currentTaskTitle: "Restored task from server",
+          createdAt: Date.now(),
+          mergeConflict: null,
+        },
+      ])
+
+      // Add some events but NO ralph_task_started event
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000500,
+        message: "Continue working on the task",
+      })
+
+      renderEventStream()
+
+      // Should show the task from the instance as fallback
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-restored")
+      expect(iterationBar).toHaveTextContent("Restored task from server")
+    })
+
+    it("prefers ralph_task_started event over instance currentTaskId", () => {
+      // Simulate page reload scenario where both event and instance info exist
+      useAppStore.getState().hydrateInstances([
+        {
+          id: DEFAULT_INSTANCE_ID,
+          name: "Default",
+          agentName: "Ralph",
+          status: "running",
+          worktreePath: null,
+          branch: null,
+          currentTaskId: "rui-instance",
+          currentTaskTitle: "Task from instance",
+          createdAt: Date.now(),
+          mergeConflict: null,
+        },
+      ])
+
+      // Add a ralph_task_started event for a DIFFERENT task
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000500,
+        taskId: "rui-event",
+        taskTitle: "Task from event",
+      })
+
+      renderEventStream()
+
+      // Should show the task from the event, not the instance
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-event")
+      expect(iterationBar).toHaveTextContent("Task from event")
+      expect(iterationBar).not.toHaveTextContent("Task from instance")
+    })
+
+    it("prefers in-progress task from store over instance currentTaskId", () => {
+      // Simulate page reload where both store task and instance info exist
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-store",
+          title: "Task from store",
+          status: "in_progress",
+        },
+      ])
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: DEFAULT_INSTANCE_ID,
+          name: "Default",
+          agentName: "Ralph",
+          status: "running",
+          worktreePath: null,
+          branch: null,
+          currentTaskId: "rui-instance",
+          currentTaskTitle: "Task from instance",
+          createdAt: Date.now(),
+          mergeConflict: null,
+        },
+      ])
+
+      renderEventStream()
+
+      // Should show the task from the store (higher priority than instance)
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("rui-store")
+      expect(iterationBar).toHaveTextContent("Task from store")
+      expect(iterationBar).not.toHaveTextContent("Task from instance")
+    })
+
+    it("shows task from instance with only currentTaskTitle (no currentTaskId)", () => {
+      // Simulate scenario where task doesn't have an ID but has a title
+      useAppStore.getState().hydrateInstances([
+        {
+          id: DEFAULT_INSTANCE_ID,
+          name: "Default",
+          agentName: "Ralph",
+          status: "running",
+          worktreePath: null,
+          branch: null,
+          currentTaskId: null,
+          currentTaskTitle: "Ad-hoc task without ID",
+          createdAt: Date.now(),
+          mergeConflict: null,
+        },
+      ])
+
+      renderEventStream()
+
+      // Should show the task title even without ID
+      const iterationBar = screen.getByTestId("iteration-bar")
+      expect(iterationBar).toHaveTextContent("Ad-hoc task without ID")
+    })
   })
 
   describe("empty state", () => {

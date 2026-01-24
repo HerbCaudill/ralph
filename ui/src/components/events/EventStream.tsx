@@ -8,6 +8,8 @@ import {
   selectTasks,
   selectInstanceEvents,
   selectInstanceStatus,
+  selectActiveInstance,
+  selectInstance,
   getEventsForIteration,
   countIterations,
 } from "@/store"
@@ -39,6 +41,10 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
   const goToNextIteration = useAppStore(state => state.goToNextIteration)
   const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
   const tasks = useAppStore(selectTasks)
+  // Get instance for currentTaskId/currentTaskTitle fallback
+  const instance = useAppStore(state =>
+    instanceId ? selectInstance(state, instanceId) : selectActiveInstance(state),
+  )
   const isRunning = ralphStatus === "running" || ralphStatus === "starting"
   const isViewingLatest = viewingIterationIndex === null
 
@@ -74,8 +80,18 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       return { id: inProgressTask.id, title: inProgressTask.title }
     }
 
+    // Final fallback: use the instance's currentTaskId/currentTaskTitle if available
+    // This handles page reload scenarios where the server restores the task info
+    // but the ralph_task_started event may not be in the restored events
+    if (instance?.currentTaskId || instance?.currentTaskTitle) {
+      return {
+        id: instance.currentTaskId ?? null,
+        title: instance.currentTaskTitle ?? instance.currentTaskId ?? "Unknown task",
+      }
+    }
+
     return null
-  }, [iterationEvents, tasks])
+  }, [iterationEvents, tasks, instance])
 
   // Track ref for scrolling to bottom on iteration change
   const containerRef = useRef<HTMLDivElement>(null)

@@ -1886,6 +1886,78 @@ describe("useAppStore", () => {
         const task = selectIterationTask(useAppStore.getState())
         expect(task).toEqual({ id: "rui-111", title: "First task" })
       })
+
+      it("falls back to instance currentTaskId/currentTaskTitle when no events", () => {
+        // Simulate page reload scenario where server sends instance info
+        // with currentTaskId/currentTaskTitle but events don't include ralph_task_started
+        useAppStore.getState().hydrateInstances([
+          {
+            id: DEFAULT_INSTANCE_ID,
+            name: "Default",
+            agentName: "Ralph",
+            status: "running",
+            worktreePath: null,
+            branch: null,
+            currentTaskId: "rui-restored",
+            currentTaskTitle: "Restored task from server",
+            createdAt: Date.now(),
+            mergeConflict: null,
+          },
+        ])
+
+        const task = selectIterationTask(useAppStore.getState())
+        expect(task).toEqual({ id: "rui-restored", title: "Restored task from server" })
+      })
+
+      it("falls back to instance with only currentTaskTitle (no currentTaskId)", () => {
+        // Simulate scenario where task doesn't have an ID but has a title
+        useAppStore.getState().hydrateInstances([
+          {
+            id: DEFAULT_INSTANCE_ID,
+            name: "Default",
+            agentName: "Ralph",
+            status: "running",
+            worktreePath: null,
+            branch: null,
+            currentTaskId: null,
+            currentTaskTitle: "Ad-hoc task without ID",
+            createdAt: Date.now(),
+            mergeConflict: null,
+          },
+        ])
+
+        const task = selectIterationTask(useAppStore.getState())
+        expect(task).toEqual({ id: null, title: "Ad-hoc task without ID" })
+      })
+
+      it("prefers event task over instance fallback", () => {
+        // Set up instance with current task info
+        useAppStore.getState().hydrateInstances([
+          {
+            id: DEFAULT_INSTANCE_ID,
+            name: "Default",
+            agentName: "Ralph",
+            status: "running",
+            worktreePath: null,
+            branch: null,
+            currentTaskId: "rui-instance",
+            currentTaskTitle: "Task from instance",
+            createdAt: Date.now(),
+            mergeConflict: null,
+          },
+        ])
+
+        // Add a ralph_task_started event for a DIFFERENT task
+        useAppStore.getState().addEvent({
+          type: "ralph_task_started",
+          timestamp: 1001,
+          taskId: "rui-event",
+          taskTitle: "Task from event",
+        })
+
+        const task = selectIterationTask(useAppStore.getState())
+        expect(task).toEqual({ id: "rui-event", title: "Task from event" })
+      })
     })
 
     describe("iteration navigation actions", () => {

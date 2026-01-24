@@ -1646,7 +1646,21 @@ export const selectVisibleTaskIds = (state: AppState) => state.visibleTaskIds
 export const selectClosedTimeFilter = (state: AppState) => state.closedTimeFilter
 export const selectIterationTask = (state: AppState) => {
   const iterationEvents = getEventsForIteration(state.events, state.viewingIterationIndex)
-  return getTaskFromIterationEvents(iterationEvents)
+  const taskFromEvents = getTaskFromIterationEvents(iterationEvents)
+  if (taskFromEvents) {
+    return taskFromEvents
+  }
+  // Fallback: use the instance's currentTaskId/currentTaskTitle if available
+  // This handles page reload scenarios where the server restores the task info
+  // but the ralph_task_started event may not be in the restored events
+  const activeInstance = state.instances.get(state.activeInstanceId)
+  if (activeInstance?.currentTaskId || activeInstance?.currentTaskTitle) {
+    return {
+      id: activeInstance.currentTaskId ?? null,
+      title: activeInstance.currentTaskTitle ?? activeInstance.currentTaskId ?? "Unknown task",
+    }
+  }
+  return null
 }
 export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
 export const selectHotkeysDialogOpen = (state: AppState) => state.hotkeysDialogOpen
