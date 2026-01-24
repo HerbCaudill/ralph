@@ -24,13 +24,21 @@ const TOPOLOGY_ICONS = [
   IconTopologyStarRing3,
 ]
 
-/**  Animated spinner that cycles through topology icons while spinning and pulsating. */
+/**  Animated spinner that shows random topology icons while spinning and pulsating. */
 export function TopologySpinner({ className, duration = 1000 }: TopologySpinnerProps) {
-  const [iconIndex, setIconIndex] = useState(0)
+  const [iconIndex, setIconIndex] = useState(() =>
+    Math.floor(Math.random() * TOPOLOGY_ICONS.length),
+  )
 
-  /** Advance to the next icon when the spin animation completes a cycle. */
+  /** Pick a random different icon when the spin animation completes a cycle. */
   const handleAnimationIteration = useCallback(() => {
-    setIconIndex(prev => (prev + 1) % TOPOLOGY_ICONS.length)
+    setIconIndex(prev => {
+      let next: number
+      do {
+        next = Math.floor(Math.random() * TOPOLOGY_ICONS.length)
+      } while (next === prev && TOPOLOGY_ICONS.length > 1)
+      return next
+    })
   }, [])
 
   const Icon = TOPOLOGY_ICONS[iconIndex]
