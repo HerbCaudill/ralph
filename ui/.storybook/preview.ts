@@ -3,6 +3,7 @@ import React from "react"
 import { TestProviders } from "../src/components/TestProviders"
 import { applyThemeToElement } from "../src/lib/theme"
 import { storybookThemes, getTheme, defaultThemeId } from "./themeLoader"
+import { StorybookThemeProvider } from "./StorybookThemeProvider"
 import "../src/index.css"
 
 const preview: Preview = {
@@ -66,20 +67,43 @@ const preview: Preview = {
         }
       }
 
+      // If no theme data, render without the provider
+      if (!themeData) {
+        return React.createElement(
+          TestProviders,
+          null,
+          React.createElement(
+            "div",
+            {
+              className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
+              style: {
+                "--repo-accent": "#0d9488",
+                "--repo-accent-foreground": "#ffffff",
+              } as React.CSSProperties,
+            },
+            React.createElement(Story),
+          ),
+        )
+      }
+
       return React.createElement(
         TestProviders,
         null,
         React.createElement(
-          "div",
-          {
-            ref: applyTheme,
-            className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
-            style: {
-              "--repo-accent": "#0d9488",
-              "--repo-accent-foreground": "#ffffff",
-            } as React.CSSProperties,
-          },
-          React.createElement(Story),
+          StorybookThemeProvider,
+          { theme: themeData },
+          React.createElement(
+            "div",
+            {
+              ref: applyTheme,
+              className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
+              style: {
+                "--repo-accent": "#0d9488",
+                "--repo-accent-foreground": "#ffffff",
+              } as React.CSSProperties,
+            },
+            React.createElement(Story),
+          ),
         ),
       )
     },
