@@ -21,7 +21,7 @@ export default mergeConfig(
     },
     test: {
       projects: [
-        // Unit tests with jsdom
+        // Frontend unit tests with jsdom
         {
           extends: true,
           test: {
@@ -29,9 +29,21 @@ export default mergeConfig(
             environment: "jsdom",
             globals: true,
             setupFiles: ["./src/vitest-setup.ts"],
+            exclude: ["node_modules", "e2e", "server/**/*.test.ts"],
+            include: ["src/**/*.test.{ts,tsx}"],
+            hookTimeout: 60000,
+            testTimeout: 60000,
+          },
+        },
+        // Server unit tests with node environment (no jsdom setup)
+        {
+          extends: true,
+          test: {
+            name: "server",
+            environment: "node",
+            globals: true,
             exclude: ["node_modules", "e2e"],
-            include: ["src/**/*.test.{ts,tsx}", "server/**/*.test.ts"],
-            environmentMatchGlobs: [["server/**/*.test.ts", "node"]],
+            include: ["server/**/*.test.ts"],
             hookTimeout: 60000,
             testTimeout: 60000,
           },

@@ -48,7 +48,7 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.57.0",
+    "@playwright/test": "^1.58.0",
     "@storybook/addon-docs": "^10.2.0",
     "@storybook/addon-vitest": "^10.2.0",
     "@storybook/react": "^10.2.0",
@@ -79,7 +79,7 @@
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.17"
   },
   "description": "Web UI for Ralph - React frontend and server for the autonomous AI iteration engine",
   "dependencies": {
