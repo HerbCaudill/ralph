@@ -10,7 +10,7 @@ const meta: Meta<typeof ChatInput> = {
   },
   decorators: [
     Story => (
-      <div className="max-w-lg">
+      <div className="max-w-lg rounded-lg border p-2">
         <Story />
       </div>
     ),
@@ -38,18 +38,43 @@ export const Disabled: Story = {
   },
 }
 
-export const InContainer: Story = {
-  render: args => (
-    <div className="border-border bg-card rounded-lg border p-4">
-      <div className="text-muted-foreground mb-2 text-sm">Send a message to the running agent</div>
-      <ChatInput {...args} />
-    </div>
-  ),
+export const MultiLine: Story = {
+  render: args => {
+    const Component = () => {
+      // Pre-fill with multi-line text after mount
+      const handleRef = () => {
+        setTimeout(() => {
+          const textarea = document.querySelector("textarea")
+          if (textarea) {
+            const multiLineText = `This is a message that spans multiple lines.
+
+It demonstrates that the submit button should be positioned in the lower right corner, not vertically centered.
+
+The button stays at the bottom as the textarea grows.`
+            // Trigger React's onChange by setting value and dispatching input event
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+              window.HTMLTextAreaElement.prototype,
+              "value",
+            )?.set
+            nativeInputValueSetter?.call(textarea, multiLineText)
+            textarea.dispatchEvent(new Event("input", { bubbles: true }))
+          }
+        }, 100)
+      }
+
+      return (
+        <div ref={handleRef}>
+          <ChatInput {...args} />
+        </div>
+      )
+    }
+    return <Component />
+  },
 }
 
 export const AtBottomOfChat: Story = {
   render: args => (
-    <div className="border-border flex h-80 flex-col overflow-hidden rounded-lg border">
+    <div className="flex h-80 flex-col overflow-hidden">
       <div className="bg-muted/30 flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
           <div className="bg-primary/10 text-primary max-w-[80%] rounded-lg p-3">
@@ -68,14 +93,4 @@ export const AtBottomOfChat: Story = {
       </div>
     </div>
   ),
-}
-
-export const FullWidth: Story = {
-  decorators: [
-    Story => (
-      <div className="w-full">
-        <Story />
-      </div>
-    ),
-  ],
 }

@@ -122,7 +122,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           )}
           aria-label={ariaLabel}
         />
-        <InputGroupAddon align="inline-end">
+        <InputGroupAddon align="inline-end" className="self-end">
           <InputGroupButton
             type="submit"
             disabled={disabled || !message.trim()}
