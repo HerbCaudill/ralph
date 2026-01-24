@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import {
   IconTopologyStar,
@@ -18,26 +18,26 @@ const TOPOLOGY_ICONS = [
   IconTopologyStarRing3,
 ]
 
-export interface TopologySpinnerProps {
-  className?: string
-  /** Interval between icon changes in milliseconds @default 300 */
-  interval?: number
-}
-
 /**  Animated spinner that cycles through 6 topology icons while spinning. */
-export function TopologySpinner({ className, interval = 300 }: TopologySpinnerProps) {
+export function TopologySpinner({ className }: TopologySpinnerProps) {
   const [iconIndex, setIconIndex] = useState(0)
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setIconIndex(prev => (prev + 1) % TOPOLOGY_ICONS.length)
-    }, interval)
-    return () => clearInterval(timer)
-  }, [interval])
+  /** Advance to the next icon when the spin animation completes a cycle. */
+  const handleAnimationIteration = useCallback(() => {
+    setIconIndex(prev => (prev + 1) % TOPOLOGY_ICONS.length)
+  }, [])
 
   const Icon = TOPOLOGY_ICONS[iconIndex]
 
   return (
-    <Icon className={cn("text-repo-accent size-4 animate-spin", className)} aria-hidden="true" />
+    <Icon
+      className={cn("text-repo-accent size-4 animate-spin", className)}
+      onAnimationIteration={handleAnimationIteration}
+      aria-hidden="true"
+    />
   )
+}
+
+export interface TopologySpinnerProps {
+  className?: string
 }

@@ -8,10 +8,6 @@ const meta: Meta<typeof TopologySpinner> = {
     layout: "centered",
   },
   argTypes: {
-    interval: {
-      control: { type: "number", min: 50, max: 1000, step: 50 },
-      description: "Interval between icon changes in milliseconds",
-    },
     className: {
       control: "text",
       description: "Additional CSS classes",
@@ -26,18 +22,6 @@ export const Default: Story = {
   args: {},
 }
 
-export const FastSpin: Story = {
-  args: {
-    interval: 100,
-  },
-}
-
-export const SlowSpin: Story = {
-  args: {
-    interval: 500,
-  },
-}
-
 export const CustomSize: Story = {
   args: {
     className: "size-10",
@@ -46,7 +30,7 @@ export const CustomSize: Story = {
 
 export const LargeWithColor: Story = {
   args: {
-    className: "size-12 text-primary",
+    className: "size-12 text-blue-500",
   },
 }
 
