@@ -1,24 +1,20 @@
 import { useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import {
-  IconTopologyStar,
   IconTopologyStar2,
-  IconTopologyStar3,
   IconTopologyStarRing,
-  IconTopologyStarRing2,
+  IconTopologyStar3,
   IconTopologyStarRing3,
 } from "@tabler/icons-react"
 
 const TOPOLOGY_ICONS = [
-  IconTopologyStar,
   IconTopologyStar2,
   IconTopologyStar3,
   IconTopologyStarRing,
-  IconTopologyStarRing2,
   IconTopologyStarRing3,
 ]
 
-/**  Animated spinner that cycles through 6 topology icons while spinning. */
+/**  Animated spinner that cycles through topology icons while spinning and pulsating. */
 export function TopologySpinner({ className, duration = 1000 }: TopologySpinnerProps) {
   const [iconIndex, setIconIndex] = useState(0)
 
@@ -30,12 +26,17 @@ export function TopologySpinner({ className, duration = 1000 }: TopologySpinnerP
   const Icon = TOPOLOGY_ICONS[iconIndex]
 
   return (
-    <Icon
-      className={cn("text-repo-accent size-4 animate-spin", className)}
-      style={{ animationDuration: `${duration}ms` }}
-      onAnimationIteration={handleAnimationIteration}
-      aria-hidden="true"
-    />
+    <span
+      className="animate-pulse-scale inline-flex"
+      style={{ animationDuration: `${duration * 2}ms` }}
+    >
+      <Icon
+        className={cn("text-repo-accent size-4 animate-spin", className)}
+        style={{ animationDuration: `${duration}ms` }}
+        onAnimationIteration={handleAnimationIteration}
+        aria-hidden="true"
+      />
+    </span>
   )
 }
 

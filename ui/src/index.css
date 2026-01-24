@@ -293,3 +293,18 @@
   /* Match the sm variant padding (0.375rem) plus prose-p:my-1 margin */
   padding: calc(0.375rem + 0.25em) 0.375rem !important;
 }
+
+/* Pulse-scale animation for TopologySpinner */
+@keyframes pulse-scale {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.animate-pulse-scale {
+  animation: pulse-scale 2s ease-in-out infinite;
+}
