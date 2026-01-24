@@ -10,7 +10,7 @@
     "test:pw": "node ../scripts/playwright.js",
     "test:all": "OUT=$(tsc -b --noEmit 2>&1) || { echo \"$OUT\"; exit 1; }; NO_COLOR=1 vitest run --reporter=dot --bail 1 --silent=passed-only && pnpm test:pw --max-failures=1",
     "test": "vitest run",
-    "test:storybook": "test-storybook",
+    "test:storybook": "node ../scripts/storybook-test.js",
     "storybook": "storybook dev -p 6006",
     "preview": "vite preview",
     "prepublishOnly": "pnpm build",
