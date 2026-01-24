@@ -8,6 +8,20 @@ import * as previewAnnotations from "./preview"
 setProjectAnnotations([previewAnnotations])
 
 /**
+ * Suppress noisy React warnings that aren't actionable in Storybook tests.
+ */
+const originalError = console.error.bind(console)
+console.error = (...args: unknown[]) => {
+  const message = typeof args[0] === "string" ? args[0] : ""
+  // Suppress "A component suspended inside an `act` scope" warning
+  // This is expected when testing components with async data fetching
+  if (message.includes("suspended inside an `act` scope")) {
+    return
+  }
+  originalError(...args)
+}
+
+/**
  * Mock fetch for API endpoints that don't exist during Storybook tests.
  * Returns empty/default responses to prevent console errors.
  */
