@@ -27,14 +27,23 @@ const results = {
 }
 
 /**
+ * Strip ANSI escape codes from a string.
+ */
+function stripAnsi(str) {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*m/g, "")
+}
+
+/**
  * Parse vitest output to extract test counts.
- * Looks for patterns like "Tests  169 passed (169)" or "Tests  2 failed | 167 passed (169)"
+ * Vitest outputs: "Tests  51 passed (51)" or "Tests  2 failed | 167 passed (169)"
  */
 function parseVitestOutput(output) {
   const counts = { passed: 0, failed: 0, skipped: 0 }
+  const clean = stripAnsi(output)
 
   // Match "Tests  X passed" or "Tests  X failed | Y passed"
-  const testsMatch = output.match(/Tests\s+(?:(\d+)\s+failed\s+\|\s+)?(\d+)\s+passed(?:\s+\|\s+(\d+)\s+skipped)?/i)
+  const testsMatch = clean.match(/Tests\s+(?:(\d+)\s+failed\s*\|\s*)?(\d+)\s+passed(?:\s*\|\s*(\d+)\s+skipped)?/i)
   if (testsMatch) {
     counts.failed = parseInt(testsMatch[1] || "0", 10)
     counts.passed = parseInt(testsMatch[2] || "0", 10)
@@ -46,15 +55,15 @@ function parseVitestOutput(output) {
 
 /**
  * Parse playwright output to extract test counts.
- * Looks for patterns like "X passed" or "X failed"
+ * Playwright outputs: "  6 passed (30.2s)" or "  1 failed"
  */
 function parsePlaywrightOutput(output) {
   const counts = { passed: 0, failed: 0, skipped: 0 }
+  const clean = stripAnsi(output)
 
-  // Playwright outputs like "  6 passed (30.2s)" or "  1 failed"
-  const passedMatch = output.match(/(\d+)\s+passed/i)
-  const failedMatch = output.match(/(\d+)\s+failed/i)
-  const skippedMatch = output.match(/(\d+)\s+skipped/i)
+  const passedMatch = clean.match(/(\d+)\s+passed/i)
+  const failedMatch = clean.match(/(\d+)\s+failed/i)
+  const skippedMatch = clean.match(/(\d+)\s+skipped/i)
 
   if (passedMatch) counts.passed = parseInt(passedMatch[1], 10)
   if (failedMatch) counts.failed = parseInt(failedMatch[1], 10)
