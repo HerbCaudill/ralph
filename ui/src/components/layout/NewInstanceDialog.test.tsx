@@ -250,7 +250,9 @@ describe("NewInstanceDialog", () => {
       await user.click(createButton)
 
       // Button should show "Creating..." while in progress
-      expect(screen.getByText("Creating...")).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText("Creating...")).toBeInTheDocument()
+      })
       expect(createButton).toBeDisabled()
     })
   })
