@@ -165,6 +165,66 @@ describe("useStreamingState", () => {
       expect(assistantEvents).toHaveLength(2)
     })
 
+    it("deduplicates when streaming is still in progress", () => {
+      // This scenario: SDK sends assistant event while streaming is ongoing (no message_stop yet)
+      // The assistant event should be deduplicated to avoid showing both the streaming content
+      // and the SDK assistant event simultaneously
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        // SDK assistant arrives BEFORE message_stop - streaming is still in progress
+        {
+          type: "assistant",
+          timestamp: 250,
+          message: { content: [{ type: "text", text: "Hello World" }] },
+        },
+        // More streaming deltas
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: " World" },
+          },
+        },
+        // Note: no message_stop yet - streaming is still in progress
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      // Should have 0 completed assistant events (the SDK one should be deduplicated)
+      // AND we should have a streamingMessage (the in-progress one)
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(0)
+      expect(result.current.streamingMessage).not.toBeNull()
+      expect(result.current.streamingMessage?.contentBlocks[0]).toEqual({
+        type: "text",
+        text: "Hello World",
+      })
+    })
+
     it("passes through assistant events when no streaming occurred", () => {
       // No message_start/message_stop - assistant event should pass through
       const events: ChatEvent[] = [
