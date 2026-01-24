@@ -1,48 +1,86 @@
-import { defineConfig } from "vitest/config"
+import { defineConfig, mergeConfig } from "vitest/config"
+import { playwright } from "@vitest/browser-playwright"
+import { storybookTest } from "@storybook/addon-vitest/vitest-plugin"
 import react from "@vitejs/plugin-react"
 import path from "path"
+import viteConfig from "./vite.config"
 
 /** Use minimal output when Ralph is running to save tokens */
 const isRalphRunning = !!process.env.RALPH_RUNNING
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    globals: true,
-    exclude: ["node_modules", "e2e"],
-    // Increase timeouts for server tests that spawn git processes (e.g., WorktreeManager tests)
-    // These can be slow under parallel test load
-    hookTimeout: 60000,
-    testTimeout: 60000,
-    slowTestThreshold: Infinity,
-    ...(isRalphRunning && {
-      reporter: ["dot"],
-      silent: "passed-only",
-    }),
-    // Use node environment for server tests (projects replaces deprecated environmentMatchGlobs)
-    projects: [
-      {
-        extends: true,
-        test: {
-          name: "ui",
-          environment: "jsdom",
-          include: ["src/**/*.test.{ts,tsx}"],
-          setupFiles: ["./src/vitest-setup.ts"],
-        },
+/**
+ * Vitest configuration with three projects:
+ * - Unit tests: Run with jsdom environment
+ * - Server tests: Run with node environment
+ * - Storybook tests: Run in real browser via Playwright
+ */
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    plugins: [react()],
+    resolve: {
+      alias: {
+        "@": path.resolve(import.meta.dirname, "./src"),
       },
-      {
-        extends: true,
-        test: {
-          name: "server",
-          environment: "node",
-          include: ["server/**/*.test.ts"],
-        },
-      },
-    ],
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
     },
-  },
-})
+    test: {
+      globals: true,
+      exclude: ["node_modules", "e2e"],
+      hookTimeout: 60000,
+      testTimeout: 60000,
+      slowTestThreshold: Infinity,
+      ...(isRalphRunning && {
+        reporter: ["dot"],
+        silent: "passed-only",
+      }),
+      projects: [
+        // Frontend unit tests with jsdom
+        {
+          extends: true,
+          test: {
+            name: "ui",
+            environment: "jsdom",
+            globals: true,
+            setupFiles: ["./src/vitest-setup.ts"],
+            exclude: ["node_modules", "e2e", "server/**/*.test.ts"],
+            include: ["src/**/*.test.{ts,tsx}"],
+            hookTimeout: 60000,
+            testTimeout: 60000,
+          },
+        },
+        // Server unit tests with node environment (no jsdom setup)
+        {
+          extends: true,
+          test: {
+            name: "server",
+            environment: "node",
+            globals: true,
+            exclude: ["node_modules", "e2e"],
+            include: ["server/**/*.test.ts"],
+            hookTimeout: 60000,
+            testTimeout: 60000,
+          },
+        },
+        // Storybook browser tests
+        {
+          extends: true,
+          plugins: [
+            storybookTest({
+              configDir: path.join(import.meta.dirname, ".storybook"),
+            }),
+          ],
+          test: {
+            name: "storybook",
+            browser: {
+              enabled: true,
+              provider: playwright({}),
+              headless: true,
+              instances: [{ browser: "chromium" }],
+            },
+            setupFiles: ["./.storybook/vitest.setup.ts"],
+          },
+        },
+      ],
+    },
+  }),
+)

@@ -5,6 +5,7 @@ import { IconArrowUp, IconLoader } from "@tabler/icons-react"
 import { cn, getContrastingColor } from "@/lib/utils"
 import { useAppStore, selectAccentColor } from "@/store"
 import { DEFAULT_INPUT_ACCENT_COLOR, TASK_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
+import { InputGroup, InputGroupAddon, InputGroupButton } from "@/components/ui/input-group"
 
 /**
  * Text input for quickly adding tasks.
@@ -142,45 +143,44 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
     const isDisabled = disabled || isSubmitting
 
     return (
-      <form onSubmit={handleSubmit} className={cn("flex flex-col gap-2", className)}>
-        <textarea
-          ref={textareaRef}
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={isDisabled}
-          aria-label="New task title"
-          rows={1}
-          className={cn(
-            "placeholder:text-muted-foreground bg-transparent",
-            "w-full resize-none border-0 px-0 py-1 text-sm",
-            "focus:ring-0 focus:outline-none",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-            "overflow-hidden",
-          )}
-        />
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={isDisabled || !title.trim()}
+      <form onSubmit={handleSubmit} className={className}>
+        <InputGroup data-disabled={isDisabled}>
+          <textarea
+            ref={textareaRef}
+            data-slot="input-group-control"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={isDisabled}
+            aria-label="New task title"
+            rows={1}
             className={cn(
-              "inline-flex shrink-0 items-center justify-center rounded-md p-1.5",
-              "focus-visible:ring-ring/50 focus:outline-none focus-visible:ring-[3px]",
-              "disabled:pointer-events-none disabled:opacity-50",
-              "transition-opacity",
+              "placeholder:text-muted-foreground flex-1 bg-transparent",
+              "w-full resize-none border-0 px-3 py-2 text-sm",
+              "focus:ring-0 focus:outline-none",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+              "overflow-hidden",
             )}
-            style={{
-              backgroundColor: buttonBgColor,
-              color: buttonTextColor,
-            }}
-            aria-label={isSubmitting ? "Creating task" : "Add task"}
-          >
-            {isSubmitting ?
-              <IconLoader className="size-5 animate-spin" />
-            : <IconArrowUp className="size-5" />}
-          </button>
-        </div>
+          />
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton
+              type="submit"
+              disabled={isDisabled || !title.trim()}
+              size="icon-xs"
+              className={cn("rounded-md transition-opacity")}
+              style={{
+                backgroundColor: buttonBgColor,
+                color: buttonTextColor,
+              }}
+              aria-label={isSubmitting ? "Creating task" : "Add task"}
+            >
+              {isSubmitting ?
+                <IconLoader className="size-4 animate-spin" />
+              : <IconArrowUp className="size-4" />}
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
       </form>
     )
   },

@@ -9,7 +9,6 @@ const meta: Meta<typeof TaskCard> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     Story => (
       <div className="border-border max-w-md overflow-hidden rounded-md border">
