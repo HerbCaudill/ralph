@@ -59,6 +59,10 @@ const preview: Preview = {
           "div",
           {
             className: `${theme === "dark" ? "dark" : ""} bg-background text-foreground min-h-screen p-4`,
+            style: {
+              "--repo-accent": "#0d9488",
+              "--repo-accent-foreground": "#ffffff",
+            } as React.CSSProperties,
           },
           React.createElement(Story),
         ),
