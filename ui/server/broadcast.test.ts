@@ -527,3 +527,366 @@ describe("Per-client event tracking", () => {
     expect(client.lastDeliveredEventIndex.get("instance1")).toBe(15)
   })
 })
+
+describe("Reconnection sync protocol", () => {
+  /**
+   * Creates a test server that properly handles reconnect messages
+   * similar to the production handleWsMessage function.
+   */
+  function createReconnectTestServer(port: number) {
+    const app = express()
+    const server = createServer(app)
+    const wss = new WebSocketServer({ server, path: "/ws" })
+
+    interface TestWsClient {
+      ws: typeof WebSocket.prototype
+      isAlive: boolean
+      lastDeliveredEventIndex: Map<string, number>
+    }
+
+    const clients = new Set<TestWsClient>()
+    const eventHistory = new Map<string, RalphEvent[]>()
+    const instanceStatus = new Map<string, RalphStatus>()
+
+    // Initialize default instance
+    eventHistory.set("default", [])
+    instanceStatus.set("default", "stopped")
+
+    /**
+     * Add an event to the event history for an instance.
+     */
+    const addEvent = (instanceId: string, event: RalphEvent) => {
+      const events = eventHistory.get(instanceId) ?? []
+      events.push(event)
+      eventHistory.set(instanceId, events)
+    }
+
+    /**
+     * Get event history for an instance.
+     */
+    const getEventHistory = (instanceId: string): RalphEvent[] => {
+      return eventHistory.get(instanceId) ?? []
+    }
+
+    /**
+     * Set status for an instance.
+     */
+    const setStatus = (instanceId: string, status: RalphStatus) => {
+      instanceStatus.set(instanceId, status)
+    }
+
+    wss.on("connection", (ws: typeof WebSocket.prototype) => {
+      const client: TestWsClient = {
+        ws,
+        isAlive: true,
+        lastDeliveredEventIndex: new Map(),
+      }
+      clients.add(client)
+
+      ws.on("close", () => {
+        clients.delete(client)
+      })
+
+      ws.on("message", data => {
+        try {
+          const message = JSON.parse(data.toString())
+
+          if (message.type === "reconnect") {
+            const instanceId = (message.instanceId as string) || "default"
+            const lastEventIndex = message.lastEventIndex as number | undefined
+
+            const events = getEventHistory(instanceId)
+            let pendingEvents: RalphEvent[] = []
+            let startIndex = 0
+
+            if (typeof lastEventIndex === "number" && lastEventIndex >= 0) {
+              startIndex = lastEventIndex + 1
+              if (startIndex < events.length) {
+                pendingEvents = events.slice(startIndex)
+              }
+            } else {
+              pendingEvents = events
+            }
+
+            const status = instanceStatus.get(instanceId) ?? "stopped"
+
+            ws.send(
+              JSON.stringify({
+                type: "pending_events",
+                instanceId,
+                events: pendingEvents,
+                startIndex,
+                totalEvents: events.length,
+                ralphStatus: status,
+                timestamp: Date.now(),
+              }),
+            )
+
+            // Update client's last delivered event index
+            if (events.length > 0) {
+              client.lastDeliveredEventIndex.set(instanceId, events.length - 1)
+            }
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      })
+
+      // Send welcome message
+      ws.send(JSON.stringify({ type: "connected", timestamp: Date.now() }))
+    })
+
+    return {
+      server,
+      wss,
+      addEvent,
+      getEventHistory,
+      setStatus,
+      getClientCount: () => clients.size,
+      start: () =>
+        new Promise<void>(resolve => {
+          server.listen(port, "localhost", () => resolve())
+        }),
+      close: async () => {
+        for (const client of wss.clients) {
+          client.terminate()
+        }
+        wss.close()
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("Server close timeout")), 5000)
+          server.close(err => {
+            clearTimeout(timeout)
+            if (err) reject(err)
+            else resolve()
+          })
+        })
+      },
+    }
+  }
+
+  const port = 3099
+  let testServer: ReturnType<typeof createReconnectTestServer>
+
+  beforeEach(async () => {
+    testServer = createReconnectTestServer(port)
+    await testServer.start()
+  })
+
+  afterEach(async () => {
+    await testServer.close()
+  })
+
+  it("responds with pending_events when client sends reconnect message", async () => {
+    // Add some events to the server
+    testServer.addEvent("default", { type: "tool_use", timestamp: 1000, tool: "bash" })
+    testServer.addEvent("default", { type: "text", timestamp: 2000, content: "Hello" })
+    testServer.addEvent("default", { type: "tool_result", timestamp: 3000, tool: "bash" })
+    testServer.setStatus("default", "running")
+
+    // Connect a client
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    // Send reconnect message asking for events after index 0
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    ws.send(JSON.stringify({ type: "reconnect", instanceId: "default", lastEventIndex: 0 }))
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      instanceId: string
+      events: RalphEvent[]
+      startIndex: number
+      totalEvents: number
+      ralphStatus: RalphStatus
+    }
+
+    expect(response.type).toBe("pending_events")
+    expect(response.instanceId).toBe("default")
+    expect(response.events).toHaveLength(2) // Events at index 1 and 2
+    expect(response.startIndex).toBe(1)
+    expect(response.totalEvents).toBe(3)
+    expect(response.ralphStatus).toBe("running")
+    expect(response.events[0]).toMatchObject({ type: "text", content: "Hello" })
+    expect(response.events[1]).toMatchObject({ type: "tool_result", tool: "bash" })
+
+    ws.close()
+  })
+
+  it("returns all events when lastEventIndex is not provided", async () => {
+    // Add some events
+    testServer.addEvent("default", { type: "tool_use", timestamp: 1000, tool: "read" })
+    testServer.addEvent("default", { type: "text", timestamp: 2000, content: "Content" })
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send reconnect without lastEventIndex
+    ws.send(JSON.stringify({ type: "reconnect", instanceId: "default" }))
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      events: RalphEvent[]
+      startIndex: number
+      totalEvents: number
+    }
+
+    expect(response.type).toBe("pending_events")
+    expect(response.events).toHaveLength(2) // All events
+    expect(response.startIndex).toBe(0)
+    expect(response.totalEvents).toBe(2)
+
+    ws.close()
+  })
+
+  it("returns empty array when client is fully up to date", async () => {
+    // Add some events
+    testServer.addEvent("default", { type: "tool_use", timestamp: 1000, tool: "write" })
+    testServer.addEvent("default", { type: "text", timestamp: 2000, content: "Done" })
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send reconnect with lastEventIndex pointing to the last event
+    ws.send(JSON.stringify({ type: "reconnect", instanceId: "default", lastEventIndex: 1 }))
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      events: RalphEvent[]
+      startIndex: number
+      totalEvents: number
+    }
+
+    expect(response.type).toBe("pending_events")
+    expect(response.events).toHaveLength(0) // No new events
+    expect(response.startIndex).toBe(2) // Would start at index 2 if there were more events
+    expect(response.totalEvents).toBe(2)
+
+    ws.close()
+  })
+
+  it("defaults to 'default' instanceId when not provided", async () => {
+    testServer.addEvent("default", { type: "text", timestamp: 1000, content: "Test" })
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send reconnect without instanceId
+    ws.send(JSON.stringify({ type: "reconnect" }))
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      instanceId: string
+      events: RalphEvent[]
+    }
+
+    expect(response.type).toBe("pending_events")
+    expect(response.instanceId).toBe("default")
+    expect(response.events).toHaveLength(1)
+
+    ws.close()
+  })
+
+  it("works with different instanceIds", async () => {
+    // Add events to different instances
+    testServer.addEvent("default", { type: "text", timestamp: 1000, content: "Default" })
+    testServer.addEvent("instance2", { type: "text", timestamp: 2000, content: "Instance2-A" })
+    testServer.addEvent("instance2", { type: "text", timestamp: 3000, content: "Instance2-B" })
+    testServer.setStatus("instance2", "paused")
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Request events from instance2
+    ws.send(JSON.stringify({ type: "reconnect", instanceId: "instance2", lastEventIndex: 0 }))
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      instanceId: string
+      events: RalphEvent[]
+      ralphStatus: RalphStatus
+    }
+
+    expect(response.type).toBe("pending_events")
+    expect(response.instanceId).toBe("instance2")
+    expect(response.events).toHaveLength(1) // Only event after index 0
+    expect(response.events[0]).toMatchObject({ content: "Instance2-B" })
+    expect(response.ralphStatus).toBe("paused")
+
+    ws.close()
+  })
+})
