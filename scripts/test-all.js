@@ -6,7 +6,6 @@
 import { spawn } from "node:child_process"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import Table from "cli-table3"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "..")
@@ -14,17 +13,20 @@ const repoRoot = path.resolve(__dirname, "..")
 /** ANSI style helpers */
 const style = {
   bold: s => `\x1b[1m${s}\x1b[0m`,
-  blue: s => `\x1b[34m${s}\x1b[0m`,
-  boldBlue: s => `\x1b[1;34m${s}\x1b[0m`,
+  dim: s => `\x1b[2m${s}\x1b[0m`,
+  green: s => `\x1b[32m${s}\x1b[0m`,
+  red: s => `\x1b[31m${s}\x1b[0m`,
+  yellow: s => `\x1b[33m${s}\x1b[0m`,
+  cyan: s => `\x1b[36m${s}\x1b[0m`,
 }
 
 /** Test suite configuration */
 const testSuites = [
-  { name: "typecheck", type: "typecheck", filter: null, command: "typecheck" },
-  { name: "shared", type: "vitest", filter: "@herbcaudill/ralph-shared", command: "test" },
-  { name: "cli", type: "vitest", filter: "@herbcaudill/ralph", command: "test" },
-  { name: "ui-vitest", type: "vitest", filter: "@herbcaudill/ralph-ui", command: "test" },
-  { name: "ui-playwright", type: "playwright", filter: "@herbcaudill/ralph-ui", command: null },
+  { name: "typecheck", type: "typecheck" },
+  { name: "shared", type: "vitest", dir: "shared" },
+  { name: "cli", type: "vitest", dir: "cli" },
+  { name: "ui-vitest", type: "vitest", dir: "ui" },
+  { name: "ui-playwright", type: "playwright" },
 ]
 
 /** Results storage */
@@ -43,21 +45,36 @@ function stripAnsi(str) {
 }
 
 /**
- * Parse vitest output to extract test counts.
- * Vitest outputs: "Tests  51 passed (51)" or "Tests  2 failed | 167 passed (169)"
+ * Parse vitest JSON output to extract test counts.
+ * With --reporter=json, vitest outputs a JSON object to stdout.
  */
 function parseVitestOutput(output) {
   const counts = { passed: 0, failed: 0, skipped: 0 }
-  const clean = stripAnsi(output)
 
-  // Match "Tests  X passed" or "Tests  X failed | Y passed"
-  const testsMatch = clean.match(
-    /Tests\s+(?:(\d+)\s+failed\s*\|\s*)?(\d+)\s+passed(?:\s*\|\s*(\d+)\s+skipped)?/i,
-  )
+  // Find the JSON object in the output (it starts with { and ends with })
+  const jsonMatch = output.match(/\{[\s\S]*"numPassedTests"[\s\S]*\}/)
+  if (jsonMatch) {
+    try {
+      const json = JSON.parse(jsonMatch[0])
+      counts.passed = json.numPassedTests || 0
+      counts.failed = json.numFailedTests || 0
+      counts.skipped = json.numPendingTests || 0
+      return counts
+    } catch {
+      // Fall through to text parsing
+    }
+  }
+
+  // Fall back to text parsing if JSON fails
+  const clean = stripAnsi(output)
+  const testsMatch = clean.match(/Tests\s+(?:(\d+)\s+failed\s*\|\s*)?(\d+)\s+passed/i)
   if (testsMatch) {
     counts.failed = parseInt(testsMatch[1] || "0", 10)
     counts.passed = parseInt(testsMatch[2] || "0", 10)
-    counts.skipped = parseInt(testsMatch[3] || "0", 10)
+  }
+  const skippedMatch = clean.match(/(\d+)\s+skipped/i)
+  if (skippedMatch) {
+    counts.skipped = parseInt(skippedMatch[1], 10)
   }
 
   return counts
@@ -83,29 +100,29 @@ function parsePlaywrightOutput(output) {
 }
 
 /**
- * Run a test suite and capture output.
- * If silent is true, buffer output instead of streaming it.
+ * Run a test suite and capture output silently.
+ * Always buffers output, only shows it on failure.
  */
-async function runTestSuite(suite, { silent = false } = {}) {
+async function runTestSuite(suite) {
   const startTime = Date.now()
 
   return new Promise(resolve => {
     let args
-    let env = { ...process.env }
+    let cwd = repoRoot
+    const env = { ...process.env, NO_COLOR: "1" }
 
     if (suite.type === "playwright") {
-      // Run playwright via our script
       args = ["node", "scripts/playwright.js"]
     } else if (suite.type === "typecheck") {
-      // Run typecheck across all packages in parallel
       args = ["pnpm", "-r", "--parallel", "typecheck"]
-    } else {
-      // Run vitest via pnpm filter
-      args = ["pnpm", "--filter", suite.filter, suite.command]
+    } else if (suite.type === "vitest") {
+      // Run vitest directly in the package directory with JSON reporter
+      args = ["pnpm", "vitest", "run", "--reporter=json"]
+      cwd = path.join(repoRoot, suite.dir)
     }
 
     const child = spawn(args[0], args.slice(1), {
-      cwd: repoRoot,
+      cwd,
       stdio: ["inherit", "pipe", "pipe"],
       env,
     })
@@ -114,15 +131,11 @@ async function runTestSuite(suite, { silent = false } = {}) {
     let stderr = ""
 
     child.stdout?.on("data", data => {
-      const text = data.toString()
-      stdout += text
-      if (!silent) process.stdout.write(text)
+      stdout += data.toString()
     })
 
     child.stderr?.on("data", data => {
-      const text = data.toString()
-      stderr += text
-      if (!silent) process.stderr.write(text)
+      stderr += data.toString()
     })
 
     child.on("close", code => {
@@ -151,16 +164,6 @@ async function runTestSuite(suite, { silent = false } = {}) {
 }
 
 /**
- * Print a heading in a box.
- */
-function printBoxHeading(text) {
-  const width = text.length + 2
-  console.log(style.boldBlue(`\n┌${"─".repeat(width)}┐`))
-  console.log(style.boldBlue(`│ ${text} │`))
-  console.log(style.boldBlue(`└${"─".repeat(width)}┘\n`))
-}
-
-/**
  * Format duration in seconds.
  */
 function formatDuration(ms) {
@@ -171,107 +174,80 @@ function formatDuration(ms) {
 }
 
 /**
- * Print summary report using cli-table3.
+ * Print summary totals.
  */
 function printSummary() {
   const totalDuration = results.endTime - results.startTime
-
-  console.log("\n")
-
-  // Per-package results table (no borders)
-  const packageTable = new Table({
-    head: ["", "Package", "Type", "Passed", "Failed", "Time"].map(h => style.bold(h)),
-    colAligns: ["left", "left", "left", "right", "right", "right"],
-    style: { head: [], border: [], "padding-left": 1, "padding-right": 1 },
-    chars: {
-      top: "",
-      "top-mid": "",
-      "top-left": "",
-      "top-right": "",
-      bottom: "",
-      "bottom-mid": "",
-      "bottom-left": "",
-      "bottom-right": "",
-      left: "",
-      "left-mid": "",
-      mid: "",
-      "mid-mid": "",
-      right: "",
-      "right-mid": "",
-      middle: "",
-    },
-  })
-
-  // Grand totals
   const totalPassed = results.suites.reduce((sum, s) => sum + s.passed, 0)
   const totalFailed = results.suites.reduce((sum, s) => sum + s.failed, 0)
   const allPassed = results.suites.every(s => s.exitCode === 0)
 
-  for (const suite of results.suites) {
-    const status = suite.exitCode === 0 ? "✓" : "✗"
-    const passed = suite.type === "typecheck" ? "-" : String(suite.passed)
-    const failed = suite.type === "typecheck" ? "-" : String(suite.failed)
-    packageTable.push([
-      status,
-      suite.name,
-      suite.type,
-      passed,
-      failed,
-      formatDuration(suite.duration),
-    ])
-  }
+  const passedStr = style.green(`${totalPassed} passed`)
+  const failedStr =
+    totalFailed > 0 ? style.red(`${totalFailed} failed`) : style.dim(`${totalFailed} failed`)
+  const durationStr = style.dim(`(${formatDuration(totalDuration)})`)
 
-  // Add total row (bold)
-  packageTable.push(
-    ["", "Total", "", String(totalPassed), String(totalFailed), formatDuration(totalDuration)].map(
-      c => style.bold(c),
-    ),
-  )
-
-  console.log(packageTable.toString())
+  console.log(`\n  ${style.bold("Total")} ${passedStr}, ${failedStr} ${durationStr}`)
 
   return allPassed ? 0 : 1
+}
+
+/**
+ * Print a single result line with spinner or status.
+ */
+function printResultLine(result) {
+  const status = result.exitCode === 0 ? style.green("✓") : style.red("✗")
+  const name = style.bold(result.name)
+  const durationStr = style.dim(`(${formatDuration(result.duration)})`)
+
+  if (result.type === "typecheck") {
+    console.log(`  ${status} ${name} ${durationStr}`)
+  } else {
+    const passedStr = style.green(`${result.passed} passed`)
+    const failedStr =
+      result.failed > 0 ?
+        style.red(`${result.failed} failed`)
+      : style.dim(`${result.failed} failed`)
+    console.log(`  ${status} ${name} ${passedStr}, ${failedStr} ${durationStr}`)
+  }
 }
 
 async function main() {
   console.clear()
   results.startTime = Date.now()
 
-  console.log("Running all tests...\n")
+  console.log(style.bold("\nRunning all tests\n"))
 
   // Phase 1: Run typecheck (must pass before tests make sense)
   const typecheckSuite = testSuites.find(s => s.type === "typecheck")
   if (typecheckSuite) {
-    printBoxHeading(`Running ${typecheckSuite.name} (${typecheckSuite.type})`)
+    process.stdout.write(`  ◌ ${typecheckSuite.name}...`)
     const result = await runTestSuite(typecheckSuite)
     results.suites.push(result)
-    if (result.exitCode !== 0 && !process.env.CI) {
-      console.log(`\n⚠ ${typecheckSuite.name} failed, stopping early.`)
+    // Clear the "running" line and print result
+    process.stdout.write("\r\x1b[K")
+    printResultLine(result)
+
+    if (result.exitCode !== 0) {
+      console.log(`\n⚠ ${typecheckSuite.name} failed. Output:\n`)
+      console.log(result.output)
       results.endTime = Date.now()
       process.exit(printSummary())
     }
   }
 
-  // Phase 2: Run all vitest suites in parallel
+  // Phase 2: Run all vitest suites sequentially (parallel causes esbuild EPIPE crashes)
   const vitestSuites = testSuites.filter(s => s.type === "vitest")
-  if (vitestSuites.length > 0) {
-    printBoxHeading(`Running vitest suites in parallel (${vitestSuites.map(s => s.name).join(", ")})`)
+  for (const suite of vitestSuites) {
+    process.stdout.write(`  ◌ ${suite.name}...`)
+    const result = await runTestSuite(suite)
+    results.suites.push(result)
+    process.stdout.write("\r\x1b[K")
+    printResultLine(result)
 
-    const vitestResults = await Promise.all(vitestSuites.map(s => runTestSuite(s, { silent: true })))
-
-    // Print results in order
-    for (const result of vitestResults) {
-      const status = result.exitCode === 0 ? "✓" : "✗"
-      console.log(`${status} ${result.name}: ${result.passed} passed, ${result.failed} failed (${formatDuration(result.duration)})`)
-      results.suites.push(result)
-    }
-
-    // Check for failures
-    const failed = vitestResults.find(r => r.exitCode !== 0)
-    if (failed && !process.env.CI) {
-      console.log(`\n⚠ ${failed.name} failed. Output:`)
-      console.log(failed.output)
-      console.log("Stopping early.")
+    if (result.exitCode !== 0) {
+      console.log(`\n⚠ ${suite.name} failed. Output:\n`)
+      console.log(result.output)
       results.endTime = Date.now()
       process.exit(printSummary())
     }
@@ -280,9 +256,18 @@ async function main() {
   // Phase 3: Run playwright (needs dev server isolation)
   const playwrightSuite = testSuites.find(s => s.type === "playwright")
   if (playwrightSuite) {
-    printBoxHeading(`Running ${playwrightSuite.name} (${playwrightSuite.type})`)
+    process.stdout.write(`  ◌ ${playwrightSuite.name}...`)
     const result = await runTestSuite(playwrightSuite)
     results.suites.push(result)
+    process.stdout.write("\r\x1b[K")
+    printResultLine(result)
+
+    if (result.exitCode !== 0) {
+      console.log(`\n⚠ ${playwrightSuite.name} failed. Output:\n`)
+      console.log(result.output)
+      results.endTime = Date.now()
+      process.exit(printSummary())
+    }
   }
 
   results.endTime = Date.now()

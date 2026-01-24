@@ -29,7 +29,6 @@
     "test:storybook": "pnpm --filter @herbcaudill/ralph-ui test:storybook"
   },
   "devDependencies": {
-    "cli-table3": "^0.6.5",
     "concurrently": "^9.2.1",
     "prettier": "^3.5.3"
   }
