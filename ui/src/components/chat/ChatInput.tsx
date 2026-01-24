@@ -1,10 +1,13 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import type { FormEvent, KeyboardEvent } from "react"
 import { IconArrowUp } from "@tabler/icons-react"
-import { cn, getContrastingColor } from "@/lib/utils"
-import { useAppStore, selectAccentColor } from "@/store"
-import { DEFAULT_INPUT_ACCENT_COLOR } from "@/constants"
-import { InputGroup, InputGroupAddon, InputGroupButton } from "@/components/ui/input-group"
+import { cn } from "@/lib/utils"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@/components/ui/input-group"
 
 /**
  * Text area input for sending messages to a running agent.
@@ -21,10 +24,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   },
   ref,
 ) {
-  const accentColor = useAppStore(selectAccentColor)
-  const buttonBgColor = accentColor ?? DEFAULT_INPUT_ACCENT_COLOR
-  const buttonTextColor = getContrastingColor(buttonBgColor)
-
   const [message, setMessage] = useState(() => {
     if (storageKey && typeof window !== "undefined") {
       return localStorage.getItem(storageKey) ?? ""
@@ -32,21 +31,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     return ""
   })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  /**
-   * Adjust the textarea height to fit its content.
-   */
-  const adjustTextareaHeight = useCallback(() => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    textarea.style.height = "auto"
-    textarea.style.height = `${textarea.scrollHeight}px`
-  }, [])
-
-  useEffect(() => {
-    adjustTextareaHeight()
-  }, [message, adjustTextareaHeight])
 
   /** Persist message to localStorage when it changes. */
   useEffect(() => {
@@ -104,9 +88,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   return (
     <form onSubmit={handleSubmit} className={className}>
       <InputGroup data-disabled={disabled}>
-        <textarea
+        <InputGroupTextarea
           ref={textareaRef}
-          data-slot="input-group-control"
           value={message}
           onChange={e => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -114,11 +97,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           disabled={disabled}
           rows={1}
           className={cn(
-            "placeholder:text-muted-foreground flex-1 bg-transparent",
-            "w-full resize-none border-0 px-3 py-2 text-sm",
-            "focus:ring-0 focus:outline-none",
+            "placeholder:text-muted-foreground min-h-0 py-2",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            "overflow-hidden",
           )}
           aria-label={ariaLabel}
         />
@@ -127,11 +107,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             type="submit"
             disabled={disabled || !message.trim()}
             size="icon-xs"
-            className={cn("rounded-md transition-opacity")}
-            style={{
-              backgroundColor: buttonBgColor,
-              color: buttonTextColor,
-            }}
+            className={cn(
+              "bg-repo-accent text-repo-accent-foreground rounded-md transition-opacity hover:opacity-90",
+            )}
             aria-label="Send message"
           >
             <IconArrowUp className="size-4" aria-hidden="true" />

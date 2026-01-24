@@ -1,14 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { ChatInput } from "./ChatInput"
-import { useAppStore } from "@/store"
 
 const TEST_STORAGE_KEY = "test-chat-input-draft"
 
 describe("ChatInput", () => {
   beforeEach(() => {
-    // Reset the store before each test
-    useAppStore.getState().setAccentColor(null)
     localStorage.clear()
   })
 
@@ -176,38 +173,17 @@ describe("ChatInput", () => {
       expect(textarea).toHaveAttribute("rows", "1")
     })
 
-    it("has overflow hidden for auto-resize", () => {
+    it("uses CSS field-sizing-content for auto-resize", () => {
       render(<ChatInput />)
       const textarea = screen.getByRole("textbox")
-      expect(textarea).toHaveClass("overflow-hidden")
+      // The Textarea component uses field-sizing-content CSS property for auto-sizing
+      expect(textarea).toHaveClass("field-sizing-content")
     })
 
-    it("adjusts height when content changes", () => {
+    it("has resize disabled", () => {
       render(<ChatInput />)
-      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement
-
-      // Type multiline content
-      fireEvent.change(textarea, { target: { value: "Line 1\nLine 2\nLine 3" } })
-
-      // Height should be set dynamically via style
-      expect(textarea.style.height).toBeTruthy()
-    })
-
-    it("resets height when content is cleared", () => {
-      render(<ChatInput />)
-      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement
-
-      // Add content
-      fireEvent.change(textarea, { target: { value: "Line 1\nLine 2\nLine 3" } })
-      const expandedHeight = textarea.style.height
-
-      // Clear content
-      fireEvent.change(textarea, { target: { value: "" } })
-
-      // Height should be recalculated (may be different from expanded)
-      expect(textarea.style.height).toBeTruthy()
-      // After clearing, the height should be less than or equal to expanded height
-      expect(parseInt(textarea.style.height)).toBeLessThanOrEqual(parseInt(expandedHeight))
+      const textarea = screen.getByRole("textbox")
+      expect(textarea).toHaveClass("resize-none")
     })
   })
 
@@ -218,33 +194,18 @@ describe("ChatInput", () => {
       expect(textarea).toHaveClass("bg-transparent", "border-0", "resize-none")
     })
 
-    it("button has correct base classes and accent color styling", () => {
+    it("button has correct base classes", () => {
       render(<ChatInput />)
       const button = screen.getByRole("button", { name: "Send message" })
       // Button uses InputGroupButton component, check structure classes
-      expect(button).toHaveClass("rounded-md", "shrink-0")
-      // Default accent color is black with white text
-      expect(button).toHaveStyle({ backgroundColor: "#000000", color: "#ffffff" })
+      expect(button).toHaveClass("rounded-md")
     })
 
-    it("button uses accent color from store", () => {
-      // Set a custom accent color
-      useAppStore.getState().setAccentColor("#007ACC")
-
+    it("button uses accent color CSS classes", () => {
       render(<ChatInput />)
       const button = screen.getByRole("button", { name: "Send message" })
-      // Blue accent color with white text (dark background)
-      expect(button).toHaveStyle({ backgroundColor: "#007ACC", color: "#ffffff" })
-    })
-
-    it("button uses black text for light accent colors", () => {
-      // Set a light accent color
-      useAppStore.getState().setAccentColor("#FFA500")
-
-      render(<ChatInput />)
-      const button = screen.getByRole("button", { name: "Send message" })
-      // Orange accent color with black text (light background)
-      expect(button).toHaveStyle({ backgroundColor: "#FFA500", color: "#000000" })
+      // Button uses CSS custom property classes for accent color styling
+      expect(button).toHaveClass("bg-repo-accent", "text-repo-accent-foreground")
     })
   })
 
