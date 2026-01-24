@@ -894,10 +894,10 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   open: {
     icon: IconCircle,
     label: "Open",
-    color: "text-gray-500",
-    selectedBg: "bg-gray-500",
-    unselectedBg: "bg-gray-500/5",
-    unselectedHover: "hover:bg-gray-500/20",
+    color: "text-green-500",
+    selectedBg: "bg-green-500",
+    unselectedBg: "bg-green-500/5",
+    unselectedHover: "hover:bg-green-500/20",
   },
   in_progress: {
     icon: IconCircleDot,
@@ -926,10 +926,10 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   closed: {
     icon: IconCircleCheck,
     label: "Closed",
-    color: "text-green-500",
-    selectedBg: "bg-green-500",
-    unselectedBg: "bg-green-500/5",
-    unselectedHover: "hover:bg-green-500/20",
+    color: "text-gray-500",
+    selectedBg: "bg-gray-500",
+    unselectedBg: "bg-gray-500/5",
+    unselectedHover: "hover:bg-gray-500/20",
   },
 }
 

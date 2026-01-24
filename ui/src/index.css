@@ -308,5 +308,5 @@
 }
 
 .animate-spin-pulse {
-  animation: spin-pulse 1s ease-in-out infinite;
+  animation: spin-pulse 1s linear infinite;
 }
