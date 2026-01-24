@@ -232,6 +232,7 @@ function printSummary() {
 }
 
 async function main() {
+  console.clear()
   results.startTime = Date.now()
 
   console.log("Running all tests...\n")
