@@ -57,8 +57,10 @@ describe("TaskList", () => {
       render(<TaskList tasks={sampleTasks} />)
       // Open group includes: blocked (1), open (2), in_progress (1) = 4 tasks
       expect(screen.getByLabelText("Open section, 4 tasks")).toBeInTheDocument()
-      // Closed group includes: deferred (1), closed (1) = 2 tasks
-      expect(screen.getByLabelText("Closed section, 2 tasks")).toBeInTheDocument()
+      // Deferred group includes: deferred (1) = 1 task
+      expect(screen.getByLabelText("Deferred section, 1 task")).toBeInTheDocument()
+      // Closed group includes: closed (1) = 1 task
+      expect(screen.getByLabelText("Closed section, 1 task")).toBeInTheDocument()
     })
 
     it("renders tasks within groups", () => {
@@ -88,6 +90,19 @@ describe("TaskList", () => {
       render(<TaskList tasks={tasksOnlyOpen} />)
 
       expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Deferred section/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+    })
+
+    it("shows deferred section only when there are deferred tasks", () => {
+      const tasksWithDeferred: TaskCardTask[] = [
+        { id: "task-1", title: "Open task", status: "open" },
+        { id: "task-2", title: "Deferred task", status: "deferred", closed_at: getRecentDate() },
+      ]
+      render(<TaskList tasks={tasksWithDeferred} />)
+
+      expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Deferred section/)).toBeInTheDocument()
       expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
     })
 
@@ -96,6 +111,7 @@ describe("TaskList", () => {
       render(<TaskList tasks={tasksOnlyOpen} showEmptyGroups />)
 
       expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Deferred section/)).toBeInTheDocument()
       expect(screen.getByLabelText(/Closed section/)).toBeInTheDocument()
     })
 
@@ -150,15 +166,17 @@ describe("TaskList", () => {
       expect(screen.getByLabelText("Open section, 3 tasks")).toBeInTheDocument()
     })
 
-    it("groups deferred and closed tasks under Closed", () => {
+    it("groups deferred tasks under Deferred and closed tasks under Closed", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Deferred task", status: "deferred", closed_at: getRecentDate() },
         { id: "task-2", title: "Closed task", status: "closed", closed_at: getRecentDate() },
       ]
       render(<TaskList tasks={tasks} />)
 
-      const header = screen.getByLabelText("Closed section, 2 tasks")
-      expect(header).toBeInTheDocument()
+      const deferredHeader = screen.getByLabelText("Deferred section, 1 task")
+      expect(deferredHeader).toBeInTheDocument()
+      const closedHeader = screen.getByLabelText("Closed section, 1 task")
+      expect(closedHeader).toBeInTheDocument()
     })
   })
 
@@ -510,6 +528,7 @@ describe("TaskList", () => {
     it("respects defaultCollapsed prop", () => {
       const defaultCollapsed: Partial<Record<TaskGroup, boolean>> = {
         open: true,
+        deferred: false,
         closed: false,
       }
       // Use sample tasks with recent closed_at dates
@@ -523,7 +542,7 @@ describe("TaskList", () => {
       expect(screen.queryByText("In progress task")).not.toBeInTheDocument()
       expect(screen.queryByText("Blocked task")).not.toBeInTheDocument()
 
-      // Closed should be expanded (overriding default behavior)
+      // Deferred should be expanded (overriding default behavior)
       expect(screen.getByText("Deferred task")).toBeInTheDocument()
     })
 
@@ -975,9 +994,11 @@ describe("TaskList", () => {
       // Initially with past_day, no tasks visible (but group header with dropdown is visible)
       expect(screen.queryByText("Very old task")).not.toBeInTheDocument()
 
-      // Change to all_time
-      const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
-      fireEvent.change(filterDropdown, { target: { value: "all_time" } })
+      // Change to all_time - get all comboboxes and use the first one
+      const filterDropdowns = screen.getAllByRole("combobox", {
+        name: "Filter closed tasks by time",
+      })
+      fireEvent.change(filterDropdowns[0], { target: { value: "all_time" } })
 
       // Now task should appear
       expect(screen.getByText("Very old task")).toBeInTheDocument()

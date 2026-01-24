@@ -196,7 +196,7 @@ export interface StreamingMessage {
   contentBlocks: StreamingContentBlock[]
 }
 
-export type TaskGroup = "open" | "closed"
+export type TaskGroup = "open" | "deferred" | "closed"
 
 export interface RelatedTask {
   id: string

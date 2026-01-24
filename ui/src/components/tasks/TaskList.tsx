@@ -95,6 +95,7 @@ export function TaskList({
       const base = stored ?? DEFAULT_STATUS_COLLAPSED_STATE
       return {
         open: defaultCollapsed.open ?? base.open,
+        deferred: defaultCollapsed.deferred ?? base.deferred,
         closed: defaultCollapsed.closed ?? base.closed,
       }
     },
@@ -199,7 +200,7 @@ export function TaskList({
     // Sort tree nodes by priority/closed_at
     const sortTreeNodes = (nodes: TaskTreeNode[], groupKey: TaskGroup): TaskTreeNode[] => {
       const sortedNodes = [...nodes].sort((a, b) => {
-        if (groupKey === "closed") {
+        if (groupKey === "closed" || groupKey === "deferred") {
           const aTime = a.task.closed_at ? new Date(a.task.closed_at).getTime() : 0
           const bTime = b.task.closed_at ? new Date(b.task.closed_at).getTime() : 0
           return bTime - aTime // Most recent first
@@ -374,8 +375,14 @@ export function TaskList({
               count={totalCount}
               isCollapsed={isStatusCollapsed}
               onToggle={() => toggleStatusGroup(config.key)}
-              timeFilter={config.key === "closed" ? closedTimeFilter : undefined}
-              onTimeFilterChange={config.key === "closed" ? setClosedTimeFilter : undefined}
+              timeFilter={
+                config.key === "closed" || config.key === "deferred" ? closedTimeFilter : undefined
+              }
+              onTimeFilterChange={
+                config.key === "closed" || config.key === "deferred" ?
+                  setClosedTimeFilter
+                : undefined
+              }
             />
             {!isStatusCollapsed && (
               <div role="group" aria-label={`${config.label} tasks`}>
@@ -407,15 +414,16 @@ export function TaskList({
 }
 
 /**
- * Default collapsed state for status groups (open is expanded, closed is collapsed).
+ * Default collapsed state for status groups (open is expanded, deferred and closed are collapsed).
  */
 const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
   open: false,
+  deferred: true,
   closed: true,
 }
 
 /**
- * Configuration for the two status groups: open (ready/in progress/blocked) and closed.
+ * Configuration for the three status groups: open (ready/in progress/blocked), deferred, and closed.
  */
 const groupConfigs: GroupConfig[] = [
   {
@@ -425,9 +433,14 @@ const groupConfigs: GroupConfig[] = [
       task.status === "open" || task.status === "in_progress" || task.status === "blocked",
   },
   {
+    key: "deferred",
+    label: "Deferred",
+    taskFilter: task => task.status === "deferred",
+  },
+  {
     key: "closed",
     label: "Closed",
-    taskFilter: task => task.status === "deferred" || task.status === "closed",
+    taskFilter: task => task.status === "closed",
   },
 ]
 
