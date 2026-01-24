@@ -8,12 +8,8 @@ const isRalphRunning = !!process.env.RALPH_RUNNING
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: "jsdom",
     globals: true,
-    setupFiles: ["./src/vitest-setup.ts"],
     exclude: ["node_modules", "e2e"],
-    // Use node environment for server tests
-    environmentMatchGlobs: [["server/**/*.test.ts", "node"]],
     // Increase timeouts for server tests that spawn git processes (e.g., WorktreeManager tests)
     // These can be slow under parallel test load
     hookTimeout: 60000,
@@ -22,6 +18,26 @@ export default defineConfig({
       reporter: ["dot"],
       silent: "passed-only",
     }),
+    // Use node environment for server tests (projects replaces deprecated environmentMatchGlobs)
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "ui",
+          environment: "jsdom",
+          include: ["src/**/*.test.{ts,tsx}"],
+          setupFiles: ["./src/vitest-setup.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "server",
+          environment: "node",
+          include: ["server/**/*.test.ts"],
+        },
+      },
+    ],
   },
   resolve: {
     alias: {
