@@ -110,9 +110,10 @@ export function CodeBlock({
 
   // Container styles that apply to both loading and highlighted states
   // This ensures no layout shift occurs when highlighting completes
+  // Force child pre to be transparent so container bg-muted shows through
   const containerStyles = cn(
     "group relative overflow-hidden rounded-md bg-muted",
-    "[&_code]:text-xs [&_pre]:!m-0 [&_pre]:overflow-x-auto [&_pre]:!p-3 [&_pre]:text-xs",
+    "[&_pre]:!bg-transparent [&_pre]:!m-0 [&_pre]:overflow-x-auto [&_pre]:!p-3 [&_pre]:text-xs [&_code]:text-xs",
     className,
   )
 
