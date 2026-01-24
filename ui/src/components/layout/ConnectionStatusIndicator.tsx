@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
 import { useAppStore, selectConnectionStatus } from "@/store"
 import type { ConnectionStatus } from "@/hooks/useWebSocket"
-import { IconCloud, IconCloudOff, IconLoader2 } from "@tabler/icons-react"
+import { IconBolt, IconBoltOff, IconLoader2 } from "@tabler/icons-react"
 import type { ComponentType } from "react"
 
 type IconProps = { className?: string; size?: number }
@@ -12,7 +12,7 @@ const connectionStatusConfig: Record<
 > = {
   disconnected: {
     color: "text-status-error",
-    icon: IconCloudOff,
+    icon: IconBoltOff,
     label: "Disconnected",
     description: "Connection lost. Attempting to reconnect...",
   },
@@ -24,7 +24,7 @@ const connectionStatusConfig: Record<
   },
   connected: {
     color: "text-status-success",
-    icon: IconCloud,
+    icon: IconBolt,
     label: "Connected",
     description: "Connected to server",
   },
