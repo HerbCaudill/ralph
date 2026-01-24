@@ -19,7 +19,7 @@ const TOPOLOGY_ICONS = [
 ]
 
 /**  Animated spinner that cycles through 6 topology icons while spinning. */
-export function TopologySpinner({ className }: TopologySpinnerProps) {
+export function TopologySpinner({ className, duration = 1000 }: TopologySpinnerProps) {
   const [iconIndex, setIconIndex] = useState(0)
 
   /** Advance to the next icon when the spin animation completes a cycle. */
@@ -32,6 +32,7 @@ export function TopologySpinner({ className }: TopologySpinnerProps) {
   return (
     <Icon
       className={cn("text-repo-accent size-4 animate-spin", className)}
+      style={{ animationDuration: `${duration}ms` }}
       onAnimationIteration={handleAnimationIteration}
       aria-hidden="true"
     />
@@ -40,4 +41,6 @@ export function TopologySpinner({ className }: TopologySpinnerProps) {
 
 export interface TopologySpinnerProps {
   className?: string
+  /** Duration of one full rotation in milliseconds. @default 1000 */
+  duration?: number
 }

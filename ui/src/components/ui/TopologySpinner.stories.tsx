@@ -12,6 +12,10 @@ const meta: Meta<typeof TopologySpinner> = {
       control: "text",
       description: "Additional CSS classes",
     },
+    duration: {
+      control: { type: "number", min: 100, max: 3000, step: 100 },
+      description: "Duration of one full rotation in milliseconds",
+    },
   },
 }
 
@@ -20,6 +24,18 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   args: {},
+}
+
+export const FastSpin: Story = {
+  args: {
+    duration: 300,
+  },
+}
+
+export const SlowSpin: Story = {
+  args: {
+    duration: 2000,
+  },
 }
 
 export const CustomSize: Story = {
