@@ -1,14 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
-import { TaskDialogProvider } from "@/contexts"
 import { useAppStore } from "@/store"
-
-// Helper to render with context
-function renderWithContext(ui: React.ReactNode, openTaskById = vi.fn()) {
-  return render(<TaskDialogProvider openTaskById={openTaskById}>{ui}</TaskDialogProvider>)
-}
 
 describe("parseTaskLifecycleEvent", () => {
   describe("starting events", () => {
@@ -217,7 +211,7 @@ describe("TaskLifecycleEvent", () => {
   })
 
   it("renders starting event", () => {
-    renderWithContext(
+    render(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -230,14 +224,16 @@ describe("TaskLifecycleEvent", () => {
     )
 
     expect(screen.getByText("Starting")).toBeInTheDocument()
-    // Task ID is displayed with stripped prefix when context is available
-    expect(screen.getByRole("button", { name: "View task r-abc1" })).toBeInTheDocument()
+    // Task ID is rendered as a link
+    const link = screen.getByRole("link", { name: "View task r-abc1" })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute("href", "/issue/r-abc1")
     expect(screen.getByText("Add new feature")).toBeInTheDocument()
     expect(screen.getByTestId("task-lifecycle-event")).toHaveAttribute("data-action", "starting")
   })
 
   it("renders completed event", () => {
-    renderWithContext(
+    render(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -250,13 +246,15 @@ describe("TaskLifecycleEvent", () => {
     )
 
     expect(screen.getByText("Completed")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "View task r-xyz9" })).toBeInTheDocument()
+    const link = screen.getByRole("link", { name: "View task r-xyz9" })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute("href", "/issue/r-xyz9")
     expect(screen.getByText("Fix the bug")).toBeInTheDocument()
     expect(screen.getByTestId("task-lifecycle-event")).toHaveAttribute("data-action", "completed")
   })
 
   it("renders event without title", () => {
-    renderWithContext(
+    render(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -268,12 +266,11 @@ describe("TaskLifecycleEvent", () => {
     )
 
     expect(screen.getByText("Starting")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "View task r-def3" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "View task r-def3" })).toBeInTheDocument()
   })
 
-  it("renders task ID as a clickable button when context is available", () => {
-    const openTaskById = vi.fn()
-    renderWithContext(
+  it("renders task ID as a clickable link", () => {
+    render(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -283,15 +280,15 @@ describe("TaskLifecycleEvent", () => {
           taskTitle: "Test task",
         }}
       />,
-      openTaskById,
     )
 
-    const button = screen.getByRole("button", { name: "View task r-abc1" })
-    expect(button).toBeInTheDocument()
+    const link = screen.getByRole("link", { name: "View task r-abc1" })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute("href", "/issue/r-abc1")
   })
 
   it("applies custom className", () => {
-    renderWithContext(
+    render(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",

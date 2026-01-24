@@ -1,6 +1,5 @@
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
-import { useTaskDialogContext } from "@/contexts"
-import { handleTaskClick } from "@/lib/handleTaskClick"
+import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 
 /**
  * Navigation bar for switching between iterations and viewing task information.
@@ -17,7 +16,6 @@ export function EventStreamIterationBar({
   onLatest,
 }: Props) {
   const hasMultipleIterations = iterationCount > 1
-  const taskDialogContext = useTaskDialogContext()
 
   return (
     <div
@@ -45,13 +43,13 @@ export function EventStreamIterationBar({
             title="Current task"
           >
             {currentTask.id ?
-              <button
-                onClick={() => handleTaskClick(currentTask.id, taskDialogContext)}
+              <a
+                href={buildTaskIdPath(currentTask.id)}
                 className="hover:text-foreground shrink-0 font-mono opacity-70 transition-opacity hover:underline hover:opacity-100"
                 aria-label={`View task ${currentTask.id}`}
               >
                 {currentTask.id}
-              </button>
+              </a>
             : null}
             <span className="truncate">{currentTask.title}</span>
           </div>

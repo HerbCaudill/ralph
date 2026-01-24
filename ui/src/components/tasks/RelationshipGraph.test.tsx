@@ -1,7 +1,6 @@
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { RelationshipGraph } from "./RelationshipGraph"
-import { TaskDialogProvider } from "@/contexts"
 import type { Task } from "@/types"
 
 // Mock fetch
@@ -53,11 +52,8 @@ const sampleTaskWithDependencies = {
 }
 
 describe("RelationshipGraph", () => {
-  const mockOpenTaskById = vi.fn()
-
   beforeEach(() => {
     mockFetch.mockReset()
-    mockOpenTaskById.mockReset()
     mockTasks = []
   })
 
@@ -65,27 +61,12 @@ describe("RelationshipGraph", () => {
     vi.clearAllMocks()
   })
 
-  const renderWithContext = (
-    taskId: string,
-    parent?: {
-      id: string
-      title: string
-      status: "open" | "in_progress" | "blocked" | "deferred" | "closed"
-    } | null,
-  ) => {
-    return render(
-      <TaskDialogProvider openTaskById={mockOpenTaskById}>
-        <RelationshipGraph taskId={taskId} parent={parent} />
-      </TaskDialogProvider>,
-    )
-  }
-
   describe("loading state", () => {
     it("shows loading indicator while fetching", async () => {
       mockTasks = [{ id: "rui-123", title: "Current task", status: "open" }]
       mockFetch.mockImplementation(() => new Promise(() => {})) // Never resolves
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       expect(screen.getByText("Loading...")).toBeInTheDocument()
     })
@@ -102,7 +83,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -123,7 +104,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-456", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-456")
+      render(<RelationshipGraph taskId="rui-456" />)
 
       await waitFor(() => {
         expect(screen.getByText("456")).toBeInTheDocument()
@@ -139,7 +120,12 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123", { id: "rui-100", title: "Parent epic", status: "open" })
+      render(
+        <RelationshipGraph
+          taskId="rui-123"
+          parent={{ id: "rui-100", title: "Parent epic", status: "open" }}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -150,24 +136,26 @@ describe("RelationshipGraph", () => {
       expect(screen.getByText("100")).toBeInTheDocument()
     })
 
-    it("opens parent task when clicked", async () => {
+    it("renders parent task as link with correct href", async () => {
       mockTasks = [{ id: "rui-123", title: "Current task", status: "open" }]
       mockFetch.mockResolvedValueOnce({
         json: () =>
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123", { id: "rui-100", title: "Parent epic", status: "open" })
+      render(
+        <RelationshipGraph
+          taskId="rui-123"
+          parent={{ id: "rui-100", title: "Parent epic", status: "open" }}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByText("Parent epic")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Parent epic"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-100")
+      const link = screen.getByRole("link", { name: /Parent epic/i })
+      expect(link).toHaveAttribute("href", "/issue/rui-100")
     })
 
     it("does not show parent section when no parent", async () => {
@@ -177,7 +165,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123", null)
+      render(<RelationshipGraph taskId="rui-123" parent={null} />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -201,7 +189,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -213,7 +201,7 @@ describe("RelationshipGraph", () => {
       expect(screen.queryByText("Unrelated task")).not.toBeInTheDocument()
     })
 
-    it("opens child task when clicked", async () => {
+    it("renders child task as link with correct href", async () => {
       mockTasks = [
         { id: "rui-123", title: "Current task", status: "open" },
         { id: "rui-123.1", title: "Child task 1", status: "open", parent: "rui-123" },
@@ -224,17 +212,14 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Child task 1")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Child task 1"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-123.1")
+      const link = screen.getByRole("link", { name: /Child task 1/i })
+      expect(link).toHaveAttribute("href", "/issue/rui-123.1")
     })
   })
 
@@ -245,7 +230,7 @@ describe("RelationshipGraph", () => {
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Blocked by")).toBeInTheDocument()
@@ -253,23 +238,20 @@ describe("RelationshipGraph", () => {
       expect(screen.getByText("Blocking task 1")).toBeInTheDocument()
     })
 
-    it("opens blocker task when clicked", async () => {
+    it("renders blocker task as link with correct href", async () => {
       mockTasks = [{ id: "rui-123", title: "Current task", status: "open" }]
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Blocking task 1")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Blocking task 1"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-100")
+      const link = screen.getByRole("link", { name: /Blocking task 1/i })
+      expect(link).toHaveAttribute("href", "/issue/rui-100")
     })
   })
 
@@ -280,7 +262,7 @@ describe("RelationshipGraph", () => {
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         // Wait for the dependent task to appear, indicating the section is rendered
@@ -288,23 +270,20 @@ describe("RelationshipGraph", () => {
       })
     })
 
-    it("opens dependent task when clicked", async () => {
+    it("renders dependent task as link with correct href", async () => {
       mockTasks = [{ id: "rui-123", title: "Current task", status: "open" }]
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Depends on main task")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Depends on main task"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-200")
+      const link = screen.getByRole("link", { name: /Depends on main task/i })
+      expect(link).toHaveAttribute("href", "/issue/rui-200")
     })
   })
 
@@ -317,7 +296,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      const { container } = renderWithContext("rui-123", null)
+      const { container } = render(<RelationshipGraph taskId="rui-123" parent={null} />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -341,7 +320,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Parent/Child")).toBeInTheDocument()
@@ -362,7 +341,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
@@ -380,7 +359,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Closed child")).toBeInTheDocument()
@@ -401,7 +380,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Active child")).toBeInTheDocument()
@@ -417,7 +396,7 @@ describe("RelationshipGraph", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-456", dependencies: [], dependents: [] } }),
       })
 
-      renderWithContext("rui-456")
+      render(<RelationshipGraph taskId="rui-456" />)
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-456")
@@ -430,7 +409,7 @@ describe("RelationshipGraph", () => {
         json: () => Promise.resolve({ ok: false, error: "Not found" }),
       })
 
-      const { container } = renderWithContext("rui-123")
+      const { container } = render(<RelationshipGraph taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -453,7 +432,12 @@ describe("RelationshipGraph", () => {
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123", { id: "rui-50", title: "Parent task", status: "open" })
+      render(
+        <RelationshipGraph
+          taskId="rui-123"
+          parent={{ id: "rui-50", title: "Parent task", status: "open" }}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()

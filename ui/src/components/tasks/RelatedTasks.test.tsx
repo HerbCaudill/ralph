@@ -1,7 +1,6 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { RelatedTasks } from "./RelatedTasks"
-import { TaskDialogProvider } from "@/contexts"
 import type { Task } from "@/types"
 
 // Mock fetch
@@ -59,11 +58,8 @@ const sampleTaskWithDependencies = {
 }
 
 describe("RelatedTasks", () => {
-  const mockOpenTaskById = vi.fn()
-
   beforeEach(() => {
     mockFetch.mockReset()
-    mockOpenTaskById.mockReset()
     mockTasks = []
   })
 
@@ -71,19 +67,11 @@ describe("RelatedTasks", () => {
     vi.clearAllMocks()
   })
 
-  const renderWithContext = (taskId: string) => {
-    return render(
-      <TaskDialogProvider openTaskById={mockOpenTaskById}>
-        <RelatedTasks taskId={taskId} />
-      </TaskDialogProvider>,
-    )
-  }
-
   describe("loading state", () => {
     it("shows loading indicator while fetching", async () => {
       mockFetch.mockImplementation(() => new Promise(() => {})) // Never resolves
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       expect(screen.getByText("Loading...")).toBeInTheDocument()
     })
@@ -101,7 +89,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -122,7 +110,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Children (2)")).toBeInTheDocument()
@@ -136,7 +124,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Blocking task 1")).toBeInTheDocument()
@@ -149,7 +137,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Blocked by (2)")).toBeInTheDocument()
@@ -163,7 +151,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Depends on main task")).toBeInTheDocument()
@@ -175,7 +163,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Blocks (1)")).toBeInTheDocument()
@@ -191,31 +179,29 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("123.1")).toBeInTheDocument()
       })
     })
 
-    it("opens task dialog when task is clicked", async () => {
+    it("renders task links with correct href", async () => {
       mockTasks = [{ id: "rui-123.1", title: "Child task", status: "open", parent: "rui-123" }]
 
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
       })
 
-      act(() => {
-        fireEvent.click(screen.getByText("Child task"))
-      })
-
-      expect(mockOpenTaskById).toHaveBeenCalledWith("rui-123.1")
+      // Find the link by its text content
+      const link = screen.getByRole("link", { name: /Child task/i })
+      expect(link).toHaveAttribute("href", "/issue/rui-123.1")
     })
   })
 
@@ -227,7 +213,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
@@ -249,7 +235,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
@@ -278,7 +264,7 @@ describe("RelatedTasks", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      const { container } = renderWithContext("rui-123")
+      const { container } = render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -296,7 +282,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: { id: "rui-456" } }),
       })
 
-      renderWithContext("rui-456")
+      render(<RelatedTasks taskId="rui-456" />)
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-456")
@@ -308,7 +294,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: false, error: "Not found" }),
       })
 
-      const { container } = renderWithContext("rui-123")
+      const { container } = render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -327,7 +313,7 @@ describe("RelatedTasks", () => {
         json: () => Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [] } }),
       })
 
-      renderWithContext("rui-123")
+      render(<RelatedTasks taskId="rui-123" />)
 
       await waitFor(() => {
         expect(screen.getByText("Closed child")).toBeInTheDocument()
@@ -346,14 +332,6 @@ describe("RelatedTasks", () => {
       priority: 2,
     }
 
-    const renderWithTask = (taskId: string, task: typeof mockTask, readOnly = false) => {
-      return render(
-        <TaskDialogProvider openTaskById={mockOpenTaskById}>
-          <RelatedTasks taskId={taskId} task={task} readOnly={readOnly} />
-        </TaskDialogProvider>,
-      )
-    }
-
     it("shows add blocker button when not read-only and task is provided", async () => {
       mockTasks = [{ id: "rui-999", title: "Available task", status: "open" }]
 
@@ -362,7 +340,7 @@ describe("RelatedTasks", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithTask("rui-123", mockTask)
+      render(<RelatedTasks taskId="rui-123" task={mockTask} />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -379,7 +357,7 @@ describe("RelatedTasks", () => {
           Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [], dependents: [] } }),
       })
 
-      renderWithTask("rui-123", mockTask, true)
+      render(<RelatedTasks taskId="rui-123" task={mockTask} readOnly={true} />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -408,7 +386,7 @@ describe("RelatedTasks", () => {
           }),
       })
 
-      renderWithTask("rui-123", mockTask)
+      render(<RelatedTasks taskId="rui-123" task={mockTask} />)
 
       await waitFor(() => {
         expect(screen.getByText("Blocking task")).toBeInTheDocument()
@@ -439,7 +417,7 @@ describe("RelatedTasks", () => {
           }),
       })
 
-      renderWithTask("rui-123", mockTask, true)
+      render(<RelatedTasks taskId="rui-123" task={mockTask} readOnly={true} />)
 
       await waitFor(() => {
         expect(screen.getByText("Blocking task")).toBeInTheDocument()
@@ -483,7 +461,7 @@ describe("RelatedTasks", () => {
             }),
         })
 
-      renderWithTask("rui-123", mockTask)
+      render(<RelatedTasks taskId="rui-123" task={mockTask} />)
 
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -540,7 +518,7 @@ describe("RelatedTasks", () => {
           json: () => Promise.resolve({ ok: true }),
         })
 
-      renderWithTask("rui-123", mockTask)
+      render(<RelatedTasks taskId="rui-123" task={mockTask} />)
 
       await waitFor(() => {
         expect(screen.getByText("Blocking task")).toBeInTheDocument()
@@ -580,7 +558,7 @@ describe("RelatedTasks", () => {
           }),
       })
 
-      renderWithTask("rui-123", mockTask)
+      render(<RelatedTasks taskId="rui-123" task={mockTask} />)
 
       await waitFor(() => {
         expect(screen.getByText("Parent epic")).toBeInTheDocument()
