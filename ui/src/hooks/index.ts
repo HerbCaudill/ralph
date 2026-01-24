@@ -75,3 +75,9 @@ export {
   type UseTaskChatPersistenceOptions,
   type UseTaskChatPersistenceResult,
 } from "./useTaskChatPersistence"
+
+export {
+  useStoreHydration,
+  type UseStoreHydrationOptions,
+  type UseStoreHydrationResult,
+} from "./useStoreHydration"

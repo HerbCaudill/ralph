@@ -22,6 +22,7 @@ import {
   selectSelectedTaskId,
   selectVisibleTaskIds,
   selectHotkeysDialogOpen,
+  selectActiveInstanceId,
 } from "./store"
 import { TaskChatPanel } from "./components/chat/TaskChatPanel"
 import {
@@ -32,6 +33,7 @@ import {
   useTaskDialogRouter,
   useEventLogRouter,
   useWorkspaces,
+  useStoreHydration,
 } from "./hooks"
 import { TaskDialogProvider } from "./contexts"
 import { startRalph } from "./lib/startRalph"
@@ -54,6 +56,12 @@ export function App() {
 
   // Initialize theme management (applies dark class and listens for system changes)
   const { cycleTheme } = useTheme()
+
+  // Get active instance ID for hydration
+  const activeInstanceId = useAppStore(selectActiveInstanceId)
+
+  // Hydrate store from IndexedDB on startup (restores events and task chat from last session)
+  useStoreHydration({ instanceId: activeInstanceId })
 
   // Task list refresh
   const { refresh: refreshTaskList } = useTasks({ all: true })

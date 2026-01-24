@@ -224,6 +224,32 @@ export class EventDatabase {
   }
 
   /**
+   * Get the most recent active (incomplete) iteration for an instance.
+   * Returns the most recently started iteration where completedAt is null.
+   */
+  async getLatestActiveIteration(instanceId: string): Promise<PersistedIteration | undefined> {
+    const metadata = await this.listIterations(instanceId)
+
+    // Find the most recent iteration that hasn't completed (sorted by startedAt descending)
+    const activeMeta = metadata.find(m => m.completedAt === null)
+    if (!activeMeta) return undefined
+
+    return this.getIteration(activeMeta.id)
+  }
+
+  /**
+   * Get the most recent iteration for an instance (whether complete or not).
+   * Useful for hydrating the UI with the last state on page reload.
+   */
+  async getLatestIteration(instanceId: string): Promise<PersistedIteration | undefined> {
+    const metadata = await this.listIterations(instanceId)
+    if (metadata.length === 0) return undefined
+
+    // First entry is the most recent (sorted by startedAt descending)
+    return this.getIteration(metadata[0].id)
+  }
+
+  /**
    * Delete an iteration (both metadata and full data).
    */
   async deleteIteration(id: string): Promise<void> {
@@ -350,6 +376,20 @@ export class EventDatabase {
     const latestId = metadata[0].id
 
     return db.get(STORE_NAMES.TASK_CHAT_SESSIONS, latestId)
+  }
+
+  /**
+   * Get the most recent task chat session for an instance (across all tasks).
+   * Useful for hydrating the UI with the last state on page reload.
+   */
+  async getLatestTaskChatSessionForInstance(
+    instanceId: string,
+  ): Promise<PersistedTaskChatSession | undefined> {
+    const metadata = await this.listTaskChatSessions(instanceId)
+    if (metadata.length === 0) return undefined
+
+    // First entry is the most recent (sorted by updatedAt descending)
+    return this.getTaskChatSession(metadata[0].id)
   }
 
   /**
