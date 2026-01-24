@@ -63,21 +63,7 @@ function createMarkdownComponents(
     },
     code(props) {
       const { children, className: codeClassName, ...rest } = props
-
-      if (withCodeBlocks) {
-        // Check if this is a code block (inside a pre) by looking at the className
-        // react-markdown adds language-xxx class for fenced code blocks
-        const match = /language-(\w+)/.exec(codeClassName || "")
-
-        // If it has a language class, it's a fenced code block
-        if (match) {
-          const language = match[1]
-          const code = String(children).replace(/\n$/, "")
-          return <CodeBlock code={code} language={language} isDark={isDark} />
-        }
-      }
-
-      // Otherwise it's inline code - process for links
+      // Inline code only - fenced code blocks are handled in the pre component
       return (
         <code className={codeClassName} {...rest}>
           {processChildren(children)}
@@ -85,10 +71,28 @@ function createMarkdownComponents(
       )
     },
     pre(props) {
-      const { children } = props
-      // If the child is already a CodeBlock, just render it directly
-      // Otherwise wrap in pre as normal
-      return <>{children}</>
+      const { node } = props
+      if (!withCodeBlocks) {
+        // Without code blocks, render as plain pre
+        const codeChild = node?.children?.[0] as { children?: { value?: string }[] }
+        const code = codeChild?.children?.[0]?.value ?? ""
+        return (
+          <pre>
+            <code>{code}</code>
+          </pre>
+        )
+      }
+      // Extract code and language from the AST node
+      const codeChild = node?.children?.[0] as {
+        properties?: { className?: string[] }
+        children?: { value?: string }[]
+      }
+      const code = codeChild?.children?.[0]?.value?.replace(/\n$/, "") ?? ""
+      const langClass = codeChild?.properties?.className?.find((c: string) =>
+        c?.startsWith?.("language-"),
+      )
+      const language = langClass?.replace("language-", "") ?? "text"
+      return <CodeBlock code={code} language={language} isDark={isDark} />
     },
   }
 }

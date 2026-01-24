@@ -167,6 +167,20 @@ export const BaseSize: Story = {
   },
 }
 
+export const CodeBlockNoLanguage: Story = {
+  args: {
+    children: `Here's a code block without a language specifier:
+
+\`\`\`
+const x = 1;
+const y = 2;
+console.log(x + y);
+\`\`\`
+
+It should still render with a background.`,
+  },
+}
+
 export const WithoutCodeBlocks: Story = {
   args: {
     children: `Here's some code that won't be syntax highlighted:
