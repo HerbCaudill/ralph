@@ -40,7 +40,7 @@ export function RelationshipGraphNode({
       <span className={cn("shrink-0 font-mono", config.textColor)}>
         {stripTaskPrefix(task.id, issuePrefix)}
       </span>
-      <span className={cn("max-w-[120px] truncate", task.status === "closed" && "line-through")}>
+      <span className={cn("max-w-30 truncate", task.status === "closed" && "line-through")}>
         {task.title}
       </span>
     </button>
