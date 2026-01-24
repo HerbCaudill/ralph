@@ -7,9 +7,7 @@ import type { ChatEvent } from "@/types"
 const meta: Meta<typeof AgentView> = {
   title: "Pages/AgentView",
   component: AgentView,
-  parameters: {
-    layout: "fullscreen",
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="h-[600px]">

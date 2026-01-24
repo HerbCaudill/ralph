@@ -8,9 +8,7 @@ import type { TaskCardTask } from "@/types"
 const meta: Meta<typeof MainLayout> = {
   title: "Pages/MainLayout",
   component: MainLayout,
-  parameters: {
-    layout: "fullscreen",
-  },
+  parameters: {},
   decorators: [fullPageDecorator],
 }
 

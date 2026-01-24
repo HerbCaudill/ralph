@@ -5,7 +5,7 @@ const meta: Meta<typeof CodeBlock> = {
   title: "Content/CodeBlock",
   component: CodeBlock,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

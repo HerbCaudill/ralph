@@ -30,9 +30,7 @@ const threeDaysAgo = new Date(now.getTime() - 259200000).toISOString()
 const meta: Meta<typeof IterationHistoryDropdown> = {
   title: "Selectors/IterationHistoryDropdown",
   component: IterationHistoryDropdown,
-  parameters: {
-    layout: "centered",
-  },
+  parameters: {},
   tags: ["autodocs"],
   decorators: [
     Story => (

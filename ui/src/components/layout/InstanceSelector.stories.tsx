@@ -6,9 +6,7 @@ import { useAppStore, createRalphInstance } from "@/store"
 const meta: Meta<typeof InstanceSelector> = {
   title: "Selectors/InstanceSelector",
   component: InstanceSelector,
-  parameters: {
-    layout: "centered",
-  },
+  parameters: {},
   decorators: [
     Story => {
       // Reset store before each story

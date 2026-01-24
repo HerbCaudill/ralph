@@ -5,7 +5,7 @@ const meta: Meta<typeof CommentsSection> = {
   title: "Collections/CommentsSection",
   component: CommentsSection,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

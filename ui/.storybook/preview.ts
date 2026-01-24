@@ -16,6 +16,7 @@ const preview: Preview = {
     backgrounds: {
       disabled: true,
     },
+    layout: "fullscreen",
     options: {
       storySort: {
         order: [
@@ -72,7 +73,7 @@ const preview: Preview = {
           "div",
           {
             ref: applyTheme,
-            className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-4`,
+            className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
             style: {
               "--repo-accent": "#0d9488",
               "--repo-accent-foreground": "#ffffff",

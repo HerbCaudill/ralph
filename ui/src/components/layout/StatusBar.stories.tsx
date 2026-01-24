@@ -6,7 +6,7 @@ const meta: Meta<typeof StatusBar> = {
   title: "Layout/StatusBar",
   component: StatusBar,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

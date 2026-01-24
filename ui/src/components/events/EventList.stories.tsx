@@ -6,7 +6,7 @@ const meta: Meta<typeof EventList> = {
   title: "Collections/EventList",
   component: EventList,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

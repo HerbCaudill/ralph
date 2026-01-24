@@ -5,7 +5,7 @@ const meta: Meta<typeof ErrorEvent> = {
   title: "Feedback/ErrorEvent",
   component: ErrorEvent,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

@@ -7,7 +7,7 @@ const meta: Meta<typeof TaskIdLink> = {
   title: "Content/TaskIdLink",
   component: TaskIdLink,
   parameters: {
-    layout: "padded",
+    
   },
 }
 

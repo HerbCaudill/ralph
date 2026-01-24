@@ -196,9 +196,7 @@ const twoDaysAgo = now - 172800000
 const meta: Meta<typeof TaskChatHistoryDropdownStory> = {
   title: "Selectors/TaskChatHistoryDropdown",
   component: TaskChatHistoryDropdownStory,
-  parameters: {
-    layout: "centered",
-  },
+  parameters: {},
   tags: ["autodocs"],
   decorators: [
     Story => (

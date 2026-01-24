@@ -5,7 +5,7 @@ const meta: Meta<typeof TaskLifecycleEvent> = {
   title: "Feedback/TaskLifecycleEvent",
   component: TaskLifecycleEvent,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

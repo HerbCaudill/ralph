@@ -6,7 +6,7 @@ const meta: Meta<typeof AnsiOutput> = {
   title: "Feedback/AnsiOutput",
   component: AnsiOutput,
   parameters: {
-    layout: "padded",
+    
   },
   args: {
     isExpanded: false,

@@ -4,9 +4,7 @@ import { TopologySpinner } from "./TopologySpinner"
 const meta: Meta<typeof TopologySpinner> = {
   title: "Primitives/TopologySpinner",
   component: TopologySpinner,
-  parameters: {
-    layout: "centered",
-  },
+  parameters: {},
   argTypes: {
     className: {
       control: "text",

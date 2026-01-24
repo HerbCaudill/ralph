@@ -7,7 +7,7 @@ const meta: Meta<typeof ContextWindowProgress> = {
   title: "Indicators/ContextWindowProgress",
   component: ContextWindowProgress,
   parameters: {
-    layout: "padded",
+    
   },
 }
 

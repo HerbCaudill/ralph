@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button"
 const meta: Meta<typeof NewInstanceDialog> = {
   title: "Dialogs/NewInstanceDialog",
   component: NewInstanceDialog,
-  parameters: {
-    layout: "centered",
-  },
+  parameters: {},
   decorators: [
     Story => {
       // Reset store before each story

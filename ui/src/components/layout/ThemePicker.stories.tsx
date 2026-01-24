@@ -5,7 +5,7 @@ const meta: Meta<typeof ThemePicker> = {
   title: "Selectors/ThemePicker",
   component: ThemePicker,
   parameters: {
-    layout: "padded",
+    
   },
 }
 

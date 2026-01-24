@@ -6,7 +6,7 @@ const meta: Meta<typeof DiffView> = {
   title: "Feedback/DiffView",
   component: DiffView,
   parameters: {
-    layout: "padded",
+    
   },
   args: {
     isExpanded: false,

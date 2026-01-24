@@ -8,7 +8,7 @@ const meta: Meta<typeof TaskProgressBar> = {
   title: "Indicators/TaskProgressBar",
   component: TaskProgressBar,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

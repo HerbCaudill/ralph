@@ -7,7 +7,7 @@ const meta: Meta<typeof TextWithLinks> = {
   title: "Content/TextWithLinks",
   component: TextWithLinks,
   parameters: {
-    layout: "padded",
+    
   },
 }
 

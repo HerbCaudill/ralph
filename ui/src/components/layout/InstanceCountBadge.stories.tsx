@@ -5,7 +5,6 @@ const meta: Meta<typeof InstanceCountBadge> = {
   title: "Indicators/InstanceCountBadge",
   component: InstanceCountBadge,
   parameters: {
-    layout: "centered",
     backgrounds: {
       default: "accent",
       values: [

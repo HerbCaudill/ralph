@@ -8,7 +8,7 @@ const meta: Meta<typeof RelatedTasks> = {
   title: "Collections/RelatedTasks",
   component: RelatedTasks,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

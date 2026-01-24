@@ -5,7 +5,7 @@ const meta: Meta<typeof AssistantText> = {
   title: "Feedback/AssistantText",
   component: AssistantText,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

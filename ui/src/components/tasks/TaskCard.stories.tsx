@@ -7,7 +7,7 @@ const meta: Meta<typeof TaskCard> = {
   title: "Collections/TaskCard",
   component: TaskCard,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

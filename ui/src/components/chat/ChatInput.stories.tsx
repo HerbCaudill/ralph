@@ -6,7 +6,7 @@ const meta: Meta<typeof ChatInput> = {
   title: "Inputs/ChatInput",
   component: ChatInput,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

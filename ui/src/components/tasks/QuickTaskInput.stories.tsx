@@ -8,7 +8,7 @@ const meta: Meta<typeof QuickTaskInput> = {
   title: "Inputs/QuickTaskInput",
   component: QuickTaskInput,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

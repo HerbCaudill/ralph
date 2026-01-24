@@ -4,9 +4,7 @@ import { InstanceBadge } from "./InstanceBadge"
 const meta: Meta<typeof InstanceBadge> = {
   title: "Content/InstanceBadge",
   component: InstanceBadge,
-  parameters: {
-    layout: "centered",
-  },
+  parameters: {},
   argTypes: {
     status: {
       control: "select",

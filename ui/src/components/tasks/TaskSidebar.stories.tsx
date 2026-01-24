@@ -7,9 +7,7 @@ import type { Task } from "@/types"
 const meta: Meta<typeof TaskSidebar> = {
   title: "Panels/TaskSidebar",
   component: TaskSidebar,
-  parameters: {
-    layout: "fullscreen",
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="border-border h-[600px] w-80 border-r">

@@ -8,7 +8,7 @@ const meta: Meta<typeof RelationshipGraph> = {
   title: "Collections/RelationshipGraph",
   component: RelationshipGraph,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

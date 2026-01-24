@@ -5,9 +5,7 @@ import { withStoreState } from "../../../.storybook/decorators"
 const meta: Meta<typeof Header> = {
   title: "Layout/Header",
   component: Header,
-  parameters: {
-    layout: "fullscreen",
-  },
+  parameters: {},
 }
 
 export default meta

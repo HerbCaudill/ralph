@@ -6,9 +6,7 @@ import { useEffect } from "react"
 const meta: Meta<typeof IterationHistoryPanel> = {
   title: "Panels/IterationHistoryPanel",
   component: IterationHistoryPanel,
-  parameters: {
-    layout: "fullscreen",
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="border-border h-[600px] w-80 border-r">

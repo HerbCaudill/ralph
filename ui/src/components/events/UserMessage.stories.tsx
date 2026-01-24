@@ -5,7 +5,7 @@ const meta: Meta<typeof UserMessage> = {
   title: "Feedback/UserMessage",
   component: UserMessage,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

@@ -7,7 +7,7 @@ const meta: Meta<typeof IterationLinks> = {
   title: "Collections/IterationLinks",
   component: IterationLinks,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

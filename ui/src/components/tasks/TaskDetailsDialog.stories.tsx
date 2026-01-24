@@ -8,9 +8,7 @@ import { Button } from "@/components/ui/button"
 const meta: Meta<typeof TaskDetailsDialog> = {
   title: "Dialogs/TaskDetailsDialog",
   component: TaskDetailsDialog,
-  parameters: {
-    layout: "centered",
-  },
+  parameters: {},
 }
 
 export default meta

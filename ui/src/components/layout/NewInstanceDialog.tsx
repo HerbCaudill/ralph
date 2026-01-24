@@ -123,7 +123,7 @@ export function NewInstanceDialog({ open, onOpenChange }: NewInstanceDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]" data-testid="new-instance-dialog">
+      <DialogContent className="sm:max-w-106.25" data-testid="new-instance-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <IconPlus className="size-5" />

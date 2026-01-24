@@ -7,7 +7,7 @@ const meta: Meta<typeof EventDisplay> = {
   title: "Collections/EventDisplay",
   component: EventDisplay,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

@@ -8,9 +8,7 @@ import type { ChatEvent, TaskChatMessage } from "@/types"
 const meta: Meta<typeof TaskChatPanel> = {
   title: "Panels/TaskChatPanel",
   component: TaskChatPanel,
-  parameters: {
-    layout: "fullscreen",
-  },
+  parameters: {},
   decorators: [
     Story => (
       <div className="border-border h-[600px] w-96 border-r">

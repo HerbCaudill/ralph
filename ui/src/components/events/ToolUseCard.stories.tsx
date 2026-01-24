@@ -6,7 +6,7 @@ const meta: Meta<typeof ToolUseCard> = {
   title: "Feedback/ToolUseCard",
   component: ToolUseCard,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

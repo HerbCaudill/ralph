@@ -5,7 +5,7 @@ const meta: Meta<typeof MarkdownContent> = {
   title: "Content/MarkdownContent",
   component: MarkdownContent,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

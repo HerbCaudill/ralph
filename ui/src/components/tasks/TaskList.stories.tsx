@@ -7,7 +7,7 @@ const meta: Meta<typeof TaskList> = {
   title: "Collections/TaskList",
   component: TaskList,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

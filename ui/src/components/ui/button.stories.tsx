@@ -5,9 +5,7 @@ import { IconPlus, IconSettings, IconTrash } from "@tabler/icons-react"
 const meta: Meta<typeof Button> = {
   title: "Primitives/Button",
   component: Button,
-  parameters: {
-    layout: "centered",
-  },
+  parameters: {},
   argTypes: {
     variant: {
       control: "select",

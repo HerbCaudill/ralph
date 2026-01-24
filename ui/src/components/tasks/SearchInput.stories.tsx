@@ -9,7 +9,7 @@ const meta: Meta<typeof SearchInput> = {
   title: "Inputs/SearchInput",
   component: SearchInput,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (

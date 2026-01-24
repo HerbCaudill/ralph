@@ -7,7 +7,7 @@ const meta: Meta<typeof EventStream> = {
   title: "Collections/EventStream",
   component: EventStream,
   parameters: {
-    layout: "padded",
+    
   },
   decorators: [
     Story => (
