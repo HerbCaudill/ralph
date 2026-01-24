@@ -142,6 +142,16 @@ async function runTestSuite(suite) {
 }
 
 /**
+ * Print a heading in a box.
+ */
+function printBoxHeading(text) {
+  const width = text.length + 2
+  console.log(`\n┌${"─".repeat(width)}┐`)
+  console.log(`│ ${text} │`)
+  console.log(`└${"─".repeat(width)}┘\n`)
+}
+
+/**
  * Format duration in seconds.
  */
 function formatDuration(ms) {
@@ -159,16 +169,27 @@ function printSummary() {
 
   console.log("\n")
 
-  // Per-package results table
+  // Per-package results table (no borders)
   const packageTable = new Table({
     head: ["", "Package", "Type", "Passed", "Failed", "Time"],
     colAligns: ["left", "left", "left", "right", "right", "right"],
-    style: { head: [], border: [] },
+    style: { head: [], border: [], "padding-left": 1, "padding-right": 1 },
     chars: {
-      mid: "",
+      top: "",
+      "top-mid": "",
+      "top-left": "",
+      "top-right": "",
+      bottom: "",
+      "bottom-mid": "",
+      "bottom-left": "",
+      "bottom-right": "",
+      left: "",
       "left-mid": "",
+      mid: "",
       "mid-mid": "",
+      right: "",
       "right-mid": "",
+      middle: "",
     },
   })
 
@@ -191,8 +212,7 @@ function printSummary() {
     ])
   }
 
-  // Add separator and total row
-  packageTable.push([{ colSpan: 6, content: "─".repeat(50) }])
+  // Add total row
   packageTable.push([
     "",
     "Total",
@@ -213,9 +233,7 @@ async function main() {
   console.log("Running all tests...\n")
 
   for (const suite of testSuites) {
-    console.log(`\n${"─".repeat(60)}`)
-    console.log(`Running ${suite.name} (${suite.type})...`)
-    console.log("─".repeat(60) + "\n")
+    printBoxHeading(`Running ${suite.name} (${suite.type})`)
 
     const result = await runTestSuite(suite)
     results.suites.push(result)
