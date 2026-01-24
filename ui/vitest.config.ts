@@ -14,6 +14,7 @@ export default defineConfig({
     // These can be slow under parallel test load
     hookTimeout: 60000,
     testTimeout: 60000,
+    slowTestThreshold: Infinity,
     ...(isRalphRunning && {
       reporter: ["dot"],
       silent: "passed-only",

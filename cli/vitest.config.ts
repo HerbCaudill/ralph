@@ -8,6 +8,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     exclude: ["**/node_modules/**", "**/dist/**", "test/e2e/**", "ui/**"],
+    slowTestThreshold: Infinity,
     ...(isRalphRunning && {
       reporter: ["dot"],
       silent: "passed-only",
