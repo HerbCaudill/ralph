@@ -58,10 +58,16 @@ export class RalphManager extends EventEmitter {
 
   /**
    * Whether ralph can accept user messages.
-   * This is true when running or paused (allows redirecting ralph while paused).
+   * This is true when the process is running and stdin is available.
+   * Includes running, paused, pausing, and stopping_after_current states.
    */
   get canAcceptMessages(): boolean {
-    return this._status === "running" || this._status === "paused"
+    return (
+      this._status === "running" ||
+      this._status === "paused" ||
+      this._status === "pausing" ||
+      this._status === "stopping_after_current"
+    )
   }
 
   /**

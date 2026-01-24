@@ -109,7 +109,7 @@ function createTestApp(
   app.post("/api/message", (req: Request, res: Response) => {
     try {
       const manager = getManager()
-      if (!manager.isRunning) {
+      if (!manager.canAcceptMessages) {
         res.status(409).json({ ok: false, error: "Ralph is not running" })
         return
       }

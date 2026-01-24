@@ -199,7 +199,7 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
     }
 
     try {
-      if (!instance.manager.isRunning) {
+      if (!instance.manager.canAcceptMessages) {
         res.status(409).json({ ok: false, error: "Instance is not running" })
         return
       }

@@ -596,6 +596,26 @@ describe("RalphManager", () => {
       mockProcess.emit("exit", 0, null)
       await stopPromise
     })
+
+    it("is true when pausing", async () => {
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      manager.pause()
+      expect(manager.status).toBe("pausing")
+      expect(manager.canAcceptMessages).toBe(true)
+    })
+
+    it("is true when stopping_after_current", async () => {
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      manager.stopAfterCurrent()
+      expect(manager.status).toBe("stopping_after_current")
+      expect(manager.canAcceptMessages).toBe(true)
+    })
   })
 
   describe("stopAfterCurrent", () => {

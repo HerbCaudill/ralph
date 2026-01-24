@@ -190,7 +190,7 @@ function createApp(
   app.post("/api/message", (req: Request, res: Response) => {
     try {
       const manager = getRalphManager()
-      if (!manager.isRunning) {
+      if (!manager.canAcceptMessages) {
         res.status(409).json({ ok: false, error: "Ralph is not running" })
         return
       }
@@ -400,7 +400,7 @@ function createApp(
     }
 
     try {
-      if (!instance.manager.isRunning) {
+      if (!instance.manager.canAcceptMessages) {
         res.status(409).json({ ok: false, error: "Instance is not running" })
         return
       }
