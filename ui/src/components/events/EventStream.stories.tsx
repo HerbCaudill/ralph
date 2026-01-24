@@ -3,10 +3,6 @@ import { EventStream } from "./EventStream"
 import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
-// Import raw JSONL files
-import events1Raw from "../../../.ralph/events-1.jsonl?raw"
-import events2Raw from "../../../.ralph/events-2.jsonl?raw"
-
 const meta: Meta<typeof EventStream> = {
   title: "Events/EventStream",
   component: EventStream,
@@ -26,66 +22,7 @@ const meta: Meta<typeof EventStream> = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-// Parse JSONL and filter to displayable events
-function parseJsonl(raw: string, limit = 200): Array<Record<string, unknown>> {
-  const lines = raw.trim().split("\n")
-  const events: Array<Record<string, unknown>> = []
-
-  for (const line of lines) {
-    if (events.length >= limit) break
-    try {
-      const event = JSON.parse(line)
-      // Only include events that EventStream can render
-      if (event.type === "assistant" || event.type === "user" || event.type === "user_message") {
-        events.push(event)
-      }
-    } catch {
-      // Skip malformed lines
-    }
-  }
-
-  return events
-}
-
-// Parse JSONL including stream events for real-time simulation
-// Only includes events from the first session to avoid incomplete streaming
-// at session boundaries
-function parseJsonlWithStreaming(raw: string): Array<Record<string, unknown>> {
-  const lines = raw.trim().split("\n")
-  const events: Array<Record<string, unknown>> = []
-  let sessionCount = 0
-
-  for (const line of lines) {
-    try {
-      const event = JSON.parse(line)
-
-      // Track session boundaries - stop after first session
-      if (event.type === "system" && event.subtype === "init") {
-        sessionCount++
-        if (sessionCount > 1) break // Stop at second session
-        continue // Skip the init event itself
-      }
-
-      // Include stream events, user messages and tool results
-      if (event.type === "stream_event" || event.type === "user" || event.type === "user_message") {
-        events.push(event)
-      }
-    } catch {
-      // Skip malformed lines
-    }
-  }
-
-  return events
-}
-
-// Parsed events from the JSONL files
-const events1 = parseJsonl(events1Raw)
-const events2 = parseJsonl(events2Raw)
-
-// Parsed events with streaming for real-time simulation
-const events1Streaming = parseJsonlWithStreaming(events1Raw)
-
-// Helper to add events to the store
+/** Helper to add events to the store */
 function EventLoader({
   events,
 }: {
@@ -99,34 +36,7 @@ function EventLoader({
   return null
 }
 
-// Helper to stream events in real-time
-function EventStreamer({
-  events,
-  intervalMs = 300,
-}: {
-  events: Array<{ type: string; timestamp: number; [key: string]: unknown }>
-  intervalMs?: number
-}) {
-  useEffect(() => {
-    const store = useAppStore.getState()
-    store.clearEvents()
-
-    let index = 0
-    const interval = setInterval(() => {
-      if (index < events.length) {
-        store.addEvent(events[index])
-        index++
-      } else {
-        clearInterval(interval)
-      }
-    }, intervalMs)
-
-    return () => clearInterval(interval)
-  }, [events, intervalMs])
-  return null
-}
-
-// Real events from .ralph/events-1.jsonl - formatted for the new event structure
+/** Real events formatted for the event structure */
 const realEvents = [
   // User sends a message
   {
@@ -690,39 +600,4 @@ export const LongConversation: Story = {
       </>
     )
   },
-}
-
-// Stories using real JSONL data from .ralph/ directory
-
-export const RealSession1: Story = {
-  name: "Real session: Test fixes",
-  render: args => (
-    <>
-      <EventLoader events={events1 as Array<{ type: string; timestamp: number }>} />
-      <EventStream {...args} />
-    </>
-  ),
-}
-
-export const RealSession2: Story = {
-  name: "Real session: All tests passing",
-  render: args => (
-    <>
-      <EventLoader events={events2 as Array<{ type: string; timestamp: number }>} />
-      <EventStream {...args} />
-    </>
-  ),
-}
-
-export const RealtimeSimulation: Story = {
-  name: "Real-time simulation: Test fixes",
-  render: args => (
-    <>
-      <EventStreamer
-        events={events1Streaming as Array<{ type: string; timestamp: number }>}
-        intervalMs={50}
-      />
-      <EventStream {...args} />
-    </>
-  ),
 }
