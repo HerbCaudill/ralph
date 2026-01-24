@@ -133,7 +133,7 @@ export function TaskList({
 
   const statusGroups = useMemo(() => {
     const closedCutoff = getTimeFilterCutoff(closedTimeFilter)
-    const isClosedStatus = (status: TaskStatus) => status === "closed" || status === "deferred"
+    const isClosedStatus = (status: TaskStatus) => status === "closed"
 
     // Build the task tree for efficient hierarchy lookup
     const { roots, taskMap, childrenMap } = buildTaskTree(tasks)
@@ -375,14 +375,8 @@ export function TaskList({
               count={totalCount}
               isCollapsed={isStatusCollapsed}
               onToggle={() => toggleStatusGroup(config.key)}
-              timeFilter={
-                config.key === "closed" || config.key === "deferred" ? closedTimeFilter : undefined
-              }
-              onTimeFilterChange={
-                config.key === "closed" || config.key === "deferred" ?
-                  setClosedTimeFilter
-                : undefined
-              }
+              timeFilter={config.key === "closed" ? closedTimeFilter : undefined}
+              onTimeFilterChange={config.key === "closed" ? setClosedTimeFilter : undefined}
             />
             {!isStatusCollapsed && (
               <div role="group" aria-label={`${config.label} tasks`}>

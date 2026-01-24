@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { TaskChatHistorySheet } from "./TaskChatHistorySheet"
+import { TaskChatHistoryDropdown } from "./TaskChatHistoryDropdown"
 import { useAppStore } from "@/store"
 import type { TaskChatSessionMetadata } from "@/lib/persistence"
 
@@ -39,7 +39,7 @@ const mockSessions: TaskChatSessionMetadata[] = [
   },
 ]
 
-describe("TaskChatHistorySheet", () => {
+describe("TaskChatHistoryDropdown", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset store state
@@ -58,13 +58,13 @@ describe("TaskChatHistorySheet", () => {
       refresh: vi.fn(),
     })
 
-    render(<TaskChatHistorySheet />)
+    render(<TaskChatHistoryDropdown />)
 
     const button = screen.getByRole("button", { name: "View chat history" })
     expect(button).toBeInTheDocument()
   })
 
-  it("opens sheet when trigger button is clicked", async () => {
+  it("opens dropdown when trigger button is clicked", async () => {
     mockUseTaskChatSessions.mockReturnValue({
       sessions: mockSessions,
       isLoading: false,
@@ -72,24 +72,18 @@ describe("TaskChatHistorySheet", () => {
       refresh: vi.fn(),
     })
 
-    render(<TaskChatHistorySheet />)
-
-    // Sheet should not be open initially
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    render(<TaskChatHistoryDropdown />)
 
     // Click the trigger button
     fireEvent.click(screen.getByRole("button", { name: "View chat history" }))
 
-    // Sheet should now be open
+    // Dropdown should now be open - look for the search input
     await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument()
+      expect(screen.getByPlaceholderText("Search chat sessions...")).toBeInTheDocument()
     })
-
-    // Should show the history panel content (multiple elements have this text, so use getAllByText)
-    expect(screen.getAllByText("Chat History").length).toBeGreaterThan(0)
   })
 
-  it("shows sessions in the sheet", async () => {
+  it("shows sessions in the dropdown", async () => {
     mockUseTaskChatSessions.mockReturnValue({
       sessions: mockSessions,
       isLoading: false,
@@ -97,9 +91,9 @@ describe("TaskChatHistorySheet", () => {
       refresh: vi.fn(),
     })
 
-    render(<TaskChatHistorySheet />)
+    render(<TaskChatHistoryDropdown />)
 
-    // Open the sheet
+    // Open the dropdown
     fireEvent.click(screen.getByRole("button", { name: "View chat history" }))
 
     // Should show sessions
@@ -109,7 +103,7 @@ describe("TaskChatHistorySheet", () => {
     })
   })
 
-  it("calls onSelectSession and closes sheet when session is selected", async () => {
+  it("calls onSelectSession and closes dropdown when session is selected", async () => {
     const mockOnSelectSession = vi.fn()
     mockUseTaskChatSessions.mockReturnValue({
       sessions: mockSessions,
@@ -118,14 +112,14 @@ describe("TaskChatHistorySheet", () => {
       refresh: vi.fn(),
     })
 
-    render(<TaskChatHistorySheet onSelectSession={mockOnSelectSession} />)
+    render(<TaskChatHistoryDropdown onSelectSession={mockOnSelectSession} />)
 
-    // Open the sheet
+    // Open the dropdown
     fireEvent.click(screen.getByRole("button", { name: "View chat history" }))
 
-    // Wait for sheet to be open
+    // Wait for dropdown to be open
     await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument()
+      expect(screen.getByPlaceholderText("Search chat sessions...")).toBeInTheDocument()
     })
 
     // Click on a session
@@ -134,9 +128,9 @@ describe("TaskChatHistorySheet", () => {
     // Should call the callback with the session ID
     expect(mockOnSelectSession).toHaveBeenCalledWith("session-abc123")
 
-    // Sheet should close
+    // Dropdown should close
     await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText("Search chat sessions...")).not.toBeInTheDocument()
     })
   })
 
@@ -148,13 +142,51 @@ describe("TaskChatHistorySheet", () => {
       refresh: vi.fn(),
     })
 
-    render(<TaskChatHistorySheet className="custom-class" />)
+    render(<TaskChatHistoryDropdown className="custom-class" />)
 
     const button = screen.getByRole("button", { name: "View chat history" })
     expect(button).toHaveClass("custom-class")
   })
 
-  it("has screen reader accessible title", async () => {
+  it("shows loading state in dropdown", async () => {
+    mockUseTaskChatSessions.mockReturnValue({
+      sessions: [],
+      isLoading: true,
+      error: null,
+      refresh: vi.fn(),
+    })
+
+    render(<TaskChatHistoryDropdown />)
+
+    // Open the dropdown
+    fireEvent.click(screen.getByRole("button", { name: "View chat history" }))
+
+    // Should show loading message
+    await waitFor(() => {
+      expect(screen.getByText("Loading...")).toBeInTheDocument()
+    })
+  })
+
+  it("shows error state in dropdown", async () => {
+    mockUseTaskChatSessions.mockReturnValue({
+      sessions: [],
+      isLoading: false,
+      error: "Failed to load sessions",
+      refresh: vi.fn(),
+    })
+
+    render(<TaskChatHistoryDropdown />)
+
+    // Open the dropdown
+    fireEvent.click(screen.getByRole("button", { name: "View chat history" }))
+
+    // Should show error message
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load sessions")).toBeInTheDocument()
+    })
+  })
+
+  it("groups sessions by date", async () => {
     mockUseTaskChatSessions.mockReturnValue({
       sessions: mockSessions,
       isLoading: false,
@@ -162,16 +194,15 @@ describe("TaskChatHistorySheet", () => {
       refresh: vi.fn(),
     })
 
-    render(<TaskChatHistorySheet />)
+    render(<TaskChatHistoryDropdown />)
 
-    // Open the sheet
+    // Open the dropdown
     fireEvent.click(screen.getByRole("button", { name: "View chat history" }))
 
-    // Should have sr-only title for accessibility
+    // Should show date group headings
     await waitFor(() => {
-      // The SheetTitle has sr-only class, so it won't be visible but will be in the DOM
-      const title = screen.getByText("Chat History", { selector: "h2" })
-      expect(title).toHaveClass("sr-only")
+      expect(screen.getByText("Today")).toBeInTheDocument()
+      expect(screen.getByText("Yesterday")).toBeInTheDocument()
     })
   })
 })

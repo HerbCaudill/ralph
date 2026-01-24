@@ -15,7 +15,7 @@ import type { ChatEvent, TaskChatMessage } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
-import { TaskChatHistorySheet } from "./TaskChatHistorySheet"
+import { TaskChatHistoryDropdown } from "./TaskChatHistoryDropdown"
 import { TopologySpinner } from "../ui/TopologySpinner"
 
 /**
@@ -178,7 +178,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
           <span className="text-sm font-medium">Task Chat</span>
         </div>
         <div className="flex items-center gap-1">
-          <TaskChatHistorySheet />
+          <TaskChatHistoryDropdown />
           <button
             onClick={handleClearHistory}
             disabled={isLoading}

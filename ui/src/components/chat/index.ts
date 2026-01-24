@@ -7,5 +7,5 @@ export type { TaskChatPanelProps } from "./TaskChatPanel"
 export { TaskChatHistoryPanel } from "./TaskChatHistoryPanel"
 export type { TaskChatHistoryPanelProps } from "./TaskChatHistoryPanel"
 
-export { TaskChatHistorySheet } from "./TaskChatHistorySheet"
-export type { TaskChatHistorySheetProps } from "./TaskChatHistorySheet"
+export { TaskChatHistoryDropdown } from "./TaskChatHistoryDropdown"
+export type { TaskChatHistoryDropdownProps } from "./TaskChatHistoryDropdown"

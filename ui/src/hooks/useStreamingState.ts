@@ -4,11 +4,72 @@ import type { ChatEvent, StreamingMessage } from "@/types"
 interface StreamState {
   currentMessage: StreamingMessage | null
   currentBlockIndex: number
-  /**
-   * Timestamp of the last synthesized assistant event.
-   * Used to deduplicate assistant events that come after message_stop.
-   */
-  lastSynthesizedTimestamp: number | null
+}
+
+interface StreamingRange {
+  startTimestamp: number
+  stopTimestamp: number | null // null means streaming is still in progress
+}
+
+/**
+ * Find all message_start/message_stop pairs in the events to build a list of
+ * streaming message timestamp ranges. This is used to deduplicate SDK assistant
+ * events that correspond to streamed messages.
+ *
+ * Returns an array of streaming ranges. If a range has `stopTimestamp: null`,
+ * it means the streaming is still in progress.
+ */
+function findStreamingRanges(events: ChatEvent[]): StreamingRange[] {
+  const ranges: StreamingRange[] = []
+  let currentStart: number | null = null
+
+  for (const event of events) {
+    if (event.type !== "stream_event") continue
+    const streamEvent = (event as { event?: { type?: string } }).event
+    if (!streamEvent) continue
+
+    if (streamEvent.type === "message_start") {
+      currentStart = event.timestamp
+    } else if (streamEvent.type === "message_stop" && currentStart !== null) {
+      ranges.push({ startTimestamp: currentStart, stopTimestamp: event.timestamp })
+      currentStart = null
+    }
+  }
+
+  // If we have an in-progress streaming message, add it with null stopTimestamp
+  if (currentStart !== null) {
+    ranges.push({ startTimestamp: currentStart, stopTimestamp: null })
+  }
+
+  return ranges
+}
+
+/**
+ * Check if an assistant event should be deduplicated because it corresponds to
+ * a streamed message. An assistant event is a duplicate if:
+ * 1. Its timestamp falls within a completed streaming range (message_stop within 1000ms), OR
+ * 2. Its timestamp falls within or after an in-progress streaming range
+ */
+function shouldDeduplicateAssistant(
+  assistantTimestamp: number,
+  streamingRanges: StreamingRange[],
+): boolean {
+  for (const range of streamingRanges) {
+    if (range.stopTimestamp === null) {
+      // In-progress streaming: deduplicate if assistant arrived during or after streaming started
+      // (with some tolerance for timestamp ordering)
+      if (assistantTimestamp >= range.startTimestamp - 1000) {
+        return true
+      }
+    } else {
+      // Completed streaming: deduplicate if assistant is within 1000ms of message_stop
+      const diff = Math.abs(assistantTimestamp - range.stopTimestamp)
+      if (diff < 1000) {
+        return true
+      }
+    }
+  }
+  return false
 }
 
 /**
@@ -21,27 +82,23 @@ export function useStreamingState(events: ChatEvent[]): {
   streamingMessage: StreamingMessage | null
 } {
   return useMemo(() => {
+    // First pass: find all streaming ranges (including in-progress ones)
+    const streamingRanges = findStreamingRanges(events)
+
     const completedEvents: ChatEvent[] = []
     const state: StreamState = {
       currentMessage: null,
       currentBlockIndex: -1,
-      lastSynthesizedTimestamp: null,
     }
 
     for (const event of events) {
       if (event.type !== "stream_event") {
         // Non-stream events pass through directly, but skip assistant events that
         // were already synthesized from streaming (to avoid duplicates).
-        // We detect duplicates by checking if we synthesized an assistant event
-        // from message_stop that occurred shortly before this assistant event.
-        if (event.type === "assistant" && state.lastSynthesizedTimestamp !== null) {
-          // The SDK sends assistant event right after message_stop (typically within 100ms).
-          // If we synthesized an assistant event recently, skip this duplicate.
-          const timeSinceSynthesized = event.timestamp - state.lastSynthesizedTimestamp
-          if (timeSinceSynthesized >= 0 && timeSinceSynthesized < 1000) {
-            // Skip - we already created this from streaming
-            // Clear the timestamp so we don't skip subsequent legitimate assistant events
-            state.lastSynthesizedTimestamp = null
+        // We check if there's a message_stop event nearby (within 1000ms) to detect duplicates.
+        if (event.type === "assistant") {
+          if (shouldDeduplicateAssistant(event.timestamp, streamingRanges)) {
+            // Skip - this is a duplicate of a streamed message
             continue
           }
         }
@@ -127,9 +184,6 @@ export function useStreamingState(events: ChatEvent[]): {
               timestamp: state.currentMessage.timestamp,
               message: { content },
             })
-            // Record the timestamp so we can skip the duplicate assistant event
-            // that the server sends after message_stop
-            state.lastSynthesizedTimestamp = event.timestamp
           }
           state.currentMessage = null
           state.currentBlockIndex = -1

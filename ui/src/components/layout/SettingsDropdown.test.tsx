@@ -319,20 +319,20 @@ describe("SettingsDropdown", () => {
   })
 
   describe("loading states", () => {
-    it("disables trigger button when loading", () => {
+    it("trigger button remains clickable when loading", () => {
       mockIsLoadingList = true
       render(<SettingsDropdown />)
 
       const trigger = screen.getByTestId("settings-dropdown-trigger")
-      expect(trigger).toBeDisabled()
+      expect(trigger).not.toBeDisabled()
     })
 
-    it("shows opacity when loading", () => {
+    it("can open dropdown while loading", () => {
       mockIsLoadingList = true
       render(<SettingsDropdown />)
 
-      const trigger = screen.getByTestId("settings-dropdown-trigger")
-      expect(trigger).toHaveClass("opacity-70")
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+      expect(screen.getByTestId("settings-dropdown")).toBeInTheDocument()
     })
   })
 
