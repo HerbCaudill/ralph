@@ -1,6 +1,11 @@
 import { useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import {
+  IconTopologyFull,
+  IconTopologyFullHierarchy,
+  IconTopologyRing,
+  IconTopologyRing2,
+  IconTopologyRing3,
   IconTopologyStar2,
   IconTopologyStarRing,
   IconTopologyStar3,
@@ -8,6 +13,11 @@ import {
 } from "@tabler/icons-react"
 
 const TOPOLOGY_ICONS = [
+  IconTopologyFull,
+  IconTopologyFullHierarchy,
+  IconTopologyRing,
+  IconTopologyRing2,
+  IconTopologyRing3,
   IconTopologyStar2,
   IconTopologyStar3,
   IconTopologyStarRing,
@@ -26,17 +36,12 @@ export function TopologySpinner({ className, duration = 1000 }: TopologySpinnerP
   const Icon = TOPOLOGY_ICONS[iconIndex]
 
   return (
-    <span
-      className="animate-pulse-scale inline-flex"
-      style={{ animationDuration: `${duration * 2}ms` }}
-    >
-      <Icon
-        className={cn("text-repo-accent size-4 animate-spin", className)}
-        style={{ animationDuration: `${duration}ms` }}
-        onAnimationIteration={handleAnimationIteration}
-        aria-hidden="true"
-      />
-    </span>
+    <Icon
+      className={cn("text-repo-accent animate-spin-pulse size-6", className)}
+      style={{ animationDuration: `${duration}ms` }}
+      onAnimationIteration={handleAnimationIteration}
+      aria-hidden="true"
+    />
   )
 }
 
