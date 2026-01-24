@@ -1334,6 +1334,12 @@ function createApp(
 export interface WsClient {
   ws: WebSocket
   isAlive: boolean
+  /**
+   * Index of the last event delivered to this client (per instance).
+   * Used for reconnection sync to avoid sending duplicate events.
+   * Key is instanceId, value is the index of the last delivered event.
+   */
+  lastDeliveredEventIndex: Map<string, number>
 }
 
 const clients = new Set<WsClient>()
@@ -1343,6 +1349,46 @@ const clients = new Set<WsClient>()
  */
 export function getClientCount(): number {
   return clients.size
+}
+
+/**
+ * Get all connected WebSocket clients.
+ * Useful for iterating over clients to send targeted messages.
+ */
+export function getClients(): ReadonlySet<WsClient> {
+  return clients
+}
+
+/**
+ * Find a client by its WebSocket connection.
+ */
+export function getClientByWebSocket(ws: WebSocket): WsClient | undefined {
+  for (const client of clients) {
+    if (client.ws === ws) {
+      return client
+    }
+  }
+  return undefined
+}
+
+/**
+ * Update the last delivered event index for a client.
+ * Call this after successfully delivering events to a client.
+ */
+export function updateClientEventIndex(
+  client: WsClient,
+  instanceId: string,
+  eventIndex: number,
+): void {
+  client.lastDeliveredEventIndex.set(instanceId, eventIndex)
+}
+
+/**
+ * Get the last delivered event index for a client.
+ * Returns -1 if no events have been delivered for this instance.
+ */
+export function getClientEventIndex(client: WsClient, instanceId: string): number {
+  return client.lastDeliveredEventIndex.get(instanceId) ?? -1
 }
 
 /**
@@ -1375,7 +1421,7 @@ function attachWsServer(
   wss.on("connection", (ws: WebSocket) => {
     console.log("[ws] client connected")
 
-    const client: WsClient = { ws, isAlive: true }
+    const client: WsClient = { ws, isAlive: true, lastDeliveredEventIndex: new Map() }
     clients.add(client)
 
     ws.on("pong", () => {
@@ -1435,6 +1481,11 @@ function attachWsServer(
           events,
         }),
       )
+
+      // Track that we've delivered these events to this client
+      if (events.length > 0) {
+        client.lastDeliveredEventIndex.set("default", events.length - 1)
+      }
 
       // Send full instance list so client can hydrate its store
       const allInstances = registry.getAll().map(serializeInstanceState)
@@ -1553,12 +1604,26 @@ function wireRegistryEvents(
     switch (eventType) {
       case "ralph:event": {
         const event = args[0] as RalphEvent
-        broadcast({
+        const eventHistory = registry.getEventHistory(instanceId)
+        // Event index is the position in the event history array (0-based)
+        // After adding an event, it's at index length - 1
+        const eventIndex = eventHistory.length - 1
+
+        // Broadcast and update per-client tracking
+        const payload = JSON.stringify({
           type: "ralph:event",
           instanceId,
           event,
+          eventIndex,
           timestamp: Date.now(),
         })
+        for (const client of clients) {
+          if (client.ws.readyState === client.ws.OPEN) {
+            client.ws.send(payload)
+            // Update tracking for this client
+            client.lastDeliveredEventIndex.set(instanceId, eventIndex)
+          }
+        }
         break
       }
       case "ralph:status": {

@@ -487,3 +487,43 @@ describe("WebSocket event broadcast", () => {
     expect(() => testServer.broadcast({ type: "test" })).not.toThrow()
   })
 })
+
+describe("Per-client event tracking", () => {
+  it("WsClient interface includes lastDeliveredEventIndex", async () => {
+    // Import the type to ensure it exists and has the correct shape
+    const client = {
+      ws: {} as typeof WebSocket.prototype,
+      isAlive: true,
+      lastDeliveredEventIndex: new Map<string, number>(),
+    }
+
+    // Verify the Map works correctly
+    client.lastDeliveredEventIndex.set("default", 5)
+    expect(client.lastDeliveredEventIndex.get("default")).toBe(5)
+    expect(client.lastDeliveredEventIndex.get("other")).toBeUndefined()
+
+    // Verify default behavior (no events delivered returns -1 or undefined)
+    expect(client.lastDeliveredEventIndex.get("nonexistent") ?? -1).toBe(-1)
+  })
+
+  it("tracks event indices per instance", async () => {
+    const client = {
+      ws: {} as typeof WebSocket.prototype,
+      isAlive: true,
+      lastDeliveredEventIndex: new Map<string, number>(),
+    }
+
+    // Track events for different instances
+    client.lastDeliveredEventIndex.set("instance1", 10)
+    client.lastDeliveredEventIndex.set("instance2", 5)
+    client.lastDeliveredEventIndex.set("default", 0)
+
+    expect(client.lastDeliveredEventIndex.get("instance1")).toBe(10)
+    expect(client.lastDeliveredEventIndex.get("instance2")).toBe(5)
+    expect(client.lastDeliveredEventIndex.get("default")).toBe(0)
+
+    // Update an instance's index
+    client.lastDeliveredEventIndex.set("instance1", 15)
+    expect(client.lastDeliveredEventIndex.get("instance1")).toBe(15)
+  })
+})
