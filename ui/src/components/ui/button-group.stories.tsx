@@ -53,7 +53,7 @@ export const WithIcons: Story = {
 
 export const MediaControls: Story = {
   render: () => (
-    <ButtonGroup>
+    <ButtonGroup className="border-input overflow-hidden rounded-md border">
       <Button variant="ghost" size="icon-sm">
         <IconPlayerPlayFilled className="size-4" />
       </Button>
@@ -72,7 +72,7 @@ export const MediaControls: Story = {
 
 export const WithSeparator: Story = {
   render: () => (
-    <ButtonGroup>
+    <ButtonGroup className="border-input overflow-hidden rounded-md border">
       <Button variant="ghost" size="icon-sm">
         <IconAlignLeft className="size-4" />
       </Button>
