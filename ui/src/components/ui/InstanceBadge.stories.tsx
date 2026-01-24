@@ -7,7 +7,6 @@ const meta: Meta<typeof InstanceBadge> = {
   parameters: {
     layout: "centered",
   },
-  tags: ["autodocs"],
   argTypes: {
     status: {
       control: "select",

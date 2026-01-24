@@ -9,7 +9,6 @@ const meta: Meta<typeof InstanceSelector> = {
   parameters: {
     layout: "centered",
   },
-  tags: ["autodocs"],
   decorators: [
     Story => {
       // Reset store before each story

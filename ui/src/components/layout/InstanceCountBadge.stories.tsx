@@ -15,7 +15,6 @@ const meta: Meta<typeof InstanceCountBadge> = {
       ],
     },
   },
-  tags: ["autodocs"],
   argTypes: {
     count: {
       control: { type: "number", min: 1, max: 10 },

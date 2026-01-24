@@ -8,7 +8,6 @@ const meta: Meta<typeof ToolUseCard> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     Story => (
       <div className="border-border max-w-2xl overflow-hidden rounded-md border">

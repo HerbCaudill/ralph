@@ -24,7 +24,8 @@
     "test:pw:headed": "node scripts/playwright.js --headed",
     "test:pw": "node scripts/playwright.js",
     "dev": "node scripts/dev.js",
-    "storybook": "pnpm --filter @herbcaudill/ralph-ui storybook"
+    "storybook": "pnpm --filter @herbcaudill/ralph-ui storybook",
+    "test:storybook": "pnpm --filter @herbcaudill/ralph-ui test:storybook"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

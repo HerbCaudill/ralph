@@ -221,8 +221,8 @@ describe("ChatInput", () => {
     it("button has correct base classes and accent color styling", () => {
       render(<ChatInput />)
       const button = screen.getByRole("button", { name: "Send message" })
-      // Button uses inline styles for accent color, check structure classes
-      expect(button).toHaveClass("rounded-md", "inline-flex", "shrink-0")
+      // Button uses InputGroupButton component, check structure classes
+      expect(button).toHaveClass("rounded-md", "shrink-0")
       // Default accent color is black with white text
       expect(button).toHaveStyle({ backgroundColor: "#000000", color: "#ffffff" })
     })

@@ -7,7 +7,6 @@ const meta: Meta<typeof AssistantText> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     Story => (
       <div className="max-w-2xl">

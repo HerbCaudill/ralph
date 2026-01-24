@@ -179,6 +179,9 @@ test.describe("Navigation", () => {
     })
   })
 
+  // Note: Hotkeys dialog component tests moved to Storybook interaction tests
+  // See: ui/src/components/layout/HotkeysDialog.stories.tsx
+  // Remaining here: global hotkey Cmd+/ test (requires App-level useHotkeys)
   test.describe("hotkeys dialog", () => {
     test("Cmd+/ opens hotkeys dialog", async ({ app }) => {
       // Press Cmd+/ to open hotkeys dialog
@@ -191,35 +194,11 @@ test.describe("Navigation", () => {
       // Should show "Keyboard Shortcuts" title in the heading
       await expect(dialog.getByRole("heading", { name: "Keyboard Shortcuts" })).toBeVisible()
     })
-
-    test("hotkeys dialog shows categories", async ({ app }) => {
-      await app.page.keyboard.press("Meta+/")
-
-      const dialog = app.page.getByRole("dialog")
-      await expect(dialog).toBeVisible()
-
-      // Should show Navigation category
-      await expect(dialog.getByText("Navigation")).toBeVisible()
-
-      // Should show Agent Control category
-      await expect(dialog.getByText("Agent Control")).toBeVisible()
-    })
-
-    test("Escape closes hotkeys dialog", async ({ app }) => {
-      // Open dialog
-      await app.page.keyboard.press("Meta+/")
-
-      const dialog = app.page.getByRole("dialog")
-      await expect(dialog).toBeVisible()
-
-      // Press Escape to close
-      await app.page.keyboard.press("Escape")
-
-      // Dialog should be closed
-      await expect(dialog).not.toBeVisible()
-    })
   })
 
+  // Note: Command palette component tests moved to Storybook interaction tests
+  // See: ui/src/components/layout/CommandPalette.stories.tsx
+  // Remaining here: global hotkey Cmd+; test (requires App-level useHotkeys)
   test.describe("command palette", () => {
     test("Cmd+; opens command palette", async ({ app }) => {
       // Press Cmd+; to open command palette
@@ -228,59 +207,6 @@ test.describe("Navigation", () => {
       // Command palette should be visible
       const commandPalette = app.page.getByTestId("command-palette")
       await expect(commandPalette).toBeVisible()
-    })
-
-    test("command palette shows search input", async ({ app }) => {
-      await app.page.keyboard.press("Meta+;")
-
-      const commandInput = app.page.getByTestId("command-input")
-      await expect(commandInput).toBeVisible()
-    })
-
-    test("clicking backdrop closes command palette", async ({ app }) => {
-      // Open command palette
-      await app.page.keyboard.press("Meta+;")
-
-      const commandPalette = app.page.getByTestId("command-palette")
-      await expect(commandPalette).toBeVisible()
-
-      // Click the backdrop to close (use dispatchEvent to ensure click reaches backdrop)
-      await app.page.evaluate(() => {
-        const backdrop = document.querySelector('[data-testid="command-backdrop"]')
-        if (backdrop) {
-          backdrop.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-        }
-      })
-
-      // Command palette should be closed
-      await expect(commandPalette).not.toBeVisible()
-    })
-
-    test("can search commands in palette", async ({ app }) => {
-      await app.page.keyboard.press("Meta+;")
-
-      const commandInput = app.page.getByTestId("command-input")
-
-      // Type to search for theme command
-      await commandInput.fill("theme")
-
-      // Should show the Toggle Theme command (which has "theme" in keywords)
-      await expect(app.page.getByTestId("command-item-cycleTheme")).toBeVisible()
-    })
-
-    test("selecting a command closes palette", async ({ app }) => {
-      await app.page.keyboard.press("Meta+;")
-
-      const commandPalette = app.page.getByTestId("command-palette")
-      await expect(commandPalette).toBeVisible()
-
-      // Select the toggle sidebar command using keyboard
-      // First navigate to it with arrow keys if needed, then press Enter
-      const toggleSidebarItem = app.page.getByTestId("command-item-toggleSidebar")
-      await toggleSidebarItem.click({ force: true })
-
-      // Command palette should close
-      await expect(commandPalette).not.toBeVisible()
     })
   })
 
@@ -351,36 +277,8 @@ test.describe("Navigation", () => {
     })
   })
 
-  test.describe("iteration navigation", () => {
-    // Note: These tests verify the hotkeys work but actual iteration navigation
-    // requires a running agent with multiple iterations
-
-    test("iteration navigation hotkeys are registered", async ({ app }) => {
-      // Open hotkeys dialog to verify iteration navigation hotkeys exist
-      await app.page.keyboard.press("Meta+/")
-
-      const dialog = app.page.getByRole("dialog")
-      await expect(dialog).toBeVisible()
-
-      // Verify iteration navigation hotkeys are documented
-      await expect(dialog.getByText(/previous iteration/i)).toBeVisible()
-      await expect(dialog.getByText(/next iteration/i)).toBeVisible()
-      await expect(dialog.getByText(/latest iteration/i)).toBeVisible()
-    })
-  })
-
-  test.describe("task navigation", () => {
-    test("task navigation hotkeys are registered", async ({ app }) => {
-      // Open hotkeys dialog to verify task navigation hotkeys exist
-      await app.page.keyboard.press("Meta+/")
-
-      const dialog = app.page.getByRole("dialog")
-      await expect(dialog).toBeVisible()
-
-      // Verify task navigation hotkeys are documented
-      await expect(dialog.getByText(/select previous task/i)).toBeVisible()
-      await expect(dialog.getByText(/select next task/i)).toBeVisible()
-      await expect(dialog.getByText(/open selected task/i)).toBeVisible()
-    })
-  })
+  // Note: Hotkey verification tests moved to Storybook interaction tests
+  // See: ui/src/components/layout/HotkeysDialog.stories.tsx
+  // - ShowsIterationNavigationHotkeys
+  // - ShowsTaskNavigationHotkeys
 })
