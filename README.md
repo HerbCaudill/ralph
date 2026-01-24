@@ -1,201 +1,91 @@
-```
-█▀█ ▄▀█ █   █▀█ █ █
-█▀▄ █▀█ █▄▄ █▀▀ █▀█
-```
+# Ralph
 
-Autonomous AI iteration engine for Claude CLI. Ralph runs Claude in a loop to systematically work through your codebase's task list, enabling Claude to tackle work items iteratively.
+Autonomous AI iteration engine for Claude CLI. Ralph spawns Claude CLI processes with custom prompts, captures streaming output, and orchestrates multiple iterations to complete tasks autonomously.
 
-https://github.com/user-attachments/assets/e8d89a33-8db5-4d72-9c97-927558f92516
+## Packages
 
-## Overview
+This monorepo contains three packages:
 
-Ralph spawns individual Claude CLI sessions that:
-
-1. Check project health (build, tests)
-2. Select and work on the highest-priority task
-3. Validate changes with tests
-4. Commit changes
-5. Repeat
-
-The web UI server uses SDK-backed adapters for Claude and Codex, while the CLI continues to run the Claude CLI directly. The task chat panel also surfaces tool calls and results alongside assistant replies.
+| Package                                | Description                            |
+| -------------------------------------- | -------------------------------------- |
+| [`@herbcaudill/ralph`](cli/)           | CLI tool for terminal-based iterations |
+| [`@herbcaudill/ralph-ui`](ui/)         | Web UI with real-time event streaming  |
+| [`@herbcaudill/ralph-shared`](shared/) | Shared types and utilities             |
 
 ## Installation
 
 ```bash
-pnpm add -D @herbcaudill/ralph
-```
+# CLI only
+npm install -g @herbcaudill/ralph
 
-Or use directly with npx:
-
-```bash
-npx @herbcaudill/ralph
+# Web UI
+npm install -g @herbcaudill/ralph-ui
 ```
 
 ## Quick start
 
-1. **Initialize ralph in your project:**
-
-   ```bash
-   npx @herbcaudill/ralph init
-   ```
-
-   This creates a `.ralph/` directory with template files:
-   - `prompt.md` - Instructions for Claude during each iteration
-   - `todo.md` - Your task list (optional if using bd)
-   - `events.jsonl` - Event log in JSONL format (auto-generated during runs)
-
-2. **Customize the workflow:**
-
-   Edit `.ralph/prompt.md` to match your project's workflow (build commands, test commands, etc.).
-
-3. **Add tasks:**
-
-   You can manage tasks using either a markdown file or [beads](https://github.com/steveyegge/beads), a lightweight issue tracker.
-
-   **Option A: Using `.ralph/todo.md`**
-
-   ```markdown
-   ### To do
-
-   - [ ] Add user authentication
-   - [ ] Fix login form validation
-   - [ ] Write tests for auth flow
-
-   ---
-
-   ### Done
-   ```
-
-   **Option B: Using beads (recommended)**
-
-   ```bash
-   # Install bd
-   brew install herbcaudill/tap/bd
-
-   # Initialize in your project
-   bd init
-
-   # Create issues
-   bd create "Add user authentication"
-   bd create "Fix login form validation"
-   bd create "Write tests for auth flow"
-
-   # View ready work
-   bd ready
-   ```
-
-4. **Run ralph:**
-
-   ```bash
-   npx ralph          # Run with dynamic default (120% of open issues)
-   npx ralph 5        # Run 5 iterations
-   npx ralph --watch  # Run and watch for new issues
-   ```
-
-## Commands
-
-| Command                  | Description                                                    |
-| ------------------------ | -------------------------------------------------------------- |
-| `ralph`                  | Run with dynamic default (120% of open issues, min 10 max 100) |
-| `ralph <n>`              | Run specified number of iterations                             |
-| `ralph init`             | Initialize .ralph directory with templates                     |
-| `ralph --watch`          | Watch for new issues after completion                          |
-| `ralph --agent <name>`   | Select AI agent (e.g., claude, codex) - defaults to claude    |
-| `ralph --help`           | Show help                                                      |
-
-## Watch mode
-
-Watch mode (`--watch`) keeps ralph running after completing all tasks, waiting for new issues to be added:
+### CLI
 
 ```bash
-npx ralph --watch
+# Initialize Ralph in your project
+ralph init
+
+# Run iterations (default: 10)
+ralph
+
+# Run specific number of iterations
+ralph 5
+
+# Watch mode: poll for new tasks after completion
+ralph --watch
 ```
 
-When ralph finishes all available work and Claude outputs the completion signal, instead of exiting, it enters a waiting state. When you add a new issue via `bd create` or `bd q`, ralph automatically detects it and starts a new iteration to work on it.
+### Web UI
 
-This enables a "continuous integration" style workflow:
+```bash
+# Start the UI server
+ralph-ui start --open
+```
 
-1. Start ralph in watch mode: `npx ralph --watch`
-2. Add tasks as you think of them: `bd q "Fix header alignment"`
-3. Ralph automatically picks up and works on new tasks
-4. Keep adding tasks while ralph works
-
-Watch mode requires **bd** (beads) for issue tracking—it watches for mutations to the beads database.
-
-## Configuration
-
-**`.ralph/prompt.md`**
-
-Instructions for Claude's workflow. Customize this for your project:
-
-- Build/typecheck commands
-- Test commands
-- Project-specific conventions
-- Commit message style
-
-### Customizing the prompt
-
-The default prompt ([for beads](./templates/prompt-beads.md) or [for TODO.md](./templates/prompt-todos.md)) works for my projects, but you should customize it for your project. Replace with your actual build/test commands (e.g., `pnpm build`, `pnpm typecheck`, `cargo test`, `pytest`, etc.).
+The UI provides real-time monitoring, task management, and support for multiple AI agents (Claude, Codex).
 
 ## How it works
 
-Ralph is a thin wrapper around the Claude CLI that:
+1. Ralph combines a core prompt with your project's `.ralph/workflow.md`
+2. Spawns Claude CLI with `--output-format stream-json`
+3. Claude checks for errors, finds available tasks via `bd ready`, and works through them
+4. Outputs `<start_task>` and `<end_task>` markers as it works
+5. Exits when no tasks remain (`<promise>COMPLETE</promise>`)
 
-1. **Spawns Claude CLI** with your project context (prompt, todo, progress files)
-2. **Captures output** as streaming JSON events
-3. **Processes events** to display tool usage (Read, Edit, Bash, etc.) in a readable format, stripping ANSI color codes from Bash output
-4. **Logs everything** to `events.jsonl` for debugging
-5. **Detects completion** when Claude outputs `<promise>COMPLETE</promise>`
-6. **Recursively runs** next iteration until count reached or todo list complete
+Ralph integrates with [beads](https://github.com/HerbCaudill/beads) for issue tracking, but works without it too.
 
-## Requirements
-
-- **Claude CLI** must be installed and configured
-- **Node.js** 18 or higher
-- Git repository (for commits)
-
-Install Claude CLI:
+## Development
 
 ```bash
-# macOS/Linux
-curl https://claude.com/cli | sh
+# Install dependencies
+pnpm install
 
-# Or with Homebrew
-brew install anthropics/tap/claude
+# Build all packages
+pnpm build
+
+# Run all tests
+pnpm test:all
+
+# Start UI in development
+pnpm dev
+
+# Format code
+pnpm format
 ```
 
-Configure Claude CLI:
+## Environment variables
 
-```bash
-claude auth
-```
-
-## Tips
-
-- **Start with small iteration counts** (3-5) to verify the workflow before running longer sessions
-- **Customize prompt.md** for your project's specific needs (build commands, test frameworks, etc.)
-- **Break down complex tasks** into smaller subtasks in todo.md
-- **Let Claude prioritize** by not ordering tasks strictly - Claude will choose what makes sense
-- **Editor setup** - For UI server TypeScript files, point your editor at `ui/server/tsconfig.json`
-
-## Packages
-
-This is a pnpm monorepo with three packages:
-
-| Package | Description |
-|---------|-------------|
-| `@herbcaudill/ralph` | CLI tool - the autonomous iteration engine |
-| `@herbcaudill/ralph-ui` | Web UI with server and React frontend |
-| `@herbcaudill/ralph-shared` | Shared types and utilities used by CLI and UI |
-
-## Publishing
-
-```bash
-pnpm pub
-```
-
-Publishes `@herbcaudill/ralph` (CLI), `@herbcaudill/ralph-ui` (UI), and `@herbcaudill/ralph-shared` (shared).
-The UI package is configured to publish as public via `publishConfig`.
+| Variable            | Description                              | Required       |
+| ------------------- | ---------------------------------------- | -------------- |
+| `ANTHROPIC_API_KEY` | API key for Claude                       | Yes for Claude |
+| `OPENAI_API_KEY`    | API key for Codex                        | Optional       |
+| `HOST`              | Server bind address (default: 127.0.0.1) | No             |
+| `PORT`              | Server port (default: 4242)              | No             |
 
 ## License
 
