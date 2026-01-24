@@ -112,7 +112,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         rows={1}
         className={cn(
           "placeholder:text-muted-foreground bg-transparent",
-          "w-full resize-none border-0 px-0 py-1 text-sm",
+          "w-full resize-none border-0 px-0 py-2 text-sm",
           "focus:ring-0 focus:outline-none",
           "disabled:cursor-not-allowed disabled:opacity-50",
           "overflow-hidden",
