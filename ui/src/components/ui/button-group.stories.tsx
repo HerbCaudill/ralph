@@ -1,28 +1,28 @@
-import { useState } from "react"
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import { ButtonGroup, ButtonGroupSeparator } from "./button-group"
-import { Button } from "./button"
-import {
-  IconPlayerPlayFilled,
-  IconPlayerPauseFilled,
-  IconPlayerStopFilled,
-  IconPlayerStop,
-  IconBold,
-  IconItalic,
-  IconUnderline,
-  IconAlignLeft,
-  IconAlignCenter,
-  IconAlignRight,
-  IconCircle,
-  IconCircleDot,
-  IconCircleCheck,
-  IconBan,
-  IconClock,
-  IconCheckbox,
-  IconBug,
-  IconStack2,
-} from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
+import type { Meta, StoryObj } from "@storybook/react-vite"
+import {
+  IconAlignCenter,
+  IconAlignLeft,
+  IconAlignRight,
+  IconBan,
+  IconBold,
+  IconBug,
+  IconCheckbox,
+  IconCircle,
+  IconCircleCheck,
+  IconCircleDot,
+  IconClock,
+  IconItalic,
+  IconPlayerPauseFilled,
+  IconPlayerPlayFilled,
+  IconPlayerStop,
+  IconPlayerStopFilled,
+  IconStack2,
+  IconUnderline,
+} from "@tabler/icons-react"
+import { useState } from "react"
+import { Button } from "./button"
+import { ButtonGroup, ButtonGroupSeparator } from "./button-group"
 
 const meta: Meta<typeof ButtonGroup> = {
   title: "Primitives/ButtonGroup",
@@ -61,7 +61,7 @@ export const WithIcons: Story = {
 
 export const MediaControls: Story = {
   render: () => (
-    <ButtonGroup className="border-input overflow-hidden rounded-md border">
+    <ButtonGroup className="overflow-hidden">
       <Button variant="ghost" size="icon-sm">
         <IconPlayerPlayFilled className="size-4" />
       </Button>
@@ -80,7 +80,7 @@ export const MediaControls: Story = {
 
 export const WithSeparator: Story = {
   render: () => (
-    <ButtonGroup className="border-input overflow-hidden rounded-md border">
+    <ButtonGroup className="overflow-hidden">
       <Button variant="ghost" size="icon-sm">
         <IconAlignLeft className="size-4" />
       </Button>
@@ -121,38 +121,57 @@ export const Mixed: Story = {
 }
 
 export const Bordered: Story = {
-  render: () => (
-    <ButtonGroup className="border-input h-8 overflow-hidden rounded-md border">
-      <button className="flex h-full items-center justify-center px-3 text-sm transition-colors hover:bg-gray-100">
-        One
-      </button>
-      <button className="flex h-full items-center justify-center bg-blue-500 px-3 text-sm text-white transition-colors">
-        Two
-      </button>
-      <button className="flex h-full items-center justify-center px-3 text-sm transition-colors hover:bg-gray-100">
-        Three
-      </button>
-    </ButtonGroup>
-  ),
+  render: () => {
+    const buttons = [
+      { label: "One", isSelected: false },
+      { label: "Two", isSelected: true },
+      { label: "Three", isSelected: false },
+    ]
+    return (
+      <ButtonGroup className="h-8 overflow-hidden">
+        {buttons.map(btn => (
+          <button
+            key={btn.label}
+            className={cn(
+              "flex h-full items-center justify-center px-3 text-sm transition-colors",
+              btn.isSelected ? "bg-repo-accent text-white" : "hover:bg-gray-100",
+            )}
+          >
+            {btn.label}
+          </button>
+        ))}
+      </ButtonGroup>
+    )
+  },
 }
 
 export const BorderedWithIcons: Story = {
-  render: () => (
-    <ButtonGroup className="border-input h-8 overflow-hidden rounded-md border">
-      <button className="flex h-full items-center justify-center gap-1 px-2 text-sm transition-colors hover:bg-gray-100">
-        <IconAlignLeft className="size-4" />
-        <span>Left</span>
-      </button>
-      <button className="flex h-full items-center justify-center gap-1 bg-blue-500 px-2 text-sm text-white transition-colors">
-        <IconAlignCenter className="size-4" />
-        <span>Center</span>
-      </button>
-      <button className="flex h-full items-center justify-center gap-1 px-2 text-sm transition-colors hover:bg-gray-100">
-        <IconAlignRight className="size-4" />
-        <span>Right</span>
-      </button>
-    </ButtonGroup>
-  ),
+  render: () => {
+    const buttons = [
+      { label: "Left", icon: IconAlignLeft, isSelected: false },
+      { label: "Center", icon: IconAlignCenter, isSelected: true },
+      { label: "Right", icon: IconAlignRight, isSelected: false },
+    ]
+    return (
+      <ButtonGroup className="h-8 overflow-hidden">
+        {buttons.map(btn => {
+          const Icon = btn.icon
+          return (
+            <button
+              key={btn.label}
+              className={cn(
+                "flex h-full items-center justify-center gap-1 px-2 text-sm transition-colors",
+                btn.isSelected ? "bg-repo-accent text-white" : "hover:bg-gray-100",
+              )}
+            >
+              <Icon className="size-4" />
+              <span>{btn.label}</span>
+            </button>
+          )
+        })}
+      </ButtonGroup>
+    )
+  },
 }
 
 /** Status button group as used in TaskDetailsDialog */
@@ -160,7 +179,7 @@ export const StatusSelector: Story = {
   render: function StatusSelectorStory() {
     const [status, setStatus] = useState<TaskStatus>("open")
     return (
-      <ButtonGroup className="border-input bg-background h-8 overflow-hidden rounded-md border">
+      <ButtonGroup className="bg-background h-8 overflow-hidden">
         {statusOptions.map(s => {
           const config = statusConfig[s]
           const Icon = config.icon
@@ -193,7 +212,7 @@ export const PrioritySelector: Story = {
   render: function PrioritySelectorStory() {
     const [priority, setPriority] = useState(2)
     return (
-      <ButtonGroup className="border-input bg-background h-8 overflow-hidden rounded-md border">
+      <ButtonGroup className="bg-background h-8 overflow-hidden">
         {priorityOptions.map(p => {
           const isSelected = priority === p.value
           return (
@@ -223,7 +242,7 @@ export const TypeSelector: Story = {
   render: function TypeSelectorStory() {
     const [issueType, setIssueType] = useState<IssueType>("task")
     return (
-      <ButtonGroup className="border-input bg-background h-8 overflow-hidden rounded-md border">
+      <ButtonGroup className="bg-background h-8 overflow-hidden">
         {issueTypeOptions.map(t => {
           const Icon = t.icon
           const isSelected = issueType === t.value
@@ -255,42 +274,42 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   open: {
     icon: IconCircle,
     label: "Open",
-    color: "text-green-500",
-    selectedBg: "bg-green-500",
+    color: "text-status-success",
+    selectedBg: "bg-status-success",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-green-500/20",
+    unselectedHover: "hover:bg-status-success/20",
   },
   in_progress: {
     icon: IconCircleDot,
     label: "In Progress",
-    color: "text-blue-500",
-    selectedBg: "bg-blue-500",
+    color: "text-status-info",
+    selectedBg: "bg-status-info",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-blue-500/20",
+    unselectedHover: "hover:bg-status-info/20",
   },
   blocked: {
     icon: IconBan,
     label: "Blocked",
-    color: "text-red-500",
-    selectedBg: "bg-red-500",
+    color: "text-status-error",
+    selectedBg: "bg-status-error",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-red-500/20",
+    unselectedHover: "hover:bg-status-error/20",
   },
   deferred: {
     icon: IconClock,
     label: "Deferred",
-    color: "text-amber-500",
-    selectedBg: "bg-amber-500",
+    color: "text-status-warning",
+    selectedBg: "bg-status-warning",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-amber-500/20",
+    unselectedHover: "hover:bg-status-warning/20",
   },
   closed: {
     icon: IconCircleCheck,
     label: "Closed",
-    color: "text-gray-500",
-    selectedBg: "bg-gray-500",
+    color: "text-status-neutral",
+    selectedBg: "bg-status-neutral",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-gray-500/20",
+    unselectedHover: "hover:bg-status-neutral/20",
   },
 }
 
@@ -310,37 +329,37 @@ const priorityOptions = [
     value: 1,
     label: "P1 - High",
     short: "P1",
-    color: "text-orange-500",
-    selectedBg: "bg-orange-500",
+    color: "text-orange",
+    selectedBg: "bg-orange",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-orange-500/20",
+    unselectedHover: "hover:bg-orange/20",
   },
   {
     value: 2,
     label: "P2 - Medium",
     short: "P2",
-    color: "text-amber-500",
-    selectedBg: "bg-amber-500",
+    color: "text-amber",
+    selectedBg: "bg-amber",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-amber-500/20",
+    unselectedHover: "hover:bg-amber/20",
   },
   {
     value: 3,
     label: "P3 - Low",
     short: "P3",
-    color: "text-yellow-500",
-    selectedBg: "bg-yellow-500",
+    color: "text-yellow",
+    selectedBg: "bg-yellow",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-yellow-500/20",
+    unselectedHover: "hover:bg-yellow/20",
   },
   {
     value: 4,
     label: "P4 - Lowest",
     short: "P4",
-    color: "text-gray-500",
-    selectedBg: "bg-gray-500",
+    color: "text-gray",
+    selectedBg: "bg-gray",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-gray-500/20",
+    unselectedHover: "hover:bg-gray/20",
   },
 ]
 
@@ -358,27 +377,27 @@ const issueTypeOptions: {
     label: "Task",
     icon: IconCheckbox,
     color: "text-status-success",
-    selectedBg: "bg-green-600",
+    selectedBg: "bg-status-success",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-green-500/20",
+    unselectedHover: "hover:bg-status-success/20",
   },
   {
     value: "bug",
     label: "Bug",
     icon: IconBug,
-    color: "text-red-500",
-    selectedBg: "bg-red-500",
+    color: "text-status-error",
+    selectedBg: "bg-status-error",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-red-500/20",
+    unselectedHover: "hover:bg-status-error/20",
   },
   {
     value: "epic",
     label: "Epic",
     icon: IconStack2,
-    color: "text-indigo-500",
-    selectedBg: "bg-indigo-500",
+    color: "text-status-info",
+    selectedBg: "bg-status-info",
     unselectedBg: "bg-transparent",
-    unselectedHover: "hover:bg-indigo-500/20",
+    unselectedHover: "hover:bg-status-info/20",
   },
 ]
 

@@ -151,7 +151,7 @@ export function ThemePicker({
                 className={cn(
                   "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
                   "hover:bg-muted",
-                  !activeThemeId && "bg-accent/50",
+                  !activeThemeId && "bg-repo-accent/50",
                 )}
                 onMouseEnter={handleMouseLeave}
                 data-testid="theme-picker-default"
@@ -184,7 +184,7 @@ export function ThemePicker({
                       className={cn(
                         "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
                         "hover:bg-muted",
-                        activeThemeId === theme.id && "bg-accent/50",
+                        activeThemeId === theme.id && "bg-repo-accent/50",
                       )}
                       data-testid={`theme-picker-item-${theme.id}`}
                     >

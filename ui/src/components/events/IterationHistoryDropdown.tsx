@@ -159,7 +159,7 @@ export function IterationHistoryDropdown({
                     onSelect={() =>
                       item.isLatest ? handleLatest() : handleIterationSelect(item.index)
                     }
-                    className={cn(item.isSelected && "bg-accent")}
+                    className={cn(item.isSelected && "bg-repo-accent")}
                   >
                     <span className="flex-1">{item.label}</span>
                     {item.isLatest && (

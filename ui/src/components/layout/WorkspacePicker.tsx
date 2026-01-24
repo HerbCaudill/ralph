@@ -311,8 +311,8 @@ export function WorkspacePicker({
                     }}
                     className={cn(
                       "flex w-full items-center gap-2 rounded px-3 py-2 text-left",
-                      "hover:bg-accent transition-colors",
-                      ws.isActive && "bg-accent/50",
+                      "hover:bg-repo-accent transition-colors",
+                      ws.isActive && "bg-repo-accent/50",
                     )}
                   >
                     {/* Accent color folder icon */}
@@ -344,7 +344,7 @@ export function WorkspacePicker({
               }}
               className={cn(
                 "flex w-full items-center gap-2 rounded px-3 py-2 text-sm",
-                "hover:bg-accent transition-colors",
+                "hover:bg-repo-accent transition-colors",
               )}
             >
               <IconRefresh className="text-muted-foreground size-3.5" />

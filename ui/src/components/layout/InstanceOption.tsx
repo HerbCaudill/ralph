@@ -17,8 +17,8 @@ export function InstanceOption({
       onClick={onSelect}
       className={cn(
         "flex w-full items-center gap-2 rounded px-3 py-2 text-left",
-        "hover:bg-accent transition-colors",
-        isActive && "bg-accent/50",
+        "hover:bg-repo-accent transition-colors",
+        isActive && "bg-repo-accent/50",
       )}
       role="option"
       aria-selected={isActive}

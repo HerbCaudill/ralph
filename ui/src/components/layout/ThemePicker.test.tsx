@@ -267,7 +267,7 @@ describe("ThemePicker", () => {
       // The active theme item should show a checkmark (we'd need to verify the icon is rendered)
       // For simplicity, we check the item has the right styling class
       const draculaItem = screen.getByTestId("theme-picker-item-dracula")
-      expect(draculaItem).toHaveClass("bg-accent/50")
+      expect(draculaItem).toHaveClass("bg-repo-accent/50")
     })
 
     it("shows checkmark on Default when no theme is active", () => {
@@ -279,7 +279,7 @@ describe("ThemePicker", () => {
 
       // Default option should have active styling
       const defaultItem = screen.getByTestId("theme-picker-default")
-      expect(defaultItem).toHaveClass("bg-accent/50")
+      expect(defaultItem).toHaveClass("bg-repo-accent/50")
     })
   })
 

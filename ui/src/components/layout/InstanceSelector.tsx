@@ -153,7 +153,7 @@ export function InstanceSelector({ className, textColor }: InstanceSelectorProps
               }}
               className={cn(
                 "flex w-full items-center gap-2 rounded px-3 py-2 text-sm",
-                "hover:bg-accent transition-colors",
+                "hover:bg-repo-accent transition-colors",
               )}
               data-testid="instance-selector-new"
             >

@@ -185,7 +185,7 @@ describe("SettingsDropdown", () => {
       fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
 
       const lightButton = screen.getByTestId("settings-appearance-light")
-      expect(lightButton).toHaveClass("bg-accent")
+      expect(lightButton).toHaveClass("bg-repo-accent")
     })
 
     it("calls setMode when clicking light/dark appearance mode button", () => {

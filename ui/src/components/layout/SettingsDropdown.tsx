@@ -140,7 +140,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
                   className={cn(
                     "flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs",
                     "hover:bg-muted transition-colors",
-                    appearanceMode === value && "bg-accent text-accent-foreground",
+                    appearanceMode === value && "bg-repo-accent text-accent-foreground",
                   )}
                   data-testid={`settings-appearance-${value}`}
                 >
@@ -178,7 +178,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
                 className={cn(
                   "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
                   "hover:bg-muted",
-                  !activeThemeId && "bg-accent/50",
+                  !activeThemeId && "bg-repo-accent/50",
                 )}
                 onMouseEnter={handleMouseLeave}
                 data-testid="settings-theme-default"
@@ -211,7 +211,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
                       className={cn(
                         "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
                         "hover:bg-muted",
-                        activeThemeId === theme.id && "bg-accent/50",
+                        activeThemeId === theme.id && "bg-repo-accent/50",
                       )}
                       data-testid={`settings-theme-item-${theme.id}`}
                     >

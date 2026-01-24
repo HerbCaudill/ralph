@@ -525,7 +525,7 @@ export function TaskDetailsDialog({
                 <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[status].color)} />
                 <span className="text-sm">{statusConfig[status].label}</span>
               </div>
-            : <ButtonGroup className="border-input bg-background h-8 overflow-hidden rounded-md border">
+            : <ButtonGroup className="bg-background h-8 overflow-hidden">
                 {statusOptions.map(s => {
                   const config = statusConfig[s]
                   const Icon = config.icon
@@ -578,7 +578,7 @@ export function TaskDetailsDialog({
               <span className="text-sm">
                 {priorityOptions.find(p => p.value === priority)?.label ?? `P${priority}`}
               </span>
-            : <ButtonGroup className="border-input bg-background h-8 overflow-hidden rounded-md border">
+            : <ButtonGroup className="bg-background h-8 overflow-hidden">
                 {priorityOptions.map(p => {
                   const isSelected = priority === p.value
                   const handlePriorityChange = (newPriority: number) => {
@@ -643,7 +643,7 @@ export function TaskDetailsDialog({
                   )
                 })()}
               </div>
-            : <ButtonGroup className="border-input bg-background h-8 overflow-hidden rounded-md border">
+            : <ButtonGroup className="bg-background h-8 overflow-hidden">
                 {issueTypeOptions.map(t => {
                   const Icon = t.icon
                   const isSelected = issueType === t.value
