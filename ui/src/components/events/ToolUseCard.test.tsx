@@ -556,6 +556,107 @@ describe("ToolUseCard", () => {
     })
   })
 
+  describe("showToolOutput toggle", () => {
+    it("hides output section when showToolOutput is false", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+      // Tool name and command should still be visible
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+      expect(screen.getByText("echo test")).toBeInTheDocument()
+      // Output should NOT be visible
+      expect(screen.queryByText("test output")).not.toBeInTheDocument()
+    })
+
+    it("shows output section when showToolOutput is true", () => {
+      useAppStore.getState().setShowToolOutput(true)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+      // Tool name, command, and output should all be visible
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+      expect(screen.getByText("echo test")).toBeInTheDocument()
+      expect(screen.getByText("test output")).toBeInTheDocument()
+    })
+
+    it("toggles output visibility with toggleToolOutput", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      const { rerender } = render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+
+      // Initially hidden
+      expect(screen.queryByText("test output")).not.toBeInTheDocument()
+
+      // Toggle to show
+      useAppStore.getState().toggleToolOutput()
+      rerender(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+
+      // Now visible
+      expect(screen.getByText("test output")).toBeInTheDocument()
+    })
+
+    it("hides diff view for Edit tool when showToolOutput is false", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Edit", {
+            input: {
+              file_path: "/test.ts",
+              old_string: "const x = 1",
+              new_string: "const x = 2",
+            },
+          })}
+        />,
+      )
+      // Tool name should be visible
+      expect(screen.getByText("Edit")).toBeInTheDocument()
+      // Diff content should NOT be visible
+      expect(screen.queryByText("const x = 1")).not.toBeInTheDocument()
+      expect(screen.queryByText("const x = 2")).not.toBeInTheDocument()
+    })
+
+    it("hides error message when showToolOutput is false", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "exit 1" },
+            status: "error",
+            error: "Command failed",
+          })}
+        />,
+      )
+      // Tool name should be visible
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+      // Error should NOT be visible
+      expect(screen.queryByText("Command failed")).not.toBeInTheDocument()
+    })
+  })
+
   describe("relative path display", () => {
     it("shows relative path when file is within workspace", () => {
       useAppStore.getState().setWorkspace("/Users/herbcaudill/Code/HerbCaudill/ralph-ui")

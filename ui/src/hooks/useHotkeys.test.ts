@@ -387,6 +387,31 @@ describe("useHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
+    it("handles toggleToolOutput hotkey (Ctrl+O)", () => {
+      mockNavigator("MacIntel")
+      const handler = vi.fn()
+
+      renderHook(() =>
+        useHotkeys({
+          handlers: {
+            toggleToolOutput: handler,
+          },
+        }),
+      )
+
+      // Simulate Ctrl+O (note: on Mac this is Ctrl, not Cmd)
+      act(() => {
+        const event = new KeyboardEvent("keydown", {
+          key: "o",
+          ctrlKey: true,
+          bubbles: true,
+        })
+        window.dispatchEvent(event)
+      })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
     it("handles previousTask hotkey (ArrowUp)", () => {
       mockNavigator("MacIntel")
       const handler = vi.fn()
