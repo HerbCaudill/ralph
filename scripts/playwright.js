@@ -91,7 +91,7 @@ async function main() {
     WORKSPACE_PATH: testWorkspacePath,
     PW_BASE_URL: baseURL,
     RALPH_NO_OPEN: "1",
-    PW_QUIET: "1", // Use dot reporter for minimal output
+    ...(process.env.RALPH_RUNNING ? { PW_QUIET: "1" } : {}), // Use dot reporter when running under Ralph
     NO_COLOR: "1", // Suppress ANSI color codes
     NODE_NO_WARNINGS: "1", // Suppress Node.js warnings from Playwright workers
   }
