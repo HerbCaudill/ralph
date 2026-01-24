@@ -1,5 +1,6 @@
 import type { Preview } from "@storybook/react-vite"
 import React from "react"
+import { TestProviders } from "../src/components/TestProviders"
 import "../src/index.css"
 
 const preview: Preview = {
@@ -35,11 +36,15 @@ const preview: Preview = {
     (Story, context) => {
       const theme = context.globals.theme || "light"
       return React.createElement(
-        "div",
-        {
-          className: `${theme === "dark" ? "dark" : ""} bg-background text-foreground min-h-screen p-4`,
-        },
-        React.createElement(Story),
+        TestProviders,
+        null,
+        React.createElement(
+          "div",
+          {
+            className: `${theme === "dark" ? "dark" : ""} bg-background text-foreground min-h-screen p-4`,
+          },
+          React.createElement(Story),
+        ),
       )
     },
   ],
