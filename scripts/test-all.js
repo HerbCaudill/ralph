@@ -166,6 +166,11 @@ function printSummary() {
     style: { head: [], border: [] },
   })
 
+  // Grand totals
+  const totalPassed = results.suites.reduce((sum, s) => sum + s.passed, 0)
+  const totalFailed = results.suites.reduce((sum, s) => sum + s.failed, 0)
+  const allPassed = results.suites.every(s => s.exitCode === 0)
+
   for (const suite of results.suites) {
     const status = suite.exitCode === 0 ? "✓" : "✗"
     const passed = suite.type === "typecheck" ? "-" : String(suite.passed)
@@ -180,48 +185,10 @@ function printSummary() {
     ])
   }
 
+  // Add total row
+  packageTable.push(["", "Total", "", String(totalPassed), String(totalFailed), formatDuration(totalDuration)])
+
   console.log(packageTable.toString())
-
-  // Aggregate by type
-  const byType = {}
-  for (const suite of results.suites) {
-    if (!byType[suite.type]) {
-      byType[suite.type] = { passed: 0, failed: 0, duration: 0 }
-    }
-    byType[suite.type].passed += suite.passed
-    byType[suite.type].failed += suite.failed
-    byType[suite.type].duration += suite.duration
-  }
-
-  // Grand totals
-  const totalPassed = results.suites.reduce((sum, s) => sum + s.passed, 0)
-  const totalFailed = results.suites.reduce((sum, s) => sum + s.failed, 0)
-  const allPassed = results.suites.every(s => s.exitCode === 0)
-
-  // By type totals table
-  const typeTable = new Table({
-    head: ["Type", "Passed", "Failed", "Time"],
-    colAligns: ["left", "right", "right", "right"],
-    style: { head: [], border: [] },
-  })
-
-  for (const [type, counts] of Object.entries(byType)) {
-    if (type === "typecheck") {
-      typeTable.push([type, "-", "-", formatDuration(counts.duration)])
-    } else {
-      typeTable.push([
-        type,
-        String(counts.passed),
-        String(counts.failed),
-        formatDuration(counts.duration),
-      ])
-    }
-  }
-
-  // Add total row with wall-clock time
-  typeTable.push(["Total", String(totalPassed), String(totalFailed), formatDuration(totalDuration)])
-
-  console.log("\n" + typeTable.toString())
 
   return allPassed ? 0 : 1
 }
