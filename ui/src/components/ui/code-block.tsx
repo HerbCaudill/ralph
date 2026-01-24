@@ -112,7 +112,7 @@ export function CodeBlock({
   // This ensures no layout shift occurs when highlighting completes
   // Force child pre to be transparent so container bg-muted shows through
   const containerStyles = cn(
-    "group relative overflow-hidden rounded-md bg-muted",
+    "group relative overflow-hidden rounded-md bg-muted/50",
     "[&_pre]:!bg-transparent [&_pre]:!m-0 [&_pre]:overflow-x-auto [&_pre]:!p-3 [&_pre]:text-xs [&_code]:text-xs",
     className,
   )
@@ -120,7 +120,7 @@ export function CodeBlock({
   return (
     <div className={containerStyles}>
       {isLoading ?
-        <pre className="bg-muted m-0 overflow-x-auto p-3 text-xs">
+        <pre className="m-0 overflow-x-auto p-3 text-xs">
           <code className="text-xs">{code}</code>
         </pre>
       : <div dangerouslySetInnerHTML={{ __html: html }} />}
