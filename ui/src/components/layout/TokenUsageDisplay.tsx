@@ -4,6 +4,9 @@ import { formatTokenCount } from "@/lib/formatTokenCount"
 export function TokenUsageDisplay({}: Props) {
   const tokenUsage = useAppStore(selectTokenUsage)
 
+  // Hide when no tokens have been used yet
+  if (tokenUsage.input === 0 && tokenUsage.output === 0) return null
+
   return (
     <div
       className="text-muted-foreground flex items-center gap-2 text-xs"
