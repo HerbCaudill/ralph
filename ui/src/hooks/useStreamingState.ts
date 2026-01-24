@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import type { RalphEvent, StreamingMessage } from "@/types"
+import type { ChatEvent, StreamingMessage } from "@/types"
 
 interface StreamState {
   currentMessage: StreamingMessage | null
@@ -16,12 +16,12 @@ interface StreamState {
  * Returns both completed events (for normal rendering) and
  * any in-progress streaming content.
  */
-export function useStreamingState(events: RalphEvent[]): {
-  completedEvents: RalphEvent[]
+export function useStreamingState(events: ChatEvent[]): {
+  completedEvents: ChatEvent[]
   streamingMessage: StreamingMessage | null
 } {
   return useMemo(() => {
-    const completedEvents: RalphEvent[] = []
+    const completedEvents: ChatEvent[] = []
     const state: StreamState = {
       currentMessage: null,
       currentBlockIndex: -1,

@@ -19,7 +19,7 @@ export type RalphStatus =
 
 export type Theme = "system" | "light" | "dark"
 
-export interface RalphEvent {
+export interface ChatEvent {
   type: string
   timestamp: number
   [key: string]: unknown
@@ -79,7 +79,7 @@ export interface EventLogMetadata {
 export interface EventLog {
   id: string
   createdAt: string
-  events: RalphEvent[]
+  events: ChatEvent[]
   metadata?: EventLogMetadata
 }
 
@@ -283,7 +283,7 @@ export interface RalphInstance {
   status: RalphStatus
 
   /** Event stream from Ralph for this instance */
-  events: RalphEvent[]
+  events: ChatEvent[]
 
   /** Token usage for this instance */
   tokenUsage: TokenUsage

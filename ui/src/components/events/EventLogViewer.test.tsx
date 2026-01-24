@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { EventLogViewer } from "./EventLogViewer"
 import { useAppStore } from "@/store"
-import type { EventLog, RalphEvent } from "@/types"
+import type { EventLog, ChatEvent } from "@/types"
 
 // Mock the useEventLogRouter hook
 vi.mock("@/hooks", () => ({
@@ -14,7 +14,7 @@ vi.mock("@/hooks", () => ({
 }))
 
 // Helper to create test events
-function createUserMessageEvent(message: string, timestamp = Date.now()): RalphEvent {
+function createUserMessageEvent(message: string, timestamp = Date.now()): ChatEvent {
   return {
     type: "user_message",
     message,
@@ -28,7 +28,7 @@ function createAssistantEvent(
     | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
   >,
   timestamp = Date.now(),
-): RalphEvent {
+): ChatEvent {
   return {
     type: "assistant",
     message: { content },
@@ -41,7 +41,7 @@ function createToolResultEvent(
   output: string,
   isError = false,
   timestamp = Date.now(),
-): RalphEvent {
+): ChatEvent {
   return {
     type: "user",
     tool_use_result: true,

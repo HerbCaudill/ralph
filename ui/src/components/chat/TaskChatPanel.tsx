@@ -13,7 +13,7 @@ import {
   selectTaskChatMessages,
   useAppStore,
 } from "@/store"
-import type { AssistantContentBlock, RalphEvent, TaskChatMessage } from "@/types"
+import type { AssistantContentBlock, ChatEvent, TaskChatMessage } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
@@ -289,7 +289,7 @@ type UserMessageItem = {
 }
 type AssistantEventItem = {
   type: "assistant_event"
-  data: RalphEvent
+  data: ChatEvent
   timestamp: number
 }
 type ContentItem = UserMessageItem | AssistantEventItem

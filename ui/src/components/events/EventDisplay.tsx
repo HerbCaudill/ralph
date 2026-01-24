@@ -4,7 +4,7 @@ import { useStreamingState } from "@/hooks/useStreamingState"
 import { isRalphTaskCompletedEvent } from "@/lib/isRalphTaskCompletedEvent"
 import { isRalphTaskStartedEvent } from "@/lib/isRalphTaskStartedEvent"
 import { isToolResultEvent } from "@/lib/isToolResultEvent"
-import type { RalphEvent, StreamingMessage } from "@/types"
+import type { ChatEvent, StreamingMessage } from "@/types"
 import { EventStreamEventItem } from "./EventStreamEventItem"
 import { StreamingContentRenderer } from "./StreamingContentRenderer"
 
@@ -98,7 +98,7 @@ export function EventDisplay({
  * Useful when parent components need access to the streaming state
  * for custom rendering or additional logic.
  */
-export function useEventDisplayState(events: RalphEvent[]) {
+export function useEventDisplayState(events: ChatEvent[]) {
   const { completedEvents, streamingMessage } = useStreamingState(events)
 
   // Build tool results map from user/tool_result events
@@ -143,7 +143,7 @@ export function useEventDisplayState(events: RalphEvent[]) {
 
 export type EventDisplayProps = {
   /** Events to process and display */
-  events: RalphEvent[]
+  events: ChatEvent[]
   /** Maximum number of events to display (older events are truncated) */
   maxEvents?: number
   /** Content to show when there are no events */
@@ -159,7 +159,7 @@ export type EventDisplayProps = {
 }
 
 export type EventDisplayState = {
-  completedEvents: RalphEvent[]
+  completedEvents: ChatEvent[]
   streamingMessage: StreamingMessage | null
   toolResults: Map<string, { output?: string; error?: string }>
   hasStructuredLifecycleEvents: boolean

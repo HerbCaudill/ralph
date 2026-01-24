@@ -1,9 +1,9 @@
-import type { RalphEvent } from "@/types"
+import type { ChatEvent } from "@/types"
 
 export async function saveEventLogAndAddComment(
   taskId: string,
   taskTitle: string,
-  events: RalphEvent[],
+  events: ChatEvent[],
   workspacePath: string | null,
 ): Promise<string | null> {
   if (events.length === 0) {

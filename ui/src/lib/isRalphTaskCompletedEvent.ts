@@ -1,5 +1,5 @@
-import type { RalphEvent } from "@/types"
+import type { ChatEvent } from "@/types"
 
-export function isRalphTaskCompletedEvent(event: RalphEvent): boolean {
+export function isRalphTaskCompletedEvent(event: ChatEvent): boolean {
   return event.type === "ralph_task_completed"
 }

@@ -3,7 +3,7 @@ import type { ConnectionStatus } from "../hooks/useWebSocket"
 import type {
   ClosedTasksTimeFilter,
   MergeConflict,
-  RalphEvent,
+  ChatEvent,
   RalphInstance,
   RalphStatus,
   SerializedInstance,
@@ -284,7 +284,7 @@ export interface AppState {
   initialTaskCount: number | null
 
   // Event stream from ralph
-  events: RalphEvent[]
+  events: ChatEvent[]
 
   // === Workspace state (shared across all instances) ===
 
@@ -359,7 +359,7 @@ export interface AppState {
   hotkeysDialogOpen: boolean
 
   // Task chat events (unified array like EventStream's events[])
-  taskChatEvents: RalphEvent[]
+  taskChatEvents: ChatEvent[]
 
   // Reconnection state (for auto-resuming when reconnecting mid-iteration)
   /** Whether Ralph was running when the connection was lost */
@@ -373,8 +373,8 @@ export interface AppActions {
   setRalphStatus: (status: RalphStatus) => void
 
   // Events
-  addEvent: (event: RalphEvent) => void
-  setEvents: (events: RalphEvent[]) => void
+  addEvent: (event: ChatEvent) => void
+  setEvents: (events: ChatEvent[]) => void
   clearEvents: () => void
 
   // Tasks
@@ -437,7 +437,7 @@ export interface AppActions {
   setTaskChatLoading: (loading: boolean) => void
 
   // Task chat events (unified array)
-  addTaskChatEvent: (event: RalphEvent) => void
+  addTaskChatEvent: (event: ChatEvent) => void
   clearTaskChatEvents: () => void
 
   // Iteration view
@@ -493,9 +493,9 @@ export interface AppActions {
 
   // Per-instance actions (for routing WebSocket messages to specific instances)
   /** Add an event to a specific instance by ID */
-  addEventForInstance: (instanceId: string, event: RalphEvent) => void
+  addEventForInstance: (instanceId: string, event: ChatEvent) => void
   /** Set events for a specific instance by ID */
-  setEventsForInstance: (instanceId: string, events: RalphEvent[]) => void
+  setEventsForInstance: (instanceId: string, events: ChatEvent[]) => void
   /** Set status for a specific instance by ID */
   setStatusForInstance: (instanceId: string, status: RalphStatus) => void
   /** Add token usage for a specific instance by ID */
@@ -516,7 +516,7 @@ export interface AppActions {
 /**
  * Checks if an event is an iteration boundary (system init event).
  */
-export function isIterationBoundary(event: RalphEvent): boolean {
+export function isIterationBoundary(event: ChatEvent): boolean {
   return event.type === "system" && (event as any).subtype === "init"
 }
 
@@ -524,7 +524,7 @@ export function isIterationBoundary(event: RalphEvent): boolean {
  * Gets the indices of iteration boundaries in the events array.
  * Returns an array of indices where each iteration starts.
  */
-export function getIterationBoundaries(events: RalphEvent[]): number[] {
+export function getIterationBoundaries(events: ChatEvent[]): number[] {
   const boundaries: number[] = []
   events.forEach((event, index) => {
     if (isIterationBoundary(event)) {
@@ -537,7 +537,7 @@ export function getIterationBoundaries(events: RalphEvent[]): number[] {
 /**
  * Counts the total number of iterations in the events array.
  */
-export function countIterations(events: RalphEvent[]): number {
+export function countIterations(events: ChatEvent[]): number {
   return getIterationBoundaries(events).length
 }
 
@@ -547,9 +547,9 @@ export function countIterations(events: RalphEvent[]): number {
  * If iterationIndex is null or out of bounds, returns all events.
  */
 export function getEventsForIteration(
-  events: RalphEvent[],
+  events: ChatEvent[],
   iterationIndex: number | null,
-): RalphEvent[] {
+): ChatEvent[] {
   if (iterationIndex === null) {
     // Return all events from the latest iteration
     const boundaries = getIterationBoundaries(events)
@@ -574,7 +574,7 @@ export function getEventsForIteration(
  * Returns task info if found, with title falling back to taskId if not provided.
  */
 export function getTaskFromIterationEvents(
-  events: RalphEvent[],
+  events: ChatEvent[],
 ): { id: string | null; title: string } | null {
   for (const event of events) {
     if (event.type === "ralph_task_started") {
@@ -613,7 +613,7 @@ function createInitialInstances(): Map<string, RalphInstance> {
 const TASK_CHAT_EVENTS_BATCH_INTERVAL_MS = 100
 
 // Batching state (module-level for singleton behavior)
-let taskChatEventsBatch: RalphEvent[] = []
+let taskChatEventsBatch: ChatEvent[] = []
 let taskChatEventsBatchTimeout: ReturnType<typeof setTimeout> | null = null
 
 /**
@@ -1656,7 +1656,7 @@ export const selectInstanceStatus = (state: AppState, instanceId: string): Ralph
   return instance?.status ?? "stopped"
 }
 
-export const selectInstanceEvents = (state: AppState, instanceId: string): RalphEvent[] => {
+export const selectInstanceEvents = (state: AppState, instanceId: string): ChatEvent[] => {
   const instance = state.instances.get(instanceId)
   return instance?.events ?? []
 }

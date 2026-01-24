@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
 import { EventDisplay, useEventDisplayState } from "./EventDisplay"
 import { TaskDialogProvider } from "@/contexts"
-import type { RalphEvent } from "@/types"
+import type { ChatEvent } from "@/types"
 import { renderHook } from "@testing-library/react"
 
 // Helper to render EventDisplay with required providers
@@ -18,7 +18,7 @@ function renderEventDisplay(props: Parameters<typeof EventDisplay>[0]) {
 describe("EventDisplay", () => {
   describe("rendering events", () => {
     it("renders user message events", () => {
-      const events: RalphEvent[] = [
+      const events: ChatEvent[] = [
         {
           type: "user_message",
           timestamp: Date.now(),
@@ -31,7 +31,7 @@ describe("EventDisplay", () => {
     })
 
     it("renders assistant text events", () => {
-      const events: RalphEvent[] = [
+      const events: ChatEvent[] = [
         {
           type: "assistant",
           timestamp: Date.now(),
@@ -51,7 +51,7 @@ describe("EventDisplay", () => {
     })
 
     it("renders tool use events", () => {
-      const events: RalphEvent[] = [
+      const events: ChatEvent[] = [
         {
           type: "assistant",
           timestamp: Date.now(),
@@ -81,7 +81,7 @@ describe("EventDisplay", () => {
     })
 
     it("shows loading indicator when provided", () => {
-      const events: RalphEvent[] = [
+      const events: ChatEvent[] = [
         {
           type: "user_message",
           timestamp: Date.now(),
@@ -99,7 +99,7 @@ describe("EventDisplay", () => {
 
   describe("maxEvents prop", () => {
     it("limits displayed events to maxEvents", () => {
-      const events: RalphEvent[] = Array.from({ length: 10 }, (_, i) => ({
+      const events: ChatEvent[] = Array.from({ length: 10 }, (_, i) => ({
         type: "user_message",
         timestamp: Date.now() + i,
         message: `Message ${i}`,
@@ -117,7 +117,7 @@ describe("EventDisplay", () => {
 
   describe("tool results", () => {
     it("displays tool results when available", () => {
-      const events: RalphEvent[] = [
+      const events: ChatEvent[] = [
         {
           type: "assistant",
           timestamp: Date.now(),
@@ -154,7 +154,7 @@ describe("EventDisplay", () => {
 
   describe("aria-label", () => {
     it("uses custom aria label", () => {
-      const events: RalphEvent[] = []
+      const events: ChatEvent[] = []
 
       renderEventDisplay({
         events,
@@ -182,7 +182,7 @@ describe("EventDisplay", () => {
 
 describe("useEventDisplayState", () => {
   it("returns completed events", () => {
-    const events: RalphEvent[] = [
+    const events: ChatEvent[] = [
       {
         type: "user_message",
         timestamp: Date.now(),
@@ -204,7 +204,7 @@ describe("useEventDisplayState", () => {
   })
 
   it("builds tool results map", () => {
-    const events: RalphEvent[] = [
+    const events: ChatEvent[] = [
       {
         type: "assistant",
         timestamp: Date.now(),
@@ -245,7 +245,7 @@ describe("useEventDisplayState", () => {
   })
 
   it("detects structured lifecycle events", () => {
-    const eventsWithLifecycle: RalphEvent[] = [
+    const eventsWithLifecycle: ChatEvent[] = [
       {
         type: "ralph_task_started",
         timestamp: Date.now(),
@@ -257,7 +257,7 @@ describe("useEventDisplayState", () => {
     const { result } = renderHook(() => useEventDisplayState(eventsWithLifecycle))
     expect(result.current.hasStructuredLifecycleEvents).toBe(true)
 
-    const eventsWithoutLifecycle: RalphEvent[] = [
+    const eventsWithoutLifecycle: ChatEvent[] = [
       {
         type: "user_message",
         timestamp: Date.now(),
@@ -270,7 +270,7 @@ describe("useEventDisplayState", () => {
   })
 
   it("handles streaming state", () => {
-    const events: RalphEvent[] = [
+    const events: ChatEvent[] = [
       {
         type: "stream_event",
         timestamp: Date.now(),

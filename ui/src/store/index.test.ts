@@ -51,7 +51,7 @@ import {
   selectInstanceIterationCount,
   flushTaskChatEventsBatch,
 } from "./index"
-import type { RalphEvent, Task, TaskChatMessage } from "@/types"
+import type { ChatEvent, Task, TaskChatMessage } from "@/types"
 
 describe("useAppStore", () => {
   beforeEach(() => {
@@ -1384,7 +1384,7 @@ describe("useAppStore", () => {
 
   describe("events", () => {
     it("adds events to the list", () => {
-      const event: RalphEvent = { type: "test", timestamp: 1234567890 }
+      const event: ChatEvent = { type: "test", timestamp: 1234567890 }
       useAppStore.getState().addEvent(event)
 
       const events = useAppStore.getState().events
@@ -1418,7 +1418,7 @@ describe("useAppStore", () => {
     })
 
     it("sets events array directly (for restoring from server)", () => {
-      const events: RalphEvent[] = [
+      const events: ChatEvent[] = [
         { type: "first", timestamp: 1 },
         { type: "second", timestamp: 2 },
         { type: "third", timestamp: 3 },
@@ -1437,7 +1437,7 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().events).toHaveLength(1)
 
       // Set new events (should replace)
-      const newEvents: RalphEvent[] = [
+      const newEvents: ChatEvent[] = [
         { type: "new1", timestamp: 2 },
         { type: "new2", timestamp: 3 },
       ]
@@ -1674,32 +1674,30 @@ describe("useAppStore", () => {
 
   describe("iteration view", () => {
     // Helper to create events with iteration boundaries
-    const createEventsWithIterations = (): RalphEvent[] => [
-      { type: "system", subtype: "init", timestamp: 1000 } as RalphEvent,
-      { type: "assistant", timestamp: 1001 } as RalphEvent,
-      { type: "user_message", timestamp: 1002 } as RalphEvent,
-      { type: "system", subtype: "init", timestamp: 2000 } as RalphEvent,
-      { type: "assistant", timestamp: 2001 } as RalphEvent,
-      { type: "system", subtype: "init", timestamp: 3000 } as RalphEvent,
-      { type: "user_message", timestamp: 3001 } as RalphEvent,
-      { type: "assistant", timestamp: 3002 } as RalphEvent,
+    const createEventsWithIterations = (): ChatEvent[] => [
+      { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+      { type: "assistant", timestamp: 1001 } as ChatEvent,
+      { type: "user_message", timestamp: 1002 } as ChatEvent,
+      { type: "system", subtype: "init", timestamp: 2000 } as ChatEvent,
+      { type: "assistant", timestamp: 2001 } as ChatEvent,
+      { type: "system", subtype: "init", timestamp: 3000 } as ChatEvent,
+      { type: "user_message", timestamp: 3001 } as ChatEvent,
+      { type: "assistant", timestamp: 3002 } as ChatEvent,
     ]
 
     describe("isIterationBoundary", () => {
       it("returns true for system init events", () => {
-        const event = { type: "system", subtype: "init", timestamp: 1000 } as RalphEvent
+        const event = { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent
         expect(isIterationBoundary(event)).toBe(true)
       })
 
       it("returns false for other events", () => {
-        expect(isIterationBoundary({ type: "assistant", timestamp: 1000 } as RalphEvent)).toBe(
-          false,
-        )
-        expect(isIterationBoundary({ type: "user_message", timestamp: 1000 } as RalphEvent)).toBe(
+        expect(isIterationBoundary({ type: "assistant", timestamp: 1000 } as ChatEvent)).toBe(false)
+        expect(isIterationBoundary({ type: "user_message", timestamp: 1000 } as ChatEvent)).toBe(
           false,
         )
         expect(
-          isIterationBoundary({ type: "system", subtype: "other", timestamp: 1000 } as RalphEvent),
+          isIterationBoundary({ type: "system", subtype: "other", timestamp: 1000 } as ChatEvent),
         ).toBe(false)
       })
     })
@@ -1718,7 +1716,7 @@ describe("useAppStore", () => {
         const events = [
           { type: "assistant", timestamp: 1000 },
           { type: "user_message", timestamp: 1001 },
-        ] as RalphEvent[]
+        ] as ChatEvent[]
         expect(getIterationBoundaries(events)).toEqual([])
       })
     })
@@ -1739,7 +1737,7 @@ describe("useAppStore", () => {
         const events = [
           { type: "assistant", timestamp: 1000 },
           { type: "user_message", timestamp: 1001 },
-        ] as RalphEvent[]
+        ] as ChatEvent[]
         expect(getEventsForIteration(events, null)).toEqual(events)
       })
 
@@ -1782,7 +1780,7 @@ describe("useAppStore", () => {
         const events = [
           { type: "assistant", timestamp: 1000 },
           { type: "user_message", timestamp: 1001 },
-        ] as RalphEvent[]
+        ] as ChatEvent[]
         expect(getTaskFromIterationEvents(events)).toBeNull()
       })
 
@@ -1796,7 +1794,7 @@ describe("useAppStore", () => {
             taskTitle: "Fix the bug",
           },
           { type: "assistant", timestamp: 1002 },
-        ] as RalphEvent[]
+        ] as ChatEvent[]
         const task = getTaskFromIterationEvents(events)
         expect(task).toEqual({ id: "rui-123", title: "Fix the bug" })
       })
@@ -1804,12 +1802,12 @@ describe("useAppStore", () => {
       it("returns task with ID as title if ralph_task_started event has taskId but no taskTitle", () => {
         const events = [
           { type: "ralph_task_started", timestamp: 1000, taskId: "rui-123" },
-        ] as RalphEvent[]
+        ] as ChatEvent[]
         expect(getTaskFromIterationEvents(events)).toEqual({ id: "rui-123", title: "rui-123" })
       })
 
       it("returns null if ralph_task_started event is missing both taskId and taskTitle", () => {
-        const events = [{ type: "ralph_task_started", timestamp: 1000 }] as RalphEvent[]
+        const events = [{ type: "ralph_task_started", timestamp: 1000 }] as ChatEvent[]
         expect(getTaskFromIterationEvents(events)).toBeNull()
       })
 
@@ -1827,7 +1825,7 @@ describe("useAppStore", () => {
             taskId: "rui-222",
             taskTitle: "Second task",
           },
-        ] as RalphEvent[]
+        ] as ChatEvent[]
         const task = getTaskFromIterationEvents(events)
         expect(task).toEqual({ id: "rui-111", title: "First task" })
       })
@@ -2688,7 +2686,7 @@ describe("useAppStore", () => {
 
     describe("addEventForInstance action", () => {
       it("adds event to a specific instance", () => {
-        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
 
         useAppStore.getState().addEventForInstance("instance-2", event)
 
@@ -2697,7 +2695,7 @@ describe("useAppStore", () => {
       })
 
       it("does not affect other instances", () => {
-        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
 
         useAppStore.getState().addEventForInstance("instance-2", event)
 
@@ -2706,7 +2704,7 @@ describe("useAppStore", () => {
       })
 
       it("updates flat fields when adding to active instance", () => {
-        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
 
         useAppStore.getState().addEventForInstance("instance-1", event)
 
@@ -2714,7 +2712,7 @@ describe("useAppStore", () => {
       })
 
       it("does not update flat fields when adding to non-active instance", () => {
-        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
 
         useAppStore.getState().addEventForInstance("instance-2", event)
 
@@ -2723,7 +2721,7 @@ describe("useAppStore", () => {
 
       it("warns when adding to non-existent instance", () => {
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-        const event: RalphEvent = { type: "tool_use", timestamp: 1234 }
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
 
         useAppStore.getState().addEventForInstance("non-existent", event)
 
@@ -2736,7 +2734,7 @@ describe("useAppStore", () => {
 
     describe("setEventsForInstance action", () => {
       it("sets events for a specific instance", () => {
-        const events: RalphEvent[] = [
+        const events: ChatEvent[] = [
           { type: "tool_use", timestamp: 1234 },
           { type: "tool_result", timestamp: 1235 },
         ]
@@ -2752,7 +2750,7 @@ describe("useAppStore", () => {
         useAppStore.getState().addEventForInstance("instance-2", { type: "old", timestamp: 1000 })
 
         // Replace with new events
-        const newEvents: RalphEvent[] = [{ type: "new", timestamp: 2000 }]
+        const newEvents: ChatEvent[] = [{ type: "new", timestamp: 2000 }]
         useAppStore.getState().setEventsForInstance("instance-2", newEvents)
 
         const instance2 = useAppStore.getState().instances.get("instance-2")
@@ -2760,7 +2758,7 @@ describe("useAppStore", () => {
       })
 
       it("updates flat fields when setting for active instance", () => {
-        const events: RalphEvent[] = [{ type: "tool_use", timestamp: 1234 }]
+        const events: ChatEvent[] = [{ type: "tool_use", timestamp: 1234 }]
 
         useAppStore.getState().setEventsForInstance("instance-1", events)
 

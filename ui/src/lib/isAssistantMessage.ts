@@ -1,5 +1,5 @@
-import type { RalphEvent } from "@/types"
+import type { ChatEvent } from "@/types"
 
-export function isAssistantMessage(event: RalphEvent): boolean {
+export function isAssistantMessage(event: ChatEvent): boolean {
   return event.type === "assistant" && typeof (event as any).message === "object"
 }

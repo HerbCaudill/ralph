@@ -9,7 +9,7 @@ import { isRalphTaskStartedEvent } from "@/lib/isRalphTaskStartedEvent"
 import { isToolResultEvent } from "@/lib/isToolResultEvent"
 import { isUserMessageEvent } from "@/lib/isUserMessageEvent"
 import type {
-  RalphEvent,
+  ChatEvent,
   TaskLifecycleEventData,
   ErrorEventData,
   AssistantContentBlock,
@@ -90,7 +90,7 @@ export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycl
 }
 
 type Props = {
-  event: RalphEvent
+  event: ChatEvent
   toolResults: Map<string, { output?: string; error?: string }>
   hasStructuredLifecycleEvents: boolean
 }

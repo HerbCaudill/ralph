@@ -3,7 +3,7 @@ import { renderEventContentBlock } from "@/lib/renderEventContentBlock"
 import { isAssistantMessage } from "@/lib/isAssistantMessage"
 import { isToolResultEvent } from "@/lib/isToolResultEvent"
 import { isUserMessageEvent } from "@/lib/isUserMessageEvent"
-import type { AssistantContentBlock, RalphEvent } from "@/types"
+import type { AssistantContentBlock, ChatEvent } from "@/types"
 
 /**
  * Renders a single event item within the event log viewer.
@@ -49,7 +49,7 @@ export function EventLogViewerEventItem({ event, toolResults }: Props) {
  */
 type Props = {
   /** The event to render */
-  event: RalphEvent
+  event: ChatEvent
   /** Map of tool use IDs to their results for matching tool uses with results */
   toolResults: Map<string, { output?: string; error?: string }>
 }
