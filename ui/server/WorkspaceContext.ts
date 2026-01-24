@@ -239,6 +239,14 @@ export class WorkspaceContext extends EventEmitter {
   }
 
   /**
+   * Set the event history (used for restoring events from disk on reconnect).
+   */
+  setEventHistory(events: RalphEvent[]): void {
+    this.assertNotDisposed()
+    this._eventHistory = [...events]
+  }
+
+  /**
    * Dispose of this context and release all resources.
    * Stops Ralph if running and removes all event listeners.
    */

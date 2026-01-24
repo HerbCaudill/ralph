@@ -1398,27 +1398,56 @@ function attachWsServer(
 
     // Send welcome message with current Ralph status and event history
     // Use "default" instanceId to match the frontend store's DEFAULT_INSTANCE_ID
-    const context = getActiveContext()
-    ws.send(
-      JSON.stringify({
-        type: "connected",
-        instanceId: "default",
-        timestamp: Date.now(),
-        ralphStatus: context.ralphManager.status,
-        events: context.eventHistory,
-      }),
-    )
+    // This is async because we may need to restore events from disk
+    ;(async () => {
+      const context = getActiveContext()
+      const registry = getRalphRegistry()
+      const persister = registry.getIterationEventPersister()
 
-    // Send full instance list so client can hydrate its store
-    const registry = getRalphRegistry()
-    const allInstances = registry.getAll().map(serializeInstanceState)
-    ws.send(
-      JSON.stringify({
-        type: "instances:list",
-        timestamp: Date.now(),
-        instances: allInstances,
-      }),
-    )
+      // Get events: if iteration is active, try to restore from disk first
+      let events = context.eventHistory
+      const status = context.ralphManager.status
+      const hasActiveIteration = status === "running" || status === "paused" || status === "pausing"
+
+      if (hasActiveIteration && persister && events.length === 0) {
+        // Iteration is active but no in-memory events - try to restore from disk
+        try {
+          const persistedEvents = await persister.readEvents("default")
+          if (persistedEvents.length > 0) {
+            console.log(
+              `[ws] Restored ${persistedEvents.length} events from disk for reconnecting client`,
+            )
+            events = persistedEvents
+            // Also populate the in-memory event history so future clients get them
+            context.setEventHistory(persistedEvents)
+          }
+        } catch (err) {
+          console.error("[ws] Failed to restore events from disk:", err)
+        }
+      }
+
+      ws.send(
+        JSON.stringify({
+          type: "connected",
+          instanceId: "default",
+          timestamp: Date.now(),
+          ralphStatus: status,
+          events,
+        }),
+      )
+
+      // Send full instance list so client can hydrate its store
+      const allInstances = registry.getAll().map(serializeInstanceState)
+      ws.send(
+        JSON.stringify({
+          type: "instances:list",
+          timestamp: Date.now(),
+          instances: allInstances,
+        }),
+      )
+    })().catch(err => {
+      console.error("[ws] Error sending welcome message:", err)
+    })
   })
 
   return wss

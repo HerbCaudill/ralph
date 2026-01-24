@@ -193,6 +193,46 @@ describe("WorkspaceContext", () => {
       context.clearHistory()
       expect(context.eventHistory).toHaveLength(0)
     })
+
+    it("sets event history with setEventHistory", () => {
+      const events: RalphEvent[] = [
+        { type: "test1", timestamp: 1000 } as RalphEvent,
+        { type: "test2", timestamp: 2000 } as RalphEvent,
+      ]
+
+      context.setEventHistory(events)
+      expect(context.eventHistory).toHaveLength(2)
+      expect(context.eventHistory[0].type).toBe("test1")
+      expect(context.eventHistory[1].type).toBe("test2")
+    })
+
+    it("setEventHistory creates a copy of the events array", () => {
+      const events: RalphEvent[] = [{ type: "test", timestamp: 1000 } as RalphEvent]
+
+      context.setEventHistory(events)
+
+      // Modify the original array
+      events.push({ type: "test2", timestamp: 2000 } as RalphEvent)
+
+      // Context should not be affected
+      expect(context.eventHistory).toHaveLength(1)
+    })
+
+    it("setEventHistory replaces existing history", () => {
+      // Add some events
+      context.ralphManager.emit("event", { type: "original", timestamp: 100 })
+      expect(context.eventHistory).toHaveLength(1)
+
+      // Replace with new events
+      const newEvents: RalphEvent[] = [
+        { type: "new1", timestamp: 200 } as RalphEvent,
+        { type: "new2", timestamp: 300 } as RalphEvent,
+      ]
+      context.setEventHistory(newEvents)
+
+      expect(context.eventHistory).toHaveLength(2)
+      expect(context.eventHistory[0].type).toBe("new1")
+    })
   })
 
   describe("current task tracking", () => {
@@ -467,6 +507,12 @@ describe("WorkspaceContext", () => {
       await context.dispose()
 
       expect(() => context.clearHistory()).toThrow("WorkspaceContext has been disposed")
+    })
+
+    it("throws when calling setEventHistory after disposal", async () => {
+      await context.dispose()
+
+      expect(() => context.setEventHistory([])).toThrow("WorkspaceContext has been disposed")
     })
   })
 
