@@ -602,6 +602,72 @@ describe("TaskChatManager", () => {
       ).toBe(true)
       expect(events.some(e => (e as any).type === "result")).toBe(true)
     })
+
+    it("emits token usage from SDK result messages", async () => {
+      const events: unknown[] = []
+      manager.on("event", evt => events.push(evt))
+
+      // Mock SDK response with usage data in result
+      async function* responseWithUsage(): AsyncGenerator<SDKMessage> {
+        yield {
+          type: "stream_event",
+          event: {
+            type: "content_block_delta",
+            delta: { type: "text_delta", text: "Done" },
+          },
+        } as SDKMessage
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: {
+            input_tokens: 100,
+            output_tokens: 50,
+          },
+        } as SDKMessage
+      }
+      vi.mocked(mockQuery).mockReturnValueOnce(responseWithUsage() as any)
+
+      await manager.sendMessage("Test")
+
+      // Find the result event
+      const resultEvent = events.find(e => (e as any).type === "result") as {
+        type: string
+        usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
+      }
+
+      expect(resultEvent).toBeDefined()
+      expect(resultEvent.usage).toBeDefined()
+      expect(resultEvent.usage?.inputTokens).toBe(100)
+      expect(resultEvent.usage?.outputTokens).toBe(50)
+      expect(resultEvent.usage?.totalTokens).toBe(150)
+    })
+
+    it("handles result without usage data", async () => {
+      const events: unknown[] = []
+      manager.on("event", evt => events.push(evt))
+
+      // Mock SDK response without usage data
+      async function* responseWithoutUsage(): AsyncGenerator<SDKMessage> {
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+        } as SDKMessage
+      }
+      vi.mocked(mockQuery).mockReturnValueOnce(responseWithoutUsage() as any)
+
+      await manager.sendMessage("Test")
+
+      // Find the result event
+      const resultEvent = events.find(e => (e as any).type === "result") as {
+        type: string
+        usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
+      }
+
+      expect(resultEvent).toBeDefined()
+      expect(resultEvent.usage).toBeUndefined()
+    })
   })
 
   describe("timeout", () => {
