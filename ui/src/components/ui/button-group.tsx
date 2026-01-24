@@ -10,30 +10,13 @@ const buttonGroupVariants = cva(
     variants: {
       orientation: {
         horizontal:
-          "[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none",
+          "[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l [&>*:not(:first-child)]:border-l-input [&>*:not(:last-child)]:rounded-r-none",
         vertical:
-          "flex-col [&>*:not(:first-child)]:rounded-t-none [&>*:not(:first-child)]:border-t-0 [&>*:not(:last-child)]:rounded-b-none",
-      },
-      separated: {
-        true: "",
-        false: "",
+          "flex-col [&>*:not(:first-child)]:rounded-t-none [&>*:not(:first-child)]:border-t [&>*:not(:first-child)]:border-t-input [&>*:not(:last-child)]:rounded-b-none",
       },
     },
-    compoundVariants: [
-      {
-        orientation: "horizontal",
-        separated: true,
-        class: "[&>*:not(:first-child)]:border-l [&>*:not(:first-child)]:border-l-input",
-      },
-      {
-        orientation: "vertical",
-        separated: true,
-        class: "[&>*:not(:first-child)]:border-t [&>*:not(:first-child)]:border-t-input",
-      },
-    ],
     defaultVariants: {
       orientation: "horizontal",
-      separated: false,
     },
   },
 )
@@ -41,7 +24,6 @@ const buttonGroupVariants = cva(
 function ButtonGroup({
   className,
   orientation,
-  separated,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof buttonGroupVariants>) {
   return (
@@ -49,7 +31,7 @@ function ButtonGroup({
       role="group"
       data-slot="button-group"
       data-orientation={orientation}
-      className={cn(buttonGroupVariants({ orientation, separated }), className)}
+      className={cn(buttonGroupVariants({ orientation }), className)}
       {...props}
     />
   )

@@ -113,9 +113,9 @@ export const Mixed: Story = {
   ),
 }
 
-export const Separated: Story = {
+export const Bordered: Story = {
   render: () => (
-    <ButtonGroup separated className="border-input h-8 overflow-hidden rounded-md border">
+    <ButtonGroup className="border-input h-8 overflow-hidden rounded-md border">
       <button className="flex h-full items-center justify-center px-3 text-sm transition-colors hover:bg-gray-100">
         One
       </button>
@@ -129,9 +129,9 @@ export const Separated: Story = {
   ),
 }
 
-export const SeparatedWithIcons: Story = {
+export const BorderedWithIcons: Story = {
   render: () => (
-    <ButtonGroup separated className="border-input h-8 overflow-hidden rounded-md border">
+    <ButtonGroup className="border-input h-8 overflow-hidden rounded-md border">
       <button className="flex h-full items-center justify-center gap-1 px-2 text-sm transition-colors hover:bg-gray-100">
         <IconAlignLeft className="size-4" />
         <span>Left</span>
