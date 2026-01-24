@@ -9,7 +9,6 @@ const meta: Meta<typeof EventStream> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     Story => (
       <div className="border-border h-[600px] overflow-hidden rounded-md border">

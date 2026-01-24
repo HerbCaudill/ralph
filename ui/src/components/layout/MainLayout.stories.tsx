@@ -11,7 +11,6 @@ const meta: Meta<typeof MainLayout> = {
   parameters: {
     layout: "fullscreen",
   },
-  tags: ["autodocs"],
   decorators: [fullPageDecorator],
 }
 

@@ -20,7 +20,6 @@ const meta: Meta<typeof CommandPalette> = {
   parameters: {
     layout: "fullscreen",
   },
-  tags: ["autodocs"],
   args: {
     open: true,
     onClose: fn(),

@@ -8,7 +8,6 @@ const meta: Meta<typeof ChatInput> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     Story => (
       <div className="max-w-lg">

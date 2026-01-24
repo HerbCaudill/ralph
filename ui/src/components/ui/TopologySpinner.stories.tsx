@@ -7,7 +7,6 @@ const meta: Meta<typeof TopologySpinner> = {
   parameters: {
     layout: "centered",
   },
-  tags: ["autodocs"],
   argTypes: {
     interval: {
       control: { type: "number", min: 50, max: 1000, step: 50 },

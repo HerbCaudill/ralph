@@ -8,7 +8,6 @@ const meta: Meta<typeof HotkeysDialog> = {
   parameters: {
     layout: "centered",
   },
-  tags: ["autodocs"],
   args: {
     open: true,
     onClose: fn(),

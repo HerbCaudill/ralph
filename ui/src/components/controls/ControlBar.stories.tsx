@@ -8,7 +8,6 @@ const meta: Meta<typeof ControlBar> = {
   parameters: {
     layout: "centered",
   },
-  tags: ["autodocs"],
 }
 
 export default meta

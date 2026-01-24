@@ -9,7 +9,6 @@ const meta: Meta<typeof TaskList> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     Story => (
       <div className="border-border h-[500px] max-w-md overflow-hidden rounded-md border">

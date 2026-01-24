@@ -10,7 +10,6 @@ const meta: Meta<typeof QuickTaskInput> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     Story => (
       <div className="max-w-md">
