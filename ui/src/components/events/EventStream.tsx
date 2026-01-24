@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import {
   useAppStore,
@@ -10,9 +10,11 @@ import {
   selectInstanceStatus,
   selectActiveInstance,
   selectInstance,
+  selectIssuePrefix,
   getEventsForIteration,
   countIterations,
 } from "@/store"
+import { useEventLogs, useEventLogRouter } from "@/hooks"
 import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
 import { TopologySpinner } from "@/components/ui/TopologySpinner"
 import { EventList, useEventListState } from "./EventList"
@@ -38,16 +40,37 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
   )
 
   const viewingIterationIndex = useAppStore(selectViewingIterationIndex)
+  const setViewingIterationIndex = useAppStore(state => state.setViewingIterationIndex)
   const goToPreviousIteration = useAppStore(state => state.goToPreviousIteration)
   const goToNextIteration = useAppStore(state => state.goToNextIteration)
   const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
   const tasks = useAppStore(selectTasks)
+  const issuePrefix = useAppStore(selectIssuePrefix)
   // Get instance for currentTaskId/currentTaskTitle fallback
   const instance = useAppStore(state =>
     instanceId ? selectInstance(state, instanceId) : selectActiveInstance(state),
   )
   const isRunning = ralphStatus === "running" || ralphStatus === "starting"
   const isViewingLatest = viewingIterationIndex === null
+
+  // Fetch event logs for the history dropdown
+  const { eventLogs, isLoading: isLoadingEventLogs } = useEventLogs()
+  const { navigateToEventLog } = useEventLogRouter()
+
+  // Callbacks for iteration navigation
+  const handleIterationSelect = useCallback(
+    (index: number) => {
+      setViewingIterationIndex(index)
+    },
+    [setViewingIterationIndex],
+  )
+
+  const handleEventLogSelect = useCallback(
+    (id: string) => {
+      navigateToEventLog(id)
+    },
+    [navigateToEventLog],
+  )
 
   const iterationCount = useMemo(() => countIterations(allEvents), [allEvents])
   const iterationEvents = useMemo(
@@ -139,9 +162,14 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
         isViewingLatest={isViewingLatest}
         viewingIterationIndex={viewingIterationIndex}
         currentTask={iterationTask}
+        eventLogs={eventLogs}
+        isLoadingEventLogs={isLoadingEventLogs}
+        issuePrefix={issuePrefix}
         onPrevious={goToPreviousIteration}
         onNext={goToNextIteration}
         onLatest={goToLatestIteration}
+        onIterationSelect={handleIterationSelect}
+        onEventLogSelect={handleEventLogSelect}
       />
 
       <ContentStreamContainer

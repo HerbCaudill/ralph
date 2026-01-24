@@ -1,10 +1,13 @@
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
 import { useTaskDialogContext } from "@/contexts"
 import { handleTaskClick } from "@/lib/handleTaskClick"
+import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
+import type { EventLogSummary } from "@/hooks"
 
 /**
  * Navigation bar for switching between iterations and viewing task information.
  * Shows iteration count, current task, and provides controls for navigating between iterations.
+ * Features a dropdown to browse past iterations from event logs.
  */
 export function EventStreamIterationBar({
   iterationCount,
@@ -12,12 +15,21 @@ export function EventStreamIterationBar({
   isViewingLatest,
   viewingIterationIndex,
   currentTask,
+  eventLogs,
+  isLoadingEventLogs,
+  issuePrefix,
   onPrevious,
   onNext,
   onLatest,
+  onIterationSelect,
+  onEventLogSelect,
 }: Props) {
   const hasMultipleIterations = iterationCount > 1
   const taskDialogContext = useTaskDialogContext()
+  const hasEventLogs = eventLogs.length > 0
+
+  // Show dropdown when there are multiple iterations OR event logs to browse
+  const showDropdown = hasMultipleIterations || hasEventLogs || isLoadingEventLogs
 
   return (
     <div
@@ -39,7 +51,21 @@ export function EventStreamIterationBar({
       </div>
 
       <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
-        {currentTask ?
+        {showDropdown ?
+          <IterationHistoryDropdown
+            currentTask={currentTask}
+            iterationCount={iterationCount}
+            displayedIteration={displayedIteration}
+            isViewingLatest={isViewingLatest}
+            viewingIterationIndex={viewingIterationIndex}
+            eventLogs={eventLogs}
+            isLoadingEventLogs={isLoadingEventLogs}
+            issuePrefix={issuePrefix}
+            onIterationSelect={onIterationSelect}
+            onEventLogSelect={onEventLogSelect}
+            onLatest={onLatest}
+          />
+        : currentTask ?
           <div
             className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"
             title="Current task"
@@ -70,6 +96,16 @@ export function EventStreamIterationBar({
             )}
           </div>
         : <span className="text-muted-foreground text-xs">No active task</span>}
+
+        {/* Show Latest button when viewing past iteration and dropdown is shown */}
+        {showDropdown && !isViewingLatest && (
+          <button
+            onClick={onLatest}
+            className="bg-repo-accent text-repo-accent-foreground rounded px-2 py-0.5 text-xs font-medium hover:opacity-90"
+          >
+            Latest
+          </button>
+        )}
       </div>
 
       <div className="flex w-20 items-center justify-end">
@@ -95,7 +131,12 @@ type Props = {
   isViewingLatest: boolean
   viewingIterationIndex: number | null
   currentTask: { id: string | null; title: string } | null
+  eventLogs: EventLogSummary[]
+  isLoadingEventLogs: boolean
+  issuePrefix: string | null
   onPrevious: () => void
   onNext: () => void
   onLatest: () => void
+  onIterationSelect: (index: number) => void
+  onEventLogSelect: (id: string) => void
 }
