@@ -1,6 +1,8 @@
 import type { Preview } from "@storybook/react-vite"
 import React from "react"
 import { TestProviders } from "../src/components/TestProviders"
+import { applyThemeToElement } from "../src/lib/theme"
+import { storybookThemes, getTheme, defaultThemeId } from "./themeLoader"
 import "../src/index.css"
 
 const preview: Preview = {
@@ -34,31 +36,43 @@ const preview: Preview = {
   },
   globalTypes: {
     theme: {
-      description: "Theme for components",
+      description: "VS Code theme for components",
       toolbar: {
         title: "Theme",
         icon: "paintbrush",
-        items: [
-          { value: "light", title: "Light", icon: "sun" },
-          { value: "dark", title: "Dark", icon: "moon" },
-        ],
+        items: storybookThemes.map(t => ({
+          value: t.id,
+          title: t.name,
+          icon: t.isDark ? "moon" : "sun",
+        })),
         dynamicTitle: true,
       },
     },
   },
   initialGlobals: {
-    theme: "light",
+    theme: defaultThemeId,
   },
   decorators: [
     (Story, context) => {
-      const theme = context.globals.theme || "light"
+      const themeId = context.globals.theme || defaultThemeId
+      const themeData = getTheme(themeId)
+      const isDark = themeData?.isDark ?? false
+
+      // Create a ref callback to apply CSS variables
+      const applyTheme = (element: HTMLDivElement | null) => {
+        if (element && themeData) {
+          applyThemeToElement(element, themeData.theme)
+        }
+      }
+
       return React.createElement(
         TestProviders,
         null,
         React.createElement(
           "div",
           {
-            className: `${theme === "dark" ? "dark" : ""} bg-background text-foreground min-h-screen p-4`,
+            ref: applyTheme,
+            className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-4`,
             style: {
               "--repo-accent": "#0d9488",
               "--repo-accent-foreground": "#ffffff",

@@ -170,8 +170,13 @@
     --tw-prose-th-borders: var(--border);
     --tw-prose-td-borders: var(--border);
 
-    /* Inline code uses link color (blue) */
+    /* Inline code uses success color (green) */
     :where(code):not(:where(pre code)) {
+      color: var(--status-success);
+    }
+
+    /* Links use link color (blue) */
+    :where(a) {
       color: var(--link);
     }
   }

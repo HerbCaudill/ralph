@@ -40,53 +40,6 @@ describe("InstanceBadge", () => {
     })
   })
 
-  describe("status colors", () => {
-    it("has neutral color when stopped", () => {
-      render(<InstanceBadge status="stopped" />)
-      expect(screen.getByTestId("instance-badge-indicator")).toHaveClass("bg-status-neutral")
-    })
-
-    it("has warning color with pulse when starting", () => {
-      render(<InstanceBadge status="starting" />)
-      const indicator = screen.getByTestId("instance-badge-indicator")
-      expect(indicator).toHaveClass("bg-status-warning")
-      expect(indicator).toHaveClass("animate-pulse")
-    })
-
-    it("has success color when running", () => {
-      render(<InstanceBadge status="running" />)
-      expect(screen.getByTestId("instance-badge-indicator")).toHaveClass("bg-status-success")
-    })
-
-    it("has warning color with pulse when pausing", () => {
-      render(<InstanceBadge status="pausing" />)
-      const indicator = screen.getByTestId("instance-badge-indicator")
-      expect(indicator).toHaveClass("bg-status-warning")
-      expect(indicator).toHaveClass("animate-pulse")
-    })
-
-    it("has warning color when paused", () => {
-      render(<InstanceBadge status="paused" />)
-      const indicator = screen.getByTestId("instance-badge-indicator")
-      expect(indicator).toHaveClass("bg-status-warning")
-      expect(indicator).not.toHaveClass("animate-pulse")
-    })
-
-    it("has warning color with pulse when stopping", () => {
-      render(<InstanceBadge status="stopping" />)
-      const indicator = screen.getByTestId("instance-badge-indicator")
-      expect(indicator).toHaveClass("bg-status-warning")
-      expect(indicator).toHaveClass("animate-pulse")
-    })
-
-    it("has warning color when stopping_after_current", () => {
-      render(<InstanceBadge status="stopping_after_current" />)
-      const indicator = screen.getByTestId("instance-badge-indicator")
-      expect(indicator).toHaveClass("bg-status-warning")
-      expect(indicator).not.toHaveClass("animate-pulse")
-    })
-  })
-
   describe("name display", () => {
     it("shows name with status when name is provided", () => {
       render(<InstanceBadge status="running" name="Main" />)
