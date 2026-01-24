@@ -149,26 +149,15 @@ export const InCodeContext: Story = {
   },
 }
 
-export const DifferentPrefixes: Story = {
-  render: () => {
-    /** Wrapper that sets prefix and renders children */
-    function PrefixExample({ prefix, taskId }: { prefix: string; taskId: string }) {
-      useEffect(() => {
-        useAppStore.getState().setIssuePrefix(prefix)
-      }, [prefix])
-      return (
-        <p>
-          Prefix "{prefix}": <TaskIdLink>{taskId}</TaskIdLink>
-        </p>
-      )
-    }
-
-    return (
-      <div className="space-y-2">
-        <PrefixExample prefix="r" taskId="r-abc" />
-        <PrefixExample prefix="proj" taskId="proj-123" />
-        <PrefixExample prefix="task" taskId="task-xyz" />
-      </div>
-    )
+export const LongerPrefix: Story = {
+  decorators: [
+    Story => (
+      <IssuePrefixSetter prefix="proj">
+        <Story />
+      </IssuePrefixSetter>
+    ),
+  ],
+  args: {
+    children: "See proj-abc and proj-xyz for details.",
   },
 }
