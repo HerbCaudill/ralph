@@ -164,6 +164,12 @@ function printSummary() {
     head: ["", "Package", "Type", "Passed", "Failed", "Time"],
     colAligns: ["left", "left", "left", "right", "right", "right"],
     style: { head: [], border: [] },
+    chars: {
+      mid: "",
+      "left-mid": "",
+      "mid-mid": "",
+      "right-mid": "",
+    },
   })
 
   // Grand totals
@@ -185,8 +191,16 @@ function printSummary() {
     ])
   }
 
-  // Add total row
-  packageTable.push(["", "Total", "", String(totalPassed), String(totalFailed), formatDuration(totalDuration)])
+  // Add separator and total row
+  packageTable.push([{ colSpan: 6, content: "─".repeat(50) }])
+  packageTable.push([
+    "",
+    "Total",
+    "",
+    String(totalPassed),
+    String(totalFailed),
+    formatDuration(totalDuration),
+  ])
 
   console.log(packageTable.toString())
 
