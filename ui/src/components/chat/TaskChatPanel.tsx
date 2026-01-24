@@ -15,6 +15,7 @@ import type { ChatEvent, TaskChatMessage } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
+import { TopologySpinner } from "../ui/TopologySpinner"
 
 /**
  * Converts TaskChatMessage objects to ChatEvent format for unified rendering.
@@ -218,9 +219,12 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
             events={allEvents}
             loadingIndicator={
               isLoading && !streamingMessage ?
-                <div className="flex items-center gap-2 px-4 py-2">
-                  <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
-                  <span className="text-muted-foreground text-xs">Thinking...</span>
+                <div
+                  className="flex items-center justify-start px-4 py-4"
+                  aria-label="Thinking spinner"
+                  data-testid="thinking-spinner"
+                >
+                  <TopologySpinner />
                 </div>
               : null
             }
