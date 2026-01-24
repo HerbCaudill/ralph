@@ -11,33 +11,51 @@ interface StreamState {
  * This is used to deduplicate SDK assistant events that correspond to streamed messages.
  *
  * Returns:
- * - completedMessageRanges: Array of {start, stop} timestamps for completed streaming messages
+ * - completedMessageRanges: Array of {start, stop, id?} for completed streaming messages
  * - inProgressStartTimestamp: The start timestamp of any currently in-progress message (no message_stop yet)
+ * - synthesizedMessageIds: Set of message IDs that were synthesized from streaming
  */
 function findStreamingMessageRanges(events: ChatEvent[]): {
-  completedMessageRanges: Array<{ start: number; stop: number }>
+  completedMessageRanges: Array<{ start: number; stop: number; id?: string }>
   inProgressStartTimestamp: number | null
+  inProgressMessageId: string | null
+  synthesizedMessageIds: Set<string>
 } {
-  const completedMessageRanges: Array<{ start: number; stop: number }> = []
+  const completedMessageRanges: Array<{ start: number; stop: number; id?: string }> = []
+  const synthesizedMessageIds = new Set<string>()
   let currentMessageStartTimestamp: number | null = null
+  let currentMessageId: string | null = null
 
   for (const event of events) {
     if (event.type !== "stream_event") continue
-    const streamEvent = (event as { event?: { type?: string } }).event
+    const streamEvent = (event as { event?: { type?: string; message?: { id?: string } } }).event
     if (!streamEvent) continue
 
     if (streamEvent.type === "message_start") {
       currentMessageStartTimestamp = event.timestamp
+      // Extract message ID if available
+      currentMessageId = streamEvent.message?.id ?? null
     } else if (streamEvent.type === "message_stop" && currentMessageStartTimestamp !== null) {
       completedMessageRanges.push({
         start: currentMessageStartTimestamp,
         stop: event.timestamp,
+        id: currentMessageId ?? undefined,
       })
+      // Track that this message ID was synthesized
+      if (currentMessageId) {
+        synthesizedMessageIds.add(currentMessageId)
+      }
       currentMessageStartTimestamp = null
+      currentMessageId = null
     }
   }
 
-  return { completedMessageRanges, inProgressStartTimestamp: currentMessageStartTimestamp }
+  return {
+    completedMessageRanges,
+    inProgressStartTimestamp: currentMessageStartTimestamp,
+    inProgressMessageId: currentMessageId,
+    synthesizedMessageIds,
+  }
 }
 
 /**
@@ -45,17 +63,36 @@ function findStreamingMessageRanges(events: ChatEvent[]): {
  * a streamed message.
  *
  * An assistant event is a duplicate if:
- * 1. There's a completed streaming message (message_start -> message_stop) where
+ * 1. Its message ID matches a message that was synthesized from streaming, OR
+ * 2. There's a completed streaming message (message_start -> message_stop) where
  *    the assistant event is within 1000ms of the message_stop, OR
- * 2. There's an in-progress streaming message (message_start but no message_stop yet)
+ * 3. There's an in-progress streaming message (message_start but no message_stop yet)
  *    that started before this assistant timestamp (handles the case where the SDK
  *    assistant event arrives before message_stop)
  */
 function shouldDeduplicateAssistant(
-  assistantTimestamp: number,
-  completedMessageRanges: Array<{ start: number; stop: number }>,
+  assistantEvent: ChatEvent,
+  completedMessageRanges: Array<{ start: number; stop: number; id?: string }>,
   inProgressStartTimestamp: number | null,
+  inProgressMessageId: string | null,
+  synthesizedMessageIds: Set<string>,
 ): boolean {
+  // Extract message ID from the assistant event if available
+  const messageId = (assistantEvent as { message?: { id?: string } }).message?.id
+
+  // Priority 1: Check by message ID (most reliable)
+  if (messageId && synthesizedMessageIds.has(messageId)) {
+    return true
+  }
+
+  // Priority 2: Check if this assistant's message ID matches an in-progress stream
+  if (messageId && inProgressMessageId && messageId === inProgressMessageId) {
+    return true
+  }
+
+  // Fallback: Check timestamp proximity for messages without IDs
+  const assistantTimestamp = assistantEvent.timestamp
+
   // Check if this assistant is within 1000ms of any completed streaming message's stop
   for (const range of completedMessageRanges) {
     const diff = Math.abs(assistantTimestamp - range.stop)
@@ -87,8 +124,13 @@ export function useStreamingState(events: ChatEvent[]): {
   streamingMessage: StreamingMessage | null
 } {
   return useMemo(() => {
-    // First pass: find streaming message ranges
-    const { completedMessageRanges, inProgressStartTimestamp } = findStreamingMessageRanges(events)
+    // First pass: find streaming message ranges and message IDs
+    const {
+      completedMessageRanges,
+      inProgressStartTimestamp,
+      inProgressMessageId,
+      synthesizedMessageIds,
+    } = findStreamingMessageRanges(events)
 
     const completedEvents: ChatEvent[] = []
     const state: StreamState = {
@@ -100,13 +142,15 @@ export function useStreamingState(events: ChatEvent[]): {
       if (event.type !== "stream_event") {
         // Non-stream events pass through directly, but skip assistant events that
         // were already synthesized from streaming (to avoid duplicates).
-        // We check if there's a message_stop event nearby (within 1000ms) to detect duplicates.
+        // Deduplication uses message IDs (when available) or timestamp proximity as fallback.
         if (event.type === "assistant") {
           if (
             shouldDeduplicateAssistant(
-              event.timestamp,
+              event,
               completedMessageRanges,
               inProgressStartTimestamp,
+              inProgressMessageId,
+              synthesizedMessageIds,
             )
           ) {
             // Skip - this is a duplicate of a streamed message

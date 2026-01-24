@@ -181,6 +181,111 @@ describe("useStreamingState", () => {
       expect(assistantEvents).toHaveLength(1)
     })
 
+    it("deduplicates using message ID when available", () => {
+      // Test message ID-based deduplication (more reliable than timestamp)
+      const messageId = "msg_test123"
+      const events: ChatEvent[] = [
+        // message_start includes message ID
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { id: messageId, role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+        // SDK's assistant event with same message ID - should be deduplicated
+        {
+          type: "assistant",
+          timestamp: 350,
+          message: { id: messageId, content: [{ type: "text", text: "Hello" }] },
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      // Should have exactly 1 assistant event (the synthesized one)
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(1)
+    })
+
+    it("deduplicates in-progress streaming when assistant arrives with matching ID", () => {
+      // Test deduplication when assistant arrives before message_stop but has matching ID
+      const messageId = "msg_test456"
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { id: messageId, role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        // Assistant arrives BEFORE message_stop but with same ID
+        {
+          type: "assistant",
+          timestamp: 250,
+          message: { id: messageId, content: [{ type: "text", text: "Hello" }] },
+        },
+        {
+          type: "stream_event",
+          timestamp: 280,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      // Should have exactly 1 assistant event (the synthesized one from message_stop)
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(1)
+    })
+
     it("handles multiple streaming messages correctly", () => {
       // Two complete streaming messages + their SDK assistant events
       const events: ChatEvent[] = [
