@@ -53,11 +53,11 @@ export const ShowsCategories: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Should show Navigation category
-    await expect(canvas.getByText("Navigation")).toBeVisible()
+    // Should show Navigation category (use findByText for async waiting)
+    await expect(await canvas.findByText("Navigation")).toBeVisible()
 
     // Should show Agent Control category
-    await expect(canvas.getByText("Agent Control")).toBeVisible()
+    await expect(await canvas.findByText("Agent Control")).toBeVisible()
   },
 }
 
@@ -89,10 +89,10 @@ export const ShowsIterationNavigationHotkeys: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Verify iteration navigation hotkeys are documented
-    await expect(canvas.getByText(/previous iteration/i)).toBeVisible()
-    await expect(canvas.getByText(/next iteration/i)).toBeVisible()
-    await expect(canvas.getByText(/latest iteration/i)).toBeVisible()
+    // Verify iteration navigation hotkeys are documented (use findByText for async waiting)
+    await expect(await canvas.findByText(/previous iteration/i)).toBeVisible()
+    await expect(await canvas.findByText(/next iteration/i)).toBeVisible()
+    await expect(await canvas.findByText(/latest iteration/i)).toBeVisible()
   },
 }
 
@@ -104,9 +104,9 @@ export const ShowsTaskNavigationHotkeys: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Verify task navigation hotkeys are documented
-    await expect(canvas.getByText(/select previous task/i)).toBeVisible()
-    await expect(canvas.getByText(/select next task/i)).toBeVisible()
-    await expect(canvas.getByText(/open selected task/i)).toBeVisible()
+    // Verify task navigation hotkeys are documented (use findByText for async waiting)
+    await expect(await canvas.findByText(/select previous task/i)).toBeVisible()
+    await expect(await canvas.findByText(/select next task/i)).toBeVisible()
+    await expect(await canvas.findByText(/open selected task/i)).toBeVisible()
   },
 }

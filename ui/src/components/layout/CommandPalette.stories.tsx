@@ -65,8 +65,8 @@ export const ShowsSearchInput: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Command input should be visible
-    const input = canvas.getByTestId("command-input")
+    // Command input should be visible (use findByTestId for async waiting)
+    const input = await canvas.findByTestId("command-input")
     await expect(input).toBeVisible()
   },
 }
@@ -79,12 +79,12 @@ export const BackdropClosesDialog: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Command palette should be visible
-    const palette = canvas.getByTestId("command-palette")
+    // Command palette should be visible (use findByTestId for async waiting)
+    const palette = await canvas.findByTestId("command-palette")
     await expect(palette).toBeVisible()
 
     // Click the backdrop
-    const backdrop = canvas.getByTestId("command-backdrop")
+    const backdrop = await canvas.findByTestId("command-backdrop")
     await userEvent.click(backdrop)
 
     // onClose should have been called
@@ -100,14 +100,14 @@ export const SearchFiltersCommands: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Get the command input
-    const input = canvas.getByTestId("command-input")
+    // Get the command input (use findByTestId for async waiting)
+    const input = await canvas.findByTestId("command-input")
 
     // Type to search for theme command
     await userEvent.type(input, "theme")
 
     // Should show the Toggle Theme command (which has "theme" in keywords)
-    await expect(canvas.getByTestId("command-item-cycleTheme")).toBeVisible()
+    await expect(await canvas.findByTestId("command-item-cycleTheme")).toBeVisible()
   },
 }
 
@@ -119,12 +119,12 @@ export const SelectingCommandClosesAndCallsHandler: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Command palette should be visible
-    const palette = canvas.getByTestId("command-palette")
+    // Command palette should be visible (use findByTestId for async waiting)
+    const palette = await canvas.findByTestId("command-palette")
     await expect(palette).toBeVisible()
 
     // Click the toggle sidebar command
-    const toggleSidebarItem = canvas.getByTestId("command-item-toggleSidebar")
+    const toggleSidebarItem = await canvas.findByTestId("command-item-toggleSidebar")
     await userEvent.click(toggleSidebarItem)
 
     // Handler should have been called
@@ -142,8 +142,8 @@ export const EscapeClosesDialog: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
-    // Command palette should be visible
-    const palette = canvas.getByTestId("command-palette")
+    // Command palette should be visible (use findByTestId for async waiting)
+    const palette = await canvas.findByTestId("command-palette")
     await expect(palette).toBeVisible()
 
     // Press Escape
