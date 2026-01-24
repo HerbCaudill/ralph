@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { TopologySpinner } from "./TopologySpinner"
 
 const meta: Meta<typeof TopologySpinner> = {
-  title: "UI/TopologySpinner",
+  title: "Primitives/TopologySpinner",
   component: TopologySpinner,
   parameters: {
     layout: "centered",

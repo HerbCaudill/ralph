@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { InstanceCountBadge } from "./InstanceCountBadge"
 
 const meta: Meta<typeof InstanceCountBadge> = {
-  title: "Layout/InstanceCountBadge",
+  title: "Indicators/InstanceCountBadge",
   component: InstanceCountBadge,
   parameters: {
     layout: "centered",

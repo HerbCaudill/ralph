@@ -4,7 +4,7 @@ import { InstanceSelector } from "./InstanceSelector"
 import { useAppStore, createRalphInstance } from "@/store"
 
 const meta: Meta<typeof InstanceSelector> = {
-  title: "Layout/InstanceSelector",
+  title: "Selectors/InstanceSelector",
   component: InstanceSelector,
   parameters: {
     layout: "centered",

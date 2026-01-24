@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 
 const meta: Meta<typeof NewInstanceDialog> = {
-  title: "Layout/NewInstanceDialog",
+  title: "Dialogs/NewInstanceDialog",
   component: NewInstanceDialog,
   parameters: {
     layout: "centered",

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { ErrorEvent } from "./ErrorEvent"
 
 const meta: Meta<typeof ErrorEvent> = {
-  title: "Events/ErrorEvent",
+  title: "Feedback/ErrorEvent",
   component: ErrorEvent,
   parameters: {
     layout: "padded",

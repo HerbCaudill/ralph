@@ -194,7 +194,7 @@ const yesterday = now - 86400000
 const twoDaysAgo = now - 172800000
 
 const meta: Meta<typeof TaskChatHistoryDropdownStory> = {
-  title: "Chat/TaskChatHistoryDropdown",
+  title: "Selectors/TaskChatHistoryDropdown",
   component: TaskChatHistoryDropdownStory,
   parameters: {
     layout: "centered",

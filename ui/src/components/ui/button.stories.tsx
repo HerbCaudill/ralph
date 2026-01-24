@@ -3,7 +3,7 @@ import { Button } from "./button"
 import { IconPlus, IconSettings, IconTrash } from "@tabler/icons-react"
 
 const meta: Meta<typeof Button> = {
-  title: "UI/Button",
+  title: "Primitives/Button",
   component: Button,
   parameters: {
     layout: "centered",

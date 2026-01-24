@@ -3,7 +3,7 @@ import { DiffView } from "./DiffView"
 import { fn } from "storybook/test"
 
 const meta: Meta<typeof DiffView> = {
-  title: "Events/DiffView",
+  title: "Feedback/DiffView",
   component: DiffView,
   parameters: {
     layout: "padded",

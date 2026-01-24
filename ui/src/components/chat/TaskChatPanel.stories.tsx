@@ -6,7 +6,7 @@ import { fn } from "storybook/test"
 import type { ChatEvent, TaskChatMessage } from "@/types"
 
 const meta: Meta<typeof TaskChatPanel> = {
-  title: "Chat/TaskChatPanel",
+  title: "Panels/TaskChatPanel",
   component: TaskChatPanel,
   parameters: {
     layout: "fullscreen",

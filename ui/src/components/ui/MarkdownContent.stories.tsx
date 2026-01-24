@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { MarkdownContent } from "./MarkdownContent"
 
 const meta: Meta<typeof MarkdownContent> = {
-  title: "UI/MarkdownContent",
+  title: "Content/MarkdownContent",
   component: MarkdownContent,
   parameters: {
     layout: "padded",

@@ -4,7 +4,7 @@ import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
 const meta: Meta<typeof EventStream> = {
-  title: "Events/EventStream",
+  title: "Collections/EventStream",
   component: EventStream,
   parameters: {
     layout: "padded",

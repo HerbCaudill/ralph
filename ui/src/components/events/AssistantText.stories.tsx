@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { AssistantText } from "./AssistantText"
 
 const meta: Meta<typeof AssistantText> = {
-  title: "Events/AssistantText",
+  title: "Feedback/AssistantText",
   component: AssistantText,
   parameters: {
     layout: "padded",

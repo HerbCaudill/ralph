@@ -4,7 +4,7 @@ import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
 const meta: Meta<typeof TokenUsageDisplay> = {
-  title: "Layout/TokenUsageDisplay",
+  title: "Indicators/TokenUsageDisplay",
   component: TokenUsageDisplay,
   parameters: {
     layout: "padded",

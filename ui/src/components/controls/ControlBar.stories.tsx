@@ -3,7 +3,7 @@ import { ControlBar } from "./ControlBar"
 import { withStoreState } from "../../../.storybook/decorators"
 
 const meta: Meta<typeof ControlBar> = {
-  title: "Controls/ControlBar",
+  title: "Layout/ControlBar",
   component: ControlBar,
   parameters: {
     layout: "centered",

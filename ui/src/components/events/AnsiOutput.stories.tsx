@@ -3,7 +3,7 @@ import { AnsiOutput } from "./AnsiOutput"
 import { fn } from "storybook/test"
 
 const meta: Meta<typeof AnsiOutput> = {
-  title: "Events/AnsiOutput",
+  title: "Feedback/AnsiOutput",
   component: AnsiOutput,
   parameters: {
     layout: "padded",

@@ -4,7 +4,7 @@ import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
 const meta: Meta<typeof TextWithLinks> = {
-  title: "UI/TextWithLinks",
+  title: "Content/TextWithLinks",
   component: TextWithLinks,
   parameters: {
     layout: "padded",

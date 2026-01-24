@@ -4,7 +4,7 @@ import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
 const meta: Meta<typeof ContextWindowProgress> = {
-  title: "Layout/ContextWindowProgress",
+  title: "Indicators/ContextWindowProgress",
   component: ContextWindowProgress,
   parameters: {
     layout: "padded",

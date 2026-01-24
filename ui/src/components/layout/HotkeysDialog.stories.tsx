@@ -3,7 +3,7 @@ import { expect, within, userEvent, fn, waitFor } from "storybook/test"
 import { HotkeysDialog } from "./HotkeysDialog"
 
 const meta: Meta<typeof HotkeysDialog> = {
-  title: "Layout/HotkeysDialog",
+  title: "Dialogs/HotkeysDialog",
   component: HotkeysDialog,
   parameters: {
     layout: "centered",

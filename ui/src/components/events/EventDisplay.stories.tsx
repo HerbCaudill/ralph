@@ -4,7 +4,7 @@ import { IconMessageChatbot } from "@tabler/icons-react"
 import type { ChatEvent } from "@/types"
 
 const meta: Meta<typeof EventDisplay> = {
-  title: "Events/EventDisplay",
+  title: "Collections/EventDisplay",
   component: EventDisplay,
   parameters: {
     layout: "padded",

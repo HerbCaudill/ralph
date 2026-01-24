@@ -28,7 +28,7 @@ const twoDaysAgo = new Date(now.getTime() - 172800000).toISOString()
 const threeDaysAgo = new Date(now.getTime() - 259200000).toISOString()
 
 const meta: Meta<typeof IterationHistoryDropdown> = {
-  title: "Events/IterationHistoryDropdown",
+  title: "Selectors/IterationHistoryDropdown",
   component: IterationHistoryDropdown,
   parameters: {
     layout: "centered",

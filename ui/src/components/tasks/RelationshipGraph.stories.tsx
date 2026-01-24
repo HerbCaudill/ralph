@@ -1,24 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { RelationshipGraph } from "./RelationshipGraph"
 import { useAppStore } from "@/store"
-import { TaskDialogProvider } from "@/contexts"
 import { useEffect } from "react"
 import type { Task } from "@/types"
-import { fn } from "storybook/test"
 
 const meta: Meta<typeof RelationshipGraph> = {
-  title: "Tasks/RelationshipGraph",
+  title: "Collections/RelationshipGraph",
   component: RelationshipGraph,
   parameters: {
     layout: "padded",
   },
   decorators: [
     Story => (
-      <TaskDialogProvider openTaskById={fn()}>
-        <div className="max-w-2xl">
-          <Story />
-        </div>
-      </TaskDialogProvider>
+      <div className="max-w-2xl">
+        <Story />
+      </div>
     ),
   ],
 }

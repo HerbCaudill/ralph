@@ -1,24 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { RelatedTasks } from "./RelatedTasks"
 import { useAppStore } from "@/store"
-import { TaskDialogProvider } from "@/contexts"
 import { useEffect } from "react"
 import type { Task, TaskCardTask } from "@/types"
-import { fn } from "storybook/test"
 
 const meta: Meta<typeof RelatedTasks> = {
-  title: "Tasks/RelatedTasks",
+  title: "Collections/RelatedTasks",
   component: RelatedTasks,
   parameters: {
     layout: "padded",
   },
   decorators: [
     Story => (
-      <TaskDialogProvider openTaskById={fn()}>
-        <div className="max-w-md">
-          <Story />
-        </div>
-      </TaskDialogProvider>
+      <div className="max-w-md">
+        <Story />
+      </div>
     ),
   ],
 }

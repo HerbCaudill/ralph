@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CommentsSection } from "./CommentsSection"
 
 const meta: Meta<typeof CommentsSection> = {
-  title: "Tasks/CommentsSection",
+  title: "Collections/CommentsSection",
   component: CommentsSection,
   parameters: {
     layout: "padded",

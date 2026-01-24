@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 
 const meta: Meta<typeof TaskLifecycleEvent> = {
-  title: "Events/TaskLifecycleEvent",
+  title: "Feedback/TaskLifecycleEvent",
   component: TaskLifecycleEvent,
   parameters: {
     layout: "padded",

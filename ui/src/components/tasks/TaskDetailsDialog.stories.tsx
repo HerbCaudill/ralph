@@ -6,7 +6,7 @@ import type { TaskCardTask } from "@/types"
 import { Button } from "@/components/ui/button"
 
 const meta: Meta<typeof TaskDetailsDialog> = {
-  title: "Tasks/TaskDetailsDialog",
+  title: "Dialogs/TaskDetailsDialog",
   component: TaskDetailsDialog,
   parameters: {
     layout: "centered",

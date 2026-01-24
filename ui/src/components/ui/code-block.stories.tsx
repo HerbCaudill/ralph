@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CodeBlock } from "./code-block"
 
 const meta: Meta<typeof CodeBlock> = {
-  title: "UI/CodeBlock",
+  title: "Content/CodeBlock",
   component: CodeBlock,
   parameters: {
     layout: "padded",

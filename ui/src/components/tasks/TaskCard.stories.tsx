@@ -4,7 +4,7 @@ import type { TaskCardTask } from "@/types"
 import { fn } from "storybook/test"
 
 const meta: Meta<typeof TaskCard> = {
-  title: "Tasks/TaskCard",
+  title: "Collections/TaskCard",
   component: TaskCard,
   parameters: {
     layout: "padded",

@@ -4,7 +4,7 @@ import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
 const meta: Meta<typeof IterationHistoryPanel> = {
-  title: "Events/IterationHistoryPanel",
+  title: "Panels/IterationHistoryPanel",
   component: IterationHistoryPanel,
   parameters: {
     layout: "fullscreen",

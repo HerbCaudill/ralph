@@ -15,7 +15,7 @@ import {
 } from "@tabler/icons-react"
 
 const meta: Meta<typeof ButtonGroup> = {
-  title: "UI/ButtonGroup",
+  title: "Primitives/ButtonGroup",
   component: ButtonGroup,
   parameters: {
     layout: "centered",

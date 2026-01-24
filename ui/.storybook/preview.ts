@@ -14,6 +14,23 @@ const preview: Preview = {
     backgrounds: {
       disabled: true,
     },
+    options: {
+      storySort: {
+        order: [
+          "Primitives",
+          "Content",
+          "Feedback",
+          "Inputs",
+          "Indicators",
+          "Selectors",
+          "Collections",
+          "Dialogs",
+          "Panels",
+          "Layout",
+          "Pages",
+        ],
+      },
+    },
   },
   globalTypes: {
     theme: {

@@ -4,7 +4,7 @@ import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
 const meta: Meta<typeof WorkspacePicker> = {
-  title: "Layout/WorkspacePicker",
+  title: "Selectors/WorkspacePicker",
   component: WorkspacePicker,
   parameters: {
     layout: "padded",

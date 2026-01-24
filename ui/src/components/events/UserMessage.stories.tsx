@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { UserMessage } from "./UserMessage"
 
 const meta: Meta<typeof UserMessage> = {
-  title: "Events/UserMessage",
+  title: "Feedback/UserMessage",
   component: UserMessage,
   parameters: {
     layout: "padded",

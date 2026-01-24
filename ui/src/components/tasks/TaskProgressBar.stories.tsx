@@ -5,7 +5,7 @@ import { useEffect } from "react"
 import type { Task } from "@/types"
 
 const meta: Meta<typeof TaskProgressBar> = {
-  title: "Tasks/TaskProgressBar",
+  title: "Indicators/TaskProgressBar",
   component: TaskProgressBar,
   parameters: {
     layout: "padded",

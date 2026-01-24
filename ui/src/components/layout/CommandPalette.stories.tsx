@@ -15,7 +15,7 @@ const mockHandlers = {
 }
 
 const meta: Meta<typeof CommandPalette> = {
-  title: "Layout/CommandPalette",
+  title: "Dialogs/CommandPalette",
   component: CommandPalette,
   parameters: {
     layout: "fullscreen",

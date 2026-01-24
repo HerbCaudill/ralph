@@ -3,7 +3,7 @@ import { EventList } from "./EventList"
 import type { ChatEvent } from "@/types"
 
 const meta: Meta<typeof EventList> = {
-  title: "Events/EventList",
+  title: "Collections/EventList",
   component: EventList,
   parameters: {
     layout: "padded",

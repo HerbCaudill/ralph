@@ -5,7 +5,7 @@ import { useEffect } from "react"
 import type { ChatEvent } from "@/types"
 
 const meta: Meta<typeof AgentView> = {
-  title: "Views/AgentView",
+  title: "Pages/AgentView",
   component: AgentView,
   parameters: {
     layout: "fullscreen",

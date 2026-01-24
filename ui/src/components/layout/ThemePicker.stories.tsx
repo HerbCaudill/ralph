@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { ThemePicker } from "./ThemePicker"
 
 const meta: Meta<typeof ThemePicker> = {
-  title: "Layout/ThemePicker",
+  title: "Selectors/ThemePicker",
   component: ThemePicker,
   parameters: {
     layout: "padded",

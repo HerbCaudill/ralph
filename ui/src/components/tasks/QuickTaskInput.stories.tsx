@@ -5,7 +5,7 @@ import { clearTaskInputStorage, mockFetch, wait } from "../../../.storybook/test
 import { TASK_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 
 const meta: Meta<typeof QuickTaskInput> = {
-  title: "Tasks/QuickTaskInput",
+  title: "Inputs/QuickTaskInput",
   component: QuickTaskInput,
   parameters: {
     layout: "padded",

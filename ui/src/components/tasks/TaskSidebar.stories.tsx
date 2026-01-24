@@ -5,7 +5,7 @@ import { useEffect } from "react"
 import type { Task } from "@/types"
 
 const meta: Meta<typeof TaskSidebar> = {
-  title: "Tasks/TaskSidebar",
+  title: "Panels/TaskSidebar",
   component: TaskSidebar,
   parameters: {
     layout: "fullscreen",

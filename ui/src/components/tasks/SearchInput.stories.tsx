@@ -6,7 +6,7 @@ import { fn } from "storybook/test"
 import type { Task } from "@/types"
 
 const meta: Meta<typeof SearchInput> = {
-  title: "Tasks/SearchInput",
+  title: "Inputs/SearchInput",
   component: SearchInput,
   parameters: {
     layout: "padded",

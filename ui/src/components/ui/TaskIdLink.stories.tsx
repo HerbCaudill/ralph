@@ -4,7 +4,7 @@ import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
 const meta: Meta<typeof TaskIdLink> = {
-  title: "UI/TaskIdLink",
+  title: "Content/TaskIdLink",
   component: TaskIdLink,
   parameters: {
     layout: "padded",

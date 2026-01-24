@@ -3,7 +3,7 @@ import { ChatInput } from "./ChatInput"
 import { fn } from "storybook/test"
 
 const meta: Meta<typeof ChatInput> = {
-  title: "Chat/ChatInput",
+  title: "Inputs/ChatInput",
   component: ChatInput,
   parameters: {
     layout: "padded",

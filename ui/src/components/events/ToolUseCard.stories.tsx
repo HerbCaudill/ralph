@@ -3,7 +3,7 @@ import { ToolUseCard } from "./ToolUseCard"
 import type { ToolUseEvent, ToolName } from "@/types"
 
 const meta: Meta<typeof ToolUseCard> = {
-  title: "Events/ToolUseCard",
+  title: "Feedback/ToolUseCard",
   component: ToolUseCard,
   parameters: {
     layout: "padded",

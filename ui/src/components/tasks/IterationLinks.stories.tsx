@@ -4,7 +4,7 @@ import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
 const meta: Meta<typeof IterationLinks> = {
-  title: "Tasks/IterationLinks",
+  title: "Collections/IterationLinks",
   component: IterationLinks,
   parameters: {
     layout: "padded",
