@@ -43,6 +43,9 @@ export interface CSSVariables {
   "--status-error": string
   "--status-info": string
   "--status-neutral": string
+
+  // Semantic colors
+  "--link": string
 }
 
 /**
@@ -275,6 +278,12 @@ const CSS_VARIABLE_FALLBACKS: Record<keyof CSSVariables, FallbackChain> = {
   "--status-neutral": {
     keys: STATUS_COLOR_FALLBACKS.neutral.keys,
   },
+
+  // Semantic colors
+  "--link": {
+    keys: ["textLink.foreground", "editorLink.activeForeground"],
+    derive: resolved => resolved["--status-info"],
+  },
 }
 
 /**
@@ -455,6 +464,7 @@ function getDefaultCSSVariables(isDark: boolean): CSSVariables {
       "--status-error": DEFAULT_DARK_STATUS_COLORS.error,
       "--status-info": DEFAULT_DARK_STATUS_COLORS.info,
       "--status-neutral": DEFAULT_DARK_STATUS_COLORS.neutral,
+      "--link": "#3794ff",
     }
   }
 
@@ -490,6 +500,7 @@ function getDefaultCSSVariables(isDark: boolean): CSSVariables {
     "--status-error": DEFAULT_LIGHT_STATUS_COLORS.error,
     "--status-info": DEFAULT_LIGHT_STATUS_COLORS.info,
     "--status-neutral": DEFAULT_LIGHT_STATUS_COLORS.neutral,
+    "--link": "#0066b8",
   }
 }
 

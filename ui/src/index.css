@@ -61,6 +61,7 @@
   --color-status-error: var(--status-error);
   --color-status-info: var(--status-info);
   --color-status-neutral: var(--status-neutral);
+  --color-link: var(--link);
 }
 
 :root {
@@ -101,6 +102,7 @@
   --status-error: oklch(0.577 0.245 27.325);
   --status-info: oklch(0.6 0.2 250);
   --status-neutral: oklch(0.556 0 0);
+  --link: oklch(0.5 0.2 250);
 }
 
 .dark {
@@ -140,6 +142,7 @@
   --status-error: oklch(0.704 0.191 22.216);
   --status-info: oklch(0.65 0.2 250);
   --status-neutral: oklch(0.708 0 0);
+  --link: oklch(0.65 0.2 250);
 }
 
 @layer base {
@@ -166,6 +169,11 @@
     --tw-prose-pre-code-bg: var(--neutral);
     --tw-prose-th-borders: var(--border);
     --tw-prose-td-borders: var(--border);
+
+    /* Inline code uses link color (blue) */
+    :where(code):not(:where(pre code)) {
+      color: var(--link);
+    }
   }
 }
 
