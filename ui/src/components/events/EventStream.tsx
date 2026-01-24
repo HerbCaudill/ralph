@@ -13,8 +13,9 @@ import {
   getEventsForIteration,
   countIterations,
 } from "@/store"
+import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
 import { TopologySpinner } from "@/components/ui/TopologySpinner"
-import { EventDisplay } from "./EventDisplay"
+import { EventList, useEventListState } from "./EventList"
 import { EventStreamIterationBar } from "./EventStreamIterationBar"
 
 /**
@@ -24,7 +25,7 @@ import { EventStreamIterationBar } from "./EventStreamIterationBar"
  * When `instanceId` is provided, displays events from that specific instance.
  * Otherwise, displays events from the currently active instance.
  *
- * Uses EventDisplay for core event rendering, adding iteration navigation on top.
+ * Uses EventList for core event rendering, adding iteration navigation on top.
  */
 export function EventStream({ className, maxEvents = 1000, instanceId }: EventStreamProps) {
   // When instanceId is provided, use instance-specific selectors
@@ -99,7 +100,7 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
   // When viewing a historical iteration, scroll to bottom on iteration change
   useEffect(() => {
     if (!isViewingLatest && containerRef.current) {
-      // Find the scrollable container inside EventDisplay/ContentStreamContainer
+      // Find the scrollable container inside ContentStreamContainer
       const scrollContainer = containerRef.current.querySelector('[role="log"]')
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight
@@ -121,6 +122,15 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       </div>
     : null
 
+  // Use the shared hook to get content state for empty state handling
+  const { hasContent } = useEventListState(iterationEvents, maxEvents)
+
+  const emptyState = (
+    <div className="flex h-full items-center justify-start px-4 py-4">
+      <TopologySpinner />
+    </div>
+  )
+
   return (
     <div ref={containerRef} className={cn("relative flex h-full flex-col", className)}>
       <EventStreamIterationBar
@@ -134,19 +144,21 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
         onLatest={goToLatestIteration}
       />
 
-      <EventDisplay
-        events={iterationEvents}
-        maxEvents={maxEvents}
-        emptyState={
-          <div className="flex h-full items-center justify-start px-4 py-4">
-            <TopologySpinner />
-          </div>
-        }
-        loadingIndicator={loadingIndicator}
+      <ContentStreamContainer
         className="flex-1"
         ariaLabel="Event stream"
+        dependencies={[iterationEvents]}
+        emptyState={emptyState}
         autoScrollEnabled={isViewingLatest}
-      />
+      >
+        {hasContent ?
+          <EventList
+            events={iterationEvents}
+            maxEvents={maxEvents}
+            loadingIndicator={loadingIndicator}
+          />
+        : null}
+      </ContentStreamContainer>
     </div>
   )
 }

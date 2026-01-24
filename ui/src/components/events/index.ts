@@ -1,6 +1,9 @@
 export { EventStream } from "./EventStream"
 export type { EventStreamProps } from "./EventStream"
 
+export { EventList, useEventListState } from "./EventList"
+export type { EventListProps, EventListState } from "./EventList"
+
 export { EventDisplay, useEventDisplayState } from "./EventDisplay"
 export type { EventDisplayProps, EventDisplayState } from "./EventDisplay"
 
