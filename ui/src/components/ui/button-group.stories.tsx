@@ -259,7 +259,7 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     label: "Open",
     color: "text-green-500",
     selectedBg: "bg-green-500",
-    unselectedBg: "bg-green-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-green-500/20",
   },
   in_progress: {
@@ -267,7 +267,7 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     label: "In Progress",
     color: "text-blue-500",
     selectedBg: "bg-blue-500",
-    unselectedBg: "bg-blue-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-blue-500/20",
   },
   blocked: {
@@ -275,7 +275,7 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     label: "Blocked",
     color: "text-red-500",
     selectedBg: "bg-red-500",
-    unselectedBg: "bg-red-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-red-500/20",
   },
   deferred: {
@@ -283,7 +283,7 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     label: "Deferred",
     color: "text-amber-500",
     selectedBg: "bg-amber-500",
-    unselectedBg: "bg-amber-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-amber-500/20",
   },
   closed: {
@@ -291,7 +291,7 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
     label: "Closed",
     color: "text-gray-500",
     selectedBg: "bg-gray-500",
-    unselectedBg: "bg-gray-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-gray-500/20",
   },
 }
@@ -305,7 +305,7 @@ const priorityOptions = [
     short: "P0",
     color: "text-red-600",
     selectedBg: "bg-red-600",
-    unselectedBg: "bg-red-600/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-red-600/20",
   },
   {
@@ -314,7 +314,7 @@ const priorityOptions = [
     short: "P1",
     color: "text-orange-500",
     selectedBg: "bg-orange-500",
-    unselectedBg: "bg-orange-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-orange-500/20",
   },
   {
@@ -323,7 +323,7 @@ const priorityOptions = [
     short: "P2",
     color: "text-amber-500",
     selectedBg: "bg-amber-500",
-    unselectedBg: "bg-amber-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-amber-500/20",
   },
   {
@@ -332,7 +332,7 @@ const priorityOptions = [
     short: "P3",
     color: "text-yellow-500",
     selectedBg: "bg-yellow-500",
-    unselectedBg: "bg-yellow-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-yellow-500/20",
   },
   {
@@ -341,7 +341,7 @@ const priorityOptions = [
     short: "P4",
     color: "text-gray-500",
     selectedBg: "bg-gray-500",
-    unselectedBg: "bg-gray-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-gray-500/20",
   },
 ]
@@ -361,7 +361,7 @@ const issueTypeOptions: {
     icon: IconCheckbox,
     color: "text-status-success",
     selectedBg: "bg-green-600",
-    unselectedBg: "bg-green-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-green-500/20",
   },
   {
@@ -370,7 +370,7 @@ const issueTypeOptions: {
     icon: IconBug,
     color: "text-red-500",
     selectedBg: "bg-red-500",
-    unselectedBg: "bg-red-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-red-500/20",
   },
   {
@@ -379,7 +379,7 @@ const issueTypeOptions: {
     icon: IconStack2,
     color: "text-indigo-500",
     selectedBg: "bg-indigo-500",
-    unselectedBg: "bg-indigo-500/5",
+    unselectedBg: "bg-white",
     unselectedHover: "hover:bg-indigo-500/20",
   },
 ]
