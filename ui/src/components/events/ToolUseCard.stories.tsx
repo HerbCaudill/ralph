@@ -1,6 +1,22 @@
+import { useEffect } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { ToolUseCard } from "./ToolUseCard"
+import { useAppStore } from "@/store"
 import type { ToolUseEvent, ToolName } from "@/types"
+
+/**
+ * Decorator that enables tool output display in the store.
+ */
+const WithToolOutput = (Story: React.ComponentType) => {
+  useEffect(() => {
+    useAppStore.setState({ showToolOutput: true })
+  }, [])
+  return (
+    <div className="border-border max-w-2xl overflow-hidden rounded-md border">
+      <Story />
+    </div>
+  )
+}
 
 const meta: Meta<typeof ToolUseCard> = {
   title: "Feedback/ToolUseCard",
@@ -8,13 +24,7 @@ const meta: Meta<typeof ToolUseCard> = {
   args: {
     defaultExpanded: true,
   },
-  decorators: [
-    Story => (
-      <div className="border-border max-w-2xl overflow-hidden rounded-md border">
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: [WithToolOutput],
 }
 
 export default meta
@@ -270,13 +280,7 @@ export const AllTools: Story = {
       ))}
     </div>
   ),
-  decorators: [
-    Story => (
-      <div className="border-border max-w-2xl overflow-hidden rounded-md border">
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: [WithToolOutput],
 }
 
 export const AllStatuses: Story = {
@@ -328,11 +332,5 @@ export const AllStatuses: Story = {
       />
     </div>
   ),
-  decorators: [
-    Story => (
-      <div className="border-border max-w-2xl overflow-hidden rounded-md border">
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: [WithToolOutput],
 }
