@@ -13,42 +13,51 @@ vi.mock("@/hooks/useTaskChatSessions", () => ({
 import { useTaskChatSessions } from "@/hooks/useTaskChatSessions"
 const mockUseTaskChatSessions = vi.mocked(useTaskChatSessions)
 
-// Test data
-const mockSessions: TaskChatSessionMetadata[] = [
-  {
-    id: "session-abc123",
-    taskId: "r-test.1",
-    taskTitle: "Fix authentication bug",
-    instanceId: "default",
-    createdAt: Date.now() - 3600000, // 1 hour ago
-    updatedAt: Date.now() - 1800000, // 30 min ago
-    messageCount: 5,
-    eventCount: 12,
-    lastEventSequence: 11,
-  },
-  {
-    id: "session-def456",
-    taskId: "r-test.2",
-    taskTitle: "Add new feature",
-    instanceId: "default",
-    createdAt: Date.now() - 86400000 - 3600000, // Yesterday, 1 hour into day
-    updatedAt: Date.now() - 86400000, // Yesterday
-    messageCount: 10,
-    eventCount: 25,
-    lastEventSequence: 24,
-  },
-  {
-    id: "session-ghi789",
-    taskId: "untitled",
-    taskTitle: null,
-    instanceId: "default",
-    createdAt: Date.now() - 172800000, // 2 days ago
-    updatedAt: Date.now() - 172800000,
-    messageCount: 3,
-    eventCount: 8,
-    lastEventSequence: 7,
-  },
-]
+// Helper to create mock sessions with timestamps guaranteed to fall into "Today", "Yesterday", and "Older" buckets.
+// Uses noon of each day to avoid midnight boundary issues.
+function createMockSessions(): TaskChatSessionMetadata[] {
+  const now = new Date()
+  // Get the start of today at midnight, then add 12 hours (noon) to be safely within "today"
+  const todayNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0).getTime()
+  // Get noon of yesterday and 2 days ago
+  const yesterdayNoon = todayNoon - 24 * 60 * 60 * 1000
+  const twoDaysAgoNoon = todayNoon - 48 * 60 * 60 * 1000
+  return [
+    {
+      id: "session-abc123",
+      taskId: "r-test.1",
+      taskTitle: "Fix authentication bug",
+      instanceId: "default",
+      createdAt: todayNoon - 3600000, // Today noon minus 1 hour
+      updatedAt: todayNoon, // noon today -> "Today"
+      messageCount: 5,
+      eventCount: 12,
+      lastEventSequence: 11,
+    },
+    {
+      id: "session-def456",
+      taskId: "r-test.2",
+      taskTitle: "Add new feature",
+      instanceId: "default",
+      createdAt: yesterdayNoon - 3600000,
+      updatedAt: yesterdayNoon, // noon yesterday -> "Yesterday"
+      messageCount: 10,
+      eventCount: 25,
+      lastEventSequence: 24,
+    },
+    {
+      id: "session-ghi789",
+      taskId: "untitled",
+      taskTitle: null,
+      instanceId: "default",
+      createdAt: twoDaysAgoNoon - 3600000,
+      updatedAt: twoDaysAgoNoon, // 2 days ago -> "Older" (full date format)
+      messageCount: 3,
+      eventCount: 8,
+      lastEventSequence: 7,
+    },
+  ]
+}
 
 describe("TaskChatHistoryPanel", () => {
   beforeEach(() => {
@@ -128,7 +137,7 @@ describe("TaskChatHistoryPanel", () => {
   describe("list rendering", () => {
     it("renders list of sessions", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -146,7 +155,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("displays task IDs with prefix stripped", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -161,7 +170,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("displays message counts", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -176,7 +185,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("displays 'General chat' for sessions without task", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -193,7 +202,7 @@ describe("TaskChatHistoryPanel", () => {
     it("calls onSelectSession when item is clicked", () => {
       const mockOnSelectSession = vi.fn()
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -209,7 +218,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("has accessible button labels", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -227,7 +236,7 @@ describe("TaskChatHistoryPanel", () => {
   describe("accessibility", () => {
     it("has proper list structure", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -243,7 +252,7 @@ describe("TaskChatHistoryPanel", () => {
   describe("search functionality", () => {
     it("shows search input when sessions exist", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -270,7 +279,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("filters by task title", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -289,7 +298,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("filters by task ID", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -307,7 +316,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("shows no results message when filter matches nothing", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -323,7 +332,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("clears search when clear button is clicked", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -347,7 +356,7 @@ describe("TaskChatHistoryPanel", () => {
 
     it("is case-insensitive", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -366,7 +375,7 @@ describe("TaskChatHistoryPanel", () => {
   describe("date grouping", () => {
     it("groups sessions by date", () => {
       mockUseTaskChatSessions.mockReturnValue({
-        sessions: mockSessions,
+        sessions: createMockSessions(),
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -382,15 +391,24 @@ describe("TaskChatHistoryPanel", () => {
     })
 
     it("groups multiple sessions under the same date", () => {
-      const now = Date.now()
+      // Use noon of today to avoid midnight boundary issues
+      const now = new Date()
+      const todayNoon = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        12,
+        0,
+        0,
+      ).getTime()
       const sessionsWithSameDate: TaskChatSessionMetadata[] = [
         {
           id: "session-1",
           taskId: "r-1",
           taskTitle: "First task",
           instanceId: "default",
-          createdAt: now - 1000,
-          updatedAt: now - 1000,
+          createdAt: todayNoon - 1000,
+          updatedAt: todayNoon - 1000,
           messageCount: 2,
           eventCount: 5,
           lastEventSequence: 4,
@@ -400,8 +418,8 @@ describe("TaskChatHistoryPanel", () => {
           taskId: "r-2",
           taskTitle: "Second task",
           instanceId: "default",
-          createdAt: now - 2000,
-          updatedAt: now - 2000,
+          createdAt: todayNoon - 2000,
+          updatedAt: todayNoon - 2000,
           messageCount: 3,
           eventCount: 7,
           lastEventSequence: 6,

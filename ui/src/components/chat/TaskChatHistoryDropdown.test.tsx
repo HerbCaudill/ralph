@@ -13,31 +13,39 @@ vi.mock("@/hooks/useTaskChatSessions", () => ({
 import { useTaskChatSessions } from "@/hooks/useTaskChatSessions"
 const mockUseTaskChatSessions = vi.mocked(useTaskChatSessions)
 
-// Test data
-const mockSessions: TaskChatSessionMetadata[] = [
-  {
-    id: "session-abc123",
-    taskId: "r-test.1",
-    taskTitle: "Fix authentication bug",
-    instanceId: "default",
-    createdAt: Date.now() - 3600000,
-    updatedAt: Date.now() - 1800000,
-    messageCount: 5,
-    eventCount: 12,
-    lastEventSequence: 11,
-  },
-  {
-    id: "session-def456",
-    taskId: "r-test.2",
-    taskTitle: "Add new feature",
-    instanceId: "default",
-    createdAt: Date.now() - 86400000 - 3600000,
-    updatedAt: Date.now() - 86400000,
-    messageCount: 10,
-    eventCount: 25,
-    lastEventSequence: 24,
-  },
-]
+// Helper to create mock sessions with timestamps guaranteed to fall into "Today" and "Yesterday" buckets.
+// Uses noon of each day to avoid midnight boundary issues.
+function createMockSessions(): TaskChatSessionMetadata[] {
+  const now = new Date()
+  // Get the start of today at midnight, then add 12 hours (noon) to be safely within "today"
+  const todayNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0).getTime()
+  // Get noon of yesterday
+  const yesterdayNoon = todayNoon - 24 * 60 * 60 * 1000
+  return [
+    {
+      id: "session-abc123",
+      taskId: "r-test.1",
+      taskTitle: "Fix authentication bug",
+      instanceId: "default",
+      createdAt: todayNoon - 3600000,
+      updatedAt: todayNoon, // noon today -> "Today"
+      messageCount: 5,
+      eventCount: 12,
+      lastEventSequence: 11,
+    },
+    {
+      id: "session-def456",
+      taskId: "r-test.2",
+      taskTitle: "Add new feature",
+      instanceId: "default",
+      createdAt: yesterdayNoon - 3600000,
+      updatedAt: yesterdayNoon, // noon yesterday -> "Yesterday"
+      messageCount: 10,
+      eventCount: 25,
+      lastEventSequence: 24,
+    },
+  ]
+}
 
 describe("TaskChatHistoryDropdown", () => {
   beforeEach(() => {
@@ -66,7 +74,7 @@ describe("TaskChatHistoryDropdown", () => {
 
   it("opens dropdown when trigger button is clicked", async () => {
     mockUseTaskChatSessions.mockReturnValue({
-      sessions: mockSessions,
+      sessions: createMockSessions(),
       isLoading: false,
       error: null,
       refresh: vi.fn(),
@@ -85,7 +93,7 @@ describe("TaskChatHistoryDropdown", () => {
 
   it("shows sessions in the dropdown", async () => {
     mockUseTaskChatSessions.mockReturnValue({
-      sessions: mockSessions,
+      sessions: createMockSessions(),
       isLoading: false,
       error: null,
       refresh: vi.fn(),
@@ -106,7 +114,7 @@ describe("TaskChatHistoryDropdown", () => {
   it("calls onSelectSession and closes dropdown when session is selected", async () => {
     const mockOnSelectSession = vi.fn()
     mockUseTaskChatSessions.mockReturnValue({
-      sessions: mockSessions,
+      sessions: createMockSessions(),
       isLoading: false,
       error: null,
       refresh: vi.fn(),
@@ -188,7 +196,7 @@ describe("TaskChatHistoryDropdown", () => {
 
   it("groups sessions by date", async () => {
     mockUseTaskChatSessions.mockReturnValue({
-      sessions: mockSessions,
+      sessions: createMockSessions(),
       isLoading: false,
       error: null,
       refresh: vi.fn(),
