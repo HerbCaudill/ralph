@@ -37,9 +37,7 @@ export interface PersistedInstance {
   currentTaskId: string | null
 }
 
-/**
- * Full instance store file format.
- */
+/**  Full instance store file format. */
 interface InstanceStoreData {
   /** Version of the store format (for future migrations) */
   version: 1
@@ -298,9 +296,7 @@ export function getInstanceStore(
   return store
 }
 
-/**
- * Reset all InstanceStore instances (for testing).
- */
+/**  Reset all InstanceStore instances (for testing). */
 export function resetInstanceStores(): void {
   instanceStores.clear()
 }

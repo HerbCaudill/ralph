@@ -34,9 +34,7 @@ export interface VSCodeTheme {
   semanticTokenColors?: Record<string, VSCodeTokenSettings | string>
 }
 
-/**
- * Token color definition for syntax highlighting.
- */
+/**  Token color definition for syntax highlighting. */
 export interface VSCodeTokenColor {
   /** Optional name describing what this token color is for */
   name?: string
@@ -48,9 +46,7 @@ export interface VSCodeTokenColor {
   settings: VSCodeTokenSettings
 }
 
-/**
- * Token styling settings.
- */
+/**  Token styling settings. */
 export interface VSCodeTokenSettings {
   /** Foreground color in hex format (e.g., "#ebdbb2") */
   foreground?: string
@@ -225,9 +221,7 @@ export interface StatusColors {
   neutral: string
 }
 
-/**
- * Metadata about a theme, used for theme selection UI.
- */
+/**  Metadata about a theme, used for theme selection UI. */
 export interface ThemeMeta {
   /** Unique identifier for the theme (extension id + theme path) */
   id: string
@@ -297,9 +291,7 @@ export const DEFAULT_STATUS_COLORS: StatusColors = {
   neutral: "#6b7280", // Gray
 }
 
-/**
- * Default fallback colors for dark themes.
- */
+/**  Default fallback colors for dark themes. */
 export const DEFAULT_DARK_STATUS_COLORS: StatusColors = {
   success: "#4ade80", // Bright green
   warning: "#fbbf24", // Bright amber
@@ -308,9 +300,7 @@ export const DEFAULT_DARK_STATUS_COLORS: StatusColors = {
   neutral: "#9ca3af", // Light gray
 }
 
-/**
- * Default fallback colors for light themes.
- */
+/**  Default fallback colors for light themes. */
 export const DEFAULT_LIGHT_STATUS_COLORS: StatusColors = {
   success: "#16a34a", // Dark green
   warning: "#d97706", // Dark amber

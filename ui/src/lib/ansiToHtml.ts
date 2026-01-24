@@ -96,9 +96,7 @@ interface AnsiState {
   underline?: boolean
 }
 
-/**
- * Parse ANSI escape codes and return the state changes they represent.
- */
+/**  Parse ANSI escape codes and return the state changes they represent. */
 function parseAnsiCodes(
   /** Space-separated ANSI codes */
   codes: string,
@@ -177,9 +175,7 @@ function parseAnsiCodes(
   return state
 }
 
-/**
- * Convert ANSI state to inline CSS style string.
- */
+/**  Convert ANSI state to inline CSS style string. */
 function stateToStyle(
   /** The current ANSI state */
   state: AnsiState,
@@ -194,9 +190,7 @@ function stateToStyle(
   return styles.join(";")
 }
 
-/**
- * Escape HTML special characters to prevent injection.
- */
+/**  Escape HTML special characters to prevent injection. */
 function escapeHtml(
   /** The string to escape */
   str: string,
@@ -273,9 +267,7 @@ export function ansiToHtml(
   return result
 }
 
-/**
- * Strips ANSI escape codes from a string.
- */
+/**  Strips ANSI escape codes from a string. */
 export function stripAnsi(
   /** The string with ANSI escape codes */
   input: string,
@@ -283,9 +275,7 @@ export function stripAnsi(
   return input.replace(/\x1b\[[0-9;]*m/g, "")
 }
 
-/**
- * Checks if a string contains ANSI escape codes.
- */
+/**  Checks if a string contains ANSI escape codes. */
 export function hasAnsiCodes(
   /** The string to check */
   input: string,

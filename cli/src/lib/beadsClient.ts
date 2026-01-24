@@ -3,9 +3,7 @@ import { join } from "path"
 import { existsSync } from "fs"
 import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
-/**
- * Re-export MutationEvent for backward compatibility
- */
+/**  Re-export MutationEvent for backward compatibility */
 export type { MutationEvent } from "@herbcaudill/ralph-shared"
 
 const SOCKET_PATH = join(process.cwd(), ".beads", "bd.sock")

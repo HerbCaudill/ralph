@@ -11,9 +11,7 @@ import type {
  */
 export type ParseResult = { success: true; theme: VSCodeTheme } | { success: false; error: string }
 
-/**
- * Validation result for a theme object.
- */
+/**  Validation result for a theme object. */
 export type ValidationResult = { valid: true } | { valid: false; errors: string[] }
 
 /**

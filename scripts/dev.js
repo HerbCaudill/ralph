@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-/**
- * Development script that finds an available port and starts both server and UI.
- */
+/**  Development script that finds an available port and starts both server and UI. */
 import { createServer } from "node:net"
 import { spawn } from "node:child_process"
 
@@ -33,8 +31,7 @@ async function findAvailablePort(startPort) {
 async function main() {
   const requestedServerPort = process.env.PORT ? Number(process.env.PORT) : undefined
   const requestedUiPort = process.env.RALPH_UI_PORT ? Number(process.env.RALPH_UI_PORT) : undefined
-  const serverPort =
-    requestedServerPort ?? (await findAvailablePort(DEFAULT_SERVER_PORT))
+  const serverPort = requestedServerPort ?? (await findAvailablePort(DEFAULT_SERVER_PORT))
   const uiPort = requestedUiPort ?? (await findAvailablePort(DEFAULT_UI_PORT))
 
   if (requestedServerPort !== undefined && !(await checkPortAvailable(requestedServerPort))) {
@@ -57,25 +54,14 @@ async function main() {
   // Wait a moment for server to start, then start UI
   await new Promise(resolve => setTimeout(resolve, 1000))
 
-  const uiArgs = [
-    "--filter",
-    "@herbcaudill/ralph-ui",
-    "exec",
-    "vite",
-    "--port",
-    String(uiPort),
-  ]
+  const uiArgs = ["--filter", "@herbcaudill/ralph-ui", "exec", "vite", "--port", String(uiPort)]
   if (!process.env.RALPH_NO_OPEN) {
     uiArgs.push("--open")
   }
-  const ui = spawn(
-    "pnpm",
-    uiArgs,
-    {
-      stdio: "inherit",
-      env,
-    },
-  )
+  const ui = spawn("pnpm", uiArgs, {
+    stdio: "inherit",
+    env,
+  })
 
   // Handle cleanup
   const cleanup = () => {

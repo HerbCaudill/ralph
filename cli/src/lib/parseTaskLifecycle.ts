@@ -31,9 +31,7 @@ export function parseTaskLifecycleEvent(
   return null
 }
 
-/**
- * Result of parsing a task lifecycle event.
- */
+/**  Result of parsing a task lifecycle event. */
 export interface TaskLifecycleInfo {
   action: "starting" | "completed"
   taskId?: string

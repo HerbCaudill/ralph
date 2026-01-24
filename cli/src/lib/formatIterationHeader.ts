@@ -1,8 +1,6 @@
 import chalk from "chalk"
 
-/**
- * Format a round header
- */
+/**  Format a round header */
 export const formatIterationHeader = (
   /** Iteration number to display */
   iteration: number,

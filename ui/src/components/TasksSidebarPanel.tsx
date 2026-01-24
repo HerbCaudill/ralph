@@ -5,9 +5,7 @@ import { QuickTaskInput, type QuickTaskInputHandle } from "./tasks/QuickTaskInpu
 import { type SearchInputHandle } from "./tasks/SearchInput"
 import { useTasks } from "@/hooks"
 
-/**
- * Sidebar panel containing task list and quick task input.
- */
+/**  Sidebar panel containing task list and quick task input. */
 export function TasksSidebarPanel({
   /** Ref to access QuickTaskInput methods */
   quickInputRef,

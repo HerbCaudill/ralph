@@ -34,9 +34,7 @@ interface EventLogsResponse {
   error?: string
 }
 
-/**
- * Fetch event log summaries from the API.
- */
+/**  Fetch event log summaries from the API. */
 async function fetchEventLogs(): Promise<EventLogsResponse> {
   try {
     const response = await fetch("/api/eventlogs")

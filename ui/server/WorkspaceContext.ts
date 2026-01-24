@@ -12,14 +12,10 @@ import { TaskChatEventLog } from "./TaskChatEventLog.js"
 import { watchMutations } from "./BeadsClient.js"
 import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
-/**
- * Maximum number of events to store in history buffer.
- */
+/**  Maximum number of events to store in history buffer. */
 const MAX_EVENT_HISTORY = 1000
 
-/**
- * Options for creating a WorkspaceContext.
- */
+/**  Options for creating a WorkspaceContext. */
 export interface WorkspaceContextOptions {
   /** Workspace directory path (required) */
   workspacePath: string

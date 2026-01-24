@@ -1,6 +1,4 @@
-/**
- * Get the current terminal size with sensible defaults.
- */
+/**  Get the current terminal size with sensible defaults. */
 export function getTerminalSize(
   /** The stdout object from Ink's useStdout hook */
   stdout: any,

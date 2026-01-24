@@ -850,9 +850,7 @@ export function TaskDetailsDialog({
   )
 }
 
-/**
- * Configuration options for issue type selector buttons.
- */
+/**  Configuration options for issue type selector buttons. */
 const issueTypeOptions: {
   value: IssueType
   label: string
@@ -891,9 +889,7 @@ const issueTypeOptions: {
   },
 ]
 
-/**
- * Configuration for task status display (icons, labels, and colors).
- */
+/**  Configuration for task status display (icons, labels, and colors). */
 const statusConfig: Record<TaskStatus, StatusConfig> = {
   open: {
     icon: IconCircle,
@@ -937,14 +933,10 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   },
 }
 
-/**
- * Available task status values for the status selector.
- */
+/**  Available task status values for the status selector. */
 const statusOptions: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
 
-/**
- * Configuration options for priority selector buttons.
- */
+/**  Configuration options for priority selector buttons. */
 const priorityOptions = [
   {
     value: 0,

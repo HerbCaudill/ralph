@@ -2,14 +2,10 @@ import { AgentAdapter, type AgentInfo } from "./AgentAdapter.js"
 import { ClaudeAdapter, type ClaudeAdapterOptions } from "./ClaudeAdapter.js"
 import { CodexAdapter, type CodexAdapterOptions } from "./CodexAdapter.js"
 
-/**
- * Map of registered adapters.
- */
+/**  Map of registered adapters. */
 const adapters = new Map<string, AdapterRegistration>()
 
-/**
- * Register an adapter type. Throws an error if an adapter with the same ID is already registered.
- */
+/**  Register an adapter type. Throws an error if an adapter with the same ID is already registered. */
 export function registerAdapter<T extends AgentAdapter>(
   /**
    * The adapter registration info
@@ -22,9 +18,7 @@ export function registerAdapter<T extends AgentAdapter>(
   adapters.set(registration.id, registration as AdapterRegistration)
 }
 
-/**
- * Unregister an adapter type. Returns true if the adapter was unregistered, false if it wasn't registered.
- */
+/**  Unregister an adapter type. Returns true if the adapter was unregistered, false if it wasn't registered. */
 export function unregisterAdapter(
   /** The adapter ID to unregister */
   id: string,
@@ -32,16 +26,12 @@ export function unregisterAdapter(
   return adapters.delete(id)
 }
 
-/**
- * Get a list of all registered adapter IDs.
- */
+/**  Get a list of all registered adapter IDs. */
 export function getRegisteredAdapters(): string[] {
   return Array.from(adapters.keys())
 }
 
-/**
- * Check if an adapter type is registered.
- */
+/**  Check if an adapter type is registered. */
 export function isAdapterRegistered(
   /** The adapter ID to check */
   id: string,
@@ -49,9 +39,7 @@ export function isAdapterRegistered(
   return adapters.has(id)
 }
 
-/**
- * Get registration info for an adapter. Returns undefined if not registered.
- */
+/**  Get registration info for an adapter. Returns undefined if not registered. */
 export function getAdapterRegistration(
   /** The adapter ID */
   id: string,
@@ -59,9 +47,7 @@ export function getAdapterRegistration(
   return adapters.get(id)
 }
 
-/**
- * Create an adapter instance by ID. Throws an error if the adapter ID is not registered.
- */
+/**  Create an adapter instance by ID. Throws an error if the adapter ID is not registered. */
 export function createAdapter<T extends AgentAdapter = AgentAdapter>(
   /** The adapter ID (e.g., "claude", "codex") */
   id: string,
@@ -125,9 +111,7 @@ export async function getAvailableAdapters(): Promise<AdapterAvailability[]> {
   return results
 }
 
-/**
- * Get the first available adapter. Useful for auto-selecting an agent when the user hasn't specified one.
- */
+/**  Get the first available adapter. Useful for auto-selecting an agent when the user hasn't specified one. */
 export async function getFirstAvailableAdapter(
   /** Optional array of adapter IDs to check in order of preference */
   preferredOrder?: string[],
@@ -178,23 +162,17 @@ export function registerDefaultAdapters(): void {
   }
 }
 
-/**
- * Clear all registered adapters. Primarily useful for testing.
- */
+/**  Clear all registered adapters. Primarily useful for testing. */
 export function clearRegistry(): void {
   adapters.clear()
 }
 
 registerDefaultAdapters()
 
-/**
- * A factory function that creates an adapter instance.
- */
+/**  A factory function that creates an adapter instance. */
 export type AdapterFactory<T extends AgentAdapter = AgentAdapter> = (options?: unknown) => T
 
-/**
- * Registration entry for an adapter.
- */
+/**  Registration entry for an adapter. */
 export interface AdapterRegistration<T extends AgentAdapter = AgentAdapter> {
   /** Unique identifier for this adapter type */
   id: string
@@ -206,9 +184,7 @@ export interface AdapterRegistration<T extends AgentAdapter = AgentAdapter> {
   factory: AdapterFactory<T>
 }
 
-/**
- * Information about an adapter including its availability status.
- */
+/**  Information about an adapter including its availability status. */
 export interface AdapterAvailability {
   /** Adapter ID */
   id: string

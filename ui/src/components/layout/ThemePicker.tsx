@@ -220,9 +220,7 @@ export function ThemePicker({
   )
 }
 
-/**
- * Props for the ThemePicker component
- */
+/**  Props for the ThemePicker component */
 export type ThemePickerProps = {
   className?: string
   /** Display variant - "header" for colored header background */

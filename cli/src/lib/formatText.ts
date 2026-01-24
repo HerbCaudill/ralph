@@ -1,8 +1,6 @@
 import chalk from "chalk"
 
-/**
- * Format a text string with markdown-style formatting (bold and inline code)
- */
+/**  Format a text string with markdown-style formatting (bold and inline code) */
 export const formatText = (
   /** The content to format */
   content: string,

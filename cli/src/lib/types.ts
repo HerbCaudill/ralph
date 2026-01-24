@@ -1,6 +1,4 @@
-/**
- * Progress data for tracking issues/tasks.
- */
+/**  Progress data for tracking issues/tasks. */
 export type ProgressData = {
   /** Type of workspace (beads, todo, or none) */
   type: "beads" | "todo" | "none"
@@ -10,9 +8,7 @@ export type ProgressData = {
   total: number
 }
 
-/**
- * Startup snapshot containing initial count and timestamp.
- */
+/**  Startup snapshot containing initial count and timestamp. */
 export type StartupSnapshot = {
   /** Initial count of open + in_progress issues */
   initialCount: number

@@ -779,9 +779,7 @@ export class WorktreeManager {
   }
 }
 
-/**
- * Information about a worktree.
- */
+/**  Information about a worktree. */
 export interface WorktreeInfo {
   /** Path to the worktree directory */
   path: string
@@ -796,9 +794,7 @@ export interface WorktreeInfo {
   instanceName: string
 }
 
-/**
- * Options for creating a worktree.
- */
+/**  Options for creating a worktree. */
 export interface CreateWorktreeOptions {
   /** Instance ID */
   instanceId: string
@@ -807,9 +803,7 @@ export interface CreateWorktreeOptions {
   instanceName: string
 }
 
-/**
- * Result of a merge or rebase operation.
- */
+/**  Result of a merge or rebase operation. */
 export interface MergeResult {
   /** Whether the operation succeeded */
   success: boolean
@@ -824,9 +818,7 @@ export interface MergeResult {
   conflictedFiles?: string[]
 }
 
-/**
- * Result of a cleanup operation.
- */
+/**  Result of a cleanup operation. */
 export interface CleanupResult {
   /** Overall success - true only if merge and removal succeeded */
   success: boolean
@@ -841,9 +833,7 @@ export interface CleanupResult {
   message: string
 }
 
-/**
- * Result of post-iteration merge workflow.
- */
+/**  Result of post-iteration merge workflow. */
 export interface PostIterationResult {
   /** Overall success - true only if both merge and rebase succeeded */
   success: boolean
@@ -858,9 +848,7 @@ export interface PostIterationResult {
   message: string
 }
 
-/**
- * Status of a worktree's integrity.
- */
+/**  Status of a worktree's integrity. */
 export interface WorktreeStatus {
   /** Does the worktree directory exist on disk? */
   directoryExists: boolean

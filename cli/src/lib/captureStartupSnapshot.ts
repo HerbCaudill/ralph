@@ -27,9 +27,7 @@ export const captureStartupSnapshot = (): StartupSnapshot | undefined => {
   return undefined
 }
 
-/**
- * @deprecated Use captureStartupSnapshot instead
- */
+/**  @deprecated Use captureStartupSnapshot instead */
 export const getInitialBeadsCount = (): number | undefined => {
   const snapshot = captureStartupSnapshot()
   return snapshot?.initialCount

@@ -1,9 +1,7 @@
 import { existsSync, rmSync, readdirSync } from "fs"
 import { join } from "path"
 
-/**
- * Cleans the .test-results directory.
- */
+/**  Cleans the .test-results directory. */
 export const cleanTestResults = () => {
   const resultsDir = join(__dirname, "../../.test-results")
   if (existsSync(resultsDir)) {

@@ -313,44 +313,28 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   )
 })
 
-/**
- * Minimum width for the sidebar in pixels
- */
+/**  Minimum width for the sidebar in pixels */
 const MIN_SIDEBAR_WIDTH = 200
 
-/**
- * Maximum width for the sidebar in pixels
- */
+/**  Maximum width for the sidebar in pixels */
 const MAX_SIDEBAR_WIDTH = 600
 
-/**
- * Minimum width for the right panel in pixels
- */
+/**  Minimum width for the right panel in pixels */
 const MIN_RIGHT_PANEL_WIDTH = 300
 
-/**
- * Maximum width for the right panel in pixels
- */
+/**  Maximum width for the right panel in pixels */
 const MAX_RIGHT_PANEL_WIDTH = 800
 
-/**
- * Minimum width for the left panel in pixels
- */
+/**  Minimum width for the left panel in pixels */
 const MIN_LEFT_PANEL_WIDTH = 300
 
-/**
- * Maximum width for the left panel in pixels
- */
+/**  Maximum width for the left panel in pixels */
 const MAX_LEFT_PANEL_WIDTH = 600
 
-/**
- * Maximum width for the detail panel in pixels
- */
+/**  Maximum width for the detail panel in pixels */
 const MAX_DETAIL_PANEL_WIDTH = 800
 
-/**
- * Minimum right margin when detail panel is open, in pixels
- */
+/**  Minimum right margin when detail panel is open, in pixels */
 const MIN_RIGHT_MARGIN = 200
 
 export type MainLayoutProps = {

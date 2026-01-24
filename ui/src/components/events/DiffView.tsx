@@ -55,9 +55,7 @@ export function DiffView({ oldString, newString, language = "text", isExpanded, 
   )
 }
 
-/**
- * Props for the DiffView component
- */
+/**  Props for the DiffView component */
 type Props = {
   /** Original string before changes */
   oldString: string

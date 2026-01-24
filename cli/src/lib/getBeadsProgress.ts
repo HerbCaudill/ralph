@@ -1,9 +1,7 @@
 import { execSync } from "child_process"
 import type { ProgressData } from "./types.js"
 
-/**
- * Get progress for a beads workspace by counting issues created and closed since startup.
- */
+/**  Get progress for a beads workspace by counting issues created and closed since startup. */
 export const getBeadsProgress = (
   /** Initial count of open + in_progress issues */
   initialCount: number,

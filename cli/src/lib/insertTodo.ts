@@ -1,6 +1,4 @@
-/**
- * Inserts a todo item into the content, right after the "To do" header.
- */
+/**  Inserts a todo item into the content, right after the "To do" header. */
 export const insertTodo = (
   /** The current content of the todo file */
   content: string,

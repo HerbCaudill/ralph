@@ -3,9 +3,7 @@ import { formatText } from "./formatText.js"
 import { formatToolUse } from "./formatToolUse.js"
 import { formatUserMessage } from "./formatUserMessage.js"
 
-/**
- * Convert a content block to formatted string lines
- */
+/**  Convert a content block to formatted string lines */
 export const formatContentBlock = (
   /** Content block to format */
   block: ContentBlock,

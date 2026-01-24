@@ -294,9 +294,7 @@ export class WorkspaceContextManager extends EventEmitter {
   }
 }
 
-/**
- * Options for creating a WorkspaceContextManager.
- */
+/**  Options for creating a WorkspaceContextManager. */
 export interface WorkspaceContextManagerOptions {
   /** Run RalphManager in watch mode for new contexts */
   watch?: boolean

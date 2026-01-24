@@ -1,8 +1,6 @@
 import { type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 
-/**
- * Convert SDK message to event format for display.
- */
+/**  Convert SDK message to event format for display. */
 export const sdkMessageToEvent = (
   /** The SDK message to convert */
   message: SDKMessage,

@@ -243,9 +243,7 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
   )
 }
 
-/**
- * Props for TaskChatPanel component.
- */
+/**  Props for TaskChatPanel component. */
 export type TaskChatPanelProps = {
   /** Optional CSS class name to apply to the panel */
   className?: string

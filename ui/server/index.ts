@@ -89,9 +89,7 @@ export function getConfig(): ServerConfig {
   }
 }
 
-/**
- * Create an Express application with all API endpoints configured.
- */
+/**  Create an Express application with all API endpoints configured. */
 function createApp(
   /** Server configuration */
   config: ServerConfig,
@@ -1344,9 +1342,7 @@ export interface WsClient {
 
 const clients = new Set<WsClient>()
 
-/**
- * Get the number of connected WebSocket clients.
- */
+/**  Get the number of connected WebSocket clients. */
 export function getClientCount(): number {
   return clients.size
 }
@@ -1359,9 +1355,7 @@ export function getClients(): ReadonlySet<WsClient> {
   return clients
 }
 
-/**
- * Find a client by its WebSocket connection.
- */
+/**  Find a client by its WebSocket connection. */
 export function getClientByWebSocket(ws: WebSocket): WsClient | undefined {
   for (const client of clients) {
     if (client.ws === ws) {
@@ -1391,9 +1385,7 @@ export function getClientEventIndex(client: WsClient, instanceId: string): numbe
   return client.lastDeliveredEventIndex.get(instanceId) ?? -1
 }
 
-/**
- * Attach a WebSocket server to an HTTP server with heartbeat and message handling.
- */
+/**  Attach a WebSocket server to an HTTP server with heartbeat and message handling. */
 function attachWsServer(
   /** The HTTP server to attach to */
   httpServer: Server,
@@ -1504,9 +1496,7 @@ function attachWsServer(
   return wss
 }
 
-/**
- * Handle incoming WebSocket messages and dispatch to appropriate handlers.
- */
+/**  Handle incoming WebSocket messages and dispatch to appropriate handlers. */
 function handleWsMessage(
   /** The WebSocket connection */
   ws: WebSocket,
@@ -1626,9 +1616,7 @@ function handleWsMessage(
   }
 }
 
-/**
- * Broadcast a message to all connected clients.
- */
+/**  Broadcast a message to all connected clients. */
 export function broadcast(message: unknown): void {
   const payload = JSON.stringify(message)
   for (const client of clients) {
@@ -1638,14 +1626,10 @@ export function broadcast(message: unknown): void {
   }
 }
 
-/**
- * Singleton RalphRegistry instance
- */
+/**  Singleton RalphRegistry instance */
 let ralphRegistry: RalphRegistry | null = null
 
-/**
- * Get the singleton RalphRegistry instance, creating it if needed.
- */
+/**  Get the singleton RalphRegistry instance, creating it if needed. */
 export function getRalphRegistry(): RalphRegistry {
   if (!ralphRegistry) {
     ralphRegistry = new RalphRegistry({
@@ -1658,9 +1642,7 @@ export function getRalphRegistry(): RalphRegistry {
   return ralphRegistry
 }
 
-/**
- * Wire up event forwarding from RalphRegistry to WebSocket clients.
- */
+/**  Wire up event forwarding from RalphRegistry to WebSocket clients. */
 function wireRegistryEvents(
   /** The registry to wire up */
   registry: RalphRegistry,
@@ -1790,9 +1772,7 @@ function serializeInstanceState(
   }
 }
 
-/**
- * Reset the RalphRegistry (for testing).
- */
+/**  Reset the RalphRegistry (for testing). */
 export async function resetRalphRegistry(): Promise<void> {
   if (ralphRegistry) {
     await ralphRegistry.disposeAll()
@@ -1800,24 +1780,16 @@ export async function resetRalphRegistry(): Promise<void> {
   }
 }
 
-/**
- * Singleton WorkspaceContextManager instance
- */
+/**  Singleton WorkspaceContextManager instance */
 let workspaceContextManager: WorkspaceContextManager | null = null
 
-/**
- * Configured workspace path (set by startServer)
- */
+/**  Configured workspace path (set by startServer) */
 let configuredWorkspacePath: string | undefined
 
-/**
- * Whether to log ralph events to console (set by startServer)
- */
+/**  Whether to log ralph events to console (set by startServer) */
 let configuredLogRalphEvents: boolean = false
 
-/**
- * Get the singleton WorkspaceContextManager instance, creating it if needed.
- */
+/**  Get the singleton WorkspaceContextManager instance, creating it if needed. */
 export function getWorkspaceContextManager(): WorkspaceContextManager {
   if (!workspaceContextManager) {
     workspaceContextManager = new WorkspaceContextManager({
@@ -1832,9 +1804,7 @@ export function getWorkspaceContextManager(): WorkspaceContextManager {
   return workspaceContextManager
 }
 
-/**
- * Wire up event forwarding from WorkspaceContextManager to WebSocket clients.
- */
+/**  Wire up event forwarding from WorkspaceContextManager to WebSocket clients. */
 function wireContextManagerEvents(
   /** The manager to wire up */
   manager: WorkspaceContextManager,
@@ -2014,9 +1984,7 @@ export function getActiveContext(): WorkspaceContext {
   return context
 }
 
-/**
- * Reset the WorkspaceContextManager (for testing).
- */
+/**  Reset the WorkspaceContextManager (for testing). */
 export async function resetWorkspaceContextManager(): Promise<void> {
   if (workspaceContextManager) {
     await workspaceContextManager.disposeAll()
@@ -2032,37 +2000,27 @@ export function getBdProxy(): BdProxy {
   return getActiveContext().bdProxy
 }
 
-/**
- * Get the RalphManager for the active workspace.
- */
+/**  Get the RalphManager for the active workspace. */
 export function getRalphManager() {
   return getActiveContext().ralphManager
 }
 
-/**
- * Get the TaskChatManager for the active workspace.
- */
+/**  Get the TaskChatManager for the active workspace. */
 export function getTaskChatManager() {
   return getActiveContext().taskChatManager
 }
 
-/**
- * Get the event history for the active workspace.
- */
+/**  Get the event history for the active workspace. */
 export function getEventHistory(): RalphEvent[] {
   return getActiveContext().eventHistory
 }
 
-/**
- * Clear the event history for the active workspace.
- */
+/**  Clear the event history for the active workspace. */
 export function clearEventHistory(): void {
   getActiveContext().clearHistory()
 }
 
-/**
- * Get the current task being worked on in the active workspace.
- */
+/**  Get the current task being worked on in the active workspace. */
 export function getCurrentTask(): { taskId?: string; taskTitle?: string } {
   return getActiveContext().currentTask
 }
@@ -2141,9 +2099,7 @@ export function resetTaskChatManager(): void {
   // No-op: contexts are managed by WorkspaceContextManager
 }
 
-/**
- * Find an available port by trying consecutive ports starting from the given port.
- */
+/**  Find an available port by trying consecutive ports starting from the given port. */
 export async function findAvailablePort(
   /** The host to check */
   host: string,
@@ -2165,9 +2121,7 @@ export async function findAvailablePort(
   )
 }
 
-/**
- * Check if a port is available for listening.
- */
+/**  Check if a port is available for listening. */
 function checkPortAvailable(
   /** The host to check */
   host: string,
@@ -2187,16 +2141,12 @@ function checkPortAvailable(
   })
 }
 
-/**
- * Default instance constants (must match frontend store/index.ts)
- */
+/**  Default instance constants (must match frontend store/index.ts) */
 const DEFAULT_INSTANCE_ID = "default"
 const DEFAULT_INSTANCE_NAME = "Main"
 const DEFAULT_AGENT_NAME = "Ralph"
 
-/**
- * Start the server with the given configuration.
- */
+/**  Start the server with the given configuration. */
 export async function startServer(
   /** Server configuration */
   config: ServerConfig,

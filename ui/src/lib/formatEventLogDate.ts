@@ -9,9 +9,7 @@ export function formatEventLogDate(dateStr: string): string {
   })
 }
 
-/**
- * Formats a date string to show only the time (for use when date is shown separately).
- */
+/**  Formats a date string to show only the time (for use when date is shown separately). */
 export function formatEventLogTime(dateStr: string): string {
   const date = new Date(dateStr)
   return date.toLocaleTimeString(undefined, {

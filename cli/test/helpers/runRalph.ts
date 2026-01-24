@@ -19,9 +19,7 @@ export type RunRalphResult = {
   outputFile?: string // Path to saved output file
 }
 
-/**
- * Runs the ralph binary for E2E testing and streams output to .test-results.
- */
+/**  Runs the ralph binary for E2E testing and streams output to .test-results. */
 export const runRalph = async (options: RunRalphOptions = {}): Promise<RunRalphResult> => {
   const { args = [], cwd = process.cwd(), timeout = 5000, env = {}, input, testName } = options
 

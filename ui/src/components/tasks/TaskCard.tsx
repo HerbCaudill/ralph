@@ -315,9 +315,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   )
 })
 
-/**
- * Configuration for each task status with icon, label, and styling.
- */
+/**  Configuration for each task status with icon, label, and styling. */
 const statusConfig: Record<TaskStatus, StatusConfig> = {
   open: {
     icon: IconCircle,
@@ -352,14 +350,10 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   },
 }
 
-/**
- * List of all available task statuses for status dropdown menu.
- */
+/**  List of all available task statuses for status dropdown menu. */
 const availableStatuses: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
 
-/**
- * Configuration for issue types (task, bug, feature, epic) with icons and colors.
- */
+/**  Configuration for issue types (task, bug, feature, epic) with icons and colors. */
 const typeConfig: Record<string, TypeConfig> = {
   task: {
     icon: IconCheckbox,
@@ -383,9 +377,7 @@ const typeConfig: Record<string, TypeConfig> = {
   },
 }
 
-/**
- * Configuration for priority levels (P0 through P4) with colors and labels.
- */
+/**  Configuration for priority levels (P0 through P4) with colors and labels. */
 const priorityConfig: Record<number, PriorityConfig> = {
   0: {
     label: "P0",
@@ -409,9 +401,7 @@ const priorityConfig: Record<number, PriorityConfig> = {
   },
 }
 
-/**
- * Props for the TaskCard component.
- */
+/**  Props for the TaskCard component. */
 export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> & {
   /** The task data to display */
   task: TaskCardTask
@@ -431,9 +421,7 @@ export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"
   isActivelyWorking?: boolean
 }
 
-/**
- * Configuration object for a task status.
- */
+/**  Configuration object for a task status. */
 type StatusConfig = {
   /** Tabler icon component */
   icon: TablerIcon
@@ -447,9 +435,7 @@ type StatusConfig = {
   animate?: string
 }
 
-/**
- * Configuration object for an issue type.
- */
+/**  Configuration object for an issue type. */
 type TypeConfig = {
   /** Tabler icon component */
   icon: TablerIcon
@@ -459,9 +445,7 @@ type TypeConfig = {
   color: string
 }
 
-/**
- * Configuration object for a priority level.
- */
+/**  Configuration object for a priority level. */
 type PriorityConfig = {
   /** Priority label (e.g., "P0", "P1") */
   label: string

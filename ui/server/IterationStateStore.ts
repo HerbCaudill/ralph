@@ -3,9 +3,7 @@ import { join } from "node:path"
 import type { RalphStatus } from "./RalphManager.js"
 import type { ConversationContext } from "./ClaudeAdapter.js"
 
-/**
- * Maximum age of iteration state files before they're considered stale (1 hour)
- */
+/**  Maximum age of iteration state files before they're considered stale (1 hour) */
 const STALE_THRESHOLD_MS = 60 * 60 * 1000
 
 /**
@@ -285,9 +283,7 @@ export function getIterationStateStore(
   return store
 }
 
-/**
- * Reset all IterationStateStore instances (for testing).
- */
+/**  Reset all IterationStateStore instances (for testing). */
 export function resetIterationStateStores(): void {
   iterationStateStores.clear()
 }

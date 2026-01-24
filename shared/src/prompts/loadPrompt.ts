@@ -4,9 +4,7 @@ import { join, dirname } from "node:path"
 /** Placeholder in core prompt for workflow content */
 const WORKFLOW_PLACEHOLDER = "{WORKFLOW}"
 
-/**
- * Get the path to a custom prompt file.
- */
+/**  Get the path to a custom prompt file. */
 export function getCustomPromptPath(
   /** Configuration options */
   options: {
@@ -88,9 +86,7 @@ export function initPrompt(
   throw new Error(`Default prompt not found at ${defaultPath}`)
 }
 
-/**
- * Check if a custom prompt file exists.
- */
+/**  Check if a custom prompt file exists. */
 export function hasCustomPrompt(
   /** Configuration options */
   options: {
@@ -156,9 +152,7 @@ export function loadIterationPrompt(
   }
 }
 
-/**
- * Check if a custom workflow exists.
- */
+/**  Check if a custom workflow exists. */
 export function hasCustomWorkflow(
   /** Working directory (defaults to process.cwd()) */
   cwd: string = process.cwd(),
@@ -166,9 +160,7 @@ export function hasCustomWorkflow(
   return existsSync(join(cwd, ".ralph", "workflow.md"))
 }
 
-/**
- * Get the path to the custom workflow file.
- */
+/**  Get the path to the custom workflow file. */
 export function getCustomWorkflowPath(
   /** Working directory (defaults to process.cwd()) */
   cwd: string = process.cwd(),
@@ -176,9 +168,7 @@ export function getCustomWorkflowPath(
   return join(cwd, ".ralph", "workflow.md")
 }
 
-/**
- * Configuration for loading a prompt file.
- */
+/**  Configuration for loading a prompt file. */
 export type LoadPromptOptions = {
   /** Name of the prompt file (e.g., "prompt.md" or "task-chat-system.md") */
   filename: string
@@ -190,9 +180,7 @@ export type LoadPromptOptions = {
   cwd?: string
 }
 
-/**
- * Result from loading a prompt file.
- */
+/**  Result from loading a prompt file. */
 export type LoadPromptResult = {
   /** The prompt content */
   content: string
@@ -202,9 +190,7 @@ export type LoadPromptResult = {
   isCustom: boolean
 }
 
-/**
- * Configuration for loading iteration prompts.
- */
+/**  Configuration for loading iteration prompts. */
 export type LoadIterationPromptOptions = {
   /** Path to the templates directory containing core-prompt.md and workflow.md */
   templatesDir: string
@@ -212,9 +198,7 @@ export type LoadIterationPromptOptions = {
   cwd?: string
 }
 
-/**
- * Result from loading iteration prompt.
- */
+/**  Result from loading iteration prompt. */
 export type LoadIterationPromptResult = {
   /** The combined prompt content (core + workflow) */
   content: string

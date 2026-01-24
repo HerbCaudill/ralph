@@ -3,9 +3,7 @@ import { Box, Text } from "ink"
 import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 
-/**
- * Display the Ralph header with version information and branding.
- */
+/**  Display the Ralph header with version information and branding. */
 export const Header = ({
   /** The Claude CLI version */
   claudeVersion,

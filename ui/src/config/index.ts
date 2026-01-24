@@ -56,9 +56,7 @@ function parseKeyBinding(keyBinding: string): { key: string; modifiers: HotkeyMo
   return { key, modifiers }
 }
 
-/**
- * Load hotkeys configuration from JSON and parse VS Code-style key bindings.
- */
+/**  Load hotkeys configuration from JSON and parse VS Code-style key bindings. */
 function loadHotkeys(): HotkeysConfig {
   const rawHotkeys = hotkeysConfig.hotkeys as Record<string, RawHotkeyConfig>
   const result: Partial<HotkeysConfig> = {}

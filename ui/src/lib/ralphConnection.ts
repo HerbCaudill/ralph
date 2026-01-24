@@ -63,9 +63,7 @@ function calculateReconnectDelay(): number {
   return Math.max(INITIAL_RECONNECT_DELAY, Math.round(baseDelay + jitter))
 }
 
-/**
- * Reset reconnection state after successful connection
- */
+/**  Reset reconnection state after successful connection */
 function resetReconnectState(): void {
   reconnectAttempts = 0
   currentReconnectDelay = INITIAL_RECONNECT_DELAY

@@ -1,9 +1,7 @@
 import type { ContentBlock } from "./eventToBlocks.js"
 import { formatContentBlock } from "../lib/formatContentBlock.js"
 
-/**
- * Convert content blocks to lines of formatted text.
- */
+/**  Convert content blocks to lines of formatted text. */
 export const blocksToLines = (
   /** Content blocks to convert */
   blocks: ContentBlock[],

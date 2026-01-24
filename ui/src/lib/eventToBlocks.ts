@@ -9,18 +9,14 @@ import type {
 } from "../../server/AgentAdapter.js"
 import type { AssistantTextEvent, ToolUseEvent, ToolName } from "@/types"
 
-/**
- * A text message from the assistant (rendered as markdown)
- */
+/**  A text message from the assistant (rendered as markdown) */
 export interface TextBlock {
   type: "text"
   timestamp: number
   content: string
 }
 
-/**
- * A tool use with optional result
- */
+/**  A tool use with optional result */
 export interface ToolUseBlock {
   type: "tool_use"
   timestamp: number
@@ -32,9 +28,7 @@ export interface ToolUseBlock {
   status: "pending" | "running" | "success" | "error"
 }
 
-/**
- * An error message
- */
+/**  An error message */
 export interface ErrorBlock {
   type: "error"
   timestamp: number
@@ -43,23 +37,17 @@ export interface ErrorBlock {
   fatal: boolean
 }
 
-/**
- * A status change event (for debugging/visualization)
- */
+/**  A status change event (for debugging/visualization) */
 export interface StatusBlock {
   type: "status"
   timestamp: number
   status: string
 }
 
-/**
- * Union of all display block types
- */
+/**  Union of all display block types */
 export type DisplayBlock = TextBlock | ToolUseBlock | ErrorBlock | StatusBlock
 
-/**
- * State for tracking pending tool uses and streaming message content.
- */
+/**  State for tracking pending tool uses and streaming message content. */
 interface ConversionState {
   /** Map of tool use ID to pending tool use info */
   pendingToolUses: Map<string, { tool: string; input: Record<string, unknown>; timestamp: number }>
@@ -69,9 +57,7 @@ interface ConversionState {
   isStreaming: boolean
 }
 
-/**
- * Create a fresh conversion state with empty tracking data.
- */
+/**  Create a fresh conversion state with empty tracking data. */
 function createInitialState(): ConversionState {
   return {
     pendingToolUses: new Map(),
@@ -80,44 +66,32 @@ function createInitialState(): ConversionState {
   }
 }
 
-/**
- * Type guard for message events.
- */
+/**  Type guard for message events. */
 export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
   return event.type === "message"
 }
 
-/**
- * Type guard for tool use events.
- */
+/**  Type guard for tool use events. */
 export function isAgentToolUseEvent(event: AgentEvent): event is AgentToolUseEvent {
   return event.type === "tool_use"
 }
 
-/**
- * Type guard for tool result events.
- */
+/**  Type guard for tool result events. */
 export function isAgentToolResultEvent(event: AgentEvent): event is AgentToolResultEvent {
   return event.type === "tool_result"
 }
 
-/**
- * Type guard for result events.
- */
+/**  Type guard for result events. */
 export function isAgentResultEvent(event: AgentEvent): event is AgentResultEvent {
   return event.type === "result"
 }
 
-/**
- * Type guard for error events.
- */
+/**  Type guard for error events. */
 export function isAgentErrorEvent(event: AgentEvent): event is AgentErrorEvent {
   return event.type === "error"
 }
 
-/**
- * Type guard for status events.
- */
+/**  Type guard for status events. */
 export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent {
   return event.type === "status"
 }
@@ -156,9 +130,7 @@ export function eventToBlocks(
   return blocks
 }
 
-/**
- * Process a single event and return any blocks it produces.
- */
+/**  Process a single event and return any blocks it produces. */
 function processEvent(
   /** The event to process */
   event: AgentEvent,
@@ -260,9 +232,7 @@ function processEvent(
   return blocks
 }
 
-/**
- * Convert a TextBlock to AssistantTextEvent for existing component compatibility.
- */
+/**  Convert a TextBlock to AssistantTextEvent for existing component compatibility. */
 export function toAssistantTextEvent(
   /** The text block to convert */
   block: TextBlock,
@@ -274,9 +244,7 @@ export function toAssistantTextEvent(
   }
 }
 
-/**
- * Convert a ToolUseBlock to ToolUseEvent for existing component compatibility.
- */
+/**  Convert a ToolUseBlock to ToolUseEvent for existing component compatibility. */
 export function toToolUseEvent(
   /** The tool use block to convert */
   block: ToolUseBlock,
@@ -292,9 +260,7 @@ export function toToolUseEvent(
   }
 }
 
-/**
- * Stateful converter for incremental event processing (useful for real-time updates).
- */
+/**  Stateful converter for incremental event processing (useful for real-time updates). */
 export class EventBlockConverter {
   private state: ConversionState
   private options: { includeStatusEvents: boolean }

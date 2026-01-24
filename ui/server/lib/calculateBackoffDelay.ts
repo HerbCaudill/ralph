@@ -1,6 +1,4 @@
-/**
- * Calculate delay for exponential backoff with jitter.
- */
+/**  Calculate delay for exponential backoff with jitter. */
 export function calculateBackoffDelay(
   /** Current retry attempt number (0-based) */
   attempt: number,

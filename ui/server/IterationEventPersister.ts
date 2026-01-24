@@ -221,9 +221,7 @@ export function getIterationEventPersister(workspacePath: string): IterationEven
   return persister
 }
 
-/**
- * Reset all IterationEventPersister instances (for testing).
- */
+/**  Reset all IterationEventPersister instances (for testing). */
 export function resetIterationEventPersisters(): void {
   iterationEventPersisters.clear()
 }

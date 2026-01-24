@@ -45,9 +45,7 @@ import { clearTaskChatHistory } from "./lib/clearTaskChatHistory"
 import { TasksSidebarPanel } from "./components/TasksSidebarPanel"
 import { AgentView } from "./components/AgentView"
 
-/**
- * Root application component.
- */
+/**  Root application component. */
 export function App() {
   const layoutRef = useRef<MainLayoutHandle>(null)
   const chatInputRef = useRef<ChatInputHandle>(null)

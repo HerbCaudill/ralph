@@ -1,6 +1,4 @@
-/**
- * Check if an error is retryable (network/connection errors, rate limits, server errors).
- */
+/**  Check if an error is retryable (network/connection errors, rate limits, server errors). */
 export function isRetryableError(
   /** The error to check */
   error: Error,

@@ -3,9 +3,7 @@ import { IconPlayerPlay, IconCheck } from "@tabler/icons-react"
 import { TaskIdLink } from "@/components/ui/TaskIdLink"
 import type { TaskLifecycleEventData } from "@/types"
 
-/**
- * Renders a task lifecycle event (starting or completing a task) with special styling.
- */
+/**  Renders a task lifecycle event (starting or completing a task) with special styling. */
 export function TaskLifecycleEvent({ event, className }: Props) {
   const isStarting = event.action === "starting"
   const Icon = isStarting ? IconPlayerPlay : IconCheck

@@ -413,18 +413,14 @@ export function TaskList({
   )
 }
 
-/**
- * Default collapsed state for status groups (open is expanded, deferred and closed are collapsed).
- */
+/**  Default collapsed state for status groups (open is expanded, deferred and closed are collapsed). */
 const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
   open: false,
   deferred: true,
   closed: true,
 }
 
-/**
- * Configuration for the three status groups: open (ready/in progress/blocked), deferred, and closed.
- */
+/**  Configuration for the three status groups: open (ready/in progress/blocked), deferred, and closed. */
 const groupConfigs: GroupConfig[] = [
   {
     key: "open",
@@ -444,9 +440,7 @@ const groupConfigs: GroupConfig[] = [
   },
 ]
 
-/**
- * Props for the TaskList component.
- */
+/**  Props for the TaskList component. */
 export type TaskListProps = {
   /** Array of tasks to display and organize */
   tasks: TaskCardTask[]
@@ -466,9 +460,7 @@ export type TaskListProps = {
   isLoading?: boolean
 }
 
-/**
- * Configuration for a task status group.
- */
+/**  Configuration for a task status group. */
 type GroupConfig = {
   /** The status group key ("open" or "closed") */
   key: TaskGroup
@@ -478,9 +470,7 @@ type GroupConfig = {
   taskFilter: (task: TaskCardTask) => boolean
 }
 
-/**
- * A complete status group with its task trees.
- */
+/**  A complete status group with its task trees. */
 type StatusGroupData = {
   /** Group configuration */
   config: GroupConfig

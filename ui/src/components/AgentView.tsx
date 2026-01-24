@@ -3,9 +3,7 @@ import { EventStream } from "./events"
 import { useAppStore, selectCanAcceptMessages, selectViewingIterationIndex } from "@/store"
 import { useRalphConnection } from "@/hooks"
 
-/**
- * Main agent view showing the event stream and chat input.
- */
+/**  Main agent view showing the event stream and chat input. */
 export function AgentView({
   /** Ref to access ChatInput methods */
   chatInputRef,

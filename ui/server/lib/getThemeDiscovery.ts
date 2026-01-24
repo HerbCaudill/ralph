@@ -1,13 +1,9 @@
 import { ThemeDiscovery } from "../ThemeDiscovery.js"
 
-/**
- * Singleton instance of ThemeDiscovery.
- */
+/**  Singleton instance of ThemeDiscovery. */
 let themeDiscoveryInstance: ThemeDiscovery | null = null
 
-/**
- * Get the singleton ThemeDiscovery instance, initializing it if needed.
- */
+/**  Get the singleton ThemeDiscovery instance, initializing it if needed. */
 export async function getThemeDiscovery(): Promise<ThemeDiscovery> {
   if (!themeDiscoveryInstance) {
     themeDiscoveryInstance = new ThemeDiscovery()
@@ -16,9 +12,7 @@ export async function getThemeDiscovery(): Promise<ThemeDiscovery> {
   return themeDiscoveryInstance
 }
 
-/**
- * Reset the ThemeDiscovery singleton (for testing).
- */
+/**  Reset the ThemeDiscovery singleton (for testing). */
 export function resetThemeDiscovery(): void {
   themeDiscoveryInstance = null
 }

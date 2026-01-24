@@ -5,17 +5,13 @@ import type { Theme } from "@/types"
 /** localStorage key for persisting theme preference */
 const THEME_STORAGE_KEY = "ralph-ui-theme"
 
-/**
- * Gets the system color scheme preference
- */
+/**  Gets the system color scheme preference */
 function getSystemPreference(): "light" | "dark" {
   if (typeof window === "undefined") return "dark"
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
-/**
- * Applies the theme to the document
- */
+/**  Applies the theme to the document */
 function applyTheme(resolvedTheme: "light" | "dark") {
   const root = document.documentElement
   if (resolvedTheme === "dark") {
@@ -25,9 +21,7 @@ function applyTheme(resolvedTheme: "light" | "dark") {
   }
 }
 
-/**
- * Gets the stored theme from localStorage
- */
+/**  Gets the stored theme from localStorage */
 export function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "system"
   const stored = localStorage.getItem(THEME_STORAGE_KEY)
@@ -37,9 +31,7 @@ export function getStoredTheme(): Theme {
   return "system"
 }
 
-/**
- * Saves the theme to localStorage
- */
+/**  Saves the theme to localStorage */
 function saveTheme(theme: Theme) {
   localStorage.setItem(THEME_STORAGE_KEY, theme)
 }

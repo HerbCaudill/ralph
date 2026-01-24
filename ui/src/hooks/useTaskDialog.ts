@@ -105,9 +105,7 @@ async function deleteTaskApi(id: string): Promise<DeleteResponse> {
 
 // Hook
 
-/**
- * Hook to manage task details dialog state and API updates.
- */
+/**  Hook to manage task details dialog state and API updates. */
 export function useTaskDialog(options: UseTaskDialogOptions = {}): UseTaskDialogResult {
   const { onTaskUpdated, onTaskDeleted } = options
 

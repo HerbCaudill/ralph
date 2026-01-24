@@ -1,8 +1,6 @@
 import { test as base, expect, type Page, type Locator } from "@playwright/test"
 
-/**
- * Page object for the task sidebar/list
- */
+/**  Page object for the task sidebar/list */
 export class TaskListPage {
   readonly page: Page
   readonly sidebar: Locator
@@ -69,9 +67,7 @@ export class TaskListPage {
   }
 }
 
-/**
- * Page object for the task details dialog
- */
+/**  Page object for the task details dialog */
 export class TaskDetailsPage {
   readonly page: Page
   readonly dialog: Locator
@@ -135,9 +131,7 @@ export class TaskDetailsPage {
   }
 }
 
-/**
- * Page object for the chat panel
- */
+/**  Page object for the chat panel */
 export class ChatPanelPage {
   readonly page: Page
   readonly panel: Locator
@@ -194,9 +188,7 @@ export class ChatPanelPage {
   }
 }
 
-/**
- * Page object for the event stream
- */
+/**  Page object for the event stream */
 export class EventStreamPage {
   readonly page: Page
   readonly container: Locator
@@ -259,9 +251,7 @@ export class EventStreamPage {
   }
 }
 
-/**
- * Page object for the control bar (Start/Pause/Stop buttons)
- */
+/**  Page object for the control bar (Start/Pause/Stop buttons) */
 export class ControlBarPage {
   readonly page: Page
 
@@ -319,9 +309,7 @@ export class ControlBarPage {
   }
 }
 
-/**
- * Page object for the command palette
- */
+/**  Page object for the command palette */
 export class CommandPalettePage {
   readonly page: Page
   readonly container: Locator
@@ -362,9 +350,7 @@ export class CommandPalettePage {
   }
 }
 
-/**
- * Page object for the header (workspace picker, theme toggle, etc.)
- */
+/**  Page object for the header (workspace picker, theme toggle, etc.) */
 export class HeaderPage {
   readonly page: Page
   readonly header: Locator
@@ -391,9 +377,7 @@ export class HeaderPage {
   }
 }
 
-/**
- * Page object for the status bar
- */
+/**  Page object for the status bar */
 export class StatusBarPage {
   readonly page: Page
 
@@ -417,9 +401,7 @@ export class StatusBarPage {
   }
 }
 
-/**
- * Main application page object that combines all page objects
- */
+/**  Main application page object that combines all page objects */
 export class AppPage {
   readonly page: Page
   readonly taskList: TaskListPage
@@ -482,9 +464,7 @@ export class AppPage {
   }
 }
 
-/**
- * Extended test fixture that includes the AppPage
- */
+/**  Extended test fixture that includes the AppPage */
 export const test = base.extend<{ app: AppPage }>({
   app: async ({ page }, use) => {
     const app = new AppPage(page)

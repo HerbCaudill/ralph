@@ -6,9 +6,7 @@ import type { RalphInstance, RalphStatus } from "../src/types"
 /** Connection status type for Storybook decorators */
 type ConnectionStatus = "connected" | "connecting" | "disconnected"
 
-/**
- * Props for configuring the store state in stories
- */
+/**  Props for configuring the store state in stories */
 export interface StoreState {
   connectionStatus?: ConnectionStatus
   ralphStatus?: RalphStatus
@@ -23,9 +21,7 @@ export interface StoreState {
   activeInstanceId?: string
 }
 
-/**
- * Decorator that initializes the Zustand store with specific state for stories
- */
+/**  Decorator that initializes the Zustand store with specific state for stories */
 export function withStoreState(state: StoreState): Decorator {
   return Story => {
     useEffect(() => {
@@ -67,9 +63,7 @@ export function withStoreState(state: StoreState): Decorator {
   }
 }
 
-/**
- * Decorator for full-page layouts
- */
+/**  Decorator for full-page layouts */
 export const fullPageDecorator: Decorator = Story => (
   <div className="h-screen w-screen">
     <Story />

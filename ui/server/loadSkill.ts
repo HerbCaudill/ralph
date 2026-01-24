@@ -5,9 +5,7 @@ import { fileURLToPath } from "node:url"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-/**
- * Parsed skill metadata from YAML frontmatter.
- */
+/**  Parsed skill metadata from YAML frontmatter. */
 export interface SkillMetadata {
   name: string
   description?: string
@@ -16,9 +14,7 @@ export interface SkillMetadata {
   allowedTools?: string[]
 }
 
-/**
- * Result from loading a skill file.
- */
+/**  Result from loading a skill file. */
 export interface LoadSkillResult {
   /** The skill prompt content (without frontmatter) */
   content: string
@@ -135,17 +131,13 @@ export function loadSkill(
   throw new Error(`Skill "${skillName}" not found at ${customPath} or ${defaultPath}`)
 }
 
-/**
- * Check if a custom skill exists.
- */
+/**  Check if a custom skill exists. */
 export function hasCustomSkill(skillName: string, cwd: string = process.cwd()): boolean {
   const customPath = join(cwd, ".claude", "skills", skillName, "SKILL.md")
   return existsSync(customPath)
 }
 
-/**
- * Get the path where a custom skill would be located.
- */
+/**  Get the path where a custom skill would be located. */
 export function getCustomSkillPath(skillName: string, cwd: string = process.cwd()): string {
   return join(cwd, ".claude", "skills", skillName, "SKILL.md")
 }

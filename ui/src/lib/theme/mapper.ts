@@ -407,9 +407,7 @@ export function applyThemeToElement(element: HTMLElement, theme: VSCodeTheme): v
   }
 }
 
-/**
- * Get the first available color from a list of keys.
- */
+/**  Get the first available color from a list of keys. */
 function getFirstColor(
   /** The theme to search */
   theme: VSCodeTheme,
@@ -425,9 +423,7 @@ function getFirstColor(
   return undefined
 }
 
-/**
- * Get default CSS variable values based on theme type.
- */
+/**  Get default CSS variable values based on theme type. */
 function getDefaultCSSVariables(
   /** Whether the theme is dark */
   isDark: boolean,
@@ -503,9 +499,7 @@ function getDefaultCSSVariables(
   }
 }
 
-/**
- * Adjust the brightness of a hex color.
- */
+/**  Adjust the brightness of a hex color. */
 function adjustColorBrightness(
   /** The hex color to adjust */
   hex: string,

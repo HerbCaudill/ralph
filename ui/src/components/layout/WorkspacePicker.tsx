@@ -357,9 +357,7 @@ export function WorkspacePicker({
   )
 }
 
-/**
- * Props for the WorkspacePicker component
- */
+/**  Props for the WorkspacePicker component */
 export type WorkspacePickerProps = {
   className?: string
   variant?: "default" | "header"

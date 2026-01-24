@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-/**
- * Get the default WebSocket URL based on current window location
- */
+/**  Get the default WebSocket URL based on current window location */
 function getDefaultUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
   return `${protocol}//${window.location.host}/ws`

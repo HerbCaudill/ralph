@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-/**
- * Options for the useAutoScroll hook.
- */
+/**  Options for the useAutoScroll hook. */
 export type UseAutoScrollOptions = {
   /**
    * Threshold in pixels from the bottom to consider "at bottom".
@@ -24,9 +22,7 @@ export type UseAutoScrollOptions = {
   enabled?: boolean
 }
 
-/**
- * Return type for the useAutoScroll hook.
- */
+/**  Return type for the useAutoScroll hook. */
 export type UseAutoScrollReturn = {
   /** Ref to attach to the scrollable container */
   containerRef: React.RefObject<HTMLDivElement | null>

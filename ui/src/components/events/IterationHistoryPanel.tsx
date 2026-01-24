@@ -12,9 +12,7 @@ import { useEventLogs, useEventLogRouter, type EventLogSummary } from "@/hooks"
 import { formatEventLogDate, formatEventLogTime } from "@/lib/formatEventLogDate"
 import { useAppStore, selectIssuePrefix } from "@/store"
 
-/**
- * Groups event logs by date (Today, Yesterday, or specific date).
- */
+/**  Groups event logs by date (Today, Yesterday, or specific date). */
 function groupEventLogsByDate(
   eventLogs: EventLogSummary[],
 ): Array<{ dateLabel: string; logs: EventLogSummary[] }> {
@@ -54,9 +52,7 @@ function groupEventLogsByDate(
   return Array.from(groups.entries()).map(([dateLabel, logs]) => ({ dateLabel, logs }))
 }
 
-/**
- * Filters event logs by search query (matches task ID or title).
- */
+/**  Filters event logs by search query (matches task ID or title). */
 function filterEventLogs(eventLogs: EventLogSummary[], query: string): EventLogSummary[] {
   const trimmedQuery = query.trim().toLowerCase()
   if (!trimmedQuery) return eventLogs
@@ -213,9 +209,7 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
   )
 }
 
-/**
- * Single item in the iteration history list.
- */
+/**  Single item in the iteration history list. */
 function IterationHistoryItem({
   log,
   issuePrefix,
@@ -266,9 +260,7 @@ function IterationHistoryItem({
   )
 }
 
-/**
- * Props for the IterationHistoryPanel component
- */
+/**  Props for the IterationHistoryPanel component */
 export interface IterationHistoryPanelProps {
   /** Optional CSS class to apply to the container */
   className?: string

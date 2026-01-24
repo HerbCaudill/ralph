@@ -17,16 +17,12 @@ export interface UseHotkeysReturn {
   registeredHotkeys: Array<{ action: HotkeyAction; display: string; description: string }>
 }
 
-/**
- * Check if the current platform is macOS
- */
+/**  Check if the current platform is macOS */
 function isMac(): boolean {
   return typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 }
 
-/**
- * Get the display string for a modifier key
- */
+/**  Get the display string for a modifier key */
 function getModifierDisplay(modifier: string): string {
   const mac = isMac()
   switch (modifier) {
@@ -43,9 +39,7 @@ function getModifierDisplay(modifier: string): string {
   }
 }
 
-/**
- * Get the display string for a key
- */
+/**  Get the display string for a key */
 function getKeyDisplay(key: string): string {
   switch (key.toLowerCase()) {
     case "enter":
@@ -67,18 +61,14 @@ function getKeyDisplay(key: string): string {
   }
 }
 
-/**
- * Get the full display string for a hotkey config
- */
+/**  Get the full display string for a hotkey config */
 function getHotkeyDisplayString(config: HotkeyConfig): string {
   const modifiers = config.modifiers.map(getModifierDisplay)
   const key = getKeyDisplay(config.key)
   return [...modifiers, key].join(isMac() ? "" : "+")
 }
 
-/**
- * Check if the event matches the hotkey config
- */
+/**  Check if the event matches the hotkey config */
 function matchesHotkey(event: KeyboardEvent, config: HotkeyConfig): boolean {
   const mac = isMac()
 
@@ -109,9 +99,7 @@ function matchesHotkey(event: KeyboardEvent, config: HotkeyConfig): boolean {
   return eventKey === configKey
 }
 
-/**
- * Check if the event target is an input element
- */
+/**  Check if the event target is an input element */
 function isInputElement(target: EventTarget | null): boolean {
   if (!target || !(target instanceof Element)) return false
   const tagName = target.tagName.toLowerCase()

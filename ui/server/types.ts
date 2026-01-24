@@ -1,6 +1,4 @@
-/**
- * Entry stored in the beads registry file (~/.beads/registry.json).
- */
+/**  Entry stored in the beads registry file (~/.beads/registry.json). */
 export interface RegistryEntry {
   workspace_path: string
   socket_path: string
@@ -10,9 +8,7 @@ export interface RegistryEntry {
   started_at: string
 }
 
-/**
- * Workspace info with additional metadata for the UI.
- */
+/**  Workspace info with additional metadata for the UI. */
 export interface WorkspaceInfo {
   path: string
   name: string

@@ -5,9 +5,7 @@ import { Label } from "@/components/ui/label"
 import { formatEventLogDate } from "@/lib/formatEventLogDate"
 import type { EventLogMetadata } from "@/types"
 
-/**
- * Summary of an event log for display in iteration links.
- */
+/**  Summary of an event log for display in iteration links. */
 interface EventLogSummary {
   id: string
   createdAt: string
@@ -106,9 +104,7 @@ export function IterationLinks({ taskId, className }: IterationLinksProps) {
   )
 }
 
-/**
- * Single iteration log item with clickable link.
- */
+/**  Single iteration log item with clickable link. */
 function IterationLogItem({ log }: { log: EventLogSummary }) {
   const handleClick = () => {
     // Navigate using hash - the useEventLogRouter hook will handle the rest

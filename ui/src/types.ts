@@ -253,9 +253,7 @@ export interface WorkspaceListEntry {
   activeIssueCount?: number
 }
 
-/**
- * Information about a merge conflict for an instance.
- */
+/**  Information about a merge conflict for an instance. */
 export interface MergeConflict {
   /** Files with conflicts that need resolution */
   files: string[]

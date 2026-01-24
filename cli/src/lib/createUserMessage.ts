@@ -1,8 +1,6 @@
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk"
 
-/**
- * Create an SDKUserMessage from text.
- */
+/**  Create an SDKUserMessage from text. */
 export const createUserMessage = (
   /** The text content of the message */
   text: string,

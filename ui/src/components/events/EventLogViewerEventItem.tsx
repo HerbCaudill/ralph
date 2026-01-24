@@ -44,9 +44,7 @@ export function EventLogViewerEventItem({ event, toolResults }: Props) {
   return null
 }
 
-/**
- * Props for the EventLogViewerEventItem component
- */
+/**  Props for the EventLogViewerEventItem component */
 type Props = {
   /** The event to render */
   event: ChatEvent

@@ -123,14 +123,10 @@ export class EventLogStore {
   }
 }
 
-/**
- * Singleton instance
- */
+/**  Singleton instance */
 let eventLogStore: EventLogStore | null = null
 
-/**
- * Get the singleton EventLogStore instance.
- */
+/**  Get the singleton EventLogStore instance. */
 export function getEventLogStore(): EventLogStore {
   if (!eventLogStore) {
     eventLogStore = new EventLogStore()
@@ -138,9 +134,7 @@ export function getEventLogStore(): EventLogStore {
   return eventLogStore
 }
 
-/**
- * Reset the EventLogStore singleton (for testing).
- */
+/**  Reset the EventLogStore singleton (for testing). */
 export function resetEventLogStore(): void {
   eventLogStore = null
 }

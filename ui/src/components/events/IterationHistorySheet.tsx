@@ -4,9 +4,7 @@ import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { IterationHistoryPanel } from "./IterationHistoryPanel"
 
-/**
- * Button that opens the iteration history panel in a sheet/drawer.
- */
+/**  Button that opens the iteration history panel in a sheet/drawer. */
 export function IterationHistorySheet({ className }: IterationHistorySheetProps) {
   const [open, setOpen] = useState(false)
 

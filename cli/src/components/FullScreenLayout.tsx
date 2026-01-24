@@ -5,9 +5,7 @@ import Gradient from "ink-gradient"
 import { useTerminalSize } from "../lib/useTerminalSize.js"
 import { useContentHeight, HEADER_HEIGHT, FOOTER_HEIGHT } from "./useContentHeight.js"
 
-/**
- * Full-screen layout component with header, content area, and optional footer
- */
+/**  Full-screen layout component with header, content area, and optional footer */
 export const FullScreenLayout = ({ title, children, footer, version }: Props) => {
   const { columns, rows } = useTerminalSize()
   const contentHeight = useContentHeight(!!footer)

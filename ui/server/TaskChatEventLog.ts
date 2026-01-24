@@ -8,23 +8,17 @@ import type { TaskChatEvent } from "./TaskChatManager.js"
  * Example: a1b2c3d4-2024-01-15T10-30-00-000Z.jsonl
  */
 
-/**
- * Generate a short session ID (8 chars)
- */
+/**  Generate a short session ID (8 chars) */
 function generateSessionId(): string {
   return randomBytes(4).toString("hex")
 }
 
-/**
- * Format timestamp for filename (ISO8601 but with safe chars)
- */
+/**  Format timestamp for filename (ISO8601 but with safe chars) */
 function formatTimestampForFilename(date: Date): string {
   return date.toISOString().replace(/:/g, "-")
 }
 
-/**
- * Metadata stored with each log entry
- */
+/**  Metadata stored with each log entry */
 export interface TaskChatLogEntry {
   /** Session ID for grouping related events */
   sessionId: string
@@ -34,9 +28,7 @@ export interface TaskChatLogEntry {
   event: TaskChatEvent
 }
 
-/**
- * Summary of a log file (without loading full events)
- */
+/**  Summary of a log file (without loading full events) */
 export interface TaskChatLogSummary {
   /** Filename (without path) */
   filename: string
@@ -48,9 +40,7 @@ export interface TaskChatLogSummary {
   filePath: string
 }
 
-/**
- * Options for TaskChatEventLog
- */
+/**  Options for TaskChatEventLog */
 export interface TaskChatEventLogOptions {
   /** Workspace directory path */
   workspacePath: string

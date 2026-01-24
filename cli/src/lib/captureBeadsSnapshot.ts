@@ -1,9 +1,7 @@
 import { execSync } from "child_process"
 import type { StartupSnapshot } from "./types.js"
 
-/**
- * Capture a startup snapshot for a beads workspace.
- */
+/**  Capture a startup snapshot for a beads workspace. */
 export const captureBeadsSnapshot = (): StartupSnapshot | undefined => {
   try {
     const timestamp = new Date().toISOString()

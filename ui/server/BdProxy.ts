@@ -10,9 +10,7 @@ import type {
   BdComment,
 } from "@herbcaudill/ralph-shared"
 
-/**
- * Re-export beads domain types from shared package for backward compatibility.
- */
+/**  Re-export beads domain types from shared package for backward compatibility. */
 export type {
   IssueStatus,
   BdIssue,
@@ -28,9 +26,7 @@ export type {
   MutationEvent,
 } from "@herbcaudill/ralph-shared"
 
-/**
- * Local types specific to BdProxy.
- */
+/**  Local types specific to BdProxy. */
 export type SpawnFn = (
   command: string,
   args: string[],

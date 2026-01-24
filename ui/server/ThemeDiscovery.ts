@@ -4,16 +4,12 @@ import os from "node:os"
 import type { ThemeMeta } from "./lib/theme/types.js"
 import { stripJsonComments } from "./lib/stripJsonComments.js"
 
-/**
- * NLS (localization) strings for resolving placeholders like %themeLabel%
- */
+/**  NLS (localization) strings for resolving placeholders like %themeLabel% */
 interface NlsStrings {
   [key: string]: string
 }
 
-/**
- * VS Code extension package.json structure for theme contributions.
- */
+/**  VS Code extension package.json structure for theme contributions. */
 interface ExtensionPackageJson {
   name: string
   displayName?: string
@@ -28,18 +24,14 @@ interface ExtensionPackageJson {
   }
 }
 
-/**
- * VS Code settings.json structure (partial).
- */
+/**  VS Code settings.json structure (partial). */
 interface VSCodeSettings {
   "workbench.colorTheme"?: string
   "workbench.preferredDarkColorTheme"?: string
   "workbench.preferredLightColorTheme"?: string
 }
 
-/**
- * Map VS Code uiTheme values to our theme type system.
- */
+/**  Map VS Code uiTheme values to our theme type system. */
 function mapUiThemeToType(
   /** The uiTheme value from VS Code (e.g., "vs", "vs-dark") */
   uiTheme: string,
@@ -105,9 +97,7 @@ const VSCODE_VARIANTS = [
   },
 ] as const
 
-/**
- * Get the Application Support directory path based on platform.
- */
+/**  Get the Application Support directory path based on platform. */
 function getAppSupportPath(): string {
   const homeDir = os.homedir()
   switch (process.platform) {
@@ -121,9 +111,7 @@ function getAppSupportPath(): string {
   }
 }
 
-/**
- * ThemeDiscovery class for scanning VS Code installations and themes.
- */
+/**  ThemeDiscovery class for scanning VS Code installations and themes. */
 export class ThemeDiscovery {
   private settingsPath: string | null = null
   private extensionsDir: string | null = null

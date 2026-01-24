@@ -70,9 +70,7 @@ export const createStdinCommandHandler = (
   }
 }
 
-/**
- * Options for the stdin command handler
- */
+/**  Options for the stdin command handler */
 export type StdinCommandHandlerOptions = {
   /** The message queue to push user messages to, or null if not active */
   messageQueue: MessageQueue | null

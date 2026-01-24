@@ -16,9 +16,7 @@ export function loadSystemPrompt(
   return result.content
 }
 
-/**
- * Load the full task chat skill with metadata.
- */
+/**  Load the full task chat skill with metadata. */
 export function loadTaskChatSkill(
   /** Working directory to look for custom skill (defaults to process.cwd()) */
   cwd: string = process.cwd(),
@@ -26,9 +24,7 @@ export function loadTaskChatSkill(
   return loadSkill(TASK_CHAT_SKILL, cwd)
 }
 
-/**
- * Get the allowed tools for the task chat skill.
- */
+/**  Get the allowed tools for the task chat skill. */
 export function getTaskChatAllowedTools(
   /** Working directory to look for custom skill (defaults to process.cwd()) */
   cwd: string = process.cwd(),
@@ -37,9 +33,7 @@ export function getTaskChatAllowedTools(
   return result.metadata.allowedTools
 }
 
-/**
- * Get the model for the task chat skill.
- */
+/**  Get the model for the task chat skill. */
 export function getTaskChatModel(
   /** Working directory to look for custom skill (defaults to process.cwd()) */
   cwd: string = process.cwd(),

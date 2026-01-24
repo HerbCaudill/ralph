@@ -20,9 +20,7 @@ import type {
  */
 export type ParseResult = { success: true; theme: VSCodeTheme } | { success: false; error: string }
 
-/**
- * Validation result for a theme object.
- */
+/**  Validation result for a theme object. */
 export type ValidationResult = { valid: true } | { valid: false; errors: string[] }
 
 /**
@@ -137,9 +135,7 @@ export function validateThemeObject(data: unknown): ValidationResult {
   return errors.length === 0 ? { valid: true } : { valid: false, errors }
 }
 
-/**
- * Validate a single token color entry.
- */
+/**  Validate a single token color entry. */
 function validateTokenColor(
   /** The token color entry to validate */
   tc: unknown,
@@ -197,9 +193,7 @@ function validateTokenColor(
   return errors
 }
 
-/**
- * Normalize a raw theme object into a proper VSCodeTheme, filling in defaults and ensuring complete structure.
- */
+/**  Normalize a raw theme object into a proper VSCodeTheme, filling in defaults and ensuring complete structure. */
 function normalizeTheme(
   /** The raw theme object (already validated) */
   raw: Record<string, unknown>,
@@ -226,9 +220,7 @@ function normalizeTheme(
   }
 }
 
-/**
- * Normalize the colors object.
- */
+/**  Normalize the colors object. */
 function normalizeColors(
   /** The raw colors object */
   colors: unknown,
@@ -249,9 +241,7 @@ function normalizeColors(
   return result
 }
 
-/**
- * Normalize the tokenColors array.
- */
+/**  Normalize the tokenColors array. */
 function normalizeTokenColors(
   /** The raw tokenColors array */
   tokenColors: unknown,
@@ -280,9 +270,7 @@ function normalizeTokenColors(
     })
 }
 
-/**
- * Normalize token settings.
- */
+/**  Normalize token settings. */
 function normalizeTokenSettings(
   /** The raw settings object */
   settings: unknown,
@@ -307,9 +295,7 @@ function normalizeTokenSettings(
   return result
 }
 
-/**
- * Normalize semantic token colors.
- */
+/**  Normalize semantic token colors. */
 function normalizeSemanticTokenColors(
   /** The raw semanticTokenColors object */
   semanticTokenColors: unknown,

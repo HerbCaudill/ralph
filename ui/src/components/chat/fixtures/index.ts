@@ -7,9 +7,7 @@
 
 import type { TaskChatLogEntry } from "../../../../server/TaskChatEventLog.js"
 
-/**
- * Fixture metadata for test organization.
- */
+/**  Fixture metadata for test organization. */
 export interface FixtureMetadata {
   /** Human-readable name for the fixture */
   name: string
@@ -19,9 +17,7 @@ export interface FixtureMetadata {
   expectedBehavior?: string
 }
 
-/**
- * A complete fixture with metadata and events.
- */
+/**  A complete fixture with metadata and events. */
 export interface TaskChatFixture {
   metadata: FixtureMetadata
   entries: TaskChatLogEntry[]
@@ -165,9 +161,7 @@ export const simpleQAFixture: TaskChatFixture = {
 // Tool Use with Success Fixture
 // ============================================================================
 
-/**
- * Tool use scenario: assistant uses Bash tool to run a command successfully.
- */
+/**  Tool use scenario: assistant uses Bash tool to run a command successfully. */
 export const toolUseSuccessFixture: TaskChatFixture = {
   metadata: {
     name: "Tool Use Success",
@@ -350,9 +344,7 @@ export const toolUseSuccessFixture: TaskChatFixture = {
 // Multiple Rapid Events (Streaming) Fixture
 // ============================================================================
 
-/**
- * Multiple rapid streaming events simulating real-time text generation.
- */
+/**  Multiple rapid streaming events simulating real-time text generation. */
 export const rapidStreamingFixture: TaskChatFixture = {
   metadata: {
     name: "Rapid Streaming",
@@ -646,9 +638,7 @@ export const outOfOrderFixture: TaskChatFixture = {
 // Multiple Tool Uses Fixture
 // ============================================================================
 
-/**
- * Multiple tool uses in a single turn (Read, then Grep).
- */
+/**  Multiple tool uses in a single turn (Read, then Grep). */
 export const multipleToolUsesFixture: TaskChatFixture = {
   metadata: {
     name: "Multiple Tool Uses",
@@ -855,9 +845,7 @@ export const multipleToolUsesFixture: TaskChatFixture = {
 // Tool Use Error Fixture
 // ============================================================================
 
-/**
- * Tool use that results in an error.
- */
+/**  Tool use that results in an error. */
 export const toolUseErrorFixture: TaskChatFixture = {
   metadata: {
     name: "Tool Use Error",
@@ -1512,9 +1500,7 @@ export const multiToolFullStreamingFixture: TaskChatFixture = {
 // Helper Functions
 // ============================================================================
 
-/**
- * Get all available fixtures.
- */
+/**  Get all available fixtures. */
 export function getAllFixtures(): TaskChatFixture[] {
   return [
     simpleQAFixture,
@@ -1528,25 +1514,19 @@ export function getAllFixtures(): TaskChatFixture[] {
   ]
 }
 
-/**
- * Get a fixture by name.
- */
+/**  Get a fixture by name. */
 export function getFixtureByName(name: string): TaskChatFixture | undefined {
   return getAllFixtures().find(f => f.metadata.name === name)
 }
 
-/**
- * Extract just the events from fixture entries (without log metadata).
- */
+/**  Extract just the events from fixture entries (without log metadata). */
 export function extractEvents(
   entries: TaskChatLogEntry[],
 ): Array<{ type: string; timestamp: number; [key: string]: unknown }> {
   return entries.map(entry => entry.event)
 }
 
-/**
- * Sort events by timestamp (useful for testing out-of-order scenarios).
- */
+/**  Sort events by timestamp (useful for testing out-of-order scenarios). */
 export function sortEventsByTimestamp<T extends { timestamp: number }>(events: T[]): T[] {
   return [...events].sort((a, b) => a.timestamp - b.timestamp)
 }

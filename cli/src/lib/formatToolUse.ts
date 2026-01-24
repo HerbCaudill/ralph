@@ -1,8 +1,6 @@
 import chalk from "chalk"
 
-/**
- * Format a tool use block as a string
- */
+/**  Format a tool use block as a string */
 export const formatToolUse = (
   /** The name of the tool */
   name: string,

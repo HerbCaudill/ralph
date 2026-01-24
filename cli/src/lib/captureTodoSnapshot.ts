@@ -5,9 +5,7 @@ import type { StartupSnapshot } from "./types.js"
 const ralphDir = join(process.cwd(), ".ralph")
 const todoFile = join(ralphDir, "todo.md")
 
-/**
- * Capture a startup snapshot for a todo.md workspace.
- */
+/**  Capture a startup snapshot for a todo.md workspace. */
 export const captureTodoSnapshot = (): StartupSnapshot | undefined => {
   try {
     const content = readFileSync(todoFile, "utf-8")

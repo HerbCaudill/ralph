@@ -1,9 +1,7 @@
 import React from "react"
 import { Box, Text } from "ink"
 
-/**
- * Renders a tool name and optional argument in a formatted display.
- */
+/**  Renders a tool name and optional argument in a formatted display. */
 export const ToolUse = ({ name, arg }: Props) => {
   return (
     <Box paddingLeft={2}>
@@ -18,9 +16,7 @@ export const ToolUse = ({ name, arg }: Props) => {
   )
 }
 
-/**
- * Props for the ToolUse component.
- */
+/**  Props for the ToolUse component. */
 type Props = {
   /**
    * The tool name to display.

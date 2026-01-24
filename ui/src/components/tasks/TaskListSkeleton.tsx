@@ -25,9 +25,7 @@ export function TaskListSkeleton({ className }: TaskListSkeletonProps) {
   )
 }
 
-/**
- * Skeleton for a task group header.
- */
+/**  Skeleton for a task group header. */
 function TaskGroupHeaderSkeleton() {
   return (
     <div className="bg-muted/50 border-border flex items-center gap-2 border-b px-2 py-1.5">
@@ -41,9 +39,7 @@ function TaskGroupHeaderSkeleton() {
   )
 }
 
-/**
- * Skeleton for an individual task card.
- */
+/**  Skeleton for an individual task card. */
 function TaskCardSkeleton({ width = "90%" }: { width?: string }) {
   return (
     <div className="border-border flex items-center gap-2 border-b px-2 py-1.5">
@@ -65,9 +61,7 @@ function TaskCardSkeleton({ width = "90%" }: { width?: string }) {
   )
 }
 
-/**
- * Props for the TaskListSkeleton component.
- */
+/**  Props for the TaskListSkeleton component. */
 export type TaskListSkeletonProps = {
   /** Additional CSS classes to apply */
   className?: string

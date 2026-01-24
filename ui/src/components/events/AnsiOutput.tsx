@@ -33,9 +33,7 @@ export function AnsiOutput({ code, isExpanded, onExpand, className }: Props) {
   )
 }
 
-/**
- * Props for the AnsiOutput component
- */
+/**  Props for the AnsiOutput component */
 type Props = {
   /** ANSI-formatted code string to display */
   code: string

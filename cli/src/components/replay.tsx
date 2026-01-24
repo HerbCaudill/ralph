@@ -5,9 +5,7 @@ import { render } from "ink-testing-library"
 import { vi, expect } from "vitest"
 import { EventDisplay } from "./EventDisplay.js"
 
-/**
- * Helper function to replay an event log file and return the rendered output.
- */
+/**  Helper function to replay an event log file and return the rendered output. */
 export async function replay(
   /** The name of the log file to replay */
   logFile: string,

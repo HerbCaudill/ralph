@@ -24,9 +24,7 @@ export interface TopologySpinnerProps {
   interval?: number
 }
 
-/**
- * Animated spinner that cycles through 6 topology icons while spinning.
- */
+/**  Animated spinner that cycles through 6 topology icons while spinning. */
 export function TopologySpinner({ className, interval = 300 }: TopologySpinnerProps) {
   const [iconIndex, setIconIndex] = useState(0)
 

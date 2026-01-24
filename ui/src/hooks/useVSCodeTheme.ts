@@ -10,9 +10,7 @@ const LAST_DARK_THEME_KEY = "ralph-ui-last-dark-theme"
 /** localStorage key for the last used light theme */
 const LAST_LIGHT_THEME_KEY = "ralph-ui-last-light-theme"
 
-/**
- * Get the stored VS Code theme ID from localStorage
- */
+/**  Get the stored VS Code theme ID from localStorage */
 function getStoredThemeId(): string | null {
   try {
     return localStorage.getItem(VSCODE_THEME_STORAGE_KEY)
@@ -21,9 +19,7 @@ function getStoredThemeId(): string | null {
   }
 }
 
-/**
- * Get the last used theme ID for a given mode (dark or light)
- */
+/**  Get the last used theme ID for a given mode (dark or light) */
 export function getLastThemeIdForMode(mode: "dark" | "light"): string | null {
   try {
     const key = mode === "dark" ? LAST_DARK_THEME_KEY : LAST_LIGHT_THEME_KEY
@@ -33,9 +29,7 @@ export function getLastThemeIdForMode(mode: "dark" | "light"): string | null {
   }
 }
 
-/**
- * Save the last used theme ID for a given mode
- */
+/**  Save the last used theme ID for a given mode */
 function saveLastThemeIdForMode(mode: "dark" | "light", themeId: string): void {
   try {
     const key = mode === "dark" ? LAST_DARK_THEME_KEY : LAST_LIGHT_THEME_KEY
@@ -45,9 +39,7 @@ function saveLastThemeIdForMode(mode: "dark" | "light", themeId: string): void {
   }
 }
 
-/**
- * Save the VS Code theme ID to localStorage
- */
+/**  Save the VS Code theme ID to localStorage */
 function saveThemeId(themeId: string | null): void {
   try {
     if (themeId) {
@@ -60,9 +52,7 @@ function saveThemeId(themeId: string | null): void {
   }
 }
 
-/**
- * Apply CSS variables to the document root element
- */
+/**  Apply CSS variables to the document root element */
 function applyCSSVariables(cssVariables: CSSVariables): void {
   applyThemeToElement(document.documentElement, {
     name: "applied-theme",
@@ -76,9 +66,7 @@ function applyCSSVariables(cssVariables: CSSVariables): void {
   }
 }
 
-/**
- * Clear all custom CSS variables from the document root
- */
+/**  Clear all custom CSS variables from the document root */
 function clearCSSVariables(): void {
   const root = document.documentElement
   const style = root.style

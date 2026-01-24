@@ -1,6 +1,4 @@
-/**
- * Base properties for all agent events.
- */
+/**  Base properties for all agent events. */
 export interface AgentEventBase {
   /** Event timestamp in milliseconds */
   timestamp: number
@@ -8,9 +6,7 @@ export interface AgentEventBase {
   id?: string
 }
 
-/**
- * A text message from the assistant.
- */
+/**  A text message from the assistant. */
 export interface AgentMessageEvent extends AgentEventBase {
   type: "message"
   /** The message content */
@@ -19,9 +15,7 @@ export interface AgentMessageEvent extends AgentEventBase {
   isPartial?: boolean
 }
 
-/**
- * A tool invocation by the assistant.
- */
+/**  A tool invocation by the assistant. */
 export interface AgentToolUseEvent extends AgentEventBase {
   type: "tool_use"
   /** Unique ID for this tool use (for correlating with tool_result) */
@@ -32,9 +26,7 @@ export interface AgentToolUseEvent extends AgentEventBase {
   input: Record<string, unknown>
 }
 
-/**
- * The result of a tool invocation.
- */
+/**  The result of a tool invocation. */
 export interface AgentToolResultEvent extends AgentEventBase {
   type: "tool_result"
   /** ID of the corresponding tool_use event */
@@ -47,9 +39,7 @@ export interface AgentToolResultEvent extends AgentEventBase {
   isError: boolean
 }
 
-/**
- * Final result of an agent run.
- */
+/**  Final result of an agent run. */
 export interface AgentResultEvent extends AgentEventBase {
   type: "result"
   /** The final text output from the agent */
@@ -64,9 +54,7 @@ export interface AgentResultEvent extends AgentEventBase {
   }
 }
 
-/**
- * An error from the agent.
- */
+/**  An error from the agent. */
 export interface AgentErrorEvent extends AgentEventBase {
   type: "error"
   /** Error message */
@@ -77,18 +65,14 @@ export interface AgentErrorEvent extends AgentEventBase {
   fatal: boolean
 }
 
-/**
- * Agent status changed.
- */
+/**  Agent status changed. */
 export interface AgentStatusEvent extends AgentEventBase {
   type: "status"
   /** The new status */
   status: AgentStatus
 }
 
-/**
- * Union type for all normalized agent events.
- */
+/**  Union type for all normalized agent events. */
 export type AgentEvent =
   | AgentMessageEvent
   | AgentToolUseEvent
@@ -97,7 +81,5 @@ export type AgentEvent =
   | AgentErrorEvent
   | AgentStatusEvent
 
-/**
- * Possible agent statuses.
- */
+/**  Possible agent statuses. */
 export type AgentStatus = "idle" | "starting" | "running" | "paused" | "stopping" | "stopped"

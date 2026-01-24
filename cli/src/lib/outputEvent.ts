@@ -1,6 +1,4 @@
-/**
- * Output an event as newline-delimited JSON to stdout.
- */
+/**  Output an event as newline-delimited JSON to stdout. */
 export const outputEvent = (
   /** The event object to output */
   event: Record<string, unknown>,

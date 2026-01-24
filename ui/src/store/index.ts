@@ -23,9 +23,7 @@ export const TASK_CHAT_OPEN_STORAGE_KEY = "ralph-ui-task-chat-open"
 export const SHOW_TOOL_OUTPUT_STORAGE_KEY = "ralph-ui-show-tool-output"
 export const ACTIVE_INSTANCE_ID_STORAGE_KEY = "ralph-ui-active-instance-id"
 
-/**
- * Load sidebar width from localStorage with validation.
- */
+/**  Load sidebar width from localStorage with validation. */
 function loadSidebarWidth(): number {
   try {
     const stored = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
@@ -41,9 +39,7 @@ function loadSidebarWidth(): number {
   return 320 // default
 }
 
-/**
- * Save sidebar width to localStorage.
- */
+/**  Save sidebar width to localStorage. */
 function saveSidebarWidth(width: number): void {
   try {
     localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(width))
@@ -52,9 +48,7 @@ function saveSidebarWidth(width: number): void {
   }
 }
 
-/**
- * Load task chat panel width from localStorage with validation.
- */
+/**  Load task chat panel width from localStorage with validation. */
 function loadTaskChatWidth(): number {
   try {
     const stored = localStorage.getItem(TASK_CHAT_WIDTH_STORAGE_KEY)
@@ -70,9 +64,7 @@ function loadTaskChatWidth(): number {
   return 400 // default
 }
 
-/**
- * Save task chat panel width to localStorage.
- */
+/**  Save task chat panel width to localStorage. */
 function saveTaskChatWidth(width: number): void {
   try {
     localStorage.setItem(TASK_CHAT_WIDTH_STORAGE_KEY, String(width))
@@ -81,9 +73,7 @@ function saveTaskChatWidth(width: number): void {
   }
 }
 
-/**
- * Load task chat open/closed state from localStorage.
- */
+/**  Load task chat open/closed state from localStorage. */
 function loadTaskChatOpen(): boolean {
   try {
     const stored = localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)
@@ -95,9 +85,7 @@ function loadTaskChatOpen(): boolean {
   return true // default - open
 }
 
-/**
- * Save task chat open/closed state to localStorage.
- */
+/**  Save task chat open/closed state to localStorage. */
 function saveTaskChatOpen(open: boolean): void {
   try {
     localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, String(open))
@@ -106,9 +94,7 @@ function saveTaskChatOpen(open: boolean): void {
   }
 }
 
-/**
- * List of valid closed time filter options.
- */
+/**  List of valid closed time filter options. */
 const CLOSED_TIME_FILTERS: ClosedTasksTimeFilter[] = [
   "past_hour",
   "past_4_hours",
@@ -117,9 +103,7 @@ const CLOSED_TIME_FILTERS: ClosedTasksTimeFilter[] = [
   "all_time",
 ]
 
-/**
- * Load closed time filter from localStorage with validation.
- */
+/**  Load closed time filter from localStorage with validation. */
 function loadClosedTimeFilter(): ClosedTasksTimeFilter {
   try {
     const stored = localStorage.getItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY)
@@ -132,9 +116,7 @@ function loadClosedTimeFilter(): ClosedTasksTimeFilter {
   return "past_day" // default
 }
 
-/**
- * Save closed time filter to localStorage.
- */
+/**  Save closed time filter to localStorage. */
 function saveClosedTimeFilter(filter: ClosedTasksTimeFilter): void {
   try {
     localStorage.setItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY, filter)
@@ -143,9 +125,7 @@ function saveClosedTimeFilter(filter: ClosedTasksTimeFilter): void {
   }
 }
 
-/**
- * Load tool output visibility setting from localStorage.
- */
+/**  Load tool output visibility setting from localStorage. */
 function loadShowToolOutput(): boolean {
   try {
     const stored = localStorage.getItem(SHOW_TOOL_OUTPUT_STORAGE_KEY)
@@ -158,9 +138,7 @@ function loadShowToolOutput(): boolean {
   return false // default - collapsed
 }
 
-/**
- * Save tool output visibility setting to localStorage.
- */
+/**  Save tool output visibility setting to localStorage. */
 function saveShowToolOutput(show: boolean): void {
   try {
     localStorage.setItem(SHOW_TOOL_OUTPUT_STORAGE_KEY, String(show))
@@ -169,9 +147,7 @@ function saveShowToolOutput(show: boolean): void {
   }
 }
 
-/**
- * Load active instance ID from localStorage.
- */
+/**  Load active instance ID from localStorage. */
 function loadActiveInstanceId(): string {
   try {
     const stored = localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)
@@ -184,9 +160,7 @@ function loadActiveInstanceId(): string {
   return DEFAULT_INSTANCE_ID // default
 }
 
-/**
- * Save active instance ID to localStorage.
- */
+/**  Save active instance ID to localStorage. */
 function saveActiveInstanceId(instanceId: string): void {
   try {
     localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, instanceId)
@@ -513,9 +487,7 @@ export interface AppActions {
   reset: () => void
 }
 
-/**
- * Checks if an event is an iteration boundary (system init event).
- */
+/**  Checks if an event is an iteration boundary (system init event). */
 export function isIterationBoundary(event: ChatEvent): boolean {
   return event.type === "system" && (event as any).subtype === "init"
 }
@@ -534,9 +506,7 @@ export function getIterationBoundaries(events: ChatEvent[]): number[] {
   return boundaries
 }
 
-/**
- * Counts the total number of iterations in the events array.
- */
+/**  Counts the total number of iterations in the events array. */
 export function countIterations(events: ChatEvent[]): number {
   return getIterationBoundaries(events).length
 }

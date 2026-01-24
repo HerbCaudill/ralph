@@ -1,9 +1,7 @@
 import { existsSync, mkdirSync, copyFileSync } from "fs"
 import { join, dirname } from "path"
 
-/**
- * Copy files from templates to destination, creating directories as needed.
- */
+/**  Copy files from templates to destination, creating directories as needed. */
 export function copyTemplates(
   /** Directory containing template files */
   templatesDir: string,
@@ -36,9 +34,7 @@ export function copyTemplates(
   return result
 }
 
-/**
- * Result of copying template files.
- */
+/**  Result of copying template files. */
 interface CopyResult {
   /** Files successfully created */
   created: string[]

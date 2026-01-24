@@ -51,9 +51,7 @@ function isIterationEndEvent(event: ChatEvent): boolean {
   return false
 }
 
-/**
- * Extracts the events for a specific iteration from the full events array.
- */
+/**  Extracts the events for a specific iteration from the full events array. */
 function getEventsForIterationIndex(events: ChatEvent[], iterationIndex: number): ChatEvent[] {
   const boundaries = getIterationBoundaries(events)
   if (boundaries.length === 0 || iterationIndex < 0 || iterationIndex >= boundaries.length) {

@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-/**
- * Runs Playwright with dynamic server/UI ports, using scripts/dev.js to start services.
- */
+/**  Runs Playwright with dynamic server/UI ports, using scripts/dev.js to start services. */
 import { spawn, execSync } from "node:child_process"
 import { createWriteStream } from "node:fs"
 import { mkdir } from "node:fs/promises"

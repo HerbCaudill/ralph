@@ -86,18 +86,14 @@ const DEPTH_PADDING_CLASSES: Record<number, string | undefined> = {
   6: "pl-36", // 144px
 }
 
-/**
- * Returns a Tailwind padding class based on depth level.
- */
+/**  Returns a Tailwind padding class based on depth level. */
 function getPaddingClass(depth: number): string | undefined {
   // Cap at max depth to prevent excessive nesting
   const cappedDepth = Math.min(depth, 6)
   return DEPTH_PADDING_CLASSES[cappedDepth]
 }
 
-/**
- * Props for the TaskSubtree component.
- */
+/**  Props for the TaskSubtree component. */
 export interface TaskSubtreeProps {
   /** The task tree node to render */
   node: TaskTreeNode

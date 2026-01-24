@@ -22,9 +22,7 @@ export interface MarkdownContentProps {
   size?: "sm" | "base"
 }
 
-/**
- * Process children and replace text nodes with links (task IDs and event logs).
- */
+/**  Process children and replace text nodes with links (task IDs and event logs). */
 function processChildren(
   /** The child element to process */
   children: ReactNode,
@@ -35,9 +33,7 @@ function processChildren(
   return children
 }
 
-/**
- * Create markdown components with link support for task IDs and event logs.
- */
+/**  Create markdown components with link support for task IDs and event logs. */
 function createMarkdownComponents(
   /** Whether to use dark theme */
   isDark: boolean,

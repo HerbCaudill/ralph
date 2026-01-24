@@ -26,9 +26,7 @@ export interface IterationRunnerOptions {
   [key: string]: unknown
 }
 
-/**
- * Events emitted by IterationRunner
- */
+/**  Events emitted by IterationRunner */
 export interface IterationRunnerEvents {
   /** Agent event received */
   event: (event: AgentEvent) => void

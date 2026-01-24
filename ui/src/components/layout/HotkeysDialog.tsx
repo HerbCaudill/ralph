@@ -56,9 +56,7 @@ export function HotkeysDialog({
   )
 }
 
-/**
- * Props for the HotkeysDialog component
- */
+/**  Props for the HotkeysDialog component */
 export type HotkeysDialogProps = {
   open: boolean
   onClose: () => void

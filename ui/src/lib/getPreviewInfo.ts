@@ -1,8 +1,6 @@
 import { TOOL_OUTPUT_PREVIEW_LINES } from "@/constants"
 
-/**
- * Extract a preview of content and calculate how many lines are hidden.
- */
+/**  Extract a preview of content and calculate how many lines are hidden. */
 export function getPreviewInfo(
   /** The full content string to preview */
   content: string,

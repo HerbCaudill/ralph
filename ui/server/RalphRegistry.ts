@@ -11,9 +11,7 @@ import type { IterationEventPersister } from "./IterationEventPersister.js"
 import type { ConversationContext, ConversationMessage } from "./ClaudeAdapter.js"
 import type { BdProxy } from "./BdProxy.js"
 
-/**
- * Information about a merge conflict for an instance.
- */
+/**  Information about a merge conflict for an instance. */
 export interface MergeConflict {
   /** Files with conflicts that need resolution */
   files: string[]
@@ -23,9 +21,7 @@ export interface MergeConflict {
   timestamp: number
 }
 
-/**
- * State for a registered Ralph instance.
- */
+/**  State for a registered Ralph instance. */
 export interface RalphInstanceState {
   /** Unique instance ID */
   id: string
@@ -58,9 +54,7 @@ export interface RalphInstanceState {
   mergeConflict: MergeConflict | null
 }
 
-/**
- * Options for creating a new Ralph instance.
- */
+/**  Options for creating a new Ralph instance. */
 export interface CreateInstanceOptions {
   /** Unique instance ID */
   id: string
@@ -81,9 +75,7 @@ export interface CreateInstanceOptions {
   managerOptions?: Omit<RalphManagerOptions, "cwd">
 }
 
-/**
- * Options for creating a RalphRegistry.
- */
+/**  Options for creating a RalphRegistry. */
 export interface RalphRegistryOptions {
   /** Default options for new RalphManager instances */
   defaultManagerOptions?: Omit<RalphManagerOptions, "cwd">

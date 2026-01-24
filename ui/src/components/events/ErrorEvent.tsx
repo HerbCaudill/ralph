@@ -2,9 +2,7 @@ import { cn } from "@/lib/utils"
 import { IconAlertTriangle } from "@tabler/icons-react"
 import type { ErrorEventData } from "@/types"
 
-/**
- * Renders an error event with red styling to indicate something went wrong.
- */
+/**  Renders an error event with red styling to indicate something went wrong. */
 export function ErrorEvent({ event, className }: Props) {
   const isServerError = event.type === "server_error"
 
@@ -41,9 +39,7 @@ export function ErrorEvent({ event, className }: Props) {
   )
 }
 
-/**
- * Props for ErrorEvent component
- */
+/**  Props for ErrorEvent component */
 type Props = {
   /** The error event data to display */
   event: ErrorEventData

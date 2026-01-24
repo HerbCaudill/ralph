@@ -49,9 +49,7 @@ const PRELOADED_LANGUAGES: BundledLanguage[] = [
   "diff",
 ]
 
-/**
- * Language alias mapping for common variations.
- */
+/**  Language alias mapping for common variations. */
 const LANGUAGE_ALIASES: Record<string, string> = {
   ts: "typescript",
   js: "javascript",

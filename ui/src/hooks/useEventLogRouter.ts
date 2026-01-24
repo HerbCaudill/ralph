@@ -23,16 +23,12 @@ export function parseEventLogHash(hash: string): string | null {
   return null
 }
 
-/**
- * Build a URL hash for an event log ID.
- */
+/**  Build a URL hash for an event log ID. */
 export function buildEventLogHash(id: string): string {
   return `#eventlog=${id}`
 }
 
-/**
- * Fetch an event log by ID from the API.
- */
+/**  Fetch an event log by ID from the API. */
 async function fetchEventLog(id: string): Promise<{
   ok: boolean
   eventlog?: {

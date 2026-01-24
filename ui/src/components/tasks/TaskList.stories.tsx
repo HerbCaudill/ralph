@@ -94,9 +94,7 @@ export const Empty: Story = {
   },
 }
 
-/**
- * Shows the loading skeleton displayed while tasks are being fetched.
- */
+/**  Shows the loading skeleton displayed while tasks are being fetched. */
 export const Loading: Story = {
   args: {
     tasks: [],
@@ -252,9 +250,7 @@ export const GroupedByEpic: Story = {
   },
 }
 
-/**
- * Shows only epic-grouped tasks with no ungrouped items.
- */
+/**  Shows only epic-grouped tasks with no ungrouped items. */
 export const OnlyEpicTasks: Story = {
   args: {
     tasks: [

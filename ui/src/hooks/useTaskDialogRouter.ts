@@ -34,9 +34,7 @@ export function parseTaskIdFromUrl(url: { pathname: string; hash: string }): str
   return null
 }
 
-/**
- * Build a URL path for a task ID.
- */
+/**  Build a URL path for a task ID. */
 export function buildTaskIdPath(id: string): string {
   return `/issue/${id}`
 }

@@ -55,9 +55,7 @@ export function TaskSidebar({
   )
 }
 
-/**
- * Props for the TaskSidebar component.
- */
+/**  Props for the TaskSidebar component. */
 export type TaskSidebarProps = {
   /** Quick task input element to display at the top */
   quickInput?: ReactNode

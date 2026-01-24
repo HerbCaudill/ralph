@@ -25,9 +25,7 @@ export {
 // Import types we need for local use
 import type { AgentEvent, AgentStatus, AgentStatusEvent } from "@herbcaudill/ralph-shared"
 
-/**
- * Configuration options for starting an agent.
- */
+/**  Configuration options for starting an agent. */
 export interface AgentStartOptions {
   /** Working directory for the agent */
   cwd?: string
@@ -43,9 +41,7 @@ export interface AgentStartOptions {
   [key: string]: unknown
 }
 
-/**
- * Interface for sending messages to an agent.
- */
+/**  Interface for sending messages to an agent. */
 export interface AgentMessage {
   /** The message type */
   type: "user_message" | "control"
@@ -55,9 +51,7 @@ export interface AgentMessage {
   command?: "pause" | "resume" | "stop"
 }
 
-/**
- * Information about an agent adapter's capabilities.
- */
+/**  Information about an agent adapter's capabilities. */
 export interface AgentInfo {
   /** Unique identifier for this agent type */
   id: string
@@ -80,9 +74,7 @@ export interface AgentInfo {
   }
 }
 
-/**
- * Events emitted by an AgentAdapter.
- */
+/**  Events emitted by an AgentAdapter. */
 export interface AgentAdapterEvents {
   /** A normalized agent event */
   event: (event: AgentEvent) => void

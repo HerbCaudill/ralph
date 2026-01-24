@@ -35,9 +35,7 @@ const isDebugEnabled = (
   return false
 }
 
-/**
- * Log a debug message if debugging is enabled for the given namespace.
- */
+/**  Log a debug message if debugging is enabled for the given namespace. */
 export const debug = (
   /** The debug namespace for this message */
   namespace: DebugNamespace,
@@ -54,9 +52,7 @@ export const debug = (
   }
 }
 
-/**
- * Create a namespaced debug logger that captures the namespace for all logs.
- */
+/**  Create a namespaced debug logger that captures the namespace for all logs. */
 export const createDebugLogger = (
   /** The debug namespace to use for all logged messages */
   namespace: DebugNamespace,

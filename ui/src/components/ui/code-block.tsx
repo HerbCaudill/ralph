@@ -18,9 +18,7 @@ export interface CodeBlockProps {
   className?: string
 }
 
-/**
- * Syntax-highlighted code block with optional copy button.
- */
+/**  Syntax-highlighted code block with optional copy button. */
 export function CodeBlock({
   /** The code to highlight */
   code,
@@ -146,9 +144,7 @@ export function CodeBlock({
   )
 }
 
-/**
- * Escape HTML special characters to prevent XSS.
- */
+/**  Escape HTML special characters to prevent XSS. */
 function escapeHtml(
   /** The text to escape */
   text: string,

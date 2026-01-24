@@ -1,8 +1,6 @@
 import type { DiffLine } from "@/types"
 
-/**
- * Parse the differences between two strings and return structured diff lines.
- */
+/**  Parse the differences between two strings and return structured diff lines. */
 export function parseDiff(
   /** The original string */
   oldString: string,

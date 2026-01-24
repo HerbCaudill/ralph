@@ -100,14 +100,10 @@ export interface PersistedTaskChatSession extends TaskChatSessionMetadata {
   events: ChatEvent[]
 }
 
-/**
- * Database schema version for migrations.
- */
+/**  Database schema version for migrations. */
 export const PERSISTENCE_SCHEMA_VERSION = 1
 
-/**
- * IndexedDB store names.
- */
+/**  IndexedDB store names. */
 export const STORE_NAMES = {
   /** Store for iteration metadata (for fast listing) */
   ITERATION_METADATA: "iteration_metadata",
@@ -125,9 +121,7 @@ export const STORE_NAMES = {
   SYNC_STATE: "sync_state",
 } as const
 
-/**
- * Keys used in the sync state store.
- */
+/**  Keys used in the sync state store. */
 export const SYNC_STATE_KEYS = {
   /** Last successful sync timestamp */
   LAST_SYNC_TIMESTAMP: "last_sync_timestamp",
@@ -139,9 +133,7 @@ export const SYNC_STATE_KEYS = {
   ACTIVE_TASK_CHAT_SESSION_ID: "active_task_chat_session_id",
 } as const
 
-/**
- * Type for sync state key-value pairs.
- */
+/**  Type for sync state key-value pairs. */
 export interface SyncState {
   key: string
   value: string | number | null

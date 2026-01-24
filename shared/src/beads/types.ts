@@ -1,11 +1,7 @@
-/**
- * Status of an issue.
- */
+/**  Status of an issue. */
 export type IssueStatus = "open" | "in_progress" | "blocked" | "deferred" | "closed"
 
-/**
- * An issue from the beads database.
- */
+/**  An issue from the beads database. */
 export interface BdIssue {
   id: string
   title: string
@@ -29,16 +25,12 @@ export interface BdIssue {
   blocked_by_count?: number
 }
 
-/**
- * A dependency relationship between issues.
- */
+/**  A dependency relationship between issues. */
 export interface BdDependency extends BdIssue {
   dependency_type: string
 }
 
-/**
- * Options for listing issues.
- */
+/**  Options for listing issues. */
 export interface BdListOptions {
   /** Maximum number of results (default: 50) */
   limit?: number
@@ -58,9 +50,7 @@ export interface BdListOptions {
   all?: boolean
 }
 
-/**
- * Options for creating a new issue.
- */
+/**  Options for creating a new issue. */
 export interface BdCreateOptions {
   title: string
   description?: string
@@ -71,9 +61,7 @@ export interface BdCreateOptions {
   labels?: string[]
 }
 
-/**
- * Options for updating an existing issue.
- */
+/**  Options for updating an existing issue. */
 export interface BdUpdateOptions {
   title?: string
   description?: string
@@ -86,9 +74,7 @@ export interface BdUpdateOptions {
   removeLabels?: string[]
 }
 
-/**
- * Information about the beads database.
- */
+/**  Information about the beads database. */
 export interface BdInfo {
   database_path: string
   issue_count: number
@@ -100,18 +86,14 @@ export interface BdInfo {
   config?: Record<string, string>
 }
 
-/**
- * Result of a label operation.
- */
+/**  Result of a label operation. */
 export interface BdLabelResult {
   issue_id: string
   label: string
   status: "added" | "removed" | "already_exists" | "not_found"
 }
 
-/**
- * Result of a dependency operation.
- */
+/**  Result of a dependency operation. */
 export interface BdDepResult {
   issue_id: string
   depends_on_id: string
@@ -119,9 +101,7 @@ export interface BdDepResult {
   type?: string
 }
 
-/**
- * A comment on an issue.
- */
+/**  A comment on an issue. */
 export interface BdComment {
   id: number
   issue_id: string

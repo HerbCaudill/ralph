@@ -1,9 +1,7 @@
 import type { ReactNode } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
-/**
- * Wrapper that includes all necessary providers for testing.
- */
+/**  Wrapper that includes all necessary providers for testing. */
 export function TestProviders({
   /** Child components to wrap */
   children,

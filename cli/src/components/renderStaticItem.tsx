@@ -6,9 +6,7 @@ import { Header } from "./Header.js"
 import { formatContentBlock } from "../lib/formatContentBlock.js"
 import { type StaticItem } from "./IterationRunner.types.js"
 
-/**
- * Render a static item (header, iteration header, or content block).
- */
+/**  Render a static item (header, iteration header, or content block). */
 export const renderStaticItem = (
   /** The static item to render */
   item: StaticItem,

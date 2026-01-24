@@ -1,9 +1,7 @@
 import { toRelativePath } from "@/lib/toRelativePath"
 import type { ToolName } from "@/types"
 
-/**
- * Generate a concise summary string for a tool invocation based on its primary input parameter.
- */
+/**  Generate a concise summary string for a tool invocation based on its primary input parameter. */
 export function getToolSummary(
   /** The name of the tool */
   tool: ToolName,

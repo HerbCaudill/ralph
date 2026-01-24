@@ -3,26 +3,20 @@ import { join } from "node:path"
 import { existsSync } from "node:fs"
 import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
-/**
- * RPC request format for beads daemon.
- */
+/**  RPC request format for beads daemon. */
 interface RPCRequest {
   operation: string
   args: Record<string, unknown>
 }
 
-/**
- * RPC response format from beads daemon.
- */
+/**  RPC response format from beads daemon. */
 interface RPCResponse {
   success: boolean
   data?: unknown
   error?: string
 }
 
-/**
- * Options for creating a BeadsClient.
- */
+/**  Options for creating a BeadsClient. */
 export interface BeadsClientOptions {
   /** Workspace directory path (used to locate .beads/bd.sock) */
   workspacePath?: string
@@ -202,9 +196,7 @@ export class BeadsClient {
   }
 }
 
-/**
- * Options for watching mutations.
- */
+/**  Options for watching mutations. */
 export interface WatchMutationsOptions {
   /** Workspace path for socket location */
   workspacePath?: string
