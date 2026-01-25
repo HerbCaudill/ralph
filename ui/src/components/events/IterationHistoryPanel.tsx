@@ -12,7 +12,7 @@ import { useEventLogs, useEventLogRouter, type EventLogSummary } from "@/hooks"
 import { formatEventLogDate, formatEventLogTime } from "@/lib/formatEventLogDate"
 import { useAppStore, selectIssuePrefix } from "@/store"
 
-/**  Groups event logs by date (Today, Yesterday, or specific date). */
+/** Groups event logs by date (Today, Yesterday, or specific date). */
 function groupEventLogsByDate(
   eventLogs: EventLogSummary[],
 ): Array<{ dateLabel: string; logs: EventLogSummary[] }> {
@@ -52,7 +52,7 @@ function groupEventLogsByDate(
   return Array.from(groups.entries()).map(([dateLabel, logs]) => ({ dateLabel, logs }))
 }
 
-/**  Filters event logs by search query (matches task ID or title). */
+/** Filters event logs by search query (matches task ID or title). */
 function filterEventLogs(eventLogs: EventLogSummary[], query: string): EventLogSummary[] {
   const trimmedQuery = query.trim().toLowerCase()
   if (!trimmedQuery) return eventLogs
@@ -67,11 +67,39 @@ function filterEventLogs(eventLogs: EventLogSummary[], query: string): EventLogS
 /**
  * Panel for browsing iteration history.
  * Shows a list of all past iterations grouped by date with search/filter.
+ * This is a thin wrapper that fetches data and delegates to IterationHistoryPanelView.
  */
 export function IterationHistoryPanel({ className }: IterationHistoryPanelProps) {
   const { eventLogs, isLoading, error, refresh } = useEventLogs()
   const { navigateToEventLog } = useEventLogRouter()
   const issuePrefix = useAppStore(selectIssuePrefix)
+
+  return (
+    <IterationHistoryPanelView
+      className={className}
+      eventLogs={eventLogs}
+      isLoading={isLoading}
+      error={error}
+      issuePrefix={issuePrefix}
+      onItemClick={navigateToEventLog}
+      onRetry={refresh}
+    />
+  )
+}
+
+/**
+ * Presentational component for the iteration history panel.
+ * Receives all data as props, making it easy to test in Storybook.
+ */
+export function IterationHistoryPanelView({
+  className,
+  eventLogs,
+  isLoading,
+  error,
+  issuePrefix,
+  onItemClick,
+  onRetry,
+}: IterationHistoryPanelViewProps) {
   const [searchQuery, setSearchQuery] = useState("")
 
   const filteredLogs = useMemo(
@@ -83,9 +111,9 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
 
   const handleItemClick = useCallback(
     (id: string) => {
-      navigateToEventLog(id)
+      onItemClick?.(id)
     },
-    [navigateToEventLog],
+    [onItemClick],
   )
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,12 +126,15 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
 
   if (isLoading) {
     return (
-      <div className={cn("flex h-full flex-col", className)}>
+      <div className={cn("flex h-full flex-col", className)} data-testid="iteration-history-panel">
         <div className="border-border flex items-center gap-2 border-b px-4 py-3">
           <IconHistory className="text-muted-foreground size-4" />
           <span className="text-sm font-medium">Iteration History</span>
         </div>
-        <div className="text-muted-foreground flex flex-1 items-center justify-center">
+        <div
+          className="text-muted-foreground flex flex-1 items-center justify-center"
+          data-testid="loading-state"
+        >
           <div className="flex items-center gap-2">
             <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
             <span className="text-sm">Loading iterations...</span>
@@ -115,14 +146,21 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
 
   if (error) {
     return (
-      <div className={cn("flex h-full flex-col", className)}>
+      <div className={cn("flex h-full flex-col", className)} data-testid="iteration-history-panel">
         <div className="border-border flex items-center gap-2 border-b px-4 py-3">
           <IconHistory className="text-muted-foreground size-4" />
           <span className="text-sm font-medium">Iteration History</span>
         </div>
-        <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+        <div
+          className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center"
+          data-testid="error-state"
+        >
           <span className="text-sm text-red-500">{error}</span>
-          <button onClick={refresh} className="text-primary text-sm underline hover:no-underline">
+          <button
+            onClick={onRetry}
+            className="text-primary text-sm underline hover:no-underline"
+            data-testid="retry-button"
+          >
             Retry
           </button>
         </div>
@@ -131,11 +169,13 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
   }
 
   return (
-    <div className={cn("flex h-full flex-col", className)}>
+    <div className={cn("flex h-full flex-col", className)} data-testid="iteration-history-panel">
       <div className="border-border flex items-center gap-2 border-b px-4 py-3">
         <IconHistory className="text-muted-foreground size-4" />
         <span className="text-sm font-medium">Iteration History</span>
-        <span className="text-muted-foreground text-xs">({eventLogs.length})</span>
+        <span className="text-muted-foreground text-xs" data-testid="iteration-count">
+          ({eventLogs.length})
+        </span>
       </div>
 
       {/* Search input */}
@@ -151,6 +191,7 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
               onChange={handleSearchChange}
               placeholder="Search by task ID or title..."
               aria-label="Search iterations"
+              data-testid="search-input"
               className={cn(
                 "border-border bg-background text-foreground h-8 w-full rounded-md border pr-8 pl-9 text-sm",
                 "placeholder:text-muted-foreground",
@@ -163,6 +204,7 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
                 onClick={handleClearSearch}
                 className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
                 aria-label="Clear search"
+                data-testid="clear-search-button"
               >
                 <IconX className="h-4 w-4" />
               </button>
@@ -173,20 +215,34 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
 
       <div className="flex-1 overflow-y-auto">
         {eventLogs.length === 0 ?
-          <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm">
+          <div
+            className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
+            data-testid="empty-state"
+          >
             No iteration history yet.
             <br />
             Completed iterations will appear here.
           </div>
         : filteredLogs.length === 0 ?
-          <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm">
+          <div
+            className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
+            data-testid="no-results"
+          >
             No matching iterations found.
           </div>
-        : <div role="list" aria-label="Iteration history">
+        : <div role="list" aria-label="Iteration history" data-testid="iteration-list">
             {groupedLogs.map(({ dateLabel, logs }) => (
-              <div key={dateLabel} role="group" aria-label={`Iterations from ${dateLabel}`}>
+              <div
+                key={dateLabel}
+                role="group"
+                aria-label={`Iterations from ${dateLabel}`}
+                data-testid="date-group"
+              >
                 <div className="bg-muted/30 border-border sticky top-0 border-b px-4 py-2">
-                  <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  <span
+                    className="text-muted-foreground text-xs font-medium tracking-wide uppercase"
+                    data-testid="date-label"
+                  >
                     {dateLabel}
                   </span>
                 </div>
@@ -209,7 +265,7 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
   )
 }
 
-/**  Single item in the iteration history list. */
+/** Single item in the iteration history list. */
 function IterationHistoryItem({
   log,
   issuePrefix,
@@ -223,7 +279,7 @@ function IterationHistoryItem({
   const taskTitle = log.metadata?.title
 
   return (
-    <li>
+    <li data-testid="iteration-item">
       <button
         className={cn(
           "hover:bg-muted/50 flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
@@ -231,6 +287,7 @@ function IterationHistoryItem({
         )}
         onClick={() => onClick(log.id)}
         aria-label={`View iteration from ${formatEventLogDate(log.createdAt)}`}
+        data-testid="iteration-item-button"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -248,7 +305,7 @@ function IterationHistoryItem({
               <IconClock className="size-3" />
               {formatEventLogTime(log.createdAt)}
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1" data-testid="event-count">
               <IconFile className="size-3" />
               {log.eventCount} events
             </span>
@@ -260,8 +317,26 @@ function IterationHistoryItem({
   )
 }
 
-/**  Props for the IterationHistoryPanel component */
+/** Props for the IterationHistoryPanel component */
 export interface IterationHistoryPanelProps {
   /** Optional CSS class to apply to the container */
   className?: string
+}
+
+/** Props for the IterationHistoryPanelView presentational component */
+export interface IterationHistoryPanelViewProps {
+  /** Optional CSS class to apply to the container */
+  className?: string
+  /** Event logs to display */
+  eventLogs: EventLogSummary[]
+  /** Whether data is loading */
+  isLoading: boolean
+  /** Error message if loading failed */
+  error: string | null
+  /** Issue prefix for stripping from task IDs */
+  issuePrefix: string | null
+  /** Callback when an iteration item is clicked */
+  onItemClick?: (id: string) => void
+  /** Callback when retry button is clicked */
+  onRetry?: () => void
 }

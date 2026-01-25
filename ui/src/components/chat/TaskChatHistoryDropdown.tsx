@@ -66,16 +66,41 @@ function formatSessionTime(timestamp: number): string {
 
 /**
  * Dropdown button for viewing and selecting task chat history sessions.
- * Replaces the sheet-based TaskChatHistorySheet with a compact dropdown menu.
+ * This is a thin wrapper that fetches data and delegates to TaskChatHistoryDropdownView.
  */
 export function TaskChatHistoryDropdown({
   className,
   onSelectSession,
 }: TaskChatHistoryDropdownProps) {
-  const [open, setOpen] = useState(false)
   const instanceId = useAppStore(selectActiveInstanceId)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const { sessions, isLoading, error } = useTaskChatSessions({ instanceId })
+
+  return (
+    <TaskChatHistoryDropdownView
+      className={className}
+      sessions={sessions}
+      isLoading={isLoading}
+      error={error}
+      issuePrefix={issuePrefix}
+      onSelectSession={onSelectSession}
+    />
+  )
+}
+
+/**
+ * Presentational component for the task chat history dropdown.
+ * Receives all data as props, making it easy to test in Storybook.
+ */
+export function TaskChatHistoryDropdownView({
+  className,
+  sessions,
+  isLoading,
+  error,
+  issuePrefix,
+  onSelectSession,
+}: TaskChatHistoryDropdownViewProps) {
+  const [open, setOpen] = useState(false)
 
   const groupedSessions = useMemo(() => groupSessionsByDate(sessions), [sessions])
 
@@ -102,11 +127,11 @@ export function TaskChatHistoryDropdown({
           <IconHistory className="size-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-80 p-0" align="end" data-testid="task-chat-history-popover">
         <Command>
-          <CommandInput placeholder="Search chat sessions..." />
+          <CommandInput placeholder="Search chat sessions..." data-testid="search-input" />
           <CommandList>
-            <CommandEmpty>
+            <CommandEmpty data-testid="empty-state">
               {isLoading ?
                 "Loading..."
               : error ?
@@ -117,13 +142,14 @@ export function TaskChatHistoryDropdown({
             {!isLoading &&
               !error &&
               groupedSessions.map(({ dateLabel, sessions }) => (
-                <CommandGroup key={dateLabel} heading={dateLabel}>
+                <CommandGroup key={dateLabel} heading={dateLabel} data-testid="date-group">
                   {sessions.map(session => (
                     <CommandItem
                       key={session.id}
                       value={`${session.taskId || ""} ${session.taskTitle || ""} ${session.id}`}
                       onSelect={() => handleSelectSession(session.id)}
                       className="flex items-center gap-2"
+                      data-testid="session-item"
                     >
                       <IconHistory className="text-muted-foreground size-4 shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -145,7 +171,7 @@ export function TaskChatHistoryDropdown({
                             <IconClock className="size-3" />
                             {formatSessionTime(session.updatedAt)}
                           </span>
-                          <span className="flex items-center gap-0.5">
+                          <span className="flex items-center gap-0.5" data-testid="message-count">
                             <IconMessage className="size-3" />
                             {session.messageCount}
                           </span>
@@ -165,6 +191,21 @@ export function TaskChatHistoryDropdown({
 export interface TaskChatHistoryDropdownProps {
   /** Optional CSS class to apply to the trigger button */
   className?: string
+  /** Callback when a session is selected */
+  onSelectSession?: (sessionId: string) => void
+}
+
+export interface TaskChatHistoryDropdownViewProps {
+  /** Optional CSS class to apply to the trigger button */
+  className?: string
+  /** Chat sessions to display */
+  sessions: TaskChatSessionMetadata[]
+  /** Whether data is loading */
+  isLoading: boolean
+  /** Error message if loading failed */
+  error: string | null
+  /** Issue prefix for stripping from task IDs */
+  issuePrefix: string | null
   /** Callback when a session is selected */
   onSelectSession?: (sessionId: string) => void
 }
