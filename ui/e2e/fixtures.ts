@@ -464,97 +464,6 @@ export class StatusBarPage {
   }
 }
 
-/**  Page object for the task chat history dropdown */
-export class TaskChatHistoryPage {
-  readonly page: Page
-  readonly triggerButton: Locator
-  readonly popover: Locator
-  readonly searchInput: Locator
-  readonly commandList: Locator
-
-  constructor(page: Page) {
-    this.page = page
-    this.triggerButton = page.getByTestId("task-chat-history-dropdown-trigger")
-    this.popover = page.locator("[data-radix-popper-content-wrapper]")
-    this.searchInput = this.popover.getByRole("combobox")
-    this.commandList = this.popover.locator("[cmdk-list]")
-  }
-
-  /** Open the task chat history dropdown */
-  async open() {
-    await this.triggerButton.click()
-    await expect(this.popover).toBeVisible()
-  }
-
-  /** Close the dropdown by clicking outside or pressing Escape */
-  async close() {
-    await this.page.keyboard.press("Escape")
-    await expect(this.popover).not.toBeVisible()
-  }
-
-  /** Check if the dropdown is open */
-  async isOpen(): Promise<boolean> {
-    return this.popover.isVisible()
-  }
-
-  /** Search for chat sessions by query */
-  async search(query: string) {
-    await this.searchInput.fill(query)
-  }
-
-  /** Clear the search input */
-  async clearSearch() {
-    await this.searchInput.clear()
-  }
-
-  /** Get all date group labels (Today, Yesterday, etc.) */
-  async getDateGroupLabels(): Promise<string[]> {
-    const groups = this.popover.locator("[cmdk-group-heading]")
-    const count = await groups.count()
-    const labels: string[] = []
-    for (let i = 0; i < count; i++) {
-      const text = await groups.nth(i).textContent()
-      if (text) {
-        labels.push(text.trim())
-      }
-    }
-    return labels
-  }
-
-  /** Get all visible session items */
-  async getSessionItems(): Promise<Locator> {
-    return this.popover.locator("[cmdk-item]")
-  }
-
-  /** Get the number of visible session items */
-  async getSessionCount(): Promise<number> {
-    const items = this.popover.locator("[cmdk-item]")
-    return items.count()
-  }
-
-  /** Click on a session by its task title */
-  async clickSessionByTitle(title: string) {
-    await this.popover.locator("[cmdk-item]").filter({ hasText: title }).click()
-  }
-
-  /** Check if the empty state is shown */
-  async isEmptyStateVisible(): Promise<boolean> {
-    const emptyText = this.popover.getByText("No chat sessions found.")
-    return emptyText.isVisible()
-  }
-
-  /** Check if the loading state is shown */
-  async isLoadingVisible(): Promise<boolean> {
-    const loadingText = this.popover.getByText("Loading...")
-    return loadingText.isVisible()
-  }
-
-  /** Get search input placeholder */
-  async getSearchPlaceholder(): Promise<string | null> {
-    return this.searchInput.getAttribute("placeholder")
-  }
-}
-
 /**  Page object for the iteration history sheet/panel */
 export class IterationHistoryPage {
   readonly page: Page
@@ -664,7 +573,6 @@ export class AppPage {
   readonly header: HeaderPage
   readonly statusBar: StatusBarPage
   readonly iterationHistory: IterationHistoryPage
-  readonly taskChatHistory: TaskChatHistoryPage
 
   constructor(page: Page) {
     this.page = page
@@ -677,7 +585,6 @@ export class AppPage {
     this.header = new HeaderPage(page)
     this.statusBar = new StatusBarPage(page)
     this.iterationHistory = new IterationHistoryPage(page)
-    this.taskChatHistory = new TaskChatHistoryPage(page)
   }
 
   /** Navigate to the app */
