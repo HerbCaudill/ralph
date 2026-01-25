@@ -327,8 +327,8 @@ describe("TaskCard", () => {
       // Find the type/priority container (flex div with gap-1.5)
       const indicatorsContainer = container.querySelector(".flex.shrink-0.items-center.gap-1\\.5")
       expect(indicatorsContainer).toBeInTheDocument()
-      // Should have a placeholder span with inline-block and size-3.5 class
-      const placeholder = indicatorsContainer?.querySelector("span.inline-block.size-3\\.5")
+      // Should have a placeholder div with h-3.5 and w-3.5 classes
+      const placeholder = indicatorsContainer?.querySelector("div.h-3\\.5.w-3\\.5")
       expect(placeholder).toBeInTheDocument()
     })
   })

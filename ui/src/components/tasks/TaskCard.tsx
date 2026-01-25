@@ -195,7 +195,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           {/* Only show icon for non-open statuses - open status shows nothing to avoid looking like a checkbox */}
           {task.status !== "open" ?
             <StatusIcon className={cn("size-3.5", config.color, shouldSpin && config.animate)} />
-          : <span className="inline-block size-3.5" />}
+          : <div className="h-3.5 w-3.5" aria-hidden="true" />}
 
           {/* Status dropdown menu */}
           {isStatusMenuOpen && (
@@ -290,7 +290,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
                   return <TypeIcon className="size-3.5" />
                 })()}
               </span>
-            : <span className="inline-block size-3.5" />}
+            : <div className="h-3.5 w-3.5" aria-hidden="true" />}
 
             {/* Priority badge (only for non-P2) */}
             {task.priority !== undefined &&
