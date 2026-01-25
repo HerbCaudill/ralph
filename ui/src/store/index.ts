@@ -441,19 +441,6 @@ export function getIterationTaskInfos(events: ChatEvent[]): IterationTaskInfo[] 
 const defaultSidebarWidth = 320
 const defaultTaskChatWidth = 400
 
-/**
- * Creates the initial instances Map with a default instance.
- * This is called fresh each time to avoid shared state between tests.
- */
-function createInitialInstances(): Map<string, RalphInstance> {
-  const defaultInstance = createRalphInstance(
-    DEFAULT_INSTANCE_ID,
-    DEFAULT_INSTANCE_NAME,
-    DEFAULT_AGENT_NAME,
-  )
-  return new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
-}
-
 // Task chat events batching configuration
 // Events are collected over a short window and then applied in a single state update
 const TASK_CHAT_EVENTS_BATCH_INTERVAL_MS = 100
@@ -506,8 +493,13 @@ function flushTaskChatEventsBatch(): void {
 }
 
 const initialState: AppState = {
-  // Multi-instance state
-  instances: createInitialInstances(),
+  // Multi-instance state - create default instance inline
+  instances: new Map([
+    [
+      DEFAULT_INSTANCE_ID,
+      createRalphInstance(DEFAULT_INSTANCE_ID, DEFAULT_INSTANCE_NAME, DEFAULT_AGENT_NAME),
+    ],
+  ]),
   activeInstanceId: DEFAULT_INSTANCE_ID,
 
   // Legacy flat fields (delegate to active instance)
@@ -1400,7 +1392,14 @@ export const useAppStore = create<AppState & AppActions>()(
           clearTimeout(taskChatEventsBatchTimeout)
           taskChatEventsBatchTimeout = null
         }
-        set({ ...initialState, instances: createInitialInstances() })
+        // Create fresh instances Map to avoid shared state between resets
+        const freshInstances = new Map([
+          [
+            DEFAULT_INSTANCE_ID,
+            createRalphInstance(DEFAULT_INSTANCE_ID, DEFAULT_INSTANCE_NAME, DEFAULT_AGENT_NAME),
+          ],
+        ])
+        set({ ...initialState, instances: freshInstances })
       },
     }),
     persistConfig,
