@@ -27,8 +27,8 @@ function StoreSetter({ prefix }: { prefix: string }) {
   return null
 }
 
-// Note: IterationLinks fetches event logs from /api/event-logs?taskId={id}
-// In Storybook without a backend, it will show loading state
+// Note: IterationLinks fetches event logs from IndexedDB using useEventLogs hook
+// In Storybook without populated IndexedDB, it will show loading state
 
 export const Default: Story = {
   render: () => (
@@ -49,6 +49,6 @@ export const WithCustomClassName: Story = {
 }
 
 // Note: To see the full functionality with iteration links, you would need to:
-// 1. Mock the fetch calls
-// 2. Or run Storybook with a real backend
+// 1. Mock the IndexedDB calls
+// 2. Or have event logs stored in IndexedDB
 // The component handles loading and empty states gracefully

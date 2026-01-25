@@ -1,17 +1,9 @@
-import { useState, useEffect } from "react"
+import { useMemo } from "react"
 import { IconHistory, IconClock, IconLoader2 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { formatEventLogDate } from "@/lib/formatEventLogDate"
-import type { EventLogMetadata } from "@/types"
-
-/**  Summary of an event log for display in iteration links. */
-interface EventLogSummary {
-  id: string
-  createdAt: string
-  eventCount: number
-  metadata?: EventLogMetadata
-}
+import { useEventLogs, type EventLogSummary } from "@/hooks/useEventLogs"
 
 interface IterationLinksProps {
   /** The task ID to show iteration links for */
@@ -22,46 +14,17 @@ interface IterationLinksProps {
 
 /**
  * Displays clickable links to iteration logs associated with a task.
- * Fetches all event logs and filters by task ID.
+ * Fetches event logs from IndexedDB filtered by task ID.
  */
 export function IterationLinks({ taskId, className }: IterationLinksProps) {
-  const [iterationLogs, setIterationLogs] = useState<EventLogSummary[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { eventLogs, isLoading, error } = useEventLogs({ taskId })
 
-  useEffect(() => {
-    async function fetchIterationLogs() {
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const response = await fetch("/api/eventlogs")
-        const data = (await response.json()) as {
-          ok: boolean
-          eventlogs?: EventLogSummary[]
-          error?: string
-        }
-
-        if (data.ok && data.eventlogs) {
-          // Filter to only show logs for this task
-          const logsForTask = data.eventlogs.filter(log => log.metadata?.taskId === taskId)
-          // Sort by date, most recent first
-          logsForTask.sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          )
-          setIterationLogs(logsForTask)
-        } else {
-          setError(data.error ?? "Failed to fetch iteration logs")
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch iteration logs")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchIterationLogs()
-  }, [taskId])
+  // Sort by date, most recent first
+  const iterationLogs = useMemo(() => {
+    return [...eventLogs].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+  }, [eventLogs])
 
   // Don't render if loading and no logs found yet
   if (isLoading) {

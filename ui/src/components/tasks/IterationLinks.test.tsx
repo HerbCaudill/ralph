@@ -2,22 +2,34 @@ import { render, screen, waitFor } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
 import { IterationLinks } from "./IterationLinks"
+import { eventDatabase, type EventLogMetadata } from "@/lib/persistence"
+
+// Mock the eventDatabase
+vi.mock("@/lib/persistence", () => ({
+  eventDatabase: {
+    init: vi.fn(),
+    listEventLogs: vi.fn(),
+    getEventLogsForTask: vi.fn(),
+  },
+}))
+
+const mockInit = eventDatabase.init as ReturnType<typeof vi.fn>
+const mockGetEventLogsForTask = eventDatabase.getEventLogsForTask as ReturnType<typeof vi.fn>
 
 describe("IterationLinks", () => {
-  let originalFetch: typeof globalThis.fetch
-
   beforeEach(() => {
-    originalFetch = globalThis.fetch
+    vi.clearAllMocks()
+    mockInit.mockResolvedValue(undefined)
+    mockGetEventLogsForTask.mockResolvedValue([])
   })
 
   afterEach(() => {
-    globalThis.fetch = originalFetch
     vi.restoreAllMocks()
   })
 
   it("shows loading state while fetching", async () => {
-    // Mock fetch to never resolve
-    globalThis.fetch = vi.fn().mockImplementation(
+    // Mock to never resolve
+    mockGetEventLogsForTask.mockImplementation(
       () =>
         new Promise(() => {
           // Never resolves
@@ -31,21 +43,7 @@ describe("IterationLinks", () => {
   })
 
   it("renders nothing when there are no iteration logs for the task", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          ok: true,
-          eventlogs: [
-            {
-              id: "log-001",
-              createdAt: "2026-01-23T12:00:00Z",
-              eventCount: 10,
-              metadata: { taskId: "other-task" },
-            },
-          ],
-        }),
-    })
+    mockGetEventLogsForTask.mockResolvedValue([])
 
     const { container } = render(<IterationLinks taskId="task-001" />)
 
@@ -58,10 +56,7 @@ describe("IterationLinks", () => {
   })
 
   it("renders nothing when fetch returns an error", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      json: () => Promise.resolve({ ok: false, error: "Server error" }),
-    })
+    mockGetEventLogsForTask.mockRejectedValue(new Error("Database error"))
 
     const { container } = render(<IterationLinks taskId="task-001" />)
 
@@ -74,33 +69,27 @@ describe("IterationLinks", () => {
   })
 
   it("renders iteration logs for the task", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          ok: true,
-          eventlogs: [
-            {
-              id: "log-001",
-              createdAt: "2026-01-23T12:00:00Z",
-              eventCount: 10,
-              metadata: { taskId: "task-001" },
-            },
-            {
-              id: "log-002",
-              createdAt: "2026-01-22T12:00:00Z",
-              eventCount: 5,
-              metadata: { taskId: "task-001" },
-            },
-            {
-              id: "log-003",
-              createdAt: "2026-01-21T12:00:00Z",
-              eventCount: 15,
-              metadata: { taskId: "other-task" },
-            },
-          ],
-        }),
-    })
+    const logsForTask: EventLogMetadata[] = [
+      {
+        id: "log-001",
+        createdAt: new Date("2026-01-23T12:00:00Z").getTime(),
+        eventCount: 10,
+        taskId: "task-001",
+        taskTitle: null,
+        source: null,
+        workspacePath: null,
+      },
+      {
+        id: "log-002",
+        createdAt: new Date("2026-01-22T12:00:00Z").getTime(),
+        eventCount: 5,
+        taskId: "task-001",
+        taskTitle: null,
+        source: null,
+        workspacePath: null,
+      },
+    ]
+    mockGetEventLogsForTask.mockResolvedValue(logsForTask)
 
     render(<IterationLinks taskId="task-001" />)
 
@@ -111,28 +100,24 @@ describe("IterationLinks", () => {
     // Should show the "Iterations" label
     expect(screen.getByText("Iterations")).toBeInTheDocument()
 
-    // Should show both logs for task-001 but not the one for other-task
+    // Should show both logs for task-001
     expect(screen.getByText("10 events")).toBeInTheDocument()
     expect(screen.getByText("5 events")).toBeInTheDocument()
-    expect(screen.queryByText("15 events")).not.toBeInTheDocument()
   })
 
   it("navigates to eventlog on click", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          ok: true,
-          eventlogs: [
-            {
-              id: "abcdef12",
-              createdAt: "2026-01-23T12:00:00Z",
-              eventCount: 10,
-              metadata: { taskId: "task-001" },
-            },
-          ],
-        }),
-    })
+    const logsForTask: EventLogMetadata[] = [
+      {
+        id: "abcdef12",
+        createdAt: new Date("2026-01-23T12:00:00Z").getTime(),
+        eventCount: 10,
+        taskId: "task-001",
+        taskTitle: null,
+        source: null,
+        workspacePath: null,
+      },
+    ]
+    mockGetEventLogsForTask.mockResolvedValue(logsForTask)
 
     render(<IterationLinks taskId="task-001" />)
 
@@ -151,33 +136,36 @@ describe("IterationLinks", () => {
   })
 
   it("sorts iteration logs by date, most recent first", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          ok: true,
-          eventlogs: [
-            {
-              id: "log-old",
-              createdAt: "2026-01-20T12:00:00Z",
-              eventCount: 5,
-              metadata: { taskId: "task-001" },
-            },
-            {
-              id: "log-new",
-              createdAt: "2026-01-23T12:00:00Z",
-              eventCount: 10,
-              metadata: { taskId: "task-001" },
-            },
-            {
-              id: "log-mid",
-              createdAt: "2026-01-21T12:00:00Z",
-              eventCount: 7,
-              metadata: { taskId: "task-001" },
-            },
-          ],
-        }),
-    })
+    const logsForTask: EventLogMetadata[] = [
+      {
+        id: "log-old",
+        createdAt: new Date("2026-01-20T12:00:00Z").getTime(),
+        eventCount: 5,
+        taskId: "task-001",
+        taskTitle: null,
+        source: null,
+        workspacePath: null,
+      },
+      {
+        id: "log-new",
+        createdAt: new Date("2026-01-23T12:00:00Z").getTime(),
+        eventCount: 10,
+        taskId: "task-001",
+        taskTitle: null,
+        source: null,
+        workspacePath: null,
+      },
+      {
+        id: "log-mid",
+        createdAt: new Date("2026-01-21T12:00:00Z").getTime(),
+        eventCount: 7,
+        taskId: "task-001",
+        taskTitle: null,
+        source: null,
+        workspacePath: null,
+      },
+    ]
+    mockGetEventLogsForTask.mockResolvedValue(logsForTask)
 
     render(<IterationLinks taskId="task-001" />)
 
@@ -195,14 +183,7 @@ describe("IterationLinks", () => {
   })
 
   it("renders nothing when eventlogs is empty", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          ok: true,
-          eventlogs: [],
-        }),
-    })
+    mockGetEventLogsForTask.mockResolvedValue([])
 
     const { container } = render(<IterationLinks taskId="task-001" />)
 
