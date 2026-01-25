@@ -43,7 +43,12 @@ async function main() {
   console.log(`[dev] Server port ${serverPort}`)
   console.log(`[dev] UI port ${uiPort}`)
 
-  const env = { ...process.env, PORT: String(serverPort), RALPH_UI_PORT: String(uiPort) }
+  const env = {
+    ...process.env,
+    PORT: String(serverPort),
+    RALPH_UI_PORT: String(uiPort),
+    WORKSPACE_PATH: process.cwd(),
+  }
 
   // Start server
   const server = spawn("pnpm", ["serve"], {
