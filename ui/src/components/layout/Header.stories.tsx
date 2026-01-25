@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { expect, within } from "storybook/test"
 import { Header } from "./Header"
 import { withStoreState } from "../../../.storybook/decorators"
 
@@ -18,6 +19,18 @@ export const Default: Story = {
       accentColor: "#007ACC",
     }),
   ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+
+    // Logo should be visible with "Ralph" text
+    await expect(canvas.getByText("Ralph", { exact: true })).toBeInTheDocument()
+
+    // Workspace picker should be visible (shows workspace name or "No workspace")
+    await expect(canvas.getByRole("button", { name: /my-app|No workspace/i })).toBeInTheDocument()
+
+    // Settings dropdown trigger should be visible
+    await expect(canvas.getByTestId("settings-dropdown-trigger")).toBeInTheDocument()
+  },
 }
 
 export const WithPeacockColor: Story = {

@@ -237,20 +237,8 @@ test.describe("Navigation", () => {
     })
   })
 
+  // Note: Cmd+B sidebar toggle test is in layout.spec.ts
   test.describe("sidebar navigation", () => {
-    test("Cmd+B toggles sidebar visibility", async ({ app }) => {
-      // Sidebar should be visible initially
-      await expect(app.taskList.sidebar).toBeVisible()
-
-      // Toggle off
-      await app.page.keyboard.press("Meta+b")
-      await expect(app.taskList.sidebar).not.toBeVisible()
-
-      // Toggle back on
-      await app.page.keyboard.press("Meta+b")
-      await expect(app.taskList.sidebar).toBeVisible()
-    })
-
     test("Cmd+1 focuses sidebar", async ({ app }) => {
       // Focus somewhere else first (use body as a neutral target)
       await app.page.locator("body").focus()

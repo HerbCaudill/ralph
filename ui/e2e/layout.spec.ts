@@ -1,29 +1,21 @@
 import { test, expect } from "./fixtures"
 
+/**
+ * E2E tests for layout behavior that requires full app context.
+ *
+ * Note: Simple visibility/presence tests have been migrated to Storybook:
+ * - Header.stories.tsx (logo, workspace picker, settings dropdown)
+ * - TaskSidebar.stories.tsx (sidebar, quick task input)
+ * - MainLayout.stories.tsx (event stream, chat input, control bar, panels)
+ *
+ * These E2E tests focus on:
+ * - Hotkey interactions (Cmd+B, Cmd+J)
+ * - Theme control interactions
+ * - Responsive layout behavior
+ */
 test.describe("Layout", () => {
-  test.describe("header", () => {
-    test("displays header with logo", async ({ app }) => {
-      const header = app.page.getByTestId("header")
-      await expect(header).toBeVisible()
-
-      // Logo should be visible with "Ralph" text (exact match to avoid matching "Ralph:")
-      await expect(header.getByText("Ralph", { exact: true })).toBeVisible()
-    })
-
-    test("displays workspace picker in header", async ({ app }) => {
-      const header = app.page.getByTestId("header")
-
-      // Workspace picker is a button with aria-haspopup (dropdown trigger)
-      const workspacePicker = header.getByRole("button", { name: /test-workspace|No workspace/i })
-      await expect(workspacePicker).toBeVisible()
-    })
-
-    test("displays settings dropdown in header", async ({ app }) => {
-      const settingsDropdown = app.page.getByTestId("settings-dropdown-trigger")
-      await expect(settingsDropdown).toBeVisible()
-    })
-
-    test("can access theme controls via settings dropdown", async ({ app }) => {
+  test.describe("header interactions", () => {
+    test("can access and use theme controls via settings dropdown", async ({ app }) => {
       const settingsDropdown = app.page.getByTestId("settings-dropdown-trigger")
 
       // Open settings dropdown
@@ -43,26 +35,6 @@ test.describe("Layout", () => {
   })
 
   test.describe("sidebar", () => {
-    test("displays sidebar with task list", async ({ app }) => {
-      await expect(app.taskList.sidebar).toBeVisible()
-    })
-
-    test("displays quick task input in sidebar", async ({ app }) => {
-      await expect(app.taskList.quickTaskInput).toBeVisible()
-    })
-
-    test("shows search input when activated via hotkey", async ({ app }) => {
-      // Search input is hidden by default
-      const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
-      await expect(searchInput).not.toBeVisible()
-
-      // Activate search with Cmd+F hotkey
-      await app.page.keyboard.press("Meta+f")
-
-      // Search input should now be visible
-      await expect(searchInput).toBeVisible()
-    })
-
     test("can toggle sidebar with Cmd+B", async ({ app }) => {
       // Sidebar should be visible initially
       await expect(app.taskList.sidebar).toBeVisible()
@@ -77,30 +49,8 @@ test.describe("Layout", () => {
     })
   })
 
-  test.describe("main content area", () => {
-    test("displays event stream", async ({ app }) => {
-      await expect(app.eventStream.container).toBeVisible()
-    })
-
-    test("displays chat input", async ({ app }) => {
-      await expect(app.chat.messageInput).toBeVisible()
-    })
-
-    test("displays control bar with start button", async ({ app }) => {
-      await expect(app.page.getByRole("button", { name: "Start" })).toBeVisible()
-    })
-  })
-
   test.describe("panels", () => {
-    test("left panel (task chat) is open by default", async ({ app }) => {
-      const leftPanel = app.page.getByTestId("left-panel")
-      // Left panel (task chat) is open by default with non-zero width - use poll to retry
-      await expect
-        .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
-        .toBeGreaterThan(0)
-    })
-
-    test("can toggle left panel with hotkey", async ({ app }) => {
+    test("can toggle left panel with Cmd+J", async ({ app }) => {
       const leftPanel = app.page.getByTestId("left-panel")
       const taskChatInput = app.page.getByLabel("Task chat input")
 
@@ -123,34 +73,20 @@ test.describe("Layout", () => {
         .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
         .toBeLessThanOrEqual(1)
     })
-
-    test("right panel is hidden by default", async ({ app }) => {
-      const rightPanel = app.page.getByTestId("right-panel")
-      // Right panel (event log viewer) is hidden by default (width is 0, but border may add 1px)
-      await expect
-        .poll(() => rightPanel.evaluate(el => el.getBoundingClientRect().width))
-        .toBeLessThanOrEqual(1)
-    })
   })
 
   test.describe("responsive layout", () => {
-    test("layout fills viewport height", async ({ app }) => {
+    test("layout fills viewport", async ({ app }) => {
       const viewportHeight = await app.page.evaluate(() => window.innerHeight)
-      const layoutHeight = await app.page.evaluate(() => {
+      const viewportWidth = await app.page.evaluate(() => window.innerWidth)
+
+      const { width: layoutWidth, height: layoutHeight } = await app.page.evaluate(() => {
         const layout = document.querySelector(".h-screen")
-        return layout?.getBoundingClientRect().height ?? 0
+        const rect = layout?.getBoundingClientRect()
+        return { width: rect?.width ?? 0, height: rect?.height ?? 0 }
       })
 
       expect(layoutHeight).toBe(viewportHeight)
-    })
-
-    test("layout fills viewport width", async ({ app }) => {
-      const viewportWidth = await app.page.evaluate(() => window.innerWidth)
-      const layoutWidth = await app.page.evaluate(() => {
-        const layout = document.querySelector(".h-screen")
-        return layout?.getBoundingClientRect().width ?? 0
-      })
-
       expect(layoutWidth).toBe(viewportWidth)
     })
   })

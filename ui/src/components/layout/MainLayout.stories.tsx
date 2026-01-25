@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { expect, within } from "storybook/test"
 import { MainLayout } from "./MainLayout"
 import { withStoreState, fullPageDecorator } from "../../../.storybook/decorators"
 import { StatusBar } from "./StatusBar"
@@ -49,6 +50,15 @@ export const Default: Story = {
       accentColor: "#007ACC",
     }),
   ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+
+    // Main content area should be visible
+    await expect(canvas.getByText("Main Content Area")).toBeInTheDocument()
+
+    // Sidebar content should be visible (a task title from the sample data)
+    await expect(canvas.getByText("Implement login page")).toBeInTheDocument()
+  },
 }
 
 export const SidebarClosed: Story = {
@@ -76,6 +86,15 @@ export const SidebarClosed: Story = {
       accentColor: "#42B883",
     }),
   ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+
+    // Main content should be visible
+    await expect(canvas.getByText("Main Content")).toBeInTheDocument()
+
+    // Sidebar content should not be visible when closed
+    await expect(canvas.queryByText("Implement login page")).not.toBeInTheDocument()
+  },
 }
 
 export const WithoutStatusBar: Story = {
