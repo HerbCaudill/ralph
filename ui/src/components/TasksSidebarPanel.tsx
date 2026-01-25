@@ -32,9 +32,7 @@ export function TasksSidebarPanel({
   return (
     <TaskSidebar
       quickInput={<QuickTaskInput ref={quickInputRef} onTaskCreated={handleTaskCreated} />}
-      taskList={
-        <TaskList tasks={tasks} onTaskClick={onTaskClick} showEmptyGroups isLoading={isLoading} />
-      }
+      taskList={<TaskList tasks={tasks} onTaskClick={onTaskClick} isLoading={isLoading} />}
       searchInputRef={searchInputRef}
       onOpenTask={onOpenTask}
       isSearchVisible={isSearchVisible}
