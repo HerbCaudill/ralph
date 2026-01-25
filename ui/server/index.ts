@@ -8,7 +8,6 @@ import { WebSocketServer, type WebSocket, type RawData } from "ws"
 import { type RalphEvent, type RalphStatus } from "./RalphManager.js"
 import { BdProxy, type BdCreateOptions } from "./BdProxy.js"
 import { getAliveWorkspaces } from "./getAliveWorkspaces.js"
-import { getEventLogStore, type EventLogMetadata } from "./EventLogStore.js"
 import {
   type TaskChatEvent,
   type TaskChatMessage,
@@ -1089,75 +1088,6 @@ function createApp(
     }
   })
 
-  // Event log endpoints
-  app.post("/api/eventlogs", async (req: Request, res: Response) => {
-    try {
-      const { events, metadata } = req.body as {
-        events?: RalphEvent[]
-        metadata?: EventLogMetadata
-      }
-
-      if (!events || !Array.isArray(events)) {
-        res.status(400).json({ ok: false, error: "Events array is required" })
-        return
-      }
-
-      // If metadata doesn't include taskId, use the current task being worked on
-      const enrichedMetadata: EventLogMetadata = {
-        ...metadata,
-      }
-
-      // Only set taskId if not already provided and we have a current task
-      const { taskId: currentTaskId, taskTitle: currentTaskTitle } = getCurrentTask()
-      if (!enrichedMetadata.taskId && currentTaskId) {
-        enrichedMetadata.taskId = currentTaskId
-        // Also include title if we have it and it's not already set
-        if (!enrichedMetadata.title && currentTaskTitle) {
-          enrichedMetadata.title = currentTaskTitle
-        }
-      }
-
-      const eventLogStore = getEventLogStore()
-      const eventLog = await eventLogStore.create(events, enrichedMetadata)
-
-      res.status(201).json({ ok: true, eventlog: eventLog })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create event log"
-      res.status(500).json({ ok: false, error: message })
-    }
-  })
-
-  app.get("/api/eventlogs/:id", async (req: Request, res: Response) => {
-    try {
-      const id = req.params.id as string
-
-      const eventLogStore = getEventLogStore()
-      const eventLog = await eventLogStore.get(id)
-
-      if (!eventLog) {
-        res.status(404).json({ ok: false, error: "Event log not found" })
-        return
-      }
-
-      res.status(200).json({ ok: true, eventlog: eventLog })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to get event log"
-      res.status(500).json({ ok: false, error: message })
-    }
-  })
-
-  app.get("/api/eventlogs", async (_req: Request, res: Response) => {
-    try {
-      const eventLogStore = getEventLogStore()
-      const summaries = await eventLogStore.list()
-
-      res.status(200).json({ ok: true, eventlogs: summaries })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to list event logs"
-      res.status(500).json({ ok: false, error: message })
-    }
-  })
-
   // Task chat endpoints
   app.post("/api/task-chat/message", (req: Request, res: Response) => {
     try {
@@ -2182,10 +2112,6 @@ export async function startServer(
 
   // Wire the IterationStateStore into the registry for state persistence
   registry.setIterationStateStore(iterationStateStore)
-
-  // Wire the EventLogStore into the registry for permanent event history
-  const eventLogStore = getEventLogStore()
-  registry.setEventLogStore(eventLogStore)
 
   // Wire the IterationEventPersister into the registry for live event persistence
   const iterationEventPersister = getIterationEventPersister(workspacePath)
