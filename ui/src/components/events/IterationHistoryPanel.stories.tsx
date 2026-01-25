@@ -300,10 +300,23 @@ export const NoResultsMessage: Story = {
 
 /** Verifies date groups are shown correctly. */
 export const DateGroupsDisplay: Story = {
+  // Using 10 minutes ago to ensure it's definitely "today" even near midnight
   args: {
     iterations: [
-      createIteration("log-1", "PROJ-123", "Today task", oneHourAgo, 42),
-      createIteration("log-2", "PROJ-124", "Yesterday task", yesterday, 28),
+      createIteration(
+        "log-1",
+        "PROJ-123",
+        "Today task",
+        new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 minutes ago (definitely today)
+        42,
+      ),
+      createIteration(
+        "log-2",
+        "PROJ-124",
+        "Yesterday task",
+        new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), // 25 hours ago (definitely yesterday or older)
+        28,
+      ),
     ],
   },
   play: async ({ canvasElement }) => {
