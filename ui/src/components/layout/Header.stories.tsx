@@ -1,11 +1,33 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within } from "storybook/test"
-import { Header } from "./Header"
+import { HeaderView } from "./HeaderView"
 import { withStoreState } from "../../../.storybook/decorators"
 
-const meta: Meta<typeof Header> = {
+/**
+ * The Header component displays the application logo, workspace picker,
+ * and settings controls. It uses the accent color as background with
+ * contrasting text.
+ *
+ * Stories use the HeaderView presentational component directly with args,
+ * allowing full control over the displayed state without store mocking.
+ */
+const meta: Meta<typeof HeaderView> = {
   title: "Layout/Header",
-  component: Header,
+  component: HeaderView,
+  args: {
+    accentColor: "#007ACC",
+    instanceCount: 1,
+  },
+  argTypes: {
+    accentColor: {
+      control: "color",
+      description: "Accent color for the header background",
+    },
+    instanceCount: {
+      control: { type: "number", min: 1, max: 10 },
+      description: "Number of active Ralph instances",
+    },
+  },
   parameters: {},
 }
 
@@ -16,7 +38,6 @@ export const Default: Story = {
   decorators: [
     withStoreState({
       workspace: "/Users/dev/projects/my-app",
-      accentColor: "#007ACC",
     }),
   ],
   play: async ({ canvasElement }) => {
@@ -34,38 +55,66 @@ export const Default: Story = {
 }
 
 export const WithPeacockColor: Story = {
+  args: {
+    accentColor: "#42B883",
+  },
   decorators: [
     withStoreState({
       workspace: "/Users/dev/projects/feature-branch",
-      accentColor: "#42B883",
     }),
   ],
 }
 
 export const DefaultAccentColor: Story = {
+  args: {
+    accentColor: null,
+  },
   decorators: [
     withStoreState({
       workspace: "/Users/dev/projects/my-app",
-      accentColor: null,
     }),
   ],
 }
 
 export const LongWorkspacePath: Story = {
+  args: {
+    accentColor: "#9B59B6",
+  },
   decorators: [
     withStoreState({
       workspace:
         "/Users/developer/Documents/Projects/enterprise/very-long-project-name-that-might-overflow",
-      accentColor: "#9B59B6",
     }),
   ],
 }
 
 export const NoWorkspace: Story = {
+  args: {
+    accentColor: "#FFA500",
+  },
   decorators: [
     withStoreState({
       workspace: null,
-      accentColor: "#FFA500",
     }),
   ],
+}
+
+export const MultipleInstances: Story = {
+  args: {
+    accentColor: "#007ACC",
+    instanceCount: 3,
+  },
+  decorators: [
+    withStoreState({
+      workspace: "/Users/dev/projects/my-app",
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+
+    // Instance count badge should be visible
+    const badge = canvas.getByTestId("instance-count-badge")
+    await expect(badge).toBeInTheDocument()
+    await expect(badge).toHaveTextContent("3")
+  },
 }
