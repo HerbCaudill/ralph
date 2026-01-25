@@ -49,6 +49,13 @@ async function renderAndWait(ui: React.ReactElement) {
   return result
 }
 
+/** Advance fake timers past the 500ms debounce delay */
+async function advancePastDebounce() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(600)
+  })
+}
+
 // Mock fetch for event log tests
 const originalFetch = globalThis.fetch
 
@@ -280,19 +287,21 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
+      // Enable fake timers after render to avoid blocking renderAndWait
+      vi.useFakeTimers()
+
       const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "New Title")
 
       // Should not have saved immediately
       expect(mockOnSave).not.toHaveBeenCalled()
 
-      // Wait for debounced save to complete
-      await waitFor(
-        () => {
-          expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "New Title" })
-        },
-        { timeout: 1000 },
-      )
+      // Advance past 500ms debounce
+      await advancePastDebounce()
+
+      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "New Title" })
+
+      vi.useRealTimers()
     })
 
     it("autosaves type immediately when changed", async () => {
@@ -439,16 +448,18 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
+      // Enable fake timers after render
+      vi.useFakeTimers()
+
       const titleInput = screen.getByDisplayValue("Test Task")
       typeInInput(titleInput, "Updated Title")
 
-      // Wait for debounced save to complete
-      await waitFor(
-        () => {
-          expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "Updated Title" })
-        },
-        { timeout: 1000 },
-      )
+      // Advance past 500ms debounce
+      await advancePastDebounce()
+
+      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, { title: "Updated Title" })
+
+      vi.useRealTimers()
     })
 
     it("shows saving indicator during autosave", async () => {
@@ -571,18 +582,20 @@ describe("TaskDetailsDialog", () => {
         <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
+      // Enable fake timers after render
+      vi.useFakeTimers()
+
       const descInput = screen.getByTestId("markdown-editor")
       typeInInput(descInput, "Updated description")
 
-      // Should trigger autosave (description autosaves after debounce)
-      await waitFor(
-        () => {
-          expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, {
-            description: "Updated description",
-          })
-        },
-        { timeout: 1000 },
-      )
+      // Advance past 500ms debounce
+      await advancePastDebounce()
+
+      expect(mockOnSave).toHaveBeenCalledWith(mockTask.id, {
+        description: "Updated description",
+      })
+
+      vi.useRealTimers()
     })
 
     it("shows nothing in read-only mode when description is empty", async () => {
@@ -1121,21 +1134,23 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
+      // Enable fake timers after render
+      vi.useFakeTimers()
+
       // Change the title (not the status)
       const titleInput = screen.getByDisplayValue("Already closed task")
       typeInInput(titleInput, "Updated title")
 
-      // Wait for debounced autosave
-      await waitFor(
-        () => {
-          expect(mockOnSave).toHaveBeenCalledWith("task-001", { title: "Updated title" })
-        },
-        { timeout: 1000 },
-      )
+      // Advance past 500ms debounce
+      await advancePastDebounce()
+
+      expect(mockOnSave).toHaveBeenCalledWith("task-001", { title: "Updated title" })
 
       // Verify event log was NOT saved (task was already closed)
       // Note: GET requests to /api/eventlogs may still occur for IterationLinks
       expect(eventLogPostCalled).toBe(false)
+
+      vi.useRealTimers()
     })
   })
 })
