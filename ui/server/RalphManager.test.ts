@@ -370,6 +370,44 @@ describe("RalphManager", () => {
 
       expect(outputs).toEqual(["plain text line"])
     })
+
+    it("adds timestamp to events that are missing one", async () => {
+      const events: RalphEvent[] = []
+      manager.on("event", evt => events.push(evt))
+
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      // SDK events sometimes don't include timestamps
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"system","subtype":"init"}\n'))
+
+      expect(events).toHaveLength(1)
+      expect(events[0].type).toBe("system")
+      expect(events[0].subtype).toBe("init")
+      expect(typeof events[0].timestamp).toBe("number")
+      // Timestamp should be recent (within last second)
+      expect(events[0].timestamp).toBeGreaterThan(Date.now() - 1000)
+      expect(events[0].timestamp).toBeLessThanOrEqual(Date.now())
+    })
+
+    it("preserves existing timestamp when present", async () => {
+      const events: RalphEvent[] = []
+      manager.on("event", evt => events.push(evt))
+
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      const existingTimestamp = 1706123456789
+      mockProcess.stdout.emit(
+        "data",
+        Buffer.from(`{"type":"test","timestamp":${existingTimestamp}}\n`),
+      )
+
+      expect(events).toHaveLength(1)
+      expect(events[0].timestamp).toBe(existingTimestamp)
+    })
   })
 
   describe("stderr handling", () => {

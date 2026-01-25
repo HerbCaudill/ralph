@@ -115,6 +115,38 @@ describe("useIterationPersistence", () => {
       })
     })
 
+    it("uses Date.now() as fallback when boundary event has no timestamp", async () => {
+      // Create a system init event without a timestamp (simulates the bug scenario)
+      // Use 'unknown' cast to bypass TypeScript's type checking since we're simulating
+      // the runtime scenario where SDK events don't include timestamps
+      const eventWithoutTimestamp = {
+        type: "system",
+        subtype: "init",
+      } as unknown as ChatEvent
+
+      const beforeTime = Date.now()
+
+      const { result } = renderHook(() =>
+        useIterationPersistence({
+          ...defaultOptions,
+          events: [eventWithoutTimestamp],
+        }),
+      )
+
+      const afterTime = Date.now()
+
+      await waitFor(() => {
+        expect(result.current.currentIterationId).not.toBeNull()
+        // The ID should be generated with a fallback timestamp
+        expect(result.current.currentIterationId).toMatch(/^default-\d+$/)
+        // Extract the timestamp from the ID
+        const idTimestamp = parseInt(result.current.currentIterationId!.split("-")[1], 10)
+        // The fallback timestamp should be between beforeTime and afterTime
+        expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime)
+        expect(idTimestamp).toBeLessThanOrEqual(afterTime)
+      })
+    })
+
     it("generates stable iteration IDs based on instance and timestamp", async () => {
       const timestamp = 1706123456789
 

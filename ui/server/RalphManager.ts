@@ -324,7 +324,12 @@ export class RalphManager extends EventEmitter {
    */
   private parseLine(line: string): void {
     try {
-      const event = JSON.parse(line) as RalphEvent
+      const parsed = JSON.parse(line) as RalphEvent
+      // Ensure all events have a timestamp - SDK events may not include one
+      const event: RalphEvent = {
+        ...parsed,
+        timestamp: parsed.timestamp ?? Date.now(),
+      }
 
       // Handle pause/resume events to update status
       if (event.type === "ralph_paused") {

@@ -221,7 +221,8 @@ export function useIterationPersistence(
         }
 
         // Start tracking new iteration
-        const startedAt = boundaryEvent.timestamp
+        // Fall back to Date.now() if timestamp is missing (defensive - should be set by server)
+        const startedAt = boundaryEvent.timestamp ?? Date.now()
         const newId = generateIterationId(instanceId, startedAt)
 
         currentIterationRef.current = {
