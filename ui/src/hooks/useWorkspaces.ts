@@ -74,7 +74,7 @@ export function useWorkspaces(): UseWorkspacesReturn {
               isActive: ws.path === workspacePath,
             })),
           )
-          await refreshTasks()
+          refreshTasks()
         } else {
           throw new Error(data.error || "Unknown error")
         }

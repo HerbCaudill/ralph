@@ -476,12 +476,29 @@ function handleMessage(event: MessageEvent): void {
         break
 
       // Mutation events from beads daemon - refresh task list on any task mutation
-      case "mutation:event":
+      case "mutation:event": {
         // Mutation event contains: Type (create/update/delete/status/etc), IssueID, Title, etc.
-        // Instead of incrementally updating, just refresh the full task list for simplicity
-        // This ensures we have the latest data including computed fields like blocked_by
+        // Apply optimistic updates for status changes to provide instant UI feedback
+        const mutationEvent = data.event as {
+          Type: string
+          IssueID: string
+          new_status?: "open" | "in_progress" | "blocked" | "deferred" | "closed"
+          Title?: string
+        }
+
+        if (mutationEvent.Type === "status" && mutationEvent.new_status && mutationEvent.IssueID) {
+          // Optimistically update the task status in the store for instant UI feedback
+          store.updateTask(mutationEvent.IssueID, { status: mutationEvent.new_status })
+        } else if (mutationEvent.Type === "delete" && mutationEvent.IssueID) {
+          // Optimistically remove deleted tasks
+          store.removeTask(mutationEvent.IssueID)
+        }
+
+        // Always refresh the full task list to ensure computed fields (blocked_by, etc.) are correct
+        // The debounced refresh will coalesce rapid mutations into a single API call
         store.refreshTasks()
         break
+      }
 
       default:
         console.log("[ralphConnection] unknown message type:", type)

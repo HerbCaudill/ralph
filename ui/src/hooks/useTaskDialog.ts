@@ -209,8 +209,8 @@ export function useTaskDialog(options: UseTaskDialogOptions = {}): UseTaskDialog
         if (result.ok) {
           // Optimistically remove from store immediately
           removeTask(id)
-          // Also refresh from server to ensure consistency
-          await refreshTasks()
+          // Also refresh from server to ensure consistency (debounced)
+          refreshTasks()
           // Notify parent that task was deleted
           await onTaskDeleted?.()
         } else {

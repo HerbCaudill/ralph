@@ -356,7 +356,8 @@ export interface AppActions {
   updateTask: (id: string, updates: Partial<Task>) => void
   removeTask: (id: string) => void
   clearTasks: () => void
-  refreshTasks: () => Promise<void>
+  /** Refresh tasks from API (debounced to coalesce rapid mutation events) */
+  refreshTasks: () => void
 
   // Workspace
   setWorkspace: (workspace: string | null) => void
@@ -586,6 +587,25 @@ const TASK_CHAT_EVENTS_BATCH_INTERVAL_MS = 100
 let taskChatEventsBatch: ChatEvent[] = []
 let taskChatEventsBatchTimeout: ReturnType<typeof setTimeout> | null = null
 
+// Task refresh debouncing configuration
+// Multiple rapid mutation events are coalesced into a single API call
+// Lower value = faster UI updates, higher value = better batching for bulk operations
+const TASK_REFRESH_DEBOUNCE_MS = 50
+let taskRefreshDebounceTimeout: ReturnType<typeof setTimeout> | null = null
+let taskRefreshPending = false
+
+/**
+ * Clear any pending task refresh debounce.
+ * Used primarily in tests to prevent cross-test interference.
+ */
+export function clearTaskRefreshDebounce(): void {
+  taskRefreshPending = false
+  if (taskRefreshDebounceTimeout !== null) {
+    clearTimeout(taskRefreshDebounceTimeout)
+    taskRefreshDebounceTimeout = null
+  }
+}
+
 /**
  * Flush any pending batched task chat events to the store.
  * Called automatically after the batch interval, or can be called manually.
@@ -785,16 +805,31 @@ export const useAppStore = create<AppState & AppActions>(set => ({
 
   clearTasks: () => set({ tasks: [] }),
 
-  refreshTasks: async () => {
-    try {
-      const response = await fetch("/api/tasks?all=true")
-      const data = (await response.json()) as { ok: boolean; issues?: Task[] }
-      if (data.ok && data.issues) {
-        set({ tasks: data.issues })
-      }
-    } catch (err) {
-      console.error("Failed to refresh tasks:", err)
+  refreshTasks: () => {
+    // Debounce task refresh to coalesce multiple rapid mutation events
+    // This prevents hammering the API when many tasks are modified at once
+    taskRefreshPending = true
+
+    if (taskRefreshDebounceTimeout !== null) {
+      // Already have a pending refresh scheduled, it will pick up this request
+      return
     }
+
+    taskRefreshDebounceTimeout = setTimeout(async () => {
+      taskRefreshDebounceTimeout = null
+      if (!taskRefreshPending) return
+
+      taskRefreshPending = false
+      try {
+        const response = await fetch("/api/tasks?all=true")
+        const data = (await response.json()) as { ok: boolean; issues?: Task[] }
+        if (data.ok && data.issues) {
+          set({ tasks: data.issues })
+        }
+      } catch (err) {
+        console.error("Failed to refresh tasks:", err)
+      }
+    }, TASK_REFRESH_DEBOUNCE_MS)
   },
 
   // Workspace
@@ -805,6 +840,12 @@ export const useAppStore = create<AppState & AppActions>(set => ({
     if (taskChatEventsBatchTimeout !== null) {
       clearTimeout(taskChatEventsBatchTimeout)
       taskChatEventsBatchTimeout = null
+    }
+    // Clear any pending task refresh
+    taskRefreshPending = false
+    if (taskRefreshDebounceTimeout !== null) {
+      clearTimeout(taskRefreshDebounceTimeout)
+      taskRefreshDebounceTimeout = null
     }
     set(state => {
       // Update active instance in the instances Map

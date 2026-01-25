@@ -154,8 +154,8 @@ export function WorkspacePicker({
               isActive: ws.path === workspacePath,
             })),
           )
-          // Refresh tasks from the new workspace
-          await refreshTasks()
+          // Refresh tasks from the new workspace (debounced)
+          refreshTasks()
         } else {
           throw new Error(data.error || "Unknown error")
         }
