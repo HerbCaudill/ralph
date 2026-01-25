@@ -8,21 +8,21 @@ import {
   IconX,
 } from "@tabler/icons-react"
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { useEventLogs, useEventLogRouter, type EventLogSummary } from "@/hooks"
+import { useIterations, useEventLogRouter, type IterationSummary } from "@/hooks"
 import { formatEventLogDate, formatEventLogTime } from "@/lib/formatEventLogDate"
 import { useAppStore, selectIssuePrefix } from "@/store"
 
-/** Groups event logs by date (Today, Yesterday, or specific date). */
-function groupEventLogsByDate(
-  eventLogs: EventLogSummary[],
-): Array<{ dateLabel: string; logs: EventLogSummary[] }> {
-  const groups = new Map<string, EventLogSummary[]>()
+/** Groups iterations by date (Today, Yesterday, or specific date). */
+function groupIterationsByDate(
+  iterations: IterationSummary[],
+): Array<{ dateLabel: string; logs: IterationSummary[] }> {
+  const groups = new Map<string, IterationSummary[]>()
 
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
 
-  for (const log of eventLogs) {
+  for (const log of iterations) {
     const logDate = new Date(log.createdAt)
     const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
 
@@ -48,16 +48,16 @@ function groupEventLogsByDate(
     }
   }
 
-  // Convert to array (order preserved from original eventLogs which are sorted newest first)
+  // Convert to array (order preserved from original iterations which are sorted newest first)
   return Array.from(groups.entries()).map(([dateLabel, logs]) => ({ dateLabel, logs }))
 }
 
-/** Filters event logs by search query (matches task ID or title). */
-function filterEventLogs(eventLogs: EventLogSummary[], query: string): EventLogSummary[] {
+/** Filters iterations by search query (matches task ID or title). */
+function filterIterations(iterations: IterationSummary[], query: string): IterationSummary[] {
   const trimmedQuery = query.trim().toLowerCase()
-  if (!trimmedQuery) return eventLogs
+  if (!trimmedQuery) return iterations
 
-  return eventLogs.filter(log => {
+  return iterations.filter(log => {
     const taskId = log.metadata?.taskId?.toLowerCase() ?? ""
     const title = log.metadata?.title?.toLowerCase() ?? ""
     return taskId.includes(trimmedQuery) || title.includes(trimmedQuery)
@@ -70,14 +70,14 @@ function filterEventLogs(eventLogs: EventLogSummary[], query: string): EventLogS
  * This is a thin wrapper that fetches data and delegates to IterationHistoryPanelView.
  */
 export function IterationHistoryPanel({ className }: IterationHistoryPanelProps) {
-  const { eventLogs, isLoading, error, refresh } = useEventLogs()
+  const { iterations, isLoading, error, refresh } = useIterations()
   const { navigateToEventLog } = useEventLogRouter()
   const issuePrefix = useAppStore(selectIssuePrefix)
 
   return (
     <IterationHistoryPanelView
       className={className}
-      eventLogs={eventLogs}
+      iterations={iterations}
       isLoading={isLoading}
       error={error}
       issuePrefix={issuePrefix}
@@ -93,7 +93,7 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
  */
 export function IterationHistoryPanelView({
   className,
-  eventLogs,
+  iterations,
   isLoading,
   error,
   issuePrefix,
@@ -103,11 +103,11 @@ export function IterationHistoryPanelView({
   const [searchQuery, setSearchQuery] = useState("")
 
   const filteredLogs = useMemo(
-    () => filterEventLogs(eventLogs, searchQuery),
-    [eventLogs, searchQuery],
+    () => filterIterations(iterations, searchQuery),
+    [iterations, searchQuery],
   )
 
-  const groupedLogs = useMemo(() => groupEventLogsByDate(filteredLogs), [filteredLogs])
+  const groupedLogs = useMemo(() => groupIterationsByDate(filteredLogs), [filteredLogs])
 
   const handleItemClick = useCallback(
     (id: string) => {
@@ -174,12 +174,12 @@ export function IterationHistoryPanelView({
         <IconHistory className="text-muted-foreground size-4" />
         <span className="text-sm font-medium">Iteration History</span>
         <span className="text-muted-foreground text-xs" data-testid="iteration-count">
-          ({eventLogs.length})
+          ({iterations.length})
         </span>
       </div>
 
       {/* Search input */}
-      {eventLogs.length > 0 && (
+      {iterations.length > 0 && (
         <div className="border-border border-b px-4 py-2">
           <div className="relative">
             <div className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2">
@@ -214,7 +214,7 @@ export function IterationHistoryPanelView({
       )}
 
       <div className="flex-1 overflow-y-auto">
-        {eventLogs.length === 0 ?
+        {iterations.length === 0 ?
           <div
             className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
             data-testid="empty-state"
@@ -271,7 +271,7 @@ function IterationHistoryItem({
   issuePrefix,
   onClick,
 }: {
-  log: EventLogSummary
+  log: IterationSummary
   issuePrefix: string | null
   onClick: (id: string) => void
 }) {
@@ -327,8 +327,8 @@ export interface IterationHistoryPanelProps {
 export interface IterationHistoryPanelViewProps {
   /** Optional CSS class to apply to the container */
   className?: string
-  /** Event logs to display */
-  eventLogs: EventLogSummary[]
+  /** Iterations to display */
+  iterations: IterationSummary[]
   /** Whether data is loading */
   isLoading: boolean
   /** Error message if loading failed */

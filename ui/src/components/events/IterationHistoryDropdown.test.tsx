@@ -1,15 +1,15 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
 import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
-import type { EventLogSummary } from "@/hooks"
+import type { IterationSummary } from "@/hooks"
 
 // Mock event logs for testing
-const createMockEventLog = (
+const createMockIteration = (
   id: string,
   createdAt: string,
   taskId?: string,
   title?: string,
-): EventLogSummary => ({
+): IterationSummary => ({
   id,
   createdAt,
   eventCount: 10,
@@ -36,11 +36,11 @@ describe("IterationHistoryDropdown", () => {
     isViewingLatest: true,
     viewingIterationIndex: null,
     iterationTaskInfos: [],
-    eventLogs: [] as EventLogSummary[],
-    isLoadingEventLogs: false,
+    iterations: [] as IterationSummary[],
+    isLoadingIterations: false,
     issuePrefix: null,
     onIterationSelect: vi.fn(),
-    onEventLogSelect: vi.fn(),
+    onIterationHistorySelect: vi.fn(),
     onLatest: vi.fn(),
   }
 
@@ -102,7 +102,7 @@ describe("IterationHistoryDropdown", () => {
       render(
         <IterationHistoryDropdown
           {...defaultProps}
-          eventLogs={[createMockEventLog("abc12345", todayStr, "r-xyz", "Past task")]}
+          iterations={[createMockIteration("abc12345", todayStr, "r-xyz", "Past task")]}
         />,
       )
 
@@ -110,15 +110,15 @@ describe("IterationHistoryDropdown", () => {
       expect(screen.getByPlaceholderText("Search iterations...")).toBeInTheDocument()
     })
 
-    it("shows loading state when event logs are loading", () => {
-      render(<IterationHistoryDropdown {...defaultProps} isLoadingEventLogs={true} />)
+    it("shows loading state when iterations are loading", () => {
+      render(<IterationHistoryDropdown {...defaultProps} isLoadingIterations={true} />)
 
       fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
       expect(screen.getByText("Loading history...")).toBeInTheDocument()
     })
 
-    it("shows empty state when no event logs and single iteration", () => {
-      render(<IterationHistoryDropdown {...defaultProps} eventLogs={[]} iterationCount={1} />)
+    it("shows empty state when no iterations and single iteration", () => {
+      render(<IterationHistoryDropdown {...defaultProps} iterations={[]} iterationCount={1} />)
 
       fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
       expect(screen.getByText("No iteration history yet.")).toBeInTheDocument()
@@ -146,10 +146,10 @@ describe("IterationHistoryDropdown", () => {
       render(
         <IterationHistoryDropdown
           {...defaultProps}
-          eventLogs={[
-            createMockEventLog("abc12345", todayStr, "r-001", "Today's task"),
-            createMockEventLog("def12345", yesterdayStr, "r-002", "Yesterday's task"),
-            createMockEventLog("ghi12345", weekAgoStr, "r-003", "Old task"),
+          iterations={[
+            createMockIteration("abc12345", todayStr, "r-001", "Today's task"),
+            createMockIteration("def12345", yesterdayStr, "r-002", "Yesterday's task"),
+            createMockIteration("ghi12345", weekAgoStr, "r-003", "Old task"),
           ]}
         />,
       )
@@ -164,7 +164,7 @@ describe("IterationHistoryDropdown", () => {
       render(
         <IterationHistoryDropdown
           {...defaultProps}
-          eventLogs={[createMockEventLog("abc12345", todayStr, "r-task1", "Historical task")]}
+          iterations={[createMockIteration("abc12345", todayStr, "r-task1", "Historical task")]}
         />,
       )
 
@@ -209,27 +209,27 @@ describe("IterationHistoryDropdown", () => {
       expect(onLatest).toHaveBeenCalled()
     })
 
-    it("calls onEventLogSelect when clicking an event log", () => {
-      const onEventLogSelect = vi.fn()
+    it("calls onIterationHistorySelect when clicking a past iteration", () => {
+      const onIterationHistorySelect = vi.fn()
       render(
         <IterationHistoryDropdown
           {...defaultProps}
-          eventLogs={[createMockEventLog("abc12345", todayStr, "r-task1", "Historical task")]}
-          onEventLogSelect={onEventLogSelect}
+          iterations={[createMockIteration("abc12345", todayStr, "r-task1", "Historical task")]}
+          onIterationHistorySelect={onIterationHistorySelect}
         />,
       )
 
       fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
       fireEvent.click(screen.getByText("Historical task"))
 
-      expect(onEventLogSelect).toHaveBeenCalledWith("abc12345")
+      expect(onIterationHistorySelect).toHaveBeenCalledWith("abc12345")
     })
 
     it("closes dropdown after selection", () => {
       render(
         <IterationHistoryDropdown
           {...defaultProps}
-          eventLogs={[createMockEventLog("abc12345", todayStr, "r-task1", "Historical task")]}
+          iterations={[createMockIteration("abc12345", todayStr, "r-task1", "Historical task")]}
         />,
       )
 
@@ -248,9 +248,9 @@ describe("IterationHistoryDropdown", () => {
       render(
         <IterationHistoryDropdown
           {...defaultProps}
-          eventLogs={[
-            createMockEventLog("abc12345", todayStr, "r-task1", "First task"),
-            createMockEventLog("def12345", todayStr, "r-task2", "Second task"),
+          iterations={[
+            createMockIteration("abc12345", todayStr, "r-task1", "First task"),
+            createMockIteration("def12345", todayStr, "r-task2", "Second task"),
           ]}
         />,
       )
@@ -276,9 +276,9 @@ describe("IterationHistoryDropdown", () => {
       render(
         <IterationHistoryDropdown
           {...defaultProps}
-          eventLogs={[
-            createMockEventLog("abc12345", todayStr, "r-001", "Bug fix"),
-            createMockEventLog("def12345", todayStr, "r-002", "New feature"),
+          iterations={[
+            createMockIteration("abc12345", todayStr, "r-001", "Bug fix"),
+            createMockIteration("def12345", todayStr, "r-002", "New feature"),
           ]}
         />,
       )

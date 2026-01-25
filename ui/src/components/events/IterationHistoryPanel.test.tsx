@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { IterationHistoryPanel } from "./IterationHistoryPanel"
 import { useAppStore } from "@/store"
-import type { EventLogSummary } from "@/hooks"
+import type { IterationSummary } from "@/hooks"
 
 // Mock the hooks
 const mockNavigateToEventLog = vi.fn()
@@ -16,16 +16,16 @@ vi.mock("@/hooks", async importOriginal => {
       closeEventLogViewer: vi.fn(),
       eventLogId: null,
     }),
-    useEventLogs: vi.fn(),
+    useIterations: vi.fn(),
   }
 })
 
 // Import the mocked module so we can control it
-import { useEventLogs } from "@/hooks"
-const mockUseEventLogs = vi.mocked(useEventLogs)
+import { useIterations } from "@/hooks"
+const mockUseIterations = vi.mocked(useIterations)
 
 // Test data
-const mockEventLogs: EventLogSummary[] = [
+const mockIterations: IterationSummary[] = [
   {
     id: "abc12345",
     createdAt: "2026-01-23T10:00:00.000Z",
@@ -65,8 +65,8 @@ describe("IterationHistoryPanel", () => {
 
   describe("loading state", () => {
     it("shows loading indicator when loading", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: [],
+      mockUseIterations.mockReturnValue({
+        iterations: [],
         isLoading: true,
         error: null,
         refresh: vi.fn(),
@@ -82,8 +82,8 @@ describe("IterationHistoryPanel", () => {
   describe("error state", () => {
     it("shows error message when error occurs", () => {
       const mockRefresh = vi.fn()
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: [],
+      mockUseIterations.mockReturnValue({
+        iterations: [],
         isLoading: false,
         error: "Failed to connect to server",
         refresh: mockRefresh,
@@ -97,8 +97,8 @@ describe("IterationHistoryPanel", () => {
 
     it("calls refresh when retry is clicked", () => {
       const mockRefresh = vi.fn()
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: [],
+      mockUseIterations.mockReturnValue({
+        iterations: [],
         isLoading: false,
         error: "Network error",
         refresh: mockRefresh,
@@ -113,8 +113,8 @@ describe("IterationHistoryPanel", () => {
 
   describe("empty state", () => {
     it("shows empty message when no event logs exist", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: [],
+      mockUseIterations.mockReturnValue({
+        iterations: [],
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -129,8 +129,8 @@ describe("IterationHistoryPanel", () => {
 
   describe("list rendering", () => {
     it("renders list of event logs", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -147,8 +147,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("displays task IDs with prefix stripped", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -162,8 +162,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("displays event counts", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -177,8 +177,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("displays 'No task' for iterations without metadata", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -193,8 +193,8 @@ describe("IterationHistoryPanel", () => {
 
   describe("navigation", () => {
     it("navigates to event log when item is clicked", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -209,8 +209,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("has accessible button labels", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -227,8 +227,8 @@ describe("IterationHistoryPanel", () => {
 
   describe("accessibility", () => {
     it("has proper list structure", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -243,8 +243,8 @@ describe("IterationHistoryPanel", () => {
 
   describe("search functionality", () => {
     it("shows search input when event logs exist", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -257,8 +257,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("does not show search input when no event logs", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: [],
+      mockUseIterations.mockReturnValue({
+        iterations: [],
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -270,8 +270,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("filters by task title", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -289,8 +289,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("filters by task ID", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -307,8 +307,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("shows no results message when filter matches nothing", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -323,8 +323,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("clears search when clear button is clicked", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -347,8 +347,8 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("is case-insensitive", () => {
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: mockEventLogs,
+      mockUseIterations.mockReturnValue({
+        iterations: mockIterations,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -371,7 +371,7 @@ describe("IterationHistoryPanel", () => {
       const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
       const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)
 
-      const logsWithDates: EventLogSummary[] = [
+      const logsWithDates: IterationSummary[] = [
         {
           id: "today1",
           createdAt: today.toISOString(),
@@ -392,8 +392,8 @@ describe("IterationHistoryPanel", () => {
         },
       ]
 
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: logsWithDates,
+      mockUseIterations.mockReturnValue({
+        iterations: logsWithDates,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
@@ -411,7 +411,7 @@ describe("IterationHistoryPanel", () => {
     it("groups multiple iterations under the same date", () => {
       const today = new Date()
 
-      const logsWithSameDate: EventLogSummary[] = [
+      const logsWithSameDate: IterationSummary[] = [
         {
           id: "today1",
           createdAt: new Date(today.getTime() - 1000).toISOString(),
@@ -426,8 +426,8 @@ describe("IterationHistoryPanel", () => {
         },
       ]
 
-      mockUseEventLogs.mockReturnValue({
-        eventLogs: logsWithSameDate,
+      mockUseIterations.mockReturnValue({
+        iterations: logsWithSameDate,
         isLoading: false,
         error: null,
         refresh: vi.fn(),

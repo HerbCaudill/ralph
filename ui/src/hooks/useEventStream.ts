@@ -15,8 +15,8 @@ import {
   getIterationTaskInfos,
   type IterationTaskInfo,
 } from "@/store"
-import { useEventLogs, useEventLogRouter } from "@/hooks"
-import type { EventLogSummary } from "@/hooks"
+import { useIterations, useEventLogRouter } from "@/hooks"
+import type { IterationSummary } from "@/hooks"
 import type { ChatEvent, Task, RalphStatus } from "@/types"
 
 export interface IterationTask {
@@ -29,7 +29,7 @@ export interface IterationNavigationActions {
   goToNext: () => void
   goToLatest: () => void
   selectIteration: (index: number) => void
-  selectEventLog: (id: string) => void
+  selectIterationHistory: (id: string) => void
 }
 
 export interface UseEventStreamOptions {
@@ -58,10 +58,10 @@ export interface UseEventStreamResult {
   iterationTask: IterationTask | null
   /** Task info for all iterations (indexed by iteration) */
   iterationTaskInfos: IterationTaskInfo[]
-  /** Event logs for history dropdown */
-  eventLogs: EventLogSummary[]
-  /** Whether event logs are loading */
-  isLoadingEventLogs: boolean
+  /** Past iterations for history dropdown */
+  iterations: IterationSummary[]
+  /** Whether iterations are loading */
+  isLoadingIterations: boolean
   /** Issue prefix for the workspace */
   issuePrefix: string | null
   /** Navigation actions */
@@ -104,8 +104,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     ralphStatus === "stopping_after_current"
   const isViewingLatest = viewingIterationIndex === null
 
-  // Fetch event logs for the history dropdown
-  const { eventLogs, isLoading: isLoadingEventLogs } = useEventLogs()
+  // Fetch iterations for the history dropdown
+  const { iterations, isLoading: isLoadingIterations } = useIterations()
   const { navigateToEventLog } = useEventLogRouter()
 
   // Iteration data
@@ -177,7 +177,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     [setViewingIterationIndex],
   )
 
-  const handleEventLogSelect = useCallback(
+  const handleIterationHistorySelect = useCallback(
     (id: string) => {
       navigateToEventLog(id)
     },
@@ -190,14 +190,14 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
       goToNext: goToNextIteration,
       goToLatest: goToLatestIteration,
       selectIteration: handleIterationSelect,
-      selectEventLog: handleEventLogSelect,
+      selectIterationHistory: handleIterationHistorySelect,
     }),
     [
       goToPreviousIteration,
       goToNextIteration,
       goToLatestIteration,
       handleIterationSelect,
-      handleEventLogSelect,
+      handleIterationHistorySelect,
     ],
   )
 
@@ -211,8 +211,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     displayedIteration,
     iterationTask,
     iterationTaskInfos,
-    eventLogs,
-    isLoadingEventLogs,
+    iterations,
+    isLoadingIterations,
     issuePrefix,
     navigation,
     containerRef,

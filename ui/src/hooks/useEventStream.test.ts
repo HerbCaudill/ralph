@@ -3,13 +3,13 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { useEventStream } from "./useEventStream"
 import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
 
-// Mock useEventLogs
+// Mock useIterations
 vi.mock("@/hooks", async importOriginal => {
   const actual = await importOriginal<typeof import("@/hooks")>()
   return {
     ...actual,
-    useEventLogs: vi.fn(() => ({
-      eventLogs: [],
+    useIterations: vi.fn(() => ({
+      iterations: [],
       isLoading: false,
       error: null,
       refresh: vi.fn(),

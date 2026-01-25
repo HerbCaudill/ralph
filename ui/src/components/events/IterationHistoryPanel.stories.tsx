@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within, userEvent, fn } from "storybook/test"
 import { IterationHistoryPanelView } from "./IterationHistoryPanel"
-import type { EventLogSummary } from "@/hooks"
+import type { IterationSummary } from "@/hooks"
 
 /** Helper to create event log mock data */
-function createEventLog(
+function createIteration(
   id: string,
   taskId: string | undefined,
   title: string | undefined,
   createdAt: string,
   eventCount: number,
-): EventLogSummary {
+): IterationSummary {
   return {
     id,
     createdAt,
@@ -40,7 +40,7 @@ const meta: Meta<typeof IterationHistoryPanelView> = {
     ),
   ],
   args: {
-    eventLogs: [],
+    iterations: [],
     isLoading: false,
     error: null,
     issuePrefix: "PROJ-",
@@ -55,7 +55,7 @@ type Story = StoryObj<typeof meta>
 /** Default empty state. */
 export const Empty: Story = {
   args: {
-    eventLogs: [],
+    iterations: [],
     isLoading: false,
     error: null,
   },
@@ -64,7 +64,7 @@ export const Empty: Story = {
 /** Loading state. */
 export const Loading: Story = {
   args: {
-    eventLogs: [],
+    iterations: [],
     isLoading: true,
     error: null,
   },
@@ -73,7 +73,7 @@ export const Loading: Story = {
 /** Error state with retry button. */
 export const WithError: Story = {
   args: {
-    eventLogs: [],
+    iterations: [],
     isLoading: false,
     error: "Failed to load iterations",
   },
@@ -82,11 +82,11 @@ export const WithError: Story = {
 /** With iteration data. */
 export const WithIterations: Story = {
   args: {
-    eventLogs: [
-      createEventLog("log-1", "PROJ-123", "Fix authentication bug", oneHourAgo, 42),
-      createEventLog("log-2", "PROJ-124", "Add dark mode support", twoHoursAgo, 28),
-      createEventLog("log-3", "PROJ-125", "Refactor API endpoints", yesterday, 156),
-      createEventLog("log-4", "PROJ-126", "Update documentation", twoDaysAgo, 15),
+    iterations: [
+      createIteration("log-1", "PROJ-123", "Fix authentication bug", oneHourAgo, 42),
+      createIteration("log-2", "PROJ-124", "Add dark mode support", twoHoursAgo, 28),
+      createIteration("log-3", "PROJ-125", "Refactor API endpoints", yesterday, 156),
+      createIteration("log-4", "PROJ-126", "Update documentation", twoDaysAgo, 15),
     ],
   },
 }
@@ -94,14 +94,14 @@ export const WithIterations: Story = {
 /** With many iterations across multiple days. */
 export const ManyIterations: Story = {
   args: {
-    eventLogs: [
+    iterations: [
       // Today
-      createEventLog("today-1", "PROJ-101", "Task 1 - Today", today, 45),
-      createEventLog("today-2", "PROJ-102", "Task 2 - Today", oneHourAgo, 32),
-      createEventLog("today-3", "PROJ-103", "Task 3 - Today", twoHoursAgo, 18),
+      createIteration("today-1", "PROJ-101", "Task 1 - Today", today, 45),
+      createIteration("today-2", "PROJ-102", "Task 2 - Today", oneHourAgo, 32),
+      createIteration("today-3", "PROJ-103", "Task 3 - Today", twoHoursAgo, 18),
       // Yesterday
-      createEventLog("yesterday-1", "PROJ-201", "Task 1 - Yesterday", yesterday, 67),
-      createEventLog(
+      createIteration("yesterday-1", "PROJ-201", "Task 1 - Yesterday", yesterday, 67),
+      createIteration(
         "yesterday-2",
         "PROJ-202",
         "Task 2 - Yesterday",
@@ -109,8 +109,8 @@ export const ManyIterations: Story = {
         54,
       ),
       // Older
-      createEventLog("older-1", "PROJ-301", "Task 1 - Older", twoDaysAgo, 89),
-      createEventLog(
+      createIteration("older-1", "PROJ-301", "Task 1 - Older", twoDaysAgo, 89),
+      createIteration(
         "older-2",
         "PROJ-302",
         "Task 2 - Older",
@@ -124,9 +124,9 @@ export const ManyIterations: Story = {
 /** Iteration without a task (no task metadata). */
 export const WithoutTask: Story = {
   args: {
-    eventLogs: [
-      createEventLog("log-1", undefined, undefined, oneHourAgo, 42),
-      createEventLog("log-2", "PROJ-124", "Has a task", twoHoursAgo, 28),
+    iterations: [
+      createIteration("log-1", undefined, undefined, oneHourAgo, 42),
+      createIteration("log-2", "PROJ-124", "Has a task", twoHoursAgo, 28),
     ],
   },
 }
@@ -134,15 +134,15 @@ export const WithoutTask: Story = {
 /** With long task titles. */
 export const LongTitles: Story = {
   args: {
-    eventLogs: [
-      createEventLog(
+    iterations: [
+      createIteration(
         "log-1",
         "PROJ-123",
         "This is a very long task title that should truncate properly in the panel when it overflows the available width",
         oneHourAgo,
         42,
       ),
-      createEventLog(
+      createIteration(
         "log-2",
         "PROJ-124",
         "Another extremely long title to test the truncation behavior of the component in various scenarios",
@@ -160,7 +160,7 @@ export const LongTitles: Story = {
 /** Verifies empty state message is shown when no iterations exist. */
 export const EmptyStateMessage: Story = {
   args: {
-    eventLogs: [],
+    iterations: [],
     isLoading: false,
     error: null,
   },
@@ -175,7 +175,7 @@ export const EmptyStateMessage: Story = {
 /** Verifies loading state is displayed correctly. */
 export const LoadingStateDisplay: Story = {
   args: {
-    eventLogs: [],
+    iterations: [],
     isLoading: true,
     error: null,
   },
@@ -190,7 +190,7 @@ export const LoadingStateDisplay: Story = {
 /** Verifies error state with retry button. */
 export const ErrorStateWithRetry: Story = {
   args: {
-    eventLogs: [],
+    iterations: [],
     isLoading: false,
     error: "Connection failed",
   },
@@ -212,7 +212,7 @@ export const ErrorStateWithRetry: Story = {
 /** Verifies search input is visible when iterations exist. */
 export const SearchInputVisible: Story = {
   args: {
-    eventLogs: [createEventLog("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -226,7 +226,7 @@ export const SearchInputVisible: Story = {
 /** Verifies search input is hidden when no iterations exist. */
 export const SearchInputHiddenWhenEmpty: Story = {
   args: {
-    eventLogs: [],
+    iterations: [],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -238,7 +238,7 @@ export const SearchInputHiddenWhenEmpty: Story = {
 /** Verifies clear button appears when search has text. */
 export const ClearButtonAppearsWithText: Story = {
   args: {
-    eventLogs: [createEventLog("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -260,7 +260,7 @@ export const ClearButtonAppearsWithText: Story = {
 /** Verifies clear button clears search text. */
 export const ClearButtonClearsText: Story = {
   args: {
-    eventLogs: [createEventLog("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -282,7 +282,7 @@ export const ClearButtonClearsText: Story = {
 /** Verifies searching with no matches shows 'no results' message. */
 export const NoResultsMessage: Story = {
   args: {
-    eventLogs: [createEventLog("log-1", "PROJ-123", "Fix bug", oneHourAgo, 42)],
+    iterations: [createIteration("log-1", "PROJ-123", "Fix bug", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -301,9 +301,9 @@ export const NoResultsMessage: Story = {
 /** Verifies date groups are shown correctly. */
 export const DateGroupsDisplay: Story = {
   args: {
-    eventLogs: [
-      createEventLog("log-1", "PROJ-123", "Today task", oneHourAgo, 42),
-      createEventLog("log-2", "PROJ-124", "Yesterday task", yesterday, 28),
+    iterations: [
+      createIteration("log-1", "PROJ-123", "Today task", oneHourAgo, 42),
+      createIteration("log-2", "PROJ-124", "Yesterday task", yesterday, 28),
     ],
   },
   play: async ({ canvasElement }) => {
@@ -324,7 +324,7 @@ export const DateGroupsDisplay: Story = {
 /** Verifies iteration items show event count. */
 export const ItemsShowEventCount: Story = {
   args: {
-    eventLogs: [createEventLog("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -338,7 +338,7 @@ export const ItemsShowEventCount: Story = {
 /** Verifies iteration items are clickable. */
 export const ItemsAreClickable: Story = {
   args: {
-    eventLogs: [createEventLog("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
@@ -354,7 +354,7 @@ export const ItemsAreClickable: Story = {
 /** Verifies iteration list has proper ARIA role. */
 export const ListHasProperAriaRole: Story = {
   args: {
-    eventLogs: [createEventLog("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -368,7 +368,7 @@ export const ListHasProperAriaRole: Story = {
 /** Verifies iteration item buttons have accessible labels. */
 export const ItemsHaveAccessibleLabels: Story = {
   args: {
-    eventLogs: [createEventLog("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -382,10 +382,10 @@ export const ItemsHaveAccessibleLabels: Story = {
 /** Verifies iteration count is shown in header. */
 export const ShowsIterationCount: Story = {
   args: {
-    eventLogs: [
-      createEventLog("log-1", "PROJ-123", "Task 1", oneHourAgo, 42),
-      createEventLog("log-2", "PROJ-124", "Task 2", twoHoursAgo, 28),
-      createEventLog("log-3", "PROJ-125", "Task 3", yesterday, 15),
+    iterations: [
+      createIteration("log-1", "PROJ-123", "Task 1", oneHourAgo, 42),
+      createIteration("log-2", "PROJ-124", "Task 2", twoHoursAgo, 28),
+      createIteration("log-3", "PROJ-125", "Task 3", yesterday, 15),
     ],
   },
   play: async ({ canvasElement }) => {

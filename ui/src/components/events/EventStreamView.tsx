@@ -4,7 +4,7 @@ import { ContentStreamContainer } from "@/components/shared/ContentStreamContain
 import { TopologySpinner } from "@/components/ui/TopologySpinner"
 import { EventList, useEventListState } from "./EventList"
 import { EventStreamIterationBar } from "./EventStreamIterationBar"
-import type { EventLogSummary } from "@/hooks"
+import type { IterationSummary } from "@/hooks"
 import type { IterationTask, IterationNavigationActions } from "@/hooks/useEventStream"
 import type { IterationTaskInfo } from "@/store"
 import type { ChatEvent, RalphStatus } from "@/types"
@@ -36,10 +36,10 @@ export interface EventStreamViewProps {
   iterationTask: IterationTask | null
   /** Task info for all iterations (indexed by iteration) */
   iterationTaskInfos: IterationTaskInfo[]
-  /** Event logs for history dropdown */
-  eventLogs: EventLogSummary[]
-  /** Whether event logs are loading */
-  isLoadingEventLogs: boolean
+  /** Past iterations for history dropdown */
+  iterations: IterationSummary[]
+  /** Whether iterations are loading */
+  isLoadingIterations: boolean
   /** Issue prefix for the workspace */
   issuePrefix: string | null
   /** Navigation actions */
@@ -69,8 +69,8 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       displayedIteration,
       iterationTask,
       iterationTaskInfos,
-      eventLogs,
-      isLoadingEventLogs,
+      iterations,
+      isLoadingIterations,
       issuePrefix,
       navigation,
     },
@@ -121,14 +121,14 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
           viewingIterationIndex={viewingIterationIndex}
           currentTask={iterationTask}
           iterationTaskInfos={iterationTaskInfos}
-          eventLogs={eventLogs}
-          isLoadingEventLogs={isLoadingEventLogs}
+          iterations={iterations}
+          isLoadingIterations={isLoadingIterations}
           issuePrefix={issuePrefix}
           onPrevious={navigation.goToPrevious}
           onNext={navigation.goToNext}
           onLatest={navigation.goToLatest}
           onIterationSelect={navigation.selectIteration}
-          onEventLogSelect={navigation.selectEventLog}
+          onIterationHistorySelect={navigation.selectIterationHistory}
         />
 
         <ContentStreamContainer

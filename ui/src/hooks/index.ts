@@ -65,6 +65,13 @@ export {
 } from "./useEventLogs"
 
 export {
+  useIterations,
+  type IterationSummary,
+  type UseIterationsOptions,
+  type UseIterationsResult,
+} from "./useIterations"
+
+export {
   useIterationPersistence,
   type UseIterationPersistenceOptions,
   type UseIterationPersistenceResult,

@@ -28,15 +28,15 @@ const defaultProps: Partial<EventStreamViewProps> = {
   displayedIteration: 1,
   iterationTask: null,
   iterationTaskInfos: [],
-  eventLogs: [],
-  isLoadingEventLogs: false,
+  iterations: [],
+  isLoadingIterations: false,
   issuePrefix: "r-",
   navigation: {
     goToPrevious: () => {},
     goToNext: () => {},
     goToLatest: () => {},
     selectIteration: () => {},
-    selectEventLog: () => {},
+    selectIterationHistory: () => {},
   },
 }
 

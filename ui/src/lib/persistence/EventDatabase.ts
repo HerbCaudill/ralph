@@ -249,6 +249,16 @@ export class EventDatabase {
   }
 
   /**
+   * List all iteration metadata across all instances, sorted by startedAt descending.
+   */
+  async listAllIterations(): Promise<IterationMetadata[]> {
+    const db = await this.ensureDb()
+    const all = await db.getAll(STORE_NAMES.ITERATION_METADATA)
+    // Sort by startedAt descending (most recent first)
+    return all.sort((a, b) => b.startedAt - a.startedAt)
+  }
+
+  /**
    * Get iterations for a specific task.
    */
   async getIterationsForTask(taskId: string): Promise<IterationMetadata[]> {

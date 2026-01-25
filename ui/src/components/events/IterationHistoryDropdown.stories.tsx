@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
-import type { EventLogSummary } from "@/hooks"
+import type { IterationSummary } from "@/hooks"
 import { fn } from "storybook/test"
 
 // Helper to create event log summaries
-function createEventLog(
+function createIteration(
   id: string,
   taskId: string | null,
   title: string | null,
   createdAt: string,
   eventCount: number,
-): EventLogSummary {
+): IterationSummary {
   return {
     id,
     createdAt,
@@ -46,11 +46,11 @@ const meta: Meta<typeof IterationHistoryDropdown> = {
     isViewingLatest: true,
     viewingIterationIndex: null,
     iterationTaskInfos: [],
-    eventLogs: [],
-    isLoadingEventLogs: false,
+    iterations: [],
+    isLoadingIterations: false,
     issuePrefix: "PROJ-",
     onIterationSelect: fn(),
-    onEventLogSelect: fn(),
+    onIterationHistorySelect: fn(),
     onLatest: fn(),
   },
 }
@@ -64,10 +64,10 @@ export const Default: Story = {
     iterationCount: 3,
     displayedIteration: 3,
     isViewingLatest: true,
-    eventLogs: [
-      createEventLog("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
-      createEventLog("log-2", "PROJ-119", "Previous task B", yesterday, 32),
-      createEventLog("log-3", "PROJ-118", "Older task", twoDaysAgo, 28),
+    iterations: [
+      createIteration("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
+      createIteration("log-2", "PROJ-119", "Previous task B", yesterday, 32),
+      createIteration("log-3", "PROJ-118", "Older task", twoDaysAgo, 28),
     ],
   },
 }
@@ -78,9 +78,9 @@ export const NoCurrentTask: Story = {
     iterationCount: 0,
     displayedIteration: 0,
     isViewingLatest: true,
-    eventLogs: [
-      createEventLog("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
-      createEventLog("log-2", "PROJ-119", "Previous task B", yesterday, 32),
+    iterations: [
+      createIteration("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
+      createIteration("log-2", "PROJ-119", "Previous task B", yesterday, 32),
     ],
   },
 }
@@ -91,7 +91,7 @@ export const SingleIteration: Story = {
     iterationCount: 1,
     displayedIteration: 1,
     isViewingLatest: true,
-    eventLogs: [],
+    iterations: [],
   },
 }
 
@@ -108,7 +108,7 @@ export const MultipleIterations: Story = {
       { id: "PROJ-120", title: "Add session handling" },
       { id: "PROJ-123", title: "Fix authentication bug" },
     ],
-    eventLogs: [],
+    iterations: [],
   },
 }
 
@@ -126,7 +126,7 @@ export const ViewingOlderIteration: Story = {
       { id: "PROJ-120", title: "Add session handling" },
       { id: "PROJ-123", title: "Fix authentication bug" },
     ],
-    eventLogs: [],
+    iterations: [],
   },
 }
 
@@ -136,8 +136,8 @@ export const LoadingEventLogs: Story = {
     iterationCount: 2,
     displayedIteration: 2,
     isViewingLatest: true,
-    isLoadingEventLogs: true,
-    eventLogs: [],
+    isLoadingIterations: true,
+    iterations: [],
   },
 }
 
@@ -147,8 +147,8 @@ export const EmptyHistory: Story = {
     iterationCount: 0,
     displayedIteration: 0,
     isViewingLatest: true,
-    eventLogs: [],
-    isLoadingEventLogs: false,
+    iterations: [],
+    isLoadingIterations: false,
   },
 }
 
@@ -158,13 +158,13 @@ export const ManyEventLogs: Story = {
     iterationCount: 2,
     displayedIteration: 2,
     isViewingLatest: true,
-    eventLogs: [
+    iterations: [
       // Today
-      createEventLog("today-1", "PROJ-120", "Task from today", oneHourAgo, 45),
-      createEventLog("today-2", "PROJ-119", "Earlier today", twoHoursAgo, 32),
+      createIteration("today-1", "PROJ-120", "Task from today", oneHourAgo, 45),
+      createIteration("today-2", "PROJ-119", "Earlier today", twoHoursAgo, 32),
       // Yesterday
-      createEventLog("yesterday-1", "PROJ-118", "Yesterday task 1", yesterday, 28),
-      createEventLog(
+      createIteration("yesterday-1", "PROJ-118", "Yesterday task 1", yesterday, 28),
+      createIteration(
         "yesterday-2",
         "PROJ-117",
         `${new Date(yesterday).toISOString().slice(0, 10)} task 2`,
@@ -172,8 +172,8 @@ export const ManyEventLogs: Story = {
         22,
       ),
       // Older
-      createEventLog("old-1", "PROJ-116", "Two days ago", twoDaysAgo, 15),
-      createEventLog("old-2", "PROJ-115", "Three days ago", threeDaysAgo, 12),
+      createIteration("old-1", "PROJ-116", "Two days ago", twoDaysAgo, 15),
+      createIteration("old-2", "PROJ-115", "Three days ago", threeDaysAgo, 12),
     ],
   },
 }
@@ -188,8 +188,8 @@ export const WithLongTaskTitles: Story = {
     iterationCount: 2,
     displayedIteration: 2,
     isViewingLatest: true,
-    eventLogs: [
-      createEventLog(
+    iterations: [
+      createIteration(
         "log-1",
         "PROJ-120",
         "Another extremely long title to test the truncation behavior of the iteration history dropdown component",
@@ -206,7 +206,7 @@ export const TaskWithoutId: Story = {
     iterationCount: 2,
     displayedIteration: 2,
     isViewingLatest: true,
-    eventLogs: [],
+    iterations: [],
   },
 }
 
@@ -216,10 +216,10 @@ export const EventLogsWithoutTaskInfo: Story = {
     iterationCount: 0,
     displayedIteration: 0,
     isViewingLatest: true,
-    eventLogs: [
-      createEventLog("log-1", null, null, oneHourAgo, 45),
-      createEventLog("log-2", "PROJ-119", null, yesterday, 32),
-      createEventLog("log-3", null, "Task with title only", twoDaysAgo, 28),
+    iterations: [
+      createIteration("log-1", null, null, oneHourAgo, 45),
+      createIteration("log-2", "PROJ-119", null, yesterday, 32),
+      createIteration("log-3", null, "Task with title only", twoDaysAgo, 28),
     ],
   },
 }
@@ -231,7 +231,9 @@ export const NoIssuePrefix: Story = {
     displayedIteration: 2,
     isViewingLatest: true,
     issuePrefix: null,
-    eventLogs: [createEventLog("log-1", "add-dark-mode", "Add dark mode support", oneHourAgo, 45)],
+    iterations: [
+      createIteration("log-1", "add-dark-mode", "Add dark mode support", oneHourAgo, 45),
+    ],
   },
 }
 
@@ -241,10 +243,10 @@ export const BothCurrentAndPastIterations: Story = {
     iterationCount: 4,
     displayedIteration: 4,
     isViewingLatest: true,
-    eventLogs: [
-      createEventLog("log-1", "PROJ-122", "Yesterday's bug fix", yesterday, 38),
-      createEventLog("log-2", "PROJ-121", "Previous feature", twoDaysAgo, 52),
-      createEventLog("log-3", "PROJ-120", "Refactoring work", threeDaysAgo, 25),
+    iterations: [
+      createIteration("log-1", "PROJ-122", "Yesterday's bug fix", yesterday, 38),
+      createIteration("log-2", "PROJ-121", "Previous feature", twoDaysAgo, 52),
+      createIteration("log-3", "PROJ-120", "Refactoring work", threeDaysAgo, 25),
     ],
   },
 }

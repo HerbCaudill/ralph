@@ -21,8 +21,8 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
     displayedIteration,
     iterationTask,
     iterationTaskInfos,
-    eventLogs,
-    isLoadingEventLogs,
+    iterations,
+    isLoadingIterations,
     issuePrefix,
     navigation,
     containerRef,
@@ -42,8 +42,8 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       displayedIteration={displayedIteration}
       iterationTask={iterationTask}
       iterationTaskInfos={iterationTaskInfos}
-      eventLogs={eventLogs}
-      isLoadingEventLogs={isLoadingEventLogs}
+      iterations={iterations}
+      isLoadingIterations={isLoadingIterations}
       issuePrefix={issuePrefix}
       navigation={navigation}
     />

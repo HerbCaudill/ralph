@@ -1,7 +1,7 @@
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
-import type { EventLogSummary } from "@/hooks"
+import type { IterationSummary } from "@/hooks"
 import type { IterationTaskInfo } from "@/store"
 
 /**
@@ -16,20 +16,20 @@ export function EventStreamIterationBar({
   viewingIterationIndex,
   currentTask,
   iterationTaskInfos,
-  eventLogs,
-  isLoadingEventLogs,
+  iterations,
+  isLoadingIterations,
   issuePrefix,
   onPrevious,
   onNext,
   onLatest,
   onIterationSelect,
-  onEventLogSelect,
+  onIterationHistorySelect,
 }: Props) {
   const hasMultipleIterations = iterationCount > 1
-  const hasEventLogs = eventLogs.length > 0
+  const hasIterations = iterations.length > 0
 
-  // Show dropdown when there are multiple iterations OR event logs to browse
-  const showDropdown = hasMultipleIterations || hasEventLogs || isLoadingEventLogs
+  // Show dropdown when there are multiple iterations OR iterations to browse
+  const showDropdown = hasMultipleIterations || hasIterations || isLoadingIterations
 
   return (
     <div
@@ -59,11 +59,11 @@ export function EventStreamIterationBar({
             isViewingLatest={isViewingLatest}
             viewingIterationIndex={viewingIterationIndex}
             iterationTaskInfos={iterationTaskInfos}
-            eventLogs={eventLogs}
-            isLoadingEventLogs={isLoadingEventLogs}
+            iterations={iterations}
+            isLoadingIterations={isLoadingIterations}
             issuePrefix={issuePrefix}
             onIterationSelect={onIterationSelect}
-            onEventLogSelect={onEventLogSelect}
+            onIterationHistorySelect={onIterationHistorySelect}
             onLatest={onLatest}
           />
         : currentTask ?
@@ -133,12 +133,12 @@ type Props = {
   viewingIterationIndex: number | null
   currentTask: { id: string | null; title: string } | null
   iterationTaskInfos: IterationTaskInfo[]
-  eventLogs: EventLogSummary[]
-  isLoadingEventLogs: boolean
+  iterations: IterationSummary[]
+  isLoadingIterations: boolean
   issuePrefix: string | null
   onPrevious: () => void
   onNext: () => void
   onLatest: () => void
   onIterationSelect: (index: number) => void
-  onEventLogSelect: (id: string) => void
+  onIterationHistorySelect: (id: string) => void
 }
