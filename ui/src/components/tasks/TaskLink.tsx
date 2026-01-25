@@ -25,8 +25,8 @@ export function TaskLink({ task, issuePrefix }: Props) {
     >
       {/* Only show icon for non-open statuses - open status shows a placeholder to maintain alignment */}
       {task.status !== "open" ?
-        <StatusIcon className={cn("h-3.5 w-3.5 shrink-0", config.color)} />
-      : <span className="h-3.5 w-3.5 shrink-0" />}
+        <StatusIcon className={cn("size-3.5 shrink-0", config.color)} />
+      : <span className="inline-block size-3.5 shrink-0" />}
       <span className="text-muted-foreground shrink-0 font-mono text-xs">
         {stripTaskPrefix(task.id, issuePrefix)}
       </span>
