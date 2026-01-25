@@ -16,160 +16,7 @@ import type {
   IterationInfo,
   EventLog,
 } from "@/types"
-import { TASK_LIST_CLOSED_FILTER_STORAGE_KEY } from "@/constants"
 import { persistConfig } from "./persist"
-
-export const SIDEBAR_WIDTH_STORAGE_KEY = "ralph-ui-sidebar-width"
-export const TASK_CHAT_WIDTH_STORAGE_KEY = "ralph-ui-task-chat-width"
-export const TASK_CHAT_OPEN_STORAGE_KEY = "ralph-ui-task-chat-open"
-export const SHOW_TOOL_OUTPUT_STORAGE_KEY = "ralph-ui-show-tool-output"
-export const ACTIVE_INSTANCE_ID_STORAGE_KEY = "ralph-ui-active-instance-id"
-
-/**  Load sidebar width from localStorage with validation. */
-function loadSidebarWidth(): number {
-  try {
-    const stored = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
-    if (stored) {
-      const parsed = parseInt(stored, 10)
-      if (!isNaN(parsed) && parsed >= 200 && parsed <= 600) {
-        return parsed
-      }
-    }
-  } catch {
-    // localStorage may not be available (SSR, private mode, etc.)
-  }
-  return 320 // default
-}
-
-/**  Save sidebar width to localStorage. */
-function saveSidebarWidth(width: number): void {
-  try {
-    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(width))
-  } catch {
-    // localStorage may not be available
-  }
-}
-
-/**  Load task chat panel width from localStorage with validation. */
-function loadTaskChatWidth(): number {
-  try {
-    const stored = localStorage.getItem(TASK_CHAT_WIDTH_STORAGE_KEY)
-    if (stored) {
-      const parsed = parseInt(stored, 10)
-      if (!isNaN(parsed) && parsed >= 280 && parsed <= 800) {
-        return parsed
-      }
-    }
-  } catch {
-    // localStorage may not be available (SSR, private mode, etc.)
-  }
-  return 400 // default
-}
-
-/**  Save task chat panel width to localStorage. */
-function saveTaskChatWidth(width: number): void {
-  try {
-    localStorage.setItem(TASK_CHAT_WIDTH_STORAGE_KEY, String(width))
-  } catch {
-    // localStorage may not be available
-  }
-}
-
-/**  Load task chat open/closed state from localStorage. */
-function loadTaskChatOpen(): boolean {
-  try {
-    const stored = localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)
-    if (stored === "true") return true
-    if (stored === "false") return false
-  } catch {
-    // localStorage may not be available (SSR, private mode, etc.)
-  }
-  return true // default - open
-}
-
-/**  Save task chat open/closed state to localStorage. */
-function saveTaskChatOpen(open: boolean): void {
-  try {
-    localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, String(open))
-  } catch {
-    // localStorage may not be available
-  }
-}
-
-/**  List of valid closed time filter options. */
-const CLOSED_TIME_FILTERS: ClosedTasksTimeFilter[] = [
-  "past_hour",
-  "past_4_hours",
-  "past_day",
-  "past_week",
-  "all_time",
-]
-
-/**  Load closed time filter from localStorage with validation. */
-function loadClosedTimeFilter(): ClosedTasksTimeFilter {
-  try {
-    const stored = localStorage.getItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY)
-    if (stored && CLOSED_TIME_FILTERS.includes(stored as ClosedTasksTimeFilter)) {
-      return stored as ClosedTasksTimeFilter
-    }
-  } catch {
-    // localStorage may not be available (SSR, private mode, etc.)
-  }
-  return "past_day" // default
-}
-
-/**  Save closed time filter to localStorage. */
-function saveClosedTimeFilter(filter: ClosedTasksTimeFilter): void {
-  try {
-    localStorage.setItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY, filter)
-  } catch {
-    // localStorage may not be available
-  }
-}
-
-/**  Load tool output visibility setting from localStorage. */
-function loadShowToolOutput(): boolean {
-  try {
-    const stored = localStorage.getItem(SHOW_TOOL_OUTPUT_STORAGE_KEY)
-    if (stored !== null) {
-      return stored === "true"
-    }
-  } catch {
-    // localStorage may not be available (SSR, private mode, etc.)
-  }
-  return false // default - collapsed
-}
-
-/**  Save tool output visibility setting to localStorage. */
-function saveShowToolOutput(show: boolean): void {
-  try {
-    localStorage.setItem(SHOW_TOOL_OUTPUT_STORAGE_KEY, String(show))
-  } catch {
-    // localStorage may not be available
-  }
-}
-
-/**  Load active instance ID from localStorage. */
-function loadActiveInstanceId(): string {
-  try {
-    const stored = localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)
-    if (stored && stored.trim().length > 0) {
-      return stored
-    }
-  } catch {
-    // localStorage may not be available (SSR, private mode, etc.)
-  }
-  return DEFAULT_INSTANCE_ID // default
-}
-
-/**  Save active instance ID to localStorage. */
-function saveActiveInstanceId(instanceId: string): void {
-  try {
-    localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, instanceId)
-  } catch {
-    // localStorage may not be available
-  }
-}
 
 /** Get the cutoff timestamp for a time filter */
 export function getTimeFilterCutoff(filter: ClosedTasksTimeFilter): Date | null {
@@ -702,32 +549,10 @@ const initialState: AppState = {
   taskChatEvents: [],
 }
 
-// Create the store with localStorage initialization
-const getInitialStateWithPersistence = (): AppState => {
-  // Create fresh instances Map to avoid shared state
-  const instances = createInitialInstances()
-
-  // Load activeInstanceId from localStorage, but validate it exists
-  // If the stored ID doesn't exist in instances, fall back to DEFAULT_INSTANCE_ID
-  const storedActiveId = loadActiveInstanceId()
-  const activeInstanceId = instances.has(storedActiveId) ? storedActiveId : DEFAULT_INSTANCE_ID
-
-  return {
-    ...initialState,
-    instances,
-    activeInstanceId,
-    sidebarWidth: loadSidebarWidth(),
-    taskChatWidth: loadTaskChatWidth(),
-    taskChatOpen: loadTaskChatOpen(),
-    closedTimeFilter: loadClosedTimeFilter(),
-    showToolOutput: loadShowToolOutput(),
-  }
-}
-
 export const useAppStore = create<AppState & AppActions>()(
   persist(
     set => ({
-      ...getInitialStateWithPersistence(),
+      ...initialState,
 
       // Ralph status
       setRalphStatus: status =>
@@ -1027,10 +852,7 @@ export const useAppStore = create<AppState & AppActions>()(
       // UI State
       setSidebarOpen: open => set({ sidebarOpen: open }),
       toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
-      setSidebarWidth: width => {
-        saveSidebarWidth(width)
-        set({ sidebarWidth: width })
-      },
+      setSidebarWidth: width => set({ sidebarWidth: width }),
 
       // Theme
       setTheme: theme => set({ theme }),
@@ -1049,20 +871,9 @@ export const useAppStore = create<AppState & AppActions>()(
         }),
 
       // Task chat panel
-      setTaskChatOpen: open => {
-        saveTaskChatOpen(open)
-        set({ taskChatOpen: open })
-      },
-      toggleTaskChat: () =>
-        set(state => {
-          const newValue = !state.taskChatOpen
-          saveTaskChatOpen(newValue)
-          return { taskChatOpen: newValue }
-        }),
-      setTaskChatWidth: width => {
-        saveTaskChatWidth(width)
-        set({ taskChatWidth: width })
-      },
+      setTaskChatOpen: open => set({ taskChatOpen: open }),
+      toggleTaskChat: () => set(state => ({ taskChatOpen: !state.taskChatOpen })),
+      setTaskChatWidth: width => set({ taskChatWidth: width }),
       addTaskChatMessage: message =>
         set(state => ({
           taskChatMessages: [...state.taskChatMessages, message],
@@ -1151,22 +962,11 @@ export const useAppStore = create<AppState & AppActions>()(
       setVisibleTaskIds: ids => set({ visibleTaskIds: ids }),
 
       // Closed time filter
-      setClosedTimeFilter: filter => {
-        saveClosedTimeFilter(filter)
-        set({ closedTimeFilter: filter })
-      },
+      setClosedTimeFilter: filter => set({ closedTimeFilter: filter }),
 
       // Tool output visibility
-      setShowToolOutput: show => {
-        saveShowToolOutput(show)
-        set({ showToolOutput: show })
-      },
-      toggleToolOutput: () =>
-        set(state => {
-          const newValue = !state.showToolOutput
-          saveShowToolOutput(newValue)
-          return { showToolOutput: newValue }
-        }),
+      setShowToolOutput: show => set({ showToolOutput: show }),
+      toggleToolOutput: () => set(state => ({ showToolOutput: !state.showToolOutput })),
 
       // Search visibility
       setSearchVisible: visible => set({ isSearchVisible: visible }),
@@ -1199,9 +999,6 @@ export const useAppStore = create<AppState & AppActions>()(
           if (state.activeInstanceId === instanceId) {
             return state
           }
-
-          // Persist to localStorage
-          saveActiveInstanceId(instanceId)
 
           // Get the new active instance to sync flat fields
           const instance = state.instances.get(instanceId)!
@@ -1236,9 +1033,6 @@ export const useAppStore = create<AppState & AppActions>()(
           )
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(id, newInstance)
-
-          // Persist to localStorage (auto-select the newly created instance)
-          saveActiveInstanceId(id)
 
           // Auto-select the newly created instance
           return {

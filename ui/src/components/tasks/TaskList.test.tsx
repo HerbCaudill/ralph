@@ -4,7 +4,8 @@ import { TaskList } from "./TaskList"
 import type { TaskCardTask } from "@/types"
 import { useAppStore } from "@/store"
 import type { TaskGroup } from "@/types"
-import { TASK_LIST_STATUS_STORAGE_KEY, TASK_LIST_CLOSED_FILTER_STORAGE_KEY } from "@/constants"
+import { TASK_LIST_STATUS_STORAGE_KEY } from "@/constants"
+import { PERSIST_NAME } from "@/store/persist"
 
 // Helper to get recent date (for closed tasks to be visible with default filter)
 const getRecentDate = () => new Date().toISOString()
@@ -1013,8 +1014,9 @@ describe("TaskList", () => {
       const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
       fireEvent.change(filterDropdown, { target: { value: "past_week" } })
 
-      // Store persists to localStorage automatically
-      expect(localStorage.getItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY)).toBe("past_week")
+      // Store persists to localStorage automatically via persist middleware
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.closedTimeFilter).toBe("past_week")
       expect(useAppStore.getState().closedTimeFilter).toBe("past_week")
     })
 
@@ -1042,7 +1044,8 @@ describe("TaskList", () => {
       fireEvent.change(filterDropdown, { target: { value: "past_week" } })
 
       // Time filter is stored via the global store, which always persists
-      expect(localStorage.getItem(TASK_LIST_CLOSED_FILTER_STORAGE_KEY)).toBe("past_week")
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.closedTimeFilter).toBe("past_week")
     })
 
     it("updates task count when filter changes", () => {

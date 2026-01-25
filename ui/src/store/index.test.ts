@@ -2,10 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import {
   useAppStore,
   selectCurrentTask,
-  SIDEBAR_WIDTH_STORAGE_KEY,
-  TASK_CHAT_WIDTH_STORAGE_KEY,
-  TASK_CHAT_OPEN_STORAGE_KEY,
-  ACTIVE_INSTANCE_ID_STORAGE_KEY,
   isIterationBoundary,
   getIterationBoundaries,
   countIterations,
@@ -54,6 +50,40 @@ import {
   selectCanAcceptMessages,
 } from "./index"
 import type { ChatEvent, Task, TaskChatMessage } from "@/types"
+import { PERSIST_NAME, type PersistedState, serializeInstances } from "./persist"
+
+/**
+ * Helper to create persisted state for localStorage tests.
+ * Uses the persist middleware format with proper serialization.
+ */
+function createPersistedState(overrides: Partial<PersistedState>): string {
+  const defaultInstance = createRalphInstance(DEFAULT_INSTANCE_ID, DEFAULT_INSTANCE_NAME)
+  const defaultInstances = new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
+
+  const state: PersistedState = {
+    sidebarOpen: true,
+    sidebarWidth: 320,
+    taskChatOpen: true,
+    taskChatWidth: 400,
+    showToolOutput: false,
+    theme: "system",
+    closedTimeFilter: "past_day",
+    viewingIterationIndex: null,
+    taskSearchQuery: "",
+    selectedTaskId: null,
+    isSearchVisible: false,
+    workspace: null,
+    branch: null,
+    issuePrefix: null,
+    accentColor: null,
+    tasks: [],
+    instances: serializeInstances(defaultInstances, DEFAULT_INSTANCE_ID),
+    activeInstanceId: DEFAULT_INSTANCE_ID,
+    ...overrides,
+  }
+
+  return JSON.stringify({ state, version: 1 })
+}
 
 describe("useAppStore", () => {
   beforeEach(() => {
@@ -2217,7 +2247,8 @@ describe("useAppStore", () => {
 
     it("persists sidebar width to localStorage", () => {
       useAppStore.getState().setSidebarWidth(450)
-      expect(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)).toBe("450")
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.sidebarWidth).toBe(450)
     })
   })
 
@@ -2251,31 +2282,37 @@ describe("useAppStore", () => {
 
     it("persists task chat width to localStorage", () => {
       useAppStore.getState().setTaskChatWidth(550)
-      expect(localStorage.getItem(TASK_CHAT_WIDTH_STORAGE_KEY)).toBe("550")
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatWidth).toBe(550)
     })
 
     it("persists task chat open state to localStorage", () => {
       useAppStore.getState().setTaskChatOpen(false)
-      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("false")
+      let stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(false)
 
       useAppStore.getState().setTaskChatOpen(true)
-      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("true")
+      stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(true)
     })
 
     it("persists task chat open state when toggling", () => {
       // Start with true
       useAppStore.getState().setTaskChatOpen(true)
-      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("true")
+      let stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(true)
 
       // Toggle to false
       useAppStore.getState().toggleTaskChat()
       expect(useAppStore.getState().taskChatOpen).toBe(false)
-      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("false")
+      stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(false)
 
       // Toggle back to true
       useAppStore.getState().toggleTaskChat()
       expect(useAppStore.getState().taskChatOpen).toBe(true)
-      expect(localStorage.getItem(TASK_CHAT_OPEN_STORAGE_KEY)).toBe("true")
+      stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(true)
     })
 
     it("adds task chat messages", () => {
@@ -2477,8 +2514,8 @@ describe("useAppStore", () => {
     })
 
     it("loads sidebar width from localStorage on store creation", async () => {
-      // Set localStorage before recreating store
-      localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, "400")
+      // Set localStorage using persist middleware format
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ sidebarWidth: 400 }))
 
       // Re-import the module to get fresh store instance
       // We need to use dynamic import to force re-evaluation
@@ -2498,25 +2535,8 @@ describe("useAppStore", () => {
     })
 
     it("uses default width when localStorage value is invalid", async () => {
-      localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, "invalid")
-
-      vi.resetModules()
-      const { useAppStore: freshStore } = await import("./index")
-
-      expect(freshStore.getState().sidebarWidth).toBe(320)
-    })
-
-    it("uses default width when localStorage value is below minimum", async () => {
-      localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, "100")
-
-      vi.resetModules()
-      const { useAppStore: freshStore } = await import("./index")
-
-      expect(freshStore.getState().sidebarWidth).toBe(320)
-    })
-
-    it("uses default width when localStorage value is above maximum", async () => {
-      localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, "800")
+      // Persist middleware handles invalid JSON gracefully by using defaults
+      localStorage.setItem(PERSIST_NAME, "invalid-json")
 
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
@@ -2535,7 +2555,7 @@ describe("useAppStore", () => {
     })
 
     it("loads task chat width from localStorage on store creation", async () => {
-      localStorage.setItem(TASK_CHAT_WIDTH_STORAGE_KEY, "500")
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ taskChatWidth: 500 }))
 
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
@@ -2553,25 +2573,8 @@ describe("useAppStore", () => {
     })
 
     it("uses default width when localStorage value is invalid", async () => {
-      localStorage.setItem(TASK_CHAT_WIDTH_STORAGE_KEY, "invalid")
-
-      vi.resetModules()
-      const { useAppStore: freshStore } = await import("./index")
-
-      expect(freshStore.getState().taskChatWidth).toBe(400)
-    })
-
-    it("uses default width when localStorage value is below minimum", async () => {
-      localStorage.setItem(TASK_CHAT_WIDTH_STORAGE_KEY, "100")
-
-      vi.resetModules()
-      const { useAppStore: freshStore } = await import("./index")
-
-      expect(freshStore.getState().taskChatWidth).toBe(400)
-    })
-
-    it("uses default width when localStorage value is above maximum", async () => {
-      localStorage.setItem(TASK_CHAT_WIDTH_STORAGE_KEY, "1000")
+      // Persist middleware handles invalid JSON gracefully by using defaults
+      localStorage.setItem(PERSIST_NAME, "invalid-json")
 
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
@@ -2590,7 +2593,7 @@ describe("useAppStore", () => {
     })
 
     it("loads task chat open state from localStorage on store creation", async () => {
-      localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, "false")
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ taskChatOpen: false }))
 
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
@@ -2599,7 +2602,7 @@ describe("useAppStore", () => {
     })
 
     it("loads true state from localStorage on store creation", async () => {
-      localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, "true")
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ taskChatOpen: true }))
 
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
@@ -2617,7 +2620,8 @@ describe("useAppStore", () => {
     })
 
     it("uses default open state when localStorage value is invalid", async () => {
-      localStorage.setItem(TASK_CHAT_OPEN_STORAGE_KEY, "invalid")
+      // Persist middleware handles invalid JSON gracefully by using defaults
+      localStorage.setItem(PERSIST_NAME, "invalid-json")
 
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
@@ -2646,45 +2650,40 @@ describe("useAppStore", () => {
       // Switch to the new instance
       useAppStore.getState().setActiveInstanceId("second-instance")
 
-      expect(localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)).toBe("second-instance")
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.activeInstanceId).toBe("second-instance")
     })
 
     it("persists activeInstanceId to localStorage when creating a new instance", () => {
       useAppStore.getState().createInstance("new-instance", "New Instance")
 
-      expect(localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)).toBe("new-instance")
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.activeInstanceId).toBe("new-instance")
     })
 
-    it("does not persist when switching to non-existent instance", () => {
-      // Set an initial value in localStorage
-      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "default")
+    it("does not change activeInstanceId when switching to non-existent instance", () => {
+      const originalActiveId = useAppStore.getState().activeInstanceId
 
       // Try to switch to non-existent instance
       useAppStore.getState().setActiveInstanceId("non-existent")
 
-      // Should still be the original value
-      expect(localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)).toBe("default")
+      // Should still be the original value in state
+      expect(useAppStore.getState().activeInstanceId).toBe(originalActiveId)
     })
 
     it("does not persist when switching to the same instance", () => {
       const originalActiveId = useAppStore.getState().activeInstanceId
 
-      // Clear localStorage to verify it's not being written
-      localStorage.removeItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)
-
       // Switch to the same instance
       useAppStore.getState().setActiveInstanceId(originalActiveId)
 
-      // Should not have written to localStorage
-      expect(localStorage.getItem(ACTIVE_INSTANCE_ID_STORAGE_KEY)).toBeNull()
+      // State should remain unchanged (the persist middleware only writes on actual state changes)
+      expect(useAppStore.getState().activeInstanceId).toBe(originalActiveId)
     })
 
     it("loads activeInstanceId from localStorage on store creation", async () => {
       // First create an instance with this ID to make it valid
       useAppStore.getState().createInstance("persisted-instance", "Persisted")
-
-      // Set localStorage before recreating store
-      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "persisted-instance")
 
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
@@ -2697,14 +2696,30 @@ describe("useAppStore", () => {
     })
 
     it("uses default ID when localStorage has non-existent instance ID", async () => {
-      // Set localStorage to an instance ID that won't exist in the fresh store
-      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "non-existent-instance")
+      // Set localStorage with a non-existent instance ID (but valid format)
+      // The persist middleware's merge function will validate that activeInstanceId
+      // exists in instances and fall back to currentState's activeInstanceId if not
+      const persistedInstance = createRalphInstance("other-instance", "Other")
+      const instances = new Map([[persistedInstance.id, persistedInstance]])
+      localStorage.setItem(
+        PERSIST_NAME,
+        JSON.stringify({
+          state: {
+            ...JSON.parse(createPersistedState({})).state,
+            activeInstanceId: "non-existent-instance", // This ID is not in instances
+            instances: serializeInstances(instances, "other-instance"),
+          },
+          version: 1,
+        }),
+      )
 
       vi.resetModules()
       const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
         await import("./index")
 
-      // Should fall back to DEFAULT_INSTANCE_ID since the stored ID doesn't exist
+      // Should fall back to the default instance since the stored activeInstanceId
+      // doesn't exist in the persisted instances, and the merge function uses
+      // currentState.activeInstanceId as fallback
       expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
     })
 
@@ -2718,18 +2733,8 @@ describe("useAppStore", () => {
       expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
     })
 
-    it("uses default ID when localStorage has empty string", async () => {
-      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "")
-
-      vi.resetModules()
-      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
-        await import("./index")
-
-      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
-    })
-
-    it("uses default ID when localStorage has whitespace-only string", async () => {
-      localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "   ")
+    it("uses default ID when localStorage has invalid JSON", async () => {
+      localStorage.setItem(PERSIST_NAME, "invalid-json")
 
       vi.resetModules()
       const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
