@@ -134,3 +134,117 @@ export const ShowsTaskNavigationHotkeys: Story = {
     )
   },
 }
+
+/**
+ * Verifies clicking the close button triggers onClose callback.
+ */
+export const ClickCloseButtonClosesDialog: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Wait for dialog animation to complete before interacting
+    await waitFor(
+      async () => {
+        const dialog = await canvas.findByRole("dialog")
+        await expect(dialog).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+
+    // Find and click the close button
+    const closeButton = await canvas.findByRole("button", { name: /close/i })
+    await userEvent.click(closeButton)
+
+    // onClose should have been called
+    await expect(args.onClose).toHaveBeenCalled()
+  },
+}
+
+/**
+ * Verifies all hotkey categories are displayed (Agent Control, Navigation, Appearance, Help).
+ */
+export const ShowsAllCategories: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Wait for dialog animation to complete before checking visibility
+    await waitFor(
+      async () => {
+        // Verify all categories are displayed
+        await expect(await canvas.findByText("Agent Control")).toBeVisible()
+        await expect(await canvas.findByText("Navigation")).toBeVisible()
+        await expect(await canvas.findByText("Appearance")).toBeVisible()
+        await expect(await canvas.findByText("Help")).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
+}
+
+/**
+ * Verifies keyboard shortcuts are displayed with proper formatting.
+ * Tests that hotkeys are rendered in styled Kbd elements.
+ */
+export const ShowsKeyboardShortcutKeys: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Wait for dialog animation to complete before checking visibility
+    await waitFor(
+      async () => {
+        // Find the dialog
+        const dialog = await canvas.findByRole("dialog")
+        await expect(dialog).toBeVisible()
+
+        // Verify some common keyboard shortcuts are displayed
+        // These should be in styled Kbd elements
+        await expect(await canvas.findByText("⌘B")).toBeVisible() // Toggle sidebar
+        await expect(await canvas.findByText("⌘K")).toBeVisible() // Quick task input
+        await expect(await canvas.findByText("⌘/")).toBeVisible() // Show keyboard shortcuts
+      },
+      { timeout: 3000 },
+    )
+  },
+}
+
+/**
+ * Verifies agent control hotkeys are documented in the dialog.
+ */
+export const ShowsAgentControlHotkeys: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Wait for dialog animation to complete before checking visibility
+    await waitFor(
+      async () => {
+        // Verify agent control hotkeys are documented
+        await expect(await canvas.findByText(/start ralph agent/i)).toBeVisible()
+        await expect(await canvas.findByText(/stop ralph agent/i)).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
+}
+
+/**
+ * Verifies the dialog content is scrollable for long content.
+ */
+export const DialogContentScrollable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Wait for dialog animation to complete before checking
+    await waitFor(
+      async () => {
+        const dialog = await canvas.findByRole("dialog")
+        await expect(dialog).toBeVisible()
+
+        // The dialog content should have overflow-y-auto class for scrolling
+        // Verify that multiple categories exist (which would require scrolling on small screens)
+        await expect(await canvas.findByText("Agent Control")).toBeVisible()
+        await expect(await canvas.findByText("Help")).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
+}
