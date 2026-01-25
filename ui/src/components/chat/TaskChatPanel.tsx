@@ -1,5 +1,6 @@
 import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
 import { EventList, useEventListState } from "@/components/events/EventList"
+import { TopologySpinner } from "@/components/ui/TopologySpinner"
 import { TASK_CHAT_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 import { clearTaskChatHistory } from "@/lib/clearTaskChatHistory"
 import { sendTaskChatMessage } from "@/lib/sendTaskChatMessage"
@@ -220,9 +221,12 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
             events={allEvents}
             loadingIndicator={
               isLoading && !streamingMessage ?
-                <div className="flex items-center gap-2 px-4 py-2">
-                  <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
-                  <span className="text-muted-foreground text-xs">Thinking...</span>
+                <div
+                  className="flex items-center justify-start px-4 py-4"
+                  aria-label="Task chat is loading"
+                  data-testid="task-chat-loading-spinner"
+                >
+                  <TopologySpinner />
                 </div>
               : null
             }
