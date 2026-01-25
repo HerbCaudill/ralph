@@ -12,6 +12,7 @@ Ralph UI provides a visual interface for managing and monitoring autonomous AI a
 - **Multi-Agent Support** - Choose between Claude and Codex agents
 - **Task Management** - Create, track, and organize tasks with dependencies
 - **Event Log Viewer** - Detailed view of agent actions, tool uses, and outputs
+- **Iteration History** - Automatic persistence of agent work sessions with full replay capability
 - **Dark Mode** - Customizable themes with VSCode color scheme support
 - **WebSocket Integration** - Live updates without polling
 
@@ -104,6 +105,40 @@ This design allows:
 - Switching agents at runtime
 - Testing with mock agents
 - Consistent event handling across all agents
+
+## Iteration Event Logs
+
+Ralph UI automatically saves iteration event logs when tasks complete. These logs capture the full agent conversation including messages, tool uses, and outputs, allowing you to review past work.
+
+### How It Works
+
+1. **Automatic Saving**: When a task is closed, the current iteration's events are saved to the browser's IndexedDB storage
+2. **Comment Link**: A closing comment is added to the task with a link to the saved event log (e.g., `#eventlog=abcd1234`)
+3. **Persistent Storage**: Event logs are stored locally in your browser and persist across sessions
+
+### Accessing Event Logs
+
+There are several ways to view saved iteration logs:
+
+- **Task Details Dialog**: Click any task to open its details. If the task has saved iterations, they appear in the "Iterations" section with timestamps and event counts
+- **History Panel**: Click the "History" button (clock icon) in the status bar to open a searchable panel showing all saved iterations across all tasks
+- **Comment Links**: Click any `#eventlog=...` link in task comments to view that specific iteration
+
+### Data Storage
+
+Event logs are stored in IndexedDB under the key `ralph-event-logs`. Each log includes:
+
+- Unique ID (8-character hex)
+- Task ID and title
+- Timestamp
+- Full event stream (messages, tool uses, outputs)
+- Workspace path
+
+### Notes
+
+- Event logs are stored **locally in your browser** - they don't sync across devices
+- Clearing browser data will remove saved event logs
+- There is currently no automatic cleanup of old logs
 
 ## Development
 

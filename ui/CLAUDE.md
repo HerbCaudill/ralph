@@ -198,6 +198,49 @@ pnpm test:watch    # Run unit tests in watch mode
 pnpm test:pw       # Run Playwright e2e tests
 ```
 
+## Iteration Event Logs
+
+Ralph UI persists iteration event logs to IndexedDB for later review. This section documents how the feature works.
+
+### Architecture
+
+The event log system consists of:
+
+1. **`eventDatabase`** (`src/lib/persistence/EventDatabase.ts`) - IndexedDB wrapper for storing event logs
+2. **`saveEventLogAndAddComment`** (`src/lib/saveEventLogAndAddComment.ts`) - Saves event logs when tasks close and adds a comment with a link
+3. **`useEventLogs`** (`src/hooks/useEventLogs.ts`) - Hook to query event logs from IndexedDB
+4. **`useEventLogRouter`** (`src/hooks/useEventLogRouter.ts`) - URL hash routing for `#eventlog={id}` links
+
+### Key Components
+
+- **IterationHistoryPanel** - Full history browser with search/filter, opened from status bar "History" button
+- **IterationLinks** - Shows saved iterations in task details dialog
+- **EventLogLink** - Renders `#eventlog=abcd1234` references as clickable links in comments
+
+### Event Log Flow
+
+1. User closes a task (or task completes)
+2. `saveEventLogAndAddComment()` is called with current events
+3. Events are saved to IndexedDB with a unique ID
+4. A closing comment is added to the task: `Closed. Event log: #eventlog=abcd1234`
+5. The `EventLogLink` component renders these as clickable links
+6. Clicking navigates via URL hash, which `useEventLogRouter` handles by fetching from IndexedDB
+
+### Data Model
+
+```typescript
+interface PersistedEventLog {
+  id: string // 8-char hex ID (e.g., "abcd1234")
+  taskId: string | null // Associated task ID
+  taskTitle: string | null
+  source: string // How it was created (e.g., "task-close")
+  workspacePath: string | null
+  createdAt: number // Timestamp
+  eventCount: number
+  events: ChatEvent[] // Full event stream
+}
+```
+
 ## Code Style
 
 - Use TypeScript for all code
