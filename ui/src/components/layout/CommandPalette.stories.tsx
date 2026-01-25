@@ -150,3 +150,157 @@ export const EscapeClosesDialog: Story = {
     await expect(args.onClose).toHaveBeenCalled()
   },
 }
+
+/**
+ * Verifies keyboard navigation with arrow keys.
+ * Tests that up/down arrows move between commands.
+ */
+export const KeyboardNavigation: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Get the command input (use findByTestId for async waiting)
+    const input = await canvas.findByTestId("command-input")
+    await expect(input).toBeVisible()
+
+    // First item is already selected by default in cmdk
+    const firstItem = await canvas.findByTestId("command-item-agentStart")
+    await expect(firstItem).toHaveAttribute("data-selected", "true")
+
+    // Press down arrow to move to second item
+    await userEvent.keyboard("{ArrowDown}")
+
+    // First item should no longer be selected
+    await expect(firstItem).toHaveAttribute("data-selected", "false")
+
+    // Second item should now be selected
+    const secondItem = await canvas.findByTestId("command-item-toggleSidebar")
+    await expect(secondItem).toHaveAttribute("data-selected", "true")
+
+    // Press up arrow to go back to first item
+    await userEvent.keyboard("{ArrowUp}")
+
+    // First item should be selected again
+    await expect(firstItem).toHaveAttribute("data-selected", "true")
+    await expect(secondItem).toHaveAttribute("data-selected", "false")
+  },
+}
+
+/**
+ * Verifies Enter key executes the currently selected command.
+ */
+export const EnterKeyExecutesCommand: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Get the command input
+    const input = await canvas.findByTestId("command-input")
+    await expect(input).toBeVisible()
+
+    // Navigate to toggleSidebar command by typing to filter
+    await userEvent.type(input, "sidebar")
+
+    // Press Enter to execute
+    await userEvent.keyboard("{Enter}")
+
+    // Handler should have been called
+    await expect(mockHandlers.toggleSidebar).toHaveBeenCalled()
+
+    // onClose should have been called
+    await expect(args.onClose).toHaveBeenCalled()
+  },
+}
+
+/**
+ * Verifies filtering by keywords (e.g., "dark" finds theme command).
+ */
+export const FilterByKeywords: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Get the command input
+    const input = await canvas.findByTestId("command-input")
+
+    // Type a keyword (theme command has "dark" as a keyword)
+    await userEvent.type(input, "dark")
+
+    // Theme command should be visible
+    await expect(await canvas.findByTestId("command-item-cycleTheme")).toBeVisible()
+  },
+}
+
+/**
+ * Verifies empty state when no commands match search.
+ */
+export const EmptyStateWhenNoMatch: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Get the command input
+    const input = await canvas.findByTestId("command-input")
+
+    // Type something that won't match any command
+    await userEvent.type(input, "xyznonexistent")
+
+    // Empty state message should be visible
+    await expect(await canvas.findByText("No commands found.")).toBeVisible()
+  },
+}
+
+/**
+ * Verifies that when Ralph is running, Stop Ralph is shown instead of Start Ralph.
+ */
+export const ShowsStopWhenRunning: Story = {
+  args: {
+    ralphStatus: "running",
+    isConnected: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Stop command should be visible
+    await expect(await canvas.findByTestId("command-item-agentStop")).toBeVisible()
+
+    // Start command should not be present
+    expect(canvas.queryByTestId("command-item-agentStart")).not.toBeInTheDocument()
+  },
+}
+
+/**
+ * Verifies that Pause Ralph changes to Resume Ralph when paused.
+ */
+export const ShowsResumeWhenPaused: Story = {
+  args: {
+    ralphStatus: "paused",
+    isConnected: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Should show "Resume Ralph" text
+    await expect(await canvas.findByText("Resume Ralph")).toBeVisible()
+  },
+}
+
+/**
+ * Verifies that agent commands are hidden when disconnected.
+ */
+export const HidesAgentCommandsWhenDisconnected: Story = {
+  args: {
+    ralphStatus: "stopped",
+    isConnected: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Command palette should be visible
+    await expect(await canvas.findByTestId("command-palette")).toBeVisible()
+
+    // Agent commands should not be present when disconnected
+    expect(canvas.queryByTestId("command-item-agentStart")).not.toBeInTheDocument()
+    expect(canvas.queryByTestId("command-item-agentStop")).not.toBeInTheDocument()
+
+    // Other commands should still be visible
+    await expect(await canvas.findByTestId("command-item-toggleSidebar")).toBeVisible()
+  },
+}
