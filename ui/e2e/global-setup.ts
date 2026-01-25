@@ -31,6 +31,13 @@ export default async function globalSetup() {
   execSync("git add README.md", { cwd: TEST_WORKSPACE_DIR, stdio: "pipe" })
   execSync('git commit -m "Initial commit"', { cwd: TEST_WORKSPACE_DIR, stdio: "pipe" })
 
+  // Ensure no stale .beads directory exists before init
+  // This handles edge cases where the directory wasn't fully cleaned up
+  const beadsDir = path.join(TEST_WORKSPACE_DIR, ".beads")
+  if (existsSync(beadsDir)) {
+    rmSync(beadsDir, { recursive: true, force: true })
+  }
+
   // Initialize beads with a test-specific prefix
   execSync("bd init --prefix e2e-test --quiet --skip-hooks --skip-merge-driver", {
     cwd: TEST_WORKSPACE_DIR,
