@@ -134,19 +134,35 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
   const displayedIteration =
     viewingIterationIndex !== null ? viewingIterationIndex + 1 : iterationCount
 
-  const loadingIndicator =
-    isRunning && isViewingLatest ?
-      <div
-        className="flex items-center justify-start px-4 py-4"
-        aria-label="Ralph is running"
-        data-testid="ralph-running-spinner"
-      >
-        <TopologySpinner />
-      </div>
-    : null
-
   // Use the shared hook to get content state for empty state handling
   const { hasContent } = useEventListState(iterationEvents, maxEvents)
+
+  // Show active spinner when running, stopped spinner when idle with content
+  const bottomIndicator = useMemo(() => {
+    if (isRunning && isViewingLatest) {
+      return (
+        <div
+          className="flex items-center justify-start px-4 py-4"
+          aria-label="Ralph is running"
+          data-testid="ralph-running-spinner"
+        >
+          <TopologySpinner />
+        </div>
+      )
+    }
+    if (hasContent && isViewingLatest) {
+      return (
+        <div
+          className="flex items-center justify-start px-4 py-4"
+          aria-label="Ralph is idle"
+          data-testid="ralph-idle-spinner"
+        >
+          <TopologySpinner stopped />
+        </div>
+      )
+    }
+    return null
+  }, [isRunning, isViewingLatest, hasContent])
 
   const emptyState = (
     <div className="flex h-full items-center justify-start px-4 py-4">
@@ -183,7 +199,7 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
           <EventList
             events={iterationEvents}
             maxEvents={maxEvents}
-            loadingIndicator={loadingIndicator}
+            loadingIndicator={bottomIndicator}
           />
         : null}
       </ContentStreamContainer>

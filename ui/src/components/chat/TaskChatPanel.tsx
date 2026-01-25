@@ -228,6 +228,14 @@ export function TaskChatPanel({ className, onClose }: TaskChatPanelProps) {
                 >
                   <TopologySpinner />
                 </div>
+              : hasContent ?
+                <div
+                  className="flex items-center justify-start px-4 py-4"
+                  aria-label="Task chat is idle"
+                  data-testid="task-chat-idle-spinner"
+                >
+                  <TopologySpinner stopped />
+                </div>
               : null
             }
           />

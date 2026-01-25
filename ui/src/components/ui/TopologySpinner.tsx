@@ -25,7 +25,11 @@ const TOPOLOGY_ICONS = [
 ]
 
 /**  Animated spinner that shows random topology icons while spinning and pulsating. */
-export function TopologySpinner({ className, duration = 1000 }: TopologySpinnerProps) {
+export function TopologySpinner({
+  className,
+  duration = 1000,
+  stopped = false,
+}: TopologySpinnerProps) {
   const [iconIndex, setIconIndex] = useState(() =>
     Math.floor(Math.random() * TOPOLOGY_ICONS.length),
   )
@@ -43,6 +47,15 @@ export function TopologySpinner({ className, duration = 1000 }: TopologySpinnerP
 
   const Icon = TOPOLOGY_ICONS[iconIndex]
 
+  if (stopped) {
+    return (
+      <Icon
+        className={cn("text-muted-foreground size-6 opacity-50", className)}
+        aria-hidden="true"
+      />
+    )
+  }
+
   return (
     <Icon
       className={cn("text-repo-accent animate-spin-pulse size-6", className)}
@@ -57,4 +70,6 @@ export interface TopologySpinnerProps {
   className?: string
   /** Duration of one full rotation in milliseconds. @default 1000 */
   duration?: number
+  /** When true, shows a static (non-animated) icon to indicate idle/stopped state. @default false */
+  stopped?: boolean
 }

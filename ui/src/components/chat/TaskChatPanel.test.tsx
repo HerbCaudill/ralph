@@ -147,6 +147,29 @@ describe("TaskChatPanel", () => {
       expect(screen.getByTestId("task-chat-loading-spinner")).toBeInTheDocument()
     })
 
+    it("shows idle spinner when not loading and has content", () => {
+      useAppStore.getState().setTaskChatLoading(false)
+      // Add a message so we have content
+      useAppStore.getState().addTaskChatMessage({
+        id: "user-1",
+        role: "user",
+        content: "Hello",
+        timestamp: Date.now(),
+      })
+
+      render(<TaskChatPanel />)
+      expect(screen.getByTestId("task-chat-idle-spinner")).toBeInTheDocument()
+      expect(screen.getByLabelText("Task chat is idle")).toBeInTheDocument()
+    })
+
+    it("does not show idle spinner in empty state", () => {
+      useAppStore.getState().setTaskChatLoading(false)
+      // No messages
+
+      render(<TaskChatPanel />)
+      expect(screen.queryByTestId("task-chat-idle-spinner")).not.toBeInTheDocument()
+    })
+
     it("shows waiting placeholder when loading", () => {
       useAppStore.getState().setTaskChatLoading(true)
 

@@ -75,4 +75,37 @@ describe("TopologySpinner", () => {
     const svg = document.querySelector("svg")
     expect(svg).toHaveAttribute("aria-hidden", "true")
   })
+
+  describe("stopped state", () => {
+    it("renders without animation when stopped", () => {
+      render(<TopologySpinner stopped />)
+      const svg = document.querySelector("svg")
+      expect(svg).not.toHaveClass("animate-spin-pulse")
+    })
+
+    it("has muted styling when stopped", () => {
+      render(<TopologySpinner stopped />)
+      const svg = document.querySelector("svg")
+      expect(svg).toHaveClass("text-muted-foreground")
+      expect(svg).toHaveClass("opacity-50")
+    })
+
+    it("does not have inline animation style when stopped", () => {
+      render(<TopologySpinner stopped duration={500} />)
+      const svg = document.querySelector("svg")
+      expect(svg).not.toHaveStyle({ animationDuration: "500ms" })
+    })
+
+    it("applies custom className when stopped", () => {
+      render(<TopologySpinner stopped className="custom-class" />)
+      const svg = document.querySelector("svg")
+      expect(svg).toHaveClass("custom-class")
+    })
+
+    it("is hidden from assistive technology when stopped", () => {
+      render(<TopologySpinner stopped />)
+      const svg = document.querySelector("svg")
+      expect(svg).toHaveAttribute("aria-hidden", "true")
+    })
+  })
 })

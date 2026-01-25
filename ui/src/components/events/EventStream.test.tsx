@@ -1055,7 +1055,7 @@ describe("EventStream", () => {
       expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
     })
 
-    it("does not show spinner when Ralph is stopped", () => {
+    it("shows idle spinner when Ralph is stopped with content", () => {
       useAppStore.getState().setRalphStatus("stopped")
       useAppStore.getState().addEvent({
         type: "user_message",
@@ -1064,9 +1064,11 @@ describe("EventStream", () => {
       })
       renderEventStream()
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
+      expect(screen.getByTestId("ralph-idle-spinner")).toBeInTheDocument()
+      expect(screen.getByLabelText("Ralph is idle")).toBeInTheDocument()
     })
 
-    it("does not show spinner when Ralph is paused", () => {
+    it("shows idle spinner when Ralph is paused with content", () => {
       useAppStore.getState().setRalphStatus("paused")
       useAppStore.getState().addEvent({
         type: "user_message",
@@ -1075,6 +1077,7 @@ describe("EventStream", () => {
       })
       renderEventStream()
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
+      expect(screen.getByTestId("ralph-idle-spinner")).toBeInTheDocument()
     })
 
     it("shows spinner in empty state (replaces 'no events yet' message)", () => {
@@ -1084,7 +1087,7 @@ describe("EventStream", () => {
       expect(screen.getByRole("log").querySelector("svg")).toBeInTheDocument()
     })
 
-    it("does not show spinner when viewing a completed iteration", () => {
+    it("does not show running or idle spinner when viewing a completed iteration", () => {
       // Add two iteration boundaries
       useAppStore.getState().addEvent({
         type: "system",
@@ -1119,8 +1122,9 @@ describe("EventStream", () => {
       expect(screen.getByText("First iteration message")).toBeInTheDocument()
       expect(screen.queryByText("Second iteration message")).not.toBeInTheDocument()
 
-      // Should NOT show spinner because we're viewing a completed iteration
+      // Should NOT show running or idle spinner because we're viewing a completed iteration
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("ralph-idle-spinner")).not.toBeInTheDocument()
     })
 
     it("shows spinner when viewing latest iteration and Ralph is running", () => {
