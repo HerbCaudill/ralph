@@ -26,7 +26,7 @@ export function TaskChatController({ className, onClose }: TaskChatControllerPro
       className={className}
       events={events}
       isLoading={isLoading}
-      isDisabled={!isConnected || isLoading}
+      isDisabled={!isConnected}
       error={error}
       placeholder={placeholder}
       storageKey={storageKey}

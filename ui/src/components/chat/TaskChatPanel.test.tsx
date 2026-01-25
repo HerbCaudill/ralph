@@ -177,11 +177,12 @@ describe("TaskChatPanel", () => {
       expect(screen.getByPlaceholderText("Waiting for response...")).toBeInTheDocument()
     })
 
-    it("disables input when loading", () => {
+    it("allows typing while loading", () => {
       useAppStore.getState().setTaskChatLoading(true)
 
       render(<TaskChatPanel />)
-      expect(screen.getByRole("textbox")).toBeDisabled()
+      // Input should NOT be disabled during loading - user can type ahead
+      expect(screen.getByRole("textbox")).not.toBeDisabled()
     })
   })
 
@@ -326,8 +327,8 @@ describe("TaskChatPanel", () => {
         expect(mockFetch).toHaveBeenCalled()
       })
 
-      // Input is disabled while loading
-      expect(input).toBeDisabled()
+      // Input is NOT disabled while loading - user can type ahead
+      expect(input).not.toBeDisabled()
 
       // Simulate loading completing (as would happen via WebSocket)
       await act(async () => {
