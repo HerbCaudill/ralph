@@ -27,6 +27,7 @@ const defaultProps: Partial<EventStreamViewProps> = {
   iterationCount: 1,
   displayedIteration: 1,
   iterationTask: null,
+  iterationTaskInfos: [],
   eventLogs: [],
   isLoadingEventLogs: false,
   issuePrefix: "r-",
@@ -610,6 +611,11 @@ export const WithMultipleIterations: Story = {
       id: "r-abc1",
       title: "Implement dark mode toggle",
     },
+    iterationTaskInfos: [
+      { id: "r-xyz1", title: "Initial setup" },
+      { id: "r-xyz2", title: "Add theme provider" },
+      { id: "r-abc1", title: "Implement dark mode toggle" },
+    ],
   },
 }
 
@@ -631,5 +637,10 @@ export const ViewingPastIteration: Story = {
       id: "r-xyz2",
       title: "Fix authentication bug",
     },
+    iterationTaskInfos: [
+      { id: "r-xyz2", title: "Fix authentication bug" },
+      { id: "r-xyz3", title: "Add logout button" },
+      { id: "r-xyz4", title: "Session management" },
+    ],
   },
 }

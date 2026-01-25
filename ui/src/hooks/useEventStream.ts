@@ -12,6 +12,8 @@ import {
   selectIssuePrefix,
   getEventsForIteration,
   countIterations,
+  getIterationTaskInfos,
+  type IterationTaskInfo,
 } from "@/store"
 import { useEventLogs, useEventLogRouter } from "@/hooks"
 import type { EventLogSummary } from "@/hooks"
@@ -54,6 +56,8 @@ export interface UseEventStreamResult {
   displayedIteration: number
   /** Current task for the iteration */
   iterationTask: IterationTask | null
+  /** Task info for all iterations (indexed by iteration) */
+  iterationTaskInfos: IterationTaskInfo[]
   /** Event logs for history dropdown */
   eventLogs: EventLogSummary[]
   /** Whether event logs are loading */
@@ -110,6 +114,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     () => getEventsForIteration(allEvents, viewingIterationIndex),
     [allEvents, viewingIterationIndex],
   )
+  const iterationTaskInfos = useMemo(() => getIterationTaskInfos(allEvents), [allEvents])
 
   // Determine the current task for the iteration
   const iterationTask = useMemo((): IterationTask | null => {
@@ -205,6 +210,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     iterationCount,
     displayedIteration,
     iterationTask,
+    iterationTaskInfos,
     eventLogs,
     isLoadingEventLogs,
     issuePrefix,

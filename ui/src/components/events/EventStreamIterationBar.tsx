@@ -2,6 +2,7 @@ import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
 import type { EventLogSummary } from "@/hooks"
+import type { IterationTaskInfo } from "@/store"
 
 /**
  * Navigation bar for switching between iterations and viewing task information.
@@ -14,6 +15,7 @@ export function EventStreamIterationBar({
   isViewingLatest,
   viewingIterationIndex,
   currentTask,
+  iterationTaskInfos,
   eventLogs,
   isLoadingEventLogs,
   issuePrefix,
@@ -56,6 +58,7 @@ export function EventStreamIterationBar({
             displayedIteration={displayedIteration}
             isViewingLatest={isViewingLatest}
             viewingIterationIndex={viewingIterationIndex}
+            iterationTaskInfos={iterationTaskInfos}
             eventLogs={eventLogs}
             isLoadingEventLogs={isLoadingEventLogs}
             issuePrefix={issuePrefix}
@@ -129,6 +132,7 @@ type Props = {
   isViewingLatest: boolean
   viewingIterationIndex: number | null
   currentTask: { id: string | null; title: string } | null
+  iterationTaskInfos: IterationTaskInfo[]
   eventLogs: EventLogSummary[]
   isLoadingEventLogs: boolean
   issuePrefix: string | null

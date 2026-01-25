@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { formatEventLogTime } from "@/lib/formatEventLogDate"
 import type { EventLogSummary } from "@/hooks"
+import type { IterationTaskInfo } from "@/store"
 
 /**
  * Dropdown for selecting iterations - both current session iterations and past event logs.
@@ -24,6 +25,7 @@ export function IterationHistoryDropdown({
   displayedIteration,
   isViewingLatest,
   viewingIterationIndex,
+  iterationTaskInfos,
   eventLogs,
   isLoadingEventLogs,
   issuePrefix,
@@ -114,13 +116,18 @@ export function IterationHistoryDropdown({
   // Build current session iteration items (only show if more than 1)
   const currentSessionItems = useMemo(() => {
     if (iterationCount <= 1) return []
-    return Array.from({ length: iterationCount }, (_, i) => ({
-      index: i,
-      label: `Iteration ${i + 1}`,
-      isLatest: i === iterationCount - 1,
-      isSelected: isViewingLatest ? i === iterationCount - 1 : viewingIterationIndex === i,
-    }))
-  }, [iterationCount, isViewingLatest, viewingIterationIndex])
+    return Array.from({ length: iterationCount }, (_, i) => {
+      const taskInfo = iterationTaskInfos[i]
+      return {
+        index: i,
+        label: `Iteration ${i + 1}`,
+        taskId: taskInfo?.id ?? null,
+        taskTitle: taskInfo?.title ?? null,
+        isLatest: i === iterationCount - 1,
+        isSelected: isViewingLatest ? i === iterationCount - 1 : viewingIterationIndex === i,
+      }
+    })
+  }, [iterationCount, isViewingLatest, viewingIterationIndex, iterationTaskInfos])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -155,15 +162,26 @@ export function IterationHistoryDropdown({
                 {currentSessionItems.map(item => (
                   <CommandItem
                     key={`iteration-${item.index}`}
-                    value={item.label}
+                    value={`${item.label} ${item.taskId || ""} ${item.taskTitle || ""}`}
                     onSelect={() =>
                       item.isLatest ? handleLatest() : handleIterationSelect(item.index)
                     }
-                    className={cn(item.isSelected && "bg-repo-accent")}
+                    className={cn(item.isSelected && "bg-repo-accent", "flex items-center gap-2")}
                   >
-                    <span className="flex-1">{item.label}</span>
+                    <IconHistory className="text-muted-foreground size-4 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground shrink-0 text-xs">{item.label}</span>
+                        {item.taskId && (
+                          <span className="text-muted-foreground shrink-0 font-mono text-xs">
+                            {stripTaskPrefix(item.taskId, issuePrefix)}
+                          </span>
+                        )}
+                      </div>
+                      {item.taskTitle && <div className="truncate text-sm">{item.taskTitle}</div>}
+                    </div>
                     {item.isLatest && (
-                      <span className="bg-repo-accent text-repo-accent-foreground rounded px-1.5 py-0.5 text-xs">
+                      <span className="bg-repo-accent text-repo-accent-foreground shrink-0 rounded px-1.5 py-0.5 text-xs">
                         Latest
                       </span>
                     )}
@@ -240,6 +258,8 @@ export interface IterationHistoryDropdownProps {
   isViewingLatest: boolean
   /** Currently viewing iteration index (null if viewing latest) */
   viewingIterationIndex: number | null
+  /** Task info for all iterations (indexed by iteration) */
+  iterationTaskInfos: IterationTaskInfo[]
   /** List of past event log summaries */
   eventLogs: EventLogSummary[]
   /** Whether event logs are loading */

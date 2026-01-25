@@ -11,6 +11,7 @@ import {
   countIterations,
   getEventsForIteration,
   getTaskFromIterationEvents,
+  getIterationTaskInfos,
   selectIterationCount,
   selectCurrentIterationEvents,
   selectViewingIterationIndex,
@@ -1861,6 +1862,85 @@ describe("useAppStore", () => {
         ] as ChatEvent[]
         const task = getTaskFromIterationEvents(events)
         expect(task).toEqual({ id: "rui-111", title: "First task" })
+      })
+    })
+
+    describe("getIterationTaskInfos", () => {
+      it("returns empty array when no events", () => {
+        expect(getIterationTaskInfos([])).toEqual([])
+      })
+
+      it("returns empty array when no iteration boundaries", () => {
+        const events = [
+          { type: "assistant", timestamp: 1000 },
+          { type: "user_message", timestamp: 1001 },
+        ] as ChatEvent[]
+        expect(getIterationTaskInfos(events)).toEqual([])
+      })
+
+      it("returns task info for each iteration", () => {
+        const events = [
+          // First iteration
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-111",
+            taskTitle: "First task",
+          },
+          { type: "assistant", timestamp: 1002 },
+          // Second iteration
+          { type: "system", timestamp: 2000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 2001,
+            taskId: "rui-222",
+            taskTitle: "Second task",
+          },
+          { type: "assistant", timestamp: 2002 },
+          // Third iteration
+          { type: "system", timestamp: 3000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 3001,
+            taskId: "rui-333",
+            taskTitle: "Third task",
+          },
+        ] as ChatEvent[]
+        expect(getIterationTaskInfos(events)).toEqual([
+          { id: "rui-111", title: "First task" },
+          { id: "rui-222", title: "Second task" },
+          { id: "rui-333", title: "Third task" },
+        ])
+      })
+
+      it("returns null values for iterations without tasks", () => {
+        const events = [
+          // First iteration - has task
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-111",
+            taskTitle: "First task",
+          },
+          // Second iteration - no task
+          { type: "system", timestamp: 2000, subtype: "init" },
+          { type: "assistant", timestamp: 2001 },
+          // Third iteration - has task
+          { type: "system", timestamp: 3000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 3001,
+            taskId: "rui-333",
+            taskTitle: "Third task",
+          },
+        ] as ChatEvent[]
+        expect(getIterationTaskInfos(events)).toEqual([
+          { id: "rui-111", title: "First task" },
+          { id: null, title: null },
+          { id: "rui-333", title: "Third task" },
+        ])
       })
     })
 

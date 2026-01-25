@@ -563,6 +563,32 @@ export function getTaskFromIterationEvents(
   return null
 }
 
+/** Task info for a single iteration */
+export interface IterationTaskInfo {
+  id: string | null
+  title: string | null
+}
+
+/**
+ * Gets task information for all iterations.
+ * Returns an array where each element corresponds to an iteration index.
+ * Each element contains the task id and title for that iteration (or null values if no task).
+ */
+export function getIterationTaskInfos(events: ChatEvent[]): IterationTaskInfo[] {
+  const boundaries = getIterationBoundaries(events)
+  if (boundaries.length === 0) return []
+
+  return boundaries.map((startIndex, i) => {
+    const endIndex = boundaries[i + 1] ?? events.length
+    const iterationEvents = events.slice(startIndex, endIndex)
+    const taskInfo = getTaskFromIterationEvents(iterationEvents)
+    return {
+      id: taskInfo?.id ?? null,
+      title: taskInfo?.title ?? null,
+    }
+  })
+}
+
 const defaultSidebarWidth = 320
 const defaultTaskChatWidth = 400
 

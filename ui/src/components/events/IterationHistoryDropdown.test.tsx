@@ -35,6 +35,7 @@ describe("IterationHistoryDropdown", () => {
     displayedIteration: 1,
     isViewingLatest: true,
     viewingIterationIndex: null,
+    iterationTaskInfos: [],
     eventLogs: [] as EventLogSummary[],
     isLoadingEventLogs: false,
     issuePrefix: null,

@@ -45,6 +45,7 @@ const meta: Meta<typeof IterationHistoryDropdown> = {
     displayedIteration: 0,
     isViewingLatest: true,
     viewingIterationIndex: null,
+    iterationTaskInfos: [],
     eventLogs: [],
     isLoadingEventLogs: false,
     issuePrefix: "PROJ-",
@@ -100,6 +101,13 @@ export const MultipleIterations: Story = {
     iterationCount: 5,
     displayedIteration: 5,
     isViewingLatest: true,
+    iterationTaskInfos: [
+      { id: "PROJ-100", title: "Initial task setup" },
+      { id: "PROJ-110", title: "Add user model" },
+      { id: "PROJ-115", title: "Implement login endpoint" },
+      { id: "PROJ-120", title: "Add session handling" },
+      { id: "PROJ-123", title: "Fix authentication bug" },
+    ],
     eventLogs: [],
   },
 }
@@ -111,6 +119,13 @@ export const ViewingOlderIteration: Story = {
     displayedIteration: 3,
     isViewingLatest: false,
     viewingIterationIndex: 2,
+    iterationTaskInfos: [
+      { id: "PROJ-100", title: "Initial task setup" },
+      { id: "PROJ-110", title: "Add user model" },
+      { id: "PROJ-115", title: "Implement login endpoint" },
+      { id: "PROJ-120", title: "Add session handling" },
+      { id: "PROJ-123", title: "Fix authentication bug" },
+    ],
     eventLogs: [],
   },
 }

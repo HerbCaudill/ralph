@@ -6,6 +6,7 @@ import { EventList, useEventListState } from "./EventList"
 import { EventStreamIterationBar } from "./EventStreamIterationBar"
 import type { EventLogSummary } from "@/hooks"
 import type { IterationTask, IterationNavigationActions } from "@/hooks/useEventStream"
+import type { IterationTaskInfo } from "@/store"
 import type { ChatEvent, RalphStatus } from "@/types"
 
 /**
@@ -33,6 +34,8 @@ export interface EventStreamViewProps {
   displayedIteration: number
   /** Current task for the iteration */
   iterationTask: IterationTask | null
+  /** Task info for all iterations (indexed by iteration) */
+  iterationTaskInfos: IterationTaskInfo[]
   /** Event logs for history dropdown */
   eventLogs: EventLogSummary[]
   /** Whether event logs are loading */
@@ -65,6 +68,7 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       iterationCount,
       displayedIteration,
       iterationTask,
+      iterationTaskInfos,
       eventLogs,
       isLoadingEventLogs,
       issuePrefix,
@@ -116,6 +120,7 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
           isViewingLatest={isViewingLatest}
           viewingIterationIndex={viewingIterationIndex}
           currentTask={iterationTask}
+          iterationTaskInfos={iterationTaskInfos}
           eventLogs={eventLogs}
           isLoadingEventLogs={isLoadingEventLogs}
           issuePrefix={issuePrefix}
