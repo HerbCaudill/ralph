@@ -1,11 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { EventStream } from "./EventStream"
-import { useAppStore } from "@/store"
-import { useEffect } from "react"
+import { EventStreamView } from "./EventStreamView"
+import type { EventStreamViewProps } from "./EventStreamView"
 
-const meta: Meta<typeof EventStream> = {
+const meta: Meta<typeof EventStreamView> = {
   title: "Collections/EventStream",
-  component: EventStream,
+  component: EventStreamView,
   parameters: {},
   decorators: [
     Story => (
@@ -19,18 +18,25 @@ const meta: Meta<typeof EventStream> = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Helper to add events to the store */
-function EventLoader({
-  events,
-}: {
-  events: Array<{ type: string; timestamp: number; [key: string]: unknown }>
-}) {
-  useEffect(() => {
-    const store = useAppStore.getState()
-    store.clearEvents()
-    events.forEach(event => store.addEvent(event))
-  }, [events])
-  return null
+/** Default props for stories */
+const defaultProps: Partial<EventStreamViewProps> = {
+  ralphStatus: "stopped",
+  viewingIterationIndex: null,
+  isViewingLatest: true,
+  isRunning: false,
+  iterationCount: 1,
+  displayedIteration: 1,
+  iterationTask: null,
+  eventLogs: [],
+  isLoadingEventLogs: false,
+  issuePrefix: "r-",
+  navigation: {
+    goToPrevious: () => {},
+    goToNext: () => {},
+    goToLatest: () => {},
+    selectIteration: () => {},
+    selectEventLog: () => {},
+  },
 }
 
 /** Real events formatted for the event structure */
@@ -229,155 +235,142 @@ describe("App", () => {
 ]
 
 export const Default: Story = {
-  render: args => (
-    <>
-      <EventLoader events={realEvents} />
-      <EventStream {...args} />
-    </>
-  ),
+  args: {
+    ...defaultProps,
+    iterationEvents: realEvents,
+  },
 }
 
 export const Empty: Story = {
-  render: args => (
-    <>
-      <EventLoader events={[]} />
-      <EventStream {...args} />
-    </>
-  ),
+  args: {
+    ...defaultProps,
+    iterationEvents: [],
+  },
 }
 
 export const SingleUserMessage: Story = {
-  render: args => (
-    <>
-      <EventLoader
-        events={[
-          {
-            type: "user_message",
-            timestamp: Date.now(),
-            message: "Hello! Can you help me refactor the authentication module?",
-          },
-        ]}
-      />
-      <EventStream {...args} />
-    </>
-  ),
+  args: {
+    ...defaultProps,
+    iterationEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now(),
+        message: "Hello! Can you help me refactor the authentication module?",
+      },
+    ],
+  },
 }
 
 export const ConversationFlow: Story = {
-  render: args => (
-    <>
-      <EventLoader
-        events={[
-          {
-            type: "user_message",
-            timestamp: Date.now() - 30000,
-            message: "What files handle user authentication?",
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 28000,
-            message: {
-              content: [
-                {
-                  type: "text",
-                  text: "Let me search for authentication-related files in your codebase.",
-                },
-                {
-                  type: "tool_use",
-                  id: "toolu_grep",
-                  name: "Grep",
-                  input: { pattern: "authenticate|auth|login", path: "src" },
-                },
-              ],
+  args: {
+    ...defaultProps,
+    iterationEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now() - 30000,
+        message: "What files handle user authentication?",
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 28000,
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "Let me search for authentication-related files in your codebase.",
             },
-          },
-          {
-            type: "user",
-            timestamp: Date.now() - 25000,
-            tool_use_result: "Found files",
-            message: {
-              content: [
-                {
-                  type: "tool_result",
-                  tool_use_id: "toolu_grep",
-                  content: "src/auth/login.ts\nsrc/auth/middleware.ts\nsrc/hooks/useAuth.ts",
-                  is_error: false,
-                },
-              ],
+            {
+              type: "tool_use",
+              id: "toolu_grep",
+              name: "Grep",
+              input: { pattern: "authenticate|auth|login", path: "src" },
             },
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 22000,
-            message: {
-              content: [
-                {
-                  type: "text",
-                  text: "I found three files related to authentication:\n\n- `src/auth/login.ts` - Main login logic\n- `src/auth/middleware.ts` - Auth middleware for API routes\n- `src/hooks/useAuth.ts` - React hook for auth state\n\nWould you like me to examine any of these in detail?",
-                },
-              ],
+          ],
+        },
+      },
+      {
+        type: "user",
+        timestamp: Date.now() - 25000,
+        tool_use_result: "Found files",
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_grep",
+              content: "src/auth/login.ts\nsrc/auth/middleware.ts\nsrc/hooks/useAuth.ts",
+              is_error: false,
             },
-          },
-          {
-            type: "user_message",
-            timestamp: Date.now() - 10000,
-            message: "Yes, please show me the useAuth hook",
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 8000,
-            message: {
-              content: [
-                {
-                  type: "tool_use",
-                  id: "toolu_read",
-                  name: "Read",
-                  input: { file_path: "src/hooks/useAuth.ts" },
-                },
-              ],
+          ],
+        },
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 22000,
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "I found three files related to authentication:\n\n- `src/auth/login.ts` - Main login logic\n- `src/auth/middleware.ts` - Auth middleware for API routes\n- `src/hooks/useAuth.ts` - React hook for auth state\n\nWould you like me to examine any of these in detail?",
             },
-          },
-        ]}
-      />
-      <EventStream {...args} />
-    </>
-  ),
+          ],
+        },
+      },
+      {
+        type: "user_message",
+        timestamp: Date.now() - 10000,
+        message: "Yes, please show me the useAuth hook",
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 8000,
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_read",
+              name: "Read",
+              input: { file_path: "src/hooks/useAuth.ts" },
+            },
+          ],
+        },
+      },
+    ],
+  },
 }
 
 export const WithBashOutput: Story = {
-  render: args => (
-    <>
-      <EventLoader
-        events={[
-          {
-            type: "user_message",
-            timestamp: Date.now() - 20000,
-            message: "Run the tests",
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 18000,
-            message: {
-              content: [
-                {
-                  type: "tool_use",
-                  id: "toolu_bash",
-                  name: "Bash",
-                  input: { command: "pnpm test", description: "Run unit tests" },
-                },
-              ],
+  args: {
+    ...defaultProps,
+    iterationEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now() - 20000,
+        message: "Run the tests",
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 18000,
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_bash",
+              name: "Bash",
+              input: { command: "pnpm test", description: "Run unit tests" },
             },
-          },
-          {
-            type: "user",
-            timestamp: Date.now() - 10000,
-            tool_use_result: "Test output",
-            message: {
-              content: [
-                {
-                  type: "tool_result",
-                  tool_use_id: "toolu_bash",
-                  content: `✓ src/components/Button.test.tsx (5 tests) 42ms
+          ],
+        },
+      },
+      {
+        type: "user",
+        timestamp: Date.now() - 10000,
+        tool_use_result: "Test output",
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_bash",
+              content: `✓ src/components/Button.test.tsx (5 tests) 42ms
 ✓ src/components/Input.test.tsx (8 tests) 38ms
 ✓ src/hooks/useAuth.test.ts (12 tests) 65ms
 ✓ src/utils/format.test.ts (20 tests) 23ms
@@ -386,215 +379,257 @@ Test Files  4 passed (4)
      Tests  45 passed (45)
   Start at  14:32:10
   Duration  1.2s`,
-                  is_error: false,
-                },
-              ],
+              is_error: false,
             },
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 5000,
-            message: {
-              content: [
-                {
-                  type: "text",
-                  text: "All 45 tests passed across 4 test files. The test suite completed in 1.2 seconds.",
-                },
-              ],
-            },
-          },
-        ]}
-      />
-      <EventStream {...args} />
-    </>
-  ),
-}
-
-export const WithError: Story = {
-  render: args => (
-    <>
-      <EventLoader
-        events={[
-          {
-            type: "user_message",
-            timestamp: Date.now() - 15000,
-            message: "Build the project",
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 13000,
-            message: {
-              content: [
-                {
-                  type: "tool_use",
-                  id: "toolu_build",
-                  name: "Bash",
-                  input: { command: "pnpm build", description: "Build for production" },
-                },
-              ],
-            },
-          },
-          {
-            type: "user",
-            timestamp: Date.now() - 8000,
-            tool_use_result: "Build failed",
-            message: {
-              content: [
-                {
-                  type: "tool_result",
-                  tool_use_id: "toolu_build",
-                  content: `error TS2339: Property 'foo' does not exist on type 'User'.
-
-  src/components/UserCard.tsx:15:22
-    15   return <div>{user.foo}</div>
-                           ~~~
-
-Found 1 error.`,
-                  is_error: true,
-                },
-              ],
-            },
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 5000,
-            message: {
-              content: [
-                {
-                  type: "text",
-                  text: "The build failed due to a TypeScript error. The `User` type doesn't have a `foo` property. Let me check the `UserCard` component to fix this.",
-                },
-              ],
-            },
-          },
-        ]}
-      />
-      <EventStream {...args} />
-    </>
-  ),
-}
-
-export const TodoUpdates: Story = {
-  render: args => (
-    <>
-      <EventLoader
-        events={[
-          {
-            type: "user_message",
-            timestamp: Date.now() - 20000,
-            message: "Add dark mode to the app",
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 18000,
-            message: {
-              content: [
-                {
-                  type: "text",
-                  text: "I'll help you add dark mode. Let me create a plan for this implementation.",
-                },
-                {
-                  type: "tool_use",
-                  id: "toolu_todo1",
-                  name: "TodoWrite",
-                  input: {
-                    todos: [
-                      { content: "Create theme context and provider", status: "pending" },
-                      { content: "Add CSS variables for dark theme colors", status: "pending" },
-                      { content: "Create theme toggle component", status: "pending" },
-                      { content: "Update components to use theme variables", status: "pending" },
-                      { content: "Persist theme preference to localStorage", status: "pending" },
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 12000,
-            message: {
-              content: [
-                {
-                  type: "text",
-                  text: "Starting with the theme context...",
-                },
-                {
-                  type: "tool_use",
-                  id: "toolu_todo2",
-                  name: "TodoWrite",
-                  input: {
-                    todos: [
-                      { content: "Create theme context and provider", status: "in_progress" },
-                      { content: "Add CSS variables for dark theme colors", status: "pending" },
-                      { content: "Create theme toggle component", status: "pending" },
-                      { content: "Update components to use theme variables", status: "pending" },
-                      { content: "Persist theme preference to localStorage", status: "pending" },
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-          {
-            type: "assistant",
-            timestamp: Date.now() - 5000,
-            message: {
-              content: [
-                {
-                  type: "tool_use",
-                  id: "toolu_todo3",
-                  name: "TodoWrite",
-                  input: {
-                    todos: [
-                      { content: "Create theme context and provider", status: "completed" },
-                      { content: "Add CSS variables for dark theme colors", status: "completed" },
-                      { content: "Create theme toggle component", status: "in_progress" },
-                      { content: "Update components to use theme variables", status: "pending" },
-                      { content: "Persist theme preference to localStorage", status: "pending" },
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-        ]}
-      />
-      <EventStream {...args} />
-    </>
-  ),
-}
-
-export const LongConversation: Story = {
-  render: args => {
-    const events = []
-    const baseTime = Date.now()
-
-    for (let i = 0; i < 20; i++) {
-      events.push({
-        type: "user_message",
-        timestamp: baseTime - (40 - i * 2) * 1000,
-        message: `User question ${i + 1}: How do I implement feature ${i + 1}?`,
-      })
-      events.push({
+          ],
+        },
+      },
+      {
         type: "assistant",
-        timestamp: baseTime - (39 - i * 2) * 1000,
+        timestamp: Date.now() - 5000,
         message: {
           content: [
             {
               type: "text",
-              text: `Here's how to implement feature ${i + 1}. You'll need to create a new component and connect it to the store.`,
+              text: "All 45 tests passed across 4 test files. The test suite completed in 1.2 seconds.",
             },
           ],
         },
-      })
-    }
+      },
+    ],
+  },
+}
 
-    return (
-      <>
-        <EventLoader events={events} />
-        <EventStream {...args} />
-      </>
-    )
+export const WithError: Story = {
+  args: {
+    ...defaultProps,
+    iterationEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now() - 15000,
+        message: "Build the project",
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 13000,
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_build",
+              name: "Bash",
+              input: { command: "pnpm build", description: "Build for production" },
+            },
+          ],
+        },
+      },
+      {
+        type: "user",
+        timestamp: Date.now() - 8000,
+        tool_use_result: "Build failed",
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_build",
+              content: `error TS2339: Property 'foo' does not exist on type 'User'.
+
+  src/components/UserCard.tsx:15:22
+    15   return <div>{user.foo}</div>
+                          ~~~
+
+Found 1 error.`,
+              is_error: true,
+            },
+          ],
+        },
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 5000,
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "The build failed due to a TypeScript error. The `User` type doesn't have a `foo` property. Let me check the `UserCard` component to fix this.",
+            },
+          ],
+        },
+      },
+    ],
+  },
+}
+
+export const TodoUpdates: Story = {
+  args: {
+    ...defaultProps,
+    iterationEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now() - 20000,
+        message: "Add dark mode to the app",
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 18000,
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "I'll help you add dark mode. Let me create a plan for this implementation.",
+            },
+            {
+              type: "tool_use",
+              id: "toolu_todo1",
+              name: "TodoWrite",
+              input: {
+                todos: [
+                  { content: "Create theme context and provider", status: "pending" },
+                  { content: "Add CSS variables for dark theme colors", status: "pending" },
+                  { content: "Create theme toggle component", status: "pending" },
+                  { content: "Update components to use theme variables", status: "pending" },
+                  { content: "Persist theme preference to localStorage", status: "pending" },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 12000,
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "Starting with the theme context...",
+            },
+            {
+              type: "tool_use",
+              id: "toolu_todo2",
+              name: "TodoWrite",
+              input: {
+                todos: [
+                  { content: "Create theme context and provider", status: "in_progress" },
+                  { content: "Add CSS variables for dark theme colors", status: "pending" },
+                  { content: "Create theme toggle component", status: "pending" },
+                  { content: "Update components to use theme variables", status: "pending" },
+                  { content: "Persist theme preference to localStorage", status: "pending" },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 5000,
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_todo3",
+              name: "TodoWrite",
+              input: {
+                todos: [
+                  { content: "Create theme context and provider", status: "completed" },
+                  { content: "Add CSS variables for dark theme colors", status: "completed" },
+                  { content: "Create theme toggle component", status: "in_progress" },
+                  { content: "Update components to use theme variables", status: "pending" },
+                  { content: "Persist theme preference to localStorage", status: "pending" },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ],
+  },
+}
+
+export const LongConversation: Story = {
+  args: {
+    ...defaultProps,
+    iterationEvents: (() => {
+      const events = []
+      const baseTime = Date.now()
+
+      for (let i = 0; i < 20; i++) {
+        events.push({
+          type: "user_message",
+          timestamp: baseTime - (40 - i * 2) * 1000,
+          message: `User question ${i + 1}: How do I implement feature ${i + 1}?`,
+        })
+        events.push({
+          type: "assistant",
+          timestamp: baseTime - (39 - i * 2) * 1000,
+          message: {
+            content: [
+              {
+                type: "text",
+                text: `Here's how to implement feature ${i + 1}. You'll need to create a new component and connect it to the store.`,
+              },
+            ],
+          },
+        })
+      }
+
+      return events
+    })(),
+  },
+}
+
+export const Running: Story = {
+  args: {
+    ...defaultProps,
+    iterationEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now() - 5000,
+        message: "Start working on the feature",
+      },
+    ],
+    ralphStatus: "running",
+    isRunning: true,
+  },
+}
+
+export const WithMultipleIterations: Story = {
+  args: {
+    ...defaultProps,
+    iterationEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now() - 5000,
+        message: "Working on second iteration",
+      },
+    ],
+    iterationCount: 3,
+    displayedIteration: 3,
+    iterationTask: {
+      id: "r-abc1",
+      title: "Implement dark mode toggle",
+    },
+  },
+}
+
+export const ViewingPastIteration: Story = {
+  args: {
+    ...defaultProps,
+    iterationEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now() - 30000,
+        message: "First iteration work",
+      },
+    ],
+    iterationCount: 3,
+    displayedIteration: 1,
+    viewingIterationIndex: 0,
+    isViewingLatest: false,
+    iterationTask: {
+      id: "r-xyz2",
+      title: "Fix authentication bug",
+    },
   },
 }

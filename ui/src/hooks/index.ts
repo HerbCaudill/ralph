@@ -97,3 +97,11 @@ export {
   type TaskFormValues,
   type UseTaskDetailsResult,
 } from "./useTaskDetails"
+
+export {
+  useEventStream,
+  type IterationTask,
+  type IterationNavigationActions,
+  type UseEventStreamOptions,
+  type UseEventStreamResult,
+} from "./useEventStream"
