@@ -14,7 +14,6 @@ export interface StoreState {
   branch?: string | null
   tokenUsage?: { input: number; output: number }
   iteration?: { current: number; total: number }
-  sidebarOpen?: boolean
   accentColor?: string | null
   /** Multi-instance state */
   instances?: Map<string, RalphInstance>
@@ -44,9 +43,6 @@ export function withStoreState(state: StoreState): Decorator {
       }
       if (state.iteration !== undefined) {
         store.setIteration(state.iteration)
-      }
-      if (state.sidebarOpen !== undefined) {
-        store.setSidebarOpen(state.sidebarOpen)
       }
       if (state.accentColor !== undefined) {
         store.setAccentColor(state.accentColor)

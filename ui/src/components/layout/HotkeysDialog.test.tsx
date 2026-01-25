@@ -34,7 +34,7 @@ describe("HotkeysDialog", () => {
 
       expect(screen.getByText("Start Ralph agent")).toBeInTheDocument()
       expect(screen.getByText("Stop Ralph agent")).toBeInTheDocument()
-      expect(screen.getByText("Toggle sidebar visibility")).toBeInTheDocument()
+      expect(screen.getByText("Focus quick task input")).toBeInTheDocument()
       expect(screen.getByText("Show keyboard shortcuts")).toBeInTheDocument()
     })
 

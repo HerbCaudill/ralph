@@ -130,34 +130,6 @@ describe("MainLayout", () => {
     })
   })
 
-  it("toggles sidebar visibility via store", async () => {
-    render(<MainLayout sidebar={<div>Sidebar Content</div>} />)
-
-    // Wait for workspace fetch to complete to avoid act() warning
-    await waitFor(() => {
-      expect(screen.getByText("workspace")).toBeInTheDocument()
-    })
-
-    // Sidebar should be visible initially
-    expect(screen.getByText("Sidebar Content")).toBeInTheDocument()
-
-    // Toggle sidebar via store (as would happen with Cmd+B hotkey)
-    act(() => {
-      useAppStore.getState().toggleSidebar()
-    })
-
-    // Sidebar content should be hidden
-    expect(screen.queryByText("Sidebar Content")).not.toBeInTheDocument()
-
-    // Toggle again to expand
-    act(() => {
-      useAppStore.getState().toggleSidebar()
-    })
-
-    // Sidebar should be visible again
-    expect(screen.getByText("Sidebar Content")).toBeInTheDocument()
-  })
-
   it("applies custom className", async () => {
     const { container } = render(<MainLayout className="custom-class" />)
     expect(container.firstChild).toHaveClass("custom-class")
@@ -208,22 +180,6 @@ describe("MainLayout", () => {
       await waitFor(() => {
         expect(screen.getByText("workspace")).toBeInTheDocument()
       })
-    })
-
-    it("does not render resize handle when sidebar is closed", async () => {
-      render(<MainLayout sidebar={<div>Sidebar Content</div>} />)
-
-      // Wait for workspace fetch to complete to avoid act() warning
-      await waitFor(() => {
-        expect(screen.getByText("workspace")).toBeInTheDocument()
-      })
-
-      // Close the sidebar via store (as would happen with Cmd+B hotkey)
-      act(() => {
-        useAppStore.getState().toggleSidebar()
-      })
-
-      expect(screen.queryByRole("separator", { name: /resize sidebar/i })).not.toBeInTheDocument()
     })
 
     it("updates sidebar width on drag", async () => {

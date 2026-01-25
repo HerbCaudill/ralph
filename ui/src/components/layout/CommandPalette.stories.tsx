@@ -6,7 +6,6 @@ const mockHandlers = {
   agentStart: fn(),
   agentStop: fn(),
   agentPause: fn(),
-  toggleSidebar: fn(),
   cycleTheme: fn(),
   showHotkeys: fn(),
   focusTaskInput: fn(),
@@ -120,12 +119,12 @@ export const SelectingCommandClosesAndCallsHandler: Story = {
     const palette = await canvas.findByTestId("command-palette")
     await expect(palette).toBeVisible()
 
-    // Click the toggle sidebar command
-    const toggleSidebarItem = await canvas.findByTestId("command-item-toggleSidebar")
-    await userEvent.click(toggleSidebarItem)
+    // Click the cycle theme command
+    const cycleThemeItem = await canvas.findByTestId("command-item-cycleTheme")
+    await userEvent.click(cycleThemeItem)
 
     // Handler should have been called
-    await expect(mockHandlers.toggleSidebar).toHaveBeenCalled()
+    await expect(mockHandlers.cycleTheme).toHaveBeenCalled()
 
     // onClose should have been called
     await expect(args.onClose).toHaveBeenCalled()
@@ -173,8 +172,8 @@ export const KeyboardNavigation: Story = {
     // First item should no longer be selected
     await expect(firstItem).toHaveAttribute("data-selected", "false")
 
-    // Second item should now be selected
-    const secondItem = await canvas.findByTestId("command-item-toggleSidebar")
+    // Second item should now be selected (focusTaskInput - "New task")
+    const secondItem = await canvas.findByTestId("command-item-focusTaskInput")
     await expect(secondItem).toHaveAttribute("data-selected", "true")
 
     // Press up arrow to go back to first item
@@ -197,14 +196,14 @@ export const EnterKeyExecutesCommand: Story = {
     const input = await canvas.findByTestId("command-input")
     await expect(input).toBeVisible()
 
-    // Navigate to toggleSidebar command by typing to filter
-    await userEvent.type(input, "sidebar")
+    // Navigate to cycleTheme command by typing to filter
+    await userEvent.type(input, "theme")
 
     // Press Enter to execute
     await userEvent.keyboard("{Enter}")
 
     // Handler should have been called
-    await expect(mockHandlers.toggleSidebar).toHaveBeenCalled()
+    await expect(mockHandlers.cycleTheme).toHaveBeenCalled()
 
     // onClose should have been called
     await expect(args.onClose).toHaveBeenCalled()
@@ -300,7 +299,7 @@ export const HidesAgentCommandsWhenDisconnected: Story = {
     expect(canvas.queryByTestId("command-item-agentStart")).not.toBeInTheDocument()
     expect(canvas.queryByTestId("command-item-agentStop")).not.toBeInTheDocument()
 
-    // Other commands should still be visible
-    await expect(await canvas.findByTestId("command-item-toggleSidebar")).toBeVisible()
+    // Other commands should still be visible (e.g., theme toggle)
+    await expect(await canvas.findByTestId("command-item-cycleTheme")).toBeVisible()
   },
 }

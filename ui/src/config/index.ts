@@ -82,7 +82,6 @@ export type HotkeyAction =
   | "agentStop"
   | "agentPause"
   | "agentStopAfterCurrent"
-  | "toggleSidebar"
   | "focusSidebar"
   | "focusMain"
   | "focusTaskInput"

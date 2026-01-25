@@ -46,7 +46,6 @@ export const Default: Story = {
       branch: "main",
       tokenUsage: { input: 12500, output: 3200 },
       iteration: { current: 3, total: 10 },
-      sidebarOpen: true,
       accentColor: "#007ACC",
     }),
   ],
@@ -61,42 +60,6 @@ export const Default: Story = {
   },
 }
 
-export const SidebarClosed: Story = {
-  args: {
-    sidebar: <TaskList tasks={sampleTasks} persistCollapsedState={false} />,
-    main: (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Main Content</h1>
-        <p className="text-muted-foreground">
-          The sidebar is collapsed. Click the toggle button to expand it.
-        </p>
-      </div>
-    ),
-    statusBar: <StatusBar />,
-  },
-  decorators: [
-    withStoreState({
-      connectionStatus: "connected",
-      ralphStatus: "stopped",
-      workspace: "/Users/dev/projects/my-app",
-      branch: "main",
-      tokenUsage: { input: 0, output: 0 },
-      iteration: { current: 0, total: 0 },
-      sidebarOpen: false,
-      accentColor: "#42B883",
-    }),
-  ],
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-
-    // Main content should be visible
-    await expect(canvas.getByText("Main Content")).toBeInTheDocument()
-
-    // Sidebar content should not be visible when closed
-    await expect(canvas.queryByText("Implement login page")).not.toBeInTheDocument()
-  },
-}
-
 export const WithoutStatusBar: Story = {
   args: {
     sidebar: <div className="p-4">Sidebar Content</div>,
@@ -105,7 +68,6 @@ export const WithoutStatusBar: Story = {
   decorators: [
     withStoreState({
       connectionStatus: "connected",
-      sidebarOpen: true,
       accentColor: "#9B59B6",
     }),
   ],
@@ -126,7 +88,6 @@ export const CustomHeader: Story = {
     withStoreState({
       connectionStatus: "connected",
       ralphStatus: "running",
-      sidebarOpen: true,
     }),
   ],
 }
@@ -142,7 +103,6 @@ export const NoHeader: Story = {
     withStoreState({
       connectionStatus: "connected",
       ralphStatus: "stopped",
-      sidebarOpen: true,
     }),
   ],
 }

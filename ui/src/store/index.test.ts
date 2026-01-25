@@ -61,7 +61,6 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
   const defaultInstances = new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
 
   const state: PersistedState = {
-    sidebarOpen: true,
     sidebarWidth: 320,
     taskChatOpen: true,
     taskChatWidth: 400,
@@ -104,7 +103,6 @@ describe("useAppStore", () => {
       expect(state.iteration).toEqual({ current: 0, total: 0 })
       expect(state.connectionStatus).toBe("disconnected")
       expect(state.accentColor).toBeNull()
-      expect(state.sidebarOpen).toBe(true)
       expect(state.sidebarWidth).toBe(320)
       expect(state.taskChatOpen).toBe(true)
       expect(state.taskChatWidth).toBe(400)
@@ -2218,25 +2216,6 @@ describe("useAppStore", () => {
   })
 
   describe("sidebar state", () => {
-    it("sets sidebar open state", () => {
-      useAppStore.getState().setSidebarOpen(false)
-      expect(useAppStore.getState().sidebarOpen).toBe(false)
-
-      useAppStore.getState().setSidebarOpen(true)
-      expect(useAppStore.getState().sidebarOpen).toBe(true)
-    })
-
-    it("toggles sidebar state", () => {
-      // Initial state is true
-      expect(useAppStore.getState().sidebarOpen).toBe(true)
-
-      useAppStore.getState().toggleSidebar()
-      expect(useAppStore.getState().sidebarOpen).toBe(false)
-
-      useAppStore.getState().toggleSidebar()
-      expect(useAppStore.getState().sidebarOpen).toBe(true)
-    })
-
     it("sets sidebar width", () => {
       useAppStore.getState().setSidebarWidth(400)
       expect(useAppStore.getState().sidebarWidth).toBe(400)
@@ -2757,7 +2736,6 @@ describe("useAppStore", () => {
         setTokenUsage,
         setIteration,
         setConnectionStatus,
-        setSidebarOpen,
         setSidebarWidth,
         setTaskChatOpen,
         setTaskChatWidth,
@@ -2774,7 +2752,6 @@ describe("useAppStore", () => {
       setTokenUsage({ input: 1000, output: 500 })
       setIteration({ current: 5, total: 10 })
       setConnectionStatus("connected")
-      setSidebarOpen(false)
       setSidebarWidth(400)
       setTaskChatOpen(true)
       setTaskChatWidth(500)
@@ -2794,7 +2771,6 @@ describe("useAppStore", () => {
       expect(state.tokenUsage).toEqual({ input: 1000, output: 500 })
       expect(state.iteration).toEqual({ current: 5, total: 10 })
       expect(state.connectionStatus).toBe("connected")
-      expect(state.sidebarOpen).toBe(false)
       expect(state.sidebarWidth).toBe(400)
       expect(state.taskChatOpen).toBe(true)
       expect(state.taskChatWidth).toBe(500)
@@ -2816,7 +2792,6 @@ describe("useAppStore", () => {
       expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(state.iteration).toEqual({ current: 0, total: 0 })
       expect(state.connectionStatus).toBe("disconnected")
-      expect(state.sidebarOpen).toBe(true)
       expect(state.sidebarWidth).toBe(320)
       expect(state.taskChatOpen).toBe(true)
       expect(state.taskChatWidth).toBe(400)

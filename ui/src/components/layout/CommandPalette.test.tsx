@@ -7,7 +7,6 @@ describe("CommandPalette", () => {
     agentStart: vi.fn(),
     agentStop: vi.fn(),
     agentPause: vi.fn(),
-    toggleSidebar: vi.fn(),
     cycleTheme: vi.fn(),
     showHotkeys: vi.fn(),
     focusTaskInput: vi.fn(),
@@ -48,7 +47,6 @@ describe("CommandPalette", () => {
       )
 
       expect(screen.getByText("Start Ralph")).toBeInTheDocument()
-      expect(screen.getByText("Toggle sidebar")).toBeInTheDocument()
       expect(screen.getByText("Toggle theme")).toBeInTheDocument()
       expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument()
       expect(screen.getByText("New task")).toBeInTheDocument()
@@ -70,7 +68,7 @@ describe("CommandPalette", () => {
 
       // Descriptions come from hotkeys.json config
       expect(screen.getByText("Start Ralph agent")).toBeInTheDocument()
-      expect(screen.getByText("Toggle sidebar visibility")).toBeInTheDocument()
+      expect(screen.getByText("Cycle theme (system → light → dark)")).toBeInTheDocument()
     })
 
     it("displays keyboard shortcuts for commands", () => {
@@ -184,10 +182,10 @@ describe("CommandPalette", () => {
       const onClose = vi.fn()
       render(<CommandPalette open={true} onClose={onClose} handlers={mockHandlers} />)
 
-      const toggleSidebarItem = screen.getByTestId("command-item-toggleSidebar")
-      fireEvent.click(toggleSidebarItem)
+      const cycleThemeItem = screen.getByTestId("command-item-cycleTheme")
+      fireEvent.click(cycleThemeItem)
 
-      expect(mockHandlers.toggleSidebar).toHaveBeenCalledTimes(1)
+      expect(mockHandlers.cycleTheme).toHaveBeenCalledTimes(1)
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
@@ -215,12 +213,12 @@ describe("CommandPalette", () => {
       render(<CommandPalette open={true} onClose={onClose} handlers={mockHandlers} />)
 
       const input = screen.getByTestId("command-input")
-      fireEvent.change(input, { target: { value: "sidebar" } })
+      fireEvent.change(input, { target: { value: "theme" } })
 
-      // Commands containing "sidebar" should be visible
-      expect(screen.getByText("Toggle sidebar")).toBeInTheDocument()
-      // Other commands should be hidden
-      expect(screen.queryByText("Toggle theme")).not.toBeInTheDocument()
+      // Commands containing "theme" should be visible
+      expect(screen.getByText("Toggle theme")).toBeInTheDocument()
+      // Other commands should be filtered out (keyboard shortcuts doesn't contain "theme")
+      expect(screen.queryByText("Keyboard shortcuts")).not.toBeInTheDocument()
     })
 
     it("filters commands by keywords", () => {

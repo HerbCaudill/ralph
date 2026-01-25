@@ -54,7 +54,6 @@ export interface SerializedRalphInstance {
  */
 export interface PersistedState {
   // UI preferences
-  sidebarOpen: boolean
   sidebarWidth: number
   taskChatOpen: boolean
   taskChatWidth: number
@@ -183,7 +182,6 @@ export function deserializeInstances(
 export function partialize(state: AppState): PersistedState {
   return {
     // UI preferences
-    sidebarOpen: state.sidebarOpen,
     sidebarWidth: state.sidebarWidth,
     taskChatOpen: state.taskChatOpen,
     taskChatWidth: state.taskChatWidth,

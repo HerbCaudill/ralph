@@ -97,7 +97,6 @@ describe("useHotkeys", () => {
       const actions = result.current.registeredHotkeys.map(h => h.action)
       expect(actions).toContain("agentStart")
       expect(actions).toContain("agentStop")
-      expect(actions).toContain("toggleSidebar")
       expect(actions).toContain("focusChatInput")
       expect(actions).toContain("cycleTheme")
       expect(actions).toContain("toggleTaskChat")
@@ -209,31 +208,6 @@ describe("useHotkeys", () => {
       })
 
       expect(handler).not.toHaveBeenCalled()
-    })
-
-    it("handles toggleSidebar hotkey (Cmd+B)", () => {
-      mockNavigator("MacIntel")
-      const handler = vi.fn()
-
-      renderHook(() =>
-        useHotkeys({
-          handlers: {
-            toggleSidebar: handler,
-          },
-        }),
-      )
-
-      // Simulate Cmd+B
-      act(() => {
-        const event = new KeyboardEvent("keydown", {
-          key: "b",
-          metaKey: true,
-          bubbles: true,
-        })
-        window.dispatchEvent(event)
-      })
-
-      expect(handler).toHaveBeenCalledTimes(1)
     })
 
     it("handles agentStop hotkey (Ctrl+C)", () => {
@@ -524,7 +498,7 @@ describe("useHotkeys", () => {
       renderHook(() =>
         useHotkeys({
           handlers: {
-            toggleSidebar: handler,
+            toggleTaskChat: handler,
           },
         }),
       )
@@ -534,7 +508,7 @@ describe("useHotkeys", () => {
 
       // Create event with spies
       const event = new KeyboardEvent("keydown", {
-        key: "b",
+        key: "j",
         metaKey: true,
         bubbles: true,
         cancelable: true,
@@ -661,7 +635,7 @@ describe("useHotkeys", () => {
           handlers: {
             agentStart: startHandler,
             agentStop: stopHandler,
-            toggleSidebar: toggleHandler,
+            toggleTaskChat: toggleHandler,
           },
         }),
       )
@@ -690,7 +664,7 @@ describe("useHotkeys", () => {
       act(() => {
         window.dispatchEvent(
           new KeyboardEvent("keydown", {
-            key: "b",
+            key: "j",
             metaKey: true,
             bubbles: true,
           }),

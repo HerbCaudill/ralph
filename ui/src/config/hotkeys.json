@@ -36,16 +36,6 @@
       "description": "Stop after current task",
       "category": "Agent Control"
     },
-    "toggleSidebar": {
-      "key": "cmd+b",
-      "description": "Toggle sidebar visibility",
-      "category": "Navigation",
-      "commandPalette": {
-        "label": "Toggle sidebar",
-        "icon": "LayoutSidebar",
-        "keywords": ["sidebar", "panel", "show", "hide", "collapse", "expand"]
-      }
-    },
     "focusSidebar": {
       "key": "cmd+1",
       "description": "Focus sidebar",

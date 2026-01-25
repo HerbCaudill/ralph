@@ -128,7 +128,6 @@ export function App() {
   // Get state for hotkey conditions
   const ralphStatus = useAppStore(selectRalphStatus)
   const isConnected = useAppStore(selectIsConnected)
-  const toggleSidebar = useAppStore(state => state.toggleSidebar)
   const toggleTaskChat = useAppStore(state => state.toggleTaskChat)
 
   // Iteration navigation
@@ -208,10 +207,6 @@ export function App() {
     if ((ralphStatus !== "running" && ralphStatus !== "paused") || !isConnected) return
     await stopAfterCurrentRalph()
   }, [ralphStatus, isConnected])
-
-  const handleToggleSidebar = useCallback(() => {
-    toggleSidebar()
-  }, [toggleSidebar])
 
   const handleFocusSidebar = useCallback(() => {
     layoutRef.current?.focusSidebar()
@@ -384,7 +379,6 @@ export function App() {
       agentStop: handleAgentStop,
       agentPause: handleAgentPause,
       agentStopAfterCurrent: handleAgentStopAfterCurrent,
-      toggleSidebar: handleToggleSidebar,
       focusSidebar: handleFocusSidebar,
       focusMain: handleFocusMain,
       focusTaskInput: handleFocusTaskInput,
@@ -473,7 +467,6 @@ export function App() {
           agentStart: handleAgentStart,
           agentStop: handleAgentStop,
           agentPause: handleAgentPause,
-          toggleSidebar: handleToggleSidebar,
           cycleTheme: handleCycleTheme,
           showHotkeys: handleShowHotkeys,
           focusTaskInput: handleFocusTaskInput,

@@ -198,9 +198,9 @@ export const ShowsKeyboardShortcutKeys: Story = {
 
         // Verify some common keyboard shortcuts are displayed
         // These should be in styled Kbd elements
-        await expect(await canvas.findByText("⌘B")).toBeVisible() // Toggle sidebar
         await expect(await canvas.findByText("⌘K")).toBeVisible() // Quick task input
         await expect(await canvas.findByText("⌘/")).toBeVisible() // Show keyboard shortcuts
+        await expect(await canvas.findByText("⌘J")).toBeVisible() // Toggle task chat
       },
       { timeout: 3000 },
     )

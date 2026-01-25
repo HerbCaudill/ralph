@@ -139,7 +139,6 @@ export interface AppState {
   accentColor: string | null
 
   // UI State
-  sidebarOpen: boolean
   sidebarWidth: number
 
   // Theme
@@ -237,8 +236,6 @@ export interface AppActions {
   setConnectionStatus: (status: ConnectionStatus) => void
 
   // UI State
-  setSidebarOpen: (open: boolean) => void
-  toggleSidebar: () => void
   setSidebarWidth: (width: number) => void
 
   // Theme
@@ -518,7 +515,6 @@ const initialState: AppState = {
   iteration: { current: 0, total: 0 },
   connectionStatus: "disconnected",
   accentColor: null,
-  sidebarOpen: true,
   sidebarWidth: defaultSidebarWidth,
   theme: "system",
   viewingEventLogId: null,
@@ -842,8 +838,6 @@ export const useAppStore = create<AppState & AppActions>()(
       setConnectionStatus: status => set({ connectionStatus: status }),
 
       // UI State
-      setSidebarOpen: open => set({ sidebarOpen: open }),
-      toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarWidth: width => set({ sidebarWidth: width }),
 
       // Theme
@@ -1464,7 +1458,6 @@ export const selectCanAcceptMessages = (state: AppState) =>
   state.ralphStatus === "paused" ||
   state.ralphStatus === "stopping_after_current"
 export const selectAccentColor = (state: AppState) => state.accentColor
-export const selectSidebarOpen = (state: AppState) => state.sidebarOpen
 export const selectSidebarWidth = (state: AppState) => state.sidebarWidth
 export const selectTheme = (state: AppState) => state.theme
 export const selectCurrentTask = (state: AppState) =>

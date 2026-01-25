@@ -9,7 +9,7 @@ import {
 } from "react"
 import { cn } from "@/lib/utils"
 import { Header } from "./Header"
-import { useAppStore, selectSidebarOpen, selectSidebarWidth, selectAccentColor } from "@/store"
+import { useAppStore, selectSidebarWidth, selectAccentColor } from "@/store"
 import { DEFAULT_ACCENT_COLOR } from "@/constants"
 import { getContrastingColor } from "@/lib/getContrastingColor"
 
@@ -39,7 +39,6 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   },
   ref,
 ) {
-  const sidebarOpen = useAppStore(selectSidebarOpen)
   const sidebarWidth = useAppStore(selectSidebarWidth)
   const setSidebarWidth = useAppStore(state => state.setSidebarWidth)
   const accentColor = useAppStore(selectAccentColor)
@@ -244,7 +243,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
           </div>
         )}
 
-        {sidebar && sidebarOpen && (
+        {sidebar && (
           <aside
             ref={sidebarRef}
             className={cn(

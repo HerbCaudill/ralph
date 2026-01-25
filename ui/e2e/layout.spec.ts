@@ -28,17 +28,4 @@ test.describe("Layout", () => {
     // Dropdown should remain open
     await expect(app.page.getByTestId("settings-dropdown")).toBeVisible()
   })
-
-  test("Cmd+B toggles sidebar", async ({ app }) => {
-    // Sidebar should be visible initially
-    await expect(app.taskList.sidebar).toBeVisible()
-
-    // Toggle sidebar off
-    await app.toggleSidebar()
-    await expect(app.taskList.sidebar).not.toBeVisible()
-
-    // Toggle sidebar back on
-    await app.toggleSidebar()
-    await expect(app.taskList.sidebar).toBeVisible()
-  })
 })

@@ -4,7 +4,6 @@ import {
   IconPlayerPlay,
   IconPlayerStop,
   IconPlayerPause,
-  IconLayoutSidebar,
   IconSun,
   IconKeyboard,
   IconMessage,
@@ -21,7 +20,6 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   PlayerPlay: IconPlayerPlay,
   PlayerStop: IconPlayerStop,
   PlayerPause: IconPlayerPause,
-  LayoutSidebar: IconLayoutSidebar,
   Sun: IconSun,
   Keyboard: IconKeyboard,
   Message: IconMessage,
@@ -210,7 +208,6 @@ export type CommandAction =
   | "agentStart"
   | "agentStop"
   | "agentPause"
-  | "toggleSidebar"
   | "cycleTheme"
   | "showHotkeys"
   | "focusTaskInput"

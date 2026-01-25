@@ -120,7 +120,7 @@ function isInputElement(target: EventTarget | null): boolean {
  *   handlers: {
  *     agentStart: () => startRalph(),
  *     agentStop: () => stopRalph(),
- *     toggleSidebar: () => setSidebarOpen(!sidebarOpen),
+ *     cycleTheme: () => cycleTheme(),
  *   }
  * })
  *
@@ -148,7 +148,6 @@ export function useHotkeys({ handlers, enabled = true }: UseHotkeysOptions): Use
             // For input elements, only allow certain hotkeys
             // Navigation hotkeys that focus other areas should be allowed
             const allowedInInput = [
-              "toggleSidebar",
               "focusSidebar",
               "focusMain",
               "focusTaskInput",

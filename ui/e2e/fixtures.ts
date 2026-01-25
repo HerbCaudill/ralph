@@ -592,16 +592,6 @@ export class AppPage {
     await this.page.goto("/")
   }
 
-  /** Toggle the sidebar visibility */
-  async toggleSidebar() {
-    await this.page.keyboard.press("Meta+b")
-  }
-
-  /** Check if the sidebar is visible */
-  async isSidebarVisible(): Promise<boolean> {
-    return this.taskList.sidebar.isVisible()
-  }
-
   /** Open the hotkeys dialog */
   async openHotkeysDialog() {
     await this.page.keyboard.press("Shift+?")

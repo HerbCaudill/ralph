@@ -73,7 +73,6 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     iteration: { current: 0, total: 0 },
     connectionStatus: "disconnected",
     accentColor: null,
-    sidebarOpen: true,
     sidebarWidth: 320,
     theme: "system",
     viewingEventLogId: null,
@@ -361,7 +360,6 @@ describe("persist", () => {
   describe("partialize", () => {
     it("returns only persisted fields", () => {
       const state = createMockAppState({
-        sidebarOpen: false,
         sidebarWidth: 400,
         taskChatOpen: false,
         taskChatWidth: 500,
@@ -382,7 +380,6 @@ describe("persist", () => {
       const result = partialize(state)
 
       expect(result).toEqual({
-        sidebarOpen: false,
         sidebarWidth: 400,
         taskChatOpen: false,
         taskChatWidth: 500,
@@ -591,7 +588,6 @@ describe("persist", () => {
       it("merges persisted state with current state", () => {
         const currentState = createMockAppState()
         const persistedState: PersistedState = {
-          sidebarOpen: false,
           sidebarWidth: 500,
           taskChatOpen: false,
           taskChatWidth: 600,
@@ -631,7 +627,6 @@ describe("persist", () => {
 
         const result = persistConfig.merge!(persistedState, currentState)
 
-        expect(result.sidebarOpen).toBe(false)
         expect(result.sidebarWidth).toBe(500)
         expect(result.taskChatOpen).toBe(false)
         expect(result.theme).toBe("dark")

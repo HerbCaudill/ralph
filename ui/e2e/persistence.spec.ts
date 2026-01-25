@@ -22,31 +22,6 @@ async function waitForPageReady(app: Awaited<ReturnType<(typeof test)["_fixtures
 
 test.describe("UI State Persistence", () => {
   test.describe("Sidebar", () => {
-    test("sidebar visibility persists across page reload", async ({ app }) => {
-      // Sidebar should be visible initially
-      await expect(app.taskList.sidebar).toBeVisible()
-
-      // Toggle sidebar off
-      await app.toggleSidebar()
-      await expect(app.taskList.sidebar).not.toBeVisible()
-
-      // Reload the page
-      await app.page.reload()
-      await waitForPageReady(app)
-
-      // Sidebar should still be hidden after reload
-      await expect(app.taskList.sidebar).not.toBeVisible()
-
-      // Toggle sidebar back on for cleanup
-      await app.toggleSidebar()
-      await expect(app.taskList.sidebar).toBeVisible()
-
-      // Verify it persists when visible too
-      await app.page.reload()
-      await waitForPageReady(app)
-      await expect(app.taskList.sidebar).toBeVisible()
-    })
-
     test("sidebar width persists across page reload", async ({ app }) => {
       const sidebar = app.taskList.sidebar
 
@@ -286,7 +261,6 @@ test.describe("UI State Persistence", () => {
       const state = persistedState.state
 
       // UI preferences should be present
-      expect(state).toHaveProperty("sidebarOpen")
       expect(state).toHaveProperty("sidebarWidth")
       expect(state).toHaveProperty("taskChatOpen")
       expect(state).toHaveProperty("taskChatWidth")
@@ -302,9 +276,12 @@ test.describe("UI State Persistence", () => {
     })
 
     test("clearing localStorage resets to defaults", async ({ app }) => {
-      // Modify some state first
-      await app.toggleSidebar() // Close sidebar
-      await expect(app.taskList.sidebar).not.toBeVisible()
+      // Modify some state first (toggle theme to verify reset)
+      const settingsDropdown = app.page.getByTestId("settings-dropdown-trigger")
+      await settingsDropdown.click()
+      await app.page.getByTestId("settings-appearance-dark").click()
+      // Close the dropdown
+      await app.page.keyboard.press("Escape")
 
       // Clear localStorage
       await app.page.evaluate(() => {
@@ -315,7 +292,7 @@ test.describe("UI State Persistence", () => {
       await app.page.reload()
       await app.waitForLoad()
 
-      // Should be back to defaults - sidebar should be visible
+      // Should be back to defaults - sidebar should still be visible
       await expect(app.taskList.sidebar).toBeVisible()
     })
   })
