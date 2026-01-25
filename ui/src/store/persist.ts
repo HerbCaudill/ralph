@@ -11,8 +11,8 @@
  * - Schema versioning supports migrations for future changes
  */
 
-import type { StateStorage } from "zustand/middleware"
-import type { AppState } from "./index"
+import { createJSONStorage, type PersistOptions } from "zustand/middleware"
+import type { AppState, AppActions } from "./index"
 import type { RalphInstance, ChatEvent, Theme, ClosedTasksTimeFilter } from "@/types"
 import { DEFAULT_CONTEXT_WINDOW_MAX } from "./index"
 
@@ -213,10 +213,10 @@ export function partialize(state: AppState): PersistedState {
 }
 
 /**
- * Custom storage adapter using localStorage.
+ * Custom storage adapter using localStorage with error handling.
  * Provides type-safe access with error handling.
  */
-export const storage: StateStorage = {
+export const rawStorage = {
   getItem: (name: string): string | null => {
     try {
       return localStorage.getItem(name)
@@ -240,6 +240,12 @@ export const storage: StateStorage = {
     }
   },
 }
+
+/**
+ * JSON storage adapter for Zustand persist middleware.
+ * Wraps rawStorage with JSON serialization.
+ */
+export const storage = createJSONStorage<PersistedState>(() => rawStorage)
 
 /**
  * Callback invoked when rehydration starts.
@@ -278,7 +284,7 @@ export function onRehydrateStorage(_state: AppState | undefined) {
  * import { persist } from 'zustand/middleware'
  * import { persistConfig } from './persist'
  *
- * const useAppStore = create<AppState>()(
+ * const useAppStore = create<AppState & AppActions>()(
  *   persist(
  *     (set) => ({ ... }),
  *     persistConfig
@@ -286,7 +292,7 @@ export function onRehydrateStorage(_state: AppState | undefined) {
  * )
  * ```
  */
-export const persistConfig = {
+export const persistConfig: PersistOptions<AppState & AppActions, PersistedState> = {
   name: PERSIST_NAME,
   version: PERSIST_VERSION,
   storage,
@@ -297,7 +303,7 @@ export const persistConfig = {
    * Merge function to properly handle rehydration.
    * Deserializes the instances array back to a Map.
    */
-  merge: (persistedState: unknown, currentState: AppState): AppState => {
+  merge: (persistedState: unknown, currentState: AppState & AppActions): AppState & AppActions => {
     const persisted = persistedState as PersistedState | undefined
 
     if (!persisted) {

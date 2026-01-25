@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import type { RalphInstance, ChatEvent, Task } from "@/types"
-import type { AppState } from "./index"
+import type { AppState, AppActions } from "./index"
 import {
   PERSIST_VERSION,
   PERSIST_NAME,
   serializeInstances,
   deserializeInstances,
   partialize,
+  rawStorage,
   storage,
   onRehydrateStorage,
   persistConfig,
@@ -47,8 +48,12 @@ function createMockEvent(overrides: Partial<ChatEvent> = {}): ChatEvent {
   }
 }
 
-// Helper to create a minimal mock AppState
-function createMockAppState(overrides: Partial<AppState> = {}): AppState {
+/**
+ * Helper to create a minimal mock AppState for testing.
+ * Returns AppState & AppActions for type compatibility with persistConfig.merge.
+ * Actions are cast since we only test state merging, not action behavior.
+ */
+function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppActions {
   const defaultInstance = createMockInstance({ id: DEFAULT_INSTANCE_ID, name: "Main" })
   const instances = new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
 
@@ -90,7 +95,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState {
     wasRunningBeforeDisconnect: false,
     taskChatEvents: [],
     ...overrides,
-  } as AppState
+  } as AppState & AppActions
 }
 
 describe("persist", () => {
@@ -453,7 +458,7 @@ describe("persist", () => {
     })
   })
 
-  describe("storage", () => {
+  describe("rawStorage", () => {
     const originalLocalStorage = global.localStorage
 
     beforeEach(() => {
@@ -479,20 +484,20 @@ describe("persist", () => {
 
     it("getItem returns stored value", () => {
       localStorage.setItem("test-key", "test-value")
-      expect(storage.getItem("test-key")).toBe("test-value")
+      expect(rawStorage.getItem("test-key")).toBe("test-value")
     })
 
     it("getItem returns null for missing key", () => {
-      expect(storage.getItem("nonexistent")).toBeNull()
+      expect(rawStorage.getItem("nonexistent")).toBeNull()
     })
 
     it("setItem stores value", () => {
-      storage.setItem("test-key", "test-value")
+      rawStorage.setItem("test-key", "test-value")
       expect(localStorage.setItem).toHaveBeenCalledWith("test-key", "test-value")
     })
 
     it("removeItem removes value", () => {
-      storage.removeItem("test-key")
+      rawStorage.removeItem("test-key")
       expect(localStorage.removeItem).toHaveBeenCalledWith("test-key")
     })
 
@@ -508,11 +513,11 @@ describe("persist", () => {
       })
 
       // Should not throw
-      expect(() => storage.getItem("key")).not.toThrow()
-      expect(() => storage.setItem("key", "value")).not.toThrow()
-      expect(() => storage.removeItem("key")).not.toThrow()
+      expect(() => rawStorage.getItem("key")).not.toThrow()
+      expect(() => rawStorage.setItem("key", "value")).not.toThrow()
+      expect(() => rawStorage.removeItem("key")).not.toThrow()
 
-      expect(storage.getItem("key")).toBeNull()
+      expect(rawStorage.getItem("key")).toBeNull()
     })
   })
 
@@ -624,7 +629,7 @@ describe("persist", () => {
           activeInstanceId: DEFAULT_INSTANCE_ID,
         }
 
-        const result = persistConfig.merge(persistedState, currentState)
+        const result = persistConfig.merge!(persistedState, currentState)
 
         expect(result.sidebarOpen).toBe(false)
         expect(result.sidebarWidth).toBe(500)
@@ -637,7 +642,7 @@ describe("persist", () => {
 
       it("returns current state when persisted state is undefined", () => {
         const currentState = createMockAppState()
-        const result = persistConfig.merge(undefined, currentState)
+        const result = persistConfig.merge!(undefined, currentState)
 
         expect(result).toBe(currentState)
       })
@@ -685,7 +690,7 @@ describe("persist", () => {
           activeInstanceId: "instance-b",
         }
 
-        const result = persistConfig.merge(persistedState, currentState)
+        const result = persistConfig.merge!(persistedState, currentState)
 
         expect(result.instances).toBeInstanceOf(Map)
         expect(result.instances.size).toBe(2)
@@ -719,7 +724,7 @@ describe("persist", () => {
           activeInstanceId: "nonexistent", // This doesn't exist in instances
         }
 
-        const result = persistConfig.merge(persistedState, currentState)
+        const result = persistConfig.merge!(persistedState, currentState)
 
         // Should fall back to currentState.activeInstanceId
         expect(result.activeInstanceId).toBe(currentState.activeInstanceId)
@@ -752,7 +757,7 @@ describe("persist", () => {
           activeInstanceId: "active",
         }
 
-        const result = persistConfig.merge(persistedState, currentState)
+        const result = persistConfig.merge!(persistedState, currentState)
 
         // Flat fields should be synced from the active instance
         expect(result.ralphStatus).toBe("running")
@@ -770,7 +775,7 @@ describe("persist", () => {
           instances: [],
         }
 
-        const result = persistConfig.merge(persistedState, currentState)
+        const result = persistConfig.merge!(persistedState, currentState)
 
         expect(result.instances).toBe(currentState.instances)
       })

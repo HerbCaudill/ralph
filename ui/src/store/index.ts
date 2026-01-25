@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 import type { ConnectionStatus } from "../hooks/useWebSocket"
 import type {
   ClosedTasksTimeFilter,
@@ -16,6 +17,7 @@ import type {
   EventLog,
 } from "@/types"
 import { TASK_LIST_CLOSED_FILTER_STORAGE_KEY } from "@/constants"
+import { persistConfig } from "./persist"
 
 export const SIDEBAR_WIDTH_STORAGE_KEY = "ralph-ui-sidebar-width"
 export const TASK_CHAT_WIDTH_STORAGE_KEY = "ralph-ui-task-chat-width"
@@ -722,884 +724,894 @@ const getInitialStateWithPersistence = (): AppState => {
   }
 }
 
-export const useAppStore = create<AppState & AppActions>(set => ({
-  ...getInitialStateWithPersistence(),
-
-  // Ralph status
-  setRalphStatus: status =>
-    set(state => {
-      const now = Date.now()
-      const isTransitioningToRunning = status === "running" && state.ralphStatus !== "running"
-      const isStopping = status === "stopped"
-
-      // Calculate new runStartedAt
-      const newRunStartedAt =
-        isTransitioningToRunning ? now
-        : isStopping ? null
-        : state.runStartedAt
-
-      // Calculate new initialTaskCount
-      const newInitialTaskCount =
-        isTransitioningToRunning ? state.tasks.length
-        : isStopping ? null
-        : state.initialTaskCount
-
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          status,
-          runStartedAt: newRunStartedAt,
-        })
-      }
-
-      return {
-        ralphStatus: status,
-        runStartedAt: newRunStartedAt,
-        initialTaskCount: newInitialTaskCount,
-        instances: updatedInstances,
-      }
-    }),
-
-  // Events
-  addEvent: event =>
-    set(state => {
-      const newEvents = [...state.events, event]
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          events: newEvents,
-        })
-      }
-      return {
-        events: newEvents,
-        instances: updatedInstances,
-      }
-    }),
-
-  setEvents: events =>
-    set(state => {
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          events,
-        })
-      }
-      return {
-        events,
-        instances: updatedInstances,
-      }
-    }),
-
-  clearEvents: () =>
-    set(state => {
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          events: [],
-        })
-      }
-      return {
-        events: [],
-        instances: updatedInstances,
-      }
-    }),
-
-  // Tasks
-  setTasks: tasks => set({ tasks }),
-
-  updateTask: (id, updates) =>
-    set(state => ({
-      tasks: state.tasks.map(task => (task.id === id ? { ...task, ...updates } : task)),
-    })),
-
-  removeTask: id =>
-    set(state => ({
-      tasks: state.tasks.filter(task => task.id !== id),
-    })),
-
-  clearTasks: () => set({ tasks: [] }),
-
-  refreshTasks: () => {
-    // Debounce task refresh to coalesce multiple rapid mutation events
-    // This prevents hammering the API when many tasks are modified at once
-    taskRefreshPending = true
-
-    if (taskRefreshDebounceTimeout !== null) {
-      // Already have a pending refresh scheduled, it will pick up this request
-      return
-    }
-
-    taskRefreshDebounceTimeout = setTimeout(async () => {
-      taskRefreshDebounceTimeout = null
-      if (!taskRefreshPending) return
-
-      taskRefreshPending = false
-      try {
-        const response = await fetch("/api/tasks?all=true")
-        const data = (await response.json()) as { ok: boolean; issues?: Task[] }
-        if (data.ok && data.issues) {
-          set({ tasks: data.issues })
-        }
-      } catch (err) {
-        console.error("Failed to refresh tasks:", err)
-      }
-    }, TASK_REFRESH_DEBOUNCE_MS)
-  },
-
-  // Workspace
-  setWorkspace: workspace => set({ workspace }),
-  clearWorkspaceData: () => {
-    // Clear any pending task chat events batch
-    taskChatEventsBatch = []
-    if (taskChatEventsBatchTimeout !== null) {
-      clearTimeout(taskChatEventsBatchTimeout)
-      taskChatEventsBatchTimeout = null
-    }
-    // Clear any pending task refresh
-    taskRefreshPending = false
-    if (taskRefreshDebounceTimeout !== null) {
-      clearTimeout(taskRefreshDebounceTimeout)
-      taskRefreshDebounceTimeout = null
-    }
-    set(state => {
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          events: [],
-          tokenUsage: { input: 0, output: 0 },
-          contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-          iteration: { current: 0, total: 0 },
-          runStartedAt: null,
-          status: "stopped",
-        })
-      }
-      return {
-        // Clear tasks immediately to avoid showing stale data
-        tasks: [],
-        // Clear events and iteration state
-        events: [],
-        viewingIterationIndex: null,
-        // Reset token and context window usage
-        tokenUsage: { input: 0, output: 0 },
-        contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-        iteration: { current: 0, total: 0 },
-        // Reset run state
-        runStartedAt: null,
-        initialTaskCount: null,
-        ralphStatus: "stopped" as const,
-        // Clear task chat messages and events
-        taskChatMessages: [],
-        taskChatLoading: false,
-        taskChatEvents: [],
-        // Clear event log viewer state
-        viewingEventLogId: null,
-        viewingEventLog: null,
-        eventLogLoading: false,
-        eventLogError: null,
-        // Updated instances Map
-        instances: updatedInstances,
-      }
-    })
-  },
-
-  // Accent color
-  setAccentColor: color => set({ accentColor: color }),
-
-  // Branch
-  setBranch: branch => set({ branch }),
-
-  // Issue prefix
-  setIssuePrefix: prefix => set({ issuePrefix: prefix }),
-
-  // Token usage
-  setTokenUsage: usage =>
-    set(state => {
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          tokenUsage: usage,
-        })
-      }
-      return {
-        tokenUsage: usage,
-        instances: updatedInstances,
-      }
-    }),
-  addTokenUsage: usage =>
-    set(state => {
-      const newTokenUsage = {
-        input: state.tokenUsage.input + usage.input,
-        output: state.tokenUsage.output + usage.output,
-      }
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          tokenUsage: newTokenUsage,
-        })
-      }
-      return {
-        tokenUsage: newTokenUsage,
-        instances: updatedInstances,
-      }
-    }),
-
-  // Context window
-  setContextWindow: contextWindow =>
-    set(state => {
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          contextWindow,
-        })
-      }
-      return {
-        contextWindow,
-        instances: updatedInstances,
-      }
-    }),
-  updateContextWindowUsed: used =>
-    set(state => {
-      const newContextWindow = { ...state.contextWindow, used }
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          contextWindow: newContextWindow,
-        })
-      }
-      return {
-        contextWindow: newContextWindow,
-        instances: updatedInstances,
-      }
-    }),
-
-  // Iteration
-  setIteration: iteration =>
-    set(state => {
-      // Update active instance in the instances Map
-      const activeInstance = state.instances.get(state.activeInstanceId)
-      const updatedInstances = new Map(state.instances)
-      if (activeInstance) {
-        updatedInstances.set(state.activeInstanceId, {
-          ...activeInstance,
-          iteration,
-        })
-      }
-      return {
-        iteration,
-        instances: updatedInstances,
-      }
-    }),
-
-  // Connection
-  setConnectionStatus: status => set({ connectionStatus: status }),
-
-  // UI State
-  setSidebarOpen: open => set({ sidebarOpen: open }),
-  toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
-  setSidebarWidth: width => {
-    saveSidebarWidth(width)
-    set({ sidebarWidth: width })
-  },
-
-  // Theme
-  setTheme: theme => set({ theme }),
-
-  // Event log viewer
-  setViewingEventLogId: id => set({ viewingEventLogId: id }),
-  setViewingEventLog: eventLog => set({ viewingEventLog: eventLog }),
-  setEventLogLoading: loading => set({ eventLogLoading: loading }),
-  setEventLogError: error => set({ eventLogError: error }),
-  clearEventLogViewer: () =>
-    set({
-      viewingEventLogId: null,
-      viewingEventLog: null,
-      eventLogLoading: false,
-      eventLogError: null,
-    }),
-
-  // Task chat panel
-  setTaskChatOpen: open => {
-    saveTaskChatOpen(open)
-    set({ taskChatOpen: open })
-  },
-  toggleTaskChat: () =>
-    set(state => {
-      const newValue = !state.taskChatOpen
-      saveTaskChatOpen(newValue)
-      return { taskChatOpen: newValue }
-    }),
-  setTaskChatWidth: width => {
-    saveTaskChatWidth(width)
-    set({ taskChatWidth: width })
-  },
-  addTaskChatMessage: message =>
-    set(state => ({
-      taskChatMessages: [...state.taskChatMessages, message],
-    })),
-  removeTaskChatMessage: id =>
-    set(state => ({
-      taskChatMessages: state.taskChatMessages.filter(m => m.id !== id),
-    })),
-  clearTaskChatMessages: () => {
-    // Clear any pending batch
-    taskChatEventsBatch = []
-    if (taskChatEventsBatchTimeout !== null) {
-      clearTimeout(taskChatEventsBatchTimeout)
-      taskChatEventsBatchTimeout = null
-    }
-    set({ taskChatMessages: [], taskChatEvents: [] })
-  },
-  setTaskChatLoading: loading => set({ taskChatLoading: loading }),
-
-  // Task chat events (unified array like EventStream)
-  // Uses batching to reduce re-renders during rapid WebSocket events
-  addTaskChatEvent: event => {
-    // Add to batch instead of immediately updating state
-    taskChatEventsBatch.push(event)
-
-    // Schedule flush if not already scheduled
-    if (taskChatEventsBatchTimeout === null) {
-      taskChatEventsBatchTimeout = setTimeout(
-        flushTaskChatEventsBatch,
-        TASK_CHAT_EVENTS_BATCH_INTERVAL_MS,
-      )
-    }
-  },
-  clearTaskChatEvents: () => {
-    // Clear any pending batch
-    taskChatEventsBatch = []
-    if (taskChatEventsBatchTimeout !== null) {
-      clearTimeout(taskChatEventsBatchTimeout)
-      taskChatEventsBatchTimeout = null
-    }
-    set({ taskChatEvents: [] })
-  },
-
-  // Iteration view
-  setViewingIterationIndex: index => set({ viewingIterationIndex: index }),
-  goToPreviousIteration: () =>
-    set(state => {
-      const totalIterations = countIterations(state.events)
-      if (totalIterations === 0) return state
-
-      // If viewing latest (null), go to second-to-last iteration
-      if (state.viewingIterationIndex === null) {
-        const newIndex = totalIterations > 1 ? totalIterations - 2 : 0
-        return { viewingIterationIndex: newIndex }
-      }
-
-      // If already at first iteration, stay there
-      if (state.viewingIterationIndex <= 0) return state
-
-      return { viewingIterationIndex: state.viewingIterationIndex - 1 }
-    }),
-  goToNextIteration: () =>
-    set(state => {
-      const totalIterations = countIterations(state.events)
-      if (totalIterations === 0) return state
-
-      // If already viewing latest, stay there
-      if (state.viewingIterationIndex === null) return state
-
-      // If at last iteration, switch to latest (null)
-      if (state.viewingIterationIndex >= totalIterations - 1) {
-        return { viewingIterationIndex: null }
-      }
-
-      return { viewingIterationIndex: state.viewingIterationIndex + 1 }
-    }),
-  goToLatestIteration: () => set({ viewingIterationIndex: null }),
-
-  // Task search
-  setTaskSearchQuery: query => set({ taskSearchQuery: query }),
-  clearTaskSearchQuery: () => set({ taskSearchQuery: "" }),
-
-  // Task selection (for keyboard navigation)
-  setSelectedTaskId: id => set({ selectedTaskId: id }),
-  clearSelectedTaskId: () => set({ selectedTaskId: null }),
-  setVisibleTaskIds: ids => set({ visibleTaskIds: ids }),
-
-  // Closed time filter
-  setClosedTimeFilter: filter => {
-    saveClosedTimeFilter(filter)
-    set({ closedTimeFilter: filter })
-  },
-
-  // Tool output visibility
-  setShowToolOutput: show => {
-    saveShowToolOutput(show)
-    set({ showToolOutput: show })
-  },
-  toggleToolOutput: () =>
-    set(state => {
-      const newValue = !state.showToolOutput
-      saveShowToolOutput(newValue)
-      return { showToolOutput: newValue }
-    }),
-
-  // Search visibility
-  setSearchVisible: visible => set({ isSearchVisible: visible }),
-  showSearch: () => set({ isSearchVisible: true }),
-  hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
-
-  // Hotkeys dialog
-  setHotkeysDialogOpen: open => set({ hotkeysDialogOpen: open }),
-  openHotkeysDialog: () => set({ hotkeysDialogOpen: true }),
-  closeHotkeysDialog: () => set({ hotkeysDialogOpen: false }),
-
-  // Reconnection state (for auto-resuming when reconnecting mid-iteration)
-  markRunningBeforeDisconnect: () =>
-    set(state => ({
-      wasRunningBeforeDisconnect: state.ralphStatus === "running" || state.ralphStatus === "paused",
-    })),
-  clearRunningBeforeDisconnect: () => set({ wasRunningBeforeDisconnect: false }),
-
-  // Active instance
-  setActiveInstanceId: instanceId =>
-    set(state => {
-      // Only switch if the instance exists
-      if (!state.instances.has(instanceId)) {
-        console.warn(`[store] Cannot switch to non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      // If already active, no change needed
-      if (state.activeInstanceId === instanceId) {
-        return state
-      }
-
-      // Persist to localStorage
-      saveActiveInstanceId(instanceId)
-
-      // Get the new active instance to sync flat fields
-      const instance = state.instances.get(instanceId)!
-
-      return {
-        activeInstanceId: instanceId,
-        // Sync flat fields from the new active instance for backward compatibility
-        ralphStatus: instance.status,
-        runStartedAt: instance.runStartedAt,
-        events: instance.events,
-        tokenUsage: instance.tokenUsage,
-        contextWindow: instance.contextWindow,
-        iteration: instance.iteration,
-        // Reset iteration view when switching instances
-        viewingIterationIndex: null,
-      }
-    }),
-
-  // Instance management
-  createInstance: (id, name, agentName) =>
-    set(state => {
-      // Don't create if instance with this ID already exists
-      if (state.instances.has(id)) {
-        console.warn(`[store] Instance with id "${id}" already exists`)
-        return state
-      }
-
-      const newInstance = createRalphInstance(
-        id,
-        name ?? DEFAULT_INSTANCE_NAME,
-        agentName ?? DEFAULT_AGENT_NAME,
-      )
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(id, newInstance)
-
-      // Persist to localStorage (auto-select the newly created instance)
-      saveActiveInstanceId(id)
-
-      // Auto-select the newly created instance
-      return {
-        instances: updatedInstances,
-        activeInstanceId: id,
-        // Sync flat fields from the new instance for backward compatibility
-        ralphStatus: newInstance.status,
-        runStartedAt: newInstance.runStartedAt,
-        events: newInstance.events,
-        tokenUsage: newInstance.tokenUsage,
-        contextWindow: newInstance.contextWindow,
-        iteration: newInstance.iteration,
-        // Reset iteration view when switching instances
-        viewingIterationIndex: null,
-      }
-    }),
-
-  removeInstance: instanceId =>
-    set(state => {
-      // Don't allow removing the active instance
-      if (state.activeInstanceId === instanceId) {
-        console.warn(`[store] Cannot remove the active instance: ${instanceId}`)
-        return state
-      }
-
-      // Don't remove if instance doesn't exist
-      if (!state.instances.has(instanceId)) {
-        console.warn(`[store] Cannot remove non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      // Don't allow removing if it's the last instance
-      if (state.instances.size <= 1) {
-        console.warn(`[store] Cannot remove the last instance`)
-        return state
-      }
-
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.delete(instanceId)
-
-      return {
-        instances: updatedInstances,
-      }
-    }),
-
-  cleanupInstance: instanceId =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(`[store] Cannot cleanup non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      // Reset instance runtime state while preserving identity
-      const cleanedInstance: RalphInstance = {
-        ...instance,
-        status: "stopped",
-        events: [],
-        tokenUsage: { input: 0, output: 0 },
-        contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-        iteration: { current: 0, total: 0 },
-        runStartedAt: null,
-        currentTaskId: null,
-        currentTaskTitle: null,
-        mergeConflict: null,
-      }
-
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, cleanedInstance)
-
-      // If cleaning up the active instance, also update flat fields for backward compatibility
-      if (state.activeInstanceId === instanceId) {
-        return {
-          instances: updatedInstances,
-          ralphStatus: "stopped" as const,
-          events: [],
-          tokenUsage: { input: 0, output: 0 },
-          contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-          iteration: { current: 0, total: 0 },
-          runStartedAt: null,
-          initialTaskCount: null,
-          viewingIterationIndex: null,
-        }
-      }
-
-      return {
-        instances: updatedInstances,
-      }
-    }),
-
-  hydrateInstances: serverInstances =>
-    set(state => {
-      if (!Array.isArray(serverInstances) || serverInstances.length === 0) {
-        return state
-      }
-
-      const updatedInstances = new Map(state.instances)
-
-      for (const serverInstance of serverInstances) {
-        const existing = updatedInstances.get(serverInstance.id)
-
-        if (existing) {
-          // Update existing instance with server metadata, preserving runtime state
-          const updated: RalphInstance = {
-            ...existing,
-            name: serverInstance.name,
-            agentName: serverInstance.agentName,
-            worktreePath: serverInstance.worktreePath,
-            branch: serverInstance.branch,
-            createdAt: serverInstance.createdAt,
-            currentTaskId: serverInstance.currentTaskId,
-            currentTaskTitle: serverInstance.currentTaskTitle,
-            status: serverInstance.status,
-            mergeConflict: serverInstance.mergeConflict,
+export const useAppStore = create<AppState & AppActions>()(
+  persist(
+    set => ({
+      ...getInitialStateWithPersistence(),
+
+      // Ralph status
+      setRalphStatus: status =>
+        set(state => {
+          const now = Date.now()
+          const isTransitioningToRunning = status === "running" && state.ralphStatus !== "running"
+          const isStopping = status === "stopped"
+
+          // Calculate new runStartedAt
+          const newRunStartedAt =
+            isTransitioningToRunning ? now
+            : isStopping ? null
+            : state.runStartedAt
+
+          // Calculate new initialTaskCount
+          const newInitialTaskCount =
+            isTransitioningToRunning ? state.tasks.length
+            : isStopping ? null
+            : state.initialTaskCount
+
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              status,
+              runStartedAt: newRunStartedAt,
+            })
           }
-          updatedInstances.set(serverInstance.id, updated)
-        } else {
-          // Create new instance from server data
-          const newInstance: RalphInstance = {
-            id: serverInstance.id,
-            name: serverInstance.name,
-            agentName: serverInstance.agentName,
-            status: serverInstance.status,
+
+          return {
+            ralphStatus: status,
+            runStartedAt: newRunStartedAt,
+            initialTaskCount: newInitialTaskCount,
+            instances: updatedInstances,
+          }
+        }),
+
+      // Events
+      addEvent: event =>
+        set(state => {
+          const newEvents = [...state.events, event]
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              events: newEvents,
+            })
+          }
+          return {
+            events: newEvents,
+            instances: updatedInstances,
+          }
+        }),
+
+      setEvents: events =>
+        set(state => {
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              events,
+            })
+          }
+          return {
+            events,
+            instances: updatedInstances,
+          }
+        }),
+
+      clearEvents: () =>
+        set(state => {
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              events: [],
+            })
+          }
+          return {
+            events: [],
+            instances: updatedInstances,
+          }
+        }),
+
+      // Tasks
+      setTasks: tasks => set({ tasks }),
+
+      updateTask: (id, updates) =>
+        set(state => ({
+          tasks: state.tasks.map(task => (task.id === id ? { ...task, ...updates } : task)),
+        })),
+
+      removeTask: id =>
+        set(state => ({
+          tasks: state.tasks.filter(task => task.id !== id),
+        })),
+
+      clearTasks: () => set({ tasks: [] }),
+
+      refreshTasks: () => {
+        // Debounce task refresh to coalesce multiple rapid mutation events
+        // This prevents hammering the API when many tasks are modified at once
+        taskRefreshPending = true
+
+        if (taskRefreshDebounceTimeout !== null) {
+          // Already have a pending refresh scheduled, it will pick up this request
+          return
+        }
+
+        taskRefreshDebounceTimeout = setTimeout(async () => {
+          taskRefreshDebounceTimeout = null
+          if (!taskRefreshPending) return
+
+          taskRefreshPending = false
+          try {
+            const response = await fetch("/api/tasks?all=true")
+            const data = (await response.json()) as { ok: boolean; issues?: Task[] }
+            if (data.ok && data.issues) {
+              set({ tasks: data.issues })
+            }
+          } catch (err) {
+            console.error("Failed to refresh tasks:", err)
+          }
+        }, TASK_REFRESH_DEBOUNCE_MS)
+      },
+
+      // Workspace
+      setWorkspace: workspace => set({ workspace }),
+      clearWorkspaceData: () => {
+        // Clear any pending task chat events batch
+        taskChatEventsBatch = []
+        if (taskChatEventsBatchTimeout !== null) {
+          clearTimeout(taskChatEventsBatchTimeout)
+          taskChatEventsBatchTimeout = null
+        }
+        // Clear any pending task refresh
+        taskRefreshPending = false
+        if (taskRefreshDebounceTimeout !== null) {
+          clearTimeout(taskRefreshDebounceTimeout)
+          taskRefreshDebounceTimeout = null
+        }
+        set(state => {
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              events: [],
+              tokenUsage: { input: 0, output: 0 },
+              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+              iteration: { current: 0, total: 0 },
+              runStartedAt: null,
+              status: "stopped",
+            })
+          }
+          return {
+            // Clear tasks immediately to avoid showing stale data
+            tasks: [],
+            // Clear events and iteration state
+            events: [],
+            viewingIterationIndex: null,
+            // Reset token and context window usage
+            tokenUsage: { input: 0, output: 0 },
+            contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+            iteration: { current: 0, total: 0 },
+            // Reset run state
+            runStartedAt: null,
+            initialTaskCount: null,
+            ralphStatus: "stopped" as const,
+            // Clear task chat messages and events
+            taskChatMessages: [],
+            taskChatLoading: false,
+            taskChatEvents: [],
+            // Clear event log viewer state
+            viewingEventLogId: null,
+            viewingEventLog: null,
+            eventLogLoading: false,
+            eventLogError: null,
+            // Updated instances Map
+            instances: updatedInstances,
+          }
+        })
+      },
+
+      // Accent color
+      setAccentColor: color => set({ accentColor: color }),
+
+      // Branch
+      setBranch: branch => set({ branch }),
+
+      // Issue prefix
+      setIssuePrefix: prefix => set({ issuePrefix: prefix }),
+
+      // Token usage
+      setTokenUsage: usage =>
+        set(state => {
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              tokenUsage: usage,
+            })
+          }
+          return {
+            tokenUsage: usage,
+            instances: updatedInstances,
+          }
+        }),
+      addTokenUsage: usage =>
+        set(state => {
+          const newTokenUsage = {
+            input: state.tokenUsage.input + usage.input,
+            output: state.tokenUsage.output + usage.output,
+          }
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              tokenUsage: newTokenUsage,
+            })
+          }
+          return {
+            tokenUsage: newTokenUsage,
+            instances: updatedInstances,
+          }
+        }),
+
+      // Context window
+      setContextWindow: contextWindow =>
+        set(state => {
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              contextWindow,
+            })
+          }
+          return {
+            contextWindow,
+            instances: updatedInstances,
+          }
+        }),
+      updateContextWindowUsed: used =>
+        set(state => {
+          const newContextWindow = { ...state.contextWindow, used }
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              contextWindow: newContextWindow,
+            })
+          }
+          return {
+            contextWindow: newContextWindow,
+            instances: updatedInstances,
+          }
+        }),
+
+      // Iteration
+      setIteration: iteration =>
+        set(state => {
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              iteration,
+            })
+          }
+          return {
+            iteration,
+            instances: updatedInstances,
+          }
+        }),
+
+      // Connection
+      setConnectionStatus: status => set({ connectionStatus: status }),
+
+      // UI State
+      setSidebarOpen: open => set({ sidebarOpen: open }),
+      toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
+      setSidebarWidth: width => {
+        saveSidebarWidth(width)
+        set({ sidebarWidth: width })
+      },
+
+      // Theme
+      setTheme: theme => set({ theme }),
+
+      // Event log viewer
+      setViewingEventLogId: id => set({ viewingEventLogId: id }),
+      setViewingEventLog: eventLog => set({ viewingEventLog: eventLog }),
+      setEventLogLoading: loading => set({ eventLogLoading: loading }),
+      setEventLogError: error => set({ eventLogError: error }),
+      clearEventLogViewer: () =>
+        set({
+          viewingEventLogId: null,
+          viewingEventLog: null,
+          eventLogLoading: false,
+          eventLogError: null,
+        }),
+
+      // Task chat panel
+      setTaskChatOpen: open => {
+        saveTaskChatOpen(open)
+        set({ taskChatOpen: open })
+      },
+      toggleTaskChat: () =>
+        set(state => {
+          const newValue = !state.taskChatOpen
+          saveTaskChatOpen(newValue)
+          return { taskChatOpen: newValue }
+        }),
+      setTaskChatWidth: width => {
+        saveTaskChatWidth(width)
+        set({ taskChatWidth: width })
+      },
+      addTaskChatMessage: message =>
+        set(state => ({
+          taskChatMessages: [...state.taskChatMessages, message],
+        })),
+      removeTaskChatMessage: id =>
+        set(state => ({
+          taskChatMessages: state.taskChatMessages.filter(m => m.id !== id),
+        })),
+      clearTaskChatMessages: () => {
+        // Clear any pending batch
+        taskChatEventsBatch = []
+        if (taskChatEventsBatchTimeout !== null) {
+          clearTimeout(taskChatEventsBatchTimeout)
+          taskChatEventsBatchTimeout = null
+        }
+        set({ taskChatMessages: [], taskChatEvents: [] })
+      },
+      setTaskChatLoading: loading => set({ taskChatLoading: loading }),
+
+      // Task chat events (unified array like EventStream)
+      // Uses batching to reduce re-renders during rapid WebSocket events
+      addTaskChatEvent: event => {
+        // Add to batch instead of immediately updating state
+        taskChatEventsBatch.push(event)
+
+        // Schedule flush if not already scheduled
+        if (taskChatEventsBatchTimeout === null) {
+          taskChatEventsBatchTimeout = setTimeout(
+            flushTaskChatEventsBatch,
+            TASK_CHAT_EVENTS_BATCH_INTERVAL_MS,
+          )
+        }
+      },
+      clearTaskChatEvents: () => {
+        // Clear any pending batch
+        taskChatEventsBatch = []
+        if (taskChatEventsBatchTimeout !== null) {
+          clearTimeout(taskChatEventsBatchTimeout)
+          taskChatEventsBatchTimeout = null
+        }
+        set({ taskChatEvents: [] })
+      },
+
+      // Iteration view
+      setViewingIterationIndex: index => set({ viewingIterationIndex: index }),
+      goToPreviousIteration: () =>
+        set(state => {
+          const totalIterations = countIterations(state.events)
+          if (totalIterations === 0) return state
+
+          // If viewing latest (null), go to second-to-last iteration
+          if (state.viewingIterationIndex === null) {
+            const newIndex = totalIterations > 1 ? totalIterations - 2 : 0
+            return { viewingIterationIndex: newIndex }
+          }
+
+          // If already at first iteration, stay there
+          if (state.viewingIterationIndex <= 0) return state
+
+          return { viewingIterationIndex: state.viewingIterationIndex - 1 }
+        }),
+      goToNextIteration: () =>
+        set(state => {
+          const totalIterations = countIterations(state.events)
+          if (totalIterations === 0) return state
+
+          // If already viewing latest, stay there
+          if (state.viewingIterationIndex === null) return state
+
+          // If at last iteration, switch to latest (null)
+          if (state.viewingIterationIndex >= totalIterations - 1) {
+            return { viewingIterationIndex: null }
+          }
+
+          return { viewingIterationIndex: state.viewingIterationIndex + 1 }
+        }),
+      goToLatestIteration: () => set({ viewingIterationIndex: null }),
+
+      // Task search
+      setTaskSearchQuery: query => set({ taskSearchQuery: query }),
+      clearTaskSearchQuery: () => set({ taskSearchQuery: "" }),
+
+      // Task selection (for keyboard navigation)
+      setSelectedTaskId: id => set({ selectedTaskId: id }),
+      clearSelectedTaskId: () => set({ selectedTaskId: null }),
+      setVisibleTaskIds: ids => set({ visibleTaskIds: ids }),
+
+      // Closed time filter
+      setClosedTimeFilter: filter => {
+        saveClosedTimeFilter(filter)
+        set({ closedTimeFilter: filter })
+      },
+
+      // Tool output visibility
+      setShowToolOutput: show => {
+        saveShowToolOutput(show)
+        set({ showToolOutput: show })
+      },
+      toggleToolOutput: () =>
+        set(state => {
+          const newValue = !state.showToolOutput
+          saveShowToolOutput(newValue)
+          return { showToolOutput: newValue }
+        }),
+
+      // Search visibility
+      setSearchVisible: visible => set({ isSearchVisible: visible }),
+      showSearch: () => set({ isSearchVisible: true }),
+      hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
+
+      // Hotkeys dialog
+      setHotkeysDialogOpen: open => set({ hotkeysDialogOpen: open }),
+      openHotkeysDialog: () => set({ hotkeysDialogOpen: true }),
+      closeHotkeysDialog: () => set({ hotkeysDialogOpen: false }),
+
+      // Reconnection state (for auto-resuming when reconnecting mid-iteration)
+      markRunningBeforeDisconnect: () =>
+        set(state => ({
+          wasRunningBeforeDisconnect:
+            state.ralphStatus === "running" || state.ralphStatus === "paused",
+        })),
+      clearRunningBeforeDisconnect: () => set({ wasRunningBeforeDisconnect: false }),
+
+      // Active instance
+      setActiveInstanceId: instanceId =>
+        set(state => {
+          // Only switch if the instance exists
+          if (!state.instances.has(instanceId)) {
+            console.warn(`[store] Cannot switch to non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          // If already active, no change needed
+          if (state.activeInstanceId === instanceId) {
+            return state
+          }
+
+          // Persist to localStorage
+          saveActiveInstanceId(instanceId)
+
+          // Get the new active instance to sync flat fields
+          const instance = state.instances.get(instanceId)!
+
+          return {
+            activeInstanceId: instanceId,
+            // Sync flat fields from the new active instance for backward compatibility
+            ralphStatus: instance.status,
+            runStartedAt: instance.runStartedAt,
+            events: instance.events,
+            tokenUsage: instance.tokenUsage,
+            contextWindow: instance.contextWindow,
+            iteration: instance.iteration,
+            // Reset iteration view when switching instances
+            viewingIterationIndex: null,
+          }
+        }),
+
+      // Instance management
+      createInstance: (id, name, agentName) =>
+        set(state => {
+          // Don't create if instance with this ID already exists
+          if (state.instances.has(id)) {
+            console.warn(`[store] Instance with id "${id}" already exists`)
+            return state
+          }
+
+          const newInstance = createRalphInstance(
+            id,
+            name ?? DEFAULT_INSTANCE_NAME,
+            agentName ?? DEFAULT_AGENT_NAME,
+          )
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(id, newInstance)
+
+          // Persist to localStorage (auto-select the newly created instance)
+          saveActiveInstanceId(id)
+
+          // Auto-select the newly created instance
+          return {
+            instances: updatedInstances,
+            activeInstanceId: id,
+            // Sync flat fields from the new instance for backward compatibility
+            ralphStatus: newInstance.status,
+            runStartedAt: newInstance.runStartedAt,
+            events: newInstance.events,
+            tokenUsage: newInstance.tokenUsage,
+            contextWindow: newInstance.contextWindow,
+            iteration: newInstance.iteration,
+            // Reset iteration view when switching instances
+            viewingIterationIndex: null,
+          }
+        }),
+
+      removeInstance: instanceId =>
+        set(state => {
+          // Don't allow removing the active instance
+          if (state.activeInstanceId === instanceId) {
+            console.warn(`[store] Cannot remove the active instance: ${instanceId}`)
+            return state
+          }
+
+          // Don't remove if instance doesn't exist
+          if (!state.instances.has(instanceId)) {
+            console.warn(`[store] Cannot remove non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          // Don't allow removing if it's the last instance
+          if (state.instances.size <= 1) {
+            console.warn(`[store] Cannot remove the last instance`)
+            return state
+          }
+
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.delete(instanceId)
+
+          return {
+            instances: updatedInstances,
+          }
+        }),
+
+      cleanupInstance: instanceId =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(`[store] Cannot cleanup non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          // Reset instance runtime state while preserving identity
+          const cleanedInstance: RalphInstance = {
+            ...instance,
+            status: "stopped",
             events: [],
             tokenUsage: { input: 0, output: 0 },
             contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
             iteration: { current: 0, total: 0 },
-            worktreePath: serverInstance.worktreePath,
-            branch: serverInstance.branch,
-            currentTaskId: serverInstance.currentTaskId,
-            currentTaskTitle: serverInstance.currentTaskTitle,
-            createdAt: serverInstance.createdAt,
             runStartedAt: null,
-            mergeConflict: serverInstance.mergeConflict,
+            currentTaskId: null,
+            currentTaskTitle: null,
+            mergeConflict: null,
           }
-          updatedInstances.set(serverInstance.id, newInstance)
-        }
-      }
 
-      // If current active instance is still valid, keep it; otherwise switch to first server instance
-      const activeInstanceId =
-        updatedInstances.has(state.activeInstanceId) ?
-          state.activeInstanceId
-        : (serverInstances[0]?.id ?? state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, cleanedInstance)
 
-      // Get the (possibly updated) active instance for syncing flat fields
-      const activeInstance = updatedInstances.get(activeInstanceId)
-
-      return {
-        instances: updatedInstances,
-        activeInstanceId,
-        // Sync flat fields for backward compatibility if active instance changed
-        ...(activeInstance ?
-          {
-            ralphStatus: activeInstance.status,
-            events: activeInstance.events,
-            tokenUsage: activeInstance.tokenUsage,
-            contextWindow: activeInstance.contextWindow,
-            iteration: activeInstance.iteration,
-            runStartedAt: activeInstance.runStartedAt,
+          // If cleaning up the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            return {
+              instances: updatedInstances,
+              ralphStatus: "stopped" as const,
+              events: [],
+              tokenUsage: { input: 0, output: 0 },
+              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+              iteration: { current: 0, total: 0 },
+              runStartedAt: null,
+              initialTaskCount: null,
+              viewingIterationIndex: null,
+            }
           }
-        : {}),
-      }
-    }),
 
-  // Per-instance actions (for routing WebSocket messages to specific instances)
-  addEventForInstance: (instanceId, event) =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(`[store] Cannot add event to non-existent instance: ${instanceId}`)
-        return state
-      }
+          return {
+            instances: updatedInstances,
+          }
+        }),
 
-      const newEvents = [...instance.events, event]
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, { ...instance, events: newEvents })
+      hydrateInstances: serverInstances =>
+        set(state => {
+          if (!Array.isArray(serverInstances) || serverInstances.length === 0) {
+            return state
+          }
 
-      // If this is the active instance, also update flat fields for backward compatibility
-      if (state.activeInstanceId === instanceId) {
-        return {
-          instances: updatedInstances,
-          events: newEvents,
+          const updatedInstances = new Map(state.instances)
+
+          for (const serverInstance of serverInstances) {
+            const existing = updatedInstances.get(serverInstance.id)
+
+            if (existing) {
+              // Update existing instance with server metadata, preserving runtime state
+              const updated: RalphInstance = {
+                ...existing,
+                name: serverInstance.name,
+                agentName: serverInstance.agentName,
+                worktreePath: serverInstance.worktreePath,
+                branch: serverInstance.branch,
+                createdAt: serverInstance.createdAt,
+                currentTaskId: serverInstance.currentTaskId,
+                currentTaskTitle: serverInstance.currentTaskTitle,
+                status: serverInstance.status,
+                mergeConflict: serverInstance.mergeConflict,
+              }
+              updatedInstances.set(serverInstance.id, updated)
+            } else {
+              // Create new instance from server data
+              const newInstance: RalphInstance = {
+                id: serverInstance.id,
+                name: serverInstance.name,
+                agentName: serverInstance.agentName,
+                status: serverInstance.status,
+                events: [],
+                tokenUsage: { input: 0, output: 0 },
+                contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+                iteration: { current: 0, total: 0 },
+                worktreePath: serverInstance.worktreePath,
+                branch: serverInstance.branch,
+                currentTaskId: serverInstance.currentTaskId,
+                currentTaskTitle: serverInstance.currentTaskTitle,
+                createdAt: serverInstance.createdAt,
+                runStartedAt: null,
+                mergeConflict: serverInstance.mergeConflict,
+              }
+              updatedInstances.set(serverInstance.id, newInstance)
+            }
+          }
+
+          // If current active instance is still valid, keep it; otherwise switch to first server instance
+          const activeInstanceId =
+            updatedInstances.has(state.activeInstanceId) ?
+              state.activeInstanceId
+            : (serverInstances[0]?.id ?? state.activeInstanceId)
+
+          // Get the (possibly updated) active instance for syncing flat fields
+          const activeInstance = updatedInstances.get(activeInstanceId)
+
+          return {
+            instances: updatedInstances,
+            activeInstanceId,
+            // Sync flat fields for backward compatibility if active instance changed
+            ...(activeInstance ?
+              {
+                ralphStatus: activeInstance.status,
+                events: activeInstance.events,
+                tokenUsage: activeInstance.tokenUsage,
+                contextWindow: activeInstance.contextWindow,
+                iteration: activeInstance.iteration,
+                runStartedAt: activeInstance.runStartedAt,
+              }
+            : {}),
+          }
+        }),
+
+      // Per-instance actions (for routing WebSocket messages to specific instances)
+      addEventForInstance: (instanceId, event) =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(`[store] Cannot add event to non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          const newEvents = [...instance.events, event]
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, { ...instance, events: newEvents })
+
+          // If this is the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            return {
+              instances: updatedInstances,
+              events: newEvents,
+            }
+          }
+
+          return { instances: updatedInstances }
+        }),
+
+      setEventsForInstance: (instanceId, events) =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(`[store] Cannot set events for non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, { ...instance, events })
+
+          // If this is the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            return {
+              instances: updatedInstances,
+              events,
+            }
+          }
+
+          return { instances: updatedInstances }
+        }),
+
+      setStatusForInstance: (instanceId, status) =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(`[store] Cannot set status for non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          const now = Date.now()
+          const isTransitioningToRunning = status === "running" && instance.status !== "running"
+          const isStopping = status === "stopped"
+
+          // Calculate new runStartedAt
+          const newRunStartedAt =
+            isTransitioningToRunning ? now
+            : isStopping ? null
+            : instance.runStartedAt
+
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, {
+            ...instance,
+            status,
+            runStartedAt: newRunStartedAt,
+          })
+
+          // If this is the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            const newInitialTaskCount =
+              isTransitioningToRunning ? state.tasks.length
+              : isStopping ? null
+              : state.initialTaskCount
+
+            return {
+              instances: updatedInstances,
+              ralphStatus: status,
+              runStartedAt: newRunStartedAt,
+              initialTaskCount: newInitialTaskCount,
+            }
+          }
+
+          return { instances: updatedInstances }
+        }),
+
+      addTokenUsageForInstance: (instanceId, usage) =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(`[store] Cannot add token usage to non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          const newTokenUsage = {
+            input: instance.tokenUsage.input + usage.input,
+            output: instance.tokenUsage.output + usage.output,
+          }
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, { ...instance, tokenUsage: newTokenUsage })
+
+          // If this is the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            return {
+              instances: updatedInstances,
+              tokenUsage: newTokenUsage,
+            }
+          }
+
+          return { instances: updatedInstances }
+        }),
+
+      updateContextWindowUsedForInstance: (instanceId, used) =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(
+              `[store] Cannot update context window for non-existent instance: ${instanceId}`,
+            )
+            return state
+          }
+
+          const newContextWindow = { ...instance.contextWindow, used }
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, { ...instance, contextWindow: newContextWindow })
+
+          // If this is the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            return {
+              instances: updatedInstances,
+              contextWindow: newContextWindow,
+            }
+          }
+
+          return { instances: updatedInstances }
+        }),
+
+      setIterationForInstance: (instanceId, iteration) =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(`[store] Cannot set iteration for non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, { ...instance, iteration })
+
+          // If this is the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            return {
+              instances: updatedInstances,
+              iteration,
+            }
+          }
+
+          return { instances: updatedInstances }
+        }),
+
+      setMergeConflictForInstance: (instanceId, conflict) =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(
+              `[store] Cannot set merge conflict for non-existent instance: ${instanceId}`,
+            )
+            return state
+          }
+
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, { ...instance, mergeConflict: conflict })
+
+          return { instances: updatedInstances }
+        }),
+
+      clearMergeConflictForInstance: instanceId =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(
+              `[store] Cannot clear merge conflict for non-existent instance: ${instanceId}`,
+            )
+            return state
+          }
+
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, { ...instance, mergeConflict: null })
+
+          return { instances: updatedInstances }
+        }),
+
+      // Reset
+      reset: () => {
+        // Clear any pending task chat events batch
+        taskChatEventsBatch = []
+        if (taskChatEventsBatchTimeout !== null) {
+          clearTimeout(taskChatEventsBatchTimeout)
+          taskChatEventsBatchTimeout = null
         }
-      }
-
-      return { instances: updatedInstances }
+        set({ ...initialState, instances: createInitialInstances() })
+      },
     }),
-
-  setEventsForInstance: (instanceId, events) =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(`[store] Cannot set events for non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, { ...instance, events })
-
-      // If this is the active instance, also update flat fields for backward compatibility
-      if (state.activeInstanceId === instanceId) {
-        return {
-          instances: updatedInstances,
-          events,
-        }
-      }
-
-      return { instances: updatedInstances }
-    }),
-
-  setStatusForInstance: (instanceId, status) =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(`[store] Cannot set status for non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      const now = Date.now()
-      const isTransitioningToRunning = status === "running" && instance.status !== "running"
-      const isStopping = status === "stopped"
-
-      // Calculate new runStartedAt
-      const newRunStartedAt =
-        isTransitioningToRunning ? now
-        : isStopping ? null
-        : instance.runStartedAt
-
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, {
-        ...instance,
-        status,
-        runStartedAt: newRunStartedAt,
-      })
-
-      // If this is the active instance, also update flat fields for backward compatibility
-      if (state.activeInstanceId === instanceId) {
-        const newInitialTaskCount =
-          isTransitioningToRunning ? state.tasks.length
-          : isStopping ? null
-          : state.initialTaskCount
-
-        return {
-          instances: updatedInstances,
-          ralphStatus: status,
-          runStartedAt: newRunStartedAt,
-          initialTaskCount: newInitialTaskCount,
-        }
-      }
-
-      return { instances: updatedInstances }
-    }),
-
-  addTokenUsageForInstance: (instanceId, usage) =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(`[store] Cannot add token usage to non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      const newTokenUsage = {
-        input: instance.tokenUsage.input + usage.input,
-        output: instance.tokenUsage.output + usage.output,
-      }
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, { ...instance, tokenUsage: newTokenUsage })
-
-      // If this is the active instance, also update flat fields for backward compatibility
-      if (state.activeInstanceId === instanceId) {
-        return {
-          instances: updatedInstances,
-          tokenUsage: newTokenUsage,
-        }
-      }
-
-      return { instances: updatedInstances }
-    }),
-
-  updateContextWindowUsedForInstance: (instanceId, used) =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(
-          `[store] Cannot update context window for non-existent instance: ${instanceId}`,
-        )
-        return state
-      }
-
-      const newContextWindow = { ...instance.contextWindow, used }
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, { ...instance, contextWindow: newContextWindow })
-
-      // If this is the active instance, also update flat fields for backward compatibility
-      if (state.activeInstanceId === instanceId) {
-        return {
-          instances: updatedInstances,
-          contextWindow: newContextWindow,
-        }
-      }
-
-      return { instances: updatedInstances }
-    }),
-
-  setIterationForInstance: (instanceId, iteration) =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(`[store] Cannot set iteration for non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, { ...instance, iteration })
-
-      // If this is the active instance, also update flat fields for backward compatibility
-      if (state.activeInstanceId === instanceId) {
-        return {
-          instances: updatedInstances,
-          iteration,
-        }
-      }
-
-      return { instances: updatedInstances }
-    }),
-
-  setMergeConflictForInstance: (instanceId, conflict) =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(`[store] Cannot set merge conflict for non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, { ...instance, mergeConflict: conflict })
-
-      return { instances: updatedInstances }
-    }),
-
-  clearMergeConflictForInstance: instanceId =>
-    set(state => {
-      const instance = state.instances.get(instanceId)
-      if (!instance) {
-        console.warn(`[store] Cannot clear merge conflict for non-existent instance: ${instanceId}`)
-        return state
-      }
-
-      const updatedInstances = new Map(state.instances)
-      updatedInstances.set(instanceId, { ...instance, mergeConflict: null })
-
-      return { instances: updatedInstances }
-    }),
-
-  // Reset
-  reset: () => {
-    // Clear any pending task chat events batch
-    taskChatEventsBatch = []
-    if (taskChatEventsBatchTimeout !== null) {
-      clearTimeout(taskChatEventsBatchTimeout)
-      taskChatEventsBatchTimeout = null
-    }
-    set({ ...initialState, instances: createInitialInstances() })
-  },
-}))
+    persistConfig,
+  ),
+)
 
 /**
  * Flush any pending batched task chat events to the store immediately.

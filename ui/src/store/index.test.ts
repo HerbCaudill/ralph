@@ -2687,12 +2687,13 @@ describe("useAppStore", () => {
       localStorage.setItem(ACTIVE_INSTANCE_ID_STORAGE_KEY, "persisted-instance")
 
       vi.resetModules()
-      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
-        await import("./index")
+      const { useAppStore: freshStore } = await import("./index")
 
-      // Since the fresh store doesn't have "persisted-instance" in its instances Map,
-      // it should fall back to DEFAULT_INSTANCE_ID
-      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
+      // With persist middleware, both instances and activeInstanceId are persisted together.
+      // Since we created "persisted-instance" above, it gets persisted and rehydrated,
+      // so the activeInstanceId remains valid.
+      expect(freshStore.getState().activeInstanceId).toBe("persisted-instance")
+      expect(freshStore.getState().instances.has("persisted-instance")).toBe(true)
     })
 
     it("uses default ID when localStorage has non-existent instance ID", async () => {
