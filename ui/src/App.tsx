@@ -2,7 +2,7 @@ import { useRef, useCallback, useState, useEffect } from "react"
 import {
   MainLayout,
   type MainLayoutHandle,
-  StatusBar,
+  StatusBarController,
   HotkeysDialog,
   CommandPalette,
 } from "./components/layout"
@@ -444,7 +444,7 @@ export function App() {
           />
         }
         main={<AgentView chatInputRef={chatInputRef} />}
-        statusBar={<StatusBar />}
+        statusBar={<StatusBarController />}
         leftPanel={<TaskChatController onClose={handleTaskChatClose} />}
         leftPanelOpen={taskChatOpen}
         leftPanelWidth={taskChatWidth}
