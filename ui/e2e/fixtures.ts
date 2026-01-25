@@ -71,10 +71,14 @@ export class TaskListPage {
 export class TaskDetailsPage {
   readonly page: Page
   readonly dialog: Locator
+  readonly iterationLinksSection: Locator
+  readonly iterationLinksLabel: Locator
 
   constructor(page: Page) {
     this.page = page
     this.dialog = page.getByRole("dialog")
+    this.iterationLinksSection = this.dialog.locator('div:has(> label:has-text("Iterations"))')
+    this.iterationLinksLabel = this.dialog.getByText("Iterations", { exact: true })
   }
 
   /** Check if the dialog is open */
@@ -128,6 +132,65 @@ export class TaskDetailsPage {
   /** Save changes (Cmd+Enter) */
   async save() {
     await this.page.keyboard.press("Meta+Enter")
+  }
+
+  /** Check if the iteration links section is visible */
+  async hasIterationLinks(): Promise<boolean> {
+    return this.iterationLinksLabel.isVisible()
+  }
+
+  /** Check if the iteration links section is loading */
+  async isIterationLinksLoading(): Promise<boolean> {
+    // Look specifically for the Iterations loading state - the section with Iterations label and Loading...
+    const iterationsLoading = this.dialog
+      .locator('div:has(> label:has-text("Iterations"))')
+      .getByText("Loading...")
+    return iterationsLoading.isVisible()
+  }
+
+  /** Wait for iteration links to finish loading */
+  async waitForIterationLinksLoaded() {
+    // Wait for the Iterations "Loading..." to disappear (if it was showing)
+    // The IterationLinks component shows a specific loading state with the Iterations label
+    // After loading, it either shows iteration links or renders nothing
+    const iterationsLoading = this.dialog
+      .locator('div:has(> label:has-text("Iterations"))')
+      .getByText("Loading...")
+    // Poll until loading disappears or never appeared
+    await expect
+      .poll(
+        async () => {
+          const count = await iterationsLoading.count()
+          return count === 0
+        },
+        { timeout: 10000 },
+      )
+      .toBe(true)
+  }
+
+  /** Get all iteration link buttons */
+  getIterationLinkButtons(): Locator {
+    return this.dialog.getByRole("button", { name: /view iteration/i })
+  }
+
+  /** Get the count of iteration links */
+  async getIterationLinkCount(): Promise<number> {
+    const buttons = this.getIterationLinkButtons()
+    return buttons.count()
+  }
+
+  /** Click on an iteration link by index (0-based) */
+  async clickIterationLink(index: number = 0) {
+    const buttons = this.getIterationLinkButtons()
+    await buttons.nth(index).click()
+  }
+
+  /** Get the event count text from an iteration link */
+  async getIterationEventCount(index: number = 0): Promise<string | null> {
+    const buttons = this.getIterationLinkButtons()
+    const button = buttons.nth(index)
+    const eventCountText = button.getByText(/\d+ events?/)
+    return eventCountText.textContent()
   }
 }
 
