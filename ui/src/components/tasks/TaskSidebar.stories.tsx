@@ -1,7 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { TaskSidebar } from "./TaskSidebar"
-import { useAppStore } from "@/store"
-import { useEffect } from "react"
 import type { Task } from "@/types"
 
 const meta: Meta<typeof TaskSidebar> = {
@@ -19,19 +17,6 @@ const meta: Meta<typeof TaskSidebar> = {
 
 export default meta
 type Story = StoryObj<typeof meta>
-
-/** Helper to set up store state */
-function StoreSetter({ tasks, status }: { tasks: Task[]; status?: "running" | "stopped" }) {
-  useEffect(() => {
-    const store = useAppStore.getState()
-    // Set tasks first, then status - status change calculates initialTaskCount
-    store.setTasks(tasks)
-    if (status) {
-      store.setRalphStatus(status)
-    }
-  }, [tasks, status])
-  return null
-}
 
 const sampleTasks: Task[] = [
   { id: "rui-1", title: "Implement authentication", status: "in_progress", priority: 1 },
@@ -68,45 +53,75 @@ function TaskListMock({ tasks }: { tasks: Task[] }) {
   )
 }
 
+/** Mock progress bar for stories */
+function MockProgressBar({ closed, total }: { closed: number; total: number }) {
+  const progress = total > 0 ? (closed / total) * 100 : 0
+  return (
+    <div
+      className="border-border border-t px-4 py-3"
+      role="progressbar"
+      aria-valuenow={closed}
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-label="Task completion progress"
+    >
+      <div className="flex items-center gap-3">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/30">
+          <div
+            className="h-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+        </div>
+        <span className="text-muted-foreground shrink-0 text-xs">
+          {closed}/{total}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** Mock iteration history button for stories */
+function MockIterationHistory() {
+  return (
+    <button className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors">
+      <span>History</span>
+    </button>
+  )
+}
+
 export const Default: Story = {
-  render: () => (
-    <>
-      <StoreSetter tasks={sampleTasks} status="running" />
-      <TaskSidebar quickInput={<QuickInput />} taskList={<TaskListMock tasks={sampleTasks} />} />
-    </>
-  ),
+  args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    iterationHistory: <MockIterationHistory />,
+    progressBar: <MockProgressBar closed={1} total={5} />,
+  },
 }
 
 export const WithSearchVisible: Story = {
-  render: () => (
-    <>
-      <StoreSetter tasks={sampleTasks} status="running" />
-      <TaskSidebar
-        quickInput={<QuickInput />}
-        taskList={<TaskListMock tasks={sampleTasks} />}
-        isSearchVisible={true}
-        onHideSearch={() => {}}
-      />
-    </>
-  ),
+  args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    iterationHistory: <MockIterationHistory />,
+    progressBar: <MockProgressBar closed={1} total={5} />,
+    isSearchVisible: true,
+    onHideSearch: () => {},
+  },
 }
 
 export const EmptyState: Story = {
-  render: () => (
-    <>
-      <StoreSetter tasks={[]} status="stopped" />
-      <TaskSidebar quickInput={<QuickInput />} />
-    </>
-  ),
+  args: {
+    quickInput: <QuickInput />,
+    iterationHistory: <MockIterationHistory />,
+  },
 }
 
 export const WithoutQuickInput: Story = {
-  render: () => (
-    <>
-      <StoreSetter tasks={sampleTasks} status="running" />
-      <TaskSidebar taskList={<TaskListMock tasks={sampleTasks} />} />
-    </>
-  ),
+  args: {
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    iterationHistory: <MockIterationHistory />,
+    progressBar: <MockProgressBar closed={1} total={5} />,
+  },
 }
 
 export const WithManyTasks: Story = {
@@ -120,43 +135,37 @@ export const WithManyTasks: Story = {
         : "open",
       priority: i % 5,
     }))
+    const closedCount = manyTasks.filter(t => t.status === "closed").length
     return (
-      <>
-        <StoreSetter tasks={manyTasks} status="running" />
-        <TaskSidebar
-          quickInput={<QuickInput />}
-          taskList={
-            <div className="h-full overflow-y-auto">
-              <TaskListMock tasks={manyTasks} />
-            </div>
-          }
-        />
-      </>
+      <TaskSidebar
+        quickInput={<QuickInput />}
+        taskList={
+          <div className="h-full overflow-y-auto">
+            <TaskListMock tasks={manyTasks} />
+          </div>
+        }
+        iterationHistory={<MockIterationHistory />}
+        progressBar={<MockProgressBar closed={closedCount} total={manyTasks.length} />}
+      />
     )
   },
 }
 
 export const WhenStopped: Story = {
-  render: () => (
-    <>
-      <StoreSetter tasks={sampleTasks} status="stopped" />
-      <TaskSidebar quickInput={<QuickInput />} taskList={<TaskListMock tasks={sampleTasks} />} />
-    </>
-  ),
+  args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    iterationHistory: <MockIterationHistory />,
+    // No progress bar when stopped
+  },
 }
 
 export const WithCustomClassName: Story = {
   args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    iterationHistory: <MockIterationHistory />,
+    progressBar: <MockProgressBar closed={1} total={5} />,
     className: "bg-muted/20",
   },
-  render: args => (
-    <>
-      <StoreSetter tasks={sampleTasks} status="running" />
-      <TaskSidebar
-        {...args}
-        quickInput={<QuickInput />}
-        taskList={<TaskListMock tasks={sampleTasks} />}
-      />
-    </>
-  ),
 }

@@ -1,4 +1,5 @@
 export { TaskSidebar, type TaskSidebarProps } from "./TaskSidebar"
+export { TaskSidebarController, type TaskSidebarControllerProps } from "./TaskSidebarController"
 export { TaskCard, type TaskCardProps } from "./TaskCard"
 export { TaskList, type TaskListProps } from "./TaskList"
 export {

@@ -55,6 +55,26 @@ describe("TaskSidebar", () => {
       expect(screen.getByTestId("quick-input")).toBeInTheDocument()
       expect(screen.getByTestId("task-list")).toBeInTheDocument()
     })
+
+    it("renders iterationHistory when provided", () => {
+      render(<TaskSidebar iterationHistory={<div data-testid="iteration-history">History</div>} />)
+      expect(screen.getByTestId("iteration-history")).toBeInTheDocument()
+      expect(screen.getByText("History")).toBeInTheDocument()
+    })
+
+    it("does not render iterationHistory container when not provided", () => {
+      const { container } = render(<TaskSidebar />)
+      // Should not have the iteration history container with border-t class
+      // Note: we check that only the content wrapper exists, not the history footer
+      const borderTElements = container.querySelectorAll(".border-t")
+      expect(borderTElements).toHaveLength(0)
+    })
+
+    it("renders progressBar when provided", () => {
+      render(<TaskSidebar progressBar={<div data-testid="progress-bar">Progress</div>} />)
+      expect(screen.getByTestId("progress-bar")).toBeInTheDocument()
+      expect(screen.getByText("Progress")).toBeInTheDocument()
+    })
   })
 
   describe("layout", () => {
@@ -84,6 +104,12 @@ describe("TaskSidebar", () => {
       render(<TaskSidebar quickInput={<div>Input</div>} />)
       const inputContainer = screen.getByText("Input").parentElement
       expect(inputContainer).toHaveClass("border-b", "border-border")
+    })
+
+    it("iteration history area has correct border styling", () => {
+      render(<TaskSidebar iterationHistory={<div>History</div>} />)
+      const historyContainer = screen.getByText("History").parentElement
+      expect(historyContainer).toHaveClass("border-t", "border-border")
     })
   })
 

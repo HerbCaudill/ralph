@@ -1,12 +1,13 @@
 import type { ReactNode, RefObject } from "react"
 import { cn } from "@/lib/utils"
-import { TaskProgressBar } from "./TaskProgressBar"
 import { SearchInput, type SearchInputHandle } from "./SearchInput"
-import { IterationHistorySheet } from "@/components/events"
 
 /**
  * Sidebar container for task management.
  * Contains quick task input at top and task list below.
+ *
+ * This is a presentational component that receives all content via props.
+ * Use TaskSidebarController for the connected version.
  */
 export function TaskSidebar({
   /** Quick task input element to display at the top */
@@ -21,6 +22,10 @@ export function TaskSidebar({
   isSearchVisible = false,
   /** Callback to hide the search input */
   onHideSearch,
+  /** Element to display in the iteration history slot (bottom left) */
+  iterationHistory,
+  /** Element to display in the progress bar slot (bottom) */
+  progressBar,
   /** Additional CSS classes to apply */
   className,
 }: TaskSidebarProps) {
@@ -46,11 +51,13 @@ export function TaskSidebar({
         )}
       </div>
 
-      <div className="border-border flex items-center justify-between border-t px-4 py-2">
-        <IterationHistorySheet />
-      </div>
+      {iterationHistory && (
+        <div className="border-border flex items-center justify-between border-t px-4 py-2">
+          {iterationHistory}
+        </div>
+      )}
 
-      <TaskProgressBar />
+      {progressBar}
     </div>
   )
 }
@@ -69,6 +76,10 @@ export type TaskSidebarProps = {
   isSearchVisible?: boolean
   /** Callback to hide the search input */
   onHideSearch?: () => void
+  /** Element to display in the iteration history slot (bottom left) */
+  iterationHistory?: ReactNode
+  /** Element to display in the progress bar slot (bottom) */
+  progressBar?: ReactNode
   /** Additional CSS classes to apply */
   className?: string
 }
