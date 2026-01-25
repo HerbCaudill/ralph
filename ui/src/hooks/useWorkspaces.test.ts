@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useWorkspaces } from "./useWorkspaces"
-import { useAppStore } from "@/store"
+import { useAppStore, clearTaskRefreshDebounce } from "@/store"
 
 // Mock fetch
 const mockFetch = vi.fn()
@@ -39,7 +39,13 @@ describe("useWorkspaces", () => {
   ]
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    // resetAllMocks clears both call history AND implementation queue (unlike clearAllMocks)
+    vi.resetAllMocks()
+    // Use fake timers to control debouncing behavior
+    // shouldAdvanceTime allows promises/microtasks to resolve (needed for waitFor)
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    // Clear any pending debounced task refresh from previous tests
+    clearTaskRefreshDebounce()
     // Reset store
     useAppStore.setState({
       workspace: "/workspace/a",
@@ -55,6 +61,9 @@ describe("useWorkspaces", () => {
   })
 
   afterEach(() => {
+    // Clear any pending debounced task refresh before next test
+    clearTaskRefreshDebounce()
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
