@@ -86,13 +86,15 @@ describe("TaskList", () => {
       expect(screen.getByText("No tasks")).toBeInTheDocument()
     })
 
-    it("hides empty groups by default", () => {
+    it("always shows open and closed groups, hides deferred when empty", () => {
       const tasksOnlyOpen: TaskCardTask[] = [{ id: "task-1", title: "Open task", status: "open" }]
       render(<TaskList tasks={tasksOnlyOpen} />)
 
+      // Open and Closed groups should always be visible
       expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Closed section/)).toBeInTheDocument()
+      // Deferred should only show when it has tasks
       expect(screen.queryByLabelText(/Deferred section/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
     })
 
     it("shows deferred section only when there are deferred tasks", () => {
@@ -102,9 +104,10 @@ describe("TaskList", () => {
       ]
       render(<TaskList tasks={tasksWithDeferred} />)
 
+      // All sections should be visible when they have content (or for open/closed always)
       expect(screen.getByLabelText(/Open section/)).toBeInTheDocument()
       expect(screen.getByLabelText(/Deferred section/)).toBeInTheDocument()
-      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+      expect(screen.getByLabelText(/Closed section/)).toBeInTheDocument() // Always visible
     })
 
     it("shows empty groups when showEmptyGroups is true", () => {
@@ -1431,8 +1434,8 @@ describe("TaskList", () => {
       expect(screen.getByText("Closed child")).toBeInTheDocument()
 
       // Closed section should NOT have the closed child (parent is still open)
-      // Since there are no tasks in closed section, the header shouldn't appear
-      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+      // Closed section will still appear (always visible) but with 0 tasks
+      expect(screen.getByLabelText("Closed section, 0 tasks")).toBeInTheDocument()
     })
 
     it("moves closed subtasks to closed section when parent is also closed", () => {
@@ -1506,8 +1509,8 @@ describe("TaskList", () => {
       expect(screen.getByText("Open child")).toBeInTheDocument()
       expect(screen.getByText("Deferred child")).toBeInTheDocument()
 
-      // Closed section should NOT appear
-      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+      // Closed section should appear (always visible) but with 0 tasks
+      expect(screen.getByLabelText("Closed section, 0 tasks")).toBeInTheDocument()
     })
 
     it("handles mixed subtask statuses with open parent", () => {
@@ -1543,8 +1546,8 @@ describe("TaskList", () => {
       expect(screen.getByText("Blocked child")).toBeInTheDocument()
       expect(screen.getByText("Closed child")).toBeInTheDocument()
 
-      // Closed section should NOT appear
-      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+      // Closed section should appear (always visible) but with 0 tasks
+      expect(screen.getByLabelText("Closed section, 0 tasks")).toBeInTheDocument()
     })
 
     it("correctly counts subtasks including closed ones when parent is open", () => {
@@ -1604,8 +1607,8 @@ describe("TaskList", () => {
       expect(screen.getByText("Open child")).toBeInTheDocument()
       expect(screen.getByText("Closed child")).toBeInTheDocument()
 
-      // Closed section should NOT have the closed child
-      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+      // Closed section should appear (always visible) but with 0 tasks
+      expect(screen.getByLabelText("Closed section, 0 tasks")).toBeInTheDocument()
     })
 
     it("places closed subtasks in Closed section when parent is deferred", () => {
@@ -1805,8 +1808,8 @@ describe("TaskList", () => {
       expect(screen.getByText("Child")).toBeInTheDocument()
       expect(screen.getByText("Closed Grandchild")).toBeInTheDocument()
 
-      // Closed section should not exist
-      expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
+      // Closed section should appear (always visible) but with 0 tasks
+      expect(screen.getByLabelText("Closed section, 0 tasks")).toBeInTheDocument()
     })
 
     it("moves entire tree to closed when root is closed", () => {

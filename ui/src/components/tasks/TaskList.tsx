@@ -402,7 +402,13 @@ export function TaskList({
   }, [tasks, closedTimeFilter, searchQuery, activelyWorkingTaskIds])
 
   const visibleStatusGroups = useMemo(() => {
-    return statusGroups.filter(group => showEmptyGroups || group.totalCount > 0)
+    return statusGroups.filter(group => {
+      if (showEmptyGroups) return true
+      // Always show "open" and "closed" groups, even when empty
+      if (group.config.key === "open" || group.config.key === "closed") return true
+      // Only show "deferred" group if it has tasks
+      return group.totalCount > 0
+    })
   }, [statusGroups, showEmptyGroups])
 
   const visibleTaskIds = useMemo(() => {
