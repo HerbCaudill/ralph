@@ -1080,6 +1080,18 @@ describe("EventStream", () => {
       expect(screen.getByTestId("ralph-idle-spinner")).toBeInTheDocument()
     })
 
+    it("shows running spinner when Ralph is stopping_after_current with content", () => {
+      useAppStore.getState().setRalphStatus("stopping_after_current")
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600000000,
+        message: "Test message",
+      })
+      renderEventStream()
+      expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
+      expect(screen.getByLabelText("Ralph is running")).toBeInTheDocument()
+    })
+
     it("shows spinner in empty state (replaces 'no events yet' message)", () => {
       useAppStore.getState().setRalphStatus("running")
       renderEventStream()

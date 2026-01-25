@@ -50,6 +50,7 @@ import {
   selectIsInstanceRunning,
   selectInstanceIterationCount,
   flushTaskChatEventsBatch,
+  selectCanAcceptMessages,
 } from "./index"
 import type { ChatEvent, Task, TaskChatMessage } from "@/types"
 
@@ -1379,6 +1380,38 @@ describe("useAppStore", () => {
       // Set running again (shouldn't change initial count)
       useAppStore.getState().setRalphStatus("running")
       expect(useAppStore.getState().initialTaskCount).toBe(2)
+    })
+  })
+
+  describe("selectCanAcceptMessages", () => {
+    it("returns true when running", () => {
+      useAppStore.getState().setRalphStatus("running")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(true)
+    })
+
+    it("returns true when paused", () => {
+      useAppStore.getState().setRalphStatus("paused")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(true)
+    })
+
+    it("returns true when stopping_after_current", () => {
+      useAppStore.getState().setRalphStatus("stopping_after_current")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(true)
+    })
+
+    it("returns false when stopped", () => {
+      useAppStore.getState().setRalphStatus("stopped")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(false)
+    })
+
+    it("returns false when starting", () => {
+      useAppStore.getState().setRalphStatus("starting")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(false)
+    })
+
+    it("returns false when stopping", () => {
+      useAppStore.getState().setRalphStatus("stopping")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(false)
     })
   })
 

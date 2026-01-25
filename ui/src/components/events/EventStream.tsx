@@ -50,7 +50,10 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
   const instance = useAppStore(state =>
     instanceId ? selectInstance(state, instanceId) : selectActiveInstance(state),
   )
-  const isRunning = ralphStatus === "running" || ralphStatus === "starting"
+  const isRunning =
+    ralphStatus === "running" ||
+    ralphStatus === "starting" ||
+    ralphStatus === "stopping_after_current"
   const isViewingLatest = viewingIterationIndex === null
 
   // Fetch event logs for the history dropdown
