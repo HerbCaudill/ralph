@@ -87,3 +87,5 @@ export {
   type UseTaskChatSessionsOptions,
   type UseTaskChatSessionsResult,
 } from "./useTaskChatSessions"
+
+export { useTaskChat, type UseTaskChatResult } from "./useTaskChat"

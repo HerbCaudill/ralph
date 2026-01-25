@@ -31,7 +31,7 @@ import {
   selectTaskChatEvents,
   selectCurrentTask,
 } from "./store"
-import { TaskChatPanel } from "./components/chat/TaskChatPanel"
+import { TaskChatController } from "./components/chat/TaskChatController"
 import {
   useHotkeys,
   useTheme,
@@ -445,7 +445,7 @@ export function App() {
         }
         main={<AgentView chatInputRef={chatInputRef} />}
         statusBar={<StatusBar />}
-        leftPanel={<TaskChatPanel onClose={handleTaskChatClose} />}
+        leftPanel={<TaskChatController onClose={handleTaskChatClose} />}
         leftPanelOpen={taskChatOpen}
         leftPanelWidth={taskChatWidth}
         onLeftPanelWidthChange={handleTaskChatWidthChange}
