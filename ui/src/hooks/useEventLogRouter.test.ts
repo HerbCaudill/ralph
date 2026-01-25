@@ -2,10 +2,24 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useEventLogRouter, parseEventLogHash, buildEventLogHash } from "./useEventLogRouter"
 import { useAppStore } from "../store"
+import { eventDatabase, type PersistedEventLog } from "@/lib/persistence"
 
-// Mock fetch globally
-const mockFetch = vi.fn()
-global.fetch = mockFetch
+// Mock eventDatabase
+vi.mock("@/lib/persistence", async () => {
+  const actual = await vi.importActual("@/lib/persistence")
+  return {
+    ...actual,
+    eventDatabase: {
+      init: vi.fn().mockResolvedValue(undefined),
+      getEventLog: vi.fn(),
+    },
+  }
+})
+
+const mockEventDatabase = eventDatabase as unknown as {
+  init: ReturnType<typeof vi.fn>
+  getEventLog: ReturnType<typeof vi.fn>
+}
 
 describe("parseEventLogHash", () => {
   it("returns null for empty hash", () => {
@@ -62,8 +76,10 @@ describe("useEventLogRouter", () => {
     // Reset the store before each test
     useAppStore.getState().clearEventLogViewer()
 
-    // Reset fetch mock
-    mockFetch.mockReset()
+    // Reset eventDatabase mocks
+    mockEventDatabase.init.mockReset()
+    mockEventDatabase.getEventLog.mockReset()
+    mockEventDatabase.init.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -108,24 +124,28 @@ describe("useEventLogRouter", () => {
     expect(useAppStore.getState().viewingEventLogId).toBeNull()
   })
 
-  it("parses eventlog ID from URL on mount and fetches data", async () => {
-    const mockEventLog = {
+  it("parses eventlog ID from URL on mount and fetches data from IndexedDB", async () => {
+    const mockPersistedEventLog: PersistedEventLog = {
       id: "abcdef12",
-      createdAt: "2025-01-01T00:00:00Z",
-      events: [{ type: "test", timestamp: 1234567890 }],
-      metadata: { taskId: "task-123" },
+      createdAt: 1704067200000, // 2025-01-01T00:00:00Z
+      events: [
+        { type: "test", timestamp: 1234567890 } as unknown as PersistedEventLog["events"][0],
+      ],
+      taskId: "task-123",
+      taskTitle: null,
+      source: null,
+      workspacePath: null,
+      eventCount: 1,
     }
 
-    mockFetch.mockResolvedValue({
-      json: () => Promise.resolve({ ok: true, eventlog: mockEventLog }),
-    })
+    mockEventDatabase.getEventLog.mockResolvedValue(mockPersistedEventLog)
 
     window.location.hash = "#eventlog=abcdef12"
 
     renderHook(() => useEventLogRouter())
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith("/api/eventlogs/abcdef12")
+      expect(mockEventDatabase.getEventLog).toHaveBeenCalledWith("abcdef12")
     })
 
     await waitFor(() => {
@@ -133,61 +153,63 @@ describe("useEventLogRouter", () => {
     })
 
     await waitFor(() => {
-      expect(useAppStore.getState().viewingEventLog).toEqual(mockEventLog)
+      const eventLog = useAppStore.getState().viewingEventLog
+      expect(eventLog).toBeTruthy()
+      expect(eventLog!.id).toBe("abcdef12")
+      expect(eventLog!.metadata?.taskId).toBe("task-123")
     })
   })
 
-  it("sets error state when fetch fails", async () => {
-    mockFetch.mockResolvedValue({
-      json: () => Promise.resolve({ ok: false, error: "Not found" }),
-    })
+  it("sets error state when event log not found in IndexedDB", async () => {
+    mockEventDatabase.getEventLog.mockResolvedValue(undefined)
 
-    // Use a valid 8-character hex ID that doesn't exist on server
+    // Use a valid 8-character hex ID that doesn't exist
     window.location.hash = "#eventlog=deadbeef"
 
     renderHook(() => useEventLogRouter())
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith("/api/eventlogs/deadbeef")
+      expect(mockEventDatabase.getEventLog).toHaveBeenCalledWith("deadbeef")
     })
 
     await waitFor(() => {
-      expect(useAppStore.getState().eventLogError).toBe("Not found")
+      expect(useAppStore.getState().eventLogError).toBe("Event log not found")
     })
 
     expect(useAppStore.getState().viewingEventLog).toBeNull()
   })
 
-  it("sets error state when fetch throws", async () => {
-    mockFetch.mockImplementation(() => {
-      throw new Error("Network error")
-    })
+  it("sets error state when IndexedDB operation throws", async () => {
+    mockEventDatabase.getEventLog.mockRejectedValue(new Error("Database error"))
 
     window.location.hash = "#eventlog=abcdef12"
 
     renderHook(() => useEventLogRouter())
 
     await waitFor(() => {
-      expect(useAppStore.getState().eventLogError).toBe("Network error")
+      expect(useAppStore.getState().eventLogError).toBe("Database error")
     })
   })
 
   it("clears event log when hash is removed", async () => {
-    const mockEventLog = {
+    const mockPersistedEventLog: PersistedEventLog = {
       id: "abcdef12",
-      createdAt: "2025-01-01T00:00:00Z",
+      createdAt: 1704067200000,
       events: [],
+      taskId: null,
+      taskTitle: null,
+      source: null,
+      workspacePath: null,
+      eventCount: 0,
     }
 
-    mockFetch.mockResolvedValue({
-      json: () => Promise.resolve({ ok: true, eventlog: mockEventLog }),
-    })
+    mockEventDatabase.getEventLog.mockResolvedValue(mockPersistedEventLog)
 
     window.location.hash = "#eventlog=abcdef12"
 
     renderHook(() => useEventLogRouter())
 
-    // Wait for initial fetch
+    // Wait for initial load from IndexedDB
     await waitFor(() => {
       expect(useAppStore.getState().viewingEventLogId).toBe("abcdef12")
     })
@@ -205,24 +227,30 @@ describe("useEventLogRouter", () => {
   })
 
   it("responds to hashchange events", async () => {
-    const mockEventLog1 = {
+    const mockPersistedEventLog1: PersistedEventLog = {
       id: "11111111",
-      createdAt: "2025-01-01T00:00:00Z",
+      createdAt: 1704067200000,
       events: [],
+      taskId: null,
+      taskTitle: null,
+      source: null,
+      workspacePath: null,
+      eventCount: 0,
     }
-    const mockEventLog2 = {
+    const mockPersistedEventLog2: PersistedEventLog = {
       id: "22222222",
-      createdAt: "2025-01-02T00:00:00Z",
+      createdAt: 1704153600000,
       events: [],
+      taskId: null,
+      taskTitle: null,
+      source: null,
+      workspacePath: null,
+      eventCount: 0,
     }
 
-    mockFetch
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve({ ok: true, eventlog: mockEventLog1 }),
-      })
-      .mockResolvedValueOnce({
-        json: () => Promise.resolve({ ok: true, eventlog: mockEventLog2 }),
-      })
+    mockEventDatabase.getEventLog
+      .mockResolvedValueOnce(mockPersistedEventLog1)
+      .mockResolvedValueOnce(mockPersistedEventLog2)
 
     window.location.hash = "#eventlog=11111111"
 
@@ -243,16 +271,14 @@ describe("useEventLogRouter", () => {
     })
   })
 
-  it("sets loading state during fetch", async () => {
+  it("sets loading state during IndexedDB lookup", async () => {
     // Create a promise we can control
-    let resolvePromise: (value: unknown) => void
-    const fetchPromise = new Promise(resolve => {
+    let resolvePromise: (value: PersistedEventLog) => void
+    const dbPromise = new Promise<PersistedEventLog>(resolve => {
       resolvePromise = resolve
     })
 
-    mockFetch.mockReturnValue({
-      json: () => fetchPromise,
-    })
+    mockEventDatabase.getEventLog.mockReturnValue(dbPromise)
 
     window.location.hash = "#eventlog=abcdef12"
 
@@ -263,9 +289,18 @@ describe("useEventLogRouter", () => {
       expect(useAppStore.getState().eventLogLoading).toBe(true)
     })
 
-    // Resolve the fetch
+    // Resolve the database lookup
     await act(async () => {
-      resolvePromise!({ ok: true, eventlog: { id: "abcdef12", events: [] } })
+      resolvePromise!({
+        id: "abcdef12",
+        createdAt: 1704067200000,
+        events: [],
+        taskId: null,
+        taskTitle: null,
+        source: null,
+        workspacePath: null,
+        eventCount: 0,
+      })
     })
 
     // Should no longer be loading
@@ -275,15 +310,18 @@ describe("useEventLogRouter", () => {
   })
 
   it("returns current eventLogId from store", async () => {
-    const mockEventLog = {
+    const mockPersistedEventLog: PersistedEventLog = {
       id: "abcdef12",
-      createdAt: "2025-01-01T00:00:00Z",
+      createdAt: 1704067200000,
       events: [],
+      taskId: null,
+      taskTitle: null,
+      source: null,
+      workspacePath: null,
+      eventCount: 0,
     }
 
-    mockFetch.mockResolvedValue({
-      json: () => Promise.resolve({ ok: true, eventlog: mockEventLog }),
-    })
+    mockEventDatabase.getEventLog.mockResolvedValue(mockPersistedEventLog)
 
     window.location.hash = "#eventlog=abcdef12"
 

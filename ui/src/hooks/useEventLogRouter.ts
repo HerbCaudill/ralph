@@ -1,5 +1,7 @@
 import { useEffect, useCallback } from "react"
 import { useAppStore } from "../store"
+import { eventDatabase, type PersistedEventLog } from "@/lib/persistence"
+import type { EventLog } from "@/types"
 
 /**
  * Parse the URL hash to extract eventlog ID.
@@ -28,19 +30,24 @@ export function buildEventLogHash(id: string): string {
   return `#eventlog=${id}`
 }
 
-/**  Fetch an event log by ID from the API. */
-async function fetchEventLog(id: string): Promise<{
-  ok: boolean
-  eventlog?: {
-    id: string
-    createdAt: string
-    events: Array<{ type: string; timestamp: number; [key: string]: unknown }>
-    metadata?: { taskId?: string; title?: string; source?: string; workspacePath?: string }
+/**
+ * Convert a PersistedEventLog from IndexedDB to EventLog for the store.
+ */
+function toEventLog(persisted: PersistedEventLog): EventLog {
+  return {
+    id: persisted.id,
+    createdAt: new Date(persisted.createdAt).toISOString(),
+    events: persisted.events,
+    metadata:
+      persisted.taskId || persisted.taskTitle || persisted.source || persisted.workspacePath ?
+        {
+          taskId: persisted.taskId ?? undefined,
+          title: persisted.taskTitle ?? undefined,
+          source: persisted.source ?? undefined,
+          workspacePath: persisted.workspacePath ?? undefined,
+        }
+      : undefined,
   }
-  error?: string
-}> {
-  const response = await fetch(`/api/eventlogs/${id}`)
-  return response.json()
 }
 
 export interface UseEventLogRouterReturn {
@@ -85,7 +92,7 @@ export function useEventLogRouter(): UseEventLogRouterReturn {
     clearEventLogViewer()
   }, [clearEventLogViewer])
 
-  // Handle hash changes and fetch event log data
+  // Handle hash changes and fetch event log data from IndexedDB
   useEffect(() => {
     async function handleHashChange() {
       const id = parseEventLogHash(window.location.hash)
@@ -97,14 +104,16 @@ export function useEventLogRouter(): UseEventLogRouterReturn {
         setEventLogError(null)
 
         try {
-          const result = await fetchEventLog(id)
+          // Initialize database and fetch from IndexedDB
+          await eventDatabase.init()
+          const persisted = await eventDatabase.getEventLog(id)
 
-          if (result.ok && result.eventlog) {
-            setViewingEventLog(result.eventlog)
+          if (persisted) {
+            setViewingEventLog(toEventLog(persisted))
             setEventLogError(null)
           } else {
             setViewingEventLog(null)
-            setEventLogError(result.error ?? "Event log not found")
+            setEventLogError("Event log not found")
           }
         } catch (err) {
           setViewingEventLog(null)
