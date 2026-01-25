@@ -174,7 +174,7 @@ export const BorderedWithIcons: Story = {
   },
 }
 
-/** Status button group as used in TaskDetailsDialog */
+/** Status button group as used in TaskDetails */
 export const StatusSelector: Story = {
   render: function StatusSelectorStory() {
     const [status, setStatus] = useState<TaskStatus>("open")
@@ -207,7 +207,7 @@ export const StatusSelector: Story = {
   },
 }
 
-/** Priority button group as used in TaskDetailsDialog */
+/** Priority button group as used in TaskDetails */
 export const PrioritySelector: Story = {
   render: function PrioritySelectorStory() {
     const [priority, setPriority] = useState(2)
@@ -237,7 +237,7 @@ export const PrioritySelector: Story = {
   },
 }
 
-/** Type button group as used in TaskDetailsDialog */
+/** Type button group as used in TaskDetails */
 export const TypeSelector: Story = {
   render: function TypeSelectorStory() {
     const [issueType, setIssueType] = useState<IssueType>("task")

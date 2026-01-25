@@ -89,3 +89,11 @@ export {
 } from "./useTaskChatSessions"
 
 export { useTaskChat, type UseTaskChatResult } from "./useTaskChat"
+
+export {
+  useTaskDetails,
+  type IssueType,
+  type UseTaskDetailsOptions,
+  type TaskFormValues,
+  type UseTaskDetailsResult,
+} from "./useTaskDetails"

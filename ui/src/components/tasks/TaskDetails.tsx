@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import {
   IconCircle,
   IconCircleDot,
@@ -18,385 +18,90 @@ import { ButtonGroup } from "@/components/ui/button-group"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { useAppStore, selectIssuePrefix, selectTasks } from "@/store"
-import type { TaskCardTask, TaskStatus, TaskUpdateData } from "@/types"
+import type { TaskCardTask, TaskStatus } from "@/types"
 import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@/components/ui/MarkdownContent"
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor"
 import { RelatedTasks } from "./RelatedTasks"
 import { ParentCombobox } from "./ParentCombobox"
 import { IterationLinks } from "./IterationLinks"
-import { saveEventLogAndAddComment } from "@/lib/saveEventLogAndAddComment"
+import type { IssueType, TaskFormValues } from "@/hooks/useTaskDetails"
 
-export function TaskDetailsDialog({
+/**
+ * Presentational component for task details.
+ *
+ * This is a pure component that receives all data via props.
+ * It handles rendering the task details UI including title, description,
+ * status, priority, type, parent, labels, and related tasks.
+ * Business logic and store access are handled by the parent controller.
+ */
+export function TaskDetails({
   task,
   open,
-  onClose,
-  onSave,
-  onDelete,
   readOnly = false,
-}: TaskDetailsDialogProps) {
-  /**
-   * Get events, workspace, issue prefix, and tasks from store
-   */
-  const events = useAppStore(state => state.events)
-  const workspace = useAppStore(state => state.workspace)
-  const issuePrefix = useAppStore(selectIssuePrefix)
-  const allTasks = useAppStore(selectTasks)
-
-  /**
-   * Local state for editable fields
-   */
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [status, setStatus] = useState<TaskStatus>("open")
-  const [priority, setPriority] = useState<number>(2)
-  const [issueType, setIssueType] = useState<IssueType>("task")
-  const [parent, setParent] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-
-  /**
-   * Track the last saved values to detect changes
-   */
-  const lastSavedRef = useRef<{
-    title: string
-    description: string
-    status: TaskStatus
-    priority: number
-    issueType: IssueType
-    parent: string | null
-  } | null>(null)
-
-  /**
-   * Debounce timer ref for text field autosave
-   */
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  /**
-   * Delete state
-   */
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-
-  /**
-   * Labels state
-   */
-  const [labels, setLabels] = useState<string[]>([])
-  const [newLabel, setNewLabel] = useState("")
-  const [isAddingLabel, setIsAddingLabel] = useState(false)
-  const [showLabelInput, setShowLabelInput] = useState(false)
+  formValues,
+  labels,
+  issuePrefix,
+  allTasks,
+  isSaving,
+  isDeleting,
+  isAddingLabel,
+  isConfirmingDelete,
+  deleteError,
+  newLabel,
+  showLabelInput,
+  canDelete,
+  onUpdateTitle,
+  onUpdateDescription,
+  onUpdateStatus,
+  onUpdatePriority,
+  onUpdateIssueType,
+  onUpdateParent,
+  onSetNewLabel,
+  onSetShowLabelInput,
+  onAddLabel,
+  onRemoveLabel,
+  onStartDelete,
+  onCancelDelete,
+  onConfirmDelete,
+  onClose,
+}: TaskDetailsProps) {
+  // Label input ref
   const labelInputRef = useRef<HTMLInputElement>(null)
 
-  /**
-   * Title textarea ref for auto-sizing
-   */
+  // Title textarea ref for auto-sizing
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  /**
-   * Fetch labels when task changes
-   */
-  useEffect(() => {
-    if (task && open) {
-      // Fetch labels from API
-      fetch(`/api/tasks/${task.id}/labels`)
-        .then(res => res.json())
-        .then((data: { ok: boolean; labels?: string[] }) => {
-          if (data.ok && data.labels) {
-            setLabels(data.labels)
-          }
-        })
-        .catch(err => {
-          console.error("Failed to fetch labels:", err)
-        })
-    }
-  }, [task, open])
-
-  /**
-   * Reset local state when task changes
-   */
-  useEffect(() => {
-    if (task) {
-      const initialValues = {
-        title: task.title,
-        description: task.description ?? "",
-        status: task.status,
-        priority: task.priority ?? 2,
-        issueType: (task.issue_type as IssueType) ?? "task",
-        parent: task.parent ?? null,
-      }
-      setTitle(initialValues.title)
-      setDescription(initialValues.description)
-      setStatus(initialValues.status)
-      setPriority(initialValues.priority)
-      setIssueType(initialValues.issueType)
-      setParent(initialValues.parent)
-      setLabels(task.labels ?? [])
-      setNewLabel("")
-      setShowLabelInput(false)
-      setIsConfirmingDelete(false)
-      setIsDeleting(false)
-      setDeleteError(null)
-      lastSavedRef.current = initialValues
-    }
-  }, [task])
-
-  /**
-   * Cleanup autosave timer on unmount
-   */
-  useEffect(() => {
-    return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current)
-      }
-    }
-  }, [])
-
-  /**
-   * Saves only the fields that have changed since last save. If closing the task, also saves the event log.
-   */
-  const performAutosave = useCallback(
-    async (currentValues: {
-      title: string
-      description: string
-      status: TaskStatus
-      priority: number
-      issueType: IssueType
-      parent: string | null
-    }) => {
-      if (!task || !onSave || readOnly) return
-
-      const lastSaved = lastSavedRef.current
-      if (!lastSaved) return
-
-      const updates: TaskUpdateData = {}
-      if (currentValues.title !== lastSaved.title) updates.title = currentValues.title
-      if (currentValues.description !== lastSaved.description)
-        updates.description = currentValues.description
-      if (currentValues.status !== lastSaved.status) updates.status = currentValues.status
-      if (currentValues.priority !== lastSaved.priority) updates.priority = currentValues.priority
-      if (currentValues.issueType !== lastSaved.issueType) updates.type = currentValues.issueType
-      if (currentValues.parent !== lastSaved.parent) updates.parent = currentValues.parent
-
-      if (Object.keys(updates).length === 0) return
-
-      setIsSaving(true)
-      try {
-        // If closing the task (status changed to closed), save event log first
-        const isClosing = currentValues.status === "closed" && lastSaved.status !== "closed"
-        if (isClosing) {
-          await saveEventLogAndAddComment(task.id, task.title, events, workspace)
-        }
-
-        await onSave(task.id, updates)
-        // Update last saved values
-        lastSavedRef.current = { ...currentValues }
-      } catch (error) {
-        console.error("Failed to autosave task:", error)
-      } finally {
-        setIsSaving(false)
-      }
-    },
-    [task, onSave, readOnly, events, workspace],
-  )
-
-  /**
-   * Schedules an autosave with a 500ms debounce to avoid too many API calls.
-   */
-  const scheduleAutosave = useCallback(
-    (currentValues: {
-      title: string
-      description: string
-      status: TaskStatus
-      priority: number
-      issueType: IssueType
-      parent: string | null
-    }) => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current)
-      }
-      autosaveTimerRef.current = setTimeout(() => {
-        performAutosave(currentValues)
-      }, 500)
-    },
-    [performAutosave],
-  )
-
-  /**
-   * Immediately autosaves for non-text fields, canceling any pending debounced save.
-   */
-  const immediateAutosave = useCallback(
-    (currentValues: {
-      title: string
-      description: string
-      status: TaskStatus
-      priority: number
-      issueType: IssueType
-      parent: string | null
-    }) => {
-      // Cancel any pending debounced save
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current)
-      }
-      performAutosave(currentValues)
-    },
-    [performAutosave],
-  )
-
-  /**
-   * Memoized current values for autosave to avoid unnecessary callback updates.
-   */
-  const currentValues = useMemo(
-    () => ({
-      title,
-      description,
-      status,
-      priority,
-      issueType,
-      parent,
-    }),
-    [title, description, status, priority, issueType, parent],
-  )
-
-  /**
-   * Flushes any pending autosave before closing the dialog.
-   */
-  const flushAndClose = useCallback(async () => {
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current)
-      autosaveTimerRef.current = null
-    }
-    // Perform final save with current values
-    await performAutosave(currentValues)
-    onClose()
-  }, [performAutosave, currentValues, onClose])
-
-  /**
-   * Closes the dialog after resetting the delete confirmation state.
-   */
-  const handleClose = useCallback(async () => {
-    setIsConfirmingDelete(false)
-    await flushAndClose()
-  }, [flushAndClose])
-
-  /**
-   * Deletes the current task and closes the dialog on success.
-   */
-  const handleDelete = useCallback(async () => {
-    if (!task || !onDelete || readOnly) return
-
-    setIsDeleting(true)
-    setDeleteError(null)
-    try {
-      await onDelete(task.id)
-      onClose()
-    } catch (error) {
-      console.error("Failed to delete task:", error)
-      const message = error instanceof Error ? error.message : "Failed to delete task"
-      setDeleteError(message)
-      setIsConfirmingDelete(false)
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [task, onDelete, readOnly, onClose])
-
-  /**
-   * Adds a new label to the task and clears the input field.
-   */
-  const handleAddLabel = useCallback(async () => {
-    if (!task || !newLabel.trim() || readOnly) return
-
-    const labelToAdd = newLabel.trim()
-    setIsAddingLabel(true)
-
-    try {
-      const response = await fetch(`/api/tasks/${task.id}/labels`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: labelToAdd }),
-      })
-
-      const data = (await response.json()) as { ok: boolean }
-      if (data.ok) {
-        setLabels(prev => (prev.includes(labelToAdd) ? prev : [...prev, labelToAdd]))
-        setNewLabel("")
-        setShowLabelInput(false)
-      }
-    } catch (err) {
-      console.error("Failed to add label:", err)
-    } finally {
-      setIsAddingLabel(false)
-    }
-  }, [task, newLabel, readOnly])
-
-  /**
-   * Removes a label from the task with optimistic UI updates.
-   */
-  const handleRemoveLabel = useCallback(
-    async (labelToRemove: string) => {
-      if (!task || readOnly) return
-
-      // Optimistically remove the label
-      setLabels(prev => prev.filter(l => l !== labelToRemove))
-
-      try {
-        const response = await fetch(
-          `/api/tasks/${task.id}/labels/${encodeURIComponent(labelToRemove)}`,
-          { method: "DELETE" },
-        )
-
-        const data = (await response.json()) as { ok: boolean }
-        if (!data.ok) {
-          // Revert on failure
-          setLabels(prev => [...prev, labelToRemove])
-        }
-      } catch (err) {
-        console.error("Failed to remove label:", err)
-        // Revert on error
-        setLabels(prev => [...prev, labelToRemove])
-      }
-    },
-    [task, readOnly],
-  )
-
-  /**
-   * Handles Enter and Escape keys in the label input field.
-   */
+  // Handles Enter and Escape keys in the label input field
   const handleLabelInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
         e.preventDefault()
-        handleAddLabel()
+        onAddLabel()
       } else if (e.key === "Escape") {
-        setShowLabelInput(false)
-        setNewLabel("")
+        onSetShowLabelInput(false)
+        onSetNewLabel("")
       }
     },
-    [handleAddLabel],
+    [onAddLabel, onSetShowLabelInput, onSetNewLabel],
   )
 
-  /**
-   * Focuses the label input field when it becomes visible.
-   */
+  // Focus label input when it becomes visible
   useEffect(() => {
     if (showLabelInput && labelInputRef.current) {
       labelInputRef.current.focus()
     }
   }, [showLabelInput])
 
-  /**
-   * Auto-sizes the title textarea when the title changes or dialog opens.
-   */
+  // Auto-size title textarea
   useEffect(() => {
     if (titleTextareaRef.current) {
       titleTextareaRef.current.style.height = "auto"
       titleTextareaRef.current.style.height = `${titleTextareaRef.current.scrollHeight}px`
     }
-  }, [title, open])
+  }, [formValues.title, open])
 
-  /**
-   * Handles global keyboard shortcuts for the dialog: Escape to close, Cmd/Ctrl+Enter to close (saves automatically).
-   */
+  // Handle global keyboard shortcuts
   useEffect(() => {
     if (!open) return
 
@@ -409,7 +114,7 @@ export function TaskDetailsDialog({
       // Escape to close (unless in a form element where escape has other meaning)
       if (event.key === "Escape" && !isInFormElement) {
         event.preventDefault()
-        handleClose()
+        onClose()
         return
       }
 
@@ -420,21 +125,19 @@ export function TaskDetailsDialog({
 
         if (modifierPressed && event.key === "Enter") {
           event.preventDefault()
-          handleClose()
+          onClose()
         }
       }
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [open, readOnly, isSaving, handleClose])
+  }, [open, readOnly, isSaving, onClose])
 
-  /**
-   * Don't render anything if there's no task or it's not open
-   */
+  // Don't render anything if there's no task or it's not open
   if (!task || !open) return null
 
-  const StatusIcon = statusConfig[status].icon
+  const StatusIcon = statusConfig[formValues.status].icon
 
   return (
     <div
@@ -446,14 +149,14 @@ export function TaskDetailsDialog({
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
-          <StatusIcon className={cn("h-5 w-5", statusConfig[status].color)} />
+          <StatusIcon className={cn("h-5 w-5", statusConfig[formValues.status].color)} />
           <span className="text-muted-foreground font-mono text-sm">
             {stripTaskPrefix(task.id, issuePrefix)}
           </span>
         </div>
         <button
           type="button"
-          onClick={handleClose}
+          onClick={onClose}
           className="ring-offset-background focus:ring-ring rounded-sm p-1 opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none"
           aria-label="Close panel"
         >
@@ -465,19 +168,18 @@ export function TaskDetailsDialog({
         {/* Title */}
         <div>
           {readOnly ?
-            <p className="text-lg font-semibold">{title}</p>
+            <p className="text-lg font-semibold">{formValues.title}</p>
           : <textarea
               ref={titleTextareaRef}
               id="task-title"
-              value={title}
+              value={formValues.title}
               onChange={e => {
                 const newTitle = e.target.value
-                setTitle(newTitle)
+                onUpdateTitle(newTitle)
                 // Auto-grow textarea
                 const target = e.target
                 target.style.height = "auto"
                 target.style.height = `${target.scrollHeight}px`
-                scheduleAutosave({ ...currentValues, title: newTitle })
               }}
               onKeyDown={e => {
                 // Prevent Enter from adding newlines in title
@@ -495,17 +197,14 @@ export function TaskDetailsDialog({
         {/* Description */}
         <div>
           {readOnly ?
-            description ?
+            formValues.description ?
               <MarkdownContent className="text-muted-foreground text-sm">
-                {description}
+                {formValues.description}
               </MarkdownContent>
             : null
           : <MarkdownEditor
-              value={description}
-              onChange={newDescription => {
-                setDescription(newDescription)
-                scheduleAutosave({ ...currentValues, description: newDescription })
-              }}
+              value={formValues.description}
+              onChange={onUpdateDescription}
               placeholder="Add description..."
               showToolbar={false}
               size="sm"
@@ -522,23 +221,19 @@ export function TaskDetailsDialog({
             </Label>
             {readOnly ?
               <div className="flex items-center gap-2">
-                <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[status].color)} />
-                <span className="text-sm">{statusConfig[status].label}</span>
+                <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[formValues.status].color)} />
+                <span className="text-sm">{statusConfig[formValues.status].label}</span>
               </div>
             : <ButtonGroup className="bg-background h-8 overflow-hidden">
                 {statusOptions.map(s => {
                   const config = statusConfig[s]
                   const Icon = config.icon
-                  const isSelected = status === s
-                  const handleStatusChange = (newStatus: TaskStatus) => {
-                    setStatus(newStatus)
-                    immediateAutosave({ ...currentValues, status: newStatus })
-                  }
+                  const isSelected = formValues.status === s
                   return (
                     <button
                       key={s}
                       type="button"
-                      onClick={() => handleStatusChange(s)}
+                      onClick={() => onUpdateStatus(s)}
                       tabIndex={isSelected ? 0 : -1}
                       onKeyDown={e => {
                         if (e.key === "ArrowLeft") {
@@ -546,12 +241,12 @@ export function TaskDetailsDialog({
                           const currentIndex = statusOptions.findIndex(opt => opt === s)
                           const prevIndex =
                             (currentIndex - 1 + statusOptions.length) % statusOptions.length
-                          handleStatusChange(statusOptions[prevIndex])
+                          onUpdateStatus(statusOptions[prevIndex])
                         } else if (e.key === "ArrowRight") {
                           e.preventDefault()
                           const currentIndex = statusOptions.findIndex(opt => opt === s)
                           const nextIndex = (currentIndex + 1) % statusOptions.length
-                          handleStatusChange(statusOptions[nextIndex])
+                          onUpdateStatus(statusOptions[nextIndex])
                         }
                       }}
                       className={cn(
@@ -576,20 +271,17 @@ export function TaskDetailsDialog({
             <Label className="text-muted-foreground w-16 shrink-0 text-xs">Priority</Label>
             {readOnly ?
               <span className="text-sm">
-                {priorityOptions.find(p => p.value === priority)?.label ?? `P${priority}`}
+                {priorityOptions.find(p => p.value === formValues.priority)?.label ??
+                  `P${formValues.priority}`}
               </span>
             : <ButtonGroup className="bg-background h-8 overflow-hidden">
                 {priorityOptions.map(p => {
-                  const isSelected = priority === p.value
-                  const handlePriorityChange = (newPriority: number) => {
-                    setPriority(newPriority)
-                    immediateAutosave({ ...currentValues, priority: newPriority })
-                  }
+                  const isSelected = formValues.priority === p.value
                   return (
                     <button
                       key={p.value}
                       type="button"
-                      onClick={() => handlePriorityChange(p.value)}
+                      onClick={() => onUpdatePriority(p.value)}
                       tabIndex={isSelected ? 0 : -1}
                       onKeyDown={e => {
                         if (e.key === "ArrowLeft") {
@@ -599,14 +291,14 @@ export function TaskDetailsDialog({
                           )
                           const prevIndex =
                             (currentIndex - 1 + priorityOptions.length) % priorityOptions.length
-                          handlePriorityChange(priorityOptions[prevIndex].value)
+                          onUpdatePriority(priorityOptions[prevIndex].value)
                         } else if (e.key === "ArrowRight") {
                           e.preventDefault()
                           const currentIndex = priorityOptions.findIndex(
                             opt => opt.value === p.value,
                           )
                           const nextIndex = (currentIndex + 1) % priorityOptions.length
-                          handlePriorityChange(priorityOptions[nextIndex].value)
+                          onUpdatePriority(priorityOptions[nextIndex].value)
                         }
                       }}
                       className={cn(
@@ -631,14 +323,14 @@ export function TaskDetailsDialog({
             {readOnly ?
               <div className="flex items-center gap-2">
                 {(() => {
-                  const typeOption = issueTypeOptions.find(t => t.value === issueType)
+                  const typeOption = issueTypeOptions.find(t => t.value === formValues.issueType)
                   const TypeIcon = typeOption?.icon ?? IconCheckbox
                   return (
                     <>
                       <TypeIcon
                         className={cn("h-3.5 w-3.5", typeOption?.color ?? "text-gray-500")}
                       />
-                      <span className="text-sm capitalize">{issueType}</span>
+                      <span className="text-sm capitalize">{formValues.issueType}</span>
                     </>
                   )
                 })()}
@@ -646,16 +338,12 @@ export function TaskDetailsDialog({
             : <ButtonGroup className="bg-background h-8 overflow-hidden">
                 {issueTypeOptions.map(t => {
                   const Icon = t.icon
-                  const isSelected = issueType === t.value
-                  const handleTypeChange = (newType: IssueType) => {
-                    setIssueType(newType)
-                    immediateAutosave({ ...currentValues, issueType: newType })
-                  }
+                  const isSelected = formValues.issueType === t.value
                   return (
                     <button
                       key={t.value}
                       type="button"
-                      onClick={() => handleTypeChange(t.value)}
+                      onClick={() => onUpdateIssueType(t.value)}
                       tabIndex={isSelected ? 0 : -1}
                       onKeyDown={e => {
                         if (e.key === "ArrowLeft") {
@@ -665,14 +353,14 @@ export function TaskDetailsDialog({
                           )
                           const prevIndex =
                             (currentIndex - 1 + issueTypeOptions.length) % issueTypeOptions.length
-                          handleTypeChange(issueTypeOptions[prevIndex].value)
+                          onUpdateIssueType(issueTypeOptions[prevIndex].value)
                         } else if (e.key === "ArrowRight") {
                           e.preventDefault()
                           const currentIndex = issueTypeOptions.findIndex(
                             opt => opt.value === t.value,
                           )
                           const nextIndex = (currentIndex + 1) % issueTypeOptions.length
-                          handleTypeChange(issueTypeOptions[nextIndex].value)
+                          onUpdateIssueType(issueTypeOptions[nextIndex].value)
                         }
                       }}
                       className={cn(
@@ -709,11 +397,8 @@ export function TaskDetailsDialog({
                 task={task}
                 allTasks={allTasks}
                 issuePrefix={issuePrefix}
-                value={parent}
-                onChange={newParent => {
-                  setParent(newParent)
-                  immediateAutosave({ ...currentValues, parent: newParent })
-                }}
+                value={formValues.parent}
+                onChange={onUpdateParent}
               />
             }
           </div>
@@ -731,7 +416,7 @@ export function TaskDetailsDialog({
                   {!readOnly && (
                     <button
                       type="button"
-                      onClick={() => handleRemoveLabel(label)}
+                      onClick={() => onRemoveLabel(label)}
                       className="hover:text-foreground -mr-0.5 ml-0.5 rounded-full p-0.5 transition-colors"
                       aria-label={`Remove ${label} label`}
                     >
@@ -746,7 +431,7 @@ export function TaskDetailsDialog({
               {!readOnly && !showLabelInput && (
                 <button
                   type="button"
-                  onClick={() => setShowLabelInput(true)}
+                  onClick={() => onSetShowLabelInput(true)}
                   className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-xs transition-colors"
                 >
                   <IconPlus className="h-3 w-3" />
@@ -758,11 +443,11 @@ export function TaskDetailsDialog({
                   <Input
                     ref={labelInputRef}
                     value={newLabel}
-                    onChange={e => setNewLabel(e.target.value)}
+                    onChange={e => onSetNewLabel(e.target.value)}
                     onKeyDown={handleLabelInputKeyDown}
                     onBlur={() => {
                       if (!newLabel.trim()) {
-                        setShowLabelInput(false)
+                        onSetShowLabelInput(false)
                       }
                     }}
                     placeholder="Label name"
@@ -774,7 +459,7 @@ export function TaskDetailsDialog({
                     variant="ghost"
                     size="sm"
                     className="h-6 px-2"
-                    onClick={handleAddLabel}
+                    onClick={onAddLabel}
                     disabled={!newLabel.trim() || isAddingLabel}
                   >
                     Add
@@ -798,7 +483,7 @@ export function TaskDetailsDialog({
       {!readOnly && (
         <div className="flex shrink-0 flex-col gap-2 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Delete section - left side */}
-          {onDelete && (
+          {canDelete && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 {isConfirmingDelete ?
@@ -808,7 +493,7 @@ export function TaskDetailsDialog({
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={handleDelete}
+                        onClick={onConfirmDelete}
                         disabled={isDeleting}
                       >
                         {isDeleting ? "Deleting..." : "Yes, delete"}
@@ -816,7 +501,7 @@ export function TaskDetailsDialog({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setIsConfirmingDelete(false)}
+                        onClick={onCancelDelete}
                         disabled={isDeleting}
                       >
                         Cancel
@@ -826,10 +511,7 @@ export function TaskDetailsDialog({
                 : <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setDeleteError(null)
-                      setIsConfirmingDelete(true)
-                    }}
+                    onClick={onStartDelete}
                     disabled={isSaving}
                     className="text-muted-foreground hover:text-destructive"
                   >
@@ -850,7 +532,9 @@ export function TaskDetailsDialog({
   )
 }
 
-/**  Configuration options for issue type selector buttons. */
+// Configuration constants
+
+/** Configuration options for issue type selector buttons. */
 const issueTypeOptions: {
   value: IssueType
   label: string
@@ -889,7 +573,7 @@ const issueTypeOptions: {
   },
 ]
 
-/**  Configuration for task status display (icons, labels, and colors). */
+/** Configuration for task status display (icons, labels, and colors). */
 const statusConfig: Record<TaskStatus, StatusConfig> = {
   open: {
     icon: IconCircle,
@@ -933,10 +617,10 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   },
 }
 
-/**  Available task status values for the status selector. */
+/** Available task status values for the status selector. */
 const statusOptions: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
 
-/**  Configuration options for priority selector buttons. */
+/** Configuration options for priority selector buttons. */
 const priorityOptions = [
   {
     value: 0,
@@ -985,16 +669,69 @@ const priorityOptions = [
   },
 ]
 
-type TaskDetailsDialogProps = {
-  task: TaskCardTask | null
-  open: boolean
-  onClose: () => void
-  onSave?: (id: string, updates: TaskUpdateData) => void | Promise<void>
-  onDelete?: (id: string) => void | Promise<void>
-  readOnly?: boolean
-}
+// Types
 
-type IssueType = "task" | "bug" | "epic"
+/** Props for TaskDetails presentational component. */
+export type TaskDetailsProps = {
+  /** The task being displayed/edited */
+  task: TaskCardTask | null
+  /** Whether the dialog is open */
+  open: boolean
+  /** Whether the component is in read-only mode */
+  readOnly?: boolean
+  /** Current form values */
+  formValues: TaskFormValues
+  /** Current labels */
+  labels: string[]
+  /** Issue prefix for display */
+  issuePrefix: string | null
+  /** All tasks for parent selection */
+  allTasks: TaskCardTask[]
+  /** Whether a save is in progress */
+  isSaving: boolean
+  /** Whether a delete is in progress */
+  isDeleting: boolean
+  /** Whether a label is being added */
+  isAddingLabel: boolean
+  /** Whether delete confirmation is showing */
+  isConfirmingDelete: boolean
+  /** Delete error message */
+  deleteError: string | null
+  /** New label input value */
+  newLabel: string
+  /** Whether label input is showing */
+  showLabelInput: boolean
+  /** Whether delete is allowed */
+  canDelete: boolean
+  /** Handler for title changes */
+  onUpdateTitle: (title: string) => void
+  /** Handler for description changes */
+  onUpdateDescription: (description: string) => void
+  /** Handler for status changes */
+  onUpdateStatus: (status: TaskStatus) => void
+  /** Handler for priority changes */
+  onUpdatePriority: (priority: number) => void
+  /** Handler for issue type changes */
+  onUpdateIssueType: (issueType: IssueType) => void
+  /** Handler for parent changes */
+  onUpdateParent: (parent: string | null) => void
+  /** Handler for new label input changes */
+  onSetNewLabel: (label: string) => void
+  /** Handler for showing/hiding label input */
+  onSetShowLabelInput: (show: boolean) => void
+  /** Handler for adding a label */
+  onAddLabel: () => void
+  /** Handler for removing a label */
+  onRemoveLabel: (label: string) => void
+  /** Handler for starting delete confirmation */
+  onStartDelete: () => void
+  /** Handler for canceling delete */
+  onCancelDelete: () => void
+  /** Handler for confirming delete */
+  onConfirmDelete: () => void
+  /** Handler for closing the dialog */
+  onClose: () => void
+}
 
 type StatusConfig = {
   icon: TablerIcon

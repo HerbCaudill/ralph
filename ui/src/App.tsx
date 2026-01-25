@@ -8,7 +8,7 @@ import {
 } from "./components/layout"
 import { type ChatInputHandle } from "./components/chat/ChatInput"
 import { EventLogViewer } from "./components/events"
-import { TaskDetailsDialog } from "./components/tasks/TaskDetailsDialog"
+import { TaskDetailsController } from "./components/tasks/TaskDetailsController"
 import { type QuickTaskInputHandle } from "./components/tasks/QuickTaskInput"
 import { type SearchInputHandle } from "./components/tasks/SearchInput"
 import {
@@ -454,7 +454,7 @@ export function App() {
         rightPanelWidth={taskChatWidth}
         onRightPanelWidthChange={handleTaskChatWidthChange}
         detailPanel={
-          <TaskDetailsDialog
+          <TaskDetailsController
             task={taskDialog.selectedTask}
             open={taskDialog.isOpen}
             onClose={taskDialogRouter.closeTaskDialog}

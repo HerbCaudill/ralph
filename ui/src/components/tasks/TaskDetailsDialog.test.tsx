@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react"
-import { TaskDetailsDialog } from "./TaskDetailsDialog"
+import { TaskDetailsController } from "./TaskDetailsController"
 import { useAppStore } from "@/store"
 import type { TaskCardTask } from "@/types"
 
@@ -149,7 +149,12 @@ describe("TaskDetailsDialog", () => {
   describe("rendering", () => {
     it("renders task details when open", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       expect(screen.getByText("test-123")).toBeInTheDocument()
@@ -160,7 +165,7 @@ describe("TaskDetailsDialog", () => {
 
     it("does not render when task is null", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={null} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController task={null} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
       )
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
@@ -168,7 +173,7 @@ describe("TaskDetailsDialog", () => {
 
     it("does not render when open is false", async () => {
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={mockTask}
           open={false}
           onClose={mockOnClose}
@@ -181,7 +186,12 @@ describe("TaskDetailsDialog", () => {
 
     it("shows task ID in header", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       expect(screen.getByText("test-123")).toBeInTheDocument()
@@ -189,7 +199,12 @@ describe("TaskDetailsDialog", () => {
 
     it("shows task type and parent in dialog", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Type selector shows "Task" (capitalized)
@@ -205,7 +220,7 @@ describe("TaskDetailsDialog", () => {
       }
 
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={taskWithoutMetadata}
           open={true}
           onClose={mockOnClose}
@@ -222,7 +237,7 @@ describe("TaskDetailsDialog", () => {
   describe("read-only mode", () => {
     it("displays values as text instead of inputs when readOnly", async () => {
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={mockTask}
           open={true}
           onClose={mockOnClose}
@@ -238,7 +253,7 @@ describe("TaskDetailsDialog", () => {
 
     it("does not show footer in read-only mode", async () => {
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={mockTask}
           open={true}
           onClose={mockOnClose}
@@ -255,7 +270,12 @@ describe("TaskDetailsDialog", () => {
   describe("editing", () => {
     it("allows editing title", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       const titleInput = screen.getByDisplayValue("Test Task")
@@ -266,7 +286,12 @@ describe("TaskDetailsDialog", () => {
 
     it("allows editing description via click-to-edit", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Description is initially shown as text, click to edit
@@ -284,7 +309,12 @@ describe("TaskDetailsDialog", () => {
 
     it("autosaves title after debounce", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Enable fake timers after render to avoid blocking renderAndWait
@@ -306,7 +336,12 @@ describe("TaskDetailsDialog", () => {
 
     it("autosaves type immediately when changed", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Find and click the "Bug" button in the type button bar
@@ -332,7 +367,12 @@ describe("TaskDetailsDialog", () => {
       })
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Click on the parent combobox
@@ -368,7 +408,12 @@ describe("TaskDetailsDialog", () => {
       })
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Click on the parent combobox
@@ -413,7 +458,12 @@ describe("TaskDetailsDialog", () => {
       })
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Click on the parent combobox
@@ -445,7 +495,12 @@ describe("TaskDetailsDialog", () => {
   describe("autosave", () => {
     it("only includes changed fields in autosave payload", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Enable fake timers after render
@@ -472,7 +527,12 @@ describe("TaskDetailsDialog", () => {
       )
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Change type to trigger immediate autosave
@@ -496,7 +556,12 @@ describe("TaskDetailsDialog", () => {
   describe("closing", () => {
     it("calls onClose when X button is clicked", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       const closeButton = screen.getByRole("button", { name: /close panel/i })
@@ -513,7 +578,12 @@ describe("TaskDetailsDialog", () => {
   describe("state reset", () => {
     it("resets form when task changes", async () => {
       const { rerender } = await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       expect(screen.getByDisplayValue("Test Task")).toBeInTheDocument()
@@ -528,7 +598,7 @@ describe("TaskDetailsDialog", () => {
 
       await act(async () => {
         rerender(
-          <TaskDetailsDialog
+          <TaskDetailsController
             task={newTask}
             open={true}
             onClose={mockOnClose}
@@ -547,7 +617,12 @@ describe("TaskDetailsDialog", () => {
   describe("description editing with MarkdownEditor", () => {
     it("shows MarkdownEditor with description value", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // MarkdownEditor should be present with the description value
@@ -564,7 +639,7 @@ describe("TaskDetailsDialog", () => {
       }
 
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={taskWithoutDescription}
           open={true}
           onClose={mockOnClose}
@@ -579,7 +654,12 @@ describe("TaskDetailsDialog", () => {
 
     it("triggers autosave when description changes", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Enable fake timers after render
@@ -606,7 +686,7 @@ describe("TaskDetailsDialog", () => {
       }
 
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={taskWithoutDescription}
           open={true}
           onClose={mockOnClose}
@@ -629,7 +709,12 @@ describe("TaskDetailsDialog", () => {
       Object.defineProperty(navigator, "platform", { value: "MacIntel", configurable: true })
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Press Cmd+Enter
@@ -651,7 +736,12 @@ describe("TaskDetailsDialog", () => {
       Object.defineProperty(navigator, "platform", { value: "Win32", configurable: true })
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Press Ctrl+Enter
@@ -669,7 +759,7 @@ describe("TaskDetailsDialog", () => {
 
     it("does not close on Cmd+Enter in read-only mode", async () => {
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={mockTask}
           open={true}
           onClose={mockOnClose}
@@ -688,7 +778,12 @@ describe("TaskDetailsDialog", () => {
 
     it("closes on Escape key", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Press Escape
@@ -701,7 +796,7 @@ describe("TaskDetailsDialog", () => {
 
     it("closes on Escape key in read-only mode", async () => {
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={mockTask}
           open={true}
           onClose={mockOnClose}
@@ -720,7 +815,12 @@ describe("TaskDetailsDialog", () => {
 
     it("does not close on Escape when focus is in title input", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       const titleInput = screen.getByDisplayValue("Test Task")
@@ -736,7 +836,12 @@ describe("TaskDetailsDialog", () => {
 
     it("does not close on Escape when focus is in description textarea", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Click on the description to enter edit mode
@@ -759,7 +864,7 @@ describe("TaskDetailsDialog", () => {
   describe("labels", () => {
     it("shows labels section with 'No labels' when task has no labels", async () => {
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={mockTask}
           open={true}
           onClose={mockOnClose}
@@ -795,7 +900,7 @@ describe("TaskDetailsDialog", () => {
       }
 
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={taskWithLabels}
           open={true}
           onClose={mockOnClose}
@@ -812,7 +917,12 @@ describe("TaskDetailsDialog", () => {
 
     it("shows Add label button when not in read-only mode", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       expect(screen.getByText("Add label")).toBeInTheDocument()
@@ -820,7 +930,7 @@ describe("TaskDetailsDialog", () => {
 
     it("does not show Add label button in read-only mode", async () => {
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={mockTask}
           open={true}
           onClose={mockOnClose}
@@ -839,7 +949,12 @@ describe("TaskDetailsDialog", () => {
 
     it("shows label input when Add label is clicked", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       const addButton = screen.getByText("Add label")
@@ -872,7 +987,7 @@ describe("TaskDetailsDialog", () => {
       }
 
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={taskWithLabel}
           open={true}
           onClose={mockOnClose}
@@ -894,7 +1009,12 @@ describe("TaskDetailsDialog", () => {
       globalThis.fetch = createMockFetch()
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Get all focusable elements in the expected tab order
@@ -933,7 +1053,12 @@ describe("TaskDetailsDialog", () => {
       globalThis.fetch = createMockFetch()
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Get the type buttons
@@ -979,7 +1104,12 @@ describe("TaskDetailsDialog", () => {
       globalThis.fetch = createMockFetch()
 
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Get the priority buttons - P2 is selected by default (mockTask has priority: 2)
@@ -1021,7 +1151,12 @@ describe("TaskDetailsDialog", () => {
   describe("priority button group", () => {
     it("autosaves priority immediately when changed", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Find and click the "P1" button in the priority button bar
@@ -1038,7 +1173,12 @@ describe("TaskDetailsDialog", () => {
 
     it("displays all priority options as buttons", async () => {
       await renderAndWait(
-        <TaskDetailsDialog task={mockTask} open={true} onClose={mockOnClose} onSave={mockOnSave} />,
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
       )
 
       // Check all priority buttons are present
@@ -1056,7 +1196,7 @@ describe("TaskDetailsDialog", () => {
       }
 
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={highPriorityTask}
           open={true}
           onClose={mockOnClose}
@@ -1126,7 +1266,7 @@ describe("TaskDetailsDialog", () => {
       }
 
       await renderAndWait(
-        <TaskDetailsDialog
+        <TaskDetailsController
           task={closedTask}
           open={true}
           onClose={mockOnClose}
