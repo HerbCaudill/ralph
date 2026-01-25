@@ -401,6 +401,103 @@ export class StatusBarPage {
   }
 }
 
+/**  Page object for the iteration history sheet/panel */
+export class IterationHistoryPage {
+  readonly page: Page
+  readonly triggerButton: Locator
+  readonly sheet: Locator
+  readonly searchInput: Locator
+  readonly clearSearchButton: Locator
+  readonly historyList: Locator
+
+  constructor(page: Page) {
+    this.page = page
+    // The sheet trigger is in the sidebar, scope to the complementary region to avoid the dropdown in the event stream
+    const sidebar = page.getByRole("complementary", { name: "Task sidebar" })
+    this.triggerButton = sidebar.getByRole("button", { name: "View iteration history" })
+    this.sheet = page.locator('[role="dialog"]').filter({ hasText: "Iteration History" })
+    this.searchInput = this.sheet.getByRole("textbox", { name: "Search iterations" })
+    this.clearSearchButton = this.sheet.getByRole("button", { name: "Clear search" })
+    this.historyList = this.sheet.getByRole("list", { name: "Iteration history" })
+  }
+
+  /** Open the iteration history sheet */
+  async open() {
+    await this.triggerButton.click()
+    await expect(this.sheet).toBeVisible()
+  }
+
+  /** Close the iteration history sheet */
+  async close() {
+    await this.page.keyboard.press("Escape")
+    await expect(this.sheet).not.toBeVisible()
+  }
+
+  /** Check if the sheet is open */
+  async isOpen(): Promise<boolean> {
+    return this.sheet.isVisible()
+  }
+
+  /** Search for iterations by query */
+  async search(query: string) {
+    await this.searchInput.fill(query)
+  }
+
+  /** Clear the search input */
+  async clearSearch() {
+    await this.clearSearchButton.click()
+  }
+
+  /** Get the number of visible iteration items */
+  async getVisibleIterationCount(): Promise<number> {
+    const items = this.historyList.locator("li")
+    return items.count()
+  }
+
+  /** Get all date group labels */
+  async getDateGroupLabels(): Promise<string[]> {
+    const groups = this.sheet.locator('[role="group"]')
+    const count = await groups.count()
+    const labels: string[] = []
+    for (let i = 0; i < count; i++) {
+      const label = await groups.nth(i).getAttribute("aria-label")
+      if (label) {
+        // Extract date from "Iterations from <date>"
+        const match = label.match(/Iterations from (.+)/)
+        if (match) {
+          labels.push(match[1])
+        }
+      }
+    }
+    return labels
+  }
+
+  /** Click on an iteration by its task ID */
+  async clickIterationByTaskId(taskId: string) {
+    await this.historyList.locator("li").filter({ hasText: taskId }).click()
+  }
+
+  /** Get the header text showing the total count */
+  async getHeaderCount(): Promise<number | null> {
+    const header = this.sheet.locator("text=/\\(\\d+\\)/")
+    const text = await header.textContent()
+    const match = text?.match(/\((\d+)\)/)
+    return match ? parseInt(match[1], 10) : null
+  }
+
+  /** Check if the empty state is shown */
+  async isEmptyStateVisible(): Promise<boolean> {
+    const emptyText = this.sheet.getByText("No iteration history yet.")
+    return emptyText.isVisible()
+  }
+
+  /** Check if the "no results" state is shown */
+  async isNoResultsVisible(): Promise<boolean> {
+    const noResults = this.sheet.getByText("No matching iterations found.")
+    return noResults.isVisible()
+  }
+}
+
 /**  Main application page object that combines all page objects */
 export class AppPage {
   readonly page: Page
@@ -412,6 +509,7 @@ export class AppPage {
   readonly commandPalette: CommandPalettePage
   readonly header: HeaderPage
   readonly statusBar: StatusBarPage
+  readonly iterationHistory: IterationHistoryPage
 
   constructor(page: Page) {
     this.page = page
@@ -423,6 +521,7 @@ export class AppPage {
     this.commandPalette = new CommandPalettePage(page)
     this.header = new HeaderPage(page)
     this.statusBar = new StatusBarPage(page)
+    this.iterationHistory = new IterationHistoryPage(page)
   }
 
   /** Navigate to the app */
