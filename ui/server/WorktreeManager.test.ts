@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "vitest"
 import { WorktreeManager, type WorktreeInfo } from "./WorktreeManager.js"
-import { mkdtemp, rm, mkdir } from "node:fs/promises"
+import { mkdtemp, rm, mkdir, cp } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { spawn } from "node:child_process"
@@ -42,25 +42,43 @@ function git(
   })
 }
 
-describe("WorktreeManager", () => {
+// Template repo created once and copied for each test (much faster than git init per test)
+let templateRepoDir: string
+
+// Skip these tests by default - they create real git repos and worktrees which is slow
+// and can interfere with beads (bd). Run explicitly with:
+//   pnpm vitest run server/WorktreeManager.test.ts
+const shouldSkip = !process.env.RUN_WORKTREE_TESTS && !process.env.CI
+
+describe.skipIf(shouldSkip)("WorktreeManager", () => {
   let tempDir: string
   let mainWorkspace: string
   let manager: WorktreeManager
 
+  beforeAll(async () => {
+    // Create a template git repo once for all tests
+    templateRepoDir = await mkdtemp(join(tmpdir(), "worktree-template-"))
+    const templateRepo = join(templateRepoDir, "template")
+    await mkdir(templateRepo, { recursive: true })
+    await git(templateRepo, ["init"])
+    await git(templateRepo, ["config", "user.email", "test@test.com"])
+    await git(templateRepo, ["config", "user.name", "Test User"])
+    await git(templateRepo, ["commit", "--allow-empty", "-m", "Initial commit"])
+  })
+
+  afterAll(async () => {
+    try {
+      await rm(templateRepoDir, { recursive: true, force: true })
+    } catch {
+      // Ignore cleanup errors
+    }
+  })
+
   beforeEach(async () => {
-    // Create a temp directory for tests
+    // Create a temp directory and copy the template repo (faster than git init)
     tempDir = await mkdtemp(join(tmpdir(), "worktree-test-"))
     mainWorkspace = join(tempDir, "test-project")
-
-    // Initialize a git repo
-    await mkdir(mainWorkspace, { recursive: true })
-    await git(mainWorkspace, ["init"])
-    await git(mainWorkspace, ["config", "user.email", "test@test.com"])
-    await git(mainWorkspace, ["config", "user.name", "Test User"])
-
-    // Create an initial commit (required for worktrees)
-    await git(mainWorkspace, ["commit", "--allow-empty", "-m", "Initial commit"])
-
+    await cp(join(templateRepoDir, "template"), mainWorkspace, { recursive: true })
     manager = new WorktreeManager(mainWorkspace)
   })
 

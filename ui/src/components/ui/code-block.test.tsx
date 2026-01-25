@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { CodeBlock } from "./code-block"
 
@@ -180,30 +180,36 @@ describe("CodeBlock", () => {
     })
 
     it("reverts to copy icon after delay", async () => {
+      // Use fake timers for this test to avoid 2-second real delay
+      vi.useFakeTimers()
+
       render(<CodeBlock code="const x = 1;" language="typescript" />)
 
-      await waitFor(
-        () => {
-          const button = screen.getByRole("button", { name: /copy/i })
-          expect(button).toBeInTheDocument()
-        },
-        { timeout: 5000 },
-      )
-
-      const button = screen.getByRole("button", { name: /copy/i })
-      fireEvent.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument()
+      // Advance past shiki loading
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100)
       })
 
-      // Wait for the 2-second timeout to pass and copy icon to return
-      await waitFor(
-        () => {
-          expect(screen.getByRole("button", { name: /copy/i })).toBeInTheDocument()
-        },
-        { timeout: 3000 },
-      )
+      const button = screen.getByRole("button", { name: /copy/i })
+      expect(button).toBeInTheDocument()
+
+      fireEvent.click(button)
+
+      // Let clipboard promise resolve
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument()
+
+      // Advance fake timers by 2 seconds to trigger the copy icon revert
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+
+      expect(screen.getByRole("button", { name: /copy/i })).toBeInTheDocument()
+
+      vi.useRealTimers()
     })
   })
 })
