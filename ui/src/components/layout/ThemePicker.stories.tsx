@@ -1,23 +1,79 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { ThemePicker } from "./ThemePicker"
+import { expect, within, userEvent, fn, waitFor } from "storybook/test"
+import { ThemePickerView } from "./ThemePickerView"
+import type { ThemeMeta } from "@/lib/theme"
 
-const meta: Meta<typeof ThemePicker> = {
+/**
+ * Helper to create mock themes for stories.
+ */
+function createMockThemes(): ThemeMeta[] {
+  return [
+    {
+      id: "gruvbox-dark",
+      label: "Gruvbox Dark",
+      type: "dark",
+      path: "/path/to/gruvbox-dark.json",
+      extensionId: "jdinhlife.gruvbox",
+      extensionName: "Gruvbox Theme",
+    },
+    {
+      id: "dracula",
+      label: "Dracula",
+      type: "dark",
+      path: "/path/to/dracula.json",
+      extensionId: "dracula-theme.theme-dracula",
+      extensionName: "Dracula Official",
+    },
+    {
+      id: "solarized-light",
+      label: "Solarized Light",
+      type: "light",
+      path: "/path/to/solarized-light.json",
+      extensionId: "ryanolsonx.solarized",
+      extensionName: "Solarized",
+    },
+    {
+      id: "github-light",
+      label: "GitHub Light",
+      type: "light",
+      path: "/path/to/github-light.json",
+      extensionId: "github.github-vscode-theme",
+      extensionName: "GitHub Theme",
+    },
+  ]
+}
+
+const mockThemes = createMockThemes()
+
+const meta: Meta<typeof ThemePickerView> = {
   title: "Selectors/ThemePicker",
-  component: ThemePicker,
+  component: ThemePickerView,
   parameters: {},
+  args: {
+    themes: mockThemes,
+    activeThemeId: null,
+    currentVSCodeTheme: "Gruvbox Dark",
+    isLoading: false,
+    error: null,
+    onApplyTheme: fn(),
+    onPreviewTheme: fn(),
+    onClearPreview: fn(),
+    onResetToDefault: fn(),
+    onRefresh: fn(),
+  },
 }
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-// Note: ThemePicker fetches themes from /api/themes
-// In Storybook without a backend, it will show the dropdown structure
-// but won't have actual theme data
+/**
+ * Default state showing the theme picker button.
+ */
+export const Default: Story = {}
 
-export const Default: Story = {
-  args: {},
-}
-
+/**
+ * Header variant with custom text color.
+ */
 export const HeaderVariant: Story = {
   args: {
     variant: "header",
@@ -32,6 +88,9 @@ export const HeaderVariant: Story = {
   ],
 }
 
+/**
+ * Header variant on dark background.
+ */
 export const HeaderVariantDark: Story = {
   args: {
     variant: "header",
@@ -46,12 +105,18 @@ export const HeaderVariantDark: Story = {
   ],
 }
 
+/**
+ * With a custom class name for sizing.
+ */
 export const WithCustomClassName: Story = {
   args: {
     className: "w-64",
   },
 }
 
+/**
+ * Displayed in a header context.
+ */
 export const InHeaderContext: Story = {
   args: {
     variant: "header",
@@ -67,17 +132,312 @@ export const InHeaderContext: Story = {
   ],
 }
 
-export const MultipleVariants: Story = {
-  render: () => (
-    <div className="space-y-4">
-      <div>
-        <p className="text-muted-foreground mb-2 text-sm">Default variant:</p>
-        <ThemePicker />
-      </div>
-      <div className="rounded-md bg-purple-600 p-4">
-        <p className="mb-2 text-sm text-white">Header variant:</p>
-        <ThemePicker variant="header" textColor="#ffffff" />
-      </div>
-    </div>
-  ),
+/**
+ * Verifies clicking the trigger opens the dropdown.
+ */
+export const OpensOnClick: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Click the trigger
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Dropdown should appear
+    await waitFor(
+      async () => {
+        const dropdown = await canvas.findByTestId("theme-picker-dropdown")
+        await expect(dropdown).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
+}
+
+/**
+ * Verifies the dropdown shows theme groups (Dark and Light).
+ */
+export const ShowsThemeGroups: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Should show Dark and Light group headers
+    await waitFor(
+      async () => {
+        await expect(await canvas.findByText("Dark")).toBeVisible()
+        await expect(await canvas.findByText("Light")).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
+}
+
+/**
+ * Verifies all themes are displayed in the dropdown.
+ */
+export const ShowsAllThemes: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // All themes should be visible
+    await waitFor(
+      async () => {
+        await expect(await canvas.findByText("Gruvbox Dark")).toBeVisible()
+        await expect(await canvas.findByText("Dracula")).toBeVisible()
+        await expect(await canvas.findByText("Solarized Light")).toBeVisible()
+        await expect(await canvas.findByText("GitHub Light")).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
+}
+
+/**
+ * Verifies the current VS Code theme is shown.
+ */
+export const ShowsVSCodeTheme: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Should show VS Code theme info
+    await waitFor(
+      async () => {
+        await expect(await canvas.findByText("VS Code: Gruvbox Dark")).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
+}
+
+/**
+ * Verifies clicking a theme calls onApplyTheme.
+ */
+export const SelectingThemeCallsHandler: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Wait for dropdown
+    await waitFor(async () => {
+      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
+    })
+
+    // Click on Dracula theme
+    const draculaItem = await canvas.findByTestId("theme-picker-item-dracula")
+    await userEvent.click(draculaItem)
+
+    // onApplyTheme should be called with the theme id
+    await expect(args.onApplyTheme).toHaveBeenCalledWith("dracula")
+  },
+}
+
+/**
+ * Verifies clicking Default calls onResetToDefault.
+ */
+export const SelectingDefaultResetsTheme: Story = {
+  args: {
+    activeThemeId: "dracula",
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Wait for dropdown
+    await waitFor(async () => {
+      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
+    })
+
+    // Click Default
+    const defaultItem = await canvas.findByTestId("theme-picker-default")
+    await userEvent.click(defaultItem)
+
+    // onResetToDefault should be called
+    await expect(args.onResetToDefault).toHaveBeenCalled()
+  },
+}
+
+/**
+ * Verifies hovering over a theme calls onPreviewTheme.
+ */
+export const HoveringCallsPreview: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Wait for dropdown
+    await waitFor(async () => {
+      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
+    })
+
+    // Hover over Dracula theme
+    const draculaItem = await canvas.findByTestId("theme-picker-item-dracula")
+    await userEvent.hover(draculaItem)
+
+    // onPreviewTheme should be called
+    await expect(args.onPreviewTheme).toHaveBeenCalledWith("dracula")
+  },
+}
+
+/**
+ * Verifies clicking Refresh calls onRefresh.
+ */
+export const RefreshCallsHandler: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Wait for dropdown
+    await waitFor(async () => {
+      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
+    })
+
+    // Click Refresh
+    const refreshButton = await canvas.findByTestId("theme-picker-refresh")
+    await userEvent.click(refreshButton)
+
+    // onRefresh should be called
+    await expect(args.onRefresh).toHaveBeenCalled()
+  },
+}
+
+/**
+ * Verifies Escape closes the dropdown.
+ */
+export const EscapeClosesDropdown: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Wait for dropdown
+    await waitFor(async () => {
+      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
+    })
+
+    // Press Escape
+    await userEvent.keyboard("{Escape}")
+
+    // onClearPreview should be called
+    await expect(args.onClearPreview).toHaveBeenCalled()
+  },
+}
+
+/**
+ * Shows checkmark on active theme.
+ */
+export const ShowsActiveTheme: Story = {
+  args: {
+    activeThemeId: "dracula",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // The trigger should show "Dracula"
+    await expect(await canvas.findByText("Dracula")).toBeVisible()
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Wait for dropdown
+    await waitFor(async () => {
+      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
+    })
+
+    // The Dracula item should have active styling
+    const draculaItem = await canvas.findByTestId("theme-picker-item-dracula")
+    await expect(draculaItem).toHaveClass("bg-repo-accent/50")
+  },
+}
+
+/**
+ * Shows loading state.
+ */
+export const Loading: Story = {
+  args: {
+    isLoading: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Trigger should be disabled
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await expect(trigger).toBeDisabled()
+    await expect(trigger).toHaveClass("opacity-70")
+  },
+}
+
+/**
+ * Shows error state.
+ */
+export const ErrorState: Story = {
+  args: {
+    error: "Failed to load themes",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Error should be displayed
+    await waitFor(
+      async () => {
+        await expect(await canvas.findByText("Failed to load themes")).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
+}
+
+/**
+ * Shows empty state when no themes available.
+ */
+export const EmptyState: Story = {
+  args: {
+    themes: [],
+    currentVSCodeTheme: null,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body)
+
+    // Open dropdown
+    const trigger = await canvas.findByTestId("theme-picker-trigger")
+    await userEvent.click(trigger)
+
+    // Should show empty state
+    await waitFor(
+      async () => {
+        await expect(await canvas.findByText("No themes found")).toBeVisible()
+      },
+      { timeout: 3000 },
+    )
+  },
 }
