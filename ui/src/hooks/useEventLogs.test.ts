@@ -1,87 +1,92 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
-import { useEventLogs, type EventLogSummary } from "./useEventLogs"
+import { useEventLogs } from "./useEventLogs"
+import { eventDatabase, type EventLogMetadata } from "@/lib/persistence"
 
-// Mock fetch
-const mockFetch = vi.fn()
-global.fetch = mockFetch
+// Mock the eventDatabase
+vi.mock("@/lib/persistence", () => ({
+  eventDatabase: {
+    init: vi.fn(),
+    listEventLogs: vi.fn(),
+    getEventLogsForTask: vi.fn(),
+  },
+}))
+
+const mockInit = eventDatabase.init as ReturnType<typeof vi.fn>
+const mockListEventLogs = eventDatabase.listEventLogs as ReturnType<typeof vi.fn>
+const mockGetEventLogsForTask = eventDatabase.getEventLogsForTask as ReturnType<typeof vi.fn>
 
 describe("useEventLogs", () => {
-  const mockEventLogs: EventLogSummary[] = [
+  const mockEventLogMetadata: EventLogMetadata[] = [
     {
       id: "abc12345",
-      createdAt: "2026-01-23T10:00:00.000Z",
+      createdAt: new Date("2026-01-23T10:00:00.000Z").getTime(),
       eventCount: 42,
-      metadata: {
-        taskId: "r-test.1",
-        title: "Test task 1",
-      },
+      taskId: "r-test.1",
+      taskTitle: "Test task 1",
+      source: "iteration",
+      workspacePath: "/test/workspace",
     },
     {
       id: "def67890",
-      createdAt: "2026-01-22T15:30:00.000Z",
+      createdAt: new Date("2026-01-22T15:30:00.000Z").getTime(),
       eventCount: 128,
-      metadata: {
-        taskId: "r-test.2",
-        title: "Test task 2",
-      },
+      taskId: "r-test.2",
+      taskTitle: "Test task 2",
+      source: "iteration",
+      workspacePath: "/test/workspace",
     },
     {
       id: "ghi11111",
-      createdAt: "2026-01-21T09:00:00.000Z",
+      createdAt: new Date("2026-01-21T09:00:00.000Z").getTime(),
       eventCount: 15,
-      // No metadata
+      taskId: null,
+      taskTitle: null,
+      source: null,
+      workspacePath: null,
     },
   ]
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
-    // Default mock response
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: true, eventlogs: mockEventLogs }),
-    })
+    mockInit.mockResolvedValue(undefined)
+    mockListEventLogs.mockResolvedValue(mockEventLogMetadata)
+    mockGetEventLogsForTask.mockResolvedValue([])
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
-    vi.useRealTimers()
   })
 
   describe("initialization", () => {
     it("fetches event logs on mount", async () => {
-      vi.useRealTimers()
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       await waitFor(() => {
         expect(result.current.eventLogs).toHaveLength(3)
       })
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/eventlogs")
+      expect(mockInit).toHaveBeenCalled()
+      expect(mockListEventLogs).toHaveBeenCalled()
     })
 
     it("sets isLoading while fetching", async () => {
-      vi.useRealTimers()
       // Create a promise we can control
-      let resolvePromise: (value: unknown) => void
-      const controlledPromise = new Promise(resolve => {
-        resolvePromise = resolve
+      let resolvePromise: () => void
+      const controlledPromise = new Promise<EventLogMetadata[]>(resolve => {
+        resolvePromise = () => resolve(mockEventLogMetadata)
       })
 
-      mockFetch.mockReturnValue({
-        ok: true,
-        json: () => controlledPromise,
-      })
+      mockListEventLogs.mockReturnValue(controlledPromise)
 
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       // Should be loading initially
       expect(result.current.isLoading).toBe(true)
 
       // Resolve the promise
       await act(async () => {
-        resolvePromise!({ ok: true, eventlogs: mockEventLogs })
+        resolvePromise!()
       })
 
       await waitFor(() => {
@@ -90,8 +95,7 @@ describe("useEventLogs", () => {
     })
 
     it("returns event log summaries with metadata", async () => {
-      vi.useRealTimers()
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       await waitFor(() => {
         expect(result.current.eventLogs).toHaveLength(3)
@@ -105,8 +109,7 @@ describe("useEventLogs", () => {
     })
 
     it("handles event logs without metadata", async () => {
-      vi.useRealTimers()
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       await waitFor(() => {
         expect(result.current.eventLogs).toHaveLength(3)
@@ -116,17 +119,66 @@ describe("useEventLogs", () => {
       expect(log.id).toBe("ghi11111")
       expect(log.metadata).toBeUndefined()
     })
+
+    it("converts createdAt from timestamp to ISO string", async () => {
+      const { result } = renderHook(() => useEventLogs())
+
+      await waitFor(() => {
+        expect(result.current.eventLogs).toHaveLength(3)
+      })
+
+      const log = result.current.eventLogs[0]
+      expect(log.createdAt).toBe("2026-01-23T10:00:00.000Z")
+    })
+  })
+
+  describe("filtering by taskId", () => {
+    it("fetches event logs for a specific task when taskId is provided", async () => {
+      const taskSpecificLogs: EventLogMetadata[] = [mockEventLogMetadata[0]]
+      mockGetEventLogsForTask.mockResolvedValue(taskSpecificLogs)
+
+      const { result } = renderHook(() => useEventLogs({ taskId: "r-test.1" }))
+
+      await waitFor(() => {
+        expect(result.current.eventLogs).toHaveLength(1)
+      })
+
+      expect(mockGetEventLogsForTask).toHaveBeenCalledWith("r-test.1")
+      expect(mockListEventLogs).not.toHaveBeenCalled()
+    })
+
+    it("refetches when taskId changes", async () => {
+      const task1Logs: EventLogMetadata[] = [mockEventLogMetadata[0]]
+      const task2Logs: EventLogMetadata[] = [mockEventLogMetadata[1]]
+
+      mockGetEventLogsForTask.mockImplementation(async (taskId: string) => {
+        if (taskId === "r-test.1") return task1Logs
+        if (taskId === "r-test.2") return task2Logs
+        return []
+      })
+
+      const { result, rerender } = renderHook(({ taskId }) => useEventLogs({ taskId }), {
+        initialProps: { taskId: "r-test.1" },
+      })
+
+      await waitFor(() => {
+        expect(result.current.eventLogs).toHaveLength(1)
+        expect(result.current.eventLogs[0].id).toBe("abc12345")
+      })
+
+      rerender({ taskId: "r-test.2" })
+
+      await waitFor(() => {
+        expect(result.current.eventLogs[0].id).toBe("def67890")
+      })
+    })
   })
 
   describe("error handling", () => {
-    it("sets error when fetch fails", async () => {
-      vi.useRealTimers()
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ ok: false, error: "Database error" }),
-      })
+    it("sets error when database operation fails", async () => {
+      mockListEventLogs.mockRejectedValue(new Error("Database error"))
 
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       await waitFor(() => {
         expect(result.current.error).toBe("Database error")
@@ -135,105 +187,46 @@ describe("useEventLogs", () => {
       expect(result.current.eventLogs).toHaveLength(0)
     })
 
-    it("sets error on network failure", async () => {
-      vi.useRealTimers()
-      mockFetch.mockRejectedValue(new Error("Network error"))
+    it("sets generic error for non-Error failures", async () => {
+      mockListEventLogs.mockRejectedValue("Unknown failure")
 
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       await waitFor(() => {
-        expect(result.current.error).toBe("Network error")
+        expect(result.current.error).toBe("Failed to load event logs")
       })
     })
-  })
 
-  describe("polling", () => {
-    it("polls at the specified interval", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, eventlogs: mockEventLogs }),
+    it("sets error when init fails", async () => {
+      mockInit.mockRejectedValue(new Error("Init failed"))
+
+      const { result } = renderHook(() => useEventLogs())
+
+      await waitFor(() => {
+        expect(result.current.error).toBe("Init failed")
       })
-
-      renderHook(() => useEventLogs({ pollInterval: 1000 }))
-
-      // Initial fetch
-      await vi.advanceTimersByTimeAsync(0)
-      expect(mockFetch).toHaveBeenCalledTimes(1)
-
-      // After 1 second
-      await vi.advanceTimersByTimeAsync(1000)
-      expect(mockFetch).toHaveBeenCalledTimes(2)
-
-      // After another second
-      await vi.advanceTimersByTimeAsync(1000)
-      expect(mockFetch).toHaveBeenCalledTimes(3)
-    })
-
-    it("does not poll when pollInterval is 0", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, eventlogs: mockEventLogs }),
-      })
-
-      renderHook(() => useEventLogs({ pollInterval: 0 }))
-
-      // Initial fetch
-      await vi.advanceTimersByTimeAsync(0)
-      expect(mockFetch).toHaveBeenCalledTimes(1)
-
-      // After many seconds
-      await vi.advanceTimersByTimeAsync(60000)
-      expect(mockFetch).toHaveBeenCalledTimes(1)
-    })
-
-    it("uses default 30s poll interval", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, eventlogs: mockEventLogs }),
-      })
-
-      renderHook(() => useEventLogs())
-
-      // Initial fetch
-      await vi.advanceTimersByTimeAsync(0)
-      expect(mockFetch).toHaveBeenCalledTimes(1)
-
-      // After 29 seconds - no new poll yet
-      await vi.advanceTimersByTimeAsync(29000)
-      expect(mockFetch).toHaveBeenCalledTimes(1)
-
-      // After 30 seconds total - should have polled
-      await vi.advanceTimersByTimeAsync(1000)
-      expect(mockFetch).toHaveBeenCalledTimes(2)
     })
   })
 
   describe("refresh", () => {
     it("manually refetches event logs", async () => {
-      vi.useRealTimers()
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       await waitFor(() => {
         expect(result.current.eventLogs).toHaveLength(3)
       })
 
-      // Clear and setup new mock response with more logs
-      mockFetch.mockClear()
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            ok: true,
-            eventlogs: [
-              ...mockEventLogs,
-              {
-                id: "jkl22222",
-                createdAt: "2026-01-24T12:00:00.000Z",
-                eventCount: 99,
-              },
-            ],
-          }),
-      })
+      // Setup new mock response with more logs
+      const additionalLog: EventLogMetadata = {
+        id: "jkl22222",
+        createdAt: new Date("2026-01-24T12:00:00.000Z").getTime(),
+        eventCount: 99,
+        taskId: null,
+        taskTitle: null,
+        source: null,
+        workspacePath: null,
+      }
+      mockListEventLogs.mockResolvedValue([...mockEventLogMetadata, additionalLog])
 
       await act(async () => {
         await result.current.refresh()
@@ -243,24 +236,17 @@ describe("useEventLogs", () => {
     })
 
     it("clears error on successful refresh", async () => {
-      vi.useRealTimers()
       // First request fails
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ ok: false, error: "Initial error" }),
-      })
+      mockListEventLogs.mockRejectedValueOnce(new Error("Initial error"))
 
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       await waitFor(() => {
         expect(result.current.error).toBe("Initial error")
       })
 
       // Second request succeeds
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, eventlogs: mockEventLogs }),
-      })
+      mockListEventLogs.mockResolvedValue(mockEventLogMetadata)
 
       await act(async () => {
         await result.current.refresh()
@@ -273,13 +259,9 @@ describe("useEventLogs", () => {
 
   describe("empty state", () => {
     it("handles empty event logs list", async () => {
-      vi.useRealTimers()
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, eventlogs: [] }),
-      })
+      mockListEventLogs.mockResolvedValue([])
 
-      const { result } = renderHook(() => useEventLogs({ pollInterval: 0 }))
+      const { result } = renderHook(() => useEventLogs())
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)

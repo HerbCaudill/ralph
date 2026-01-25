@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import type { EventLogMetadata } from "@/types"
+import { eventDatabase, type EventLogMetadata } from "@/lib/persistence"
 
 /**
  * Summary of an event log (without full event data).
@@ -9,12 +9,15 @@ export interface EventLogSummary {
   id: string
   createdAt: string
   eventCount: number
-  metadata?: EventLogMetadata
+  metadata?: {
+    taskId?: string
+    title?: string
+  }
 }
 
 export interface UseEventLogsOptions {
-  /** Polling interval in ms (default: 30000, 0 to disable) */
-  pollInterval?: number
+  /** Optional task ID to filter event logs by */
+  taskId?: string
 }
 
 export interface UseEventLogsResult {
@@ -28,58 +31,60 @@ export interface UseEventLogsResult {
   refresh: () => Promise<void>
 }
 
-interface EventLogsResponse {
-  ok: boolean
-  eventlogs?: EventLogSummary[]
-  error?: string
-}
-
-/**  Fetch event log summaries from the API. */
-async function fetchEventLogs(): Promise<EventLogsResponse> {
-  try {
-    const response = await fetch("/api/eventlogs")
-    return (await response.json()) as EventLogsResponse
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to fetch event logs" }
+/**
+ * Converts EventLogMetadata from IndexedDB to EventLogSummary for consumers.
+ */
+function toEventLogSummary(metadata: EventLogMetadata): EventLogSummary {
+  return {
+    id: metadata.id,
+    createdAt: new Date(metadata.createdAt).toISOString(),
+    eventCount: metadata.eventCount,
+    metadata:
+      metadata.taskId || metadata.taskTitle ?
+        {
+          taskId: metadata.taskId ?? undefined,
+          title: metadata.taskTitle ?? undefined,
+        }
+      : undefined,
   }
 }
 
 /**
- * Hook to fetch and manage event log summaries from the API.
+ * Hook to fetch and manage event log summaries from IndexedDB.
  * Returns summaries (without full event data) for efficient browsing.
+ *
+ * Event logs are stored client-side in IndexedDB and persist across sessions.
  */
 export function useEventLogs(options: UseEventLogsOptions = {}): UseEventLogsResult {
-  const { pollInterval = 30000 } = options
+  const { taskId } = options
 
   const [eventLogs, setEventLogs] = useState<EventLogSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
-    const result = await fetchEventLogs()
+    try {
+      await eventDatabase.init()
 
-    if (result.ok && result.eventlogs) {
-      setEventLogs(result.eventlogs)
+      const metadata =
+        taskId ?
+          await eventDatabase.getEventLogsForTask(taskId)
+        : await eventDatabase.listEventLogs()
+
+      const summaries = metadata.map(toEventLogSummary)
+      setEventLogs(summaries)
       setError(null)
-    } else {
-      setError(result.error ?? "Failed to fetch event logs")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load event logs")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
-  }, [])
+  }, [taskId])
 
   // Initial fetch
   useEffect(() => {
     refresh()
   }, [refresh])
-
-  // Polling
-  useEffect(() => {
-    if (pollInterval <= 0) return
-
-    const intervalId = setInterval(refresh, pollInterval)
-    return () => clearInterval(intervalId)
-  }, [refresh, pollInterval])
 
   return { eventLogs, isLoading, error, refresh }
 }
