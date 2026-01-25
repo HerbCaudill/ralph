@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import "fake-indexeddb/auto"
 import { EventDatabase } from "./EventDatabase"
-import type { PersistedIteration, PersistedTaskChatSession } from "./types"
+import type { PersistedEventLog, PersistedIteration, PersistedTaskChatSession } from "./types"
 
 /**
  * Create a test iteration with sensible defaults.
@@ -58,6 +58,28 @@ function createTestTaskChatSession(
   }
 }
 
+/**
+ * Create a test event log with sensible defaults.
+ */
+function createTestEventLog(overrides: Partial<PersistedEventLog> = {}): PersistedEventLog {
+  const id = overrides.id ?? `event-log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const now = Date.now()
+  return {
+    id,
+    taskId: "task-123",
+    taskTitle: "Test Task",
+    source: "iteration",
+    workspacePath: "/Users/test/project",
+    createdAt: now,
+    eventCount: 2,
+    events: [
+      { type: "user_message", timestamp: now, message: "Hello" },
+      { type: "assistant_text", timestamp: now + 1, content: "Hi there!" },
+    ],
+    ...overrides,
+  }
+}
+
 describe("EventDatabase", () => {
   let db: EventDatabase
 
@@ -80,6 +102,7 @@ describe("EventDatabase", () => {
       expect(stats).toEqual({
         iterationCount: 0,
         taskChatSessionCount: 0,
+        eventLogCount: 0,
         syncStateCount: 0,
       })
     })
@@ -507,6 +530,146 @@ describe("EventDatabase", () => {
     })
   })
 
+  describe("event logs", () => {
+    describe("saveEventLog / getEventLog", () => {
+      it("saves and retrieves an event log", async () => {
+        const eventLog = createTestEventLog()
+        await db.saveEventLog(eventLog)
+
+        const retrieved = await db.getEventLog(eventLog.id)
+        expect(retrieved).toEqual(eventLog)
+      })
+
+      it("overwrites an existing event log with the same ID", async () => {
+        const eventLog = createTestEventLog({ id: "log-1" })
+        await db.saveEventLog(eventLog)
+
+        const updated = { ...eventLog, eventCount: 20 }
+        await db.saveEventLog(updated)
+
+        const retrieved = await db.getEventLog("log-1")
+        expect(retrieved?.eventCount).toBe(20)
+      })
+
+      it("returns undefined for non-existent event log", async () => {
+        const result = await db.getEventLog("non-existent")
+        expect(result).toBeUndefined()
+      })
+    })
+
+    describe("getEventLogMetadata", () => {
+      it("retrieves metadata without full events", async () => {
+        const eventLog = createTestEventLog({ id: "meta-test" })
+        await db.saveEventLog(eventLog)
+
+        const metadata = await db.getEventLogMetadata("meta-test")
+        expect(metadata).toBeDefined()
+        expect(metadata?.id).toBe("meta-test")
+        expect(metadata?.taskId).toBe(eventLog.taskId)
+        expect(metadata?.eventCount).toBe(eventLog.eventCount)
+        // Metadata should not have events property
+        expect((metadata as unknown as PersistedEventLog).events).toBeUndefined()
+      })
+    })
+
+    describe("listEventLogs", () => {
+      it("lists all event logs", async () => {
+        await db.saveEventLog(createTestEventLog({ id: "log-1" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-2" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-3" }))
+
+        const list = await db.listEventLogs()
+        expect(list.map(l => l.id)).toContain("log-1")
+        expect(list.map(l => l.id)).toContain("log-2")
+        expect(list.map(l => l.id)).toContain("log-3")
+        expect(list.length).toBe(3)
+      })
+
+      it("returns event logs sorted by createdAt descending", async () => {
+        const now = Date.now()
+        await db.saveEventLog(createTestEventLog({ id: "old", createdAt: now - 1000 }))
+        await db.saveEventLog(createTestEventLog({ id: "newest", createdAt: now + 1000 }))
+        await db.saveEventLog(createTestEventLog({ id: "middle", createdAt: now }))
+
+        const list = await db.listEventLogs()
+        expect(list.map(l => l.id)).toEqual(["newest", "middle", "old"])
+      })
+
+      it("returns empty array when no event logs exist", async () => {
+        const list = await db.listEventLogs()
+        expect(list).toEqual([])
+      })
+    })
+
+    describe("getEventLogsForTask", () => {
+      it("retrieves event logs for a specific task", async () => {
+        await db.saveEventLog(createTestEventLog({ id: "log-1", taskId: "task-a" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-2", taskId: "task-a" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-3", taskId: "task-b" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-4", taskId: null }))
+
+        const taskALogs = await db.getEventLogsForTask("task-a")
+        expect(taskALogs.map(l => l.id)).toEqual(expect.arrayContaining(["log-1", "log-2"]))
+        expect(taskALogs.length).toBe(2)
+      })
+
+      it("returns event logs sorted by createdAt descending", async () => {
+        const now = Date.now()
+        await db.saveEventLog(
+          createTestEventLog({ id: "old", taskId: "task-a", createdAt: now - 1000 }),
+        )
+        await db.saveEventLog(
+          createTestEventLog({ id: "newest", taskId: "task-a", createdAt: now + 1000 }),
+        )
+        await db.saveEventLog(
+          createTestEventLog({ id: "middle", taskId: "task-a", createdAt: now }),
+        )
+
+        const logs = await db.getEventLogsForTask("task-a")
+        expect(logs.map(l => l.id)).toEqual(["newest", "middle", "old"])
+      })
+
+      it("returns empty array for unknown task", async () => {
+        const list = await db.getEventLogsForTask("unknown-task")
+        expect(list).toEqual([])
+      })
+    })
+
+    describe("deleteEventLog", () => {
+      it("deletes an event log and its metadata", async () => {
+        const eventLog = createTestEventLog({ id: "to-delete" })
+        await db.saveEventLog(eventLog)
+
+        await db.deleteEventLog("to-delete")
+
+        expect(await db.getEventLog("to-delete")).toBeUndefined()
+        expect(await db.getEventLogMetadata("to-delete")).toBeUndefined()
+      })
+
+      it("does not throw when deleting non-existent event log", async () => {
+        await expect(db.deleteEventLog("non-existent")).resolves.not.toThrow()
+      })
+    })
+
+    describe("deleteAllEventLogsForTask", () => {
+      it("deletes all event logs for a specific task", async () => {
+        await db.saveEventLog(createTestEventLog({ id: "log-1", taskId: "task-a" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-2", taskId: "task-a" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-3", taskId: "task-b" }))
+
+        await db.deleteAllEventLogsForTask("task-a")
+
+        expect(await db.getEventLog("log-1")).toBeUndefined()
+        expect(await db.getEventLog("log-2")).toBeUndefined()
+        expect(await db.getEventLog("log-3")).toBeDefined()
+      })
+
+      it("does not throw when no event logs exist for task", async () => {
+        await expect(db.deleteAllEventLogsForTask("non-existent")).resolves.not.toThrow()
+      })
+    })
+  })
+
   describe("sync state", () => {
     describe("getSyncState / setSyncState", () => {
       it("sets and gets string values", async () => {
@@ -559,6 +722,7 @@ describe("EventDatabase", () => {
       it("clears all data from all stores", async () => {
         await db.saveIteration(createTestIteration())
         await db.saveTaskChatSession(createTestTaskChatSession())
+        await db.saveEventLog(createTestEventLog())
         await db.setSyncState("key", "value")
 
         await db.clearAll()
@@ -567,6 +731,7 @@ describe("EventDatabase", () => {
         expect(stats).toEqual({
           iterationCount: 0,
           taskChatSessionCount: 0,
+          eventLogCount: 0,
           syncStateCount: 0,
         })
       })
@@ -577,6 +742,8 @@ describe("EventDatabase", () => {
         await db.saveIteration(createTestIteration({ id: "iter-1" }))
         await db.saveIteration(createTestIteration({ id: "iter-2" }))
         await db.saveTaskChatSession(createTestTaskChatSession({ id: "session-1" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-1" }))
+        await db.saveEventLog(createTestEventLog({ id: "log-2" }))
         await db.setSyncState("key-1", "value-1")
         await db.setSyncState("key-2", "value-2")
         await db.setSyncState("key-3", "value-3")
@@ -585,6 +752,7 @@ describe("EventDatabase", () => {
         expect(stats).toEqual({
           iterationCount: 2,
           taskChatSessionCount: 1,
+          eventLogCount: 2,
           syncStateCount: 3,
         })
       })
@@ -636,6 +804,27 @@ describe("EventDatabase", () => {
 
       expect(await db.getIterationMetadata("delete-atomic")).toBeUndefined()
       expect(await db.getIteration("delete-atomic")).toBeUndefined()
+    })
+
+    it("saves event log metadata and full data atomically", async () => {
+      const eventLog = createTestEventLog({ id: "atomic-test" })
+      await db.saveEventLog(eventLog)
+
+      // Both metadata and full data should be present
+      const metadata = await db.getEventLogMetadata("atomic-test")
+      const full = await db.getEventLog("atomic-test")
+
+      expect(metadata).toBeDefined()
+      expect(full).toBeDefined()
+      expect(metadata?.id).toBe(full?.id)
+    })
+
+    it("deletes event log metadata and full data atomically", async () => {
+      await db.saveEventLog(createTestEventLog({ id: "delete-atomic" }))
+      await db.deleteEventLog("delete-atomic")
+
+      expect(await db.getEventLogMetadata("delete-atomic")).toBeUndefined()
+      expect(await db.getEventLog("delete-atomic")).toBeUndefined()
     })
   })
 })
