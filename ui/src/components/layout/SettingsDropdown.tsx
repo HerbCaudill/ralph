@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import {
   IconSettings,
   IconCheck,
@@ -6,10 +6,12 @@ import {
   IconSun,
   IconMoon,
   IconDeviceDesktop,
+  IconDownload,
 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { useThemeCoordinator } from "@/hooks"
 import { groupThemesByType } from "@/lib/groupThemesByType"
+import { downloadStateExport } from "@/lib/exportState"
 import { Button } from "@/components/ui/button"
 
 /**
@@ -37,6 +39,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
   } = useThemeCoordinator()
 
   const [isOpen, setIsOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const themeGroups = useMemo(() => groupThemesByType(themes), [themes])
@@ -90,6 +93,17 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
   const handleMouseLeave = () => {
     clearPreview()
   }
+
+  const handleExportState = useCallback(async () => {
+    setIsExporting(true)
+    try {
+      await downloadStateExport()
+    } catch (err) {
+      console.error("[SettingsDropdown] Failed to export state:", err)
+    } finally {
+      setIsExporting(false)
+    }
+  }, [])
 
   const appearanceModes = [
     { value: "system" as const, Icon: IconDeviceDesktop, label: "System" },
@@ -238,6 +252,19 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
               >
                 <IconRefresh className="text-muted-foreground size-3.5" />
                 <span>Refresh themes</span>
+              </button>
+              <button
+                onClick={handleExportState}
+                disabled={isExporting}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
+                  "hover:bg-muted",
+                  isExporting && "cursor-wait opacity-50",
+                )}
+                data-testid="settings-export-state"
+              >
+                <IconDownload className="text-muted-foreground size-3.5" />
+                <span>{isExporting ? "Exporting..." : "Export state"}</span>
               </button>
             </div>
           )}

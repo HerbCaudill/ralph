@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { SettingsDropdown } from "./SettingsDropdown"
 import type { ThemeMeta } from "@/lib/theme"
+import * as exportStateModule from "@/lib/exportState"
 
 // Mock values for useThemeCoordinator (combines useVSCodeTheme and useTheme)
 const mockFetchThemes = vi.fn()
@@ -353,6 +354,95 @@ describe("SettingsDropdown", () => {
       fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
 
       expect(screen.getByText("No themes found")).toBeInTheDocument()
+    })
+  })
+
+  describe("export state functionality", () => {
+    it("shows export state button in dropdown", () => {
+      render(<SettingsDropdown />)
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      expect(screen.getByTestId("settings-export-state")).toBeInTheDocument()
+      expect(screen.getByText("Export state")).toBeInTheDocument()
+    })
+
+    it("calls downloadStateExport when clicking export state button", async () => {
+      const mockDownload = vi
+        .spyOn(exportStateModule, "downloadStateExport")
+        .mockResolvedValue(undefined)
+
+      render(<SettingsDropdown />)
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      fireEvent.click(screen.getByTestId("settings-export-state"))
+
+      await waitFor(() => {
+        expect(mockDownload).toHaveBeenCalled()
+      })
+
+      mockDownload.mockRestore()
+    })
+
+    it("shows exporting state while export is in progress", async () => {
+      // Create a promise that we can control
+      let resolveExport: () => void
+      const exportPromise = new Promise<void>(resolve => {
+        resolveExport = resolve
+      })
+
+      const mockDownload = vi
+        .spyOn(exportStateModule, "downloadStateExport")
+        .mockReturnValue(exportPromise)
+
+      render(<SettingsDropdown />)
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      // Click export
+      fireEvent.click(screen.getByTestId("settings-export-state"))
+
+      // Should show exporting state
+      await waitFor(() => {
+        expect(screen.getByText("Exporting...")).toBeInTheDocument()
+      })
+
+      // Button should be disabled
+      const button = screen.getByTestId("settings-export-state")
+      expect(button).toBeDisabled()
+
+      // Resolve the export
+      resolveExport!()
+
+      // Should return to normal state
+      await waitFor(() => {
+        expect(screen.getByText("Export state")).toBeInTheDocument()
+      })
+
+      mockDownload.mockRestore()
+    })
+
+    it("handles export errors gracefully", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+      const mockDownload = vi
+        .spyOn(exportStateModule, "downloadStateExport")
+        .mockRejectedValue(new Error("Export failed"))
+
+      render(<SettingsDropdown />)
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      fireEvent.click(screen.getByTestId("settings-export-state"))
+
+      // Should recover from error and show normal state
+      await waitFor(() => {
+        expect(screen.getByText("Export state")).toBeInTheDocument()
+      })
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[SettingsDropdown] Failed to export state:",
+        expect.any(Error),
+      )
+
+      consoleSpy.mockRestore()
+      mockDownload.mockRestore()
     })
   })
 })
