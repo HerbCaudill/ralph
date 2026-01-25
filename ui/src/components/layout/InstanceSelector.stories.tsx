@@ -1,27 +1,67 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { useEffect } from "react"
-import { InstanceSelector } from "./InstanceSelector"
-import { useAppStore, createRalphInstance } from "@/store"
+import { fn } from "storybook/test"
+import { InstanceSelectorView } from "./InstanceSelectorView"
+import type { RalphInstance, RalphStatus } from "@/types"
 
-const meta: Meta<typeof InstanceSelector> = {
+/**
+ * Helper to create a test instance with minimal boilerplate.
+ */
+function createInstance(id: string, name: string, status: RalphStatus = "stopped"): RalphInstance {
+  return {
+    id,
+    name,
+    agentName: `Ralph-${id}`,
+    status,
+    events: [],
+    tokenUsage: { input: 0, output: 0 },
+    contextWindow: { used: 0, max: 200000 },
+    iteration: { current: 0, total: 0 },
+    worktreePath: null,
+    branch: null,
+    currentTaskId: null,
+    currentTaskTitle: null,
+    createdAt: Date.now(),
+    runStartedAt: null,
+    mergeConflict: null,
+  }
+}
+
+/**
+ * Default instances for stories.
+ */
+const defaultInstances = new Map<string, RalphInstance>([
+  ["default", createInstance("default", "Main", "stopped")],
+])
+
+const meta: Meta<typeof InstanceSelectorView> = {
   title: "Selectors/InstanceSelector",
-  component: InstanceSelector,
+  component: InstanceSelectorView,
   parameters: {},
-  decorators: [
-    Story => {
-      // Reset store before each story
-      useAppStore.getState().reset()
-      return <Story />
+  args: {
+    instances: defaultInstances,
+    activeInstanceId: "default",
+    onSelectInstance: fn(),
+  },
+  argTypes: {
+    instances: {
+      control: false,
+      description: "Map of instance ID to instance data",
     },
-  ],
+    activeInstanceId: {
+      control: "text",
+      description: "ID of the currently active instance",
+    },
+    textColor: {
+      control: "color",
+      description: "Text color for header variant",
+    },
+  },
 }
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Default: Story = {
-  args: {},
-}
+export const Default: Story = {}
 
 export const WithTextColor: Story = {
   args: {
@@ -37,135 +77,57 @@ export const WithTextColor: Story = {
 }
 
 export const SingleInstanceStopped: Story = {
-  decorators: [
-    Story => {
-      useAppStore.getState().reset()
-      return <Story />
-    },
-  ],
+  args: {
+    instances: new Map([["default", createInstance("default", "Main", "stopped")]]),
+    activeInstanceId: "default",
+  },
 }
 
 export const SingleInstanceRunning: Story = {
-  decorators: [
-    Story => {
-      const SetupStore = () => {
-        useEffect(() => {
-          useAppStore.getState().setRalphStatus("running")
-        }, [])
-        return null
-      }
-      return (
-        <>
-          <SetupStore />
-          <Story />
-        </>
-      )
-    },
-  ],
+  args: {
+    instances: new Map([["default", createInstance("default", "Main", "running")]]),
+    activeInstanceId: "default",
+  },
 }
 
 export const MultipleInstances: Story = {
-  decorators: [
-    Story => {
-      const SetupStore = () => {
-        useEffect(() => {
-          const instances = new Map()
-
-          const main = createRalphInstance("default", "Main", "Ralph")
-          main.status = "running"
-          instances.set("default", main)
-
-          const worktree1 = createRalphInstance("worktree-1", "Worktree 1", "Ralph-2")
-          worktree1.status = "paused"
-          instances.set("worktree-1", worktree1)
-
-          const worktree2 = createRalphInstance("worktree-2", "Worktree 2", "Ralph-3")
-          worktree2.status = "running"
-          instances.set("worktree-2", worktree2)
-
-          useAppStore.setState({ instances })
-        }, [])
-        return null
-      }
-      return (
-        <>
-          <SetupStore />
-          <Story />
-        </>
-      )
-    },
-  ],
+  args: {
+    instances: new Map<string, RalphInstance>([
+      ["default", createInstance("default", "Main", "running")],
+      ["worktree-1", createInstance("worktree-1", "Worktree 1", "paused")],
+      ["worktree-2", createInstance("worktree-2", "Worktree 2", "running")],
+    ]),
+    activeInstanceId: "default",
+  },
 }
 
 export const VariousStatuses: Story = {
-  decorators: [
-    Story => {
-      const SetupStore = () => {
-        useEffect(() => {
-          const instances = new Map()
-
-          const main = createRalphInstance("default", "Main", "Ralph")
-          main.status = "running"
-          instances.set("default", main)
-
-          const starting = createRalphInstance("starting-1", "Starting Instance", "Ralph-2")
-          starting.status = "starting"
-          instances.set("starting-1", starting)
-
-          const paused = createRalphInstance("paused-1", "Paused Instance", "Ralph-3")
-          paused.status = "paused"
-          instances.set("paused-1", paused)
-
-          const stopping = createRalphInstance("stopping-1", "Stopping Instance", "Ralph-4")
-          stopping.status = "stopping"
-          instances.set("stopping-1", stopping)
-
-          const stopped = createRalphInstance("stopped-1", "Stopped Instance", "Ralph-5")
-          stopped.status = "stopped"
-          instances.set("stopped-1", stopped)
-
-          useAppStore.setState({ instances })
-        }, [])
-        return null
-      }
-      return (
-        <>
-          <SetupStore />
-          <Story />
-        </>
-      )
-    },
-  ],
+  args: {
+    instances: new Map<string, RalphInstance>([
+      ["default", createInstance("default", "Main", "running")],
+      ["starting-1", createInstance("starting-1", "Starting Instance", "starting")],
+      ["paused-1", createInstance("paused-1", "Paused Instance", "paused")],
+      ["stopping-1", createInstance("stopping-1", "Stopping Instance", "stopping")],
+      ["stopped-1", createInstance("stopped-1", "Stopped Instance", "stopped")],
+    ]),
+    activeInstanceId: "default",
+  },
 }
 
 export const InHeader: Story = {
   args: {
     textColor: "#ffffff",
+    instances: new Map<string, RalphInstance>([
+      ["default", createInstance("default", "Main", "running")],
+      ["worktree-1", createInstance("worktree-1", "Feature Branch", "running")],
+    ]),
+    activeInstanceId: "default",
   },
   decorators: [
-    Story => {
-      const SetupStore = () => {
-        useEffect(() => {
-          const instances = new Map()
-
-          const main = createRalphInstance("default", "Main", "Ralph")
-          main.status = "running"
-          instances.set("default", main)
-
-          const worktree1 = createRalphInstance("worktree-1", "Feature Branch", "Ralph-2")
-          worktree1.status = "running"
-          instances.set("worktree-1", worktree1)
-
-          useAppStore.setState({ instances })
-        }, [])
-        return null
-      }
-      return (
-        <div className="flex h-14 w-96 items-center rounded-lg bg-blue-600 px-4">
-          <SetupStore />
-          <Story />
-        </div>
-      )
-    },
+    Story => (
+      <div className="flex h-14 w-96 items-center rounded-lg bg-blue-600 px-4">
+        <Story />
+      </div>
+    ),
   ],
 }

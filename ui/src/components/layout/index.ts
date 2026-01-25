@@ -8,6 +8,11 @@ export { HotkeysDialog, type HotkeysDialogProps } from "./HotkeysDialog"
 export { HelpButton, type HelpButtonProps } from "./HelpButton"
 export { CommandPalette, type CommandPaletteProps, type CommandAction } from "./CommandPalette"
 export { InstanceCountBadge, type InstanceCountBadgeProps } from "./InstanceCountBadge"
-export { InstanceSelector, type InstanceSelectorProps } from "./InstanceSelector"
+export {
+  InstanceSelector,
+  InstanceSelectorView,
+  type InstanceSelectorProps,
+  type InstanceSelectorViewProps,
+} from "./InstanceSelector"
 export { NewInstanceDialog, type NewInstanceDialogProps } from "./NewInstanceDialog"
 export { SettingsDropdown, type SettingsDropdownProps } from "./SettingsDropdown"
