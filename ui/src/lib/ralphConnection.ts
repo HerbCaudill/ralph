@@ -281,15 +281,20 @@ function handleMessage(event: MessageEvent): void {
             }
           }
 
-          // Handle result events with usage (normalized event format from server)
+          // Handle result events with usage (supports both snake_case from SDK and camelCase from adapters)
           if (event.type === "result" && (event as any).usage) {
             const usage = (event as any).usage as {
+              // camelCase (from ClaudeAdapter normalized events)
               inputTokens?: number
               outputTokens?: number
               totalTokens?: number
+              // snake_case (from raw SDK events via ralph CLI)
+              input_tokens?: number
+              output_tokens?: number
             }
-            const inputTokens = usage.inputTokens || 0
-            const outputTokens = usage.outputTokens || 0
+            // Support both snake_case and camelCase
+            const inputTokens = usage.inputTokens || usage.input_tokens || 0
+            const outputTokens = usage.outputTokens || usage.output_tokens || 0
             if (inputTokens > 0 || outputTokens > 0) {
               if (isForActiveInstance) {
                 store.addTokenUsage({ input: inputTokens, output: outputTokens })
@@ -430,9 +435,29 @@ function handleMessage(event: MessageEvent): void {
         // Raw SDK event for unified event stream
         if (data.event && typeof data.event === "object") {
           // Ensure the event has required properties
-          const event = data.event as { type?: string; timestamp?: number }
+          const event = data.event as { type?: string; timestamp?: number; [key: string]: unknown }
           if (typeof event.type === "string" && typeof event.timestamp === "number") {
             store.addTaskChatEvent(data.event)
+
+            // Extract token usage from task chat result events
+            if (event.type === "result" && event.usage) {
+              const usage = event.usage as {
+                inputTokens?: number
+                outputTokens?: number
+                input_tokens?: number
+                output_tokens?: number
+              }
+              // Support both snake_case and camelCase
+              const inputTokens = usage.inputTokens || usage.input_tokens || 0
+              const outputTokens = usage.outputTokens || usage.output_tokens || 0
+              if (inputTokens > 0 || outputTokens > 0) {
+                store.addTokenUsage({ input: inputTokens, output: outputTokens })
+                // Update context window usage
+                const totalTokens =
+                  store.tokenUsage.input + inputTokens + store.tokenUsage.output + outputTokens
+                store.updateContextWindowUsed(totalTokens)
+              }
+            }
           }
         }
         break

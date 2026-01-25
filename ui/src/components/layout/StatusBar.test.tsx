@@ -99,10 +99,11 @@ describe("StatusBar", () => {
   })
 
   describe("TokenUsage", () => {
-    it("hides when no tokens used", () => {
+    it("shows 0/0 when no tokens used", () => {
       render(<StatusBar />)
-      // Should not render token usage when both input and output are 0
-      expect(screen.queryByTitle("Token usage (input / output)")).not.toBeInTheDocument()
+      // Should show token usage even when both input and output are 0 (useful information)
+      expect(screen.getByTitle("Token usage (input / output)")).toBeInTheDocument()
+      expect(screen.getAllByText("0")).toHaveLength(2) // Both input and output show 0
     })
 
     it("shows token counts", () => {
