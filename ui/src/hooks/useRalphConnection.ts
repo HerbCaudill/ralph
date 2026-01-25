@@ -43,9 +43,14 @@ export function useRalphConnection(): UseRalphConnectionReturn {
     initRalphConnection()
   }, [])
 
-  const sendMessage = useCallback((message: string) => {
-    ralphConnection.send({ type: "chat_message", message })
-  }, [])
+  const activeInstanceId = useAppStore(state => state.activeInstanceId)
+
+  const sendMessage = useCallback(
+    (message: string) => {
+      ralphConnection.send({ type: "chat_message", message, instanceId: activeInstanceId })
+    },
+    [activeInstanceId],
+  )
 
   const connect = useCallback(() => {
     ralphConnection.connect()

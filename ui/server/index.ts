@@ -1445,8 +1445,8 @@ function handleWsMessage(
 
       case "chat_message": {
         // Forward user message to ralph stdin
-        const context = getActiveContext()
         const chatMessage = message.message as string | undefined
+        const instanceId = (message.instanceId as string) || "default"
         if (!chatMessage) {
           ws.send(
             JSON.stringify({ type: "error", error: "Message is required", timestamp: Date.now() }),
@@ -1454,20 +1454,40 @@ function handleWsMessage(
           return
         }
 
-        if (!context.ralphManager.canAcceptMessages) {
+        // Use RalphRegistry to get the instance (same system as the UI controls)
+        const registry = getRalphRegistry()
+        const instance = registry.get(instanceId)
+
+        if (!instance) {
           ws.send(
-            JSON.stringify({ type: "error", error: "Ralph is not running", timestamp: Date.now() }),
+            JSON.stringify({
+              type: "error",
+              error: `Ralph instance '${instanceId}' not found. Click Start to begin.`,
+              timestamp: Date.now(),
+            }),
+          )
+          return
+        }
+
+        if (!instance.manager.canAcceptMessages) {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              error: "Ralph is not running. Click Start to begin.",
+              timestamp: Date.now(),
+            }),
           )
           return
         }
 
         // Send to ralph - wrap in JSON format that Ralph CLI expects
-        context.ralphManager.send({ type: "message", text: chatMessage })
+        instance.manager.send({ type: "message", text: chatMessage })
 
         // Broadcast user message to all clients so it appears in event stream
         broadcast({
           type: "user_message",
           message: chatMessage,
+          instanceId,
           timestamp: Date.now(),
         })
         break

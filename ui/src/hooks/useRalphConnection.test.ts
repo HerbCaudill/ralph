@@ -145,8 +145,9 @@ describe("useRalphConnection", () => {
         result.current.sendMessage("Hello, ralph!")
       })
 
+      // Should include activeInstanceId (defaults to "default")
       expect(getWs()?.sentMessages).toContainEqual(
-        JSON.stringify({ type: "chat_message", message: "Hello, ralph!" }),
+        JSON.stringify({ type: "chat_message", message: "Hello, ralph!", instanceId: "default" }),
       )
     })
 
