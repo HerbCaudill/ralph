@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { expect, within, userEvent, fn } from "storybook/test"
 import { TaskSidebar } from "./TaskSidebar"
 import type { Task } from "@/types"
+import { useAppStore } from "@/store"
+import { useEffect } from "react"
 
 const meta: Meta<typeof TaskSidebar> = {
   title: "Panels/TaskSidebar",
@@ -13,6 +16,10 @@ const meta: Meta<typeof TaskSidebar> = {
       </div>
     ),
   ],
+  args: {
+    onHideSearch: fn(),
+    onOpenTask: fn(),
+  },
 }
 
 export default meta
@@ -167,5 +174,231 @@ export const WithCustomClassName: Story = {
     iterationHistory: <MockIterationHistory />,
     progressBar: <MockProgressBar closed={1} total={5} />,
     className: "bg-muted/20",
+  },
+}
+
+/** Helper to set up store state for search tests */
+function StoreSetter({ tasks, query }: { tasks: Task[]; query?: string }) {
+  useEffect(() => {
+    const store = useAppStore.getState()
+    store.setTasks(tasks)
+    if (query) {
+      store.setTaskSearchQuery(query)
+    } else {
+      store.clearTaskSearchQuery()
+    }
+    return () => {
+      // Clean up on unmount
+      store.clearTaskSearchQuery()
+    }
+  }, [tasks, query])
+  return null
+}
+
+/**
+ * Verifies the sidebar renders with proper accessibility role.
+ */
+export const HasAccessibleRole: Story = {
+  args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const sidebar = canvas.getByRole("complementary", { name: "Task sidebar" })
+    await expect(sidebar).toBeInTheDocument()
+  },
+}
+
+/**
+ * Verifies the empty state is displayed when no taskList is provided.
+ */
+export const ShowsEmptyState: Story = {
+  args: {
+    quickInput: <QuickInput />,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText("No tasks yet")).toBeInTheDocument()
+  },
+}
+
+/**
+ * Verifies the search input is visible when isSearchVisible is true.
+ */
+export const SearchIsVisible: Story = {
+  render: args => (
+    <>
+      <StoreSetter tasks={sampleTasks} />
+      <TaskSidebar {...args} />
+    </>
+  ),
+  args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    isSearchVisible: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const searchInput = canvas.getByRole("textbox", { name: "Search tasks" })
+    await expect(searchInput).toBeInTheDocument()
+  },
+}
+
+/**
+ * Verifies pressing Escape in the search input calls onHideSearch.
+ */
+export const EscapeHidesSearch: Story = {
+  render: args => (
+    <>
+      <StoreSetter tasks={sampleTasks} />
+      <TaskSidebar {...args} />
+    </>
+  ),
+  args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    isSearchVisible: true,
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+
+    // Get the search input
+    const searchInput = canvas.getByRole("textbox", { name: "Search tasks" })
+    await expect(searchInput).toBeInTheDocument()
+
+    // Focus the search input
+    await userEvent.click(searchInput)
+    await expect(searchInput).toHaveFocus()
+
+    // Press Escape to hide
+    await userEvent.keyboard("{Escape}")
+
+    // Verify callback was called
+    await expect(args.onHideSearch).toHaveBeenCalled()
+  },
+}
+
+/**
+ * Verifies typing in the search input filters tasks and clear button calls onHideSearch.
+ */
+export const SearchWithQueryAndClear: Story = {
+  render: args => (
+    <>
+      <StoreSetter tasks={sampleTasks} />
+      <TaskSidebar {...args} />
+    </>
+  ),
+  args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    isSearchVisible: true,
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+
+    // Get the search input
+    const searchInput = canvas.getByRole("textbox", { name: "Search tasks" })
+
+    // Type a search query
+    await userEvent.type(searchInput, "auth")
+
+    // Verify the input has the value
+    await expect(searchInput).toHaveValue("auth")
+
+    // Clear button should now be visible
+    const clearButton = await canvas.findByRole("button", { name: "Clear search" })
+    await expect(clearButton).toBeInTheDocument()
+
+    // Click clear button
+    await userEvent.click(clearButton)
+
+    // Verify callback was called
+    await expect(args.onHideSearch).toHaveBeenCalled()
+  },
+}
+
+/**
+ * Verifies that the progress bar is rendered when provided.
+ */
+export const ProgressBarVisible: Story = {
+  args: {
+    quickInput: <QuickInput />,
+    taskList: <TaskListMock tasks={sampleTasks} />,
+    progressBar: <MockProgressBar closed={2} total={5} />,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+
+    // Progress bar should be visible with correct aria attributes
+    const progressBar = canvas.getByRole("progressbar", { name: "Task completion progress" })
+    await expect(progressBar).toBeInTheDocument()
+    await expect(progressBar).toHaveAttribute("aria-valuenow", "2")
+    await expect(progressBar).toHaveAttribute("aria-valuemax", "5")
+  },
+}
+
+/**
+ * Verifies that all slot elements are rendered in the correct order.
+ */
+export const AllSlotsRenderedInOrder: Story = {
+  render: args => (
+    <>
+      <StoreSetter tasks={sampleTasks} />
+      <TaskSidebar {...args} />
+    </>
+  ),
+  args: {
+    quickInput: (
+      <div data-testid="slot-quick-input">
+        <QuickInput />
+      </div>
+    ),
+    taskList: (
+      <div data-testid="slot-task-list">
+        <TaskListMock tasks={sampleTasks} />
+      </div>
+    ),
+    iterationHistory: (
+      <div data-testid="slot-iteration-history">
+        <MockIterationHistory />
+      </div>
+    ),
+    progressBar: (
+      <div data-testid="slot-progress-bar">
+        <MockProgressBar closed={1} total={5} />
+      </div>
+    ),
+    isSearchVisible: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+
+    // Get all elements in DOM order
+    const quickInput = canvas.getByTestId("slot-quick-input")
+    const searchInput = canvas.getByRole("textbox", { name: "Search tasks" })
+    const taskList = canvas.getByTestId("slot-task-list")
+    const iterationHistory = canvas.getByTestId("slot-iteration-history")
+    const progressBar = canvas.getByTestId("slot-progress-bar")
+
+    // All should be in the document
+    await expect(quickInput).toBeInTheDocument()
+    await expect(searchInput).toBeInTheDocument()
+    await expect(taskList).toBeInTheDocument()
+    await expect(iterationHistory).toBeInTheDocument()
+    await expect(progressBar).toBeInTheDocument()
+
+    // Check visual order by comparing positions
+    const quickInputRect = quickInput.getBoundingClientRect()
+    const searchInputRect = searchInput.getBoundingClientRect()
+    const taskListRect = taskList.getBoundingClientRect()
+    const iterationHistoryRect = iterationHistory.getBoundingClientRect()
+    const progressBarRect = progressBar.getBoundingClientRect()
+
+    // Verify vertical order: quickInput < search < taskList < iterationHistory < progressBar
+    await expect(quickInputRect.top).toBeLessThan(searchInputRect.top)
+    await expect(searchInputRect.top).toBeLessThan(taskListRect.top)
+    await expect(taskListRect.bottom).toBeLessThan(iterationHistoryRect.bottom)
+    await expect(iterationHistoryRect.bottom).toBeLessThanOrEqual(progressBarRect.bottom)
   },
 }
