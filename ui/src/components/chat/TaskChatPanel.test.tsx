@@ -818,4 +818,158 @@ describe("TaskChatPanel", () => {
       expect(grepPos).toBeLessThan(assistantPos)
     })
   })
+
+  describe("showToolOutput toggle", () => {
+    it("hides tool output when showToolOutput is false", () => {
+      useAppStore.getState().setShowToolOutput(false)
+
+      // Add an assistant event with a Bash tool use
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "echo test" } },
+          ],
+        },
+      } as any)
+      // Add tool result (needs tool_use_result: true for isToolResultEvent check)
+      useAppStore.getState().addTaskChatEvent({
+        type: "user",
+        timestamp: Date.now() + 1,
+        tool_use_result: true,
+        message: {
+          content: [
+            { type: "tool_result", tool_use_id: "tool-1", content: "test output", is_error: false },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
+
+      render(<TaskChatPanel />)
+
+      // Tool name and command should still be visible
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+      expect(screen.getByText("echo test")).toBeInTheDocument()
+      // Tool output should NOT be visible
+      expect(screen.queryByText("test output")).not.toBeInTheDocument()
+    })
+
+    it("shows tool output when showToolOutput is true", () => {
+      useAppStore.getState().setShowToolOutput(true)
+
+      // Add an assistant event with a Bash tool use
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "echo test" } },
+          ],
+        },
+      } as any)
+      // Add tool result (needs tool_use_result: true for isToolResultEvent check)
+      useAppStore.getState().addTaskChatEvent({
+        type: "user",
+        timestamp: Date.now() + 1,
+        tool_use_result: true,
+        message: {
+          content: [
+            { type: "tool_result", tool_use_id: "tool-1", content: "test output", is_error: false },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
+
+      render(<TaskChatPanel />)
+
+      // Tool name, command, and output should all be visible
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+      expect(screen.getByText("echo test")).toBeInTheDocument()
+      expect(screen.getByText("test output")).toBeInTheDocument()
+    })
+
+    it("toggles tool output visibility with toggleToolOutput", () => {
+      useAppStore.getState().setShowToolOutput(false)
+
+      // Add an assistant event with a Bash tool use
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "echo test" } },
+          ],
+        },
+      } as any)
+      // Add tool result (needs tool_use_result: true for isToolResultEvent check)
+      useAppStore.getState().addTaskChatEvent({
+        type: "user",
+        timestamp: Date.now() + 1,
+        tool_use_result: true,
+        message: {
+          content: [
+            { type: "tool_result", tool_use_id: "tool-1", content: "test output", is_error: false },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
+
+      const { rerender } = render(<TaskChatPanel />)
+
+      // Initially hidden
+      expect(screen.queryByText("test output")).not.toBeInTheDocument()
+
+      // Toggle to show
+      act(() => {
+        useAppStore.getState().toggleToolOutput()
+      })
+      rerender(<TaskChatPanel />)
+
+      // Now visible
+      expect(screen.getByText("test output")).toBeInTheDocument()
+    })
+
+    it("automatically updates when showToolOutput changes (no manual rerender)", async () => {
+      useAppStore.getState().setShowToolOutput(false)
+
+      // Add an assistant event with a Bash tool use
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "echo test" } },
+          ],
+        },
+      } as any)
+      // Add tool result
+      useAppStore.getState().addTaskChatEvent({
+        type: "user",
+        timestamp: Date.now() + 1,
+        tool_use_result: true,
+        message: {
+          content: [
+            { type: "tool_result", tool_use_id: "tool-1", content: "test output", is_error: false },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
+
+      render(<TaskChatPanel />)
+
+      // Initially hidden
+      expect(screen.queryByText("test output")).not.toBeInTheDocument()
+
+      // Toggle to show - component should automatically re-render
+      act(() => {
+        useAppStore.getState().toggleToolOutput()
+      })
+
+      // Wait for the component to re-render (no manual rerender!)
+      await waitFor(() => {
+        expect(screen.getByText("test output")).toBeInTheDocument()
+      })
+    })
+  })
 })
