@@ -21,6 +21,7 @@ import {
   countAllNodes,
   type TaskTreeNode,
 } from "@/lib/buildTaskTree"
+import { useTasksWithEventLogs } from "@/hooks/useTasksWithEventLogs"
 import type { TaskCardTask, TaskGroup, TaskStatus } from "@/types"
 import { TaskListSkeleton } from "./TaskListSkeleton"
 
@@ -59,6 +60,9 @@ export function TaskList({
     () => new Set(activelyWorkingTaskIdsList),
     [activelyWorkingTaskIdsList],
   )
+
+  // Get task IDs that have saved event logs for iteration indicator
+  const { taskIdsWithEventLogs } = useTasksWithEventLogs()
 
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set())
   const previousTaskIdsRef = useRef<Set<string> | null>(null)
@@ -390,6 +394,7 @@ export function TaskList({
                       onTaskClick={onTaskClick}
                       newTaskIds={newTaskIds}
                       activelyWorkingTaskIds={activelyWorkingTaskIds}
+                      taskIdsWithEventLogs={taskIdsWithEventLogs}
                       collapsedState={parentCollapsedState}
                       onToggleCollapse={toggleParentGroup}
                     />

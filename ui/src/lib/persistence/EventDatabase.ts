@@ -533,6 +533,22 @@ export class EventDatabase {
   }
 
   /**
+   * Get all unique task IDs that have event logs.
+   * Efficient method for checking which tasks have iterations.
+   */
+  async getTaskIdsWithEventLogs(): Promise<Set<string>> {
+    const db = await this.ensureDb()
+    const all = await db.getAll(STORE_NAMES.EVENT_LOG_METADATA)
+    const taskIds = new Set<string>()
+    for (const meta of all) {
+      if (meta.taskId) {
+        taskIds.add(meta.taskId)
+      }
+    }
+    return taskIds
+  }
+
+  /**
    * Delete an event log (both metadata and full data).
    */
   async deleteEventLog(id: string): Promise<void> {

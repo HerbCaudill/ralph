@@ -13,6 +13,7 @@ import {
   IconCheckbox,
   IconChevronDown,
   IconLoader2,
+  IconHistory,
   type TablerIcon,
 } from "@tabler/icons-react"
 import type { TaskCardTask, TaskStatus } from "@/types"
@@ -41,6 +42,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     subtaskCount = 0,
     /** Whether this task is actively being worked on */
     isActivelyWorking = false,
+    /** Whether this task has saved iteration event logs */
+    hasIterations = false,
     ...props
   },
   ref,
@@ -273,6 +276,15 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
             </span>
           )}
 
+          {/* Iteration indicator - shows when task has saved event logs */}
+          {hasIterations && (
+            <IconHistory
+              className="text-muted-foreground size-3.5 shrink-0"
+              title="Has iteration history"
+              aria-label="Has iteration history"
+            />
+          )}
+
           {/* Spacer to push type and priority indicators to the right */}
           <div className="flex-1" />
 
@@ -419,6 +431,8 @@ export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"
   subtaskCount?: number
   /** Whether this task is actively being worked on by a running instance */
   isActivelyWorking?: boolean
+  /** Whether this task has saved iteration event logs */
+  hasIterations?: boolean
 }
 
 /**  Configuration object for a task status. */

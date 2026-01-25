@@ -236,6 +236,33 @@ export const EpicType: Story = {
   },
 }
 
+export const WithIterationHistory: Story = {
+  args: {
+    task: {
+      ...baseTask,
+      title: "Task with saved iteration logs",
+      status: "closed",
+    },
+    hasIterations: true,
+  },
+}
+
+export const WithIterationHistoryAndSubtasks: Story = {
+  args: {
+    task: {
+      id: "rui-epic-1",
+      title: "Epic with iteration history",
+      status: "in_progress",
+      priority: 1,
+      issue_type: "epic",
+    },
+    hasIterations: true,
+    onToggleCollapse: fn(),
+    subtaskCount: 3,
+    isCollapsed: false,
+  },
+}
+
 export const AllStatuses: Story = {
   render: () => (
     <div className="space-y-0">

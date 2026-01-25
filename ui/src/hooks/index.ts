@@ -105,3 +105,5 @@ export {
   type UseEventStreamOptions,
   type UseEventStreamResult,
 } from "./useEventStream"
+
+export { useTasksWithEventLogs, type UseTasksWithEventLogsResult } from "./useTasksWithEventLogs"

@@ -536,6 +536,30 @@ describe("TaskCard", () => {
     })
   })
 
+  describe("iteration indicator", () => {
+    it("displays iteration history icon when hasIterations is true", () => {
+      render(<TaskCard task={baseTask} hasIterations={true} />)
+      expect(screen.getByLabelText("Has iteration history")).toBeInTheDocument()
+    })
+
+    it("does not display iteration history icon when hasIterations is false", () => {
+      render(<TaskCard task={baseTask} hasIterations={false} />)
+      expect(screen.queryByLabelText("Has iteration history")).not.toBeInTheDocument()
+    })
+
+    it("does not display iteration history icon by default", () => {
+      render(<TaskCard task={baseTask} />)
+      expect(screen.queryByLabelText("Has iteration history")).not.toBeInTheDocument()
+    })
+
+    it("iteration icon has correct styling", () => {
+      const { container } = render(<TaskCard task={baseTask} hasIterations={true} />)
+      const icon = container.querySelector('svg[aria-label="Has iteration history"]')
+      expect(icon).toHaveClass("text-muted-foreground")
+      expect(icon).toHaveClass("size-3.5")
+    })
+  })
+
   describe("keyboard selection styling", () => {
     it("applies selection style when task is selected", () => {
       mockState.selectedTaskId = baseTask.id

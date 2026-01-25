@@ -470,11 +470,11 @@ export function TaskDetails({
           </div>
         </div>
 
-        {/* Related Tasks (text list - children and blockers) */}
-        <RelatedTasks taskId={task.id} task={task} readOnly={readOnly} />
-
         {/* Iteration Links - links to iteration logs for this task */}
         <IterationLinks taskId={task.id} />
+
+        {/* Related Tasks (text list - children and blockers) */}
+        <RelatedTasks taskId={task.id} task={task} readOnly={readOnly} />
 
         {/* Comments Section - more space */}
         <CommentsSection taskId={task.id} readOnly={readOnly} />
