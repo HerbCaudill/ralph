@@ -91,9 +91,10 @@ async function main() {
     WORKSPACE_PATH: testWorkspacePath,
     PW_BASE_URL: baseURL,
     RALPH_NO_OPEN: "1",
-    PW_QUIET: "1", // Use dot reporter for minimal output
     NO_COLOR: "1", // Suppress ANSI color codes
     NODE_NO_WARNINGS: "1", // Suppress Node.js warnings from Playwright workers
+    // RALPH_QUIET is inherited from parent process if set (e.g., when run by Ralph)
+    // playwright.config.ts checks CI || RALPH_QUIET to determine reporter
   }
 
   const devProcess = spawn("node", ["scripts/dev.js"], {

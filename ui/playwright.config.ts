@@ -13,8 +13,8 @@ export default defineConfig({
   retries: 3,
   // Limit workers to reduce flakiness from resource contention
   workers: process.env.CI ? 1 : undefined,
-  // Use dot reporter for minimal output (via PW_QUIET), html for interactive debugging
-  reporter: process.env.PW_QUIET || process.env.CI ? "dot" : "html",
+  // Use dot reporter for minimal output in CI or when running under Ralph
+  reporter: process.env.CI || process.env.RALPH_QUIET ? "dot" : "html",
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
   // Increase default timeout for actions to be more resilient under load

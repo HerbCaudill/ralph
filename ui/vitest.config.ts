@@ -5,6 +5,9 @@ import react from "@vitejs/plugin-react"
 import path from "path"
 import viteConfig from "./vite.config"
 
+/** Use dot reporter in CI or when running under Ralph */
+const useQuietReporter = !!(process.env.CI || process.env.RALPH_QUIET)
+
 /**
  * Vitest configuration with two projects:
  * - Unit tests: Run with jsdom environment
@@ -20,6 +23,7 @@ export default mergeConfig(
       },
     },
     test: {
+      reporters: useQuietReporter ? ["dot"] : ["default"],
       projects: [
         // Frontend unit tests with jsdom
         {
