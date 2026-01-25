@@ -1607,6 +1607,42 @@ describe("TaskList", () => {
       // Closed section should NOT have the closed child
       expect(screen.queryByLabelText(/Closed section/)).not.toBeInTheDocument()
     })
+
+    it("places closed subtasks in Closed section when parent is deferred", () => {
+      const tasks: TaskCardTask[] = [
+        {
+          id: "parent-1",
+          title: "Deferred parent",
+          status: "deferred",
+          issue_type: "task",
+          closed_at: getRecentDate(),
+        },
+        {
+          id: "child-1",
+          title: "Closed child",
+          status: "closed",
+          parent: "parent-1",
+          closed_at: getRecentDate(),
+        },
+      ]
+
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ deferred: false, closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
+
+      // Deferred section should have just the parent (1 task)
+      expect(screen.getByLabelText("Deferred section, 1 task")).toBeInTheDocument()
+      expect(screen.getByText("Deferred parent")).toBeInTheDocument()
+
+      // Closed section should have the closed child (1 task)
+      // since parent is deferred (terminal status), child uses its own status
+      expect(screen.getByLabelText("Closed section, 1 task")).toBeInTheDocument()
+      expect(screen.getByText("Closed child")).toBeInTheDocument()
+    })
   })
 
   describe("deeply nested hierarchies (grandchildren)", () => {

@@ -137,7 +137,14 @@ export function TaskList({
 
   const statusGroups = useMemo(() => {
     const closedCutoff = getTimeFilterCutoff(closedTimeFilter)
-    const isClosedStatus = (status: TaskStatus) => status === "closed"
+
+    // Helper to check if a task status is "terminal" (closed or deferred) for grouping purposes.
+    // Used to determine if a subtask should stay with its parent or use its own status group.
+    const isTerminalStatus = (status: TaskStatus) => status === "closed" || status === "deferred"
+
+    // Helper to check if a task should have time-based filtering applied.
+    // Only applies to closed tasks (not deferred - those are intentionally postponed).
+    const shouldApplyTimeFilter = (status: TaskStatus) => status === "closed"
 
     // Build the task tree for efficient hierarchy lookup
     const { roots, taskMap, childrenMap } = buildTaskTree(tasks)
@@ -147,7 +154,7 @@ export function TaskList({
       if (!matchesSearchQuery(task, searchQuery)) return false
 
       // For closed tasks, apply time filter (unless searching)
-      if (isClosedStatus(task.status) && closedCutoff && !searchQuery.trim()) {
+      if (shouldApplyTimeFilter(task.status) && closedCutoff && !searchQuery.trim()) {
         const closedAt = task.closed_at ? new Date(task.closed_at) : null
         if (!closedAt || closedAt < closedCutoff) {
           return false
@@ -161,10 +168,10 @@ export function TaskList({
     const filteredTaskIds = new Set(filteredTasks.map(t => t.id))
 
     // Helper to determine which status group a task tree belongs to
-    // Uses the root ancestor's status when it's open
+    // Uses the root ancestor's status when it's open (not closed/deferred)
     const getStatusGroupForTask = (task: TaskCardTask): TaskGroup | null => {
       const rootAncestor = findRootAncestor(task, taskMap)
-      const rootIsOpen = !isClosedStatus(rootAncestor.status)
+      const rootIsOpen = !isTerminalStatus(rootAncestor.status)
 
       if (rootIsOpen) {
         // Use root's status group
@@ -251,17 +258,99 @@ export function TaskList({
       statusToTrees.set(config.key, [])
     }
 
+    // Set to track tasks that have been added to a group (to avoid duplicates)
+    const addedTaskIds = new Set<string>()
+
+    // Helper to add a task (with its subtree) to the appropriate status group
+    const addTaskToGroup = (task: TaskCardTask, includeChildren: boolean): void => {
+      if (addedTaskIds.has(task.id)) return
+      if (!filteredTaskIds.has(task.id)) return
+
+      const groupKey = getStatusGroupForTask(task)
+      if (!groupKey) return
+
+      // Build tree node - either with children or as a leaf
+      let node: TaskTreeNode
+      if (includeChildren) {
+        const builtNode = buildFilteredTree(task, true)
+        if (!builtNode) return
+        node = builtNode
+      } else {
+        node = { task, children: [] }
+      }
+
+      statusToTrees.get(groupKey)!.push(node)
+      addedTaskIds.add(task.id)
+
+      // Mark all descendants as added to avoid processing them again
+      const markDescendantsAdded = (n: TaskTreeNode) => {
+        for (const child of n.children) {
+          addedTaskIds.add(child.task.id)
+          markDescendantsAdded(child)
+        }
+      }
+      markDescendantsAdded(node)
+    }
+
     // Process each root and assign to appropriate status group
     for (const root of roots) {
-      const rootIsVisible = filteredTaskIds.has(root.task.id)
-      const filteredRoot = buildFilteredTree(root.task, rootIsVisible)
+      const rootIsTerminal = isTerminalStatus(root.task.status)
+      const rootGroupKey = getStatusGroupForTask(root.task)
 
-      if (filteredRoot) {
-        // Determine status group based on root task
-        const groupKey = getStatusGroupForTask(root.task)
-        if (groupKey) {
-          statusToTrees.get(groupKey)!.push(filteredRoot)
+      if (rootIsTerminal) {
+        // For terminal roots (closed/deferred), check if children belong to the same group
+        // If all children belong to the same group as the root, keep the tree together
+        // If some children belong to different groups, split them out
+        const children = childrenMap.get(root.task.id) ?? []
+        const sameGroupChildren: TaskCardTask[] = []
+        const differentGroupChildren: TaskCardTask[] = []
+
+        for (const child of children) {
+          if (!filteredTaskIds.has(child.id)) continue
+          const childGroupKey = getStatusGroupForTask(child)
+          if (childGroupKey === rootGroupKey) {
+            sameGroupChildren.push(child)
+          } else {
+            differentGroupChildren.push(child)
+          }
         }
+
+        if (differentGroupChildren.length > 0) {
+          // Some children belong to different groups - add root as leaf, process children separately
+          if (filteredTaskIds.has(root.task.id)) {
+            // Build root with only same-group children
+            const nodeWithSameGroupChildren: TaskTreeNode = {
+              task: root.task,
+              children: sameGroupChildren
+                .map(child => {
+                  const builtChild = buildFilteredTree(child, true)
+                  return builtChild!
+                })
+                .filter(Boolean),
+            }
+            if (rootGroupKey) {
+              statusToTrees.get(rootGroupKey)!.push(nodeWithSameGroupChildren)
+              addedTaskIds.add(root.task.id)
+              // Mark same-group children as added
+              const markAdded = (n: TaskTreeNode) => {
+                addedTaskIds.add(n.task.id)
+                for (const c of n.children) markAdded(c)
+              }
+              for (const c of nodeWithSameGroupChildren.children) markAdded(c)
+            }
+          }
+
+          // Process different-group children as independent roots
+          for (const child of differentGroupChildren) {
+            addTaskToGroup(child, true)
+          }
+        } else {
+          // All children belong to the same group as root - keep tree together
+          addTaskToGroup(root.task, true)
+        }
+      } else {
+        // For open roots, keep the entire tree together
+        addTaskToGroup(root.task, true)
       }
     }
 
