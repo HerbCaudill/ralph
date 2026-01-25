@@ -1,7 +1,7 @@
 import type { Preview } from "@storybook/react-vite"
 import React from "react"
 import { TestProviders } from "../src/components/TestProviders"
-import { applyThemeToElement } from "../src/lib/theme"
+import { mapThemeToCSSVariables } from "../src/lib/theme"
 import { storybookThemes, getTheme, defaultThemeId } from "./themeLoader"
 import { StorybookThemeProvider } from "./StorybookThemeProvider"
 import "../src/index.css"
@@ -60,12 +60,16 @@ const preview: Preview = {
       const themeData = getTheme(themeId)
       const isDark = themeData?.isDark ?? false
 
-      // Create a ref callback to apply CSS variables
-      const applyTheme = (element: HTMLDivElement | null) => {
-        if (element && themeData) {
-          applyThemeToElement(element, themeData.theme)
-        }
-      }
+      // Compute CSS variables from the theme upfront so they're available during initial render
+      // This ensures text-foreground and other color classes work correctly from the start
+      const themeCssVars = themeData ? mapThemeToCSSVariables(themeData.theme) : {}
+
+      // Build the inline style object with theme variables and repo accent
+      const style = {
+        ...themeCssVars,
+        "--repo-accent": "#0d9488",
+        "--repo-accent-foreground": "#ffffff",
+      } as React.CSSProperties
 
       // If no theme data, render without the provider
       if (!themeData) {
@@ -76,10 +80,7 @@ const preview: Preview = {
             "div",
             {
               className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
-              style: {
-                "--repo-accent": "#0d9488",
-                "--repo-accent-foreground": "#ffffff",
-              } as React.CSSProperties,
+              style,
             },
             React.createElement(Story),
           ),
@@ -95,12 +96,8 @@ const preview: Preview = {
           React.createElement(
             "div",
             {
-              ref: applyTheme,
               className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
-              style: {
-                "--repo-accent": "#0d9488",
-                "--repo-accent-foreground": "#ffffff",
-              } as React.CSSProperties,
+              style,
             },
             React.createElement(Story),
           ),
