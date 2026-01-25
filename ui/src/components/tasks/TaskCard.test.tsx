@@ -321,6 +321,16 @@ describe("TaskCard", () => {
       render(<TaskCard task={baseTask} />)
       expect(screen.queryByLabelText(/Type:/)).not.toBeInTheDocument()
     })
+
+    it("renders placeholder div for alignment when no type icon is displayed", () => {
+      const { container } = render(<TaskCard task={baseTask} />)
+      // Find the type/priority container (flex div with gap-1.5)
+      const indicatorsContainer = container.querySelector(".flex.shrink-0.items-center.gap-1\\.5")
+      expect(indicatorsContainer).toBeInTheDocument()
+      // Should have a placeholder span with size-3.5 class
+      const placeholder = indicatorsContainer?.querySelector("span.size-3\\.5")
+      expect(placeholder).toBeInTheDocument()
+    })
   })
 
   describe("accessibility", () => {

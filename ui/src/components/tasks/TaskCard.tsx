@@ -278,8 +278,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
 
           {/* Type and Priority indicators (right side) */}
           <div className="flex shrink-0 items-center gap-1.5">
-            {/* Issue type icon (only for non-task types) */}
-            {task.issue_type && task.issue_type !== "task" && typeConfig[task.issue_type] && (
+            {/* Issue type icon (only for non-task types) - always render placeholder for alignment */}
+            {task.issue_type && task.issue_type !== "task" && typeConfig[task.issue_type] ?
               <span
                 className={cn("flex items-center", typeConfig[task.issue_type].color)}
                 title={typeConfig[task.issue_type].label}
@@ -290,7 +290,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
                   return <TypeIcon className="size-3.5" />
                 })()}
               </span>
-            )}
+            : <span className="size-3.5" />}
 
             {/* Priority badge (only for non-P2) */}
             {task.priority !== undefined &&
