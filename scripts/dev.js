@@ -47,7 +47,7 @@ async function main() {
     ...process.env,
     PORT: String(serverPort),
     RALPH_UI_PORT: String(uiPort),
-    WORKSPACE_PATH: process.cwd(),
+    WORKSPACE_PATH: process.env.WORKSPACE_PATH ?? process.cwd(),
   }
 
   // Start server
