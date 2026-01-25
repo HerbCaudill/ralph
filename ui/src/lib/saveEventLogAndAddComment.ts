@@ -1,4 +1,13 @@
+import { eventDatabase } from "@/lib/persistence"
+import type { PersistedEventLog } from "@/lib/persistence/types"
 import type { ChatEvent } from "@/types"
+
+/**
+ * Generate a unique ID for an event log.
+ */
+function generateEventLogId(): string {
+  return `event-log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
 
 export async function saveEventLogAndAddComment(
   taskId: string,
@@ -11,32 +20,26 @@ export async function saveEventLogAndAddComment(
   }
 
   try {
-    const response = await fetch("/api/eventlogs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        events,
-        metadata: {
-          taskId,
-          title: taskTitle,
-          source: "task-close",
-          workspacePath: workspacePath ?? undefined,
-        },
-      }),
-    })
+    // Generate unique ID and create event log
+    const eventLogId = generateEventLogId()
+    const now = Date.now()
 
-    if (!response.ok) {
-      console.error("Failed to save event log:", await response.text())
-      return null
+    const eventLog: PersistedEventLog = {
+      id: eventLogId,
+      taskId,
+      taskTitle,
+      source: "task-close",
+      workspacePath,
+      createdAt: now,
+      eventCount: events.length,
+      events,
     }
 
-    const result = (await response.json()) as { ok: boolean; eventlog?: { id: string } }
-    if (!result.ok || !result.eventlog?.id) {
-      return null
-    }
+    // Save to IndexedDB
+    await eventDatabase.init()
+    await eventDatabase.saveEventLog(eventLog)
 
-    const eventLogId = result.eventlog.id
-
+    // Add closing comment to the task via API
     const commentResponse = await fetch(`/api/tasks/${taskId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
