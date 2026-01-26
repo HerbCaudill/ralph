@@ -198,9 +198,123 @@ pnpm test:watch    # Run unit tests in watch mode
 pnpm test:pw       # Run Playwright e2e tests
 ```
 
+## Data Model
+
+Ralph UI uses IndexedDB for client-side persistence of sessions, events, and related data. This section documents the normalized schema (v3) and persistence architecture.
+
+### IndexedDB Schema Overview (v3)
+
+The database uses eight object stores:
+
+| Store                | Purpose                                           | Key Indexes                                                                                            |
+| -------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `session_metadata`   | Session metadata for fast listing                 | `by-instance`, `by-started-at`, `by-instance-and-started-at`, `by-task`, `by-workspace-and-started-at` |
+| `sessions`           | Full session data (metadata only in v3+)          | Primary key: `id`                                                                                      |
+| `events`             | Individual events (normalized from sessions)      | `by-session`, `by-timestamp`                                                                           |
+| `task_chat_metadata` | Task chat metadata for fast listing               | Primary key: `id`                                                                                      |
+| `task_chat_sessions` | Full task chat data including messages and events | Primary key: `id`                                                                                      |
+| `event_log_metadata` | Standalone event log metadata                     | Primary key: `id`                                                                                      |
+| `event_logs`         | Standalone event log data                         | Primary key: `id`                                                                                      |
+| `sync_state`         | Key-value settings and sync state                 | Primary key: `key`                                                                                     |
+
+### Schema Evolution
+
+**Version 1** - Initial schema:
+
+- `session_metadata`, `sessions`, `task_chat_metadata`, `task_chat_sessions`, `sync_state`
+- Sessions stored events inline in an `events` array
+
+**Version 2** - Added event logs:
+
+- Added `event_log_metadata` and `event_logs` stores
+- Standalone event logs for saved/exported sessions
+
+**Version 3** - Normalized events:
+
+- Added `events` store for normalized event storage
+- Added `by-workspace-and-started-at` index to `session_metadata`
+- Events extracted from sessions into separate records
+
+### v2 to v3 Migration
+
+The migration runs automatically on database upgrade:
+
+1. **Extract events** - Events are read from each session's embedded `events` array
+2. **Create event records** - Individual `PersistedEvent` records are written to the `events` store
+3. **Update sessions** - The `events` array is removed from session records
+4. **Handle legacy data** - `workspaceId` is set to `null` for sessions that predate workspace support
+5. **Idempotent** - Sessions already migrated (no `events` array) are skipped
+
+### Persistence Architecture (v3+)
+
+Session persistence uses a two-hook approach:
+
+**`useSessionPersistence`** - Persists session metadata only:
+
+- Saves on session boundaries (start, turn completion)
+- Saves on session completion
+- Writes to `session_metadata` and `sessions` stores
+
+**`useEventPersistence`** - Persists individual events as they arrive:
+
+- Append-only writes to `events` store
+- Each event is written immediately when received
+- No full array rewrites required
+
+**Benefits of normalized schema:**
+
+- Efficient append-only writes (no array mutations)
+- Event-level queries across sessions
+- Cross-workspace analytics via `workspaceId` index
+- ~44 bytes overhead per event vs nested approach
+
+### Loading Sessions
+
+Sessions are loaded using a join pattern:
+
+```typescript
+import { eventDatabase } from "@/lib/persistence"
+
+// 1. Load session metadata (fast)
+const session = await eventDatabase.getSession(sessionId)
+
+// 2. Fetch events separately when needed
+const persistedEvents = await eventDatabase.getEventsForSession(sessionId)
+// Events are sorted by timestamp ascending
+// Extract ChatEvent from each PersistedEvent
+const events = persistedEvents.map(pe => pe.event)
+```
+
+### Key Types
+
+Types are defined in `src/lib/persistence/types.ts`:
+
+```typescript
+/** Session metadata (events stored separately in v3+) */
+interface PersistedSession extends SessionMetadata {
+  /**
+   * @deprecated In v3+, events are stored in the separate events table.
+   * This field exists for backward compatibility with v2 data.
+   */
+  events?: ChatEvent[]
+}
+
+/** Individual event with session reference */
+interface PersistedEvent {
+  id: string // e.g., "session-123-event-0"
+  sessionId: string // Reference to parent session
+  timestamp: number // Event timestamp
+  eventType: string // e.g., "user", "assistant", "tool_use"
+  event: ChatEvent // Full event data
+}
+
+/** Current schema version */
+const PERSISTENCE_SCHEMA_VERSION = 3
+```
+
 ## Session Event Logs
 
-Ralph UI persists session event logs to IndexedDB for later review. This section documents how the feature works.
+Ralph UI saves standalone event logs to IndexedDB when sessions complete. These are separate from the real-time `events` store - event logs are snapshots saved from completed sessions for later review.
 
 ### Architecture
 
@@ -226,7 +340,9 @@ The event log system consists of:
 5. The `EventLogLink` component renders these as clickable links
 6. Clicking navigates via URL hash, which `useEventLogRouter` handles by fetching from IndexedDB
 
-### Data Model
+### Event Log Data Model
+
+Event logs are stored in `event_log_metadata` and `event_logs` stores (separate from the `events` store used for real-time persistence):
 
 ```typescript
 interface PersistedEventLog {
@@ -237,7 +353,7 @@ interface PersistedEventLog {
   workspacePath: string | null
   createdAt: number // Timestamp
   eventCount: number
-  events: ChatEvent[] // Full event stream
+  events: ChatEvent[] // Full event stream snapshot
 }
 ```
 
