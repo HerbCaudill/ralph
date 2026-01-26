@@ -245,7 +245,7 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
           role="log"
           aria-label="Event log"
         >
-          <div className="mx-auto max-w-4xl">
+          <div className="mx-auto max-w-4xl pb-20">
             {events.length === 0 ?
               <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
                 No events in this log
