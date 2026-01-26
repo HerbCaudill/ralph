@@ -131,8 +131,8 @@ describe("SessionLinks", () => {
     const sessionButton = screen.getByRole("button", { name: /view session/i })
     await user.click(sessionButton)
 
-    // Should update the URL hash
-    expect(window.location.hash).toBe("#eventlog=abcdef12")
+    // Should update the URL hash with new session= format
+    expect(window.location.hash).toBe("#session=abcdef12")
   })
 
   it("sorts session logs by date, most recent first", async () => {

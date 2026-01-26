@@ -113,22 +113,22 @@ Ralph UI automatically saves session event logs when tasks complete. These logs 
 ### How It Works
 
 1. **Automatic Saving**: When a task is closed, the current session's events are saved to the browser's IndexedDB storage
-2. **Comment Link**: A closing comment is added to the task with a link to the saved event log (e.g., `#eventlog=abcd1234`)
-3. **Persistent Storage**: Event logs are stored locally in your browser and persist across sessions
+2. **Comment Link**: A closing comment is added to the task with a link to the saved session (e.g., `#session=default-1706123456789`)
+3. **Persistent Storage**: Session logs are stored locally in your browser and persist across sessions
 
-### Accessing Event Logs
+### Accessing Session Logs
 
 There are several ways to view saved session logs:
 
 - **Task Details Dialog**: Click any task to open its details. If the task has saved sessions, they appear in the "Sessions" section with timestamps and event counts
 - **History Panel**: Click the "History" button (clock icon) in the status bar to open a searchable panel showing all saved sessions across all tasks
-- **Comment Links**: Click any `#eventlog=...` link in task comments to view that specific session
+- **Comment Links**: Click any `#session=...` link in task comments to view that specific session (legacy `#eventlog=...` links are also supported)
 
 ### Data Storage
 
-Event logs are stored in IndexedDB under the key `ralph-event-logs`. Each log includes:
+Session logs are stored in IndexedDB. Each session includes:
 
-- Unique ID (8-character hex)
+- Unique session ID (e.g., `default-1706123456789`)
 - Task ID and title
 - Timestamp
 - Full event stream (messages, tool uses, outputs)
@@ -136,8 +136,8 @@ Event logs are stored in IndexedDB under the key `ralph-event-logs`. Each log in
 
 ### Notes
 
-- Event logs are stored **locally in your browser** - they don't sync across devices
-- Clearing browser data will remove saved event logs
+- Session logs are stored **locally in your browser** - they don't sync across devices
+- Clearing browser data will remove saved session logs
 - There is currently no automatic cleanup of old logs
 
 ## Development

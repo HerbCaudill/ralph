@@ -4,8 +4,11 @@ import { eventDatabase, type PersistedEventLog } from "@/lib/persistence"
 import type { EventLog } from "@/types"
 
 /**
- * Parse the URL hash to extract eventlog ID.
- * Supports format: #eventlog={id}
+ * Parse the URL hash to extract session ID.
+ * Supports format: #session={id}
+ *
+ * Session IDs are alphanumeric with dashes (e.g., "default-1706123456789").
+ * For backward compatibility, also supports the legacy #eventlog={8-char-hex} format.
  */
 export function parseEventLogHash(hash: string): string | null {
   if (!hash || hash === "#") return null
@@ -13,10 +16,19 @@ export function parseEventLogHash(hash: string): string | null {
   // Remove leading #
   const hashContent = hash.startsWith("#") ? hash.slice(1) : hash
 
-  // Check for eventlog= prefix
+  // Check for session= prefix (new format)
+  if (hashContent.startsWith("session=")) {
+    const id = hashContent.slice("session=".length)
+    // Validate: IDs are alphanumeric with dashes, at least 1 char
+    if (id && /^[a-zA-Z0-9-]+$/.test(id)) {
+      return id
+    }
+  }
+
+  // Backward compatibility: support legacy eventlog= format
   if (hashContent.startsWith("eventlog=")) {
     const id = hashContent.slice("eventlog=".length)
-    // Validate: IDs are 8 character hex strings
+    // Validate: legacy IDs are 8 character hex strings
     if (id && /^[a-f0-9]{8}$/i.test(id)) {
       return id
     }
@@ -25,9 +37,9 @@ export function parseEventLogHash(hash: string): string | null {
   return null
 }
 
-/**  Build a URL hash for an event log ID. */
+/**  Build a URL hash for a session ID. */
 export function buildEventLogHash(id: string): string {
-  return `#eventlog=${id}`
+  return `#session=${id}`
 }
 
 /**

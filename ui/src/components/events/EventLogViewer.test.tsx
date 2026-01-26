@@ -284,7 +284,7 @@ describe("EventLogViewer", () => {
 
       await waitFor(() => {
         expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-          expect.stringContaining("#eventlog=abc12345"),
+          expect.stringContaining("#session=abc12345"),
         )
       })
     })

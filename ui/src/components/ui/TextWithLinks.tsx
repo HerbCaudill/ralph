@@ -4,11 +4,12 @@ import { cn, stripTaskPrefix } from "@/lib/utils"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 
 /**
- * Regex pattern that matches eventlog references.
- * Matches patterns like: #eventlog=abcdef12 (exactly 8 character hex ID)
- * Uses negative lookahead to ensure the ID doesn't continue with more hex chars.
+ * Regex pattern that matches session references.
+ * Matches patterns like: #session=default-1706123456789 (alphanumeric with dashes)
+ * For backward compatibility, also matches legacy #eventlog=abcdef12 format.
  */
-const EVENTLOG_PATTERN = /#eventlog=([a-f0-9]{8})(?![a-f0-9])/gi
+const SESSION_PATTERN = /#session=([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/gi
+const LEGACY_EVENTLOG_PATTERN = /#eventlog=([a-f0-9]{8})(?![a-f0-9])/gi
 
 /**
  * Creates a regex pattern that matches task IDs with the given prefix.
@@ -25,15 +26,16 @@ function createTaskIdPattern(prefix: string | null): RegExp | null {
 }
 
 interface TextSegment {
-  type: "text" | "taskId" | "eventLog"
+  type: "text" | "taskId" | "session"
   content: string
-  id?: string // The extracted ID (task ID or event log ID)
+  id?: string // The extracted ID (task ID or session ID)
   startIndex: number
 }
 
 /**
- * Parse text and extract task ID and event log references.
+ * Parse text and extract task ID and session references.
  * Returns segments in order of appearance.
+ * Supports both new #session= format and legacy #eventlog= format.
  */
 function parseTextSegments(text: string, taskIdPrefix: string | null): TextSegment[] {
   const segments: TextSegment[] = []
@@ -49,16 +51,22 @@ function parseTextSegments(text: string, taskIdPrefix: string | null): TextSegme
     }
   }
 
-  // Find all event log matches
-  EVENTLOG_PATTERN.lastIndex = 0
-  const eventLogMatches: { match: RegExpExecArray; type: "eventLog" }[] = []
+  // Find all session matches (new format)
+  SESSION_PATTERN.lastIndex = 0
+  const sessionMatches: { match: RegExpExecArray; type: "session" }[] = []
   let match: RegExpExecArray | null
-  while ((match = EVENTLOG_PATTERN.exec(text)) !== null) {
-    eventLogMatches.push({ match, type: "eventLog" })
+  while ((match = SESSION_PATTERN.exec(text)) !== null) {
+    sessionMatches.push({ match, type: "session" })
+  }
+
+  // Find all legacy event log matches
+  LEGACY_EVENTLOG_PATTERN.lastIndex = 0
+  while ((match = LEGACY_EVENTLOG_PATTERN.exec(text)) !== null) {
+    sessionMatches.push({ match, type: "session" })
   }
 
   // Combine and sort all matches by position
-  const allMatches = [...taskMatches, ...eventLogMatches].sort(
+  const allMatches = [...taskMatches, ...sessionMatches].sort(
     (a, b) => a.match.index - b.match.index,
   )
 
@@ -86,7 +94,7 @@ function parseTextSegments(text: string, taskIdPrefix: string | null): TextSegme
       })
     } else {
       segments.push({
-        type: "eventLog",
+        type: "session",
         content: match[0],
         id: match[1],
         startIndex: match.index,
@@ -111,17 +119,17 @@ function parseTextSegments(text: string, taskIdPrefix: string | null): TextSegme
 // Types
 
 export interface TextWithLinksProps {
-  /** Text content that may contain task IDs and eventlog references */
+  /** Text content that may contain task IDs and session references */
   children: string
   /** Additional class name for links */
   className?: string
 }
 
 /**
- * Renders text with task IDs and eventlog references converted to clickable links.
+ * Renders text with task IDs and session references converted to clickable links.
  *
  * - Task IDs matching the workspace prefix (e.g., rui-48s) open the task dialog
- * - Eventlog references (#eventlog=abcdef12) navigate to view the event log
+ * - Session references (#session=id or legacy #eventlog=abcdef12) navigate to view the session
  */
 export function TextWithLinks({ children, className }: TextWithLinksProps) {
   const issuePrefix = useAppStore(selectIssuePrefix)
@@ -167,22 +175,23 @@ export function TextWithLinks({ children, className }: TextWithLinksProps) {
       )
     }
 
-    // Event log link
-    const eventLogId = segment.id!
+    // Session link
+    const sessionId = segment.id!
 
     const handleClick = (e: MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
-      window.location.hash = `eventlog=${eventLogId}`
+      // Navigate using new session= hash format
+      window.location.hash = `session=${sessionId}`
     }
 
     return (
       <button
-        key={`eventLog-${index}`}
+        key={`session-${index}`}
         onClick={handleClick}
         className={linkClassName}
         type="button"
-        aria-label={`View event log ${eventLogId}`}
+        aria-label={`View session ${sessionId}`}
       >
         {segment.content}
       </button>

@@ -5,7 +5,8 @@ import { test, expect } from "./fixtures"
  *
  * These tests verify that:
  * - Task dialog routing works with /issue/{taskId} URLs
- * - Event log routing works with #eventlog={id} URLs
+ * - Session routing works with #session={id} URLs
+ * - Legacy #eventlog={id} URLs are still supported for backward compatibility
  * - Browser back/forward navigation updates the UI correctly
  * - URL updates when dialogs/panels open/close via UI interactions
  *
@@ -133,10 +134,10 @@ test.describe("URL Routing", () => {
     })
   })
 
-  test.describe("event log routing", () => {
-    test("clicking session link updates URL with #eventlog={id}", async ({ app }) => {
+  test.describe("session routing", () => {
+    test("clicking session link updates URL with #session={id}", async ({ app }) => {
       // Create a task
-      const taskName = `Event Log URL Test ${Date.now()}`
+      const taskName = `Session URL Test ${Date.now()}`
       await app.taskList.createTask(taskName)
 
       const taskCard = app.taskList.sidebar.locator("[data-task-id]").first()
@@ -153,13 +154,13 @@ test.describe("URL Routing", () => {
       // Click the first session link
       await app.taskDetails.clickSessionLink(0)
 
-      // URL should have eventlog hash
-      await expect.poll(() => app.page.url()).toMatch(/#eventlog=[a-f0-9]{8}/)
+      // URL should have session hash (new format uses #session=)
+      await expect.poll(() => app.page.url()).toMatch(/#session=[a-zA-Z0-9-]+/)
     })
 
-    test("clearing event log hash closes the right panel", async ({ app }) => {
+    test("clearing session hash closes the right panel", async ({ app }) => {
       // Create a task and check for sessions
-      const taskName = `Clear Event Log Test ${Date.now()}`
+      const taskName = `Clear Session Test ${Date.now()}`
       await app.taskList.createTask(taskName)
 
       const taskCard = app.taskList.sidebar.locator("[data-task-id]").first()
@@ -174,7 +175,7 @@ test.describe("URL Routing", () => {
 
       // Click session link to open right panel
       await app.taskDetails.clickSessionLink(0)
-      await expect.poll(() => app.page.url()).toMatch(/#eventlog=[a-f0-9]{8}/)
+      await expect.poll(() => app.page.url()).toMatch(/#session=[a-zA-Z0-9-]+/)
 
       const rightPanel = app.page.getByTestId("right-panel")
       await expect
@@ -217,9 +218,9 @@ test.describe("URL Routing", () => {
       // Click session link
       await app.taskDetails.clickSessionLink(0)
 
-      // URL should have both: path for task and hash for eventlog
+      // URL should have both: path for task and hash for session
       await expect.poll(() => app.page.url()).toContain(`/issue/${taskId}`)
-      await expect.poll(() => app.page.url()).toMatch(/#eventlog=[a-f0-9]{8}/)
+      await expect.poll(() => app.page.url()).toMatch(/#session=[a-zA-Z0-9-]+/)
 
       // Both dialog and right panel should be visible
       await expect(app.taskDetails.dialog).toBeVisible()

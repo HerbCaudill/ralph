@@ -1,65 +1,101 @@
 import type { ReactNode, MouseEvent } from "react"
 
 /**
- * Regex pattern that matches eventlog references.
- * Matches patterns like: #eventlog=abcdef12 (exactly 8 character hex ID)
- * Uses negative lookahead to ensure the ID doesn't continue with more hex chars.
+ * Regex pattern that matches session references.
+ * Matches patterns like: #session=default-1706123456789 (alphanumeric with dashes)
+ * For backward compatibility, also matches legacy #eventlog=abcdef12 format.
  */
-const EVENTLOG_PATTERN = /#eventlog=([a-f0-9]{8})(?![a-f0-9])/gi
+const SESSION_PATTERN = /#session=([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/gi
+const LEGACY_EVENTLOG_PATTERN = /#eventlog=([a-f0-9]{8})(?![a-f0-9])/gi
 
 // Types
 
 export interface EventLogLinkProps {
-  /** Text content that may contain eventlog references */
+  /** Text content that may contain session references */
   children: string
-  /** Additional class name for eventlog links */
+  /** Additional class name for session links */
   className?: string
+}
+
+interface SessionMatch {
+  id: string
+  fullMatch: string
+  startIndex: number
+}
+
+/**
+ * Find all session reference matches in text, supporting both new #session= format
+ * and legacy #eventlog= format.
+ */
+function findSessionMatches(text: string): SessionMatch[] {
+  const matches: SessionMatch[] = []
+
+  // Find new #session= format matches
+  SESSION_PATTERN.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = SESSION_PATTERN.exec(text)) !== null) {
+    matches.push({
+      id: match[1],
+      fullMatch: match[0],
+      startIndex: match.index,
+    })
+  }
+
+  // Find legacy #eventlog= format matches
+  LEGACY_EVENTLOG_PATTERN.lastIndex = 0
+  while ((match = LEGACY_EVENTLOG_PATTERN.exec(text)) !== null) {
+    matches.push({
+      id: match[1],
+      fullMatch: match[0],
+      startIndex: match.index,
+    })
+  }
+
+  // Sort by position
+  return matches.sort((a, b) => a.startIndex - b.startIndex)
 }
 
 // EventLogLink Component
 
 /**
- * Renders text with eventlog references converted to clickable links.
- * References matching the pattern #eventlog={8-char-hex} become links that
- * navigate to view the event log when clicked.
+ * Renders text with session references converted to clickable links.
+ * References matching the pattern #session={id} or legacy #eventlog={8-char-hex}
+ * become links that navigate to view the session when clicked.
  */
 export function EventLogLink({ children, className }: EventLogLinkProps) {
-  // Parse the text and replace eventlog references with links
+  // Parse the text and replace session references with links
   const parts: ReactNode[] = []
   let lastIndex = 0
-  let match: RegExpExecArray | null
 
-  // Reset the regex state
-  EVENTLOG_PATTERN.lastIndex = 0
+  const matches = findSessionMatches(children)
 
-  while ((match = EVENTLOG_PATTERN.exec(children)) !== null) {
-    const eventLogId = match[1]
-    const fullMatch = match[0]
-    const startIndex = match.index
+  for (const { id, fullMatch, startIndex } of matches) {
+    // Skip overlapping matches
+    if (startIndex < lastIndex) continue
 
     // Add text before the match
     if (startIndex > lastIndex) {
       parts.push(children.slice(lastIndex, startIndex))
     }
 
-    // Add the clickable eventlog link
+    // Add the clickable session link
     const handleClick = (e: MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
-      // Navigate using hash - the useEventLogRouter hook will handle the rest
-      window.location.hash = `eventlog=${eventLogId}`
+      // Navigate using new session= hash format
+      window.location.hash = `session=${id}`
     }
 
     parts.push(
       <button
-        key={`${eventLogId}-${startIndex}`}
+        key={`${id}-${startIndex}`}
         onClick={handleClick}
         className={
           className ??
           "cursor-pointer text-cyan-600 hover:text-cyan-700 hover:underline dark:text-cyan-400 dark:hover:text-cyan-300"
         }
         type="button"
-        aria-label={`View event log ${eventLogId}`}
+        aria-label={`View session ${id}`}
       >
         {fullMatch}
       </button>,
@@ -82,12 +118,14 @@ export function EventLogLink({ children, className }: EventLogLinkProps) {
 }
 
 /**
- * Utility function to check if a string contains any eventlog references.
+ * Utility function to check if a string contains any session references.
+ * Checks for both new #session= format and legacy #eventlog= format.
  *
  * @param text - The text to check
- * @returns true if the text contains eventlog references
+ * @returns true if the text contains session references
  */
 export function containsEventLogRef(text: string): boolean {
-  EVENTLOG_PATTERN.lastIndex = 0
-  return EVENTLOG_PATTERN.test(text)
+  SESSION_PATTERN.lastIndex = 0
+  LEGACY_EVENTLOG_PATTERN.lastIndex = 0
+  return SESSION_PATTERN.test(text) || LEGACY_EVENTLOG_PATTERN.test(text)
 }

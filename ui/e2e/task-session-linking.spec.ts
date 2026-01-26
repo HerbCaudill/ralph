@@ -90,8 +90,8 @@ test.describe("Task to Session Linking", () => {
       // Click the first session link
       await app.taskDetails.clickSessionLink(0)
 
-      // URL hash should be updated
-      await expect.poll(() => app.page.url()).toMatch(/#eventlog=[a-zA-Z0-9-]+/)
+      // URL hash should be updated with new #session= format
+      await expect.poll(() => app.page.url()).toMatch(/#session=[a-zA-Z0-9-]+/)
 
       // Right panel should open
       await expect

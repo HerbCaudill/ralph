@@ -50,82 +50,110 @@ describe("TextWithLinks", () => {
     })
   })
 
-  describe("event log linking", () => {
-    it("converts eventlog reference to clickable link", () => {
+  describe("session linking", () => {
+    it("converts session reference to clickable link (new format)", () => {
+      render(<TextWithLinks>Session: #session=default-1706123456789</TextWithLinks>)
+
+      const link = screen.getByRole("button", { name: "View session default-1706123456789" })
+      expect(link).toBeInTheDocument()
+      expect(link).toHaveTextContent("#session=default-1706123456789")
+    })
+
+    it("converts legacy eventlog reference to clickable link", () => {
       render(<TextWithLinks>Event log: #eventlog=abcdef12</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View event log abcdef12" })
+      const link = screen.getByRole("button", { name: "View session abcdef12" })
       expect(link).toBeInTheDocument()
       expect(link).toHaveTextContent("#eventlog=abcdef12")
     })
 
-    it("navigates to eventlog hash when clicked", () => {
-      render(<TextWithLinks>Click #eventlog=abcdef12 here</TextWithLinks>)
+    it("navigates to session hash when clicked (new format)", () => {
+      render(<TextWithLinks>Click #session=default-123 here</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View event log abcdef12" })
+      const link = screen.getByRole("button", { name: "View session default-123" })
       fireEvent.click(link)
 
-      expect(window.location.hash).toBe("#eventlog=abcdef12")
+      expect(window.location.hash).toBe("#session=default-123")
     })
 
-    it("handles uppercase hex characters", () => {
+    it("navigates to session hash when clicking legacy format", () => {
+      render(<TextWithLinks>Click #eventlog=abcdef12 here</TextWithLinks>)
+
+      const link = screen.getByRole("button", { name: "View session abcdef12" })
+      fireEvent.click(link)
+
+      // Should use new session= format when navigating
+      expect(window.location.hash).toBe("#session=abcdef12")
+    })
+
+    it("handles uppercase hex characters in legacy format", () => {
       render(<TextWithLinks>Ref: #eventlog=ABCDEF00</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View event log ABCDEF00" })
+      const link = screen.getByRole("button", { name: "View session ABCDEF00" })
       expect(link).toBeInTheDocument()
     })
   })
 
   describe("mixed content", () => {
-    it("handles both task IDs and eventlog references in same text", () => {
-      render(<TextWithLinks>Task rui-48s has event log #eventlog=abcdef12</TextWithLinks>)
+    it("handles both task IDs and session references in same text", () => {
+      render(<TextWithLinks>Task rui-48s has session #session=default-123</TextWithLinks>)
 
       const taskLink = screen.getByRole("link", { name: "View task rui-48s" })
-      const eventLogLink = screen.getByRole("button", { name: "View event log abcdef12" })
+      const sessionLink = screen.getByRole("button", { name: "View session default-123" })
 
       expect(taskLink).toBeInTheDocument()
       expect(taskLink).toHaveAttribute("href", "/issue/rui-48s")
-      expect(eventLogLink).toBeInTheDocument()
+      expect(sessionLink).toBeInTheDocument()
 
-      // Click event log link
-      fireEvent.click(eventLogLink)
-      expect(window.location.hash).toBe("#eventlog=abcdef12")
+      // Click session link
+      fireEvent.click(sessionLink)
+      expect(window.location.hash).toBe("#session=default-123")
+    })
+
+    it("handles task IDs with legacy eventlog references", () => {
+      render(<TextWithLinks>Task rui-48s has event log #eventlog=abcdef12</TextWithLinks>)
+
+      const taskLink = screen.getByRole("link", { name: "View task rui-48s" })
+      const sessionLink = screen.getByRole("button", { name: "View session abcdef12" })
+
+      expect(taskLink).toBeInTheDocument()
+      expect(sessionLink).toBeInTheDocument()
     })
 
     it("preserves text between links", () => {
       const { container } = render(
-        <TextWithLinks>Start rui-1 middle #eventlog=11111111 end</TextWithLinks>,
+        <TextWithLinks>Start rui-1 middle #session=session-1 end</TextWithLinks>,
       )
 
       // Task ID displayed without prefix
-      expect(container.textContent).toBe("Start 1 middle #eventlog=11111111 end")
+      expect(container.textContent).toBe("Start 1 middle #session=session-1 end")
     })
 
     it("handles multiple of each type", () => {
       render(
         <TextWithLinks>
-          Tasks rui-1 and rui-2 with logs #eventlog=11111111 and #eventlog=22222222
+          Tasks rui-1 and rui-2 with sessions #session=session-1 and #session=session-2
         </TextWithLinks>,
       )
 
       expect(screen.getByRole("link", { name: "View task rui-1" })).toBeInTheDocument()
       expect(screen.getByRole("link", { name: "View task rui-2" })).toBeInTheDocument()
-      expect(screen.getByRole("button", { name: "View event log 11111111" })).toBeInTheDocument()
-      expect(screen.getByRole("button", { name: "View event log 22222222" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View session session-1" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "View session session-2" })).toBeInTheDocument()
     })
   })
 
   describe("event propagation", () => {
-    it("stops event propagation when clicking eventlog link", () => {
+    it("stops event propagation when clicking session link", () => {
       const parentClick = vi.fn()
 
       render(
         <div onClick={parentClick}>
-          <TextWithLinks>Click #eventlog=abcdef12 here</TextWithLinks>
+          <TextWithLinks>Click #session=default-123 here</TextWithLinks>
         </div>,
       )
 
-      const link = screen.getByRole("button", { name: "View event log abcdef12" })
+      const link = screen.getByRole("button", { name: "View session default-123" })
       fireEvent.click(link)
 
       expect(parentClick).not.toHaveBeenCalled()
@@ -135,30 +163,40 @@ describe("TextWithLinks", () => {
   describe("edge cases", () => {
     it("does not linkify task IDs when no prefix is configured", () => {
       useAppStore.getState().setIssuePrefix(null)
-      render(<TextWithLinks>Check rui-48s and #eventlog=abcdef12</TextWithLinks>)
+      render(<TextWithLinks>Check rui-48s and #session=default-123</TextWithLinks>)
 
       // Task link should not exist (no prefix)
       expect(screen.queryByRole("link", { name: "View task rui-48s" })).not.toBeInTheDocument()
 
-      // Event log link should still work
-      expect(screen.getByRole("button", { name: "View event log abcdef12" })).toBeInTheDocument()
+      // Session link should still work
+      expect(screen.getByRole("button", { name: "View session default-123" })).toBeInTheDocument()
     })
 
-    it("does not linkify invalid eventlog references", () => {
+    it("does not linkify invalid legacy eventlog references", () => {
       render(<TextWithLinks>#eventlog=abc is too short</TextWithLinks>)
 
       const buttons = screen.queryAllByRole("button")
       expect(buttons).toHaveLength(0)
     })
 
-    it("handles closing comment format", () => {
-      render(<TextWithLinks>Closed. Event log: #eventlog=abcdef12</TextWithLinks>)
+    it("handles closing comment format with new session format", () => {
+      render(<TextWithLinks>Closed. Session: #session=default-123</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View event log abcdef12" })
+      const link = screen.getByRole("button", { name: "View session default-123" })
       expect(link).toBeInTheDocument()
 
       fireEvent.click(link)
-      expect(window.location.hash).toBe("#eventlog=abcdef12")
+      expect(window.location.hash).toBe("#session=default-123")
+    })
+
+    it("handles closing comment format with legacy eventlog format", () => {
+      render(<TextWithLinks>Closed. Event log: #eventlog=abcdef12</TextWithLinks>)
+
+      const link = screen.getByRole("button", { name: "View session abcdef12" })
+      expect(link).toBeInTheDocument()
+
+      fireEvent.click(link)
+      expect(window.location.hash).toBe("#session=abcdef12")
     })
   })
 })

@@ -71,7 +71,7 @@ export function SessionLinks({ taskId, className }: SessionLinksProps) {
 function SessionLogItem({ log }: { log: EventLogSummary }) {
   const handleClick = () => {
     // Navigate using hash - the useEventLogRouter hook will handle the rest
-    window.location.hash = `eventlog=${log.id}`
+    window.location.hash = `session=${log.id}`
   }
 
   return (

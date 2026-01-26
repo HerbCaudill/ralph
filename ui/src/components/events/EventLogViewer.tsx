@@ -111,11 +111,11 @@ export function EventLogViewer({ className }: EventLogViewerProps) {
   }, [])
 
   /**
-   * Copy the shareable event log URL to clipboard.
+   * Copy the shareable session URL to clipboard.
    */
   const handleCopyLink = useCallback(async () => {
     if (!viewingEventLogId) return
-    const url = `${window.location.origin}${window.location.pathname}#eventlog=${viewingEventLogId}`
+    const url = `${window.location.origin}${window.location.pathname}#session=${viewingEventLogId}`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)

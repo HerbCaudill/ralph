@@ -66,7 +66,13 @@ export const WithSubtaskIds: Story = {
   },
 }
 
-export const WithEventLogReference: Story = {
+export const WithSessionReference: Story = {
+  args: {
+    children: "See the session at #session=default-1706123456789 for details.",
+  },
+}
+
+export const WithLegacyEventLogReference: Story = {
   args: {
     children: "See the event log at #eventlog=abcdef12 for details.",
   },
@@ -145,6 +151,6 @@ The main epic is rui-epic-1 which contains several tasks:
 
 Each task has subtasks like rui-4rt.1, rui-4rt.2, etc.
 
-You can view the session history at #eventlog=abcd1234 and #eventlog=efgh5678.`,
+You can view the session history at #session=session-abcd1234 and #session=session-efgh5678.`,
   },
 }
