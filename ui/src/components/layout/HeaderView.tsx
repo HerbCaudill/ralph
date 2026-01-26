@@ -25,8 +25,8 @@ export function HeaderView({ className, accentColor, instanceCount }: HeaderView
       style={{ backgroundColor }}
       data-testid="header"
     >
-      <div className="flex items-center gap-4">
-        <Logo textColor={textColor} />
+      <div className="flex items-center gap-4" style={{ color: textColor }}>
+        <Logo />
         <WorkspacePicker variant="header" textColor={textColor} />
         {instanceCount > 1 && <InstanceCountBadge count={instanceCount} />}
         <MergeConflictNotification textColor={textColor} />
