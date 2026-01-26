@@ -16,7 +16,7 @@ export function AgentView({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Event stream */}
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <EventStream />
       </div>
 
