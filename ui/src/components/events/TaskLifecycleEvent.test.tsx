@@ -253,7 +253,7 @@ describe("TaskLifecycleEvent", () => {
     expect(screen.getByTestId("task-lifecycle-event")).toHaveAttribute("data-action", "completed")
   })
 
-  it("renders event without title", () => {
+  it("renders event without title when task not in store", () => {
     render(
       <TaskLifecycleEvent
         event={{
@@ -267,6 +267,161 @@ describe("TaskLifecycleEvent", () => {
 
     expect(screen.getByText("Starting")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "View task r-def3" })).toBeInTheDocument()
+  })
+
+  it("looks up task title from store when not provided in event", () => {
+    // Add task to store
+    useAppStore.getState().setTasks([
+      {
+        id: "r-store1",
+        title: "Task from store",
+        status: "in_progress",
+      },
+    ])
+
+    render(
+      <TaskLifecycleEvent
+        event={{
+          type: "task_lifecycle",
+          timestamp: 1234567890,
+          action: "starting",
+          taskId: "r-store1",
+          // No taskTitle provided
+        }}
+      />,
+    )
+
+    expect(screen.getByText("Starting")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "View task r-store1" })).toBeInTheDocument()
+    // Title should be looked up from store
+    expect(screen.getByText("Task from store")).toBeInTheDocument()
+  })
+
+  it("prefers event taskTitle over store title", () => {
+    // Add task to store with different title
+    useAppStore.getState().setTasks([
+      {
+        id: "r-pref1",
+        title: "Store title",
+        status: "in_progress",
+      },
+    ])
+
+    render(
+      <TaskLifecycleEvent
+        event={{
+          type: "task_lifecycle",
+          timestamp: 1234567890,
+          action: "starting",
+          taskId: "r-pref1",
+          taskTitle: "Event title",
+        }}
+      />,
+    )
+
+    // Event title should take precedence
+    expect(screen.getByText("Event title")).toBeInTheDocument()
+    expect(screen.queryByText("Store title")).not.toBeInTheDocument()
+  })
+
+  it("looks up task title from store for completed events", () => {
+    // Add task to store
+    useAppStore.getState().setTasks([
+      {
+        id: "r-comp1",
+        title: "Completed task from store",
+        status: "closed",
+      },
+    ])
+
+    render(
+      <TaskLifecycleEvent
+        event={{
+          type: "task_lifecycle",
+          timestamp: 1234567890,
+          action: "completed",
+          taskId: "r-comp1",
+          // No taskTitle provided
+        }}
+      />,
+    )
+
+    expect(screen.getByText("Completed")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "View task r-comp1" })).toBeInTheDocument()
+    // Title should be looked up from store
+    expect(screen.getByText("Completed task from store")).toBeInTheDocument()
+  })
+
+  it("handles store with multiple tasks, returning correct title", () => {
+    // Add multiple tasks to store
+    useAppStore.getState().setTasks([
+      {
+        id: "r-other1",
+        title: "Other task 1",
+        status: "open",
+      },
+      {
+        id: "r-target",
+        title: "Target task title",
+        status: "in_progress",
+      },
+      {
+        id: "r-other2",
+        title: "Other task 2",
+        status: "closed",
+      },
+    ])
+
+    render(
+      <TaskLifecycleEvent
+        event={{
+          type: "task_lifecycle",
+          timestamp: 1234567890,
+          action: "starting",
+          taskId: "r-target",
+          // No taskTitle provided
+        }}
+      />,
+    )
+
+    // Should find the correct task among multiple tasks
+    expect(screen.getByText("Target task title")).toBeInTheDocument()
+    expect(screen.queryByText("Other task 1")).not.toBeInTheDocument()
+    expect(screen.queryByText("Other task 2")).not.toBeInTheDocument()
+  })
+
+  it("handles taskId not found in store with other tasks present", () => {
+    // Add tasks to store, but not the one we're looking for
+    useAppStore.getState().setTasks([
+      {
+        id: "r-other1",
+        title: "Other task 1",
+        status: "open",
+      },
+      {
+        id: "r-other2",
+        title: "Other task 2",
+        status: "in_progress",
+      },
+    ])
+
+    render(
+      <TaskLifecycleEvent
+        event={{
+          type: "task_lifecycle",
+          timestamp: 1234567890,
+          action: "starting",
+          taskId: "r-notfound",
+          // No taskTitle provided
+        }}
+      />,
+    )
+
+    // Should render without title since task not in store
+    expect(screen.getByText("Starting")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "View task r-notfound" })).toBeInTheDocument()
+    expect(screen.queryByText("Other task 1")).not.toBeInTheDocument()
+    expect(screen.queryByText("Other task 2")).not.toBeInTheDocument()
   })
 
   it("renders task ID as a clickable link", () => {

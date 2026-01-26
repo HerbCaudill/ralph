@@ -1,12 +1,18 @@
 import { cn } from "@/lib/utils"
 import { IconPlayerPlay, IconCheck } from "@tabler/icons-react"
 import { TextWithLinks } from "@/components/ui/TextWithLinks"
+import { useAppStore, selectTasks } from "@/store"
 import type { TaskLifecycleEventData } from "@/types"
 
 /**  Renders a task lifecycle event (starting or completing a task) with special styling. */
 export function TaskLifecycleEvent({ event, className }: Props) {
   const isStarting = event.action === "starting"
   const Icon = isStarting ? IconPlayerPlay : IconCheck
+
+  // Look up task title from store if not provided in the event
+  const tasks = useAppStore(selectTasks)
+  const taskTitle =
+    event.taskTitle || (event.taskId ? tasks.find(t => t.id === event.taskId)?.title : undefined)
 
   return (
     <div
@@ -44,7 +50,7 @@ export function TaskLifecycleEvent({ event, className }: Props) {
           <span className="text-muted-foreground shrink-0 font-mono text-xs">
             <TextWithLinks>{event.taskId}</TextWithLinks>
           </span>
-          {event.taskTitle && <span className="truncate">{event.taskTitle}</span>}
+          {taskTitle && <span className="truncate">{taskTitle}</span>}
         </div>
       </div>
     </div>
