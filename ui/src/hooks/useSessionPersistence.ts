@@ -1,9 +1,12 @@
 /**
- * Hook for persisting sessions to IndexedDB.
+ * Hook for persisting session metadata to IndexedDB.
  *
- * Auto-saves sessions at:
- * - Session boundary (system init event)
+ * Auto-saves session metadata at:
+ * - Session boundary (system init event) - saves previous session as complete
  * - Session end (ralph_task_completed or COMPLETE signal)
+ *
+ * Note: This hook only persists session metadata (v3+ schema). Events are
+ * persisted separately by useEventPersistence as they arrive.
  *
  * Generates a stable GUID per session for reliable storage and retrieval.
  */
@@ -74,6 +77,8 @@ export interface UseSessionPersistenceOptions {
   contextWindow: ContextWindow
   /** Current session info */
   session: SessionInfo
+  /** ID of the workspace (for cross-workspace queries) */
+  workspaceId?: string | null
   /** Whether persistence is enabled (default: true) */
   enabled?: boolean
 }
@@ -97,7 +102,15 @@ export interface UseSessionPersistenceResult {
 export function useSessionPersistence(
   options: UseSessionPersistenceOptions,
 ): UseSessionPersistenceResult {
-  const { instanceId, events, tokenUsage, contextWindow, session, enabled = true } = options
+  const {
+    instanceId,
+    events,
+    tokenUsage,
+    contextWindow,
+    session,
+    workspaceId = null,
+    enabled = true,
+  } = options
 
   // Track current session ID in state (for reactivity)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
@@ -116,6 +129,7 @@ export function useSessionPersistence(
 
   /**
    * Build a PersistedSession from the current state.
+   * Note: Events are persisted separately by useEventPersistence in v3+ schema.
    */
   const buildSessionData = useCallback(
     (
@@ -132,7 +146,7 @@ export function useSessionPersistence(
       return {
         id: sessionId,
         instanceId,
-        workspaceId: null, // Will be populated by server in a future update
+        workspaceId,
         startedAt,
         completedAt: completed ? Date.now() : null,
         taskId: taskInfo?.id ?? null,
@@ -142,10 +156,10 @@ export function useSessionPersistence(
         session,
         eventCount: sessionEvents.length,
         lastEventSequence,
-        events: sessionEvents,
+        // Note: events are NOT included here - they're stored separately in v3+ schema
       }
     },
-    [instanceId, tokenUsage, contextWindow, session],
+    [instanceId, workspaceId, tokenUsage, contextWindow, session],
   )
 
   /**
@@ -258,18 +272,9 @@ export function useSessionPersistence(
       }
     }
 
-    // Periodically save progress (every 10 new events)
-    if (currentSessionRef.current) {
-      const current = currentSessionRef.current
-      const sessionEvents = getEventsForSessionIndex(events, current.sessionIndex)
-      const newEventsSinceSave = sessionEvents.length - current.eventCount
-
-      if (newEventsSinceSave >= 10) {
-        const sessionData = buildSessionData(current.id, current.startedAt, sessionEvents, false)
-        saveSession(sessionData)
-        currentSessionRef.current = { ...current, eventCount: sessionEvents.length }
-      }
-    }
+    // Note: Periodic saves removed in v3 schema - events are now persisted separately
+    // by useEventPersistence as they arrive. Session metadata is only saved on
+    // session boundaries and completion.
 
     lastProcessedEventCountRef.current = events.length
   }, [enabled, events, instanceId, buildSessionData, saveSession])

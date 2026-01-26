@@ -138,11 +138,13 @@ describe("Persistence Integration Tests", () => {
       const savedSessions = await db.listSessions(instanceId)
       expect(savedSessions.length).toBeGreaterThan(0)
 
-      // Get the full session data
+      // Get the full session data - v3 schema: metadata only, events stored separately
       const savedSession = await db.getSession(savedSessions[0].id)
       expect(savedSession).toBeDefined()
       expect(savedSession?.instanceId).toBe(instanceId)
-      expect(savedSession?.events?.length).toBe(events.length)
+      // Events are persisted separately by useEventPersistence in v3 schema
+      expect(savedSession?.eventCount).toBe(events.length)
+      expect(savedSession?.events).toBeUndefined()
       expect(savedSession?.taskId).toBe("r-abc123")
       expect(savedSession?.taskTitle).toBe("Fix the bug")
       expect(savedSession?.completedAt).not.toBeNull()
@@ -192,10 +194,12 @@ describe("Persistence Integration Tests", () => {
       expect(savedSessions.length).toBeGreaterThan(0)
 
       // The session should still be "active" (completedAt is null)
+      // v3 schema: metadata only, events stored separately
       const savedSession = await db.getSession(savedSessions[0].id)
       expect(savedSession).toBeDefined()
       expect(savedSession?.completedAt).toBeNull()
-      expect(savedSession?.events?.length).toBe(events.length)
+      expect(savedSession?.eventCount).toBe(events.length)
+      expect(savedSession?.events).toBeUndefined()
     })
 
     it("handles multiple sessions correctly", async () => {

@@ -229,12 +229,14 @@ describe("useSessionPersistence", () => {
         expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
 
-      // Check the saved data
+      // Check the saved data - v3 schema: metadata only, no events
       const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
       expect(savedSession).toBeDefined()
       expect(savedSession?.instanceId).toBe("default")
       expect(savedSession?.completedAt).not.toBeNull()
-      expect(savedSession?.events).toHaveLength(events.length)
+      expect(savedSession?.eventCount).toBe(events.length)
+      // Events are not included in v3 schema - they're persisted separately by useEventPersistence
+      expect(savedSession?.events).toBeUndefined()
     })
 
     it("saves session on COMPLETE promise signal", async () => {
@@ -369,9 +371,13 @@ describe("useSessionPersistence", () => {
           id: `default-${startTime}`,
           instanceId: "default",
           completedAt: null, // Manual save doesn't mark as complete
-          events,
+          eventCount: events.length,
+          // Events are not included in v3 schema
         }),
       )
+      // Verify events are NOT included
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.events).toBeUndefined()
     })
 
     it("does nothing on manual save when disabled", async () => {
@@ -420,11 +426,11 @@ describe("useSessionPersistence", () => {
     })
   })
 
-  describe("progress saving", () => {
-    it("saves progress every 10 new events", async () => {
+  describe("no periodic saves (v3 schema)", () => {
+    it("does not save progress periodically - events are persisted by useEventPersistence", async () => {
       const startTime = Date.now()
 
-      // Create 15 events (1 init + 14 assistant messages)
+      // Create 15 events (1 init + 14 assistant messages) - no completion event
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
         ...Array.from({ length: 14 }, (_, i) =>
@@ -445,10 +451,82 @@ describe("useSessionPersistence", () => {
         })
       }
 
-      // Should have saved at least once (at 10+ events)
+      // Wait a bit to ensure no delayed saves
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      // Should NOT have saved - no completion or boundary events, just regular events
+      // Events are now persisted separately by useEventPersistence
+      expect(eventDatabase.saveSession).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("workspaceId", () => {
+    it("includes workspaceId in saved session metadata", async () => {
+      const startTime = Date.now()
+      const events: ChatEvent[] = [
+        createSystemInitEvent(startTime),
+        createRalphTaskCompletedEvent(startTime + 100),
+      ]
+
+      const { rerender } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        {
+          initialProps: {
+            ...defaultOptions,
+            workspaceId: "/path/to/workspace",
+            events: [] as ChatEvent[],
+          },
+        },
+      )
+
+      // Add events
+      for (let i = 1; i <= events.length; i++) {
+        rerender({
+          ...defaultOptions,
+          workspaceId: "/path/to/workspace",
+          events: events.slice(0, i) as ChatEvent[],
+        })
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+        })
+      }
+
       await waitFor(() => {
         expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
+
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.workspaceId).toBe("/path/to/workspace")
+    })
+
+    it("defaults workspaceId to null when not provided", async () => {
+      const startTime = Date.now()
+      const events: ChatEvent[] = [
+        createSystemInitEvent(startTime),
+        createRalphTaskCompletedEvent(startTime + 100),
+      ]
+
+      const { rerender } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
+      )
+
+      // Add events
+      for (let i = 1; i <= events.length; i++) {
+        rerender({ ...defaultOptions, events: events.slice(0, i) as ChatEvent[] })
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+        })
+      }
+
+      await waitFor(() => {
+        expect(eventDatabase.saveSession).toHaveBeenCalled()
+      })
+
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.workspaceId).toBeNull()
     })
   })
 })
