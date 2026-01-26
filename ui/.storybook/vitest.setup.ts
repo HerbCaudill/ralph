@@ -18,6 +18,10 @@ console.error = (...args: unknown[]) => {
   if (message.includes("suspended inside an `act` scope")) {
     return
   }
+  // Suppress "not wrapped in act" warning (mostly from Radix UI internals)
+  if (message.includes("not wrapped in act")) {
+    return
+  }
   originalError(...args)
 }
 
