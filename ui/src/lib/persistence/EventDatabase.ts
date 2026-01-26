@@ -325,10 +325,15 @@ export class EventDatabase {
   }
 
   /**
-   * Delete an iteration (both metadata and full data).
+   * Delete an iteration (metadata, full data, and associated events).
    */
   async deleteIteration(id: string): Promise<void> {
     const db = await this.ensureDb()
+
+    // First delete events for this iteration
+    await this.deleteEventsForIteration(id)
+
+    // Then delete the iteration metadata and data
     const tx = db.transaction([STORE_NAMES.ITERATION_METADATA, STORE_NAMES.ITERATIONS], "readwrite")
 
     await Promise.all([
@@ -339,7 +344,7 @@ export class EventDatabase {
   }
 
   /**
-   * Delete all iterations for an instance.
+   * Delete all iterations for an instance (including associated events).
    */
   async deleteAllIterationsForInstance(instanceId: string): Promise<void> {
     const db = await this.ensureDb()
@@ -348,6 +353,10 @@ export class EventDatabase {
     const iterations = await this.listIterations(instanceId)
     const ids = iterations.map(i => i.id)
 
+    // First delete events for all iterations
+    await Promise.all(ids.map(id => this.deleteEventsForIteration(id)))
+
+    // Then delete iteration metadata and data
     const tx = db.transaction([STORE_NAMES.ITERATION_METADATA, STORE_NAMES.ITERATIONS], "readwrite")
 
     const metaStore = tx.objectStore(STORE_NAMES.ITERATION_METADATA)
@@ -358,6 +367,81 @@ export class EventDatabase {
       ...ids.map(id => iterStore.delete(id)),
       tx.done,
     ])
+  }
+
+  // ============================================================================
+  // Event Methods (for normalized event storage in v3+)
+  // ============================================================================
+
+  /**
+   * Save a single event to the events store.
+   * Used for append-only event writes during streaming.
+   */
+  async saveEvent(event: PersistedEvent): Promise<void> {
+    const db = await this.ensureDb()
+    await db.put(STORE_NAMES.EVENTS, event)
+  }
+
+  /**
+   * Save multiple events to the events store in a single transaction.
+   * Used for batch imports or initial saves.
+   */
+  async saveEvents(events: PersistedEvent[]): Promise<void> {
+    if (events.length === 0) return
+
+    const db = await this.ensureDb()
+    const tx = db.transaction(STORE_NAMES.EVENTS, "readwrite")
+    const store = tx.objectStore(STORE_NAMES.EVENTS)
+
+    await Promise.all([...events.map(event => store.put(event)), tx.done])
+  }
+
+  /**
+   * Get all events for an iteration, sorted by timestamp.
+   * Uses the by-iteration index for efficient retrieval.
+   */
+  async getEventsForIteration(iterationId: string): Promise<PersistedEvent[]> {
+    const db = await this.ensureDb()
+    const events = await db.getAllFromIndex(STORE_NAMES.EVENTS, "by-iteration", iterationId)
+    // Sort by timestamp ascending (chronological order)
+    return events.sort((a, b) => a.timestamp - b.timestamp)
+  }
+
+  /**
+   * Get a single event by ID.
+   */
+  async getEvent(id: string): Promise<PersistedEvent | undefined> {
+    const db = await this.ensureDb()
+    return db.get(STORE_NAMES.EVENTS, id)
+  }
+
+  /**
+   * Delete all events for an iteration.
+   * Used when cleaning up an iteration's data.
+   */
+  async deleteEventsForIteration(iterationId: string): Promise<void> {
+    const db = await this.ensureDb()
+    const events = await this.getEventsForIteration(iterationId)
+
+    if (events.length === 0) return
+
+    const tx = db.transaction(STORE_NAMES.EVENTS, "readwrite")
+    const store = tx.objectStore(STORE_NAMES.EVENTS)
+
+    await Promise.all([...events.map(event => store.delete(event.id)), tx.done])
+  }
+
+  /**
+   * Count events for an iteration.
+   * More efficient than fetching all events when you only need the count.
+   */
+  async countEventsForIteration(iterationId: string): Promise<number> {
+    const db = await this.ensureDb()
+    const index = db
+      .transaction(STORE_NAMES.EVENTS)
+      .objectStore(STORE_NAMES.EVENTS)
+      .index("by-iteration")
+    return index.count(iterationId)
   }
 
   // ============================================================================

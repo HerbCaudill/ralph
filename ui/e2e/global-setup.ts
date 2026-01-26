@@ -77,7 +77,9 @@ export default async function globalSetup() {
   }
 
   // Initialize beads with a test-specific prefix
-  execSync("bd init --prefix e2e-test --quiet --skip-hooks --skip-merge-driver", {
+  // Use --force to reinitialize even if a database already exists (handles race conditions
+  // where a daemon might have recreated the .beads directory during cleanup)
+  execSync("bd init --prefix e2e-test --quiet --skip-hooks --skip-merge-driver --force", {
     cwd: TEST_WORKSPACE_DIR,
     stdio: "pipe",
   })

@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import "fake-indexeddb/auto"
 import { EventDatabase } from "./EventDatabase"
-import type { PersistedEventLog, PersistedIteration, PersistedTaskChatSession } from "./types"
+import type {
+  PersistedEvent,
+  PersistedEventLog,
+  PersistedIteration,
+  PersistedTaskChatSession,
+} from "./types"
 
 /**
  * Create a test iteration with sensible defaults.
@@ -77,6 +82,22 @@ function createTestEventLog(overrides: Partial<PersistedEventLog> = {}): Persist
       { type: "user_message", timestamp: now, message: "Hello" },
       { type: "assistant_text", timestamp: now + 1, content: "Hi there!" },
     ],
+    ...overrides,
+  }
+}
+
+/**
+ * Create a test persisted event with sensible defaults.
+ */
+function createTestEvent(overrides: Partial<PersistedEvent> = {}): PersistedEvent {
+  const now = Date.now()
+  const id = overrides.id ?? `event-${now}-${Math.random().toString(36).slice(2, 8)}`
+  return {
+    id,
+    iterationId: overrides.iterationId ?? "iteration-123",
+    timestamp: overrides.timestamp ?? now,
+    eventType: overrides.eventType ?? "user_message",
+    event: overrides.event ?? { type: "user_message", timestamp: now, message: "Hello" },
     ...overrides,
   }
 }
@@ -317,6 +338,177 @@ describe("EventDatabase", () => {
         expect(await db.getIteration("iter-1")).toBeUndefined()
         expect(await db.getIteration("iter-2")).toBeUndefined()
         expect(await db.getIteration("iter-3")).toBeDefined()
+      })
+    })
+  })
+
+  describe("events (normalized storage)", () => {
+    describe("saveEvent / getEvent", () => {
+      it("saves and retrieves a single event", async () => {
+        const event = createTestEvent({ id: "event-1" })
+        await db.saveEvent(event)
+
+        const retrieved = await db.getEvent("event-1")
+        expect(retrieved).toEqual(event)
+      })
+
+      it("overwrites an existing event with the same ID", async () => {
+        const event = createTestEvent({ id: "event-1" })
+        await db.saveEvent(event)
+
+        const updated = { ...event, eventType: "assistant_text" }
+        await db.saveEvent(updated)
+
+        const retrieved = await db.getEvent("event-1")
+        expect(retrieved?.eventType).toBe("assistant_text")
+      })
+
+      it("returns undefined for non-existent event", async () => {
+        const result = await db.getEvent("non-existent")
+        expect(result).toBeUndefined()
+      })
+    })
+
+    describe("saveEvents", () => {
+      it("saves multiple events in a single transaction", async () => {
+        const events = [
+          createTestEvent({ id: "event-1", iterationId: "iter-1" }),
+          createTestEvent({ id: "event-2", iterationId: "iter-1" }),
+          createTestEvent({ id: "event-3", iterationId: "iter-1" }),
+        ]
+        await db.saveEvents(events)
+
+        const stats = await db.getStats()
+        expect(stats.eventCount).toBe(3)
+      })
+
+      it("handles empty array gracefully", async () => {
+        await db.saveEvents([])
+        const stats = await db.getStats()
+        expect(stats.eventCount).toBe(0)
+      })
+
+      it("overwrites existing events with the same IDs", async () => {
+        const event1 = createTestEvent({ id: "event-1", eventType: "user_message" })
+        await db.saveEvent(event1)
+
+        const updatedEvents = [
+          createTestEvent({ id: "event-1", eventType: "assistant_text" }),
+          createTestEvent({ id: "event-2", eventType: "tool_use" }),
+        ]
+        await db.saveEvents(updatedEvents)
+
+        const retrieved = await db.getEvent("event-1")
+        expect(retrieved?.eventType).toBe("assistant_text")
+      })
+    })
+
+    describe("getEventsForIteration", () => {
+      it("retrieves events for a specific iteration", async () => {
+        const now = Date.now()
+        await db.saveEvents([
+          createTestEvent({ id: "event-1", iterationId: "iter-a", timestamp: now }),
+          createTestEvent({ id: "event-2", iterationId: "iter-a", timestamp: now + 1 }),
+          createTestEvent({ id: "event-3", iterationId: "iter-b", timestamp: now }),
+        ])
+
+        const iterAEvents = await db.getEventsForIteration("iter-a")
+        expect(iterAEvents.map(e => e.id)).toEqual(expect.arrayContaining(["event-1", "event-2"]))
+        expect(iterAEvents.length).toBe(2)
+      })
+
+      it("returns events sorted by timestamp ascending", async () => {
+        const now = Date.now()
+        await db.saveEvents([
+          createTestEvent({ id: "middle", iterationId: "iter-1", timestamp: now }),
+          createTestEvent({ id: "oldest", iterationId: "iter-1", timestamp: now - 1000 }),
+          createTestEvent({ id: "newest", iterationId: "iter-1", timestamp: now + 1000 }),
+        ])
+
+        const events = await db.getEventsForIteration("iter-1")
+        expect(events.map(e => e.id)).toEqual(["oldest", "middle", "newest"])
+      })
+
+      it("returns empty array for unknown iteration", async () => {
+        const events = await db.getEventsForIteration("unknown-iteration")
+        expect(events).toEqual([])
+      })
+    })
+
+    describe("countEventsForIteration", () => {
+      it("returns correct count of events for an iteration", async () => {
+        await db.saveEvents([
+          createTestEvent({ id: "event-1", iterationId: "iter-a" }),
+          createTestEvent({ id: "event-2", iterationId: "iter-a" }),
+          createTestEvent({ id: "event-3", iterationId: "iter-b" }),
+        ])
+
+        expect(await db.countEventsForIteration("iter-a")).toBe(2)
+        expect(await db.countEventsForIteration("iter-b")).toBe(1)
+        expect(await db.countEventsForIteration("iter-c")).toBe(0)
+      })
+    })
+
+    describe("deleteEventsForIteration", () => {
+      it("deletes all events for a specific iteration", async () => {
+        await db.saveEvents([
+          createTestEvent({ id: "event-1", iterationId: "iter-a" }),
+          createTestEvent({ id: "event-2", iterationId: "iter-a" }),
+          createTestEvent({ id: "event-3", iterationId: "iter-b" }),
+        ])
+
+        await db.deleteEventsForIteration("iter-a")
+
+        expect(await db.getEvent("event-1")).toBeUndefined()
+        expect(await db.getEvent("event-2")).toBeUndefined()
+        expect(await db.getEvent("event-3")).toBeDefined()
+      })
+
+      it("does not throw when no events exist for iteration", async () => {
+        await expect(db.deleteEventsForIteration("non-existent")).resolves.not.toThrow()
+      })
+    })
+
+    describe("integration with iteration lifecycle", () => {
+      it("deleteIteration also deletes associated events", async () => {
+        // Save an iteration
+        await db.saveIteration(createTestIteration({ id: "iter-1" }))
+
+        // Save events for this iteration
+        await db.saveEvents([
+          createTestEvent({ id: "event-1", iterationId: "iter-1" }),
+          createTestEvent({ id: "event-2", iterationId: "iter-1" }),
+        ])
+
+        // Delete the iteration
+        await db.deleteIteration("iter-1")
+
+        // Events should also be deleted
+        expect(await db.getEvent("event-1")).toBeUndefined()
+        expect(await db.getEvent("event-2")).toBeUndefined()
+      })
+
+      it("deleteAllIterationsForInstance also deletes associated events", async () => {
+        // Save iterations
+        await db.saveIteration(createTestIteration({ id: "iter-1", instanceId: "instance-a" }))
+        await db.saveIteration(createTestIteration({ id: "iter-2", instanceId: "instance-a" }))
+        await db.saveIteration(createTestIteration({ id: "iter-3", instanceId: "instance-b" }))
+
+        // Save events for these iterations
+        await db.saveEvents([
+          createTestEvent({ id: "event-1", iterationId: "iter-1" }),
+          createTestEvent({ id: "event-2", iterationId: "iter-2" }),
+          createTestEvent({ id: "event-3", iterationId: "iter-3" }),
+        ])
+
+        // Delete all iterations for instance-a
+        await db.deleteAllIterationsForInstance("instance-a")
+
+        // Events for instance-a iterations should be deleted
+        expect(await db.getEvent("event-1")).toBeUndefined()
+        expect(await db.getEvent("event-2")).toBeUndefined()
+        // Events for instance-b iteration should remain
+        expect(await db.getEvent("event-3")).toBeDefined()
       })
     })
   })
