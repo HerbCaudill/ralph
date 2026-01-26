@@ -43,6 +43,7 @@ import {
   useSessionPersistence,
   useEventPersistence,
   useTaskChatPersistence,
+  useFavicon,
 } from "./hooks"
 import { startRalph } from "./lib/startRalph"
 import { stopRalph } from "./lib/stopRalph"
@@ -61,6 +62,9 @@ export function App() {
 
   // Initialize theme management (applies dark class and listens for system changes)
   const { cycleTheme } = useTheme()
+
+  // Set favicon from logo.svg
+  useFavicon()
 
   // Get active instance ID for hydration
   const activeInstanceId = useAppStore(selectActiveInstanceId)

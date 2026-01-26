@@ -121,3 +121,5 @@ export {
 } from "./useEventStream"
 
 export { useTasksWithEventLogs, type UseTasksWithEventLogsResult } from "./useTasksWithEventLogs"
+
+export { useFavicon } from "./useFavicon"
