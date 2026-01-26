@@ -18,8 +18,6 @@ export function TaskSidebar({
   searchInputRef,
   /** Callback when a task is opened from search results */
   onOpenTask,
-  /** Element to display in the iteration history slot (bottom left) */
-  iterationHistory,
   /** Element to display in the progress bar slot (bottom) */
   progressBar,
   /** Additional CSS classes to apply */
@@ -45,12 +43,6 @@ export function TaskSidebar({
         )}
       </div>
 
-      {iterationHistory && (
-        <div className="border-border flex items-center justify-between border-t px-4 py-2">
-          {iterationHistory}
-        </div>
-      )}
-
       {progressBar}
     </div>
   )
@@ -66,8 +58,6 @@ export type TaskSidebarProps = {
   searchInputRef?: RefObject<SearchInputHandle | null>
   /** Callback when a task is opened from search results */
   onOpenTask?: (taskId: string) => void
-  /** Element to display in the iteration history slot (bottom left) */
-  iterationHistory?: ReactNode
   /** Element to display in the progress bar slot (bottom) */
   progressBar?: ReactNode
   /** Additional CSS classes to apply */

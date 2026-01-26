@@ -2,7 +2,6 @@ import { TaskSidebar } from "./TaskSidebar"
 import { TaskList } from "./TaskList"
 import { type SearchInputHandle } from "./SearchInput"
 import { TaskProgressBar } from "./TaskProgressBar"
-import { IterationHistorySheet } from "@/components/events"
 import { useTasks } from "@/hooks"
 
 /**
@@ -26,7 +25,6 @@ export function TaskSidebarController({
       taskList={<TaskList tasks={tasks} onTaskClick={onTaskClick} isLoading={isLoading} />}
       searchInputRef={searchInputRef}
       onOpenTask={onOpenTask}
-      iterationHistory={<IterationHistorySheet />}
       progressBar={<TaskProgressBar />}
     />
   )
