@@ -118,6 +118,8 @@ export class EventDatabase {
   }
 
   private async openDatabase(): Promise<void> {
+    let needsV3Migration = false
+
     this.db = await openDB<RalphDBSchema>(DB_NAME, PERSISTENCE_SCHEMA_VERSION, {
       upgrade(db, oldVersion, _newVersion, transaction) {
         // Version 1: Initial schema
@@ -178,11 +180,11 @@ export class EventDatabase {
         // Version 3: Add events store for normalized event storage and workspace index
         if (oldVersion < 3) {
           // Events store for append-only event writes
-          const eventsStore = db.createObjectStore(STORE_NAMES.EVENTS, {
+          db.createObjectStore(STORE_NAMES.EVENTS, {
             keyPath: "id",
-          })
-          eventsStore.createIndex("by-iteration", "iterationId")
-          eventsStore.createIndex("by-timestamp", "timestamp")
+          }).createIndex("by-iteration", "iterationId")
+          // Need to get the store again to add the second index
+          transaction.objectStore(STORE_NAMES.EVENTS).createIndex("by-timestamp", "timestamp")
 
           // Add workspace index to iteration metadata for cross-workspace queries
           // Access the existing store through the upgrade transaction
@@ -192,6 +194,12 @@ export class EventDatabase {
               "workspaceId",
               "startedAt",
             ])
+          }
+
+          // Flag that we need to run the data migration after the upgrade completes
+          // Only if we're upgrading from v1 or v2 (not fresh installs)
+          if (oldVersion >= 1) {
+            needsV3Migration = true
           }
         }
 
@@ -205,6 +213,107 @@ export class EventDatabase {
         console.warn("[EventDatabase] This tab is blocking a database upgrade")
       },
     })
+
+    // Run data migration after the schema upgrade completes
+    if (needsV3Migration) {
+      await this.migrateV2ToV3()
+    }
+  }
+
+  /**
+   * Migrate v2 data to v3 format.
+   *
+   * This migration:
+   * 1. Extracts events from the iterations store (where they were embedded in v2)
+   * 2. Creates individual PersistedEvent records in the events store
+   * 3. Updates iterations to remove the events array
+   * 4. Ensures all iterations have workspaceId (set to null for legacy data)
+   *
+   * This is idempotent - iterations that have already been migrated (no events array)
+   * will be skipped.
+   */
+  private async migrateV2ToV3(): Promise<void> {
+    if (!this.db) return
+
+    console.log("[EventDatabase] Starting v2→v3 data migration...")
+
+    const tx = this.db.transaction(
+      [STORE_NAMES.ITERATIONS, STORE_NAMES.ITERATION_METADATA, STORE_NAMES.EVENTS],
+      "readwrite",
+    )
+
+    const iterationsStore = tx.objectStore(STORE_NAMES.ITERATIONS)
+    const metadataStore = tx.objectStore(STORE_NAMES.ITERATION_METADATA)
+    const eventsStore = tx.objectStore(STORE_NAMES.EVENTS)
+
+    // Get all iterations
+    const iterations = await iterationsStore.getAll()
+    let migratedCount = 0
+    let eventCount = 0
+
+    for (const iteration of iterations) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const iterationAny = iteration as any
+      const iterationId = iterationAny.id as string
+
+      // Skip if already migrated (no events array)
+      if (!iterationAny.events || !Array.isArray(iterationAny.events)) {
+        // Still ensure workspaceId is set
+        if (!("workspaceId" in iterationAny)) {
+          iterationAny.workspaceId = null
+          await iterationsStore.put(iterationAny)
+        }
+        continue
+      }
+
+      const events = iterationAny.events as Array<{
+        type?: string
+        timestamp?: number
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [key: string]: any
+      }>
+
+      // Create individual PersistedEvent records
+      for (let index = 0; index < events.length; index++) {
+        const event = events[index]
+        const eventId = `${iterationId}-event-${index}`
+        const persistedEvent: PersistedEvent = {
+          id: eventId,
+          iterationId,
+          timestamp: event.timestamp ?? Date.now(),
+          eventType: event.type ?? "unknown",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          event: event as any,
+        }
+        await eventsStore.put(persistedEvent)
+        eventCount++
+      }
+
+      // Update iteration to remove events array
+      const updatedIteration = { ...iterationAny }
+      delete updatedIteration.events
+      // Ensure workspaceId is set (null for legacy data)
+      if (!("workspaceId" in updatedIteration)) {
+        updatedIteration.workspaceId = null
+      }
+      await iterationsStore.put(updatedIteration)
+
+      // Update metadata to ensure workspaceId is set
+      const metadata = await metadataStore.get(iterationId)
+      if (metadata !== undefined && !("workspaceId" in metadata)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const metadataWithWorkspace = { ...(metadata as any), workspaceId: null }
+        await metadataStore.put(metadataWithWorkspace)
+      }
+
+      migratedCount++
+    }
+
+    await tx.done
+
+    console.log(
+      `[EventDatabase] v2→v3 migration complete: migrated ${migratedCount} iterations, created ${eventCount} events`,
+    )
   }
 
   /**

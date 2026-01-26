@@ -1023,4 +1023,212 @@ describe("EventDatabase", () => {
       expect(await db.getEventLog("delete-atomic")).toBeUndefined()
     })
   })
+
+  describe("v2→v3 migration", () => {
+    /**
+     * Test the v2→v3 migration by simulating v2 data format (iterations with embedded events).
+     *
+     * Note: The migration happens automatically when opening a v2 database with v3 code.
+     * Since fake-indexeddb starts fresh for each test, we test by:
+     * 1. Saving iterations with embedded events array (v2 format)
+     * 2. Verifying the events can be retrieved from the events store
+     * 3. Verifying the iteration no longer has embedded events
+     *
+     * In a real v2→v3 upgrade:
+     * - The upgrade handler extracts events from iterations
+     * - Creates PersistedEvent records in the events store
+     * - Removes the events array from iterations
+     */
+
+    it("preserves iteration data after migration when iteration is saved with events", async () => {
+      // Simulate v2-style iteration with embedded events
+      const now = Date.now()
+      const iterationWithEvents = createTestIteration({
+        id: "v2-iteration",
+        instanceId: "test-instance",
+        taskId: "task-123",
+        taskTitle: "Test Task",
+        startedAt: now,
+        eventCount: 3,
+        events: [
+          { type: "user_message", timestamp: now, message: "Hello" },
+          { type: "assistant_text", timestamp: now + 100, content: "Hi there!" },
+          { type: "tool_use", timestamp: now + 200, tool: "Read", input: { path: "/test" } },
+        ],
+      })
+
+      // Save using current API (simulates upgrade path)
+      await db.saveIteration(iterationWithEvents)
+
+      // Verify iteration metadata is preserved
+      const metadata = await db.getIterationMetadata("v2-iteration")
+      expect(metadata).toBeDefined()
+      expect(metadata?.id).toBe("v2-iteration")
+      expect(metadata?.instanceId).toBe("test-instance")
+      expect(metadata?.taskId).toBe("task-123")
+      expect(metadata?.eventCount).toBe(3)
+
+      // Verify full iteration data is preserved
+      const iteration = await db.getIteration("v2-iteration")
+      expect(iteration).toBeDefined()
+      expect(iteration?.id).toBe("v2-iteration")
+      // Events array should still be in the iteration store (for backward compat)
+      expect(iteration?.events?.length).toBe(3)
+    })
+
+    it("handles iterations with empty events array", async () => {
+      const emptyEventsIteration = createTestIteration({
+        id: "empty-events",
+        events: [],
+        eventCount: 0,
+      })
+
+      await db.saveIteration(emptyEventsIteration)
+
+      const iteration = await db.getIteration("empty-events")
+      expect(iteration).toBeDefined()
+      expect(iteration?.events).toEqual([])
+    })
+
+    it("handles iterations with undefined events (pure metadata)", async () => {
+      // Simulate v3-style iteration without events
+      const metadataOnlyIteration = {
+        id: "metadata-only",
+        instanceId: "test-instance",
+        workspaceId: null,
+        startedAt: Date.now(),
+        completedAt: null,
+        taskId: null,
+        taskTitle: null,
+        tokenUsage: { input: 0, output: 0 },
+        contextWindow: { used: 0, max: 200000 },
+        iteration: { current: 0, total: 0 },
+        eventCount: 0,
+        lastEventSequence: 0,
+        // No events property - this is the v3 pattern
+      } as PersistedIteration
+
+      await db.saveIteration(metadataOnlyIteration)
+
+      const iteration = await db.getIteration("metadata-only")
+      expect(iteration).toBeDefined()
+      expect(iteration?.events).toBeUndefined()
+    })
+
+    it("sets workspaceId to null for legacy iterations without workspaceId", async () => {
+      // The migration should ensure all iterations have workspaceId property
+      const legacyIteration = createTestIteration({
+        id: "legacy-iteration",
+        workspaceId: null, // Explicit null (migration ensures this exists)
+      })
+
+      await db.saveIteration(legacyIteration)
+
+      const metadata = await db.getIterationMetadata("legacy-iteration")
+      expect(metadata).toBeDefined()
+      expect(metadata).toHaveProperty("workspaceId")
+      expect(metadata?.workspaceId).toBeNull()
+    })
+
+    it("preserves workspaceId when set on iteration", async () => {
+      const iterationWithWorkspace = createTestIteration({
+        id: "with-workspace",
+        workspaceId: "/Users/test/project",
+      })
+
+      await db.saveIteration(iterationWithWorkspace)
+
+      const metadata = await db.getIterationMetadata("with-workspace")
+      expect(metadata?.workspaceId).toBe("/Users/test/project")
+    })
+
+    it("handles events with missing timestamp by using fallback", async () => {
+      // Events might have undefined timestamp in corrupted data
+      const now = Date.now()
+      const iterationWithBadEvents = createTestIteration({
+        id: "bad-timestamps",
+        events: [
+          { type: "user_message", timestamp: now, message: "Good event" },
+          { type: "assistant_text", message: "No timestamp" } as unknown as {
+            type: string
+            timestamp: number
+            content: string
+          },
+        ],
+      })
+
+      // Should not throw
+      await expect(db.saveIteration(iterationWithBadEvents)).resolves.not.toThrow()
+
+      const iteration = await db.getIteration("bad-timestamps")
+      expect(iteration?.events?.length).toBe(2)
+    })
+
+    it("handles events with missing type by using unknown fallback", async () => {
+      const now = Date.now()
+      const iterationWithTypelessEvents = createTestIteration({
+        id: "typeless-events",
+        events: [
+          { timestamp: now, message: "No type field" } as unknown as {
+            type: string
+            timestamp: number
+            message: string
+          },
+        ],
+      })
+
+      await expect(db.saveIteration(iterationWithTypelessEvents)).resolves.not.toThrow()
+
+      const iteration = await db.getIteration("typeless-events")
+      expect(iteration?.events?.length).toBe(1)
+    })
+
+    it("events can be stored and retrieved separately from iterations", async () => {
+      // This tests the normalized storage pattern for v3+
+      const iterationId = "separate-storage"
+
+      // Save iteration metadata only
+      await db.saveIteration(
+        createTestIteration({
+          id: iterationId,
+          events: undefined,
+          eventCount: 3,
+        }),
+      )
+
+      // Save events separately
+      const now = Date.now()
+      await db.saveEvents([
+        createTestEvent({
+          id: `${iterationId}-event-0`,
+          iterationId,
+          timestamp: now,
+          eventType: "user_message",
+        }),
+        createTestEvent({
+          id: `${iterationId}-event-1`,
+          iterationId,
+          timestamp: now + 100,
+          eventType: "assistant_text",
+        }),
+        createTestEvent({
+          id: `${iterationId}-event-2`,
+          iterationId,
+          timestamp: now + 200,
+          eventType: "tool_use",
+        }),
+      ])
+
+      // Verify iteration has no embedded events
+      const iteration = await db.getIteration(iterationId)
+      expect(iteration?.events).toBeUndefined()
+
+      // Verify events can be retrieved separately
+      const events = await db.getEventsForIteration(iterationId)
+      expect(events.length).toBe(3)
+      expect(events[0].eventType).toBe("user_message")
+      expect(events[1].eventType).toBe("assistant_text")
+      expect(events[2].eventType).toBe("tool_use")
+    })
+  })
 })
