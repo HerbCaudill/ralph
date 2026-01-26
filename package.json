@@ -12,7 +12,7 @@
     "typecheck": "pnpm -r --parallel typecheck",
     "test:all": "node scripts/test-all.js",
     "format": "git diff --name-only HEAD --diff-filter=ACMR | xargs -r prettier --write --ignore-unknown --log-level silent",
-    "cli": "pnpm --filter @herbcaudill/ralph ralph",
+    "cli": "tsx cli/src/index.ts",
     "cli:build": "pnpm --filter @herbcaudill/ralph build",
     "cli:test": "pnpm --filter @herbcaudill/ralph test",
     "pub": "pnpm --filter @herbcaudill/ralph publish && pnpm --filter @herbcaudill/ralph-ui publish",
