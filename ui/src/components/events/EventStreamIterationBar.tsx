@@ -1,70 +1,36 @@
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
 import type { IterationSummary } from "@/hooks"
-import type { IterationTaskInfo } from "@/store"
 
 /**
- * Navigation bar for switching between iterations and viewing task information.
- * Shows iteration count, current task, and provides controls for navigating between iterations.
+ * Navigation bar showing current task and providing access to iteration history.
  * Features a dropdown to browse past iterations from event logs.
  */
 export function EventStreamIterationBar({
-  iterationCount,
-  displayedIteration,
-  isViewingLatest,
-  viewingIterationIndex,
   currentTask,
-  iterationTaskInfos,
   iterations,
   isLoadingIterations,
   issuePrefix,
-  onPrevious,
-  onNext,
-  onLatest,
-  onIterationSelect,
   onIterationHistorySelect,
 }: Props) {
-  const hasMultipleIterations = iterationCount > 1
   const hasIterations = iterations.length > 0
 
-  // Show dropdown when there are multiple iterations OR iterations to browse
-  const showDropdown = hasMultipleIterations || hasIterations || isLoadingIterations
+  // Show dropdown when there are iterations to browse or loading
+  const showDropdown = hasIterations || isLoadingIterations
 
   return (
     <div
-      className="bg-muted/50 border-border flex items-center justify-between border-b px-3 py-1.5"
+      className="bg-muted/50 border-border flex items-center justify-center border-b px-3 py-1.5"
       data-testid="iteration-bar"
     >
-      <div className="flex w-20 items-center">
-        {hasMultipleIterations && (
-          <button
-            onClick={onPrevious}
-            disabled={viewingIterationIndex === 0}
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Previous iteration"
-          >
-            <IconChevronLeft className="size-4" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-        )}
-      </div>
-
       <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
         {showDropdown ?
           <IterationHistoryDropdown
             currentTask={currentTask}
-            iterationCount={iterationCount}
-            displayedIteration={displayedIteration}
-            isViewingLatest={isViewingLatest}
-            viewingIterationIndex={viewingIterationIndex}
-            iterationTaskInfos={iterationTaskInfos}
             iterations={iterations}
             isLoadingIterations={isLoadingIterations}
             issuePrefix={issuePrefix}
-            onIterationSelect={onIterationSelect}
             onIterationHistorySelect={onIterationHistorySelect}
-            onLatest={onLatest}
           />
         : currentTask ?
           <div
@@ -82,63 +48,16 @@ export function EventStreamIterationBar({
             : null}
             <span className="truncate">{currentTask.title}</span>
           </div>
-        : hasMultipleIterations ?
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs">
-              Iteration {displayedIteration} of {iterationCount}
-            </span>
-            {!isViewingLatest && (
-              <button
-                onClick={onLatest}
-                className="bg-repo-accent text-repo-accent-foreground rounded px-2 py-0.5 text-xs font-medium hover:opacity-90"
-              >
-                Latest
-              </button>
-            )}
-          </div>
         : <span className="text-muted-foreground text-xs">No active task</span>}
-
-        {/* Show Latest button when viewing past iteration and dropdown is shown */}
-        {showDropdown && !isViewingLatest && (
-          <button
-            onClick={onLatest}
-            className="bg-repo-accent text-repo-accent-foreground rounded px-2 py-0.5 text-xs font-medium hover:opacity-90"
-          >
-            Latest
-          </button>
-        )}
-      </div>
-
-      <div className="flex w-20 items-center justify-end">
-        {hasMultipleIterations && (
-          <button
-            onClick={onNext}
-            disabled={isViewingLatest}
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Next iteration"
-          >
-            <span className="hidden sm:inline">Next</span>
-            <IconChevronRight className="size-4" />
-          </button>
-        )}
       </div>
     </div>
   )
 }
 
 type Props = {
-  iterationCount: number
-  displayedIteration: number
-  isViewingLatest: boolean
-  viewingIterationIndex: number | null
   currentTask: { id: string | null; title: string } | null
-  iterationTaskInfos: IterationTaskInfo[]
   iterations: IterationSummary[]
   isLoadingIterations: boolean
   issuePrefix: string | null
-  onPrevious: () => void
-  onNext: () => void
-  onLatest: () => void
-  onIterationSelect: (index: number) => void
   onIterationHistorySelect: (id: string) => void
 }

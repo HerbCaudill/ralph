@@ -271,74 +271,9 @@ describe("EventStream", () => {
       expect(iterationBar).toHaveTextContent("Fix the bug")
     })
 
-    it("shows iteration navigation when multiple iterations exist", () => {
-      // Add two iteration boundaries (system init events)
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      renderEventStream()
-      expect(screen.getByLabelText("Previous iteration")).toBeInTheDocument()
-      expect(screen.getByLabelText("Next iteration")).toBeInTheDocument()
-    })
-
-    it("hides navigation buttons when only one iteration", () => {
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      renderEventStream()
-      expect(screen.queryByLabelText("Previous iteration")).not.toBeInTheDocument()
-      expect(screen.queryByLabelText("Next iteration")).not.toBeInTheDocument()
-    })
-
-    it("navigates to previous iteration when Previous button is clicked", () => {
-      // Add two iteration boundaries
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      renderEventStream()
-
-      // Click previous
-      fireEvent.click(screen.getByLabelText("Previous iteration"))
-
-      // Should show "Iteration 1 of 2"
-      expect(screen.getByText("Iteration 1 of 2")).toBeInTheDocument()
-    })
-
-    it("shows Latest button when viewing past iteration", () => {
-      // Add two iteration boundaries
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-
-      // Go to first iteration
-      useAppStore.getState().setViewingIterationIndex(0)
-
-      renderEventStream()
-      expect(screen.getByText("Latest")).toBeInTheDocument()
-    })
+    // Note: Iteration navigation buttons (previous/next/latest) have been removed.
+    // The iteration bar now only shows the current task and provides access to
+    // iteration history via a dropdown.
 
     it("displays current task instead of iteration info when task exists", () => {
       // Add two iterations
@@ -397,48 +332,8 @@ describe("EventStream", () => {
       )
     })
 
-    it("shows task from specific iteration when navigating to past iteration", () => {
-      // Add first iteration with task A
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600000500,
-        taskId: "rui-111",
-        taskTitle: "First task",
-      })
-
-      // Add second iteration with task B
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600001500,
-        taskId: "rui-222",
-        taskTitle: "Second task",
-      })
-
-      renderEventStream()
-
-      // Initially should show latest task in iteration bar
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-222")
-      expect(iterationBar).toHaveTextContent("Second task")
-
-      // Navigate to first iteration
-      fireEvent.click(screen.getByLabelText("Previous iteration"))
-
-      // Should now show first task in iteration bar
-      expect(iterationBar).toHaveTextContent("rui-111")
-      expect(iterationBar).toHaveTextContent("First task")
-      expect(iterationBar).not.toHaveTextContent("rui-222")
-    })
+    // Note: Navigation to past iterations is now done through the iteration history
+    // dropdown rather than Previous/Next buttons.
 
     it("shows task without ID when ralph_task_started event has only taskTitle", () => {
       // Add a ralph_task_started event with only taskTitle (no taskId)

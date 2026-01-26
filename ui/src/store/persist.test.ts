@@ -594,6 +594,7 @@ describe("persist", () => {
           showToolOutput: true,
           theme: "dark",
           closedTimeFilter: "past_week",
+          currentTaskChatSessionId: null,
           viewingIterationIndex: 3,
           taskSearchQuery: "test",
           selectedTaskId: "selected",

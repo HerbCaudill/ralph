@@ -31,23 +31,16 @@ const weekAgoStr = weekAgo.toISOString()
 describe("IterationHistoryDropdown", () => {
   const defaultProps = {
     currentTask: null,
-    iterationCount: 1,
-    displayedIteration: 1,
-    isViewingLatest: true,
-    viewingIterationIndex: null,
-    iterationTaskInfos: [],
     iterations: [] as IterationSummary[],
     isLoadingIterations: false,
     issuePrefix: null,
-    onIterationSelect: vi.fn(),
     onIterationHistorySelect: vi.fn(),
-    onLatest: vi.fn(),
   }
 
   describe("trigger display", () => {
-    it("shows iteration info when no task and single iteration", () => {
+    it("shows 'No active task' when no task", () => {
       render(<IterationHistoryDropdown {...defaultProps} />)
-      expect(screen.getByText("Iteration 1 of 1")).toBeInTheDocument()
+      expect(screen.getByText("No active task")).toBeInTheDocument()
     })
 
     it("shows task title when currentTask is provided", () => {
@@ -70,18 +63,6 @@ describe("IterationHistoryDropdown", () => {
       )
       expect(screen.getByText("Ad-hoc task")).toBeInTheDocument()
       expect(screen.queryByText("null")).not.toBeInTheDocument()
-    })
-
-    it("shows iteration info when no task but multiple iterations", () => {
-      render(
-        <IterationHistoryDropdown
-          {...defaultProps}
-          currentTask={null}
-          iterationCount={3}
-          displayedIteration={2}
-        />,
-      )
-      expect(screen.getByText("Iteration 2 of 3")).toBeInTheDocument()
     })
 
     it("strips issue prefix from task ID", () => {
@@ -117,29 +98,11 @@ describe("IterationHistoryDropdown", () => {
       expect(screen.getByText("Loading history...")).toBeInTheDocument()
     })
 
-    it("shows empty state when no iterations and single iteration", () => {
-      render(<IterationHistoryDropdown {...defaultProps} iterations={[]} iterationCount={1} />)
+    it("shows empty state when no iterations", () => {
+      render(<IterationHistoryDropdown {...defaultProps} iterations={[]} />)
 
       fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
       expect(screen.getByText("No iteration history yet.")).toBeInTheDocument()
-    })
-
-    it("shows current session iterations when multiple exist", () => {
-      render(
-        <IterationHistoryDropdown
-          {...defaultProps}
-          iterationCount={3}
-          displayedIteration={3}
-          isViewingLatest={true}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
-      expect(screen.getByText("Current Session")).toBeInTheDocument()
-      expect(screen.getByText("Iteration 1")).toBeInTheDocument()
-      expect(screen.getByText("Iteration 2")).toBeInTheDocument()
-      expect(screen.getByText("Iteration 3")).toBeInTheDocument()
-      expect(screen.getByText("Latest")).toBeInTheDocument()
     })
 
     it("groups event logs by date", () => {
@@ -175,40 +138,6 @@ describe("IterationHistoryDropdown", () => {
   })
 
   describe("interactions", () => {
-    it("calls onIterationSelect when clicking a current session iteration", () => {
-      const onIterationSelect = vi.fn()
-      render(
-        <IterationHistoryDropdown
-          {...defaultProps}
-          iterationCount={3}
-          onIterationSelect={onIterationSelect}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
-      fireEvent.click(screen.getByText("Iteration 1"))
-
-      expect(onIterationSelect).toHaveBeenCalledWith(0)
-    })
-
-    it("calls onLatest when clicking the latest iteration", () => {
-      const onLatest = vi.fn()
-      render(
-        <IterationHistoryDropdown
-          {...defaultProps}
-          iterationCount={3}
-          viewingIterationIndex={0}
-          isViewingLatest={false}
-          onLatest={onLatest}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
-      fireEvent.click(screen.getByText("Iteration 3"))
-
-      expect(onLatest).toHaveBeenCalled()
-    })
-
     it("calls onIterationHistorySelect when clicking a past iteration", () => {
       const onIterationHistorySelect = vi.fn()
       render(

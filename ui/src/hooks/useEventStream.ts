@@ -11,9 +11,6 @@ import {
   selectInstance,
   selectIssuePrefix,
   getEventsForIteration,
-  countIterations,
-  getIterationTaskInfos,
-  type IterationTaskInfo,
 } from "@/store"
 import { useIterations, useEventLogRouter } from "@/hooks"
 import type { IterationSummary } from "@/hooks"
@@ -25,10 +22,6 @@ export interface IterationTask {
 }
 
 export interface IterationNavigationActions {
-  goToPrevious: () => void
-  goToNext: () => void
-  goToLatest: () => void
-  selectIteration: (index: number) => void
   selectIterationHistory: (id: string) => void
 }
 
@@ -44,20 +37,12 @@ export interface UseEventStreamResult {
   iterationEvents: ChatEvent[]
   /** Ralph status (running, stopped, etc.) */
   ralphStatus: RalphStatus
-  /** Current iteration index being viewed (null = latest) */
-  viewingIterationIndex: number | null
   /** Whether viewing the latest iteration */
   isViewingLatest: boolean
   /** Whether Ralph is currently running */
   isRunning: boolean
-  /** Total number of iterations */
-  iterationCount: number
-  /** Displayed iteration number (1-based) */
-  displayedIteration: number
   /** Current task for the iteration */
   iterationTask: IterationTask | null
-  /** Task info for all iterations (indexed by iteration) */
-  iterationTaskInfos: IterationTaskInfo[]
   /** Past iterations for history dropdown */
   iterations: IterationSummary[]
   /** Whether iterations are loading */
@@ -85,10 +70,6 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     instanceId ? selectInstanceStatus(state, instanceId) : selectRalphStatus(state),
   )
   const viewingIterationIndex = useAppStore(selectViewingIterationIndex)
-  const setViewingIterationIndex = useAppStore(state => state.setViewingIterationIndex)
-  const goToPreviousIteration = useAppStore(state => state.goToPreviousIteration)
-  const goToNextIteration = useAppStore(state => state.goToNextIteration)
-  const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
   const tasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
 
@@ -108,13 +89,11 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const { iterations, isLoading: isLoadingIterations } = useIterations()
   const { navigateToEventLog } = useEventLogRouter()
 
-  // Iteration data
-  const iterationCount = useMemo(() => countIterations(allEvents), [allEvents])
+  // Iteration data - all events when viewing latest
   const iterationEvents = useMemo(
     () => getEventsForIteration(allEvents, viewingIterationIndex),
     [allEvents, viewingIterationIndex],
   )
-  const iterationTaskInfos = useMemo(() => getIterationTaskInfos(allEvents), [allEvents])
 
   // Determine the current task for the iteration
   const iterationTask = useMemo((): IterationTask | null => {
@@ -166,17 +145,6 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     }
   }, [viewingIterationIndex, isViewingLatest])
 
-  const displayedIteration =
-    viewingIterationIndex !== null ? viewingIterationIndex + 1 : iterationCount
-
-  // Navigation callbacks
-  const handleIterationSelect = useCallback(
-    (index: number) => {
-      setViewingIterationIndex(index)
-    },
-    [setViewingIterationIndex],
-  )
-
   const handleIterationHistorySelect = useCallback(
     (id: string) => {
       navigateToEventLog(id)
@@ -186,31 +154,17 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
 
   const navigation: IterationNavigationActions = useMemo(
     () => ({
-      goToPrevious: goToPreviousIteration,
-      goToNext: goToNextIteration,
-      goToLatest: goToLatestIteration,
-      selectIteration: handleIterationSelect,
       selectIterationHistory: handleIterationHistorySelect,
     }),
-    [
-      goToPreviousIteration,
-      goToNextIteration,
-      goToLatestIteration,
-      handleIterationSelect,
-      handleIterationHistorySelect,
-    ],
+    [handleIterationHistorySelect],
   )
 
   return {
     iterationEvents,
     ralphStatus,
-    viewingIterationIndex,
     isViewingLatest,
     isRunning,
-    iterationCount,
-    displayedIteration,
     iterationTask,
-    iterationTaskInfos,
     iterations,
     isLoadingIterations,
     issuePrefix,

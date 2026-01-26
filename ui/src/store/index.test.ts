@@ -67,6 +67,7 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
     showToolOutput: false,
     theme: "system",
     closedTimeFilter: "past_day",
+    currentTaskChatSessionId: null,
     viewingIterationIndex: null,
     taskSearchQuery: "",
     selectedTaskId: null,

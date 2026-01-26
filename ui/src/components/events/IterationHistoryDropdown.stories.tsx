@@ -41,17 +41,10 @@ const meta: Meta<typeof IterationHistoryDropdown> = {
   ],
   args: {
     currentTask: null,
-    iterationCount: 0,
-    displayedIteration: 0,
-    isViewingLatest: true,
-    viewingIterationIndex: null,
-    iterationTaskInfos: [],
     iterations: [],
     isLoadingIterations: false,
     issuePrefix: "PROJ-",
-    onIterationSelect: fn(),
     onIterationHistorySelect: fn(),
-    onLatest: fn(),
   },
 }
 
@@ -61,9 +54,6 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   args: {
     currentTask: { id: "PROJ-123", title: "Fix authentication bug" },
-    iterationCount: 3,
-    displayedIteration: 3,
-    isViewingLatest: true,
     iterations: [
       createIteration("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
       createIteration("log-2", "PROJ-119", "Previous task B", yesterday, 32),
@@ -75,9 +65,6 @@ export const Default: Story = {
 export const NoCurrentTask: Story = {
   args: {
     currentTask: null,
-    iterationCount: 0,
-    displayedIteration: 0,
-    isViewingLatest: true,
     iterations: [
       createIteration("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
       createIteration("log-2", "PROJ-119", "Previous task B", yesterday, 32),
@@ -85,57 +72,16 @@ export const NoCurrentTask: Story = {
   },
 }
 
-export const SingleIteration: Story = {
+export const WithCurrentTaskOnly: Story = {
   args: {
     currentTask: { id: "PROJ-123", title: "Fix authentication bug" },
-    iterationCount: 1,
-    displayedIteration: 1,
-    isViewingLatest: true,
     iterations: [],
   },
 }
 
-export const MultipleIterations: Story = {
+export const LoadingIterations: Story = {
   args: {
     currentTask: { id: "PROJ-123", title: "Fix authentication bug" },
-    iterationCount: 5,
-    displayedIteration: 5,
-    isViewingLatest: true,
-    iterationTaskInfos: [
-      { id: "PROJ-100", title: "Initial task setup" },
-      { id: "PROJ-110", title: "Add user model" },
-      { id: "PROJ-115", title: "Implement login endpoint" },
-      { id: "PROJ-120", title: "Add session handling" },
-      { id: "PROJ-123", title: "Fix authentication bug" },
-    ],
-    iterations: [],
-  },
-}
-
-export const ViewingOlderIteration: Story = {
-  args: {
-    currentTask: { id: "PROJ-123", title: "Fix authentication bug" },
-    iterationCount: 5,
-    displayedIteration: 3,
-    isViewingLatest: false,
-    viewingIterationIndex: 2,
-    iterationTaskInfos: [
-      { id: "PROJ-100", title: "Initial task setup" },
-      { id: "PROJ-110", title: "Add user model" },
-      { id: "PROJ-115", title: "Implement login endpoint" },
-      { id: "PROJ-120", title: "Add session handling" },
-      { id: "PROJ-123", title: "Fix authentication bug" },
-    ],
-    iterations: [],
-  },
-}
-
-export const LoadingEventLogs: Story = {
-  args: {
-    currentTask: { id: "PROJ-123", title: "Fix authentication bug" },
-    iterationCount: 2,
-    displayedIteration: 2,
-    isViewingLatest: true,
     isLoadingIterations: true,
     iterations: [],
   },
@@ -144,20 +90,14 @@ export const LoadingEventLogs: Story = {
 export const EmptyHistory: Story = {
   args: {
     currentTask: null,
-    iterationCount: 0,
-    displayedIteration: 0,
-    isViewingLatest: true,
     iterations: [],
     isLoadingIterations: false,
   },
 }
 
-export const ManyEventLogs: Story = {
+export const ManyIterations: Story = {
   args: {
     currentTask: { id: "PROJ-123", title: "Current task" },
-    iterationCount: 2,
-    displayedIteration: 2,
-    isViewingLatest: true,
     iterations: [
       // Today
       createIteration("today-1", "PROJ-120", "Task from today", oneHourAgo, 45),
@@ -185,9 +125,6 @@ export const WithLongTaskTitles: Story = {
       title:
         "This is a very long task title that should truncate properly in the dropdown trigger and menu",
     },
-    iterationCount: 2,
-    displayedIteration: 2,
-    isViewingLatest: true,
     iterations: [
       createIteration(
         "log-1",
@@ -203,19 +140,13 @@ export const WithLongTaskTitles: Story = {
 export const TaskWithoutId: Story = {
   args: {
     currentTask: { id: null, title: "Untitled task" },
-    iterationCount: 2,
-    displayedIteration: 2,
-    isViewingLatest: true,
     iterations: [],
   },
 }
 
-export const EventLogsWithoutTaskInfo: Story = {
+export const IterationsWithoutTaskInfo: Story = {
   args: {
     currentTask: null,
-    iterationCount: 0,
-    displayedIteration: 0,
-    isViewingLatest: true,
     iterations: [
       createIteration("log-1", null, null, oneHourAgo, 45),
       createIteration("log-2", "PROJ-119", null, yesterday, 32),
@@ -227,26 +158,9 @@ export const EventLogsWithoutTaskInfo: Story = {
 export const NoIssuePrefix: Story = {
   args: {
     currentTask: { id: "fix-auth-bug", title: "Fix authentication bug" },
-    iterationCount: 2,
-    displayedIteration: 2,
-    isViewingLatest: true,
     issuePrefix: null,
     iterations: [
       createIteration("log-1", "add-dark-mode", "Add dark mode support", oneHourAgo, 45),
-    ],
-  },
-}
-
-export const BothCurrentAndPastIterations: Story = {
-  args: {
-    currentTask: { id: "PROJ-123", title: "Current feature work" },
-    iterationCount: 4,
-    displayedIteration: 4,
-    isViewingLatest: true,
-    iterations: [
-      createIteration("log-1", "PROJ-122", "Yesterday's bug fix", yesterday, 38),
-      createIteration("log-2", "PROJ-121", "Previous feature", twoDaysAgo, 52),
-      createIteration("log-3", "PROJ-120", "Refactoring work", threeDaysAgo, 25),
     ],
   },
 }

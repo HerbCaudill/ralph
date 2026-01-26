@@ -1,4 +1,4 @@
-import { renderHook, act } from "@testing-library/react"
+import { renderHook } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { useEventStream } from "./useEventStream"
 import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
@@ -54,7 +54,7 @@ describe("useEventStream", () => {
       expect(result.current.isRunning).toBe(true)
     })
 
-    it("returns viewing iteration index", () => {
+    it("returns isViewingLatest state", () => {
       // Add two iterations
       useAppStore.getState().addEvent({
         type: "system",
@@ -69,31 +69,7 @@ describe("useEventStream", () => {
 
       const { result } = renderHook(() => useEventStream())
 
-      expect(result.current.viewingIterationIndex).toBe(null)
       expect(result.current.isViewingLatest).toBe(true)
-    })
-
-    it("returns iteration count", () => {
-      // Add three iterations
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600002000,
-        subtype: "init",
-      })
-
-      const { result } = renderHook(() => useEventStream())
-
-      expect(result.current.iterationCount).toBe(3)
     })
 
     it("returns issue prefix from store", () => {
@@ -244,78 +220,12 @@ describe("useEventStream", () => {
   })
 
   describe("navigation actions", () => {
-    it("provides goToPrevious action", () => {
-      // Add two iterations
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-
+    it("provides selectIterationHistory action", () => {
       const { result } = renderHook(() => useEventStream())
 
-      act(() => {
-        result.current.navigation.goToPrevious()
-      })
-
-      expect(result.current.viewingIterationIndex).toBe(0)
-      expect(result.current.isViewingLatest).toBe(false)
-    })
-
-    it("provides goToLatest action", () => {
-      // Add two iterations and go to first
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      useAppStore.getState().setViewingIterationIndex(0)
-
-      const { result } = renderHook(() => useEventStream())
-
-      act(() => {
-        result.current.navigation.goToLatest()
-      })
-
-      expect(result.current.viewingIterationIndex).toBe(null)
-      expect(result.current.isViewingLatest).toBe(true)
-    })
-
-    it("provides selectIteration action", () => {
-      // Add three iterations
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600002000,
-        subtype: "init",
-      })
-
-      const { result } = renderHook(() => useEventStream())
-
-      act(() => {
-        result.current.navigation.selectIteration(1)
-      })
-
-      expect(result.current.viewingIterationIndex).toBe(1)
+      // The navigation object should have selectIterationHistory
+      expect(result.current.navigation.selectIterationHistory).toBeDefined()
+      expect(typeof result.current.navigation.selectIterationHistory).toBe("function")
     })
   })
 
@@ -367,43 +277,6 @@ describe("useEventStream", () => {
       // Should show running status
       expect(result.current.ralphStatus).toBe("running")
       expect(result.current.isRunning).toBe(true)
-    })
-  })
-
-  describe("displayed iteration", () => {
-    it("shows iteration count when viewing latest", () => {
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-
-      const { result } = renderHook(() => useEventStream())
-
-      expect(result.current.displayedIteration).toBe(2)
-    })
-
-    it("shows 1-based index when viewing specific iteration", () => {
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      useAppStore.getState().setViewingIterationIndex(0)
-
-      const { result } = renderHook(() => useEventStream())
-
-      expect(result.current.displayedIteration).toBe(1)
     })
   })
 

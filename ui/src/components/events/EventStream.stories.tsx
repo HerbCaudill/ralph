@@ -21,21 +21,13 @@ type Story = StoryObj<typeof meta>
 /** Default props for stories */
 const defaultProps: Partial<EventStreamViewProps> = {
   ralphStatus: "stopped",
-  viewingIterationIndex: null,
   isViewingLatest: true,
   isRunning: false,
-  iterationCount: 1,
-  displayedIteration: 1,
   iterationTask: null,
-  iterationTaskInfos: [],
   iterations: [],
   isLoadingIterations: false,
   issuePrefix: "r-",
   navigation: {
-    goToPrevious: () => {},
-    goToNext: () => {},
-    goToLatest: () => {},
-    selectIteration: () => {},
     selectIterationHistory: () => {},
   },
 }
@@ -595,27 +587,20 @@ export const Running: Story = {
   },
 }
 
-export const WithMultipleIterations: Story = {
+export const WithCurrentTask: Story = {
   args: {
     ...defaultProps,
     iterationEvents: [
       {
         type: "user_message",
         timestamp: Date.now() - 5000,
-        message: "Working on second iteration",
+        message: "Working on the task",
       },
     ],
-    iterationCount: 3,
-    displayedIteration: 3,
     iterationTask: {
       id: "r-abc1",
       title: "Implement dark mode toggle",
     },
-    iterationTaskInfos: [
-      { id: "r-xyz1", title: "Initial setup" },
-      { id: "r-xyz2", title: "Add theme provider" },
-      { id: "r-abc1", title: "Implement dark mode toggle" },
-    ],
   },
 }
 
@@ -629,18 +614,10 @@ export const ViewingPastIteration: Story = {
         message: "First iteration work",
       },
     ],
-    iterationCount: 3,
-    displayedIteration: 1,
-    viewingIterationIndex: 0,
     isViewingLatest: false,
     iterationTask: {
       id: "r-xyz2",
       title: "Fix authentication bug",
     },
-    iterationTaskInfos: [
-      { id: "r-xyz2", title: "Fix authentication bug" },
-      { id: "r-xyz3", title: "Add logout button" },
-      { id: "r-xyz4", title: "Session management" },
-    ],
   },
 }

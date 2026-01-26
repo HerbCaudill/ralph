@@ -7,31 +7,22 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { formatEventLogTime } from "@/lib/formatEventLogDate"
 import type { IterationSummary } from "@/hooks"
-import type { IterationTaskInfo } from "@/store"
 
 /**
- * Dropdown for selecting iterations - both current session iterations and past iterations.
- * Shows current task/iteration info as the trigger, with a searchable list of past iterations.
+ * Dropdown for selecting iterations from persisted history.
+ * Shows current task info as the trigger, with a searchable list of past iterations.
  */
 export function IterationHistoryDropdown({
   currentTask,
-  iterationCount,
-  displayedIteration,
-  isViewingLatest,
-  viewingIterationIndex,
-  iterationTaskInfos,
   iterations,
   isLoadingIterations,
   issuePrefix,
-  onIterationSelect,
   onIterationHistorySelect,
-  onLatest,
 }: IterationHistoryDropdownProps) {
   const [open, setOpen] = useState(false)
 
@@ -72,14 +63,6 @@ export function IterationHistoryDropdown({
     return Array.from(groups.entries()).map(([dateLabel, logs]) => ({ dateLabel, logs }))
   }, [iterations])
 
-  const handleIterationSelect = useCallback(
-    (index: number) => {
-      onIterationSelect(index)
-      setOpen(false)
-    },
-    [onIterationSelect],
-  )
-
   const handleIterationHistorySelect = useCallback(
     (id: string) => {
       onIterationHistorySelect(id)
@@ -87,11 +70,6 @@ export function IterationHistoryDropdown({
     },
     [onIterationHistorySelect],
   )
-
-  const handleLatest = useCallback(() => {
-    onLatest()
-    setOpen(false)
-  }, [onLatest])
 
   // Build the trigger label
   const triggerLabel = useMemo(() => {
@@ -101,33 +79,11 @@ export function IterationHistoryDropdown({
         title: currentTask.title,
       }
     }
-    if (iterationCount > 0) {
-      return {
-        id: null,
-        title: `Iteration ${displayedIteration} of ${iterationCount}`,
-      }
-    }
     return {
       id: null,
       title: "No active task",
     }
-  }, [currentTask, iterationCount, displayedIteration])
-
-  // Build current session iteration items (only show if more than 1)
-  const currentSessionItems = useMemo(() => {
-    if (iterationCount <= 1) return []
-    return Array.from({ length: iterationCount }, (_, i) => {
-      const taskInfo = iterationTaskInfos[i]
-      return {
-        index: i,
-        label: `Iteration ${i + 1}`,
-        taskId: taskInfo?.id ?? null,
-        taskTitle: taskInfo?.title ?? null,
-        isLatest: i === iterationCount - 1,
-        isSelected: isViewingLatest ? i === iterationCount - 1 : viewingIterationIndex === i,
-      }
-    })
-  }, [iterationCount, isViewingLatest, viewingIterationIndex, iterationTaskInfos])
+  }, [currentTask])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -156,44 +112,7 @@ export function IterationHistoryDropdown({
           <CommandList>
             <CommandEmpty>No iterations found.</CommandEmpty>
 
-            {/* Current session iterations */}
-            {currentSessionItems.length > 0 && (
-              <CommandGroup heading="Current Session">
-                {currentSessionItems.map(item => (
-                  <CommandItem
-                    key={`iteration-${item.index}`}
-                    value={`${item.label} ${item.taskId || ""} ${item.taskTitle || ""}`}
-                    onSelect={() =>
-                      item.isLatest ? handleLatest() : handleIterationSelect(item.index)
-                    }
-                    className={cn(item.isSelected && "bg-repo-accent", "flex items-center gap-2")}
-                  >
-                    <IconHistory className="text-muted-foreground size-4 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-muted-foreground shrink-0 text-xs">{item.label}</span>
-                        {item.taskId && (
-                          <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                            {stripTaskPrefix(item.taskId, issuePrefix)}
-                          </span>
-                        )}
-                      </div>
-                      {item.taskTitle && <div className="truncate text-sm">{item.taskTitle}</div>}
-                    </div>
-                    {item.isLatest && (
-                      <span className="bg-repo-accent text-repo-accent-foreground shrink-0 rounded px-1.5 py-0.5 text-xs">
-                        Latest
-                      </span>
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-
-            {/* Separator if we have both current and past iterations */}
-            {currentSessionItems.length > 0 && groupedIterations.length > 0 && <CommandSeparator />}
-
-            {/* Past iterations grouped by date */}
+            {/* Iterations grouped by date */}
             {isLoadingIterations ?
               <div className="text-muted-foreground flex items-center justify-center py-4 text-sm">
                 Loading history...
@@ -235,11 +154,10 @@ export function IterationHistoryDropdown({
                   ))}
                 </CommandGroup>
               ))
-            : !isLoadingIterations && currentSessionItems.length === 0 ?
-              <div className="text-muted-foreground py-4 text-center text-sm">
+            : <div className="text-muted-foreground py-4 text-center text-sm">
                 No iteration history yet.
               </div>
-            : null}
+            }
           </CommandList>
         </Command>
       </PopoverContent>
@@ -250,26 +168,12 @@ export function IterationHistoryDropdown({
 export interface IterationHistoryDropdownProps {
   /** Current task info (from iteration events) */
   currentTask: { id: string | null; title: string } | null
-  /** Number of iterations in current session */
-  iterationCount: number
-  /** Currently displayed iteration number (1-indexed) */
-  displayedIteration: number
-  /** Whether viewing the latest iteration */
-  isViewingLatest: boolean
-  /** Currently viewing iteration index (null if viewing latest) */
-  viewingIterationIndex: number | null
-  /** Task info for all iterations (indexed by iteration) */
-  iterationTaskInfos: IterationTaskInfo[]
   /** List of past iteration summaries */
   iterations: IterationSummary[]
   /** Whether iterations are loading */
   isLoadingIterations: boolean
   /** Issue prefix for stripping from task IDs */
   issuePrefix: string | null
-  /** Callback when selecting a current session iteration */
-  onIterationSelect: (index: number) => void
   /** Callback when selecting a past iteration from history */
   onIterationHistorySelect: (id: string) => void
-  /** Callback to go to latest iteration */
-  onLatest: () => void
 }

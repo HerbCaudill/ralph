@@ -6,7 +6,6 @@ import { EventList, useEventListState } from "./EventList"
 import { EventStreamIterationBar } from "./EventStreamIterationBar"
 import type { IterationSummary } from "@/hooks"
 import type { IterationTask, IterationNavigationActions } from "@/hooks/useEventStream"
-import type { IterationTaskInfo } from "@/store"
 import type { ChatEvent, RalphStatus } from "@/types"
 
 /**
@@ -22,20 +21,12 @@ export interface EventStreamViewProps {
   iterationEvents: ChatEvent[]
   /** Ralph status (running, stopped, etc.) */
   ralphStatus: RalphStatus
-  /** Current iteration index being viewed (null = latest) */
-  viewingIterationIndex: number | null
   /** Whether viewing the latest iteration */
   isViewingLatest: boolean
   /** Whether Ralph is currently running */
   isRunning: boolean
-  /** Total number of iterations */
-  iterationCount: number
-  /** Displayed iteration number (1-based) */
-  displayedIteration: number
   /** Current task for the iteration */
   iterationTask: IterationTask | null
-  /** Task info for all iterations (indexed by iteration) */
-  iterationTaskInfos: IterationTaskInfo[]
   /** Past iterations for history dropdown */
   iterations: IterationSummary[]
   /** Whether iterations are loading */
@@ -62,13 +53,9 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       iterationEvents,
       // ralphStatus is passed for potential future use but currently derived values (isRunning) are used
       ralphStatus: _ralphStatus,
-      viewingIterationIndex,
       isViewingLatest,
       isRunning,
-      iterationCount,
-      displayedIteration,
       iterationTask,
-      iterationTaskInfos,
       iterations,
       isLoadingIterations,
       issuePrefix,
@@ -115,19 +102,10 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
     return (
       <div ref={ref} className={cn("relative flex h-full flex-col", className)}>
         <EventStreamIterationBar
-          iterationCount={iterationCount}
-          displayedIteration={displayedIteration}
-          isViewingLatest={isViewingLatest}
-          viewingIterationIndex={viewingIterationIndex}
           currentTask={iterationTask}
-          iterationTaskInfos={iterationTaskInfos}
           iterations={iterations}
           isLoadingIterations={isLoadingIterations}
           issuePrefix={issuePrefix}
-          onPrevious={navigation.goToPrevious}
-          onNext={navigation.goToNext}
-          onLatest={navigation.goToLatest}
-          onIterationSelect={navigation.selectIteration}
           onIterationHistorySelect={navigation.selectIterationHistory}
         />
 

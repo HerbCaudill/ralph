@@ -14,13 +14,9 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
   const {
     iterationEvents,
     ralphStatus,
-    viewingIterationIndex,
     isViewingLatest,
     isRunning,
-    iterationCount,
-    displayedIteration,
     iterationTask,
-    iterationTaskInfos,
     iterations,
     isLoadingIterations,
     issuePrefix,
@@ -35,13 +31,9 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       maxEvents={maxEvents}
       iterationEvents={iterationEvents}
       ralphStatus={ralphStatus}
-      viewingIterationIndex={viewingIterationIndex}
       isViewingLatest={isViewingLatest}
       isRunning={isRunning}
-      iterationCount={iterationCount}
-      displayedIteration={displayedIteration}
       iterationTask={iterationTask}
-      iterationTaskInfos={iterationTaskInfos}
       iterations={iterations}
       isLoadingIterations={isLoadingIterations}
       issuePrefix={issuePrefix}
