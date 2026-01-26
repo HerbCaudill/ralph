@@ -49,6 +49,7 @@ function serializeInstanceState(
     name: state.name,
     agentName: state.agentName,
     worktreePath: state.worktreePath,
+    workspaceId: state.workspaceId,
     branch: state.branch,
     createdAt: state.createdAt,
     currentTaskId: state.currentTaskId,
@@ -298,6 +299,7 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
         name: name.trim(),
         agentName: agentName?.trim() || name.trim(),
         worktreePath: worktreePath ?? null,
+        workspaceId: null,
         branch: branch ?? null,
       })
       res.status(201).json({ ok: true, instance: serializeInstanceState(instance) })
@@ -391,6 +393,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
       registry.create({
@@ -398,6 +401,7 @@ describe("Instance API endpoints", () => {
         name: "Test 2",
         agentName: "Agent-2",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -427,6 +431,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: "/path/to/worktree",
+        workspaceId: "workspace-1",
         branch: "feature-branch",
       })
 
@@ -459,6 +464,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -489,6 +495,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -509,6 +516,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -529,6 +537,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
       await state.manager.start()
@@ -563,6 +572,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
       await state.manager.start()
@@ -583,6 +593,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -615,6 +626,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
       await state.manager.start()
@@ -648,6 +660,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
       await state.manager.start()
@@ -685,6 +698,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
       await state.manager.start()
@@ -706,6 +720,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -726,6 +741,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
       await state.manager.start()
@@ -757,6 +773,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -785,6 +802,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -813,6 +831,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -899,6 +918,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -934,6 +954,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -953,6 +974,7 @@ describe("Instance API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
       await state.manager.start()

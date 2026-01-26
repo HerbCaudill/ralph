@@ -37,6 +37,9 @@ export interface RalphInstanceState {
   /** Path to the git worktree (null for main workspace) */
   worktreePath: string | null
 
+  /** Workspace ID for cross-workspace event correlation (null for main workspace) */
+  workspaceId: string | null
+
   /** Git branch name for this instance */
   branch: string | null
 
@@ -66,6 +69,9 @@ export interface CreateInstanceOptions {
 
   /** Path to the git worktree (null for main workspace) */
   worktreePath: string | null
+
+  /** Workspace ID for cross-workspace event correlation (null for main workspace) */
+  workspaceId: string | null
 
   /** Git branch name for this instance */
   branch: string | null
@@ -407,6 +413,7 @@ export class RalphRegistry extends EventEmitter {
       agentName: options.agentName,
       manager,
       worktreePath: options.worktreePath,
+      workspaceId: options.workspaceId,
       branch: options.branch,
       createdAt: Date.now(),
       currentTaskId: null,

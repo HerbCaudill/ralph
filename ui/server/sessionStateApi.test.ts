@@ -214,6 +214,7 @@ describe("Session State API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -230,6 +231,7 @@ describe("Session State API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -283,6 +285,7 @@ describe("Session State API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -302,6 +305,7 @@ describe("Session State API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -352,6 +356,7 @@ describe("Session State API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -403,6 +408,7 @@ describe("Session State API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 
@@ -421,6 +427,7 @@ describe("Session State API endpoints", () => {
         name: "Test 1",
         agentName: "Agent-1",
         worktreePath: null,
+        workspaceId: null,
         branch: null,
       })
 

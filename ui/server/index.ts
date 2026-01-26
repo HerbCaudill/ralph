@@ -613,11 +613,12 @@ function createApp(
   // Create a new instance
   app.post("/api/instances", async (req: Request, res: Response) => {
     try {
-      const { id, name, agentName, worktreePath, branch } = req.body as {
+      const { id, name, agentName, worktreePath, workspaceId, branch } = req.body as {
         id?: string
         name?: string
         agentName?: string
         worktreePath?: string | null
+        workspaceId?: string | null
         branch?: string | null
       }
 
@@ -643,6 +644,7 @@ function createApp(
         name: name.trim(),
         agentName: agentName?.trim() || name.trim(),
         worktreePath: worktreePath ?? null,
+        workspaceId: workspaceId ?? null,
         branch: branch ?? null,
       }
 
@@ -1649,10 +1651,15 @@ function wireRegistryEvents(
         // After adding an event, it's at index length - 1
         const eventIndex = eventHistory.length - 1
 
+        // Get workspaceId from registry instance state
+        const instance = registry.get(instanceId)
+        const workspaceId = instance?.workspaceId ?? null
+
         // Broadcast and update per-client tracking
         const payload = JSON.stringify({
           type: "ralph:event",
           instanceId,
+          workspaceId,
           event,
           eventIndex,
           timestamp: Date.now(),
@@ -1668,9 +1675,12 @@ function wireRegistryEvents(
       }
       case "ralph:status": {
         const status = args[0] as RalphStatus
+        const statusInstance = registry.get(instanceId)
+        const statusWorkspaceId = statusInstance?.workspaceId ?? null
         broadcast({
           type: "ralph:status",
           instanceId,
+          workspaceId: statusWorkspaceId,
           status,
           timestamp: Date.now(),
         })
@@ -1678,9 +1688,12 @@ function wireRegistryEvents(
       }
       case "ralph:output": {
         const line = args[0] as string
+        const outputInstance = registry.get(instanceId)
+        const outputWorkspaceId = outputInstance?.workspaceId ?? null
         broadcast({
           type: "ralph:output",
           instanceId,
+          workspaceId: outputWorkspaceId,
           line,
           timestamp: Date.now(),
         })
@@ -1688,9 +1701,12 @@ function wireRegistryEvents(
       }
       case "ralph:error": {
         const error = args[0] as Error
+        const errorInstance = registry.get(instanceId)
+        const errorWorkspaceId = errorInstance?.workspaceId ?? null
         broadcast({
           type: "ralph:error",
           instanceId,
+          workspaceId: errorWorkspaceId,
           error: error.message,
           timestamp: Date.now(),
         })
@@ -1698,9 +1714,12 @@ function wireRegistryEvents(
       }
       case "ralph:exit": {
         const info = args[0] as { code: number | null; signal: string | null }
+        const exitInstance = registry.get(instanceId)
+        const exitWorkspaceId = exitInstance?.workspaceId ?? null
         broadcast({
           type: "ralph:exit",
           instanceId,
+          workspaceId: exitWorkspaceId,
           code: info.code,
           signal: info.signal,
           timestamp: Date.now(),
@@ -1714,12 +1733,14 @@ function wireRegistryEvents(
     broadcast({
       type: "instance:created",
       instanceId,
+      workspaceId: state.workspaceId,
       instance: serializeInstanceState(state),
       timestamp: Date.now(),
     })
   })
 
   registry.on("instance:disposed", (instanceId: string) => {
+    // Note: instance may already be disposed, so we can't look up workspaceId
     broadcast({
       type: "instance:disposed",
       instanceId,
@@ -1733,9 +1754,12 @@ function wireRegistryEvents(
       instanceId: string,
       conflict: { files: string[]; sourceBranch: string; timestamp: number } | null,
     ) => {
+      const conflictInstance = registry.get(instanceId)
+      const conflictWorkspaceId = conflictInstance?.workspaceId ?? null
       broadcast({
         type: "instance:merge_conflict",
         instanceId,
+        workspaceId: conflictWorkspaceId,
         conflict,
         timestamp: Date.now(),
       })
@@ -1756,6 +1780,7 @@ function serializeInstanceState(
     name: state.name,
     agentName: state.agentName,
     worktreePath: state.worktreePath,
+    workspaceId: state.workspaceId,
     branch: state.branch,
     createdAt: state.createdAt,
     currentTaskId: state.currentTaskId,
@@ -1819,6 +1844,8 @@ function wireContextManagerEvents(
     // Use "default" instanceId for the legacy WorkspaceContextManager path
     // This matches the DEFAULT_INSTANCE_ID in the frontend store
     const instanceId = "default"
+    // Legacy path uses the main workspace, so workspaceId is null
+    const workspaceId = null
 
     switch (eventType) {
       case "ralph:event": {
@@ -1826,6 +1853,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "ralph:event",
           instanceId,
+          workspaceId,
           event,
           timestamp: Date.now(),
         })
@@ -1836,6 +1864,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "ralph:status",
           instanceId,
+          workspaceId,
           status,
           timestamp: Date.now(),
         })
@@ -1846,6 +1875,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "ralph:output",
           instanceId,
+          workspaceId,
           line,
           timestamp: Date.now(),
         })
@@ -1856,6 +1886,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "ralph:error",
           instanceId,
+          workspaceId,
           error: error.message,
           timestamp: Date.now(),
         })
@@ -1866,6 +1897,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "ralph:exit",
           instanceId,
+          workspaceId,
           code: info.code,
           signal: info.signal,
           timestamp: Date.now(),
@@ -1877,6 +1909,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "task-chat:message",
           instanceId,
+          workspaceId,
           message,
           timestamp: Date.now(),
         })
@@ -1887,6 +1920,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "task-chat:chunk",
           instanceId,
+          workspaceId,
           text,
           timestamp: Date.now(),
         })
@@ -1897,6 +1931,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "task-chat:status",
           instanceId,
+          workspaceId,
           status,
           timestamp: Date.now(),
         })
@@ -1907,6 +1942,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "task-chat:error",
           instanceId,
+          workspaceId,
           error: error.message,
           timestamp: Date.now(),
         })
@@ -1917,6 +1953,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "task-chat:tool_use",
           instanceId,
+          workspaceId,
           toolUse,
           timestamp: Date.now(),
         })
@@ -1927,6 +1964,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "task-chat:tool_update",
           instanceId,
+          workspaceId,
           toolUse,
           timestamp: Date.now(),
         })
@@ -1937,6 +1975,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "task-chat:tool_result",
           instanceId,
+          workspaceId,
           toolUse,
           timestamp: Date.now(),
         })
@@ -1948,6 +1987,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "task-chat:event",
           instanceId,
+          workspaceId,
           event,
           timestamp: Date.now(),
         })
@@ -1959,6 +1999,7 @@ function wireContextManagerEvents(
         broadcast({
           type: "mutation:event",
           instanceId,
+          workspaceId,
           event: mutationEvent,
           timestamp: Date.now(),
         })
@@ -2241,6 +2282,7 @@ export async function startServer(
       name: DEFAULT_INSTANCE_NAME,
       agentName: DEFAULT_AGENT_NAME,
       worktreePath: null,
+      workspaceId: null, // Main workspace has no workspaceId
       branch: null,
       managerOptions: {
         command: configuredRalphCommand,

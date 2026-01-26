@@ -86,6 +86,7 @@ describe("RalphRegistry", () => {
     name: "Test Instance",
     agentName: "Ralph-1",
     worktreePath: null,
+    workspaceId: null,
     branch: "main",
     ...overrides,
   })
