@@ -219,7 +219,7 @@ export class TaskChatManager extends EventEmitter {
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           includePartialMessages: true, // Enable streaming
-          maxTurns: 15, // Reasonable limit for task management operations
+          maxTurns: 100, // High limit to allow complex investigations
           abortController: this.abortController,
           pathToClaudeCodeExecutable: this.options.pathToClaudeCodeExecutable,
         },
