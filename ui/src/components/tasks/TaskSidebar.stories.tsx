@@ -17,7 +17,6 @@ const meta: Meta<typeof TaskSidebar> = {
     ),
   ],
   args: {
-    onHideSearch: fn(),
     onOpenTask: fn(),
   },
 }
@@ -90,16 +89,6 @@ export const Default: Story = {
     taskList: <TaskListMock tasks={sampleTasks} />,
     iterationHistory: <MockIterationHistory />,
     progressBar: <MockProgressBar closed={1} total={5} />,
-  },
-}
-
-export const WithSearchVisible: Story = {
-  args: {
-    taskList: <TaskListMock tasks={sampleTasks} />,
-    iterationHistory: <MockIterationHistory />,
-    progressBar: <MockProgressBar closed={1} total={5} />,
-    isSearchVisible: true,
-    onHideSearch: () => {},
   },
 }
 
@@ -204,9 +193,9 @@ export const ShowsEmptyState: Story = {
 }
 
 /**
- * Verifies the search input is visible when isSearchVisible is true.
+ * Verifies the search input is always visible.
  */
-export const SearchIsVisible: Story = {
+export const SearchIsAlwaysVisible: Story = {
   render: args => (
     <>
       <StoreSetter tasks={sampleTasks} />
@@ -215,7 +204,6 @@ export const SearchIsVisible: Story = {
   ),
   args: {
     taskList: <TaskListMock tasks={sampleTasks} />,
-    isSearchVisible: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -225,40 +213,43 @@ export const SearchIsVisible: Story = {
 }
 
 /**
- * Verifies pressing Escape in the search input calls onHideSearch.
+ * Verifies pressing Escape in the search input clears the query and blurs.
  */
-export const EscapeHidesSearch: Story = {
+export const EscapeClearsSearchAndBlurs: Story = {
   render: args => (
     <>
-      <StoreSetter tasks={sampleTasks} />
+      <StoreSetter tasks={sampleTasks} query="test" />
       <TaskSidebar {...args} />
     </>
   ),
   args: {
     taskList: <TaskListMock tasks={sampleTasks} />,
-    isSearchVisible: true,
   },
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
     // Get the search input
     const searchInput = canvas.getByRole("textbox", { name: "Search tasks" })
     await expect(searchInput).toBeInTheDocument()
 
+    // Should have the initial query
+    await expect(searchInput).toHaveValue("test")
+
     // Focus the search input
     await userEvent.click(searchInput)
     await expect(searchInput).toHaveFocus()
 
-    // Press Escape to hide
+    // Press Escape to clear
     await userEvent.keyboard("{Escape}")
 
-    // Verify callback was called
-    await expect(args.onHideSearch).toHaveBeenCalled()
+    // Verify query was cleared and input blurred
+    await expect(searchInput).toHaveValue("")
+    await expect(searchInput).not.toHaveFocus()
   },
 }
 
 /**
- * Verifies typing in the search input filters tasks and clear button calls onHideSearch.
+ * Verifies typing in the search input and clear button functionality.
  */
 export const SearchWithQueryAndClear: Story = {
   render: args => (
@@ -269,9 +260,8 @@ export const SearchWithQueryAndClear: Story = {
   ),
   args: {
     taskList: <TaskListMock tasks={sampleTasks} />,
-    isSearchVisible: true,
   },
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
     // Get the search input
@@ -290,8 +280,8 @@ export const SearchWithQueryAndClear: Story = {
     // Click clear button
     await userEvent.click(clearButton)
 
-    // Verify callback was called
-    await expect(args.onHideSearch).toHaveBeenCalled()
+    // Verify query was cleared
+    await expect(searchInput).toHaveValue("")
   },
 }
 
@@ -340,7 +330,6 @@ export const AllSlotsRenderedInOrder: Story = {
         <MockProgressBar closed={1} total={5} />
       </div>
     ),
-    isSearchVisible: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

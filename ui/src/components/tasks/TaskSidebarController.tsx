@@ -18,10 +18,6 @@ export function TaskSidebarController({
   onTaskClick,
   /** Handler when a task should be opened */
   onOpenTask,
-  /** Whether the search input is visible */
-  isSearchVisible,
-  /** Handler to hide the search input */
-  onHideSearch,
 }: TaskSidebarControllerProps) {
   const { tasks, isLoading } = useTasks({ all: true })
 
@@ -30,8 +26,6 @@ export function TaskSidebarController({
       taskList={<TaskList tasks={tasks} onTaskClick={onTaskClick} isLoading={isLoading} />}
       searchInputRef={searchInputRef}
       onOpenTask={onOpenTask}
-      isSearchVisible={isSearchVisible}
-      onHideSearch={onHideSearch}
       iterationHistory={<IterationHistorySheet />}
       progressBar={<TaskProgressBar />}
     />
@@ -46,8 +40,4 @@ export interface TaskSidebarControllerProps {
   onTaskClick?: (taskId: string) => void
   /** Handler when a task should be opened */
   onOpenTask?: (taskId: string) => void
-  /** Whether the search input is visible */
-  isSearchVisible?: boolean
-  /** Handler to hide the search input */
-  onHideSearch?: () => void
 }

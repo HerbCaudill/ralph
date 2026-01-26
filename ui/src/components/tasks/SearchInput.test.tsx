@@ -238,26 +238,17 @@ describe("SearchInput", () => {
     })
   })
 
-  describe("onHide callback", () => {
-    it("calls onHide when clear button is clicked", () => {
-      const onHide = vi.fn()
-      useAppStore.getState().setTaskSearchQuery("test query")
-      render(<SearchInput onHide={onHide} />)
-
-      const clearButton = screen.getByRole("button", { name: "Clear search" })
-      fireEvent.click(clearButton)
-
-      expect(onHide).toHaveBeenCalledTimes(1)
-    })
-
-    it("calls onHide when Escape is pressed", () => {
-      const onHide = vi.fn()
-      render(<SearchInput onHide={onHide} />)
+  describe("escape key behavior", () => {
+    it("blurs input when Escape is pressed", () => {
+      render(<SearchInput />)
 
       const input = screen.getByRole("textbox")
+      input.focus()
+      expect(document.activeElement).toBe(input)
+
       fireEvent.keyDown(input, { key: "Escape" })
 
-      expect(onHide).toHaveBeenCalledTimes(1)
+      expect(document.activeElement).not.toBe(input)
     })
   })
 })

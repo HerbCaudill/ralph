@@ -18,7 +18,6 @@ const meta: Meta<typeof SearchInput> = {
   ],
   args: {
     onOpenTask: fn(),
-    onHide: fn(),
   },
 }
 

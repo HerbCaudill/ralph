@@ -18,10 +18,6 @@ export function TaskSidebar({
   searchInputRef,
   /** Callback when a task is opened from search results */
   onOpenTask,
-  /** Whether the search input is currently visible */
-  isSearchVisible = false,
-  /** Callback to hide the search input */
-  onHideSearch,
   /** Element to display in the iteration history slot (bottom left) */
   iterationHistory,
   /** Element to display in the progress bar slot (bottom) */
@@ -37,11 +33,9 @@ export function TaskSidebar({
     >
       {quickInput && <div className="border-border shrink-0 border-b px-4 py-3">{quickInput}</div>}
 
-      {isSearchVisible && (
-        <div className="border-border shrink-0 border-b px-3 py-2">
-          <SearchInput ref={searchInputRef} onOpenTask={onOpenTask} onHide={onHideSearch} />
-        </div>
-      )}
+      <div className="border-border shrink-0 border-b px-3 py-2">
+        <SearchInput ref={searchInputRef} onOpenTask={onOpenTask} />
+      </div>
 
       <div className="min-h-0 flex-1">
         {taskList ?? (
@@ -72,10 +66,6 @@ export type TaskSidebarProps = {
   searchInputRef?: RefObject<SearchInputHandle | null>
   /** Callback when a task is opened from search results */
   onOpenTask?: (taskId: string) => void
-  /** Whether the search input is currently visible */
-  isSearchVisible?: boolean
-  /** Callback to hide the search input */
-  onHideSearch?: () => void
   /** Element to display in the iteration history slot (bottom left) */
   iterationHistory?: ReactNode
   /** Element to display in the progress bar slot (bottom) */

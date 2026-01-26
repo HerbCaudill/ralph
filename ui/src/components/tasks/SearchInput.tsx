@@ -19,7 +19,7 @@ import {
  * Uses Zustand store for state management to enable live filtering.
  */
 export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(function SearchInput(
-  { placeholder = "Search tasks...", disabled = false, className, onOpenTask, onHide },
+  { placeholder = "Search tasks...", disabled = false, className, onOpenTask },
   ref,
 ) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -73,12 +73,10 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
       if (e.key === "Escape") {
         if (query) {
           clearQuery()
-          clearSelectedTaskId()
-          onHide?.()
-          return
         }
         clearSelectedTaskId()
-        onHide?.()
+        // Blur the input so keyboard navigation doesn't stay trapped
+        inputRef.current?.blur()
       }
     },
     [
@@ -89,15 +87,13 @@ export const SearchInput = forwardRef<SearchInputHandle, SearchInputProps>(funct
       query,
       clearQuery,
       clearSelectedTaskId,
-      onHide,
     ],
   )
 
   const handleClear = useCallback(() => {
     clearQuery()
     clearSelectedTaskId()
-    onHide?.()
-  }, [clearQuery, clearSelectedTaskId, onHide])
+  }, [clearQuery, clearSelectedTaskId])
 
   return (
     <InputGroup data-disabled={disabled} className={className}>
@@ -136,7 +132,6 @@ export type SearchInputProps = {
   disabled?: boolean
   className?: string
   onOpenTask?: (taskId: string) => void
-  onHide?: () => void
 }
 
 export type SearchInputHandle = {

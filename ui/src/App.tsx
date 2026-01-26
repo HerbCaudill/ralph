@@ -17,7 +17,6 @@ import {
   selectTaskChatOpen,
   selectTaskChatWidth,
   selectViewingEventLogId,
-  selectIsSearchVisible,
   selectSelectedTaskId,
   selectVisibleTaskIds,
   selectHotkeysDialogOpen,
@@ -160,11 +159,6 @@ export function App() {
   const viewingEventLogId = useAppStore(selectViewingEventLogId)
   const isViewingEventLog = viewingEventLogId !== null
 
-  // Search visibility state
-  const isSearchVisible = useAppStore(selectIsSearchVisible)
-  const showSearch = useAppStore(state => state.showSearch)
-  const hideSearch = useAppStore(state => state.hideSearch)
-
   // Handle task chat panel width change
   const handleTaskChatWidthChange = useCallback(
     (width: number) => {
@@ -215,13 +209,9 @@ export function App() {
   }, [])
 
   const handleFocusTaskInput = useCallback(() => {
-    // Show and focus the search input (task input has been removed)
-    showSearch()
-    // Focus the input after a brief delay to allow it to render
-    setTimeout(() => {
-      searchInputRef.current?.focus()
-    }, 50)
-  }, [showSearch])
+    // Focus the search input (it's always visible now)
+    searchInputRef.current?.focus()
+  }, [])
 
   const handleFocusChatInput = useCallback(() => {
     chatInputRef.current?.focus()
@@ -296,40 +286,9 @@ export function App() {
   }, [toggleTaskChat])
 
   const handleFocusSearch = useCallback(() => {
-    showSearch()
-    // Focus the input after a brief delay to allow it to render
-    setTimeout(() => {
-      searchInputRef.current?.focus()
-    }, 50)
-  }, [showSearch])
-
-  useEffect(() => {
-    if (!isSearchVisible) {
-      return
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return
-      }
-      // If there's text in the search box, clear and hide regardless of focus
-      const searchQuery = useAppStore.getState().taskSearchQuery
-      if (searchQuery) {
-        hideSearch()
-        return
-      }
-      // If no text, only hide when the search input is focused
-      const activeElement = document.activeElement
-      if (activeElement?.getAttribute("aria-label") === "Search tasks") {
-        hideSearch()
-      }
-    }
-
-    window.addEventListener("keydown", handleEscape)
-    return () => {
-      window.removeEventListener("keydown", handleEscape)
-    }
-  }, [hideSearch, isSearchVisible])
+    // Focus the search input (it's always visible now)
+    searchInputRef.current?.focus()
+  }, [])
 
   const handleNewChat = useCallback(async () => {
     const result = await clearTaskChatHistory()
@@ -422,8 +381,6 @@ export function App() {
             searchInputRef={searchInputRef}
             onTaskClick={handleTaskClick}
             onOpenTask={handleTaskClick}
-            isSearchVisible={isSearchVisible}
-            onHideSearch={hideSearch}
           />
         }
         main={<AgentView chatInputRef={chatInputRef} />}

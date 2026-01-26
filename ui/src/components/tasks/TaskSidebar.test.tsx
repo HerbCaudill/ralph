@@ -27,11 +27,11 @@ describe("TaskSidebar", () => {
       expect(screen.getByText("Quick input")).toBeInTheDocument()
     })
 
-    it("does not render quickInput area when not provided", () => {
+    it("does not render quickInput area when not provided but search is always present", () => {
       const { container } = render(<TaskSidebar />)
-      // No border-b elements should exist when quickInput and search are not shown
+      // One border-b element should exist for the always-visible search bar
       const borderBElements = container.querySelectorAll(".border-b")
-      expect(borderBElements).toHaveLength(0)
+      expect(borderBElements).toHaveLength(1)
     })
 
     it("renders taskList when provided", () => {
@@ -102,23 +102,13 @@ describe("TaskSidebar", () => {
   })
 
   describe("search", () => {
-    it("does not render search input by default", () => {
+    it("always renders search input", () => {
       render(<TaskSidebar />)
-      expect(screen.queryByRole("textbox", { name: "Search tasks" })).not.toBeInTheDocument()
-    })
-
-    it("renders search input when isSearchVisible is true", () => {
-      render(<TaskSidebar isSearchVisible={true} />)
       expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
     })
 
-    it("renders search input above task list when visible", () => {
-      render(
-        <TaskSidebar
-          taskList={<div data-testid="task-list">Task list</div>}
-          isSearchVisible={true}
-        />,
-      )
+    it("renders search input above task list", () => {
+      render(<TaskSidebar taskList={<div data-testid="task-list">Task list</div>} />)
       // Verify all elements are present
       expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
       expect(screen.getByTestId("task-list")).toBeInTheDocument()

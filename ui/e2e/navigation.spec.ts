@@ -17,15 +17,15 @@ test.describe("Navigation", () => {
     await expect(searchInput).toBeFocused()
   })
 
-  test("Cmd+F shows search, accepts input, and Escape closes it", async ({ app }) => {
+  test("Cmd+F focuses search, accepts input, and Escape clears and blurs it", async ({ app }) => {
     const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
 
-    // Search input should be hidden initially
-    await expect(searchInput).not.toBeVisible()
-
-    // Cmd+F activates search
-    await app.page.keyboard.press("Meta+f")
+    // Search input should always be visible
     await expect(searchInput).toBeVisible()
+
+    // Cmd+F focuses search
+    await app.page.keyboard.press("Meta+f")
+    await expect(searchInput).toBeFocused()
 
     // Fill and verify
     await expect
@@ -35,9 +35,10 @@ test.describe("Navigation", () => {
       })
       .toBe("test")
 
-    // Escape closes search
+    // Escape clears search and blurs input
     await app.page.keyboard.press("Escape")
-    await expect(searchInput).not.toBeVisible()
+    await expect(searchInput).toHaveValue("")
+    await expect(searchInput).not.toBeFocused()
   })
 
   test("Cmd+J focuses chat input, toggles panel, and re-focuses on open", async ({ app }) => {

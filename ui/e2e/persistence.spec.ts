@@ -158,9 +158,11 @@ test.describe("UI State Persistence", () => {
     test("search query persists across page reload", async ({ app }) => {
       const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
 
-      // Open search and enter a query
-      await app.page.keyboard.press("Meta+f")
+      // Search should always be visible
       await expect(searchInput).toBeVisible()
+
+      // Focus search and enter a query
+      await app.page.keyboard.press("Meta+f")
       await searchInput.fill("test-search-query")
 
       // Verify the input has the value
@@ -170,32 +172,9 @@ test.describe("UI State Persistence", () => {
       await app.page.reload()
       await waitForPageReady(app)
 
-      // Search should be visible with the same query
+      // Search should still be visible with the same query
       await expect(searchInput).toBeVisible()
       await expect(searchInput).toHaveValue("test-search-query")
-    })
-
-    test("search visibility persists across page reload", async ({ app }) => {
-      const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
-
-      // Search should be hidden initially
-      await expect(searchInput).not.toBeVisible()
-
-      // Reload to confirm hidden state persists
-      await app.page.reload()
-      await waitForPageReady(app)
-      await expect(searchInput).not.toBeVisible()
-
-      // Open search
-      await app.page.keyboard.press("Meta+f")
-      await expect(searchInput).toBeVisible()
-
-      // Reload
-      await app.page.reload()
-      await waitForPageReady(app)
-
-      // Search should still be visible
-      await expect(searchInput).toBeVisible()
     })
   })
 
