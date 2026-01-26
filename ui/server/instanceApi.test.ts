@@ -269,11 +269,12 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
   // Create a new instance
   app.post("/api/instances", async (req: Request, res: Response) => {
     try {
-      const { id, name, agentName, worktreePath, branch } = req.body as {
+      const { id, name, agentName, worktreePath, workspaceId, branch } = req.body as {
         id?: string
         name?: string
         agentName?: string
         worktreePath?: string | null
+        workspaceId?: string | null
         branch?: string | null
       }
 
@@ -299,7 +300,7 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
         name: name.trim(),
         agentName: agentName?.trim() || name.trim(),
         worktreePath: worktreePath ?? null,
-        workspaceId: null,
+        workspaceId: workspaceId ?? null,
         branch: branch ?? null,
       })
       res.status(201).json({ ok: true, instance: serializeInstanceState(instance) })
@@ -444,6 +445,7 @@ describe("Instance API endpoints", () => {
       expect(data.instance.name).toBe("Test 1")
       expect(data.instance.agentName).toBe("Agent-1")
       expect(data.instance.worktreePath).toBe("/path/to/worktree")
+      expect(data.instance.workspaceId).toBe("workspace-1")
       expect(data.instance.branch).toBe("feature-branch")
       expect(data.instance.status).toBe("stopped")
     })
@@ -882,6 +884,39 @@ describe("Instance API endpoints", () => {
       expect(response.status).toBe(201)
       expect(data.ok).toBe(true)
       expect(data.instance.agentName).toBe("New Instance")
+    })
+
+    it("accepts and returns workspaceId", async () => {
+      const response = await fetch(`http://localhost:${port}/api/instances`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: "workspace-instance",
+          name: "Workspace Instance",
+          workspaceId: "workspace-456",
+        }),
+      })
+      const data = await response.json()
+
+      expect(response.status).toBe(201)
+      expect(data.ok).toBe(true)
+      expect(data.instance.workspaceId).toBe("workspace-456")
+    })
+
+    it("defaults workspaceId to null when not provided", async () => {
+      const response = await fetch(`http://localhost:${port}/api/instances`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: "no-workspace-instance",
+          name: "No Workspace Instance",
+        }),
+      })
+      const data = await response.json()
+
+      expect(response.status).toBe(201)
+      expect(data.ok).toBe(true)
+      expect(data.instance.workspaceId).toBeNull()
     })
 
     it("returns 400 when id is missing", async () => {

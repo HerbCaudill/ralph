@@ -241,6 +241,29 @@ interface PersistedEventLog {
 }
 ```
 
+## Server WebSocket Events
+
+The server broadcasts events to connected clients via WebSocket. All broadcast messages include:
+
+- `type` - Event type (e.g., `ralph:event`, `ralph:status`, `instance:created`)
+- `instanceId` - The Ralph instance ID
+- `workspaceId` - Workspace ID for cross-workspace event correlation (null for main workspace)
+- `timestamp` - Event timestamp
+
+### workspaceId Field
+
+The `workspaceId` field is included in:
+
+- All WebSocket broadcast messages (`ralph:event`, `ralph:status`, `ralph:output`, `ralph:error`, `ralph:exit`, `instance:created`, `task-chat:*`, `mutation:event`)
+- API responses from `GET /api/instances` and `POST /api/instances`
+- `RalphInstanceState` and `CreateInstanceOptions` interfaces in `server/RalphRegistry.ts`
+
+This enables:
+
+- Cross-workspace event correlation
+- Client-side persistence to track which workspace events belong to
+- Future multi-workspace analytics support
+
 ## Code Style
 
 - Use TypeScript for all code

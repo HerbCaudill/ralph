@@ -108,9 +108,20 @@ describe("RalphRegistry", () => {
       expect(state.name).toBe("Test Instance")
       expect(state.agentName).toBe("Ralph-1")
       expect(state.worktreePath).toBeNull()
+      expect(state.workspaceId).toBeNull()
       expect(state.branch).toBe("main")
       expect(state.manager).toBeDefined()
       expect(state.createdAt).toBeLessThanOrEqual(Date.now())
+    })
+
+    it("stores workspaceId when provided", () => {
+      const state = registry.create(
+        createTestOptions({
+          workspaceId: "workspace-123",
+        }),
+      )
+
+      expect(state.workspaceId).toBe("workspace-123")
     })
 
     it("creates RalphManager with worktree path as cwd when provided", () => {
