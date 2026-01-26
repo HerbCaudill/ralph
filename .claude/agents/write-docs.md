@@ -1,7 +1,7 @@
 ---
 name: write-docs
 description: Writes documentation for specified code
-model: haiku
+model: sonnet
 tools:
   - Read
   - Write

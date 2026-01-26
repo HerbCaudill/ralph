@@ -1,7 +1,7 @@
 ---
 name: make-tests
 description: Generates tests for specified code
-model: haiku
+model: sonnet
 tools:
   - Bash
   - Read

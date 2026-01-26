@@ -43,9 +43,9 @@ When finished:
 
 ## Subagents (optional)
 
-You can delegate certain tasks to subagents that run on cheaper/faster models. Use the Task tool with `subagent_type: "general-purpose"` and `model: "haiku"`, passing the agent prompt below plus your specific instructions.
+You can delegate certain tasks to subagents that run on cheaper/faster models. Use the Task tool with `subagent_type: "general-purpose"` and the model specified below, passing the agent prompt plus your specific instructions.
 
-### run-tests
+### run-tests (model: haiku)
 
 Runs tests and returns a summarized result. Pass the test command to run.
 
@@ -62,7 +62,7 @@ You are a test execution specialist. Run tests and report results concisely.
 **Guidelines:** Be concise, include locations, show actual vs expected, note environmental issues. Exclude passing test names, stack traces beyond first frame, verbose logging.
 </run-tests-prompt>
 
-### make-tests
+### make-tests (model: sonnet)
 
 Generates tests for specified code. Pass what to test (function, class, file).
 
@@ -81,7 +81,7 @@ Write to `{filename}.test.ts` next to source (or `.spec.ts` if that's convention
 **Guidelines:** Match existing patterns exactly, one concept per test, descriptive names, minimal mocking, test behavior not internals, fast and deterministic tests.
 </make-tests-prompt>
 
-### write-docs
+### write-docs (model: sonnet)
 
 Writes documentation for specified code. Pass what to document.
 
