@@ -15,16 +15,9 @@ const originalWarn = logger.warn.bind(logger)
 logger.error = (msg, options) => {
   if (typeof msg === "string") {
     // Ignore WebSocket proxy errors from rapid reconnects or missing backend
-    if (msg.includes("ws proxy")) {
-      // EPIPE/ECONNRESET: rapid reconnects; AggregateError/empty: connection refused (no backend)
-      if (
-        msg.includes("EPIPE") ||
-        msg.includes("ECONNRESET") ||
-        msg.includes("AggregateError") ||
-        msg.trim().endsWith("ws proxy error:") // Empty error message = connection failed
-      ) {
-        return
-      }
+    // These occur during tests when no backend server is running
+    if (msg.includes("ws proxy error") || msg.includes("ws proxy")) {
+      return
     }
     // Ignore HTTP proxy errors when backend isn't running (e.g., during Storybook tests)
     if (msg.includes("http proxy error")) {
