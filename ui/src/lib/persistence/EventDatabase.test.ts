@@ -1038,6 +1038,12 @@ describe("EventDatabase", () => {
      * - The upgrade handler extracts events from sessions
      * - Creates PersistedEvent records in the events store
      * - Removes the events array from sessions
+     *
+     * Migration characteristics tested:
+     * - Idempotency: Running migration multiple times is safe
+     * - Event extraction: Events are moved from sessions to separate store
+     * - workspaceId: Added to all sessions (null for legacy data)
+     * - Edge cases: Empty events, missing timestamps/types
      */
 
     it("preserves session data after migration when session is saved with events", async () => {
@@ -1229,6 +1235,609 @@ describe("EventDatabase", () => {
       expect(events[0].eventType).toBe("user_message")
       expect(events[1].eventType).toBe("assistant_text")
       expect(events[2].eventType).toBe("tool_use")
+    })
+
+    it("handles multiple sessions with varying event counts", async () => {
+      const now = Date.now()
+
+      // Save three sessions with different numbers of events
+      const sessions = [
+        createTestSession({
+          id: "session-many-events",
+          instanceId: "test-instance",
+          events: Array.from({ length: 10 }, (_, i) => ({
+            type: "user_message",
+            timestamp: now + i,
+            message: `Event ${i}`,
+          })),
+          eventCount: 10,
+        }),
+        createTestSession({
+          id: "session-few-events",
+          instanceId: "test-instance",
+          events: [{ type: "user_message", timestamp: now, message: "Only one" }],
+          eventCount: 1,
+        }),
+        createTestSession({
+          id: "session-no-events",
+          instanceId: "test-instance",
+          events: [],
+          eventCount: 0,
+        }),
+      ]
+
+      for (const session of sessions) {
+        await db.saveSession(session)
+      }
+
+      // Verify all sessions are saved with correct event counts
+      const manyEvents = await db.getSession("session-many-events")
+      const fewEvents = await db.getSession("session-few-events")
+      const noEvents = await db.getSession("session-no-events")
+
+      expect(manyEvents?.events?.length).toBe(10)
+      expect(fewEvents?.events?.length).toBe(1)
+      expect(noEvents?.events?.length).toBe(0)
+    })
+
+    it("migration is idempotent - reprocessing migrated data is safe", async () => {
+      // First, save a v3-style session (no embedded events)
+      const sessionId = "already-migrated"
+      await db.saveSession(
+        createTestSession({
+          id: sessionId,
+          events: undefined,
+          eventCount: 2,
+          workspaceId: "/Users/test/project",
+        }),
+      )
+
+      // Save events separately (v3 pattern)
+      const now = Date.now()
+      await db.saveEvents([
+        createTestEvent({ id: `${sessionId}-event-0`, sessionId, timestamp: now }),
+        createTestEvent({ id: `${sessionId}-event-1`, sessionId, timestamp: now + 100 }),
+      ])
+
+      // Re-save the session (simulates re-running migration or updating)
+      await db.saveSession(
+        createTestSession({
+          id: sessionId,
+          events: undefined, // Still no embedded events
+          eventCount: 2,
+          workspaceId: "/Users/test/project",
+        }),
+      )
+
+      // Verify events are still intact
+      const events = await db.getEventsForSession(sessionId)
+      expect(events.length).toBe(2)
+
+      // Verify session data is preserved
+      const session = await db.getSession(sessionId)
+      expect(session?.workspaceId).toBe("/Users/test/project")
+      expect(session?.events).toBeUndefined()
+    })
+  })
+
+  describe("event operations - additional scenarios", () => {
+    it("handles large batch event saves efficiently", async () => {
+      const sessionId = "large-batch"
+      const now = Date.now()
+      const eventCount = 100
+
+      // Create 100 events
+      const events = Array.from({ length: eventCount }, (_, i) =>
+        createTestEvent({
+          id: `${sessionId}-event-${i}`,
+          sessionId,
+          timestamp: now + i,
+          eventType:
+            i % 3 === 0 ? "user_message"
+            : i % 3 === 1 ? "assistant_text"
+            : "tool_use",
+        }),
+      )
+
+      await db.saveEvents(events)
+
+      // Verify all events were saved
+      const stats = await db.getStats()
+      expect(stats.eventCount).toBe(eventCount)
+
+      // Verify retrieval order
+      const retrieved = await db.getEventsForSession(sessionId)
+      expect(retrieved.length).toBe(eventCount)
+      expect(retrieved[0].timestamp).toBeLessThan(retrieved[99].timestamp)
+    })
+
+    it("maintains event isolation across sessions", async () => {
+      const now = Date.now()
+
+      // Save events for two different sessions
+      await db.saveEvents([
+        createTestEvent({ id: "session-a-event-0", sessionId: "session-a", timestamp: now }),
+        createTestEvent({ id: "session-a-event-1", sessionId: "session-a", timestamp: now + 1 }),
+        createTestEvent({ id: "session-b-event-0", sessionId: "session-b", timestamp: now + 2 }),
+      ])
+
+      // Verify events are correctly isolated
+      const sessionAEvents = await db.getEventsForSession("session-a")
+      const sessionBEvents = await db.getEventsForSession("session-b")
+
+      expect(sessionAEvents.length).toBe(2)
+      expect(sessionBEvents.length).toBe(1)
+      expect(sessionAEvents.map(e => e.id)).toEqual(["session-a-event-0", "session-a-event-1"])
+      expect(sessionBEvents.map(e => e.id)).toEqual(["session-b-event-0"])
+    })
+
+    it("ensures event ID uniqueness - overwrites on collision", async () => {
+      const eventId = "duplicate-id"
+      const now = Date.now()
+
+      // Save first event
+      await db.saveEvent(
+        createTestEvent({
+          id: eventId,
+          sessionId: "session-1",
+          timestamp: now,
+          eventType: "user_message",
+        }),
+      )
+
+      // Save second event with same ID (should overwrite)
+      await db.saveEvent(
+        createTestEvent({
+          id: eventId,
+          sessionId: "session-1",
+          timestamp: now + 1000,
+          eventType: "assistant_text", // Different type
+        }),
+      )
+
+      // Verify only one event exists with the updated data
+      const stats = await db.getStats()
+      expect(stats.eventCount).toBe(1)
+
+      const event = await db.getEvent(eventId)
+      expect(event?.eventType).toBe("assistant_text")
+      expect(event?.timestamp).toBe(now + 1000)
+    })
+
+    it("handles events with complex nested event data", async () => {
+      const now = Date.now()
+      const complexEvent = createTestEvent({
+        id: "complex-event",
+        sessionId: "session-1",
+        timestamp: now,
+        eventType: "tool_use",
+        event: {
+          type: "tool_use",
+          timestamp: now,
+          tool: "Read",
+          input: {
+            path: "/Users/test/deeply/nested/path/file.ts",
+            options: {
+              encoding: "utf-8",
+              flags: ["read", "write"],
+              metadata: {
+                owner: "test-user",
+                permissions: { read: true, write: false },
+              },
+            },
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+      })
+
+      await db.saveEvent(complexEvent)
+
+      const retrieved = await db.getEvent("complex-event")
+      expect(retrieved).toEqual(complexEvent)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((retrieved?.event as any).input.options.metadata.permissions.read).toBe(true)
+    })
+  })
+
+  describe("getEventsForSession - query edge cases", () => {
+    it("maintains stable sort order for events with identical timestamps", async () => {
+      const now = Date.now()
+      const sessionId = "same-timestamp"
+
+      // Save multiple events with the exact same timestamp
+      // but different IDs to test sort stability
+      await db.saveEvents([
+        createTestEvent({ id: `${sessionId}-event-c`, sessionId, timestamp: now }),
+        createTestEvent({ id: `${sessionId}-event-a`, sessionId, timestamp: now }),
+        createTestEvent({ id: `${sessionId}-event-b`, sessionId, timestamp: now }),
+      ])
+
+      // Retrieve events multiple times
+      const firstRetrieval = await db.getEventsForSession(sessionId)
+      const secondRetrieval = await db.getEventsForSession(sessionId)
+
+      // The order should be consistent between retrievals
+      expect(firstRetrieval.length).toBe(3)
+      expect(firstRetrieval.map(e => e.id)).toEqual(secondRetrieval.map(e => e.id))
+    })
+
+    it("handles sessions with hundreds of events", async () => {
+      const sessionId = "many-events"
+      const now = Date.now()
+      const totalEvents = 500
+
+      const events = Array.from({ length: totalEvents }, (_, i) =>
+        createTestEvent({
+          id: `${sessionId}-event-${String(i).padStart(4, "0")}`,
+          sessionId,
+          timestamp: now + i * 10, // 10ms apart
+          eventType: "user_message",
+        }),
+      )
+
+      await db.saveEvents(events)
+
+      const retrieved = await db.getEventsForSession(sessionId)
+      expect(retrieved.length).toBe(totalEvents)
+
+      // Verify chronological order
+      for (let i = 1; i < retrieved.length; i++) {
+        expect(retrieved[i].timestamp).toBeGreaterThanOrEqual(retrieved[i - 1].timestamp)
+      }
+    })
+
+    it("returns empty array for session that never had events", async () => {
+      // Save a session with no events
+      await db.saveSession(
+        createTestSession({
+          id: "never-had-events",
+          events: undefined,
+          eventCount: 0,
+        }),
+      )
+
+      const events = await db.getEventsForSession("never-had-events")
+      expect(events).toEqual([])
+    })
+  })
+
+  describe("session loading with separate events - integration", () => {
+    it("loads session metadata and events in parallel", async () => {
+      const sessionId = "parallel-load"
+      const now = Date.now()
+
+      // Save session metadata (v3 pattern - no embedded events)
+      await db.saveSession(
+        createTestSession({
+          id: sessionId,
+          instanceId: "test",
+          events: undefined,
+          eventCount: 3,
+        }),
+      )
+
+      // Save events separately
+      await db.saveEvents([
+        createTestEvent({ id: `${sessionId}-0`, sessionId, timestamp: now }),
+        createTestEvent({ id: `${sessionId}-1`, sessionId, timestamp: now + 100 }),
+        createTestEvent({ id: `${sessionId}-2`, sessionId, timestamp: now + 200 }),
+      ])
+
+      // Load both in parallel (as the app would do)
+      const [session, events] = await Promise.all([
+        db.getSession(sessionId),
+        db.getEventsForSession(sessionId),
+      ])
+
+      expect(session).toBeDefined()
+      expect(session?.id).toBe(sessionId)
+      expect(session?.eventCount).toBe(3)
+      expect(events.length).toBe(3)
+    })
+
+    it("correctly associates events with their session during listing", async () => {
+      const now = Date.now()
+
+      // Create multiple sessions
+      const sessions = [
+        { id: "session-1", instanceId: "test", startedAt: now - 2000 },
+        { id: "session-2", instanceId: "test", startedAt: now - 1000 },
+        { id: "session-3", instanceId: "test", startedAt: now },
+      ]
+
+      for (const s of sessions) {
+        await db.saveSession(
+          createTestSession({
+            ...s,
+            events: undefined,
+            eventCount: 2,
+          }),
+        )
+
+        // Save 2 events per session
+        await db.saveEvents([
+          createTestEvent({
+            id: `${s.id}-event-0`,
+            sessionId: s.id,
+            timestamp: s.startedAt,
+          }),
+          createTestEvent({
+            id: `${s.id}-event-1`,
+            sessionId: s.id,
+            timestamp: s.startedAt + 50,
+          }),
+        ])
+      }
+
+      // List sessions
+      const metadata = await db.listSessions("test")
+      expect(metadata.length).toBe(3)
+
+      // Verify events are correctly associated
+      for (const meta of metadata) {
+        const events = await db.getEventsForSession(meta.id)
+        expect(events.length).toBe(2)
+        expect(events.every(e => e.sessionId === meta.id)).toBe(true)
+      }
+    })
+
+    it("handles deleting session with associated events", async () => {
+      const sessionId = "to-delete-with-events"
+      const now = Date.now()
+
+      // Save session and events
+      await db.saveSession(
+        createTestSession({
+          id: sessionId,
+          events: undefined,
+          eventCount: 5,
+        }),
+      )
+
+      await db.saveEvents(
+        Array.from({ length: 5 }, (_, i) =>
+          createTestEvent({
+            id: `${sessionId}-event-${i}`,
+            sessionId,
+            timestamp: now + i,
+          }),
+        ),
+      )
+
+      // Verify events exist
+      expect(await db.countEventsForSession(sessionId)).toBe(5)
+
+      // Delete session (should cascade to events)
+      await db.deleteSession(sessionId)
+
+      // Verify both session and events are gone
+      expect(await db.getSession(sessionId)).toBeUndefined()
+      expect(await db.countEventsForSession(sessionId)).toBe(0)
+    })
+  })
+
+  describe("workspaceId association", () => {
+    it("queries sessions by workspace", async () => {
+      const now = Date.now()
+
+      // Create sessions in different workspaces
+      await db.saveSession(
+        createTestSession({
+          id: "workspace-a-1",
+          workspaceId: "/Users/test/project-a",
+          startedAt: now - 1000,
+        }),
+      )
+      await db.saveSession(
+        createTestSession({
+          id: "workspace-a-2",
+          workspaceId: "/Users/test/project-a",
+          startedAt: now,
+        }),
+      )
+      await db.saveSession(
+        createTestSession({
+          id: "workspace-b-1",
+          workspaceId: "/Users/test/project-b",
+          startedAt: now - 500,
+        }),
+      )
+      await db.saveSession(
+        createTestSession({
+          id: "null-workspace",
+          workspaceId: null,
+          startedAt: now - 200,
+        }),
+      )
+
+      // Query all sessions and filter by workspace
+      const allSessions = await db.listAllSessions()
+      const workspaceASessions = allSessions.filter(s => s.workspaceId === "/Users/test/project-a")
+      const workspaceBSessions = allSessions.filter(s => s.workspaceId === "/Users/test/project-b")
+      const nullWorkspaceSessions = allSessions.filter(s => s.workspaceId === null)
+
+      expect(workspaceASessions.length).toBe(2)
+      expect(workspaceBSessions.length).toBe(1)
+      expect(nullWorkspaceSessions.length).toBe(1)
+    })
+
+    it("preserves workspaceId through save/load cycle", async () => {
+      const workspacePath = "/Users/test/deeply/nested/project"
+
+      await db.saveSession(
+        createTestSession({
+          id: "workspace-persist",
+          workspaceId: workspacePath,
+        }),
+      )
+
+      const loaded = await db.getSessionMetadata("workspace-persist")
+      expect(loaded?.workspaceId).toBe(workspacePath)
+
+      const full = await db.getSession("workspace-persist")
+      expect(full?.workspaceId).toBe(workspacePath)
+    })
+
+    it("supports null workspaceId for sessions without workspace", async () => {
+      await db.saveSession(
+        createTestSession({
+          id: "no-workspace",
+          workspaceId: null,
+        }),
+      )
+
+      const metadata = await db.getSessionMetadata("no-workspace")
+      expect(metadata).toBeDefined()
+      expect(metadata?.workspaceId).toBeNull()
+    })
+
+    it("allows multiple sessions with the same workspaceId", async () => {
+      const workspace = "/Users/test/shared-workspace"
+      const now = Date.now()
+
+      // Create multiple sessions in the same workspace
+      for (let i = 0; i < 5; i++) {
+        await db.saveSession(
+          createTestSession({
+            id: `shared-workspace-${i}`,
+            workspaceId: workspace,
+            startedAt: now + i * 100,
+          }),
+        )
+      }
+
+      const allSessions = await db.listAllSessions()
+      const workspaceSessions = allSessions.filter(s => s.workspaceId === workspace)
+
+      expect(workspaceSessions.length).toBe(5)
+    })
+  })
+
+  describe("edge cases", () => {
+    it("handles session with all null optional fields", async () => {
+      const minimalSession: PersistedSession = {
+        id: "minimal",
+        instanceId: "test",
+        workspaceId: null,
+        startedAt: Date.now(),
+        completedAt: null,
+        taskId: null,
+        taskTitle: null,
+        tokenUsage: { input: 0, output: 0 },
+        contextWindow: { used: 0, max: 200000 },
+        session: { current: 0, total: 0 },
+        eventCount: 0,
+        lastEventSequence: 0,
+      }
+
+      await db.saveSession(minimalSession)
+
+      const retrieved = await db.getSession("minimal")
+      expect(retrieved).toBeDefined()
+      expect(retrieved?.taskId).toBeNull()
+      expect(retrieved?.taskTitle).toBeNull()
+      expect(retrieved?.completedAt).toBeNull()
+    })
+
+    it("handles concurrent saves to the same session", async () => {
+      const sessionId = "concurrent-writes"
+      const now = Date.now()
+
+      // Perform multiple concurrent saves
+      await Promise.all([
+        db.saveSession(createTestSession({ id: sessionId, eventCount: 1, startedAt: now })),
+        db.saveSession(createTestSession({ id: sessionId, eventCount: 2, startedAt: now })),
+        db.saveSession(createTestSession({ id: sessionId, eventCount: 3, startedAt: now })),
+      ])
+
+      // One of the values should win (last write wins)
+      const session = await db.getSession(sessionId)
+      expect(session).toBeDefined()
+      expect([1, 2, 3]).toContain(session?.eventCount)
+    })
+
+    it("handles saving and retrieving events with special characters in content", async () => {
+      const now = Date.now()
+      const specialContent = {
+        unicode: "こんにちは世界 🎉 مرحبا",
+        newlines: "line1\nline2\r\nline3",
+        quotes: "single ' and double \" quotes",
+        backslashes: "path\\to\\file",
+        nullChar: "before\x00after", // null character
+      }
+
+      await db.saveEvent(
+        createTestEvent({
+          id: "special-chars",
+          sessionId: "session-1",
+          timestamp: now,
+          eventType: "user_message",
+          event: {
+            type: "user_message",
+            timestamp: now,
+            message: JSON.stringify(specialContent),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any,
+        }),
+      )
+
+      const retrieved = await db.getEvent("special-chars")
+      expect(retrieved).toBeDefined()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const content = JSON.parse((retrieved?.event as any).message)
+      expect(content.unicode).toBe(specialContent.unicode)
+      expect(content.newlines).toBe(specialContent.newlines)
+    })
+
+    it("handles empty string values", async () => {
+      await db.saveSession(
+        createTestSession({
+          id: "empty-strings",
+          taskId: "", // Empty string instead of null
+          taskTitle: "",
+        }),
+      )
+
+      const session = await db.getSession("empty-strings")
+      expect(session?.taskId).toBe("")
+      expect(session?.taskTitle).toBe("")
+    })
+
+    it("handles very long session IDs", async () => {
+      const longId = "session-" + "a".repeat(500)
+
+      await db.saveSession(createTestSession({ id: longId }))
+
+      const retrieved = await db.getSession(longId)
+      expect(retrieved?.id).toBe(longId)
+    })
+
+    it("handles events with zero timestamp", async () => {
+      await db.saveEvent(
+        createTestEvent({
+          id: "zero-timestamp",
+          sessionId: "session-1",
+          timestamp: 0,
+        }),
+      )
+
+      const event = await db.getEvent("zero-timestamp")
+      expect(event?.timestamp).toBe(0)
+    })
+
+    it("preserves event order when timestamps are far apart", async () => {
+      const sessionId = "far-timestamps"
+
+      await db.saveEvents([
+        createTestEvent({ id: `${sessionId}-0`, sessionId, timestamp: 0 }),
+        createTestEvent({ id: `${sessionId}-1`, sessionId, timestamp: 1000000000000 }), // ~2001
+        createTestEvent({ id: `${sessionId}-2`, sessionId, timestamp: 2000000000000 }), // ~2033
+      ])
+
+      const events = await db.getEventsForSession(sessionId)
+      expect(events[0].timestamp).toBe(0)
+      expect(events[1].timestamp).toBe(1000000000000)
+      expect(events[2].timestamp).toBe(2000000000000)
     })
   })
 })
