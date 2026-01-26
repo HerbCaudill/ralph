@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useEventLogRouter, parseEventLogHash, buildEventLogHash } from "./useEventLogRouter"
 import { useAppStore } from "../store"
-import { eventDatabase, type PersistedEventLog } from "@/lib/persistence"
+import { eventDatabase, type PersistedSession, type PersistedEvent } from "@/lib/persistence"
 
 // Mock eventDatabase
 vi.mock("@/lib/persistence", async () => {
@@ -11,14 +11,16 @@ vi.mock("@/lib/persistence", async () => {
     ...actual,
     eventDatabase: {
       init: vi.fn().mockResolvedValue(undefined),
-      getEventLog: vi.fn(),
+      getSession: vi.fn(),
+      getEventsForSession: vi.fn(),
     },
   }
 })
 
 const mockEventDatabase = eventDatabase as unknown as {
   init: ReturnType<typeof vi.fn>
-  getEventLog: ReturnType<typeof vi.fn>
+  getSession: ReturnType<typeof vi.fn>
+  getEventsForSession: ReturnType<typeof vi.fn>
 }
 
 describe("parseEventLogHash", () => {
@@ -94,8 +96,10 @@ describe("useEventLogRouter", () => {
 
     // Reset eventDatabase mocks
     mockEventDatabase.init.mockReset()
-    mockEventDatabase.getEventLog.mockReset()
+    mockEventDatabase.getSession.mockReset()
+    mockEventDatabase.getEventsForSession.mockReset()
     mockEventDatabase.init.mockResolvedValue(undefined)
+    mockEventDatabase.getEventsForSession.mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -141,27 +145,44 @@ describe("useEventLogRouter", () => {
   })
 
   it("parses session ID from URL on mount and fetches data from IndexedDB", async () => {
-    const mockPersistedEventLog: PersistedEventLog = {
+    const mockSession: PersistedSession = {
       id: "default-123",
-      createdAt: 1704067200000, // 2025-01-01T00:00:00Z
-      events: [
-        { type: "test", timestamp: 1234567890 } as unknown as PersistedEventLog["events"][0],
-      ],
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: 1704067200000, // 2025-01-01T00:00:00Z
+      completedAt: null,
       taskId: "task-123",
       taskTitle: null,
-      source: null,
-      workspacePath: null,
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 100000 },
+      session: { current: 0, total: 1 },
       eventCount: 1,
+      lastEventSequence: 1,
     }
 
-    mockEventDatabase.getEventLog.mockResolvedValue(mockPersistedEventLog)
+    const mockEvents: PersistedEvent[] = [
+      {
+        id: "default-123-event-0",
+        sessionId: "default-123",
+        timestamp: 1234567890,
+        eventType: "test",
+        event: { type: "test", timestamp: 1234567890 } as PersistedEvent["event"],
+      },
+    ]
+
+    mockEventDatabase.getSession.mockResolvedValue(mockSession)
+    mockEventDatabase.getEventsForSession.mockResolvedValue(mockEvents)
 
     window.location.hash = "#session=default-123"
 
     renderHook(() => useEventLogRouter())
 
     await waitFor(() => {
-      expect(mockEventDatabase.getEventLog).toHaveBeenCalledWith("default-123")
+      expect(mockEventDatabase.getSession).toHaveBeenCalledWith("default-123")
+    })
+
+    await waitFor(() => {
+      expect(mockEventDatabase.getEventsForSession).toHaveBeenCalledWith("default-123")
     })
 
     await waitFor(() => {
@@ -177,25 +198,30 @@ describe("useEventLogRouter", () => {
   })
 
   it("parses legacy eventlog ID from URL for backward compatibility", async () => {
-    const mockPersistedEventLog: PersistedEventLog = {
+    const mockSession: PersistedSession = {
       id: "abcdef12",
-      createdAt: 1704067200000,
-      events: [],
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: 1704067200000,
+      completedAt: null,
       taskId: "task-123",
       taskTitle: null,
-      source: null,
-      workspacePath: null,
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 100000 },
+      session: { current: 0, total: 1 },
       eventCount: 0,
+      lastEventSequence: 0,
     }
 
-    mockEventDatabase.getEventLog.mockResolvedValue(mockPersistedEventLog)
+    mockEventDatabase.getSession.mockResolvedValue(mockSession)
+    mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
     window.location.hash = "#eventlog=abcdef12"
 
     renderHook(() => useEventLogRouter())
 
     await waitFor(() => {
-      expect(mockEventDatabase.getEventLog).toHaveBeenCalledWith("abcdef12")
+      expect(mockEventDatabase.getSession).toHaveBeenCalledWith("abcdef12")
     })
 
     await waitFor(() => {
@@ -203,26 +229,26 @@ describe("useEventLogRouter", () => {
     })
   })
 
-  it("sets error state when event log not found in IndexedDB", async () => {
-    mockEventDatabase.getEventLog.mockResolvedValue(undefined)
+  it("sets error state when session not found in IndexedDB", async () => {
+    mockEventDatabase.getSession.mockResolvedValue(undefined)
 
     window.location.hash = "#session=nonexistent-123"
 
     renderHook(() => useEventLogRouter())
 
     await waitFor(() => {
-      expect(mockEventDatabase.getEventLog).toHaveBeenCalledWith("nonexistent-123")
+      expect(mockEventDatabase.getSession).toHaveBeenCalledWith("nonexistent-123")
     })
 
     await waitFor(() => {
-      expect(useAppStore.getState().eventLogError).toBe("Event log not found")
+      expect(useAppStore.getState().eventLogError).toBe("Session not found")
     })
 
     expect(useAppStore.getState().viewingEventLog).toBeNull()
   })
 
   it("sets error state when IndexedDB operation throws", async () => {
-    mockEventDatabase.getEventLog.mockRejectedValue(new Error("Database error"))
+    mockEventDatabase.getSession.mockRejectedValue(new Error("Database error"))
 
     window.location.hash = "#session=default-123"
 
@@ -234,18 +260,23 @@ describe("useEventLogRouter", () => {
   })
 
   it("clears event log when hash is removed", async () => {
-    const mockPersistedEventLog: PersistedEventLog = {
+    const mockSession: PersistedSession = {
       id: "default-123",
-      createdAt: 1704067200000,
-      events: [],
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: 1704067200000,
+      completedAt: null,
       taskId: null,
       taskTitle: null,
-      source: null,
-      workspacePath: null,
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 100000 },
+      session: { current: 0, total: 1 },
       eventCount: 0,
+      lastEventSequence: 0,
     }
 
-    mockEventDatabase.getEventLog.mockResolvedValue(mockPersistedEventLog)
+    mockEventDatabase.getSession.mockResolvedValue(mockSession)
+    mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
     window.location.hash = "#session=default-123"
 
@@ -269,30 +300,39 @@ describe("useEventLogRouter", () => {
   })
 
   it("responds to hashchange events", async () => {
-    const mockPersistedEventLog1: PersistedEventLog = {
+    const mockSession1: PersistedSession = {
       id: "session-1",
-      createdAt: 1704067200000,
-      events: [],
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: 1704067200000,
+      completedAt: null,
       taskId: null,
       taskTitle: null,
-      source: null,
-      workspacePath: null,
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 100000 },
+      session: { current: 0, total: 1 },
       eventCount: 0,
+      lastEventSequence: 0,
     }
-    const mockPersistedEventLog2: PersistedEventLog = {
+    const mockSession2: PersistedSession = {
       id: "session-2",
-      createdAt: 1704153600000,
-      events: [],
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: 1704153600000,
+      completedAt: null,
       taskId: null,
       taskTitle: null,
-      source: null,
-      workspacePath: null,
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 100000 },
+      session: { current: 0, total: 1 },
       eventCount: 0,
+      lastEventSequence: 0,
     }
 
-    mockEventDatabase.getEventLog
-      .mockResolvedValueOnce(mockPersistedEventLog1)
-      .mockResolvedValueOnce(mockPersistedEventLog2)
+    mockEventDatabase.getSession
+      .mockResolvedValueOnce(mockSession1)
+      .mockResolvedValueOnce(mockSession2)
+    mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
     window.location.hash = "#session=session-1"
 
@@ -315,12 +355,13 @@ describe("useEventLogRouter", () => {
 
   it("sets loading state during IndexedDB lookup", async () => {
     // Create a promise we can control
-    let resolvePromise: (value: PersistedEventLog) => void
-    const dbPromise = new Promise<PersistedEventLog>(resolve => {
+    let resolvePromise: (value: PersistedSession) => void
+    const dbPromise = new Promise<PersistedSession>(resolve => {
       resolvePromise = resolve
     })
 
-    mockEventDatabase.getEventLog.mockReturnValue(dbPromise)
+    mockEventDatabase.getSession.mockReturnValue(dbPromise)
+    mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
     window.location.hash = "#session=default-123"
 
@@ -335,13 +376,17 @@ describe("useEventLogRouter", () => {
     await act(async () => {
       resolvePromise!({
         id: "default-123",
-        createdAt: 1704067200000,
-        events: [],
+        instanceId: "test-instance",
+        workspaceId: null,
+        startedAt: 1704067200000,
+        completedAt: null,
         taskId: null,
         taskTitle: null,
-        source: null,
-        workspacePath: null,
+        tokenUsage: { input: 0, output: 0 },
+        contextWindow: { used: 0, max: 100000 },
+        session: { current: 0, total: 1 },
         eventCount: 0,
+        lastEventSequence: 0,
       })
     })
 
@@ -352,18 +397,23 @@ describe("useEventLogRouter", () => {
   })
 
   it("returns current eventLogId from store", async () => {
-    const mockPersistedEventLog: PersistedEventLog = {
+    const mockSession: PersistedSession = {
       id: "default-123",
-      createdAt: 1704067200000,
-      events: [],
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: 1704067200000,
+      completedAt: null,
       taskId: null,
       taskTitle: null,
-      source: null,
-      workspacePath: null,
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 100000 },
+      session: { current: 0, total: 1 },
       eventCount: 0,
+      lastEventSequence: 0,
     }
 
-    mockEventDatabase.getEventLog.mockResolvedValue(mockPersistedEventLog)
+    mockEventDatabase.getSession.mockResolvedValue(mockSession)
+    mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
     window.location.hash = "#session=default-123"
 

@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from "react"
 import { useAppStore } from "../store"
-import { eventDatabase, type PersistedEventLog } from "@/lib/persistence"
+import { eventDatabase, type PersistedSession, type PersistedEvent } from "@/lib/persistence"
 import type { EventLog } from "@/types"
 
 /**
@@ -43,20 +43,20 @@ export function buildEventLogHash(id: string): string {
 }
 
 /**
- * Convert a PersistedEventLog from IndexedDB to EventLog for the store.
+ * Convert a PersistedSession and its events from IndexedDB to EventLog for the store.
  */
-function toEventLog(persisted: PersistedEventLog): EventLog {
+function toEventLog(session: PersistedSession, events: PersistedEvent[]): EventLog {
   return {
-    id: persisted.id,
-    createdAt: new Date(persisted.createdAt).toISOString(),
-    events: persisted.events,
+    id: session.id,
+    createdAt: new Date(session.startedAt).toISOString(),
+    events: events.map(e => e.event),
     metadata:
-      persisted.taskId || persisted.taskTitle || persisted.source || persisted.workspacePath ?
+      session.taskId || session.taskTitle || session.workspaceId ?
         {
-          taskId: persisted.taskId ?? undefined,
-          title: persisted.taskTitle ?? undefined,
-          source: persisted.source ?? undefined,
-          workspacePath: persisted.workspacePath ?? undefined,
+          taskId: session.taskId ?? undefined,
+          title: session.taskTitle ?? undefined,
+          source: "session",
+          workspacePath: session.workspaceId ?? undefined,
         }
       : undefined,
   }
@@ -116,20 +116,22 @@ export function useEventLogRouter(): UseEventLogRouterReturn {
         setEventLogError(null)
 
         try {
-          // Initialize database and fetch from IndexedDB
+          // Initialize database and fetch session from IndexedDB
           await eventDatabase.init()
-          const persisted = await eventDatabase.getEventLog(id)
+          const session = await eventDatabase.getSession(id)
 
-          if (persisted) {
-            setViewingEventLog(toEventLog(persisted))
+          if (session) {
+            // Fetch events separately (v3+ stores events in separate table)
+            const events = await eventDatabase.getEventsForSession(id)
+            setViewingEventLog(toEventLog(session, events))
             setEventLogError(null)
           } else {
             setViewingEventLog(null)
-            setEventLogError("Event log not found")
+            setEventLogError("Session not found")
           }
         } catch (err) {
           setViewingEventLog(null)
-          setEventLogError(err instanceof Error ? err.message : "Failed to fetch event log")
+          setEventLogError(err instanceof Error ? err.message : "Failed to fetch session")
         } finally {
           setEventLogLoading(false)
         }
