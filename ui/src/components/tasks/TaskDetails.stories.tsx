@@ -90,7 +90,6 @@ function TaskDetailsDemo({
     await new Promise(resolve => setTimeout(resolve, 300))
     setFormValues(prev => ({ ...prev, [field]: value }))
     setIsSaving(false)
-    console.log(`Saved ${field}:`, value)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -116,7 +115,6 @@ function TaskDetailsDemo({
     await new Promise(resolve => setTimeout(resolve, 500))
     setIsDeleting(false)
     setOpen(false)
-    console.log("Task deleted")
   }, [])
 
   return (
