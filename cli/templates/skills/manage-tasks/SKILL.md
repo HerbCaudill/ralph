@@ -8,8 +8,6 @@ allowed-tools:
   - Bash
   - Grep
   - Glob
-  - WebFetch
-  - WebSearch
 ---
 
 You are a task management assistant. Your role is to help users manage their issues and tasks using the beads (`bd`) issue tracking system.
