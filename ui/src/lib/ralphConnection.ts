@@ -267,23 +267,21 @@ function handleMessage(event: MessageEvent): void {
                 if (isForActiveInstance) {
                   store.addTokenUsage({ input: inputTokens, output: outputTokens })
                   // Update context window usage (total tokens used = input + output)
-                  const totalTokens =
-                    store.tokenUsage.input + inputTokens + store.tokenUsage.output + outputTokens
-                  store.updateContextWindowUsed(totalTokens)
+                  // Note: addTokenUsage already updated store.tokenUsage, so we just read the new totals
+                  store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
                 } else {
                   store.addTokenUsageForInstance(targetInstanceId, {
                     input: inputTokens,
                     output: outputTokens,
                   })
                   // Update context window usage for non-active instance
+                  // Note: addTokenUsageForInstance already updated the instance, so we read the new totals
                   const targetInstance = store.instances.get(targetInstanceId)
                   if (targetInstance) {
-                    const totalTokens =
-                      targetInstance.tokenUsage.input +
-                      inputTokens +
-                      targetInstance.tokenUsage.output +
-                      outputTokens
-                    store.updateContextWindowUsedForInstance(targetInstanceId, totalTokens)
+                    store.updateContextWindowUsedForInstance(
+                      targetInstanceId,
+                      targetInstance.tokenUsage.input + targetInstance.tokenUsage.output,
+                    )
                   }
                 }
               }
@@ -308,23 +306,21 @@ function handleMessage(event: MessageEvent): void {
               if (isForActiveInstance) {
                 store.addTokenUsage({ input: inputTokens, output: outputTokens })
                 // Update context window usage (total tokens used = input + output)
-                const totalTokens =
-                  store.tokenUsage.input + inputTokens + store.tokenUsage.output + outputTokens
-                store.updateContextWindowUsed(totalTokens)
+                // Note: addTokenUsage already updated store.tokenUsage, so we just read the new totals
+                store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
               } else {
                 store.addTokenUsageForInstance(targetInstanceId, {
                   input: inputTokens,
                   output: outputTokens,
                 })
                 // Update context window usage for non-active instance
+                // Note: addTokenUsageForInstance already updated the instance, so we read the new totals
                 const targetInstance = store.instances.get(targetInstanceId)
                 if (targetInstance) {
-                  const totalTokens =
-                    targetInstance.tokenUsage.input +
-                    inputTokens +
-                    targetInstance.tokenUsage.output +
-                    outputTokens
-                  store.updateContextWindowUsedForInstance(targetInstanceId, totalTokens)
+                  store.updateContextWindowUsedForInstance(
+                    targetInstanceId,
+                    targetInstance.tokenUsage.input + targetInstance.tokenUsage.output,
+                  )
                 }
               }
             }
@@ -461,10 +457,9 @@ function handleMessage(event: MessageEvent): void {
               const outputTokens = usage.outputTokens || usage.output_tokens || 0
               if (inputTokens > 0 || outputTokens > 0) {
                 store.addTokenUsage({ input: inputTokens, output: outputTokens })
-                // Update context window usage
-                const totalTokens =
-                  store.tokenUsage.input + inputTokens + store.tokenUsage.output + outputTokens
-                store.updateContextWindowUsed(totalTokens)
+                // Update context window usage (total tokens used = input + output)
+                // Note: addTokenUsage already updated store.tokenUsage, so we just read the new totals
+                store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
               }
             }
           }
