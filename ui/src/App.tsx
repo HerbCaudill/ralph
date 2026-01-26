@@ -28,6 +28,7 @@ import {
   selectTaskChatMessages,
   selectTaskChatEvents,
   selectCurrentTask,
+  selectWorkspace,
 } from "./store"
 import { TaskChatController } from "./components/chat/TaskChatController"
 import {
@@ -40,6 +41,7 @@ import {
   useWorkspaces,
   useStoreHydration,
   useSessionPersistence,
+  useEventPersistence,
   useTaskChatPersistence,
 } from "./hooks"
 import { startRalph } from "./lib/startRalph"
@@ -72,13 +74,21 @@ export function App() {
   const contextWindow = useAppStore(selectContextWindow)
   const session = useAppStore(selectSession)
 
-  // Persist session events to IndexedDB (auto-saves on session boundaries and completion)
-  useSessionPersistence({
+  // Persist session metadata to IndexedDB (auto-saves on session boundaries and completion)
+  const { currentSessionId } = useSessionPersistence({
     instanceId: activeInstanceId,
     events,
     tokenUsage,
     contextWindow,
     session,
+  })
+
+  // Persist individual events to IndexedDB (auto-saves as events arrive)
+  const workspace = useAppStore(selectWorkspace)
+  useEventPersistence({
+    sessionId: currentSessionId,
+    events,
+    workspaceId: workspace,
   })
 
   // Subscribe to state for task chat persistence

@@ -6,14 +6,14 @@
  *
  * Key design decisions:
  * - Only UI preferences, view state, and workspace metadata are persisted
- * - Events are only persisted for the active instance (memory optimization)
+ * - Events are NOT persisted to localStorage (they are persisted to IndexedDB by useEventPersistence)
  * - Map/Set are serialized to arrays for JSON compatibility
  * - Schema versioning supports migrations for future changes
  */
 
 import { createJSONStorage, type PersistOptions } from "zustand/middleware"
 import type { AppState, AppActions } from "./index"
-import type { RalphInstance, ChatEvent, Theme, ClosedTasksTimeFilter } from "@/types"
+import type { RalphInstance, Theme, ClosedTasksTimeFilter } from "@/types"
 import { DEFAULT_CONTEXT_WINDOW_MAX } from "./index"
 
 /** Current schema version for persistence format */
@@ -24,14 +24,13 @@ export const PERSIST_NAME = "ralph-ui-store"
 
 /**
  * Serialized form of RalphInstance for JSON storage.
- * Events are excluded for non-active instances to save space.
+ * Events are NOT included - they are persisted to IndexedDB separately.
  */
 export interface SerializedRalphInstance {
   id: string
   name: string
   agentName: string
   status: string
-  events: ChatEvent[]
   tokenUsage: { input: number; output: number }
   contextWindow: { used: number; max: number }
   session: { current: number; total: number }
@@ -86,28 +85,25 @@ export interface PersistedState {
 
 /**
  * Serializes the instances Map to an array for JSON storage.
- * Events are only included for the active instance to save space.
+ * Events are NOT included - they are persisted to IndexedDB separately.
  *
  * @param instances - The Map of RalphInstances from state
- * @param activeInstanceId - The ID of the currently active instance
+ * @param _activeInstanceId - The ID of the currently active instance (unused, kept for API compatibility)
  * @returns Array of serialized instances suitable for JSON
  */
 export function serializeInstances(
   instances: Map<string, RalphInstance>,
-  activeInstanceId: string,
+  _activeInstanceId: string,
 ): SerializedRalphInstance[] {
   const result: SerializedRalphInstance[] = []
 
-  for (const [id, instance] of instances) {
-    const isActive = id === activeInstanceId
-
+  for (const [, instance] of instances) {
     result.push({
       id: instance.id,
       name: instance.name,
       agentName: instance.agentName,
       status: instance.status,
-      // Only include events for the active instance to save storage space
-      events: isActive ? instance.events : [],
+      // Events are NOT stored in localStorage - they are persisted to IndexedDB
       tokenUsage: instance.tokenUsage,
       contextWindow: instance.contextWindow,
       session: instance.session,
@@ -127,6 +123,7 @@ export function serializeInstances(
 /**
  * Deserializes an array of instances back to a Map.
  * Restores RalphInstance structure with proper defaults.
+ * Events are initialized as empty - they will be restored from IndexedDB by useStoreHydration.
  *
  * @param serialized - Array of serialized instances from storage
  * @returns Map of RalphInstances
@@ -142,7 +139,8 @@ export function deserializeInstances(
       name: item.name,
       agentName: item.agentName,
       status: item.status as RalphInstance["status"],
-      events: item.events ?? [],
+      // Events are NOT stored in localStorage - they will be restored from IndexedDB
+      events: [],
       tokenUsage: item.tokenUsage ?? { input: 0, output: 0 },
       contextWindow: item.contextWindow ?? { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
       session: item.session ?? { current: 0, total: 0 },
@@ -309,6 +307,7 @@ export const persistConfig: PersistOptions<AppState & AppActions, PersistedState
   /**
    * Merge function to properly handle rehydration.
    * Deserializes the instances array back to a Map.
+   * Note: Events are NOT restored here - they will be restored from IndexedDB by useStoreHydration.
    */
   merge: (persistedState: unknown, currentState: AppState & AppActions): AppState & AppActions => {
     const persisted = persistedState as PersistedState | undefined
@@ -339,10 +338,10 @@ export const persistConfig: PersistOptions<AppState & AppActions, PersistedState
       instances,
       activeInstanceId,
       // Sync flat fields from active instance for backward compatibility
+      // Note: events are kept empty (currentState.events) - they will be restored from IndexedDB
       ...(activeInstance ?
         {
           ralphStatus: activeInstance.status,
-          events: activeInstance.events,
           tokenUsage: activeInstance.tokenUsage,
           contextWindow: activeInstance.contextWindow,
           session: activeInstance.session,

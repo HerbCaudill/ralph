@@ -121,7 +121,7 @@ describe("persist", () => {
       expect(result).toHaveLength(2)
     })
 
-    it("includes events only for the active instance", () => {
+    it("does not include events (they are stored in IndexedDB)", () => {
       const events: ChatEvent[] = [
         createMockEvent({ content: "event 1" }),
         createMockEvent({ content: "event 2" }),
@@ -134,11 +134,12 @@ describe("persist", () => {
 
       const result = serializeInstances(instances, "active")
 
+      // Events should NOT be present in serialized output
       const activeResult = result.find(i => i.id === "active")
       const inactiveResult = result.find(i => i.id === "inactive")
 
-      expect(activeResult?.events).toHaveLength(2)
-      expect(inactiveResult?.events).toHaveLength(0)
+      expect(activeResult).not.toHaveProperty("events")
+      expect(inactiveResult).not.toHaveProperty("events")
     })
 
     it("preserves all instance properties", () => {
@@ -204,7 +205,6 @@ describe("persist", () => {
           name: "Instance 1",
           agentName: "Ralph",
           status: "stopped",
-          events: [],
           tokenUsage: { input: 0, output: 0 },
           contextWindow: { used: 0, max: 200000 },
           session: { current: 0, total: 0 },
@@ -225,14 +225,13 @@ describe("persist", () => {
       expect(result.has("instance-1")).toBe(true)
     })
 
-    it("restores RalphInstance with proper structure", () => {
+    it("restores RalphInstance with proper structure (events always empty)", () => {
       const serialized: SerializedRalphInstance[] = [
         {
           id: "test",
           name: "Test Instance",
           agentName: "Ralph-1",
           status: "running",
-          events: [createMockEvent()],
           tokenUsage: { input: 100, output: 50 },
           contextWindow: { used: 5000, max: 200000 },
           session: { current: 2, total: 5 },
@@ -258,7 +257,8 @@ describe("persist", () => {
       expect(instance?.name).toBe("Test Instance")
       expect(instance?.agentName).toBe("Ralph-1")
       expect(instance?.status).toBe("running")
-      expect(instance?.events).toHaveLength(1)
+      // Events are always empty - they will be restored from IndexedDB
+      expect(instance?.events).toEqual([])
       expect(instance?.tokenUsage).toEqual({ input: 100, output: 50 })
       expect(instance?.contextWindow).toEqual({ used: 5000, max: 200000 })
       expect(instance?.session).toEqual({ current: 2, total: 5 })
@@ -282,7 +282,6 @@ describe("persist", () => {
           name: "Minimal",
           agentName: "Ralph",
           status: "stopped",
-          events: [],
           tokenUsage: undefined as any,
           contextWindow: undefined as any,
           session: undefined as any,
@@ -318,7 +317,6 @@ describe("persist", () => {
           name: "One",
           agentName: "Ralph",
           status: "stopped",
-          events: [],
           tokenUsage: { input: 0, output: 0 },
           contextWindow: { used: 0, max: 200000 },
           session: { current: 0, total: 0 },
@@ -335,7 +333,6 @@ describe("persist", () => {
           name: "Two",
           agentName: "Ralph-2",
           status: "running",
-          events: [],
           tokenUsage: { input: 10, output: 5 },
           contextWindow: { used: 100, max: 200000 },
           session: { current: 1, total: 3 },
@@ -437,7 +434,7 @@ describe("persist", () => {
       expect(result).not.toHaveProperty("wasRunningBeforeDisconnect")
     })
 
-    it("serializes instances correctly", () => {
+    it("serializes instances correctly (without events)", () => {
       const events = [createMockEvent()]
       const instance = createMockInstance({
         id: DEFAULT_INSTANCE_ID,
@@ -451,7 +448,8 @@ describe("persist", () => {
 
       expect(result.instances).toHaveLength(1)
       expect(result.instances[0].id).toBe(DEFAULT_INSTANCE_ID)
-      expect(result.instances[0].events).toHaveLength(1) // Active instance includes events
+      // Events are NOT included in serialization - they are stored in IndexedDB
+      expect(result.instances[0]).not.toHaveProperty("events")
     })
   })
 
@@ -610,7 +608,6 @@ describe("persist", () => {
               name: "Main",
               agentName: "Ralph",
               status: "stopped",
-              events: [],
               tokenUsage: { input: 0, output: 0 },
               contextWindow: { used: 0, max: 200000 },
               session: { current: 0, total: 0 },
@@ -653,7 +650,6 @@ describe("persist", () => {
               name: "Instance A",
               agentName: "Ralph",
               status: "stopped",
-              events: [],
               tokenUsage: { input: 0, output: 0 },
               contextWindow: { used: 0, max: 200000 },
               session: { current: 0, total: 0 },
@@ -670,7 +666,6 @@ describe("persist", () => {
               name: "Instance B",
               agentName: "Ralph-2",
               status: "running",
-              events: [createMockEvent()],
               tokenUsage: { input: 10, output: 5 },
               contextWindow: { used: 100, max: 200000 },
               session: { current: 1, total: 2 },
@@ -704,7 +699,6 @@ describe("persist", () => {
               name: "Only",
               agentName: "Ralph",
               status: "stopped",
-              events: [],
               tokenUsage: { input: 0, output: 0 },
               contextWindow: { used: 0, max: 200000 },
               session: { current: 0, total: 0 },
@@ -726,9 +720,8 @@ describe("persist", () => {
         expect(result.activeInstanceId).toBe(currentState.activeInstanceId)
       })
 
-      it("syncs flat fields from active instance", () => {
+      it("syncs flat fields from active instance (except events)", () => {
         const currentState = createMockAppState()
-        const events = [createMockEvent()]
         const persistedState: PersistedState = {
           ...partialize(currentState),
           instances: [
@@ -737,7 +730,6 @@ describe("persist", () => {
               name: "Active",
               agentName: "Ralph",
               status: "running",
-              events,
               tokenUsage: { input: 100, output: 50 },
               contextWindow: { used: 5000, max: 200000 },
               session: { current: 2, total: 5 },
@@ -757,7 +749,8 @@ describe("persist", () => {
 
         // Flat fields should be synced from the active instance
         expect(result.ralphStatus).toBe("running")
-        expect(result.events).toEqual(events)
+        // Events are NOT synced from persisted state - they come from IndexedDB
+        expect(result.events).toEqual(currentState.events)
         expect(result.tokenUsage).toEqual({ input: 100, output: 50 })
         expect(result.contextWindow).toEqual({ used: 5000, max: 200000 })
         expect(result.session).toEqual({ current: 2, total: 5 })
@@ -779,7 +772,7 @@ describe("persist", () => {
   })
 
   describe("round-trip serialization", () => {
-    it("can serialize and deserialize instances without data loss", () => {
+    it("can serialize and deserialize instances (events always empty)", () => {
       const events = [
         createMockEvent({ content: "event 1" }),
         createMockEvent({ content: "event 2" }),
@@ -817,7 +810,7 @@ describe("persist", () => {
             name: "Inactive Instance",
             agentName: "Ralph-2",
             status: "stopped",
-            events: [], // Will not be preserved for inactive
+            events: [],
             tokenUsage: { input: 10, output: 5 },
             contextWindow: { used: 100, max: 200000 },
             session: { current: 1, total: 2 },
@@ -835,7 +828,7 @@ describe("persist", () => {
       const serialized = serializeInstances(instances, "active")
       const deserialized = deserializeInstances(serialized)
 
-      // Active instance should be fully preserved
+      // Instance properties should be preserved (except events)
       const activeOriginal = instances.get("active")!
       const activeRestored = deserialized.get("active")!
 
@@ -843,7 +836,8 @@ describe("persist", () => {
       expect(activeRestored.name).toBe(activeOriginal.name)
       expect(activeRestored.agentName).toBe(activeOriginal.agentName)
       expect(activeRestored.status).toBe(activeOriginal.status)
-      expect(activeRestored.events).toEqual(activeOriginal.events)
+      // Events are NOT preserved - they will be restored from IndexedDB
+      expect(activeRestored.events).toEqual([])
       expect(activeRestored.tokenUsage).toEqual(activeOriginal.tokenUsage)
       expect(activeRestored.contextWindow).toEqual(activeOriginal.contextWindow)
       expect(activeRestored.session).toEqual(activeOriginal.session)
@@ -855,7 +849,7 @@ describe("persist", () => {
       expect(activeRestored.runStartedAt).toBe(activeOriginal.runStartedAt)
       expect(activeRestored.mergeConflict).toEqual(activeOriginal.mergeConflict)
 
-      // Inactive instance should have empty events
+      // Inactive instance should also have empty events
       const inactiveRestored = deserialized.get("inactive")!
       expect(inactiveRestored.events).toEqual([])
     })
