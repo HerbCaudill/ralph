@@ -34,7 +34,7 @@ export interface SerializedRalphInstance {
   events: ChatEvent[]
   tokenUsage: { input: number; output: number }
   contextWindow: { used: number; max: number }
-  iteration: { current: number; total: number }
+  session: { current: number; total: number }
   worktreePath: string | null
   branch: string | null
   currentTaskId: string | null
@@ -65,7 +65,7 @@ export interface PersistedState {
   currentTaskChatSessionId: string | null
 
   // View state
-  viewingIterationIndex: number | null
+  viewingSessionIndex: number | null
   taskSearchQuery: string
   selectedTaskId: string | null
   isSearchVisible: boolean
@@ -110,7 +110,7 @@ export function serializeInstances(
       events: isActive ? instance.events : [],
       tokenUsage: instance.tokenUsage,
       contextWindow: instance.contextWindow,
-      iteration: instance.iteration,
+      session: instance.session,
       worktreePath: instance.worktreePath,
       branch: instance.branch,
       currentTaskId: instance.currentTaskId,
@@ -145,7 +145,7 @@ export function deserializeInstances(
       events: item.events ?? [],
       tokenUsage: item.tokenUsage ?? { input: 0, output: 0 },
       contextWindow: item.contextWindow ?? { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-      iteration: item.iteration ?? { current: 0, total: 0 },
+      session: item.session ?? { current: 0, total: 0 },
       worktreePath: item.worktreePath,
       branch: item.branch,
       currentTaskId: item.currentTaskId,
@@ -166,7 +166,7 @@ export function deserializeInstances(
  *
  * Whitelisted categories:
  * - UI preferences (sidebar, task chat, tool output, theme, filters)
- * - View state (iteration index, search, selection)
+ * - View state (session index, search, selection)
  * - Workspace metadata (path, branch, prefix, color)
  * - Tasks (will be resynced but provides faster initial render)
  * - Instances (serialized with events only for active instance)
@@ -196,7 +196,7 @@ export function partialize(state: AppState): PersistedState {
     currentTaskChatSessionId: state.currentTaskChatSessionId,
 
     // View state
-    viewingIterationIndex: state.viewingIterationIndex,
+    viewingSessionIndex: state.viewingSessionIndex,
     taskSearchQuery: state.taskSearchQuery,
     selectedTaskId: state.selectedTaskId,
     isSearchVisible: state.isSearchVisible,
@@ -275,7 +275,10 @@ export function onRehydrateStorage(_state: AppState | undefined) {
     if (rehydratedState) {
       // Mark hydration as complete for components that need to wait
       // This is handled via the useStoreHydration hook pattern
-      console.debug("[persist] State rehydrated successfully")
+      // Only log in non-test environments (vitest sets __vitest_worker__ global)
+      if (!(globalThis as Record<string, unknown>).__vitest_worker__) {
+        console.debug("[persist] State rehydrated successfully")
+      }
     }
   }
 }
@@ -342,7 +345,7 @@ export const persistConfig: PersistOptions<AppState & AppActions, PersistedState
           events: activeInstance.events,
           tokenUsage: activeInstance.tokenUsage,
           contextWindow: activeInstance.contextWindow,
-          iteration: activeInstance.iteration,
+          session: activeInstance.session,
           runStartedAt: activeInstance.runStartedAt,
         }
       : {}),

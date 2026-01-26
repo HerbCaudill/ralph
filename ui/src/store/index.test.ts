@@ -2,17 +2,17 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import {
   useAppStore,
   selectCurrentTask,
-  isIterationBoundary,
-  getIterationBoundaries,
-  countIterations,
-  getEventsForIteration,
-  getTaskFromIterationEvents,
-  getIterationTaskInfos,
-  selectIterationCount,
-  selectCurrentIterationEvents,
-  selectViewingIterationIndex,
-  selectIsViewingLatestIteration,
-  selectIterationTask,
+  isSessionBoundary,
+  getSessionBoundaries,
+  countSessions,
+  getEventsForSession,
+  getTaskFromSessionEvents,
+  getSessionTaskInfos,
+  selectSessionCount,
+  selectCurrentSessionEvents,
+  selectViewingSessionIndex,
+  selectIsViewingLatestSession,
+  selectSessionTask,
   // Instance-related exports
   DEFAULT_INSTANCE_ID,
   DEFAULT_INSTANCE_NAME,
@@ -30,13 +30,13 @@ import {
   selectEvents,
   selectTokenUsage,
   selectContextWindow,
-  selectIteration,
+  selectSession,
   // Per-instance selectors
   selectInstanceStatus,
   selectInstanceEvents,
   selectInstanceTokenUsage,
   selectInstanceContextWindow,
-  selectInstanceIteration,
+  selectInstanceSession,
   selectInstanceRunStartedAt,
   selectInstanceWorktreePath,
   selectInstanceBranch,
@@ -45,7 +45,7 @@ import {
   selectInstanceAgentName,
   selectInstanceCreatedAt,
   selectIsInstanceRunning,
-  selectInstanceIterationCount,
+  selectInstanceSessionCount,
   flushTaskChatEventsBatch,
   selectCanAcceptMessages,
 } from "./index"
@@ -68,7 +68,7 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
     theme: "system",
     closedTimeFilter: "past_day",
     currentTaskChatSessionId: null,
-    viewingIterationIndex: null,
+    viewingSessionIndex: null,
     taskSearchQuery: "",
     selectedTaskId: null,
     isSearchVisible: false,
@@ -89,6 +89,14 @@ describe("useAppStore", () => {
   beforeEach(() => {
     // Reset store to initial state before each test
     useAppStore.getState().reset()
+    // Silence console output during tests
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   describe("initial state", () => {
@@ -101,7 +109,7 @@ describe("useAppStore", () => {
       expect(state.branch).toBeNull()
       expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(state.contextWindow).toEqual({ used: 0, max: 200_000 })
-      expect(state.iteration).toEqual({ current: 0, total: 0 })
+      expect(state.session).toEqual({ current: 0, total: 0 })
       expect(state.connectionStatus).toBe("disconnected")
       expect(state.accentColor).toBeNull()
       expect(state.sidebarWidth).toBe(320)
@@ -110,7 +118,7 @@ describe("useAppStore", () => {
       expect(state.taskChatMessages).toEqual([])
       expect(state.taskChatLoading).toBe(false)
       expect(state.taskChatEvents).toEqual([])
-      expect(state.viewingIterationIndex).toBeNull()
+      expect(state.viewingSessionIndex).toBeNull()
     })
 
     it("has instances Map with default instance", () => {
@@ -136,7 +144,7 @@ describe("useAppStore", () => {
       expect(defaultInstance?.events).toEqual([])
       expect(defaultInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(defaultInstance?.contextWindow).toEqual({ used: 0, max: 200_000 })
-      expect(defaultInstance?.iteration).toEqual({ current: 0, total: 0 })
+      expect(defaultInstance?.session).toEqual({ current: 0, total: 0 })
       expect(defaultInstance?.worktreePath).toBeNull()
       expect(defaultInstance?.branch).toBeNull()
       expect(defaultInstance?.currentTaskId).toBeNull()
@@ -180,9 +188,9 @@ describe("useAppStore", () => {
       expect(instance.contextWindow).toEqual({ used: 0, max: 200_000 })
     })
 
-    it("creates instance with zero iteration progress", () => {
+    it("creates instance with zero session progress", () => {
       const instance = createRalphInstance("test-id")
-      expect(instance.iteration).toEqual({ current: 0, total: 0 })
+      expect(instance.session).toEqual({ current: 0, total: 0 })
     })
 
     it("creates instance with null worktree and branch", () => {
@@ -326,23 +334,23 @@ describe("useAppStore", () => {
       })
     })
 
-    it("selectInstanceIteration returns iteration for default instance", () => {
+    it("selectInstanceSession returns session for default instance", () => {
       const state = useAppStore.getState()
-      expect(selectInstanceIteration(state, DEFAULT_INSTANCE_ID)).toEqual({
+      expect(selectInstanceSession(state, DEFAULT_INSTANCE_ID)).toEqual({
         current: 0,
         total: 0,
       })
     })
 
-    it("selectInstanceIteration returns defaults for non-existent instance", () => {
+    it("selectInstanceSession returns defaults for non-existent instance", () => {
       const state = useAppStore.getState()
-      expect(selectInstanceIteration(state, "non-existent")).toEqual({ current: 0, total: 0 })
+      expect(selectInstanceSession(state, "non-existent")).toEqual({ current: 0, total: 0 })
     })
 
-    it("selectInstanceIteration reflects iteration changes", () => {
-      useAppStore.getState().setIteration({ current: 3, total: 10 })
+    it("selectInstanceSession reflects session changes", () => {
+      useAppStore.getState().setSession({ current: 3, total: 10 })
       const state = useAppStore.getState()
-      expect(selectInstanceIteration(state, DEFAULT_INSTANCE_ID)).toEqual({
+      expect(selectInstanceSession(state, DEFAULT_INSTANCE_ID)).toEqual({
         current: 3,
         total: 10,
       })
@@ -445,22 +453,22 @@ describe("useAppStore", () => {
       expect(selectIsInstanceRunning(state, DEFAULT_INSTANCE_ID)).toBe(true)
     })
 
-    it("selectInstanceIterationCount returns 0 for default instance initially", () => {
+    it("selectInstanceSessionCount returns 0 for default instance initially", () => {
       const state = useAppStore.getState()
-      expect(selectInstanceIterationCount(state, DEFAULT_INSTANCE_ID)).toBe(0)
+      expect(selectInstanceSessionCount(state, DEFAULT_INSTANCE_ID)).toBe(0)
     })
 
-    it("selectInstanceIterationCount returns 0 for non-existent instance", () => {
+    it("selectInstanceSessionCount returns 0 for non-existent instance", () => {
       const state = useAppStore.getState()
-      expect(selectInstanceIterationCount(state, "non-existent")).toBe(0)
+      expect(selectInstanceSessionCount(state, "non-existent")).toBe(0)
     })
 
-    it("selectInstanceIterationCount counts iteration boundaries in events", () => {
+    it("selectInstanceSessionCount counts session boundaries in events", () => {
       useAppStore.getState().addEvent({ type: "system", subtype: "init", timestamp: 1 })
       useAppStore.getState().addEvent({ type: "assistant", timestamp: 2 })
       useAppStore.getState().addEvent({ type: "system", subtype: "init", timestamp: 3 })
       const state = useAppStore.getState()
-      expect(selectInstanceIterationCount(state, DEFAULT_INSTANCE_ID)).toBe(2)
+      expect(selectInstanceSessionCount(state, DEFAULT_INSTANCE_ID)).toBe(2)
     })
   })
 
@@ -491,7 +499,7 @@ describe("useAppStore", () => {
       newInstance.events = [{ type: "test-event", timestamp: 123 }]
       newInstance.tokenUsage = { input: 500, output: 250 }
       newInstance.contextWindow = { used: 10000, max: 200000 }
-      newInstance.iteration = { current: 2, total: 5 }
+      newInstance.session = { current: 2, total: 5 }
       newInstance.runStartedAt = 12345
 
       // Add the new instance to the Map
@@ -514,7 +522,7 @@ describe("useAppStore", () => {
       newInstance.events = [{ type: "test-event", timestamp: 123 }]
       newInstance.tokenUsage = { input: 500, output: 250 }
       newInstance.contextWindow = { used: 10000, max: 200000 }
-      newInstance.iteration = { current: 2, total: 5 }
+      newInstance.session = { current: 2, total: 5 }
       newInstance.runStartedAt = 12345
 
       // Add the new instance to the Map
@@ -531,14 +539,14 @@ describe("useAppStore", () => {
       expect(updatedState.events).toEqual([{ type: "test-event", timestamp: 123 }])
       expect(updatedState.tokenUsage).toEqual({ input: 500, output: 250 })
       expect(updatedState.contextWindow).toEqual({ used: 10000, max: 200000 })
-      expect(updatedState.iteration).toEqual({ current: 2, total: 5 })
+      expect(updatedState.session).toEqual({ current: 2, total: 5 })
       expect(updatedState.runStartedAt).toBe(12345)
     })
 
-    it("resets viewingIterationIndex when switching instance", () => {
-      // Set a viewing iteration index
-      useAppStore.getState().setViewingIterationIndex(3)
-      expect(useAppStore.getState().viewingIterationIndex).toBe(3)
+    it("resets viewingSessionIndex when switching instance", () => {
+      // Set a viewing session index
+      useAppStore.getState().setViewingSessionIndex(3)
+      expect(useAppStore.getState().viewingSessionIndex).toBe(3)
 
       // Create and add a second instance
       const state = useAppStore.getState()
@@ -550,8 +558,8 @@ describe("useAppStore", () => {
       // Switch to the new instance
       useAppStore.getState().setActiveInstanceId("second-instance")
 
-      // Verify viewingIterationIndex is reset
-      expect(useAppStore.getState().viewingIterationIndex).toBeNull()
+      // Verify viewingSessionIndex is reset
+      expect(useAppStore.getState().viewingSessionIndex).toBeNull()
     })
 
     it("allows switching back to original instance", () => {
@@ -667,9 +675,9 @@ describe("useAppStore", () => {
       expect(state.events).toEqual([])
       expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(state.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
-      expect(state.iteration).toEqual({ current: 0, total: 0 })
+      expect(state.session).toEqual({ current: 0, total: 0 })
       expect(state.runStartedAt).toBeNull()
-      expect(state.viewingIterationIndex).toBeNull()
+      expect(state.viewingSessionIndex).toBeNull()
     })
 
     it("can create multiple instances", () => {
@@ -791,7 +799,7 @@ describe("useAppStore", () => {
         events: [{ type: "test", timestamp: 123 }],
         tokenUsage: { input: 1000, output: 500 },
         contextWindow: { used: 50000, max: 200000 },
-        iteration: { current: 3, total: 5 },
+        session: { current: 3, total: 5 },
         runStartedAt: Date.now(),
         currentTaskId: "task-123",
       }
@@ -809,7 +817,7 @@ describe("useAppStore", () => {
       expect(cleanedInstance?.events).toEqual([])
       expect(cleanedInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(cleanedInstance?.contextWindow.used).toBe(0)
-      expect(cleanedInstance?.iteration).toEqual({ current: 0, total: 0 })
+      expect(cleanedInstance?.session).toEqual({ current: 0, total: 0 })
       expect(cleanedInstance?.runStartedAt).toBeNull()
       expect(cleanedInstance?.currentTaskId).toBeNull()
     })
@@ -844,7 +852,7 @@ describe("useAppStore", () => {
       useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
       useAppStore.getState().setTokenUsage({ input: 500, output: 250 })
       useAppStore.getState().setContextWindow({ used: 25000, max: 200000 })
-      useAppStore.getState().setIteration({ current: 2, total: 4 })
+      useAppStore.getState().setSession({ current: 2, total: 4 })
 
       // Cleanup the active instance
       useAppStore.getState().cleanupInstance("instance-1")
@@ -855,10 +863,10 @@ describe("useAppStore", () => {
       expect(state.events).toEqual([])
       expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(state.contextWindow.used).toBe(0)
-      expect(state.iteration).toEqual({ current: 0, total: 0 })
+      expect(state.session).toEqual({ current: 0, total: 0 })
       expect(state.runStartedAt).toBeNull()
       expect(state.initialTaskCount).toBeNull()
-      expect(state.viewingIterationIndex).toBeNull()
+      expect(state.viewingSessionIndex).toBeNull()
     })
 
     it("does not affect flat fields when cleaning up a non-active instance", () => {
@@ -1229,13 +1237,13 @@ describe("useAppStore", () => {
       expect(activeInstance?.contextWindow.used).toBe(75000)
     })
 
-    it("setIteration updates active instance iteration", () => {
-      const iteration = { current: 3, total: 10 }
-      useAppStore.getState().setIteration(iteration)
+    it("setSession updates active instance session", () => {
+      const session = { current: 3, total: 10 }
+      useAppStore.getState().setSession(session)
 
       const state = useAppStore.getState()
       const activeInstance = state.instances.get(state.activeInstanceId)
-      expect(activeInstance?.iteration).toEqual(iteration)
+      expect(activeInstance?.session).toEqual(session)
     })
 
     it("clearWorkspaceData resets active instance state", () => {
@@ -1243,7 +1251,7 @@ describe("useAppStore", () => {
       useAppStore.getState().setRalphStatus("running")
       useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
       useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
-      useAppStore.getState().setIteration({ current: 5, total: 10 })
+      useAppStore.getState().setSession({ current: 5, total: 10 })
 
       // Verify state was set
       let state = useAppStore.getState()
@@ -1262,7 +1270,7 @@ describe("useAppStore", () => {
       expect(instance?.events).toEqual([])
       expect(instance?.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(instance?.contextWindow).toEqual({ used: 0, max: 200_000 })
-      expect(instance?.iteration).toEqual({ current: 0, total: 0 })
+      expect(instance?.session).toEqual({ current: 0, total: 0 })
       expect(instance?.runStartedAt).toBeNull()
     })
   })
@@ -1313,12 +1321,12 @@ describe("useAppStore", () => {
       )
     })
 
-    it("selectIteration reads from active instance", () => {
-      const iteration = { current: 5, total: 10 }
-      useAppStore.getState().setIteration(iteration)
+    it("selectSession reads from active instance", () => {
+      const session = { current: 5, total: 10 }
+      useAppStore.getState().setSession(session)
       const state = useAppStore.getState()
-      expect(selectIteration(state)).toEqual(iteration)
-      expect(selectIteration(state)).toBe(state.instances.get(state.activeInstanceId)?.iteration)
+      expect(selectSession(state)).toEqual(session)
+      expect(selectSession(state)).toBe(state.instances.get(state.activeInstanceId)?.session)
     })
   })
 
@@ -1618,27 +1626,27 @@ describe("useAppStore", () => {
         addEvent,
         setTasks,
         setTokenUsage,
-        setIteration,
+        setSession,
         addTaskChatMessage,
         addTaskChatEvent,
       } = useAppStore.getState()
       addEvent({ type: "test", timestamp: 123 })
       setTasks([{ id: "1", title: "Task 1", status: "open" }])
       setTokenUsage({ input: 100, output: 50 })
-      setIteration({ current: 2, total: 5 })
+      setSession({ current: 2, total: 5 })
       addTaskChatMessage({ id: "msg-1", role: "user", content: "Hello", timestamp: 123 })
       addTaskChatEvent({ type: "stream_event", timestamp: 456, event: {} })
       flushTaskChatEventsBatch() // Flush batch to apply events immediately
-      useAppStore.getState().setViewingIterationIndex(1)
+      useAppStore.getState().setViewingSessionIndex(1)
 
       // Verify state was set
       expect(useAppStore.getState().events).toHaveLength(1)
       expect(useAppStore.getState().tasks).toHaveLength(1)
       expect(useAppStore.getState().tokenUsage.input).toBe(100)
-      expect(useAppStore.getState().iteration.current).toBe(2)
+      expect(useAppStore.getState().session.current).toBe(2)
       expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
       expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
-      expect(useAppStore.getState().viewingIterationIndex).toBe(1)
+      expect(useAppStore.getState().viewingSessionIndex).toBe(1)
 
       // Clear workspace data
       useAppStore.getState().clearWorkspaceData()
@@ -1647,10 +1655,10 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().events).toEqual([])
       expect(useAppStore.getState().tasks).toEqual([])
       expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
-      expect(useAppStore.getState().iteration).toEqual({ current: 0, total: 0 })
+      expect(useAppStore.getState().session).toEqual({ current: 0, total: 0 })
       expect(useAppStore.getState().taskChatMessages).toEqual([])
       expect(useAppStore.getState().taskChatEvents).toEqual([])
-      expect(useAppStore.getState().viewingIterationIndex).toBeNull()
+      expect(useAppStore.getState().viewingSessionIndex).toBeNull()
     })
   })
 
@@ -1722,22 +1730,22 @@ describe("useAppStore", () => {
     })
   })
 
-  describe("iteration", () => {
-    it("sets iteration info", () => {
-      useAppStore.getState().setIteration({ current: 3, total: 10 })
-      expect(useAppStore.getState().iteration).toEqual({ current: 3, total: 10 })
+  describe("session", () => {
+    it("sets session info", () => {
+      useAppStore.getState().setSession({ current: 3, total: 10 })
+      expect(useAppStore.getState().session).toEqual({ current: 3, total: 10 })
     })
 
-    it("updates iteration progress", () => {
-      useAppStore.getState().setIteration({ current: 1, total: 5 })
-      useAppStore.getState().setIteration({ current: 2, total: 5 })
-      expect(useAppStore.getState().iteration).toEqual({ current: 2, total: 5 })
+    it("updates session progress", () => {
+      useAppStore.getState().setSession({ current: 1, total: 5 })
+      useAppStore.getState().setSession({ current: 2, total: 5 })
+      expect(useAppStore.getState().session).toEqual({ current: 2, total: 5 })
     })
   })
 
-  describe("iteration view", () => {
-    // Helper to create events with iteration boundaries
-    const createEventsWithIterations = (): ChatEvent[] => [
+  describe("session view", () => {
+    // Helper to create events with session boundaries
+    const createEventsWithSessions = (): ChatEvent[] => [
       { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
       { type: "assistant", timestamp: 1001 } as ChatEvent,
       { type: "user_message", timestamp: 1002 } as ChatEvent,
@@ -1748,31 +1756,31 @@ describe("useAppStore", () => {
       { type: "assistant", timestamp: 3002 } as ChatEvent,
     ]
 
-    describe("isIterationBoundary", () => {
+    describe("isSessionBoundary", () => {
       it("returns true for system init events", () => {
         const event = { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent
-        expect(isIterationBoundary(event)).toBe(true)
+        expect(isSessionBoundary(event)).toBe(true)
       })
 
       it("returns false for other events", () => {
-        expect(isIterationBoundary({ type: "assistant", timestamp: 1000 } as ChatEvent)).toBe(false)
-        expect(isIterationBoundary({ type: "user_message", timestamp: 1000 } as ChatEvent)).toBe(
+        expect(isSessionBoundary({ type: "assistant", timestamp: 1000 } as ChatEvent)).toBe(false)
+        expect(isSessionBoundary({ type: "user_message", timestamp: 1000 } as ChatEvent)).toBe(
           false,
         )
         expect(
-          isIterationBoundary({ type: "system", subtype: "other", timestamp: 1000 } as ChatEvent),
+          isSessionBoundary({ type: "system", subtype: "other", timestamp: 1000 } as ChatEvent),
         ).toBe(false)
       })
     })
 
-    describe("getIterationBoundaries", () => {
+    describe("getSessionBoundaries", () => {
       it("returns empty array for no events", () => {
-        expect(getIterationBoundaries([])).toEqual([])
+        expect(getSessionBoundaries([])).toEqual([])
       })
 
-      it("returns indices of all iteration boundaries", () => {
-        const events = createEventsWithIterations()
-        expect(getIterationBoundaries(events)).toEqual([0, 3, 5])
+      it("returns indices of all session boundaries", () => {
+        const events = createEventsWithSessions()
+        expect(getSessionBoundaries(events)).toEqual([0, 3, 5])
       })
 
       it("returns empty array when no boundaries exist", () => {
@@ -1780,71 +1788,71 @@ describe("useAppStore", () => {
           { type: "assistant", timestamp: 1000 },
           { type: "user_message", timestamp: 1001 },
         ] as ChatEvent[]
-        expect(getIterationBoundaries(events)).toEqual([])
+        expect(getSessionBoundaries(events)).toEqual([])
       })
     })
 
-    describe("countIterations", () => {
+    describe("countSessions", () => {
       it("returns 0 for no events", () => {
-        expect(countIterations([])).toBe(0)
+        expect(countSessions([])).toBe(0)
       })
 
-      it("counts iteration boundaries", () => {
-        const events = createEventsWithIterations()
-        expect(countIterations(events)).toBe(3)
+      it("counts session boundaries", () => {
+        const events = createEventsWithSessions()
+        expect(countSessions(events)).toBe(3)
       })
     })
 
-    describe("getEventsForIteration", () => {
+    describe("getEventsForSession", () => {
       it("returns all events when index is null and no boundaries", () => {
         const events = [
           { type: "assistant", timestamp: 1000 },
           { type: "user_message", timestamp: 1001 },
         ] as ChatEvent[]
-        expect(getEventsForIteration(events, null)).toEqual(events)
+        expect(getEventsForSession(events, null)).toEqual(events)
       })
 
-      it("returns events from latest iteration when index is null", () => {
-        const events = createEventsWithIterations()
-        const result = getEventsForIteration(events, null)
-        expect(result).toHaveLength(3) // 3rd iteration has 3 events
+      it("returns events from latest session when index is null", () => {
+        const events = createEventsWithSessions()
+        const result = getEventsForSession(events, null)
+        expect(result).toHaveLength(3) // 3rd session has 3 events
         expect(result[0].timestamp).toBe(3000)
       })
 
-      it("returns events for specific iteration index", () => {
-        const events = createEventsWithIterations()
+      it("returns events for specific session index", () => {
+        const events = createEventsWithSessions()
 
-        // First iteration (index 0): 3 events
-        const first = getEventsForIteration(events, 0)
+        // First session (index 0): 3 events
+        const first = getEventsForSession(events, 0)
         expect(first).toHaveLength(3)
         expect(first[0].timestamp).toBe(1000)
         expect(first[2].timestamp).toBe(1002)
 
-        // Second iteration (index 1): 2 events
-        const second = getEventsForIteration(events, 1)
+        // Second session (index 1): 2 events
+        const second = getEventsForSession(events, 1)
         expect(second).toHaveLength(2)
         expect(second[0].timestamp).toBe(2000)
 
-        // Third iteration (index 2): 3 events
-        const third = getEventsForIteration(events, 2)
+        // Third session (index 2): 3 events
+        const third = getEventsForSession(events, 2)
         expect(third).toHaveLength(3)
         expect(third[0].timestamp).toBe(3000)
       })
 
       it("returns all events for out-of-bounds index", () => {
-        const events = createEventsWithIterations()
-        expect(getEventsForIteration(events, -1)).toEqual(events)
-        expect(getEventsForIteration(events, 10)).toEqual(events)
+        const events = createEventsWithSessions()
+        expect(getEventsForSession(events, -1)).toEqual(events)
+        expect(getEventsForSession(events, 10)).toEqual(events)
       })
     })
 
-    describe("getTaskFromIterationEvents", () => {
+    describe("getTaskFromSessionEvents", () => {
       it("returns null when no ralph_task_started events exist", () => {
         const events = [
           { type: "assistant", timestamp: 1000 },
           { type: "user_message", timestamp: 1001 },
         ] as ChatEvent[]
-        expect(getTaskFromIterationEvents(events)).toBeNull()
+        expect(getTaskFromSessionEvents(events)).toBeNull()
       })
 
       it("extracts task from ralph_task_started event", () => {
@@ -1858,7 +1866,7 @@ describe("useAppStore", () => {
           },
           { type: "assistant", timestamp: 1002 },
         ] as ChatEvent[]
-        const task = getTaskFromIterationEvents(events)
+        const task = getTaskFromSessionEvents(events)
         expect(task).toEqual({ id: "rui-123", title: "Fix the bug" })
       })
 
@@ -1866,12 +1874,12 @@ describe("useAppStore", () => {
         const events = [
           { type: "ralph_task_started", timestamp: 1000, taskId: "rui-123" },
         ] as ChatEvent[]
-        expect(getTaskFromIterationEvents(events)).toEqual({ id: "rui-123", title: "rui-123" })
+        expect(getTaskFromSessionEvents(events)).toEqual({ id: "rui-123", title: "rui-123" })
       })
 
       it("returns null if ralph_task_started event is missing both taskId and taskTitle", () => {
         const events = [{ type: "ralph_task_started", timestamp: 1000 }] as ChatEvent[]
-        expect(getTaskFromIterationEvents(events)).toBeNull()
+        expect(getTaskFromSessionEvents(events)).toBeNull()
       })
 
       it("returns the first task when multiple ralph_task_started events exist", () => {
@@ -1889,7 +1897,7 @@ describe("useAppStore", () => {
             taskTitle: "Second task",
           },
         ] as ChatEvent[]
-        const task = getTaskFromIterationEvents(events)
+        const task = getTaskFromSessionEvents(events)
         expect(task).toEqual({ id: "rui-111", title: "First task" })
       })
 
@@ -1905,7 +1913,7 @@ describe("useAppStore", () => {
             },
           },
         ] as ChatEvent[]
-        const task = getTaskFromIterationEvents(events)
+        const task = getTaskFromSessionEvents(events)
         expect(task).toEqual({ id: "rui-123", title: "rui-123" })
       })
 
@@ -1920,7 +1928,7 @@ describe("useAppStore", () => {
             },
           },
         ] as ChatEvent[]
-        const task = getTaskFromIterationEvents(events)
+        const task = getTaskFromSessionEvents(events)
         expect(task).toEqual({ id: "rui-456", title: "Fix the button layout" })
       })
 
@@ -1941,7 +1949,7 @@ describe("useAppStore", () => {
             },
           },
         ] as ChatEvent[]
-        const task = getTaskFromIterationEvents(events)
+        const task = getTaskFromSessionEvents(events)
         expect(task).toEqual({ id: "rui-111", title: "From event" })
       })
 
@@ -1956,26 +1964,26 @@ describe("useAppStore", () => {
             },
           },
         ] as ChatEvent[]
-        expect(getTaskFromIterationEvents(events)).toBeNull()
+        expect(getTaskFromSessionEvents(events)).toBeNull()
       })
     })
 
-    describe("getIterationTaskInfos", () => {
+    describe("getSessionTaskInfos", () => {
       it("returns empty array when no events", () => {
-        expect(getIterationTaskInfos([])).toEqual([])
+        expect(getSessionTaskInfos([])).toEqual([])
       })
 
-      it("returns empty array when no iteration boundaries", () => {
+      it("returns empty array when no session boundaries", () => {
         const events = [
           { type: "assistant", timestamp: 1000 },
           { type: "user_message", timestamp: 1001 },
         ] as ChatEvent[]
-        expect(getIterationTaskInfos(events)).toEqual([])
+        expect(getSessionTaskInfos(events)).toEqual([])
       })
 
-      it("returns task info for each iteration", () => {
+      it("returns task info for each session", () => {
         const events = [
-          // First iteration
+          // First session
           { type: "system", timestamp: 1000, subtype: "init" },
           {
             type: "ralph_task_started",
@@ -1984,7 +1992,7 @@ describe("useAppStore", () => {
             taskTitle: "First task",
           },
           { type: "assistant", timestamp: 1002 },
-          // Second iteration
+          // Second session
           { type: "system", timestamp: 2000, subtype: "init" },
           {
             type: "ralph_task_started",
@@ -1993,7 +2001,7 @@ describe("useAppStore", () => {
             taskTitle: "Second task",
           },
           { type: "assistant", timestamp: 2002 },
-          // Third iteration
+          // Third session
           { type: "system", timestamp: 3000, subtype: "init" },
           {
             type: "ralph_task_started",
@@ -2002,16 +2010,16 @@ describe("useAppStore", () => {
             taskTitle: "Third task",
           },
         ] as ChatEvent[]
-        expect(getIterationTaskInfos(events)).toEqual([
+        expect(getSessionTaskInfos(events)).toEqual([
           { id: "rui-111", title: "First task" },
           { id: "rui-222", title: "Second task" },
           { id: "rui-333", title: "Third task" },
         ])
       })
 
-      it("returns null values for iterations without tasks", () => {
+      it("returns null values for sessions without tasks", () => {
         const events = [
-          // First iteration - has task
+          // First session - has task
           { type: "system", timestamp: 1000, subtype: "init" },
           {
             type: "ralph_task_started",
@@ -2019,10 +2027,10 @@ describe("useAppStore", () => {
             taskId: "rui-111",
             taskTitle: "First task",
           },
-          // Second iteration - no task
+          // Second session - no task
           { type: "system", timestamp: 2000, subtype: "init" },
           { type: "assistant", timestamp: 2001 },
-          // Third iteration - has task
+          // Third session - has task
           { type: "system", timestamp: 3000, subtype: "init" },
           {
             type: "ralph_task_started",
@@ -2031,7 +2039,7 @@ describe("useAppStore", () => {
             taskTitle: "Third task",
           },
         ] as ChatEvent[]
-        expect(getIterationTaskInfos(events)).toEqual([
+        expect(getSessionTaskInfos(events)).toEqual([
           { id: "rui-111", title: "First task" },
           { id: null, title: null },
           { id: "rui-333", title: "Third task" },
@@ -2039,13 +2047,13 @@ describe("useAppStore", () => {
       })
     })
 
-    describe("selectIterationTask", () => {
+    describe("selectSessionTask", () => {
       it("returns null when no events", () => {
-        const task = selectIterationTask(useAppStore.getState())
+        const task = selectSessionTask(useAppStore.getState())
         expect(task).toBeNull()
       })
 
-      it("returns task from latest iteration by default", () => {
+      it("returns task from latest session by default", () => {
         useAppStore.getState().addEvent({
           type: "system",
           timestamp: 1000,
@@ -2057,12 +2065,12 @@ describe("useAppStore", () => {
           taskId: "rui-999",
           taskTitle: "Latest task",
         })
-        const task = selectIterationTask(useAppStore.getState())
+        const task = selectSessionTask(useAppStore.getState())
         expect(task).toEqual({ id: "rui-999", title: "Latest task" })
       })
 
-      it("returns task from specific iteration when viewingIterationIndex is set", () => {
-        // First iteration
+      it("returns task from specific session when viewingSessionIndex is set", () => {
+        // First session
         useAppStore.getState().addEvent({
           type: "system",
           timestamp: 1000,
@@ -2075,7 +2083,7 @@ describe("useAppStore", () => {
           taskTitle: "First task",
         })
 
-        // Second iteration
+        // Second session
         useAppStore.getState().addEvent({
           type: "system",
           timestamp: 2000,
@@ -2088,10 +2096,10 @@ describe("useAppStore", () => {
           taskTitle: "Second task",
         })
 
-        // View first iteration
-        useAppStore.getState().setViewingIterationIndex(0)
+        // View first session
+        useAppStore.getState().setViewingSessionIndex(0)
 
-        const task = selectIterationTask(useAppStore.getState())
+        const task = selectSessionTask(useAppStore.getState())
         expect(task).toEqual({ id: "rui-111", title: "First task" })
       })
 
@@ -2113,7 +2121,7 @@ describe("useAppStore", () => {
           },
         ])
 
-        const task = selectIterationTask(useAppStore.getState())
+        const task = selectSessionTask(useAppStore.getState())
         expect(task).toEqual({ id: "rui-restored", title: "Restored task from server" })
       })
 
@@ -2134,7 +2142,7 @@ describe("useAppStore", () => {
           },
         ])
 
-        const task = selectIterationTask(useAppStore.getState())
+        const task = selectSessionTask(useAppStore.getState())
         expect(task).toEqual({ id: null, title: "Ad-hoc task without ID" })
       })
 
@@ -2163,99 +2171,99 @@ describe("useAppStore", () => {
           taskTitle: "Task from event",
         })
 
-        const task = selectIterationTask(useAppStore.getState())
+        const task = selectSessionTask(useAppStore.getState())
         expect(task).toEqual({ id: "rui-event", title: "Task from event" })
       })
     })
 
-    describe("iteration navigation actions", () => {
+    describe("session navigation actions", () => {
       beforeEach(() => {
-        const events = createEventsWithIterations()
+        const events = createEventsWithSessions()
         events.forEach(e => useAppStore.getState().addEvent(e))
       })
 
-      it("has null viewingIterationIndex initially (latest)", () => {
-        expect(useAppStore.getState().viewingIterationIndex).toBeNull()
+      it("has null viewingSessionIndex initially (latest)", () => {
+        expect(useAppStore.getState().viewingSessionIndex).toBeNull()
       })
 
-      it("goToPreviousIteration goes to second-to-last when viewing latest", () => {
-        useAppStore.getState().goToPreviousIteration()
-        expect(useAppStore.getState().viewingIterationIndex).toBe(1) // Index 1 = iteration 2
+      it("goToPreviousSession goes to second-to-last when viewing latest", () => {
+        useAppStore.getState().goToPreviousSession()
+        expect(useAppStore.getState().viewingSessionIndex).toBe(1) // Index 1 = session 2
       })
 
-      it("goToPreviousIteration decrements index", () => {
-        useAppStore.getState().setViewingIterationIndex(2)
-        useAppStore.getState().goToPreviousIteration()
-        expect(useAppStore.getState().viewingIterationIndex).toBe(1)
+      it("goToPreviousSession decrements index", () => {
+        useAppStore.getState().setViewingSessionIndex(2)
+        useAppStore.getState().goToPreviousSession()
+        expect(useAppStore.getState().viewingSessionIndex).toBe(1)
 
-        useAppStore.getState().goToPreviousIteration()
-        expect(useAppStore.getState().viewingIterationIndex).toBe(0)
+        useAppStore.getState().goToPreviousSession()
+        expect(useAppStore.getState().viewingSessionIndex).toBe(0)
       })
 
-      it("goToPreviousIteration stays at 0 when at first iteration", () => {
-        useAppStore.getState().setViewingIterationIndex(0)
-        useAppStore.getState().goToPreviousIteration()
-        expect(useAppStore.getState().viewingIterationIndex).toBe(0)
+      it("goToPreviousSession stays at 0 when at first session", () => {
+        useAppStore.getState().setViewingSessionIndex(0)
+        useAppStore.getState().goToPreviousSession()
+        expect(useAppStore.getState().viewingSessionIndex).toBe(0)
       })
 
-      it("goToNextIteration increments index", () => {
-        useAppStore.getState().setViewingIterationIndex(0)
-        useAppStore.getState().goToNextIteration()
-        expect(useAppStore.getState().viewingIterationIndex).toBe(1)
+      it("goToNextSession increments index", () => {
+        useAppStore.getState().setViewingSessionIndex(0)
+        useAppStore.getState().goToNextSession()
+        expect(useAppStore.getState().viewingSessionIndex).toBe(1)
       })
 
-      it("goToNextIteration switches to null when reaching last iteration", () => {
-        useAppStore.getState().setViewingIterationIndex(2) // Last iteration index
-        useAppStore.getState().goToNextIteration()
-        expect(useAppStore.getState().viewingIterationIndex).toBeNull()
+      it("goToNextSession switches to null when reaching last session", () => {
+        useAppStore.getState().setViewingSessionIndex(2) // Last session index
+        useAppStore.getState().goToNextSession()
+        expect(useAppStore.getState().viewingSessionIndex).toBeNull()
       })
 
-      it("goToNextIteration does nothing when already viewing latest", () => {
-        useAppStore.getState().goToNextIteration()
-        expect(useAppStore.getState().viewingIterationIndex).toBeNull()
+      it("goToNextSession does nothing when already viewing latest", () => {
+        useAppStore.getState().goToNextSession()
+        expect(useAppStore.getState().viewingSessionIndex).toBeNull()
       })
 
-      it("goToLatestIteration sets index to null", () => {
-        useAppStore.getState().setViewingIterationIndex(1)
-        useAppStore.getState().goToLatestIteration()
-        expect(useAppStore.getState().viewingIterationIndex).toBeNull()
+      it("goToLatestSession sets index to null", () => {
+        useAppStore.getState().setViewingSessionIndex(1)
+        useAppStore.getState().goToLatestSession()
+        expect(useAppStore.getState().viewingSessionIndex).toBeNull()
       })
     })
 
-    describe("iteration selectors", () => {
+    describe("session selectors", () => {
       beforeEach(() => {
-        const events = createEventsWithIterations()
+        const events = createEventsWithSessions()
         events.forEach(e => useAppStore.getState().addEvent(e))
       })
 
-      it("selectIterationCount returns correct count", () => {
+      it("selectSessionCount returns correct count", () => {
         const state = useAppStore.getState()
-        expect(selectIterationCount(state)).toBe(3)
+        expect(selectSessionCount(state)).toBe(3)
       })
 
-      it("selectViewingIterationIndex returns current index", () => {
-        expect(selectViewingIterationIndex(useAppStore.getState())).toBeNull()
+      it("selectViewingSessionIndex returns current index", () => {
+        expect(selectViewingSessionIndex(useAppStore.getState())).toBeNull()
 
-        useAppStore.getState().setViewingIterationIndex(1)
-        expect(selectViewingIterationIndex(useAppStore.getState())).toBe(1)
+        useAppStore.getState().setViewingSessionIndex(1)
+        expect(selectViewingSessionIndex(useAppStore.getState())).toBe(1)
       })
 
-      it("selectIsViewingLatestIteration returns correct value", () => {
-        expect(selectIsViewingLatestIteration(useAppStore.getState())).toBe(true)
+      it("selectIsViewingLatestSession returns correct value", () => {
+        expect(selectIsViewingLatestSession(useAppStore.getState())).toBe(true)
 
-        useAppStore.getState().setViewingIterationIndex(1)
-        expect(selectIsViewingLatestIteration(useAppStore.getState())).toBe(false)
+        useAppStore.getState().setViewingSessionIndex(1)
+        expect(selectIsViewingLatestSession(useAppStore.getState())).toBe(false)
       })
 
-      it("selectCurrentIterationEvents returns correct events", () => {
-        // Latest iteration
-        let events = selectCurrentIterationEvents(useAppStore.getState())
+      it("selectCurrentSessionEvents returns correct events", () => {
+        // Latest session
+        let events = selectCurrentSessionEvents(useAppStore.getState())
         expect(events).toHaveLength(3)
         expect(events[0].timestamp).toBe(3000)
 
-        // First iteration
-        useAppStore.getState().setViewingIterationIndex(0)
-        events = selectCurrentIterationEvents(useAppStore.getState())
+        // First session
+        useAppStore.getState().setViewingSessionIndex(0)
+        events = selectCurrentSessionEvents(useAppStore.getState())
         expect(events).toHaveLength(3)
         expect(events[0].timestamp).toBe(1000)
       })
@@ -2801,7 +2809,7 @@ describe("useAppStore", () => {
         setAccentColor,
         setBranch,
         setTokenUsage,
-        setIteration,
+        setSession,
         setConnectionStatus,
         setSidebarWidth,
         setTaskChatOpen,
@@ -2817,7 +2825,7 @@ describe("useAppStore", () => {
       setAccentColor("#4d9697")
       setBranch("feature/test")
       setTokenUsage({ input: 1000, output: 500 })
-      setIteration({ current: 5, total: 10 })
+      setSession({ current: 5, total: 10 })
       setConnectionStatus("connected")
       setSidebarWidth(400)
       setTaskChatOpen(true)
@@ -2836,7 +2844,7 @@ describe("useAppStore", () => {
       expect(state.accentColor).toBe("#4d9697")
       expect(state.branch).toBe("feature/test")
       expect(state.tokenUsage).toEqual({ input: 1000, output: 500 })
-      expect(state.iteration).toEqual({ current: 5, total: 10 })
+      expect(state.session).toEqual({ current: 5, total: 10 })
       expect(state.connectionStatus).toBe("connected")
       expect(state.sidebarWidth).toBe(400)
       expect(state.taskChatOpen).toBe(true)
@@ -2857,7 +2865,7 @@ describe("useAppStore", () => {
       expect(state.accentColor).toBeNull()
       expect(state.branch).toBeNull()
       expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
-      expect(state.iteration).toEqual({ current: 0, total: 0 })
+      expect(state.session).toEqual({ current: 0, total: 0 })
       expect(state.connectionStatus).toBe("disconnected")
       expect(state.sidebarWidth).toBe(320)
       expect(state.taskChatOpen).toBe(true)
@@ -2865,7 +2873,7 @@ describe("useAppStore", () => {
       expect(state.taskChatMessages).toEqual([])
       expect(state.taskChatEvents).toEqual([])
       expect(state.taskChatLoading).toBe(false)
-      expect(state.viewingIterationIndex).toBeNull()
+      expect(state.viewingSessionIndex).toBeNull()
     })
   })
 
@@ -3076,18 +3084,18 @@ describe("useAppStore", () => {
       })
     })
 
-    describe("setIterationForInstance action", () => {
-      it("sets iteration for a specific instance", () => {
-        useAppStore.getState().setIterationForInstance("instance-2", { current: 3, total: 5 })
+    describe("setSessionForInstance action", () => {
+      it("sets session for a specific instance", () => {
+        useAppStore.getState().setSessionForInstance("instance-2", { current: 3, total: 5 })
 
         const instance2 = useAppStore.getState().instances.get("instance-2")
-        expect(instance2?.iteration).toEqual({ current: 3, total: 5 })
+        expect(instance2?.session).toEqual({ current: 3, total: 5 })
       })
 
       it("updates flat fields when setting for active instance", () => {
-        useAppStore.getState().setIterationForInstance("instance-1", { current: 2, total: 4 })
+        useAppStore.getState().setSessionForInstance("instance-1", { current: 2, total: 4 })
 
-        expect(useAppStore.getState().iteration).toEqual({ current: 2, total: 4 })
+        expect(useAppStore.getState().session).toEqual({ current: 2, total: 4 })
       })
     })
 
