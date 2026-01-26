@@ -427,6 +427,73 @@ pnpm ui:test           # Run UI tests only
 - Standalone subcomponents live in their own files next to the parent component.
 - Shared types and constants live in `ui/src/types.ts` and `ui/src/constants.ts`.
 
+## UI Architecture
+
+### Controller/Presentational Pattern
+
+Ralph UI uses a **controller/presentational pattern** to separate concerns:
+
+- **Presentational components**: Pure components that receive all data via props
+- **Controller components**: Thin wrappers that connect presentational components to hooks
+- **Domain hooks**: Encapsulate store access, API calls, and business logic
+
+**Naming Convention:**
+
+- **FooController** - Controller component that connects hooks to presentational component
+- **Foo** - Presentational component that receives all data via props
+
+**File Structure:**
+
+```
+src/components/chat/
+├── TaskChat.tsx              # Presentational component
+├── TaskChat.stories.tsx      # Storybook stories (test presentational)
+├── TaskChat.test.tsx         # Unit tests
+├── TaskChatController.tsx    # Controller component
+└── ...
+```
+
+**Hooks** are organized by domain, not by component (`src/hooks/useTaskChat.ts`, etc.).
+
+**Use a controller when:** Component needs store access, makes API calls, has complex state management, or coordinates multiple pieces of data.
+
+**Use presentational component directly when:** All data can be passed via props, component is purely visual, or component is used in Storybook.
+
+**Storybook stories test presentational components directly** - no store mocking needed.
+
+### IndexedDB Schema (v3)
+
+Eight object stores:
+
+| Store                | Purpose                           | Key Indexes                                                                                            |
+| -------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `session_metadata`   | Session metadata for fast listing | `by-instance`, `by-started-at`, `by-instance-and-started-at`, `by-task`, `by-workspace-and-started-at` |
+| `sessions`           | Full session data                 | Primary key: `id`                                                                                      |
+| `events`             | Individual events (normalized)    | `by-session`, `by-timestamp`                                                                           |
+| `task_chat_metadata` | Task chat metadata                | Primary key: `id`                                                                                      |
+| `task_chat_sessions` | Full task chat data               | Primary key: `id`                                                                                      |
+| `event_log_metadata` | Standalone event log metadata     | Primary key: `id`                                                                                      |
+| `event_logs`         | Standalone event log data         | Primary key: `id`                                                                                      |
+| `sync_state`         | Key-value settings                | Primary key: `key`                                                                                     |
+
+**Persistence uses two hooks:**
+
+- **`useSessionPersistence`** - Persists session metadata on session boundaries
+- **`useEventPersistence`** - Append-only writes of individual events as they arrive
+
+### Event Logs
+
+Standalone snapshots saved when sessions complete:
+
+1. Task closes → `saveEventLogAndAddComment()` saves events to IndexedDB
+2. Closing comment added: `Closed. Event log: #eventlog=abcd1234`
+3. `EventLogLink` renders these as clickable links
+4. `useEventLogRouter` handles navigation via URL hash
+
+### WebSocket Events
+
+All broadcast messages include `instanceId`, `workspaceId`, and `timestamp`. The `workspaceId` enables cross-workspace event correlation and client-side persistence tracking.
+
 ## Environment Variables
 
 - `ANTHROPIC_API_KEY` - Required for Claude agent
@@ -435,3 +502,7 @@ pnpm ui:test           # Run UI tests only
 - `PORT` - Server port (default: 4242)
 - `RALPH_DEBUG` - Enable debug logging (see Debug Logging section)
 - `RALPH_CWD` - Override base path for relative path rendering
+
+## Terminology
+
+**Sessions** - Previously called "iterations" throughout the codebase. This refers to a single autonomous work cycle where Ralph spawns an agent to complete a task. The database table was renamed from `iterations` to `sessions` to reflect this terminology.
