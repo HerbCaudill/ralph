@@ -233,6 +233,8 @@ export interface AppActions {
 
   // Session
   setSession: (session: SessionInfo) => void
+  /** Reset session stats (token usage, context window) when a new session starts */
+  resetSessionStats: () => void
 
   // Connection
   setConnectionStatus: (status: ConnectionStatus) => void
@@ -328,6 +330,8 @@ export interface AppActions {
   updateContextWindowUsedForInstance: (instanceId: string, used: number) => void
   /** Set session for a specific instance by ID */
   setSessionForInstance: (instanceId: string, session: SessionInfo) => void
+  /** Reset session stats for a specific instance by ID (called when new session starts) */
+  resetSessionStatsForInstance: (instanceId: string) => void
   /** Set merge conflict for a specific instance by ID */
   setMergeConflictForInstance: (instanceId: string, conflict: MergeConflict | null) => void
   /** Clear merge conflict for a specific instance by ID */
@@ -859,6 +863,27 @@ export const useAppStore = create<AppState & AppActions>()(
           }
         }),
 
+      resetSessionStats: () =>
+        set(state => {
+          // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              tokenUsage: { input: 0, output: 0 },
+              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+              session: { current: 0, total: 0 },
+            })
+          }
+          return {
+            tokenUsage: { input: 0, output: 0 },
+            contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+            session: { current: 0, total: 0 },
+            instances: updatedInstances,
+          }
+        }),
+
       // Connection
       setConnectionStatus: status => set({ connectionStatus: status }),
 
@@ -1366,6 +1391,37 @@ export const useAppStore = create<AppState & AppActions>()(
             return {
               instances: updatedInstances,
               session,
+            }
+          }
+
+          return { instances: updatedInstances }
+        }),
+
+      resetSessionStatsForInstance: instanceId =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(
+              `[store] Cannot reset session stats for non-existent instance: ${instanceId}`,
+            )
+            return state
+          }
+
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, {
+            ...instance,
+            tokenUsage: { input: 0, output: 0 },
+            contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+            session: { current: 0, total: 0 },
+          })
+
+          // If this is the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            return {
+              instances: updatedInstances,
+              tokenUsage: { input: 0, output: 0 },
+              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+              session: { current: 0, total: 0 },
             }
           }
 

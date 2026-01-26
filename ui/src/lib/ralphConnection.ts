@@ -4,7 +4,7 @@
  */
 
 import { useAppStore, flushTaskChatEventsBatch } from "../store"
-import { isRalphStatus } from "../store"
+import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 
 // Connection status constants and type guard
@@ -224,6 +224,15 @@ function handleMessage(event: MessageEvent): void {
           const eventIndex = data.eventIndex as number | undefined
           if (typeof eventIndex === "number") {
             lastEventIndices.set(targetInstanceId, eventIndex)
+          }
+
+          // Reset session stats when a new session starts (before adding the event)
+          if (isSessionBoundary(event)) {
+            if (isForActiveInstance) {
+              store.resetSessionStats()
+            } else {
+              store.resetSessionStatsForInstance(targetInstanceId)
+            }
           }
 
           // Route event to correct instance

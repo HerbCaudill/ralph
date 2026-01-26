@@ -1246,6 +1246,45 @@ describe("useAppStore", () => {
       expect(activeInstance?.session).toEqual(session)
     })
 
+    it("resetSessionStats resets token usage, context window, and session to defaults", () => {
+      // Set up various state that should be reset
+      useAppStore.getState().setTokenUsage({ input: 5000, output: 2500 })
+      useAppStore.getState().setContextWindow({ used: 100000, max: 200000 })
+      useAppStore.getState().setSession({ current: 7, total: 15 })
+
+      // Verify state was set
+      let state = useAppStore.getState()
+      expect(state.tokenUsage).toEqual({ input: 5000, output: 2500 })
+      expect(state.contextWindow).toEqual({ used: 100000, max: 200000 })
+      expect(state.session).toEqual({ current: 7, total: 15 })
+
+      // Reset session stats
+      useAppStore.getState().resetSessionStats()
+
+      // Verify all session stats were reset
+      state = useAppStore.getState()
+      expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(state.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      expect(state.session).toEqual({ current: 0, total: 0 })
+    })
+
+    it("resetSessionStats updates active instance in the instances Map", () => {
+      // Set up state on the active instance
+      useAppStore.getState().setTokenUsage({ input: 3000, output: 1500 })
+      useAppStore.getState().setContextWindow({ used: 75000, max: 200000 })
+      useAppStore.getState().setSession({ current: 4, total: 8 })
+
+      // Reset session stats
+      useAppStore.getState().resetSessionStats()
+
+      // Verify the active instance in the Map was also updated
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(activeInstance?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      expect(activeInstance?.session).toEqual({ current: 0, total: 0 })
+    })
+
     it("clearWorkspaceData resets active instance state", () => {
       // Set up various state
       useAppStore.getState().setRalphStatus("running")
@@ -3096,6 +3135,99 @@ describe("useAppStore", () => {
         useAppStore.getState().setSessionForInstance("instance-1", { current: 2, total: 4 })
 
         expect(useAppStore.getState().session).toEqual({ current: 2, total: 4 })
+      })
+    })
+
+    describe("resetSessionStatsForInstance action", () => {
+      it("resets session stats for a specific instance", () => {
+        // Set up state on instance-2
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 2000, output: 1000 })
+        useAppStore.getState().updateContextWindowUsedForInstance("instance-2", 80000)
+        useAppStore.getState().setSessionForInstance("instance-2", { current: 5, total: 10 })
+
+        // Verify state was set
+        let instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 2000, output: 1000 })
+        expect(instance2?.contextWindow.used).toBe(80000)
+        expect(instance2?.session).toEqual({ current: 5, total: 10 })
+
+        // Reset session stats for instance-2
+        useAppStore.getState().resetSessionStatsForInstance("instance-2")
+
+        // Verify all session stats were reset
+        instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 0, output: 0 })
+        expect(instance2?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+        expect(instance2?.session).toEqual({ current: 0, total: 0 })
+      })
+
+      it("updates flat fields when resetting for active instance", () => {
+        // Set up state on the active instance (instance-1)
+        useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 4000, output: 2000 })
+        useAppStore.getState().updateContextWindowUsedForInstance("instance-1", 120000)
+        useAppStore.getState().setSessionForInstance("instance-1", { current: 8, total: 12 })
+
+        // Verify flat fields were set
+        expect(useAppStore.getState().tokenUsage).toEqual({ input: 4000, output: 2000 })
+        expect(useAppStore.getState().contextWindow.used).toBe(120000)
+        expect(useAppStore.getState().session).toEqual({ current: 8, total: 12 })
+
+        // Reset session stats for the active instance
+        useAppStore.getState().resetSessionStatsForInstance("instance-1")
+
+        // Verify flat fields were also reset
+        expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+        expect(useAppStore.getState().contextWindow).toEqual({
+          used: 0,
+          max: DEFAULT_CONTEXT_WINDOW_MAX,
+        })
+        expect(useAppStore.getState().session).toEqual({ current: 0, total: 0 })
+      })
+
+      it("does not update flat fields when resetting non-active instance", () => {
+        // Set up state on both instances
+        useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 1000, output: 500 })
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 3000, output: 1500 })
+
+        // Verify flat fields match active instance (instance-1)
+        expect(useAppStore.getState().tokenUsage).toEqual({ input: 1000, output: 500 })
+
+        // Reset session stats for non-active instance (instance-2)
+        useAppStore.getState().resetSessionStatsForInstance("instance-2")
+
+        // Verify flat fields were NOT affected (still match instance-1)
+        expect(useAppStore.getState().tokenUsage).toEqual({ input: 1000, output: 500 })
+
+        // But instance-2 should be reset
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 0, output: 0 })
+      })
+
+      it("does nothing for non-existent instance", () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+        useAppStore.getState().resetSessionStatsForInstance("non-existent")
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          "[store] Cannot reset session stats for non-existent instance: non-existent",
+        )
+        warnSpy.mockRestore()
+      })
+
+      it("preserves other instance state when resetting one instance", () => {
+        // Set up state on both instances
+        useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 1500, output: 750 })
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 2500, output: 1250 })
+        useAppStore.getState().setSessionForInstance("instance-1", { current: 3, total: 6 })
+        useAppStore.getState().setSessionForInstance("instance-2", { current: 4, total: 8 })
+
+        // Reset only instance-2
+        useAppStore.getState().resetSessionStatsForInstance("instance-2")
+
+        // Verify instance-1 was NOT affected
+        const instance1 = useAppStore.getState().instances.get("instance-1")
+        expect(instance1?.tokenUsage).toEqual({ input: 1500, output: 750 })
+        expect(instance1?.session).toEqual({ current: 3, total: 6 })
       })
     })
 
