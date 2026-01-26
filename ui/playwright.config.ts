@@ -11,7 +11,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 3,
-  workers: process.env.CI ? 1 : 4,
+  workers: process.env.CI ? 1 : undefined,
   // Use dot reporter for minimal output in CI or when running under Ralph
   reporter: process.env.CI || process.env.RALPH_QUIET ? "dot" : "html",
   globalSetup: "./e2e/global-setup.ts",
