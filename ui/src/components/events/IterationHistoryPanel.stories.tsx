@@ -300,9 +300,11 @@ export const NoResultsMessage: Story = {
 
 /** Verifies date groups are shown correctly. */
 export const DateGroupsDisplay: Story = {
-  // Using 10 minutes ago to ensure it's definitely "today" even near midnight
-  args: {
-    iterations: [
+  // Use render to create fresh dates at render time, not module load time.
+  // This ensures "10 minutes ago" is always relative to when the story actually renders,
+  // preventing flaky tests when the module is cached from previous test runs.
+  render: args => {
+    const freshIterations = [
       createIteration(
         "log-1",
         "PROJ-123",
@@ -317,7 +319,8 @@ export const DateGroupsDisplay: Story = {
         new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), // 25 hours ago (definitely yesterday or older)
         28,
       ),
-    ],
+    ]
+    return <IterationHistoryPanelView {...args} iterations={freshIterations} />
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
