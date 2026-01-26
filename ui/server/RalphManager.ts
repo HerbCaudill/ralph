@@ -110,6 +110,12 @@ export class RalphManager extends EventEmitter {
 
         this.process.on("spawn", () => {
           this.setStatus("running")
+          // Emit system init event to mark session boundary for persistence
+          this.emit("event", {
+            type: "system",
+            subtype: "init",
+            timestamp: Date.now(),
+          })
           resolve()
         })
 

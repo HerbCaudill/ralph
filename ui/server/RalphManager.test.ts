@@ -207,6 +207,24 @@ describe("RalphManager", () => {
       await expect(manager.start()).rejects.toThrow("Ralph is already running")
     })
 
+    it("emits system init event on spawn for session persistence", async () => {
+      const events: RalphEvent[] = []
+      manager.on("event", evt => events.push(evt))
+
+      const startPromise = manager.start()
+      mockProcess.emit("spawn")
+      await startPromise
+
+      // Should emit a system init event to mark session boundary
+      expect(events).toHaveLength(1)
+      expect(events[0].type).toBe("system")
+      expect(events[0].subtype).toBe("init")
+      expect(typeof events[0].timestamp).toBe("number")
+      // Timestamp should be recent (within last second)
+      expect(events[0].timestamp).toBeGreaterThan(Date.now() - 1000)
+      expect(events[0].timestamp).toBeLessThanOrEqual(Date.now())
+    })
+
     it("emits error and rejects on spawn error", async () => {
       const errors: Error[] = []
       manager.on("error", err => errors.push(err))
@@ -314,12 +332,13 @@ describe("RalphManager", () => {
 
   describe("stdout parsing", () => {
     it("emits event for valid JSON lines", async () => {
-      const events: RalphEvent[] = []
-      manager.on("event", evt => events.push(evt))
-
       const startPromise = manager.start()
       mockProcess.emit("spawn")
       await startPromise
+
+      // Start collecting events AFTER spawn to ignore the system init event
+      const events: RalphEvent[] = []
+      manager.on("event", evt => events.push(evt))
 
       mockProcess.stdout.emit("data", Buffer.from('{"type":"test","timestamp":123}\n'))
 
@@ -327,12 +346,13 @@ describe("RalphManager", () => {
     })
 
     it("handles multiple events in single chunk", async () => {
-      const events: RalphEvent[] = []
-      manager.on("event", evt => events.push(evt))
-
       const startPromise = manager.start()
       mockProcess.emit("spawn")
       await startPromise
+
+      // Start collecting events AFTER spawn to ignore the system init event
+      const events: RalphEvent[] = []
+      manager.on("event", evt => events.push(evt))
 
       mockProcess.stdout.emit(
         "data",
@@ -345,12 +365,13 @@ describe("RalphManager", () => {
     })
 
     it("handles events split across chunks", async () => {
-      const events: RalphEvent[] = []
-      manager.on("event", evt => events.push(evt))
-
       const startPromise = manager.start()
       mockProcess.emit("spawn")
       await startPromise
+
+      // Start collecting events AFTER spawn to ignore the system init event
+      const events: RalphEvent[] = []
+      manager.on("event", evt => events.push(evt))
 
       mockProcess.stdout.emit("data", Buffer.from('{"type":"split",'))
       mockProcess.stdout.emit("data", Buffer.from('"timestamp":999}\n'))
@@ -372,12 +393,13 @@ describe("RalphManager", () => {
     })
 
     it("adds timestamp to events that are missing one", async () => {
-      const events: RalphEvent[] = []
-      manager.on("event", evt => events.push(evt))
-
       const startPromise = manager.start()
       mockProcess.emit("spawn")
       await startPromise
+
+      // Start collecting events AFTER spawn to ignore the system init event
+      const events: RalphEvent[] = []
+      manager.on("event", evt => events.push(evt))
 
       // SDK events sometimes don't include timestamps
       mockProcess.stdout.emit("data", Buffer.from('{"type":"system","subtype":"init"}\n'))
@@ -392,12 +414,13 @@ describe("RalphManager", () => {
     })
 
     it("preserves existing timestamp when present", async () => {
-      const events: RalphEvent[] = []
-      manager.on("event", evt => events.push(evt))
-
       const startPromise = manager.start()
       mockProcess.emit("spawn")
       await startPromise
+
+      // Start collecting events AFTER spawn to ignore the system init event
+      const events: RalphEvent[] = []
+      manager.on("event", evt => events.push(evt))
 
       const existingTimestamp = 1706123456789
       mockProcess.stdout.emit(
