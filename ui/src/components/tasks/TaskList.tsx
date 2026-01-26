@@ -61,7 +61,7 @@ export function TaskList({
     [activelyWorkingTaskIdsList],
   )
 
-  // Get task IDs that have saved event logs for iteration indicator
+  // Get task IDs that have saved event logs for session indicator
   const { taskIdsWithEventLogs } = useTasksWithEventLogs()
 
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set())

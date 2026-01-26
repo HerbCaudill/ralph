@@ -8,12 +8,12 @@ Components throughout the UI mix data access with presentation, making them diff
 
 ### Data Access Patterns Found
 
-| Pattern | Count | Example |
-|---------|-------|---------|
-| Direct store access in component | 15+ | `Header`, `StatusBar`, `EventStream` |
-| API calls in component | 8+ | `TaskDetailsDialog`, `TaskChatPanel` |
-| Purely presentational (props only) | 12+ | `ChatInput`, `EventList`, `TaskList` |
-| Data via custom hook | 5+ | `TasksSidebarPanel` uses `useTasks()` |
+| Pattern                            | Count | Example                               |
+| ---------------------------------- | ----- | ------------------------------------- |
+| Direct store access in component   | 15+   | `Header`, `StatusBar`, `EventStream`  |
+| API calls in component             | 8+    | `TaskDetailsDialog`, `TaskChatPanel`  |
+| Purely presentational (props only) | 12+   | `ChatInput`, `EventList`, `TaskList`  |
+| Data via custom hook               | 5+    | `TasksSidebarPanel` uses `useTasks()` |
 
 ### Storybook Workarounds
 
@@ -27,18 +27,21 @@ Stories use these hacks to work around data-accessing components:
 ### Components Needing Refactoring
 
 **High Priority** (complex, frequently tested):
+
 - `TaskChatPanel` - reads messages from store, makes API calls
 - `EventStream` - reads events from store, uses multiple selectors
 - `TaskDetailsDialog` - heavy store access + API calls
 - `Header` - reads workspace/branch from store
 
 **Medium Priority**:
+
 - `StatusBar` - reads status from store
 - `TaskSidebar` - needs store state
 - `TaskChatHistoryDropdown` - fetches sessions directly
 - `InstanceSelector` - reads instances from store
 
 **Already Good** (no changes needed):
+
 - `ChatInput`, `EventList`, `TaskList`, `TaskCard`
 - UI primitives (`Button`, `Input`, `Dialog`, etc.)
 
@@ -70,6 +73,7 @@ Stories use these hacks to work around data-accessing components:
 - `Foo` → Presentational (props only, testable in Storybook)
 
 Example:
+
 - `TaskChatController` → renders `TaskChat`
 - `EventStreamController` → renders `EventStream`
 - `HeaderController` → renders `Header`
@@ -93,12 +97,13 @@ Hooks organized by **data domain** (not by component):
 ```
 hooks/
   useTaskChat.ts      # Task chat messages, send/receive
-  useEvents.ts        # Event stream, iteration navigation
+  useEvents.ts        # Event stream, session navigation
   useTaskDetails.ts   # Single task CRUD operations
   useWorkspace.ts     # Workspace info (already exists)
 ```
 
 Each hook:
+
 - Encapsulates store access
 - Handles API calls
 - Returns data + actions
@@ -112,7 +117,7 @@ Only **5-8 controllers** at natural layout boundaries, not one per component:
 App (root orchestrator - stays as-is)
 ├── HeaderController        → Header, InstanceSelector, WorkspaceSwitcher
 ├── TasksSidebarController  → TaskList, TaskCard, QuickTaskInput
-├── EventStreamController   → EventList, IterationNav, ToolUseCard
+├── EventStreamController   → EventList, SessionNav, ToolUseCard
 ├── TaskChatController      → TaskChat, ChatInput, TaskChatHistory
 ├── TaskDetailsController   → TaskDetails (refactored from TaskDetailsDialog)
 └── StatusBarController     → StatusBar, TokenUsage
@@ -157,6 +162,7 @@ Start with `TaskChatPanel` as proof of concept since it's actively being worked 
 ### TaskChatPanel → TaskChat + TaskChatController
 
 **Before:**
+
 ```typescript
 // TaskChatPanel.tsx (mixed)
 export function TaskChatPanel() {
@@ -172,6 +178,7 @@ export function TaskChatPanel() {
 ```
 
 **After:**
+
 ```typescript
 // TaskChat.tsx (presentational)
 export function TaskChat({ messages, isLoading, onSend }: Props) {
@@ -200,6 +207,7 @@ export function useTaskChat() {
 ### Header → Header + HeaderController
 
 **Before:**
+
 ```typescript
 // Header.tsx (mixed)
 export function Header() {
@@ -210,6 +218,7 @@ export function Header() {
 ```
 
 **After:**
+
 ```typescript
 // Header.tsx (presentational)
 export function Header({ workspace, branch }: Props) {
@@ -229,20 +238,21 @@ export function HeaderController() {
 ### Storybook Stories
 
 With presentational components:
+
 ```typescript
 // Header.stories.tsx
 export const Default: Story = {
   args: {
-    workspace: '/path/to/project',
-    branch: 'main',
-  }
+    workspace: "/path/to/project",
+    branch: "main",
+  },
 }
 
 export const LongPath: Story = {
   args: {
-    workspace: '/very/long/path/to/deeply/nested/project',
-    branch: 'feature/some-long-branch-name',
-  }
+    workspace: "/very/long/path/to/deeply/nested/project",
+    branch: "feature/some-long-branch-name",
+  },
 }
 ```
 
@@ -251,6 +261,7 @@ No more `StoreSetter` hacks or `withStoreState` decorators needed.
 ### Unit Tests
 
 Presentational components can be tested with React Testing Library without store setup:
+
 ```typescript
 test('renders workspace name', () => {
   render(<Header workspace="/my/project" branch="main" />)

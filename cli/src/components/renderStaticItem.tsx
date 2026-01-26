@@ -4,9 +4,9 @@ import BigText from "ink-big-text"
 import Gradient from "ink-gradient"
 import { Header } from "./Header.js"
 import { formatContentBlock } from "../lib/formatContentBlock.js"
-import { type StaticItem } from "./IterationRunner.types.js"
+import { type StaticItem } from "./SessionRunner.types.js"
 
-/**  Render a static item (header, iteration header, or content block). */
+/**  Render a static item (header, session header, or content block). */
 export const renderStaticItem = (
   /** The static item to render */
   item: StaticItem,
@@ -14,11 +14,11 @@ export const renderStaticItem = (
   if (item.type === "header") {
     return <Header claudeVersion={item.claudeVersion} ralphVersion={item.ralphVersion} />
   }
-  if (item.type === "iteration") {
+  if (item.type === "session") {
     return (
       <Box flexDirection="column" marginTop={1}>
         <Gradient colors={["#30A6E4", "#EBC635"]}>
-          <BigText text={`R${item.iteration}`} font="tiny" />
+          <BigText text={`R${item.session}`} font="tiny" />
         </Gradient>
       </Box>
     )

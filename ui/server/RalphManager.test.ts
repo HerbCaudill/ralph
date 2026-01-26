@@ -87,7 +87,7 @@ describe("RalphManager", () => {
       )
     })
 
-    it("includes iterations argument when provided", async () => {
+    it("includes sessions argument when provided", async () => {
       const startPromise = manager.start(50)
       mockProcess.emit("spawn")
       await startPromise
@@ -116,7 +116,7 @@ describe("RalphManager", () => {
       )
     })
 
-    it("includes both --watch and iterations when both provided", async () => {
+    it("includes both --watch and sessions when both provided", async () => {
       const watchManager = new RalphManager({
         spawn: mockSpawn as unknown as SpawnFn,
         watch: true,
@@ -167,7 +167,7 @@ describe("RalphManager", () => {
       )
     })
 
-    it("includes --agent flag with watch and iterations", async () => {
+    it("includes --agent flag with watch and sessions", async () => {
       const codexManager = new RalphManager({
         spawn: mockSpawn as unknown as SpawnFn,
         agent: "codex",
@@ -451,7 +451,7 @@ describe("RalphManager", () => {
       expect(statusChanges).toContain("pausing")
 
       // Simulate Ralph emitting the paused event
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","session":1}\n'))
 
       expect(manager.status).toBe("paused")
       expect(statusChanges).toContain("paused")
@@ -473,7 +473,7 @@ describe("RalphManager", () => {
       expect(manager.status).toBe("pausing")
 
       // Simulate Ralph emitting the paused event
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","session":1}\n'))
       expect(manager.status).toBe("paused")
 
       // Already paused - should be a no-op
@@ -494,7 +494,7 @@ describe("RalphManager", () => {
       await startPromise
 
       // Simulate Ralph emitting the paused event directly (e.g., from Ctrl-P in TTY mode)
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","session":1}\n'))
 
       expect(manager.status).toBe("paused")
       expect(statusChanges).toContain("paused")
@@ -537,7 +537,7 @@ describe("RalphManager", () => {
       expect(manager.status).toBe("pausing")
 
       // Receive the ralph_paused event before timeout
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","session":1}\n'))
 
       expect(manager.status).toBe("paused")
 
@@ -558,7 +558,7 @@ describe("RalphManager", () => {
 
       manager.pause()
       // Simulate Ralph emitting the paused event
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","session":1}\n'))
       manager.resume()
 
       expect(mockProcess.stdin.write).toHaveBeenCalledWith('{"type":"resume"}\n')
@@ -574,7 +574,7 @@ describe("RalphManager", () => {
 
       manager.pause()
       // Simulate Ralph emitting the paused event
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","session":1}\n'))
 
       manager.resume()
 
@@ -615,7 +615,7 @@ describe("RalphManager", () => {
 
       manager.pause()
       // Simulate Ralph emitting the paused event
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","session":1}\n'))
 
       expect(manager.status).toBe("paused")
       expect(manager.isRunning).toBe(false)
@@ -704,7 +704,7 @@ describe("RalphManager", () => {
 
       manager.pause()
       // Simulate Ralph emitting the paused event
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","iteration":1}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"ralph_paused","session":1}\n'))
 
       manager.stopAfterCurrent()
 

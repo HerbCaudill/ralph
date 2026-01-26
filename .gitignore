@@ -4,7 +4,7 @@ dist
 *.log
 *.tsbuildinfo
 **/.ralph/events.jsonl
-**/.ralph/iterations/**/*
+**/.ralph/sessions/**/*
 .test-results
 .test-workspace
 

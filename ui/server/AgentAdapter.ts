@@ -35,8 +35,8 @@ export interface AgentStartOptions {
   systemPrompt?: string
   /** Model to use (agent-specific) */
   model?: string
-  /** Maximum number of iterations/turns */
-  maxIterations?: number
+  /** Maximum number of sessions/turns */
+  maxSessions?: number
   /** Additional agent-specific options */
   [key: string]: unknown
 }

@@ -29,7 +29,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
+      <EventDisplay events={events} session={1} completedSessions={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -65,7 +65,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
+      <EventDisplay events={events} session={1} completedSessions={[]} />,
     )
 
     // Wait for useEffect to complete
@@ -101,7 +101,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
+      <EventDisplay events={events} session={1} completedSessions={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -132,7 +132,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
+      <EventDisplay events={events} session={1} completedSessions={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -157,7 +157,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame, rerender } = render(
-      <EventDisplay events={events1} iteration={1} completedIterations={[]} />,
+      <EventDisplay events={events1} session={1} completedSessions={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -175,7 +175,7 @@ describe("EventDisplay", () => {
       },
     ]
 
-    rerender(<EventDisplay events={events2} iteration={1} completedIterations={[]} />)
+    rerender(<EventDisplay events={events2} session={1} completedSessions={[]} />)
 
     await vi.waitFor(() => {
       const output = lastFrame() ?? ""
@@ -236,7 +236,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
+      <EventDisplay events={events} session={1} completedSessions={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -268,7 +268,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay events={events} iteration={1} completedIterations={[]} />,
+      <EventDisplay events={events} session={1} completedSessions={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -289,12 +289,12 @@ describe("EventDisplay", () => {
   })
 
   /**
-   * Verify that completed iteration rounds are displayed before the current round
+   * Verify that completed session rounds are displayed before the current round
    */
   it("displays completed rounds before current round", async () => {
-    const completedIterations = [
+    const completedSessions = [
       {
-        iteration: 1,
+        session: 1,
         events: [
           {
             type: "assistant",
@@ -306,7 +306,7 @@ describe("EventDisplay", () => {
         ],
       },
       {
-        iteration: 2,
+        session: 2,
         events: [
           {
             type: "assistant",
@@ -330,11 +330,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame } = render(
-      <EventDisplay
-        events={currentEvents}
-        iteration={3}
-        completedIterations={completedIterations}
-      />,
+      <EventDisplay events={currentEvents} session={3} completedSessions={completedSessions} />,
     )
 
     await vi.waitFor(() => {
@@ -373,7 +369,7 @@ describe("EventDisplay", () => {
     ]
 
     const { lastFrame, rerender } = render(
-      <EventDisplay events={iter1Events} iteration={1} completedIterations={[]} />,
+      <EventDisplay events={iter1Events} session={1} completedSessions={[]} />,
     )
 
     await vi.waitFor(() => {
@@ -382,7 +378,7 @@ describe("EventDisplay", () => {
       expect(output).toContain("First round")
     })
 
-    // Transition to round 2 (round 1 moves to completedIterations)
+    // Transition to round 2 (round 1 moves to completedSessions)
     const iter2Events = [
       {
         type: "assistant",
@@ -396,8 +392,8 @@ describe("EventDisplay", () => {
     rerender(
       <EventDisplay
         events={iter2Events}
-        iteration={2}
-        completedIterations={[{ iteration: 1, events: iter1Events }]}
+        session={2}
+        completedSessions={[{ session: 1, events: iter1Events }]}
       />,
     )
 

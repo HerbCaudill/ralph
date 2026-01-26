@@ -145,6 +145,6 @@ The main epic is rui-epic-1 which contains several tasks:
 
 Each task has subtasks like rui-4rt.1, rui-4rt.2, etc.
 
-You can view the iteration history at #eventlog=abcd1234 and #eventlog=efgh5678.`,
+You can view the session history at #eventlog=abcd1234 and #eventlog=efgh5678.`,
   },
 }

@@ -65,17 +65,17 @@ export {
 } from "./useEventLogs"
 
 export {
-  useIterations,
-  type IterationSummary,
-  type UseIterationsOptions,
-  type UseIterationsResult,
-} from "./useIterations"
+  useSessions,
+  type SessionSummary,
+  type UseSessionsOptions,
+  type UseSessionsResult,
+} from "./useSessions"
 
 export {
-  useIterationPersistence,
-  type UseIterationPersistenceOptions,
-  type UseIterationPersistenceResult,
-} from "./useIterationPersistence"
+  useSessionPersistence,
+  type UseSessionPersistenceOptions,
+  type UseSessionPersistenceResult,
+} from "./useSessionPersistence"
 
 export {
   useEventPersistence,
@@ -113,8 +113,8 @@ export {
 
 export {
   useEventStream,
-  type IterationTask,
-  type IterationNavigationActions,
+  type SessionTask,
+  type SessionNavigationActions,
   type UseEventStreamOptions,
   type UseEventStreamResult,
 } from "./useEventStream"

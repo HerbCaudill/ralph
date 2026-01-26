@@ -73,10 +73,10 @@ export class RalphManager extends EventEmitter {
   /**
    * Start the ralph process.
    *
-   * @param iterations - Number of iterations (optional)
+   * @param sessions - Number of sessions (optional)
    * @returns Promise that resolves when process starts
    */
-  async start(iterations?: number): Promise<void> {
+  async start(sessions?: number): Promise<void> {
     if (this.process) {
       throw new Error("Ralph is already running")
     }
@@ -90,8 +90,8 @@ export class RalphManager extends EventEmitter {
     if (this.options.watch) {
       args.push("--watch")
     }
-    if (iterations !== undefined) {
-      args.push(String(iterations))
+    if (sessions !== undefined) {
+      args.push(String(sessions))
     }
 
     return new Promise((resolve, reject) => {
@@ -146,7 +146,7 @@ export class RalphManager extends EventEmitter {
 
   /**
    * Pause the ralph process by sending a pause command via stdin.
-   * Ralph will pause after the current iteration completes.
+   * Ralph will pause after the current session completes.
    * The process can be resumed later with resume().
    *
    * If Ralph doesn't respond with a ralph_paused event within 10 seconds,
@@ -200,7 +200,7 @@ export class RalphManager extends EventEmitter {
   /**
    * Request ralph to stop after completing the current task.
    * Sends the stop command via stdin which Ralph handles gracefully,
-   * stopping after the current iteration completes.
+   * stopping after the current session completes.
    */
   stopAfterCurrent(): void {
     if (!this.process) {
@@ -210,7 +210,7 @@ export class RalphManager extends EventEmitter {
       throw new Error(`Cannot stop-after-current ralph in ${this._status} state`)
     }
 
-    // Send the stop signal to ralph via stdin - tells Ralph to stop after current iteration
+    // Send the stop signal to ralph via stdin - tells Ralph to stop after current session
     this.send({ type: "stop" })
     this.setStatus("stopping_after_current")
   }
@@ -282,13 +282,13 @@ export class RalphManager extends EventEmitter {
   /**
    * Send a message to the ralph process via stdin.
    *
-   * For user messages during an iteration, send:
+   * For user messages during an session, send:
    * { type: "message", text: "your message here" }
    *
    * For control commands:
-   * - { type: "pause" } - Pause after current iteration
+   * - { type: "pause" } - Pause after current session
    * - { type: "resume" } - Resume from paused state
-   * - { type: "stop" } - Stop after current iteration
+   * - { type: "stop" } - Stop after current session
    *
    * @param message - Message to send (will be JSON stringified if object)
    */

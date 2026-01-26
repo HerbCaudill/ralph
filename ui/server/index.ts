@@ -24,8 +24,8 @@ import {
   type CreateInstanceOptions,
   type RalphInstanceState,
 } from "./RalphRegistry.js"
-import { getIterationStateStore } from "./IterationStateStore.js"
-import { getIterationEventPersister } from "./IterationEventPersister.js"
+import { getSessionStateStore } from "./SessionStateStore.js"
+import { getSessionEventPersister } from "./SessionEventPersister.js"
 import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
 const execFileAsync = promisify(execFile)
@@ -116,8 +116,8 @@ function createApp(
         return
       }
 
-      const { iterations } = req.body as { iterations?: number }
-      await manager.start(iterations)
+      const { sessions } = req.body as { sessions?: number }
+      await manager.start(sessions)
       res.status(200).json({ ok: true, status: manager.status })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to start"
@@ -269,8 +269,8 @@ function createApp(
         return
       }
 
-      const { iterations } = req.body as { iterations?: number }
-      await instance.manager.start(iterations)
+      const { sessions } = req.body as { sessions?: number }
+      await instance.manager.start(sessions)
       res.status(200).json({ ok: true, status: instance.manager.status })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to start"
@@ -343,7 +343,7 @@ function createApp(
     }
   })
 
-  // Stop after current iteration for a specific instance
+  // Stop after current session for a specific instance
   app.post("/api/ralph/:instanceId/stop-after-current", (req: Request, res: Response) => {
     const instanceId = req.params.instanceId as string
     const registry = getRalphRegistry()
@@ -465,10 +465,10 @@ function createApp(
     })
   })
 
-  // Iteration State Restoration Endpoints
+  // Session State Restoration Endpoints
 
-  // Get saved iteration state for an instance
-  app.get("/api/ralph/:instanceId/iteration-state", async (req: Request, res: Response) => {
+  // Get saved session state for an instance
+  app.get("/api/ralph/:instanceId/session-state", async (req: Request, res: Response) => {
     const instanceId = req.params.instanceId as string
     const registry = getRalphRegistry()
 
@@ -478,16 +478,16 @@ function createApp(
     }
 
     try {
-      const state = await registry.loadIterationState(instanceId)
+      const state = await registry.loadSessionState(instanceId)
 
       if (!state) {
-        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        res.status(404).json({ ok: false, error: "No saved session state found" })
         return
       }
 
       res.status(200).json({ ok: true, state })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load iteration state"
+      const message = err instanceof Error ? err.message : "Failed to load session state"
       res.status(500).json({ ok: false, error: message })
     }
   })
@@ -505,10 +505,10 @@ function createApp(
     }
 
     try {
-      const state = await registry.loadIterationState(instanceId)
+      const state = await registry.loadSessionState(instanceId)
 
       if (!state) {
-        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        res.status(404).json({ ok: false, error: "No saved session state found" })
         return
       }
 
@@ -521,8 +521,8 @@ function createApp(
       }
 
       // Note: The event history is managed per-instance by RalphRegistry and is cleared
-      // when a new iteration starts. For page reload survival, the client should use
-      // the saved conversationContext to show the previous state, and the next iteration
+      // when a new session starts. For page reload survival, the client should use
+      // the saved conversationContext to show the previous state, and the next session
       // will either continue from that context (if Claude SDK supports session resumption)
       // or start fresh with the context available for reference.
 
@@ -537,13 +537,13 @@ function createApp(
         },
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to restore iteration state"
+      const message = err instanceof Error ? err.message : "Failed to restore session state"
       res.status(500).json({ ok: false, error: message })
     }
   })
 
-  // Delete saved iteration state (for "start fresh")
-  app.delete("/api/ralph/:instanceId/iteration-state", async (req: Request, res: Response) => {
+  // Delete saved session state (for "start fresh")
+  app.delete("/api/ralph/:instanceId/session-state", async (req: Request, res: Response) => {
     const instanceId = req.params.instanceId as string
     const registry = getRalphRegistry()
 
@@ -553,16 +553,16 @@ function createApp(
     }
 
     try {
-      const deleted = await registry.deleteIterationState(instanceId)
+      const deleted = await registry.deleteSessionState(instanceId)
 
       if (!deleted) {
-        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        res.status(404).json({ ok: false, error: "No saved session state found" })
         return
       }
 
       res.status(200).json({ ok: true })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete iteration state"
+      const message = err instanceof Error ? err.message : "Failed to delete session state"
       res.status(500).json({ ok: false, error: message })
     }
   })
@@ -1370,15 +1370,15 @@ function attachWsServer(
     ;(async () => {
       const context = getActiveContext()
       const registry = getRalphRegistry()
-      const persister = registry.getIterationEventPersister()
+      const persister = registry.getSessionEventPersister()
 
-      // Get events: if iteration is active, try to restore from disk first
+      // Get events: if session is active, try to restore from disk first
       let events = context.eventHistory
       const status = context.ralphManager.status
-      const hasActiveIteration = status === "running" || status === "paused" || status === "pausing"
+      const hasActiveSession = status === "running" || status === "paused" || status === "pausing"
 
-      if (hasActiveIteration && persister && events.length === 0) {
-        // Iteration is active but no in-memory events - try to restore from disk
+      if (hasActiveSession && persister && events.length === 0) {
+        // Session is active but no in-memory events - try to restore from disk
         try {
           const persistedEvents = await persister.readEvents("default")
           if (persistedEvents.length > 0) {
@@ -1990,27 +1990,27 @@ export async function switchWorkspace(
   // Note: This does NOT stop Ralph in the old context - it keeps running
   const context = manager.setActiveContext(workspacePath)
 
-  // Update the IterationStateStore, IterationEventPersister, and BdProxy for the new workspace
+  // Update the SessionStateStore, SessionEventPersister, and BdProxy for the new workspace
   const registry = getRalphRegistry()
-  const iterationStateStore = getIterationStateStore(workspacePath)
-  registry.setIterationStateStore(iterationStateStore)
+  const sessionStateStore = getSessionStateStore(workspacePath)
+  registry.setSessionStateStore(sessionStateStore)
 
-  // Update the IterationEventPersister to point to the new workspace
-  const iterationEventPersister = getIterationEventPersister(workspacePath)
-  registry.setIterationEventPersister(iterationEventPersister)
+  // Update the SessionEventPersister to point to the new workspace
+  const sessionEventPersister = getSessionEventPersister(workspacePath)
+  registry.setSessionEventPersister(sessionEventPersister)
 
   // Update the BdProxy to point to the new workspace
   const bdProxy = new BdProxy({ cwd: workspacePath })
   registry.setBdProxy(bdProxy)
 
-  // Cleanup stale iteration states in the new workspace
+  // Cleanup stale session states in the new workspace
   try {
-    const removed = await iterationStateStore.cleanupStale()
+    const removed = await sessionStateStore.cleanupStale()
     if (removed > 0) {
-      console.log(`[server] Cleaned up ${removed} stale iteration state(s) in new workspace`)
+      console.log(`[server] Cleaned up ${removed} stale session state(s) in new workspace`)
     }
   } catch (err) {
-    console.warn("[server] Failed to cleanup stale iteration states:", err)
+    console.warn("[server] Failed to cleanup stale session states:", err)
   }
 
   // Start Ralph in watch mode if not already running
@@ -2148,31 +2148,31 @@ export async function startServer(
     console.log("[server] Ralph event logging enabled")
   }
 
-  // Cleanup stale iteration states at startup (files older than 1 hour)
-  // and wire the IterationStateStore into the RalphRegistry for state persistence
+  // Cleanup stale session states at startup (files older than 1 hour)
+  // and wire the SessionStateStore into the RalphRegistry for state persistence
   const workspacePath = configuredWorkspacePath || process.cwd()
-  const iterationStateStore = getIterationStateStore(workspacePath)
+  const sessionStateStore = getSessionStateStore(workspacePath)
   try {
-    const removed = await iterationStateStore.cleanupStale()
+    const removed = await sessionStateStore.cleanupStale()
     if (removed > 0) {
-      console.log(`[server] Cleaned up ${removed} stale iteration state(s)`)
+      console.log(`[server] Cleaned up ${removed} stale session state(s)`)
     }
   } catch (err) {
     // Log but don't fail startup - stale state cleanup is not critical
-    console.warn("[server] Failed to cleanup stale iteration states:", err)
+    console.warn("[server] Failed to cleanup stale session states:", err)
   }
 
   // Create default instance in registry if it doesn't exist
   const registry = getRalphRegistry()
 
-  // Wire the IterationStateStore into the registry for state persistence
-  registry.setIterationStateStore(iterationStateStore)
+  // Wire the SessionStateStore into the registry for state persistence
+  registry.setSessionStateStore(sessionStateStore)
 
-  // Wire the IterationEventPersister into the registry for live event persistence
-  const iterationEventPersister = getIterationEventPersister(workspacePath)
-  registry.setIterationEventPersister(iterationEventPersister)
+  // Wire the SessionEventPersister into the registry for live event persistence
+  const sessionEventPersister = getSessionEventPersister(workspacePath)
+  registry.setSessionEventPersister(sessionEventPersister)
 
-  // Wire the BdProxy into the registry for adding iteration log links to tasks
+  // Wire the BdProxy into the registry for adding session log links to tasks
   const bdProxy = new BdProxy({ cwd: workspacePath })
   registry.setBdProxy(bdProxy)
 

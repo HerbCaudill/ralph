@@ -18,7 +18,7 @@ import { StreamingContentRenderer } from "./StreamingContentRenderer"
  * - Rendering completed events via EventStreamEventItem
  * - Rendering streaming content via StreamingContentRenderer
  *
- * Parent components can wrap this with iteration bars, chat inputs, or other UI.
+ * Parent components can wrap this with session bars, chat inputs, or other UI.
  */
 export function EventDisplay({
   events,

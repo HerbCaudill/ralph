@@ -94,7 +94,7 @@ describe("StatusBar", () => {
       render(<StatusBar />)
       // Should not find any repo/branch text (the slash between them or a branch name)
       // But we need to exclude other potential slashes from the test
-      expect(screen.queryByTitle(/Iteration/)).not.toBeInTheDocument()
+      expect(screen.queryByTitle(/Session/)).not.toBeInTheDocument()
     })
   })
 
@@ -180,20 +180,20 @@ describe("StatusBar", () => {
     })
   })
 
-  describe("IterationProgress", () => {
+  describe("SessionProgress", () => {
     it("does not show progress when total is 0", () => {
       render(<StatusBar />)
       expect(screen.queryByText(/\d+\/\d+/)).not.toBeInTheDocument()
     })
 
-    it("shows iteration count when total is set", () => {
-      useAppStore.getState().setIteration({ current: 3, total: 10 })
+    it("shows session count when total is set", () => {
+      useAppStore.getState().setSession({ current: 3, total: 10 })
       render(<StatusBar />)
       expect(screen.getByText("3/10")).toBeInTheDocument()
     })
 
     it("shows progress bar at correct percentage", () => {
-      useAppStore.getState().setIteration({ current: 5, total: 10 })
+      useAppStore.getState().setSession({ current: 5, total: 10 })
       render(<StatusBar />)
       // Progress bar should be at 50%
       const progressBar = document.querySelector('[style*="width: 50%"]')
@@ -202,7 +202,7 @@ describe("StatusBar", () => {
   })
 
   // Note: CurrentTask tests have been moved to EventStream.test.tsx
-  // as the current task is now displayed in the IterationBar at the top of the event panel
+  // as the current task is now displayed in the SessionBar at the top of the event panel
 
   describe("styling", () => {
     it("applies custom className", () => {

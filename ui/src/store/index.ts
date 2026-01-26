@@ -14,7 +14,7 @@ import type {
   Theme,
   TokenUsage,
   ContextWindow,
-  IterationInfo,
+  SessionInfo,
   EventLog,
 } from "@/types"
 import { persistConfig } from "./persist"
@@ -74,7 +74,7 @@ export function createRalphInstance(
     events: [],
     tokenUsage: { input: 0, output: 0 },
     contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-    iteration: { current: 0, total: 0 },
+    session: { current: 0, total: 0 },
     worktreePath: null,
     branch: null,
     currentTaskId: null,
@@ -130,8 +130,8 @@ export interface AppState {
   // Context window usage
   contextWindow: ContextWindow
 
-  // Iteration progress
-  iteration: IterationInfo
+  // Session progress
+  session: SessionInfo
 
   // WebSocket connection status
   connectionStatus: ConnectionStatus
@@ -158,8 +158,8 @@ export interface AppState {
   taskChatLoading: boolean
   currentTaskChatSessionId: string | null
 
-  // Iteration view state (null = show current/latest iteration)
-  viewingIterationIndex: number | null
+  // Session view state (null = show current/latest session)
+  viewingSessionIndex: number | null
 
   // Task search filter
   taskSearchQuery: string
@@ -185,7 +185,7 @@ export interface AppState {
   // Task chat events (unified array like EventStream's events[])
   taskChatEvents: ChatEvent[]
 
-  // Reconnection state (for auto-resuming when reconnecting mid-iteration)
+  // Reconnection state (for auto-resuming when reconnecting mid-session)
   /** Whether Ralph was running when the connection was lost */
   wasRunningBeforeDisconnect: boolean
 }
@@ -231,8 +231,8 @@ export interface AppActions {
   setContextWindow: (contextWindow: ContextWindow) => void
   updateContextWindowUsed: (used: number) => void
 
-  // Iteration
-  setIteration: (iteration: IterationInfo) => void
+  // Session
+  setSession: (session: SessionInfo) => void
 
   // Connection
   setConnectionStatus: (status: ConnectionStatus) => void
@@ -264,11 +264,11 @@ export interface AppActions {
   addTaskChatEvent: (event: ChatEvent) => void
   clearTaskChatEvents: () => void
 
-  // Iteration view
-  setViewingIterationIndex: (index: number | null) => void
-  goToPreviousIteration: () => void
-  goToNextIteration: () => void
-  goToLatestIteration: () => void
+  // Session view
+  setViewingSessionIndex: (index: number | null) => void
+  goToPreviousSession: () => void
+  goToNextSession: () => void
+  goToLatestSession: () => void
 
   // Task search
   setTaskSearchQuery: (query: string) => void
@@ -296,7 +296,7 @@ export interface AppActions {
   openHotkeysDialog: () => void
   closeHotkeysDialog: () => void
 
-  // Reconnection state (for auto-resuming when reconnecting mid-iteration)
+  // Reconnection state (for auto-resuming when reconnecting mid-session)
   /** Mark that Ralph was running before disconnect (called when connection is lost) */
   markRunningBeforeDisconnect: () => void
   /** Clear the running-before-disconnect flag */
@@ -326,8 +326,8 @@ export interface AppActions {
   addTokenUsageForInstance: (instanceId: string, usage: TokenUsage) => void
   /** Update context window usage for a specific instance by ID */
   updateContextWindowUsedForInstance: (instanceId: string, used: number) => void
-  /** Set iteration for a specific instance by ID */
-  setIterationForInstance: (instanceId: string, iteration: IterationInfo) => void
+  /** Set session for a specific instance by ID */
+  setSessionForInstance: (instanceId: string, session: SessionInfo) => void
   /** Set merge conflict for a specific instance by ID */
   setMergeConflictForInstance: (instanceId: string, conflict: MergeConflict | null) => void
   /** Clear merge conflict for a specific instance by ID */
@@ -337,64 +337,61 @@ export interface AppActions {
   reset: () => void
 }
 
-/**  Checks if an event is an iteration boundary (system init event). */
-export function isIterationBoundary(event: ChatEvent): boolean {
+/**  Checks if an event is an session boundary (system init event). */
+export function isSessionBoundary(event: ChatEvent): boolean {
   return event.type === "system" && (event as any).subtype === "init"
 }
 
 /**
- * Gets the indices of iteration boundaries in the events array.
- * Returns an array of indices where each iteration starts.
+ * Gets the indices of session boundaries in the events array.
+ * Returns an array of indices where each session starts.
  */
-export function getIterationBoundaries(events: ChatEvent[]): number[] {
+export function getSessionBoundaries(events: ChatEvent[]): number[] {
   const boundaries: number[] = []
   events.forEach((event, index) => {
-    if (isIterationBoundary(event)) {
+    if (isSessionBoundary(event)) {
       boundaries.push(index)
     }
   })
   return boundaries
 }
 
-/**  Counts the total number of iterations in the events array. */
-export function countIterations(events: ChatEvent[]): number {
-  return getIterationBoundaries(events).length
+/**  Counts the total number of sessions in the events array. */
+export function countSessions(events: ChatEvent[]): number {
+  return getSessionBoundaries(events).length
 }
 
 /**
- * Gets events for a specific iteration.
- * Returns events from the iteration boundary up to (but not including) the next boundary.
- * If iterationIndex is null or out of bounds, returns all events.
+ * Gets events for a specific session.
+ * Returns events from the session boundary up to (but not including) the next boundary.
+ * If sessionIndex is null or out of bounds, returns all events.
  */
-export function getEventsForIteration(
-  events: ChatEvent[],
-  iterationIndex: number | null,
-): ChatEvent[] {
-  if (iterationIndex === null) {
-    // Return all events from the latest iteration
-    const boundaries = getIterationBoundaries(events)
+export function getEventsForSession(events: ChatEvent[], sessionIndex: number | null): ChatEvent[] {
+  if (sessionIndex === null) {
+    // Return all events from the latest session
+    const boundaries = getSessionBoundaries(events)
     if (boundaries.length === 0) return events
     const lastBoundary = boundaries[boundaries.length - 1]
     return events.slice(lastBoundary)
   }
 
-  const boundaries = getIterationBoundaries(events)
-  if (boundaries.length === 0 || iterationIndex < 0 || iterationIndex >= boundaries.length) {
+  const boundaries = getSessionBoundaries(events)
+  if (boundaries.length === 0 || sessionIndex < 0 || sessionIndex >= boundaries.length) {
     return events
   }
 
-  const startIndex = boundaries[iterationIndex]
-  const endIndex = boundaries[iterationIndex + 1] ?? events.length
+  const startIndex = boundaries[sessionIndex]
+  const endIndex = boundaries[sessionIndex + 1] ?? events.length
   return events.slice(startIndex, endIndex)
 }
 
 /**
- * Extracts task information from iteration events.
+ * Extracts task information from session events.
  * First looks for ralph_task_started events (emitted by newer CLI versions).
  * Falls back to parsing <start_task> tags from assistant messages.
  * Returns task info if found, with title falling back to taskId if not provided.
  */
-export function getTaskFromIterationEvents(
+export function getTaskFromSessionEvents(
   events: ChatEvent[],
 ): { id: string | null; title: string } | null {
   // First, check for explicit ralph_task_started events (newer CLI)
@@ -436,25 +433,25 @@ export function getTaskFromIterationEvents(
   return null
 }
 
-/** Task info for a single iteration */
-export interface IterationTaskInfo {
+/** Task info for a single session */
+export interface SessionTaskInfo {
   id: string | null
   title: string | null
 }
 
 /**
- * Gets task information for all iterations.
- * Returns an array where each element corresponds to an iteration index.
- * Each element contains the task id and title for that iteration (or null values if no task).
+ * Gets task information for all sessions.
+ * Returns an array where each element corresponds to an session index.
+ * Each element contains the task id and title for that session (or null values if no task).
  */
-export function getIterationTaskInfos(events: ChatEvent[]): IterationTaskInfo[] {
-  const boundaries = getIterationBoundaries(events)
+export function getSessionTaskInfos(events: ChatEvent[]): SessionTaskInfo[] {
+  const boundaries = getSessionBoundaries(events)
   if (boundaries.length === 0) return []
 
   return boundaries.map((startIndex, i) => {
     const endIndex = boundaries[i + 1] ?? events.length
-    const iterationEvents = events.slice(startIndex, endIndex)
-    const taskInfo = getTaskFromIterationEvents(iterationEvents)
+    const sessionEvents = events.slice(startIndex, endIndex)
+    const taskInfo = getTaskFromSessionEvents(sessionEvents)
     return {
       id: taskInfo?.id ?? null,
       title: taskInfo?.title ?? null,
@@ -539,7 +536,7 @@ const initialState: AppState = {
   issuePrefix: null,
   tokenUsage: { input: 0, output: 0 },
   contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-  iteration: { current: 0, total: 0 },
+  session: { current: 0, total: 0 },
   connectionStatus: "disconnected",
   accentColor: null,
   sidebarWidth: defaultSidebarWidth,
@@ -553,7 +550,7 @@ const initialState: AppState = {
   taskChatMessages: [],
   taskChatLoading: false,
   currentTaskChatSessionId: null,
-  viewingIterationIndex: null,
+  viewingSessionIndex: null,
   taskSearchQuery: "",
   selectedTaskId: null,
   visibleTaskIds: [],
@@ -728,7 +725,7 @@ export const useAppStore = create<AppState & AppActions>()(
               events: [],
               tokenUsage: { input: 0, output: 0 },
               contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-              iteration: { current: 0, total: 0 },
+              session: { current: 0, total: 0 },
               runStartedAt: null,
               status: "stopped",
             })
@@ -736,13 +733,13 @@ export const useAppStore = create<AppState & AppActions>()(
           return {
             // Clear tasks immediately to avoid showing stale data
             tasks: [],
-            // Clear events and iteration state
+            // Clear events and session state
             events: [],
-            viewingIterationIndex: null,
+            viewingSessionIndex: null,
             // Reset token and context window usage
             tokenUsage: { input: 0, output: 0 },
             contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-            iteration: { current: 0, total: 0 },
+            session: { current: 0, total: 0 },
             // Reset run state
             runStartedAt: null,
             initialTaskCount: null,
@@ -844,8 +841,8 @@ export const useAppStore = create<AppState & AppActions>()(
           }
         }),
 
-      // Iteration
-      setIteration: iteration =>
+      // Session
+      setSession: session =>
         set(state => {
           // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
@@ -853,11 +850,11 @@ export const useAppStore = create<AppState & AppActions>()(
           if (activeInstance) {
             updatedInstances.set(state.activeInstanceId, {
               ...activeInstance,
-              iteration,
+              session,
             })
           }
           return {
-            iteration,
+            session,
             instances: updatedInstances,
           }
         }),
@@ -932,40 +929,40 @@ export const useAppStore = create<AppState & AppActions>()(
         set({ taskChatEvents: [] })
       },
 
-      // Iteration view
-      setViewingIterationIndex: index => set({ viewingIterationIndex: index }),
-      goToPreviousIteration: () =>
+      // Session view
+      setViewingSessionIndex: index => set({ viewingSessionIndex: index }),
+      goToPreviousSession: () =>
         set(state => {
-          const totalIterations = countIterations(state.events)
-          if (totalIterations === 0) return state
+          const totalSessions = countSessions(state.events)
+          if (totalSessions === 0) return state
 
-          // If viewing latest (null), go to second-to-last iteration
-          if (state.viewingIterationIndex === null) {
-            const newIndex = totalIterations > 1 ? totalIterations - 2 : 0
-            return { viewingIterationIndex: newIndex }
+          // If viewing latest (null), go to second-to-last session
+          if (state.viewingSessionIndex === null) {
+            const newIndex = totalSessions > 1 ? totalSessions - 2 : 0
+            return { viewingSessionIndex: newIndex }
           }
 
-          // If already at first iteration, stay there
-          if (state.viewingIterationIndex <= 0) return state
+          // If already at first session, stay there
+          if (state.viewingSessionIndex <= 0) return state
 
-          return { viewingIterationIndex: state.viewingIterationIndex - 1 }
+          return { viewingSessionIndex: state.viewingSessionIndex - 1 }
         }),
-      goToNextIteration: () =>
+      goToNextSession: () =>
         set(state => {
-          const totalIterations = countIterations(state.events)
-          if (totalIterations === 0) return state
+          const totalSessions = countSessions(state.events)
+          if (totalSessions === 0) return state
 
           // If already viewing latest, stay there
-          if (state.viewingIterationIndex === null) return state
+          if (state.viewingSessionIndex === null) return state
 
-          // If at last iteration, switch to latest (null)
-          if (state.viewingIterationIndex >= totalIterations - 1) {
-            return { viewingIterationIndex: null }
+          // If at last session, switch to latest (null)
+          if (state.viewingSessionIndex >= totalSessions - 1) {
+            return { viewingSessionIndex: null }
           }
 
-          return { viewingIterationIndex: state.viewingIterationIndex + 1 }
+          return { viewingSessionIndex: state.viewingSessionIndex + 1 }
         }),
-      goToLatestIteration: () => set({ viewingIterationIndex: null }),
+      goToLatestSession: () => set({ viewingSessionIndex: null }),
 
       // Task search
       setTaskSearchQuery: query => set({ taskSearchQuery: query }),
@@ -993,7 +990,7 @@ export const useAppStore = create<AppState & AppActions>()(
       openHotkeysDialog: () => set({ hotkeysDialogOpen: true }),
       closeHotkeysDialog: () => set({ hotkeysDialogOpen: false }),
 
-      // Reconnection state (for auto-resuming when reconnecting mid-iteration)
+      // Reconnection state (for auto-resuming when reconnecting mid-session)
       markRunningBeforeDisconnect: () =>
         set(state => ({
           wasRunningBeforeDisconnect:
@@ -1026,9 +1023,9 @@ export const useAppStore = create<AppState & AppActions>()(
             events: instance.events,
             tokenUsage: instance.tokenUsage,
             contextWindow: instance.contextWindow,
-            iteration: instance.iteration,
-            // Reset iteration view when switching instances
-            viewingIterationIndex: null,
+            session: instance.session,
+            // Reset session view when switching instances
+            viewingSessionIndex: null,
           }
         }),
 
@@ -1059,9 +1056,9 @@ export const useAppStore = create<AppState & AppActions>()(
             events: newInstance.events,
             tokenUsage: newInstance.tokenUsage,
             contextWindow: newInstance.contextWindow,
-            iteration: newInstance.iteration,
-            // Reset iteration view when switching instances
-            viewingIterationIndex: null,
+            session: newInstance.session,
+            // Reset session view when switching instances
+            viewingSessionIndex: null,
           }
         }),
 
@@ -1108,7 +1105,7 @@ export const useAppStore = create<AppState & AppActions>()(
             events: [],
             tokenUsage: { input: 0, output: 0 },
             contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-            iteration: { current: 0, total: 0 },
+            session: { current: 0, total: 0 },
             runStartedAt: null,
             currentTaskId: null,
             currentTaskTitle: null,
@@ -1126,10 +1123,10 @@ export const useAppStore = create<AppState & AppActions>()(
               events: [],
               tokenUsage: { input: 0, output: 0 },
               contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-              iteration: { current: 0, total: 0 },
+              session: { current: 0, total: 0 },
               runStartedAt: null,
               initialTaskCount: null,
-              viewingIterationIndex: null,
+              viewingSessionIndex: null,
             }
           }
 
@@ -1174,7 +1171,7 @@ export const useAppStore = create<AppState & AppActions>()(
                 events: [],
                 tokenUsage: { input: 0, output: 0 },
                 contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-                iteration: { current: 0, total: 0 },
+                session: { current: 0, total: 0 },
                 worktreePath: serverInstance.worktreePath,
                 branch: serverInstance.branch,
                 currentTaskId: serverInstance.currentTaskId,
@@ -1206,7 +1203,7 @@ export const useAppStore = create<AppState & AppActions>()(
                 events: activeInstance.events,
                 tokenUsage: activeInstance.tokenUsage,
                 contextWindow: activeInstance.contextWindow,
-                iteration: activeInstance.iteration,
+                session: activeInstance.session,
                 runStartedAt: activeInstance.runStartedAt,
               }
             : {}),
@@ -1353,22 +1350,22 @@ export const useAppStore = create<AppState & AppActions>()(
           return { instances: updatedInstances }
         }),
 
-      setIterationForInstance: (instanceId, iteration) =>
+      setSessionForInstance: (instanceId, session) =>
         set(state => {
           const instance = state.instances.get(instanceId)
           if (!instance) {
-            console.warn(`[store] Cannot set iteration for non-existent instance: ${instanceId}`)
+            console.warn(`[store] Cannot set session for non-existent instance: ${instanceId}`)
             return state
           }
 
           const updatedInstances = new Map(state.instances)
-          updatedInstances.set(instanceId, { ...instance, iteration })
+          updatedInstances.set(instanceId, { ...instance, session })
 
           // If this is the active instance, also update flat fields for backward compatibility
           if (state.activeInstanceId === instanceId) {
             return {
               instances: updatedInstances,
-              iteration,
+              session,
             }
           }
 
@@ -1474,9 +1471,9 @@ export const selectContextWindow = (state: AppState) => {
   const activeInstance = state.instances?.get(state.activeInstanceId)
   return activeInstance?.contextWindow ?? state.contextWindow
 }
-export const selectIteration = (state: AppState) => {
+export const selectSession = (state: AppState) => {
   const activeInstance = state.instances?.get(state.activeInstanceId)
-  return activeInstance?.iteration ?? state.iteration
+  return activeInstance?.session ?? state.session
 }
 export const selectConnectionStatus = (state: AppState) => state.connectionStatus
 export const selectIsConnected = (state: AppState) => state.connectionStatus === "connected"
@@ -1501,19 +1498,18 @@ export const selectTaskChatMessages = (state: AppState) => state.taskChatMessage
 export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
 export const selectCurrentTaskChatSessionId = (state: AppState) => state.currentTaskChatSessionId
 export const selectTaskChatEvents = (state: AppState) => state.taskChatEvents
-export const selectViewingIterationIndex = (state: AppState) => state.viewingIterationIndex
-export const selectIterationCount = (state: AppState) => countIterations(state.events)
-export const selectCurrentIterationEvents = (state: AppState) =>
-  getEventsForIteration(state.events, state.viewingIterationIndex)
-export const selectIsViewingLatestIteration = (state: AppState) =>
-  state.viewingIterationIndex === null
+export const selectViewingSessionIndex = (state: AppState) => state.viewingSessionIndex
+export const selectSessionCount = (state: AppState) => countSessions(state.events)
+export const selectCurrentSessionEvents = (state: AppState) =>
+  getEventsForSession(state.events, state.viewingSessionIndex)
+export const selectIsViewingLatestSession = (state: AppState) => state.viewingSessionIndex === null
 export const selectTaskSearchQuery = (state: AppState) => state.taskSearchQuery
 export const selectSelectedTaskId = (state: AppState) => state.selectedTaskId
 export const selectVisibleTaskIds = (state: AppState) => state.visibleTaskIds
 export const selectClosedTimeFilter = (state: AppState) => state.closedTimeFilter
-export const selectIterationTask = (state: AppState) => {
-  const iterationEvents = getEventsForIteration(state.events, state.viewingIterationIndex)
-  const taskFromEvents = getTaskFromIterationEvents(iterationEvents)
+export const selectSessionTask = (state: AppState) => {
+  const sessionEvents = getEventsForSession(state.events, state.viewingSessionIndex)
+  const taskFromEvents = getTaskFromSessionEvents(sessionEvents)
   if (taskFromEvents) {
     return taskFromEvents
   }
@@ -1552,9 +1548,9 @@ export const selectInstanceContextWindow = (state: AppState, instanceId: string)
   return instance?.contextWindow ?? { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX }
 }
 
-export const selectInstanceIteration = (state: AppState, instanceId: string): IterationInfo => {
+export const selectInstanceSession = (state: AppState, instanceId: string): SessionInfo => {
   const instance = state.instances.get(instanceId)
-  return instance?.iteration ?? { current: 0, total: 0 }
+  return instance?.session ?? { current: 0, total: 0 }
 }
 
 export const selectInstanceRunStartedAt = (state: AppState, instanceId: string): number | null => {
@@ -1605,9 +1601,9 @@ export const selectIsInstanceRunning = (state: AppState, instanceId: string): bo
   return instance?.status === "running"
 }
 
-export const selectInstanceIterationCount = (state: AppState, instanceId: string): number => {
+export const selectInstanceSessionCount = (state: AppState, instanceId: string): number => {
   const instance = state.instances.get(instanceId)
-  return instance ? countIterations(instance.events) : 0
+  return instance ? countSessions(instance.events) : 0
 }
 
 export const selectInstanceMergeConflict = (

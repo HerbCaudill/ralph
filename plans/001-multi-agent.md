@@ -6,7 +6,7 @@ Allow Ralph to use different CLI coding agents (Claude Code, OpenAI Codex, Aider
 
 ## Current state
 
-Ralph currently uses the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) directly in `IterationRunner.tsx`. The integration:
+Ralph currently uses the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`) directly in `SessionRunner.tsx`. The integration:
 
 - Uses `query()` from the SDK with a `MessageQueue` for streaming input
 - Receives `SDKMessage` objects with types like `assistant`, `user`, `result`
@@ -73,7 +73,7 @@ interface AgentAdapter {
 3. Create `CodexAdapter` for OpenAI Codex CLI
 4. Create adapter registry and factory function
 5. Add `--agent` CLI flag to select adapter
-6. Update `IterationRunner` to use adapter interface instead of SDK directly
+6. Update `SessionRunner` to use adapter interface instead of SDK directly
 7. Update event processing (`eventToBlocks.ts`) to handle normalized events
 8. Update UI server's `RalphManager` to pass agent configuration
 9. Add configuration file support for agent settings

@@ -1,7 +1,7 @@
 /**
  * Persistence module for IndexedDB storage.
  *
- * Provides client-side persistence for iterations and task chat sessions,
+ * Provides client-side persistence for sessions and task chat sessions,
  * enabling offline access and seamless reconnection.
  */
 

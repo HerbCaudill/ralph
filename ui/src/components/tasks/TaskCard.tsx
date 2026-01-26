@@ -42,8 +42,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     subtaskCount = 0,
     /** Whether this task is actively being worked on */
     isActivelyWorking = false,
-    /** Whether this task has saved iteration event logs */
-    hasIterations = false,
+    /** Whether this task has saved session event logs */
+    hasSessions = false,
     ...props
   },
   ref,
@@ -276,12 +276,12 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
             </span>
           )}
 
-          {/* Iteration indicator - shows when task has saved event logs */}
-          {hasIterations && (
+          {/* Session indicator - shows when task has saved event logs */}
+          {hasSessions && (
             <IconHistory
               className="text-muted-foreground size-3.5 shrink-0"
-              title="Has iteration history"
-              aria-label="Has iteration history"
+              title="Has session history"
+              aria-label="Has session history"
             />
           )}
 
@@ -431,8 +431,8 @@ export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"
   subtaskCount?: number
   /** Whether this task is actively being worked on by a running instance */
   isActivelyWorking?: boolean
-  /** Whether this task has saved iteration event logs */
-  hasIterations?: boolean
+  /** Whether this task has saved session event logs */
+  hasSessions?: boolean
 }
 
 /**  Configuration object for a task status. */

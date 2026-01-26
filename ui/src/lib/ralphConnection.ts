@@ -5,7 +5,7 @@
 
 import { useAppStore, flushTaskChatEventsBatch } from "../store"
 import { isRalphStatus } from "../store"
-import { checkForSavedIterationState, restoreIterationState } from "./iterationStateApi"
+import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -568,31 +568,31 @@ function connect(): void {
       })
     }
 
-    // Auto-resume iteration if Ralph was running before disconnect or has saved state
+    // Auto-resume session if Ralph was running before disconnect or has saved state
     // This happens in two cases:
     // 1. We reconnect after losing connection while Ralph was running (in-memory state)
-    // 2. We have saved iteration state on the server (survives page reloads)
+    // 2. We have saved session state on the server (survives page reloads)
     if (store.wasRunningBeforeDisconnect) {
       // In-memory state says Ralph was running - auto-resume immediately
       console.log("[ralphConnection] Auto-resuming: Ralph was running before disconnect")
-      restoreIterationState(store.activeInstanceId).then(result => {
+      restoreSessionState(store.activeInstanceId).then(result => {
         if (!result.ok) {
-          console.warn("[ralphConnection] Failed to restore iteration state:", result.error)
+          console.warn("[ralphConnection] Failed to restore session state:", result.error)
         }
         // Clear the flag regardless of success
         store.clearRunningBeforeDisconnect()
       })
     } else {
-      // Check server for saved iteration state (handles page reload case)
-      checkForSavedIterationState().then(savedState => {
+      // Check server for saved session state (handles page reload case)
+      checkForSavedSessionState().then(savedState => {
         if (savedState) {
           // Found recent saved state on server - auto-resume
           console.log(
             `[ralphConnection] Auto-resuming: found saved state from ${new Date(savedState.savedAt).toLocaleTimeString()}`,
           )
-          restoreIterationState(useAppStore.getState().activeInstanceId).then(result => {
+          restoreSessionState(useAppStore.getState().activeInstanceId).then(result => {
             if (!result.ok) {
-              console.warn("[ralphConnection] Failed to restore iteration state:", result.error)
+              console.warn("[ralphConnection] Failed to restore session state:", result.error)
             }
           })
         }

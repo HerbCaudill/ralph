@@ -8,7 +8,7 @@ import { useTasks } from "@/hooks"
  * Controller component for TaskSidebar.
  *
  * Connects data hooks to the TaskSidebar presentational component.
- * Handles task loading and wires up the iteration history and progress bar.
+ * Handles task loading and wires up the session history and progress bar.
  */
 export function TaskSidebarController({
   /** Ref to access SearchInput methods */

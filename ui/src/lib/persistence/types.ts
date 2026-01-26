@@ -1,16 +1,16 @@
 /**
- * Persistence types for IndexedDB storage of iterations and task chat sessions.
+ * Persistence types for IndexedDB storage of sessions and task chat sessions.
  *
  * These types define the data structures stored in IndexedDB for offline persistence
  * and reconnection support.
  */
 
-import type { ChatEvent, TokenUsage, ContextWindow, IterationInfo, TaskChatMessage } from "@/types"
+import type { ChatEvent, TokenUsage, ContextWindow, SessionInfo, TaskChatMessage } from "@/types"
 
 /**
  * Metadata about a persisted event log.
  * Used for listing/browsing event logs without loading full event data.
- * These are standalone event logs saved from completed iterations.
+ * These are standalone event logs saved from completed sessions.
  */
 export interface EventLogMetadata {
   /** Unique identifier for the event log */
@@ -22,7 +22,7 @@ export interface EventLogMetadata {
   /** Title of the task (for display without fetching task data) */
   taskTitle: string | null
 
-  /** Source description (e.g., "iteration", "task-chat") */
+  /** Source description (e.g., "session", "task-chat") */
   source: string | null
 
   /** Path to the workspace (for display purposes) */
@@ -37,7 +37,7 @@ export interface EventLogMetadata {
 
 /**
  * Full persisted event log data including all events.
- * Stored in IndexedDB for viewing saved iteration event logs.
+ * Stored in IndexedDB for viewing saved session event logs.
  */
 export interface PersistedEventLog extends EventLogMetadata {
   /** All events in this log */
@@ -45,41 +45,41 @@ export interface PersistedEventLog extends EventLogMetadata {
 }
 
 /**
- * Metadata about a persisted iteration.
- * Used for listing/browsing iterations without loading full event data.
+ * Metadata about a persisted session.
+ * Used for listing/browsing sessions without loading full event data.
  */
-export interface IterationMetadata {
-  /** Unique identifier for the iteration (e.g., "default-1706123456789") */
+export interface SessionMetadata {
+  /** Unique identifier for the session (e.g., "default-1706123456789") */
   id: string
 
-  /** ID of the Ralph instance this iteration belongs to */
+  /** ID of the Ralph instance this session belongs to */
   instanceId: string
 
-  /** Path to the workspace this iteration belongs to (for cross-workspace queries) */
+  /** Path to the workspace this session belongs to (for cross-workspace queries) */
   workspaceId: string | null
 
-  /** Timestamp when the iteration started */
+  /** Timestamp when the session started */
   startedAt: number
 
-  /** Timestamp when the iteration completed (null if still in progress) */
+  /** Timestamp when the session completed (null if still in progress) */
   completedAt: number | null
 
-  /** ID of the task being worked on during this iteration (if any) */
+  /** ID of the task being worked on during this session (if any) */
   taskId: string | null
 
   /** Title of the task being worked on (for display without fetching task data) */
   taskTitle: string | null
 
-  /** Token usage at the end of this iteration */
+  /** Token usage at the end of this session */
   tokenUsage: TokenUsage
 
-  /** Context window usage at the end of this iteration */
+  /** Context window usage at the end of this session */
   contextWindow: ContextWindow
 
-  /** Iteration progress info */
-  iteration: IterationInfo
+  /** Session progress info */
+  session: SessionInfo
 
-  /** Total number of events in this iteration */
+  /** Total number of events in this session */
   eventCount: number
 
   /** Last event sequence number received from server (for reconnection sync) */
@@ -87,7 +87,7 @@ export interface IterationMetadata {
 }
 
 /**
- * Full persisted iteration data.
+ * Full persisted session data.
  *
  * Schema v2: Events stored inline in the `events` array.
  * Schema v3+: Events stored separately in the events table, fetched via join.
@@ -97,9 +97,9 @@ export interface IterationMetadata {
  * - When reading v3 data, events are fetched separately
  * - New writes in v3+ should not include events (use the events table instead)
  */
-export interface PersistedIteration extends IterationMetadata {
+export interface PersistedSession extends SessionMetadata {
   /**
-   * Events for this iteration.
+   * Events for this session.
    * @deprecated In v3+, events are stored in the separate events table.
    * This field exists for backward compatibility with v2 data.
    */
@@ -111,11 +111,11 @@ export interface PersistedIteration extends IterationMetadata {
  * Used for listing/browsing events without loading full event data.
  */
 export interface EventMetadata {
-  /** Unique identifier for the event (e.g., "iteration-123-event-0") */
+  /** Unique identifier for the event (e.g., "session-123-event-0") */
   id: string
 
-  /** ID of the iteration this event belongs to */
-  iterationId: string
+  /** ID of the session this event belongs to */
+  sessionId: string
 
   /** Timestamp when the event occurred */
   timestamp: number
@@ -183,13 +183,13 @@ export const PERSISTENCE_SCHEMA_VERSION = 3
 
 /**  IndexedDB store names. */
 export const STORE_NAMES = {
-  /** Store for iteration metadata (for fast listing) */
-  ITERATION_METADATA: "iteration_metadata",
+  /** Store for session metadata (for fast listing) */
+  SESSION_METADATA: "session_metadata",
 
-  /** Store for full iteration data (metadata only in v3+, events stored separately) */
-  ITERATIONS: "iterations",
+  /** Store for full session data (metadata only in v3+, events stored separately) */
+  SESSIONS: "sessions",
 
-  /** Store for individual events (v3+, normalized from iterations) */
+  /** Store for individual events (v3+, normalized from sessions) */
   EVENTS: "events",
 
   /** Store for task chat session metadata (for fast listing) */
@@ -213,8 +213,8 @@ export const SYNC_STATE_KEYS = {
   /** Last successful sync timestamp */
   LAST_SYNC_TIMESTAMP: "last_sync_timestamp",
 
-  /** ID of the currently active iteration */
-  ACTIVE_ITERATION_ID: "active_iteration_id",
+  /** ID of the currently active session */
+  ACTIVE_SESSION_ID: "active_session_id",
 
   /** ID of the currently active task chat session */
   ACTIVE_TASK_CHAT_SESSION_ID: "active_task_chat_session_id",

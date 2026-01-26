@@ -59,8 +59,8 @@ function createTestApp(
         return
       }
 
-      const { iterations } = req.body as { iterations?: number }
-      await manager.start(iterations)
+      const { sessions } = req.body as { sessions?: number }
+      await manager.start(sessions)
       res.status(200).json({ ok: true, status: manager.status })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to start"
@@ -220,11 +220,11 @@ describe("REST API endpoints", () => {
       expect(data).toEqual({ ok: true, status: "running" })
     })
 
-    it("starts ralph with iterations parameter", async () => {
+    it("starts ralph with sessions parameter", async () => {
       const response = await fetch(`http://localhost:${port}/api/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ iterations: 5 }),
+        body: JSON.stringify({ sessions: 5 }),
       })
       const data = await response.json()
 

@@ -4,15 +4,15 @@ import { EventDatabase } from "./EventDatabase"
 import type {
   PersistedEvent,
   PersistedEventLog,
-  PersistedIteration,
+  PersistedSession,
   PersistedTaskChatSession,
 } from "./types"
 
 /**
- * Create a test iteration with sensible defaults.
+ * Create a test session with sensible defaults.
  */
-function createTestIteration(overrides: Partial<PersistedIteration> = {}): PersistedIteration {
-  const id = overrides.id ?? `iteration-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+function createTestSession(overrides: Partial<PersistedSession> = {}): PersistedSession {
+  const id = overrides.id ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   return {
     id,
     instanceId: "test-instance",
@@ -23,7 +23,7 @@ function createTestIteration(overrides: Partial<PersistedIteration> = {}): Persi
     taskTitle: null,
     tokenUsage: { input: 100, output: 50 },
     contextWindow: { used: 1000, max: 200000 },
-    iteration: { current: 1, total: 10 },
+    session: { current: 1, total: 10 },
     eventCount: 5,
     lastEventSequence: 4,
     events: [
@@ -74,7 +74,7 @@ function createTestEventLog(overrides: Partial<PersistedEventLog> = {}): Persist
     id,
     taskId: "task-123",
     taskTitle: "Test Task",
-    source: "iteration",
+    source: "session",
     workspacePath: "/Users/test/project",
     createdAt: now,
     eventCount: 2,
@@ -94,7 +94,7 @@ function createTestEvent(overrides: Partial<PersistedEvent> = {}): PersistedEven
   const id = overrides.id ?? `event-${now}-${Math.random().toString(36).slice(2, 8)}`
   return {
     id,
-    iterationId: overrides.iterationId ?? "iteration-123",
+    sessionId: overrides.sessionId ?? "session-123",
     timestamp: overrides.timestamp ?? now,
     eventType: overrides.eventType ?? "user_message",
     event: overrides.event ?? { type: "user_message", timestamp: now, message: "Hello" },
@@ -122,7 +122,7 @@ describe("EventDatabase", () => {
       // Database was already initialized in beforeEach
       const stats = await db.getStats()
       expect(stats).toEqual({
-        iterationCount: 0,
+        sessionCount: 0,
         eventCount: 0,
         taskChatSessionCount: 0,
         eventLogCount: 0,
@@ -135,60 +135,60 @@ describe("EventDatabase", () => {
       await db.init()
       await db.init()
       const stats = await db.getStats()
-      expect(stats.iterationCount).toBe(0)
+      expect(stats.sessionCount).toBe(0)
     })
   })
 
-  describe("iterations", () => {
-    describe("saveIteration / getIteration", () => {
-      it("saves and retrieves an iteration", async () => {
-        const iteration = createTestIteration()
-        await db.saveIteration(iteration)
+  describe("sessions", () => {
+    describe("saveSession / getSession", () => {
+      it("saves and retrieves an session", async () => {
+        const session = createTestSession()
+        await db.saveSession(session)
 
-        const retrieved = await db.getIteration(iteration.id)
-        expect(retrieved).toEqual(iteration)
+        const retrieved = await db.getSession(session.id)
+        expect(retrieved).toEqual(session)
       })
 
-      it("overwrites an existing iteration with the same ID", async () => {
-        const iteration = createTestIteration({ id: "iter-1" })
-        await db.saveIteration(iteration)
+      it("overwrites an existing session with the same ID", async () => {
+        const session = createTestSession({ id: "iter-1" })
+        await db.saveSession(session)
 
-        const updated = { ...iteration, eventCount: 20 }
-        await db.saveIteration(updated)
+        const updated = { ...session, eventCount: 20 }
+        await db.saveSession(updated)
 
-        const retrieved = await db.getIteration("iter-1")
+        const retrieved = await db.getSession("iter-1")
         expect(retrieved?.eventCount).toBe(20)
       })
 
-      it("returns undefined for non-existent iteration", async () => {
-        const result = await db.getIteration("non-existent")
+      it("returns undefined for non-existent session", async () => {
+        const result = await db.getSession("non-existent")
         expect(result).toBeUndefined()
       })
     })
 
-    describe("getIterationMetadata", () => {
+    describe("getSessionMetadata", () => {
       it("retrieves metadata without full events", async () => {
-        const iteration = createTestIteration({ id: "meta-test" })
-        await db.saveIteration(iteration)
+        const session = createTestSession({ id: "meta-test" })
+        await db.saveSession(session)
 
-        const metadata = await db.getIterationMetadata("meta-test")
+        const metadata = await db.getSessionMetadata("meta-test")
         expect(metadata).toBeDefined()
         expect(metadata?.id).toBe("meta-test")
-        expect(metadata?.instanceId).toBe(iteration.instanceId)
-        expect(metadata?.eventCount).toBe(iteration.eventCount)
+        expect(metadata?.instanceId).toBe(session.instanceId)
+        expect(metadata?.eventCount).toBe(session.eventCount)
         // Metadata should not have events property
-        expect((metadata as unknown as PersistedIteration).events).toBeUndefined()
+        expect((metadata as unknown as PersistedSession).events).toBeUndefined()
       })
     })
 
-    describe("listIterations", () => {
-      it("lists iterations for a specific instance", async () => {
-        await db.saveIteration(createTestIteration({ id: "iter-1", instanceId: "instance-a" }))
-        await db.saveIteration(createTestIteration({ id: "iter-2", instanceId: "instance-a" }))
-        await db.saveIteration(createTestIteration({ id: "iter-3", instanceId: "instance-b" }))
+    describe("listSessions", () => {
+      it("lists sessions for a specific instance", async () => {
+        await db.saveSession(createTestSession({ id: "iter-1", instanceId: "instance-a" }))
+        await db.saveSession(createTestSession({ id: "iter-2", instanceId: "instance-a" }))
+        await db.saveSession(createTestSession({ id: "iter-3", instanceId: "instance-b" }))
 
-        const listA = await db.listIterations("instance-a")
-        const listB = await db.listIterations("instance-b")
+        const listA = await db.listSessions("instance-a")
+        const listB = await db.listSessions("instance-b")
 
         expect(listA.map(i => i.id)).toContain("iter-1")
         expect(listA.map(i => i.id)).toContain("iter-2")
@@ -196,62 +196,62 @@ describe("EventDatabase", () => {
         expect(listB.map(i => i.id)).toEqual(["iter-3"])
       })
 
-      it("returns iterations sorted by startedAt descending", async () => {
+      it("returns sessions sorted by startedAt descending", async () => {
         const now = Date.now()
-        await db.saveIteration(
-          createTestIteration({ id: "old", instanceId: "test", startedAt: now - 1000 }),
+        await db.saveSession(
+          createTestSession({ id: "old", instanceId: "test", startedAt: now - 1000 }),
         )
-        await db.saveIteration(
-          createTestIteration({ id: "newest", instanceId: "test", startedAt: now + 1000 }),
+        await db.saveSession(
+          createTestSession({ id: "newest", instanceId: "test", startedAt: now + 1000 }),
         )
-        await db.saveIteration(
-          createTestIteration({ id: "middle", instanceId: "test", startedAt: now }),
+        await db.saveSession(
+          createTestSession({ id: "middle", instanceId: "test", startedAt: now }),
         )
 
-        const list = await db.listIterations("test")
+        const list = await db.listSessions("test")
         expect(list.map(i => i.id)).toEqual(["newest", "middle", "old"])
       })
 
       it("returns empty array for unknown instance", async () => {
-        const list = await db.listIterations("unknown-instance")
+        const list = await db.listSessions("unknown-instance")
         expect(list).toEqual([])
       })
     })
 
-    describe("getIterationsForTask", () => {
-      it("retrieves iterations for a specific task", async () => {
-        await db.saveIteration(createTestIteration({ id: "iter-1", taskId: "task-a" }))
-        await db.saveIteration(createTestIteration({ id: "iter-2", taskId: "task-a" }))
-        await db.saveIteration(createTestIteration({ id: "iter-3", taskId: "task-b" }))
-        await db.saveIteration(createTestIteration({ id: "iter-4", taskId: null }))
+    describe("getSessionsForTask", () => {
+      it("retrieves sessions for a specific task", async () => {
+        await db.saveSession(createTestSession({ id: "iter-1", taskId: "task-a" }))
+        await db.saveSession(createTestSession({ id: "iter-2", taskId: "task-a" }))
+        await db.saveSession(createTestSession({ id: "iter-3", taskId: "task-b" }))
+        await db.saveSession(createTestSession({ id: "iter-4", taskId: null }))
 
-        const taskAIterations = await db.getIterationsForTask("task-a")
-        expect(taskAIterations.map(i => i.id)).toEqual(expect.arrayContaining(["iter-1", "iter-2"]))
-        expect(taskAIterations.length).toBe(2)
+        const taskASessions = await db.getSessionsForTask("task-a")
+        expect(taskASessions.map(i => i.id)).toEqual(expect.arrayContaining(["iter-1", "iter-2"]))
+        expect(taskASessions.length).toBe(2)
       })
     })
 
-    describe("getLatestActiveIteration", () => {
-      it("returns the most recent active (incomplete) iteration", async () => {
+    describe("getLatestActiveSession", () => {
+      it("returns the most recent active (incomplete) session", async () => {
         const now = Date.now()
-        await db.saveIteration(
-          createTestIteration({
+        await db.saveSession(
+          createTestSession({
             id: "old-active",
             instanceId: "test",
             startedAt: now - 2000,
             completedAt: null,
           }),
         )
-        await db.saveIteration(
-          createTestIteration({
+        await db.saveSession(
+          createTestSession({
             id: "completed",
             instanceId: "test",
             startedAt: now - 1000,
             completedAt: now,
           }),
         )
-        await db.saveIteration(
-          createTestIteration({
+        await db.saveSession(
+          createTestSession({
             id: "newest-active",
             instanceId: "test",
             startedAt: now,
@@ -259,41 +259,41 @@ describe("EventDatabase", () => {
           }),
         )
 
-        const active = await db.getLatestActiveIteration("test")
+        const active = await db.getLatestActiveSession("test")
         expect(active?.id).toBe("newest-active")
       })
 
-      it("returns undefined when all iterations are completed", async () => {
-        await db.saveIteration(
-          createTestIteration({
+      it("returns undefined when all sessions are completed", async () => {
+        await db.saveSession(
+          createTestSession({
             instanceId: "test",
             completedAt: Date.now(),
           }),
         )
 
-        const active = await db.getLatestActiveIteration("test")
+        const active = await db.getLatestActiveSession("test")
         expect(active).toBeUndefined()
       })
 
-      it("returns undefined when no iterations exist", async () => {
-        const active = await db.getLatestActiveIteration("test")
+      it("returns undefined when no sessions exist", async () => {
+        const active = await db.getLatestActiveSession("test")
         expect(active).toBeUndefined()
       })
     })
 
-    describe("getLatestIteration", () => {
-      it("returns the most recent iteration regardless of completion status", async () => {
+    describe("getLatestSession", () => {
+      it("returns the most recent session regardless of completion status", async () => {
         const now = Date.now()
-        await db.saveIteration(
-          createTestIteration({
+        await db.saveSession(
+          createTestSession({
             id: "newest",
             instanceId: "test",
             startedAt: now,
             completedAt: now + 100,
           }),
         )
-        await db.saveIteration(
-          createTestIteration({
+        await db.saveSession(
+          createTestSession({
             id: "older",
             instanceId: "test",
             startedAt: now - 1000,
@@ -301,43 +301,43 @@ describe("EventDatabase", () => {
           }),
         )
 
-        const latest = await db.getLatestIteration("test")
+        const latest = await db.getLatestSession("test")
         expect(latest?.id).toBe("newest")
       })
 
-      it("returns undefined when no iterations exist", async () => {
-        const latest = await db.getLatestIteration("test")
+      it("returns undefined when no sessions exist", async () => {
+        const latest = await db.getLatestSession("test")
         expect(latest).toBeUndefined()
       })
     })
 
-    describe("deleteIteration", () => {
-      it("deletes an iteration and its metadata", async () => {
-        const iteration = createTestIteration({ id: "to-delete" })
-        await db.saveIteration(iteration)
+    describe("deleteSession", () => {
+      it("deletes an session and its metadata", async () => {
+        const session = createTestSession({ id: "to-delete" })
+        await db.saveSession(session)
 
-        await db.deleteIteration("to-delete")
+        await db.deleteSession("to-delete")
 
-        expect(await db.getIteration("to-delete")).toBeUndefined()
-        expect(await db.getIterationMetadata("to-delete")).toBeUndefined()
+        expect(await db.getSession("to-delete")).toBeUndefined()
+        expect(await db.getSessionMetadata("to-delete")).toBeUndefined()
       })
 
-      it("does not throw when deleting non-existent iteration", async () => {
-        await expect(db.deleteIteration("non-existent")).resolves.not.toThrow()
+      it("does not throw when deleting non-existent session", async () => {
+        await expect(db.deleteSession("non-existent")).resolves.not.toThrow()
       })
     })
 
-    describe("deleteAllIterationsForInstance", () => {
-      it("deletes all iterations for a specific instance", async () => {
-        await db.saveIteration(createTestIteration({ id: "iter-1", instanceId: "instance-a" }))
-        await db.saveIteration(createTestIteration({ id: "iter-2", instanceId: "instance-a" }))
-        await db.saveIteration(createTestIteration({ id: "iter-3", instanceId: "instance-b" }))
+    describe("deleteAllSessionsForInstance", () => {
+      it("deletes all sessions for a specific instance", async () => {
+        await db.saveSession(createTestSession({ id: "iter-1", instanceId: "instance-a" }))
+        await db.saveSession(createTestSession({ id: "iter-2", instanceId: "instance-a" }))
+        await db.saveSession(createTestSession({ id: "iter-3", instanceId: "instance-b" }))
 
-        await db.deleteAllIterationsForInstance("instance-a")
+        await db.deleteAllSessionsForInstance("instance-a")
 
-        expect(await db.getIteration("iter-1")).toBeUndefined()
-        expect(await db.getIteration("iter-2")).toBeUndefined()
-        expect(await db.getIteration("iter-3")).toBeDefined()
+        expect(await db.getSession("iter-1")).toBeUndefined()
+        expect(await db.getSession("iter-2")).toBeUndefined()
+        expect(await db.getSession("iter-3")).toBeDefined()
       })
     })
   })
@@ -372,9 +372,9 @@ describe("EventDatabase", () => {
     describe("saveEvents", () => {
       it("saves multiple events in a single transaction", async () => {
         const events = [
-          createTestEvent({ id: "event-1", iterationId: "iter-1" }),
-          createTestEvent({ id: "event-2", iterationId: "iter-1" }),
-          createTestEvent({ id: "event-3", iterationId: "iter-1" }),
+          createTestEvent({ id: "event-1", sessionId: "iter-1" }),
+          createTestEvent({ id: "event-2", sessionId: "iter-1" }),
+          createTestEvent({ id: "event-3", sessionId: "iter-1" }),
         ]
         await db.saveEvents(events)
 
@@ -403,16 +403,16 @@ describe("EventDatabase", () => {
       })
     })
 
-    describe("getEventsForIteration", () => {
-      it("retrieves events for a specific iteration", async () => {
+    describe("getEventsForSession", () => {
+      it("retrieves events for a specific session", async () => {
         const now = Date.now()
         await db.saveEvents([
-          createTestEvent({ id: "event-1", iterationId: "iter-a", timestamp: now }),
-          createTestEvent({ id: "event-2", iterationId: "iter-a", timestamp: now + 1 }),
-          createTestEvent({ id: "event-3", iterationId: "iter-b", timestamp: now }),
+          createTestEvent({ id: "event-1", sessionId: "iter-a", timestamp: now }),
+          createTestEvent({ id: "event-2", sessionId: "iter-a", timestamp: now + 1 }),
+          createTestEvent({ id: "event-3", sessionId: "iter-b", timestamp: now }),
         ])
 
-        const iterAEvents = await db.getEventsForIteration("iter-a")
+        const iterAEvents = await db.getEventsForSession("iter-a")
         expect(iterAEvents.map(e => e.id)).toEqual(expect.arrayContaining(["event-1", "event-2"]))
         expect(iterAEvents.length).toBe(2)
       })
@@ -420,94 +420,94 @@ describe("EventDatabase", () => {
       it("returns events sorted by timestamp ascending", async () => {
         const now = Date.now()
         await db.saveEvents([
-          createTestEvent({ id: "middle", iterationId: "iter-1", timestamp: now }),
-          createTestEvent({ id: "oldest", iterationId: "iter-1", timestamp: now - 1000 }),
-          createTestEvent({ id: "newest", iterationId: "iter-1", timestamp: now + 1000 }),
+          createTestEvent({ id: "middle", sessionId: "iter-1", timestamp: now }),
+          createTestEvent({ id: "oldest", sessionId: "iter-1", timestamp: now - 1000 }),
+          createTestEvent({ id: "newest", sessionId: "iter-1", timestamp: now + 1000 }),
         ])
 
-        const events = await db.getEventsForIteration("iter-1")
+        const events = await db.getEventsForSession("iter-1")
         expect(events.map(e => e.id)).toEqual(["oldest", "middle", "newest"])
       })
 
-      it("returns empty array for unknown iteration", async () => {
-        const events = await db.getEventsForIteration("unknown-iteration")
+      it("returns empty array for unknown session", async () => {
+        const events = await db.getEventsForSession("unknown-session")
         expect(events).toEqual([])
       })
     })
 
-    describe("countEventsForIteration", () => {
-      it("returns correct count of events for an iteration", async () => {
+    describe("countEventsForSession", () => {
+      it("returns correct count of events for an session", async () => {
         await db.saveEvents([
-          createTestEvent({ id: "event-1", iterationId: "iter-a" }),
-          createTestEvent({ id: "event-2", iterationId: "iter-a" }),
-          createTestEvent({ id: "event-3", iterationId: "iter-b" }),
+          createTestEvent({ id: "event-1", sessionId: "iter-a" }),
+          createTestEvent({ id: "event-2", sessionId: "iter-a" }),
+          createTestEvent({ id: "event-3", sessionId: "iter-b" }),
         ])
 
-        expect(await db.countEventsForIteration("iter-a")).toBe(2)
-        expect(await db.countEventsForIteration("iter-b")).toBe(1)
-        expect(await db.countEventsForIteration("iter-c")).toBe(0)
+        expect(await db.countEventsForSession("iter-a")).toBe(2)
+        expect(await db.countEventsForSession("iter-b")).toBe(1)
+        expect(await db.countEventsForSession("iter-c")).toBe(0)
       })
     })
 
-    describe("deleteEventsForIteration", () => {
-      it("deletes all events for a specific iteration", async () => {
+    describe("deleteEventsForSession", () => {
+      it("deletes all events for a specific session", async () => {
         await db.saveEvents([
-          createTestEvent({ id: "event-1", iterationId: "iter-a" }),
-          createTestEvent({ id: "event-2", iterationId: "iter-a" }),
-          createTestEvent({ id: "event-3", iterationId: "iter-b" }),
+          createTestEvent({ id: "event-1", sessionId: "iter-a" }),
+          createTestEvent({ id: "event-2", sessionId: "iter-a" }),
+          createTestEvent({ id: "event-3", sessionId: "iter-b" }),
         ])
 
-        await db.deleteEventsForIteration("iter-a")
+        await db.deleteEventsForSession("iter-a")
 
         expect(await db.getEvent("event-1")).toBeUndefined()
         expect(await db.getEvent("event-2")).toBeUndefined()
         expect(await db.getEvent("event-3")).toBeDefined()
       })
 
-      it("does not throw when no events exist for iteration", async () => {
-        await expect(db.deleteEventsForIteration("non-existent")).resolves.not.toThrow()
+      it("does not throw when no events exist for session", async () => {
+        await expect(db.deleteEventsForSession("non-existent")).resolves.not.toThrow()
       })
     })
 
-    describe("integration with iteration lifecycle", () => {
-      it("deleteIteration also deletes associated events", async () => {
-        // Save an iteration
-        await db.saveIteration(createTestIteration({ id: "iter-1" }))
+    describe("integration with session lifecycle", () => {
+      it("deleteSession also deletes associated events", async () => {
+        // Save an session
+        await db.saveSession(createTestSession({ id: "iter-1" }))
 
-        // Save events for this iteration
+        // Save events for this session
         await db.saveEvents([
-          createTestEvent({ id: "event-1", iterationId: "iter-1" }),
-          createTestEvent({ id: "event-2", iterationId: "iter-1" }),
+          createTestEvent({ id: "event-1", sessionId: "iter-1" }),
+          createTestEvent({ id: "event-2", sessionId: "iter-1" }),
         ])
 
-        // Delete the iteration
-        await db.deleteIteration("iter-1")
+        // Delete the session
+        await db.deleteSession("iter-1")
 
         // Events should also be deleted
         expect(await db.getEvent("event-1")).toBeUndefined()
         expect(await db.getEvent("event-2")).toBeUndefined()
       })
 
-      it("deleteAllIterationsForInstance also deletes associated events", async () => {
-        // Save iterations
-        await db.saveIteration(createTestIteration({ id: "iter-1", instanceId: "instance-a" }))
-        await db.saveIteration(createTestIteration({ id: "iter-2", instanceId: "instance-a" }))
-        await db.saveIteration(createTestIteration({ id: "iter-3", instanceId: "instance-b" }))
+      it("deleteAllSessionsForInstance also deletes associated events", async () => {
+        // Save sessions
+        await db.saveSession(createTestSession({ id: "iter-1", instanceId: "instance-a" }))
+        await db.saveSession(createTestSession({ id: "iter-2", instanceId: "instance-a" }))
+        await db.saveSession(createTestSession({ id: "iter-3", instanceId: "instance-b" }))
 
-        // Save events for these iterations
+        // Save events for these sessions
         await db.saveEvents([
-          createTestEvent({ id: "event-1", iterationId: "iter-1" }),
-          createTestEvent({ id: "event-2", iterationId: "iter-2" }),
-          createTestEvent({ id: "event-3", iterationId: "iter-3" }),
+          createTestEvent({ id: "event-1", sessionId: "iter-1" }),
+          createTestEvent({ id: "event-2", sessionId: "iter-2" }),
+          createTestEvent({ id: "event-3", sessionId: "iter-3" }),
         ])
 
-        // Delete all iterations for instance-a
-        await db.deleteAllIterationsForInstance("instance-a")
+        // Delete all sessions for instance-a
+        await db.deleteAllSessionsForInstance("instance-a")
 
-        // Events for instance-a iterations should be deleted
+        // Events for instance-a sessions should be deleted
         expect(await db.getEvent("event-1")).toBeUndefined()
         expect(await db.getEvent("event-2")).toBeUndefined()
-        // Events for instance-b iteration should remain
+        // Events for instance-b session should remain
         expect(await db.getEvent("event-3")).toBeDefined()
       })
     })
@@ -914,7 +914,7 @@ describe("EventDatabase", () => {
   describe("utility methods", () => {
     describe("clearAll", () => {
       it("clears all data from all stores", async () => {
-        await db.saveIteration(createTestIteration())
+        await db.saveSession(createTestSession())
         await db.saveTaskChatSession(createTestTaskChatSession())
         await db.saveEventLog(createTestEventLog())
         await db.setSyncState("key", "value")
@@ -923,7 +923,7 @@ describe("EventDatabase", () => {
 
         const stats = await db.getStats()
         expect(stats).toEqual({
-          iterationCount: 0,
+          sessionCount: 0,
           eventCount: 0,
           taskChatSessionCount: 0,
           eventLogCount: 0,
@@ -934,8 +934,8 @@ describe("EventDatabase", () => {
 
     describe("getStats", () => {
       it("returns correct counts for all stores", async () => {
-        await db.saveIteration(createTestIteration({ id: "iter-1" }))
-        await db.saveIteration(createTestIteration({ id: "iter-2" }))
+        await db.saveSession(createTestSession({ id: "iter-1" }))
+        await db.saveSession(createTestSession({ id: "iter-2" }))
         await db.saveTaskChatSession(createTestTaskChatSession({ id: "session-1" }))
         await db.saveEventLog(createTestEventLog({ id: "log-1" }))
         await db.saveEventLog(createTestEventLog({ id: "log-2" }))
@@ -945,7 +945,7 @@ describe("EventDatabase", () => {
 
         const stats = await db.getStats()
         expect(stats).toEqual({
-          iterationCount: 2,
+          sessionCount: 2,
           eventCount: 0,
           taskChatSessionCount: 1,
           eventLogCount: 2,
@@ -962,19 +962,19 @@ describe("EventDatabase", () => {
         // This is tested implicitly by ensuring operations work after close + re-init
         await db.init()
         const stats = await db.getStats()
-        expect(stats.iterationCount).toBe(0)
+        expect(stats.sessionCount).toBe(0)
       })
     })
   })
 
   describe("transactional behavior", () => {
-    it("saves iteration metadata and full data atomically", async () => {
-      const iteration = createTestIteration({ id: "atomic-test" })
-      await db.saveIteration(iteration)
+    it("saves session metadata and full data atomically", async () => {
+      const session = createTestSession({ id: "atomic-test" })
+      await db.saveSession(session)
 
       // Both metadata and full data should be present
-      const metadata = await db.getIterationMetadata("atomic-test")
-      const full = await db.getIteration("atomic-test")
+      const metadata = await db.getSessionMetadata("atomic-test")
+      const full = await db.getSession("atomic-test")
 
       expect(metadata).toBeDefined()
       expect(full).toBeDefined()
@@ -994,12 +994,12 @@ describe("EventDatabase", () => {
       expect(metadata?.id).toBe(full?.id)
     })
 
-    it("deletes iteration metadata and full data atomically", async () => {
-      await db.saveIteration(createTestIteration({ id: "delete-atomic" }))
-      await db.deleteIteration("delete-atomic")
+    it("deletes session metadata and full data atomically", async () => {
+      await db.saveSession(createTestSession({ id: "delete-atomic" }))
+      await db.deleteSession("delete-atomic")
 
-      expect(await db.getIterationMetadata("delete-atomic")).toBeUndefined()
-      expect(await db.getIteration("delete-atomic")).toBeUndefined()
+      expect(await db.getSessionMetadata("delete-atomic")).toBeUndefined()
+      expect(await db.getSession("delete-atomic")).toBeUndefined()
     })
 
     it("saves event log metadata and full data atomically", async () => {
@@ -1026,25 +1026,25 @@ describe("EventDatabase", () => {
 
   describe("v2→v3 migration", () => {
     /**
-     * Test the v2→v3 migration by simulating v2 data format (iterations with embedded events).
+     * Test the v2→v3 migration by simulating v2 data format (sessions with embedded events).
      *
      * Note: The migration happens automatically when opening a v2 database with v3 code.
      * Since fake-indexeddb starts fresh for each test, we test by:
-     * 1. Saving iterations with embedded events array (v2 format)
+     * 1. Saving sessions with embedded events array (v2 format)
      * 2. Verifying the events can be retrieved from the events store
-     * 3. Verifying the iteration no longer has embedded events
+     * 3. Verifying the session no longer has embedded events
      *
      * In a real v2→v3 upgrade:
-     * - The upgrade handler extracts events from iterations
+     * - The upgrade handler extracts events from sessions
      * - Creates PersistedEvent records in the events store
-     * - Removes the events array from iterations
+     * - Removes the events array from sessions
      */
 
-    it("preserves iteration data after migration when iteration is saved with events", async () => {
-      // Simulate v2-style iteration with embedded events
+    it("preserves session data after migration when session is saved with events", async () => {
+      // Simulate v2-style session with embedded events
       const now = Date.now()
-      const iterationWithEvents = createTestIteration({
-        id: "v2-iteration",
+      const sessionWithEvents = createTestSession({
+        id: "v2-session",
         instanceId: "test-instance",
         taskId: "task-123",
         taskTitle: "Test Task",
@@ -1058,41 +1058,41 @@ describe("EventDatabase", () => {
       })
 
       // Save using current API (simulates upgrade path)
-      await db.saveIteration(iterationWithEvents)
+      await db.saveSession(sessionWithEvents)
 
-      // Verify iteration metadata is preserved
-      const metadata = await db.getIterationMetadata("v2-iteration")
+      // Verify session metadata is preserved
+      const metadata = await db.getSessionMetadata("v2-session")
       expect(metadata).toBeDefined()
-      expect(metadata?.id).toBe("v2-iteration")
+      expect(metadata?.id).toBe("v2-session")
       expect(metadata?.instanceId).toBe("test-instance")
       expect(metadata?.taskId).toBe("task-123")
       expect(metadata?.eventCount).toBe(3)
 
-      // Verify full iteration data is preserved
-      const iteration = await db.getIteration("v2-iteration")
-      expect(iteration).toBeDefined()
-      expect(iteration?.id).toBe("v2-iteration")
-      // Events array should still be in the iteration store (for backward compat)
-      expect(iteration?.events?.length).toBe(3)
+      // Verify full session data is preserved
+      const session = await db.getSession("v2-session")
+      expect(session).toBeDefined()
+      expect(session?.id).toBe("v2-session")
+      // Events array should still be in the session store (for backward compat)
+      expect(session?.events?.length).toBe(3)
     })
 
-    it("handles iterations with empty events array", async () => {
-      const emptyEventsIteration = createTestIteration({
+    it("handles sessions with empty events array", async () => {
+      const emptyEventsSession = createTestSession({
         id: "empty-events",
         events: [],
         eventCount: 0,
       })
 
-      await db.saveIteration(emptyEventsIteration)
+      await db.saveSession(emptyEventsSession)
 
-      const iteration = await db.getIteration("empty-events")
-      expect(iteration).toBeDefined()
-      expect(iteration?.events).toEqual([])
+      const session = await db.getSession("empty-events")
+      expect(session).toBeDefined()
+      expect(session?.events).toEqual([])
     })
 
-    it("handles iterations with undefined events (pure metadata)", async () => {
-      // Simulate v3-style iteration without events
-      const metadataOnlyIteration = {
+    it("handles sessions with undefined events (pure metadata)", async () => {
+      // Simulate v3-style session without events
+      const metadataOnlySession = {
         id: "metadata-only",
         instanceId: "test-instance",
         workspaceId: null,
@@ -1102,50 +1102,50 @@ describe("EventDatabase", () => {
         taskTitle: null,
         tokenUsage: { input: 0, output: 0 },
         contextWindow: { used: 0, max: 200000 },
-        iteration: { current: 0, total: 0 },
+        session: { current: 0, total: 0 },
         eventCount: 0,
         lastEventSequence: 0,
         // No events property - this is the v3 pattern
-      } as PersistedIteration
+      } as PersistedSession
 
-      await db.saveIteration(metadataOnlyIteration)
+      await db.saveSession(metadataOnlySession)
 
-      const iteration = await db.getIteration("metadata-only")
-      expect(iteration).toBeDefined()
-      expect(iteration?.events).toBeUndefined()
+      const session = await db.getSession("metadata-only")
+      expect(session).toBeDefined()
+      expect(session?.events).toBeUndefined()
     })
 
-    it("sets workspaceId to null for legacy iterations without workspaceId", async () => {
-      // The migration should ensure all iterations have workspaceId property
-      const legacyIteration = createTestIteration({
-        id: "legacy-iteration",
+    it("sets workspaceId to null for legacy sessions without workspaceId", async () => {
+      // The migration should ensure all sessions have workspaceId property
+      const legacySession = createTestSession({
+        id: "legacy-session",
         workspaceId: null, // Explicit null (migration ensures this exists)
       })
 
-      await db.saveIteration(legacyIteration)
+      await db.saveSession(legacySession)
 
-      const metadata = await db.getIterationMetadata("legacy-iteration")
+      const metadata = await db.getSessionMetadata("legacy-session")
       expect(metadata).toBeDefined()
       expect(metadata).toHaveProperty("workspaceId")
       expect(metadata?.workspaceId).toBeNull()
     })
 
-    it("preserves workspaceId when set on iteration", async () => {
-      const iterationWithWorkspace = createTestIteration({
+    it("preserves workspaceId when set on session", async () => {
+      const sessionWithWorkspace = createTestSession({
         id: "with-workspace",
         workspaceId: "/Users/test/project",
       })
 
-      await db.saveIteration(iterationWithWorkspace)
+      await db.saveSession(sessionWithWorkspace)
 
-      const metadata = await db.getIterationMetadata("with-workspace")
+      const metadata = await db.getSessionMetadata("with-workspace")
       expect(metadata?.workspaceId).toBe("/Users/test/project")
     })
 
     it("handles events with missing timestamp by using fallback", async () => {
       // Events might have undefined timestamp in corrupted data
       const now = Date.now()
-      const iterationWithBadEvents = createTestIteration({
+      const sessionWithBadEvents = createTestSession({
         id: "bad-timestamps",
         events: [
           { type: "user_message", timestamp: now, message: "Good event" },
@@ -1158,15 +1158,15 @@ describe("EventDatabase", () => {
       })
 
       // Should not throw
-      await expect(db.saveIteration(iterationWithBadEvents)).resolves.not.toThrow()
+      await expect(db.saveSession(sessionWithBadEvents)).resolves.not.toThrow()
 
-      const iteration = await db.getIteration("bad-timestamps")
-      expect(iteration?.events?.length).toBe(2)
+      const session = await db.getSession("bad-timestamps")
+      expect(session?.events?.length).toBe(2)
     })
 
     it("handles events with missing type by using unknown fallback", async () => {
       const now = Date.now()
-      const iterationWithTypelessEvents = createTestIteration({
+      const sessionWithTypelessEvents = createTestSession({
         id: "typeless-events",
         events: [
           { timestamp: now, message: "No type field" } as unknown as {
@@ -1177,20 +1177,20 @@ describe("EventDatabase", () => {
         ],
       })
 
-      await expect(db.saveIteration(iterationWithTypelessEvents)).resolves.not.toThrow()
+      await expect(db.saveSession(sessionWithTypelessEvents)).resolves.not.toThrow()
 
-      const iteration = await db.getIteration("typeless-events")
-      expect(iteration?.events?.length).toBe(1)
+      const session = await db.getSession("typeless-events")
+      expect(session?.events?.length).toBe(1)
     })
 
-    it("events can be stored and retrieved separately from iterations", async () => {
+    it("events can be stored and retrieved separately from sessions", async () => {
       // This tests the normalized storage pattern for v3+
-      const iterationId = "separate-storage"
+      const sessionId = "separate-storage"
 
-      // Save iteration metadata only
-      await db.saveIteration(
-        createTestIteration({
-          id: iterationId,
+      // Save session metadata only
+      await db.saveSession(
+        createTestSession({
+          id: sessionId,
           events: undefined,
           eventCount: 3,
         }),
@@ -1200,31 +1200,31 @@ describe("EventDatabase", () => {
       const now = Date.now()
       await db.saveEvents([
         createTestEvent({
-          id: `${iterationId}-event-0`,
-          iterationId,
+          id: `${sessionId}-event-0`,
+          sessionId,
           timestamp: now,
           eventType: "user_message",
         }),
         createTestEvent({
-          id: `${iterationId}-event-1`,
-          iterationId,
+          id: `${sessionId}-event-1`,
+          sessionId,
           timestamp: now + 100,
           eventType: "assistant_text",
         }),
         createTestEvent({
-          id: `${iterationId}-event-2`,
-          iterationId,
+          id: `${sessionId}-event-2`,
+          sessionId,
           timestamp: now + 200,
           eventType: "tool_use",
         }),
       ])
 
-      // Verify iteration has no embedded events
-      const iteration = await db.getIteration(iterationId)
-      expect(iteration?.events).toBeUndefined()
+      // Verify session has no embedded events
+      const session = await db.getSession(sessionId)
+      expect(session?.events).toBeUndefined()
 
       // Verify events can be retrieved separately
-      const events = await db.getEventsForIteration(iterationId)
+      const events = await db.getEventsForSession(sessionId)
       expect(events.length).toBe(3)
       expect(events[0].eventType).toBe("user_message")
       expect(events[1].eventType).toBe("assistant_text")

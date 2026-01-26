@@ -36,9 +36,7 @@ export async function replay(
   }
 
   // Render with all events
-  const { lastFrame } = render(
-    <EventDisplay events={events} iteration={1} completedIterations={[]} />,
-  )
+  const { lastFrame } = render(<EventDisplay events={events} session={1} completedSessions={[]} />)
 
   // Wait for rendering
   await vi.waitFor(

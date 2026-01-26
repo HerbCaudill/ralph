@@ -1,5 +1,5 @@
 /**
- * IndexedDB storage module for persisting iterations and task chat sessions.
+ * IndexedDB storage module for persisting sessions and task chat sessions.
  *
  * Uses the idb library for a cleaner async/await API over IndexedDB.
  * Provides methods to store, retrieve, and manage persisted data.
@@ -10,10 +10,10 @@ import {
   PERSISTENCE_SCHEMA_VERSION,
   STORE_NAMES,
   type EventLogMetadata,
-  type IterationMetadata,
+  type SessionMetadata,
   type PersistedEvent,
   type PersistedEventLog,
-  type PersistedIteration,
+  type PersistedSession,
   type PersistedTaskChatSession,
   type SyncState,
   type TaskChatSessionMetadata,
@@ -24,9 +24,9 @@ import {
  * Defines the shape of each object store and its indexes.
  */
 interface RalphDBSchema extends DBSchema {
-  [STORE_NAMES.ITERATION_METADATA]: {
+  [STORE_NAMES.SESSION_METADATA]: {
     key: string
-    value: IterationMetadata
+    value: SessionMetadata
     indexes: {
       "by-instance": string
       "by-started-at": number
@@ -36,9 +36,9 @@ interface RalphDBSchema extends DBSchema {
       "by-workspace-and-started-at": [string, number]
     }
   }
-  [STORE_NAMES.ITERATIONS]: {
+  [STORE_NAMES.SESSIONS]: {
     key: string
-    value: PersistedIteration
+    value: PersistedSession
     indexes: {
       "by-instance": string
     }
@@ -47,7 +47,7 @@ interface RalphDBSchema extends DBSchema {
     key: string
     value: PersistedEvent
     indexes: {
-      "by-iteration": string
+      "by-session": string
       "by-timestamp": number
     }
   }
@@ -93,7 +93,7 @@ interface RalphDBSchema extends DBSchema {
 const DB_NAME = "ralph-persistence"
 
 /**
- * EventDatabase provides IndexedDB storage for iterations and task chat sessions.
+ * EventDatabase provides IndexedDB storage for sessions and task chat sessions.
  *
  * Features:
  * - Separate stores for metadata (fast listing) and full data (lazy loading)
@@ -124,20 +124,20 @@ export class EventDatabase {
       upgrade(db, oldVersion, _newVersion, transaction) {
         // Version 1: Initial schema
         if (oldVersion < 1) {
-          // Iteration metadata store with indexes
-          const iterationMetaStore = db.createObjectStore(STORE_NAMES.ITERATION_METADATA, {
+          // Session metadata store with indexes
+          const sessionMetaStore = db.createObjectStore(STORE_NAMES.SESSION_METADATA, {
             keyPath: "id",
           })
-          iterationMetaStore.createIndex("by-instance", "instanceId")
-          iterationMetaStore.createIndex("by-started-at", "startedAt")
-          iterationMetaStore.createIndex("by-instance-and-started-at", ["instanceId", "startedAt"])
-          iterationMetaStore.createIndex("by-task", "taskId")
+          sessionMetaStore.createIndex("by-instance", "instanceId")
+          sessionMetaStore.createIndex("by-started-at", "startedAt")
+          sessionMetaStore.createIndex("by-instance-and-started-at", ["instanceId", "startedAt"])
+          sessionMetaStore.createIndex("by-task", "taskId")
 
-          // Full iterations store
-          const iterationsStore = db.createObjectStore(STORE_NAMES.ITERATIONS, {
+          // Full sessions store
+          const sessionsStore = db.createObjectStore(STORE_NAMES.SESSIONS, {
             keyPath: "id",
           })
-          iterationsStore.createIndex("by-instance", "instanceId")
+          sessionsStore.createIndex("by-instance", "instanceId")
 
           // Task chat metadata store with indexes
           const taskChatMetaStore = db.createObjectStore(STORE_NAMES.TASK_CHAT_METADATA, {
@@ -182,15 +182,15 @@ export class EventDatabase {
           // Events store for append-only event writes
           db.createObjectStore(STORE_NAMES.EVENTS, {
             keyPath: "id",
-          }).createIndex("by-iteration", "iterationId")
+          }).createIndex("by-session", "sessionId")
           // Need to get the store again to add the second index
           transaction.objectStore(STORE_NAMES.EVENTS).createIndex("by-timestamp", "timestamp")
 
-          // Add workspace index to iteration metadata for cross-workspace queries
+          // Add workspace index to session metadata for cross-workspace queries
           // Access the existing store through the upgrade transaction
-          if (db.objectStoreNames.contains(STORE_NAMES.ITERATION_METADATA)) {
-            const iterationMetaStore = transaction.objectStore(STORE_NAMES.ITERATION_METADATA)
-            iterationMetaStore.createIndex("by-workspace-and-started-at", [
+          if (db.objectStoreNames.contains(STORE_NAMES.SESSION_METADATA)) {
+            const sessionMetaStore = transaction.objectStore(STORE_NAMES.SESSION_METADATA)
+            sessionMetaStore.createIndex("by-workspace-and-started-at", [
               "workspaceId",
               "startedAt",
             ])
@@ -224,12 +224,12 @@ export class EventDatabase {
    * Migrate v2 data to v3 format.
    *
    * This migration:
-   * 1. Extracts events from the iterations store (where they were embedded in v2)
+   * 1. Extracts events from the sessions store (where they were embedded in v2)
    * 2. Creates individual PersistedEvent records in the events store
-   * 3. Updates iterations to remove the events array
-   * 4. Ensures all iterations have workspaceId (set to null for legacy data)
+   * 3. Updates sessions to remove the events array
+   * 4. Ensures all sessions have workspaceId (set to null for legacy data)
    *
-   * This is idempotent - iterations that have already been migrated (no events array)
+   * This is idempotent - sessions that have already been migrated (no events array)
    * will be skipped.
    */
   private async migrateV2ToV3(): Promise<void> {
@@ -238,35 +238,35 @@ export class EventDatabase {
     console.log("[EventDatabase] Starting v2→v3 data migration...")
 
     const tx = this.db.transaction(
-      [STORE_NAMES.ITERATIONS, STORE_NAMES.ITERATION_METADATA, STORE_NAMES.EVENTS],
+      [STORE_NAMES.SESSIONS, STORE_NAMES.SESSION_METADATA, STORE_NAMES.EVENTS],
       "readwrite",
     )
 
-    const iterationsStore = tx.objectStore(STORE_NAMES.ITERATIONS)
-    const metadataStore = tx.objectStore(STORE_NAMES.ITERATION_METADATA)
+    const sessionsStore = tx.objectStore(STORE_NAMES.SESSIONS)
+    const metadataStore = tx.objectStore(STORE_NAMES.SESSION_METADATA)
     const eventsStore = tx.objectStore(STORE_NAMES.EVENTS)
 
-    // Get all iterations
-    const iterations = await iterationsStore.getAll()
+    // Get all sessions
+    const sessions = await sessionsStore.getAll()
     let migratedCount = 0
     let eventCount = 0
 
-    for (const iteration of iterations) {
+    for (const session of sessions) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const iterationAny = iteration as any
-      const iterationId = iterationAny.id as string
+      const sessionAny = session as any
+      const sessionId = sessionAny.id as string
 
       // Skip if already migrated (no events array)
-      if (!iterationAny.events || !Array.isArray(iterationAny.events)) {
+      if (!sessionAny.events || !Array.isArray(sessionAny.events)) {
         // Still ensure workspaceId is set
-        if (!("workspaceId" in iterationAny)) {
-          iterationAny.workspaceId = null
-          await iterationsStore.put(iterationAny)
+        if (!("workspaceId" in sessionAny)) {
+          sessionAny.workspaceId = null
+          await sessionsStore.put(sessionAny)
         }
         continue
       }
 
-      const events = iterationAny.events as Array<{
+      const events = sessionAny.events as Array<{
         type?: string
         timestamp?: number
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -276,10 +276,10 @@ export class EventDatabase {
       // Create individual PersistedEvent records
       for (let index = 0; index < events.length; index++) {
         const event = events[index]
-        const eventId = `${iterationId}-event-${index}`
+        const eventId = `${sessionId}-event-${index}`
         const persistedEvent: PersistedEvent = {
           id: eventId,
-          iterationId,
+          sessionId,
           timestamp: event.timestamp ?? Date.now(),
           eventType: event.type ?? "unknown",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -289,17 +289,17 @@ export class EventDatabase {
         eventCount++
       }
 
-      // Update iteration to remove events array
-      const updatedIteration = { ...iterationAny }
-      delete updatedIteration.events
+      // Update session to remove events array
+      const updatedSession = { ...sessionAny }
+      delete updatedSession.events
       // Ensure workspaceId is set (null for legacy data)
-      if (!("workspaceId" in updatedIteration)) {
-        updatedIteration.workspaceId = null
+      if (!("workspaceId" in updatedSession)) {
+        updatedSession.workspaceId = null
       }
-      await iterationsStore.put(updatedIteration)
+      await sessionsStore.put(updatedSession)
 
       // Update metadata to ensure workspaceId is set
-      const metadata = await metadataStore.get(iterationId)
+      const metadata = await metadataStore.get(sessionId)
       if (metadata !== undefined && !("workspaceId" in metadata)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const metadataWithWorkspace = { ...(metadata as any), workspaceId: null }
@@ -312,7 +312,7 @@ export class EventDatabase {
     await tx.done
 
     console.log(
-      `[EventDatabase] v2→v3 migration complete: migrated ${migratedCount} iterations, created ${eventCount} events`,
+      `[EventDatabase] v2→v3 migration complete: migrated ${migratedCount} sessions, created ${eventCount} events`,
     )
   }
 
@@ -328,148 +328,148 @@ export class EventDatabase {
   }
 
   // ============================================================================
-  // Iteration Methods
+  // Session Methods
   // ============================================================================
 
   /**
-   * Save an iteration (both metadata and full data).
+   * Save an session (both metadata and full data).
    */
-  async saveIteration(iteration: PersistedIteration): Promise<void> {
+  async saveSession(session: PersistedSession): Promise<void> {
     const db = await this.ensureDb()
 
     // Extract metadata
-    const metadata: IterationMetadata = {
-      id: iteration.id,
-      instanceId: iteration.instanceId,
-      workspaceId: iteration.workspaceId,
-      startedAt: iteration.startedAt,
-      completedAt: iteration.completedAt,
-      taskId: iteration.taskId,
-      taskTitle: iteration.taskTitle,
-      tokenUsage: iteration.tokenUsage,
-      contextWindow: iteration.contextWindow,
-      iteration: iteration.iteration,
-      eventCount: iteration.eventCount,
-      lastEventSequence: iteration.lastEventSequence,
+    const metadata: SessionMetadata = {
+      id: session.id,
+      instanceId: session.instanceId,
+      workspaceId: session.workspaceId,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+      taskId: session.taskId,
+      taskTitle: session.taskTitle,
+      tokenUsage: session.tokenUsage,
+      contextWindow: session.contextWindow,
+      session: session.session,
+      eventCount: session.eventCount,
+      lastEventSequence: session.lastEventSequence,
     }
 
     // Use a transaction to update both stores atomically
-    const tx = db.transaction([STORE_NAMES.ITERATION_METADATA, STORE_NAMES.ITERATIONS], "readwrite")
+    const tx = db.transaction([STORE_NAMES.SESSION_METADATA, STORE_NAMES.SESSIONS], "readwrite")
 
     await Promise.all([
-      tx.objectStore(STORE_NAMES.ITERATION_METADATA).put(metadata),
-      tx.objectStore(STORE_NAMES.ITERATIONS).put(iteration),
+      tx.objectStore(STORE_NAMES.SESSION_METADATA).put(metadata),
+      tx.objectStore(STORE_NAMES.SESSIONS).put(session),
       tx.done,
     ])
   }
 
   /**
-   * Get iteration metadata by ID.
+   * Get session metadata by ID.
    */
-  async getIterationMetadata(id: string): Promise<IterationMetadata | undefined> {
+  async getSessionMetadata(id: string): Promise<SessionMetadata | undefined> {
     const db = await this.ensureDb()
-    return db.get(STORE_NAMES.ITERATION_METADATA, id)
+    return db.get(STORE_NAMES.SESSION_METADATA, id)
   }
 
   /**
-   * Get full iteration data by ID (including events).
+   * Get full session data by ID (including events).
    */
-  async getIteration(id: string): Promise<PersistedIteration | undefined> {
+  async getSession(id: string): Promise<PersistedSession | undefined> {
     const db = await this.ensureDb()
-    return db.get(STORE_NAMES.ITERATIONS, id)
+    return db.get(STORE_NAMES.SESSIONS, id)
   }
 
   /**
-   * List all iteration metadata for an instance, sorted by startedAt descending.
+   * List all session metadata for an instance, sorted by startedAt descending.
    */
-  async listIterations(instanceId: string): Promise<IterationMetadata[]> {
+  async listSessions(instanceId: string): Promise<SessionMetadata[]> {
     const db = await this.ensureDb()
-    const all = await db.getAllFromIndex(STORE_NAMES.ITERATION_METADATA, "by-instance", instanceId)
+    const all = await db.getAllFromIndex(STORE_NAMES.SESSION_METADATA, "by-instance", instanceId)
     // Sort by startedAt descending (most recent first)
     return all.sort((a, b) => b.startedAt - a.startedAt)
   }
 
   /**
-   * List all iteration metadata across all instances, sorted by startedAt descending.
+   * List all session metadata across all instances, sorted by startedAt descending.
    */
-  async listAllIterations(): Promise<IterationMetadata[]> {
+  async listAllSessions(): Promise<SessionMetadata[]> {
     const db = await this.ensureDb()
-    const all = await db.getAll(STORE_NAMES.ITERATION_METADATA)
+    const all = await db.getAll(STORE_NAMES.SESSION_METADATA)
     // Sort by startedAt descending (most recent first)
     return all.sort((a, b) => b.startedAt - a.startedAt)
   }
 
   /**
-   * Get iterations for a specific task.
+   * Get sessions for a specific task.
    */
-  async getIterationsForTask(taskId: string): Promise<IterationMetadata[]> {
+  async getSessionsForTask(taskId: string): Promise<SessionMetadata[]> {
     const db = await this.ensureDb()
-    return db.getAllFromIndex(STORE_NAMES.ITERATION_METADATA, "by-task", taskId)
+    return db.getAllFromIndex(STORE_NAMES.SESSION_METADATA, "by-task", taskId)
   }
 
   /**
-   * Get the most recent active (incomplete) iteration for an instance.
-   * Returns the most recently started iteration where completedAt is null.
+   * Get the most recent active (incomplete) session for an instance.
+   * Returns the most recently started session where completedAt is null.
    */
-  async getLatestActiveIteration(instanceId: string): Promise<PersistedIteration | undefined> {
-    const metadata = await this.listIterations(instanceId)
+  async getLatestActiveSession(instanceId: string): Promise<PersistedSession | undefined> {
+    const metadata = await this.listSessions(instanceId)
 
-    // Find the most recent iteration that hasn't completed (sorted by startedAt descending)
+    // Find the most recent session that hasn't completed (sorted by startedAt descending)
     const activeMeta = metadata.find(m => m.completedAt === null)
     if (!activeMeta) return undefined
 
-    return this.getIteration(activeMeta.id)
+    return this.getSession(activeMeta.id)
   }
 
   /**
-   * Get the most recent iteration for an instance (whether complete or not).
+   * Get the most recent session for an instance (whether complete or not).
    * Useful for hydrating the UI with the last state on page reload.
    */
-  async getLatestIteration(instanceId: string): Promise<PersistedIteration | undefined> {
-    const metadata = await this.listIterations(instanceId)
+  async getLatestSession(instanceId: string): Promise<PersistedSession | undefined> {
+    const metadata = await this.listSessions(instanceId)
     if (metadata.length === 0) return undefined
 
     // First entry is the most recent (sorted by startedAt descending)
-    return this.getIteration(metadata[0].id)
+    return this.getSession(metadata[0].id)
   }
 
   /**
-   * Delete an iteration (metadata, full data, and associated events).
+   * Delete an session (metadata, full data, and associated events).
    */
-  async deleteIteration(id: string): Promise<void> {
+  async deleteSession(id: string): Promise<void> {
     const db = await this.ensureDb()
 
-    // First delete events for this iteration
-    await this.deleteEventsForIteration(id)
+    // First delete events for this session
+    await this.deleteEventsForSession(id)
 
-    // Then delete the iteration metadata and data
-    const tx = db.transaction([STORE_NAMES.ITERATION_METADATA, STORE_NAMES.ITERATIONS], "readwrite")
+    // Then delete the session metadata and data
+    const tx = db.transaction([STORE_NAMES.SESSION_METADATA, STORE_NAMES.SESSIONS], "readwrite")
 
     await Promise.all([
-      tx.objectStore(STORE_NAMES.ITERATION_METADATA).delete(id),
-      tx.objectStore(STORE_NAMES.ITERATIONS).delete(id),
+      tx.objectStore(STORE_NAMES.SESSION_METADATA).delete(id),
+      tx.objectStore(STORE_NAMES.SESSIONS).delete(id),
       tx.done,
     ])
   }
 
   /**
-   * Delete all iterations for an instance (including associated events).
+   * Delete all sessions for an instance (including associated events).
    */
-  async deleteAllIterationsForInstance(instanceId: string): Promise<void> {
+  async deleteAllSessionsForInstance(instanceId: string): Promise<void> {
     const db = await this.ensureDb()
 
-    // Get all iteration IDs for this instance
-    const iterations = await this.listIterations(instanceId)
-    const ids = iterations.map(i => i.id)
+    // Get all session IDs for this instance
+    const sessions = await this.listSessions(instanceId)
+    const ids = sessions.map(i => i.id)
 
-    // First delete events for all iterations
-    await Promise.all(ids.map(id => this.deleteEventsForIteration(id)))
+    // First delete events for all sessions
+    await Promise.all(ids.map(id => this.deleteEventsForSession(id)))
 
-    // Then delete iteration metadata and data
-    const tx = db.transaction([STORE_NAMES.ITERATION_METADATA, STORE_NAMES.ITERATIONS], "readwrite")
+    // Then delete session metadata and data
+    const tx = db.transaction([STORE_NAMES.SESSION_METADATA, STORE_NAMES.SESSIONS], "readwrite")
 
-    const metaStore = tx.objectStore(STORE_NAMES.ITERATION_METADATA)
-    const iterStore = tx.objectStore(STORE_NAMES.ITERATIONS)
+    const metaStore = tx.objectStore(STORE_NAMES.SESSION_METADATA)
+    const iterStore = tx.objectStore(STORE_NAMES.SESSIONS)
 
     await Promise.all([
       ...ids.map(id => metaStore.delete(id)),
@@ -506,12 +506,12 @@ export class EventDatabase {
   }
 
   /**
-   * Get all events for an iteration, sorted by timestamp.
-   * Uses the by-iteration index for efficient retrieval.
+   * Get all events for an session, sorted by timestamp.
+   * Uses the by-session index for efficient retrieval.
    */
-  async getEventsForIteration(iterationId: string): Promise<PersistedEvent[]> {
+  async getEventsForSession(sessionId: string): Promise<PersistedEvent[]> {
     const db = await this.ensureDb()
-    const events = await db.getAllFromIndex(STORE_NAMES.EVENTS, "by-iteration", iterationId)
+    const events = await db.getAllFromIndex(STORE_NAMES.EVENTS, "by-session", sessionId)
     // Sort by timestamp ascending (chronological order)
     return events.sort((a, b) => a.timestamp - b.timestamp)
   }
@@ -525,12 +525,12 @@ export class EventDatabase {
   }
 
   /**
-   * Delete all events for an iteration.
-   * Used when cleaning up an iteration's data.
+   * Delete all events for an session.
+   * Used when cleaning up an session's data.
    */
-  async deleteEventsForIteration(iterationId: string): Promise<void> {
+  async deleteEventsForSession(sessionId: string): Promise<void> {
     const db = await this.ensureDb()
-    const events = await this.getEventsForIteration(iterationId)
+    const events = await this.getEventsForSession(sessionId)
 
     if (events.length === 0) return
 
@@ -541,16 +541,16 @@ export class EventDatabase {
   }
 
   /**
-   * Count events for an iteration.
+   * Count events for an session.
    * More efficient than fetching all events when you only need the count.
    */
-  async countEventsForIteration(iterationId: string): Promise<number> {
+  async countEventsForSession(sessionId: string): Promise<number> {
     const db = await this.ensureDb()
     const index = db
       .transaction(STORE_NAMES.EVENTS)
       .objectStore(STORE_NAMES.EVENTS)
-      .index("by-iteration")
-    return index.count(iterationId)
+      .index("by-session")
+    return index.count(sessionId)
   }
 
   // ============================================================================
@@ -769,7 +769,7 @@ export class EventDatabase {
 
   /**
    * Get all unique task IDs that have event logs.
-   * Efficient method for checking which tasks have iterations.
+   * Efficient method for checking which tasks have sessions.
    */
   async getTaskIdsWithEventLogs(): Promise<Set<string>> {
     const db = await this.ensureDb()
@@ -861,8 +861,8 @@ export class EventDatabase {
     const db = await this.ensureDb()
     const tx = db.transaction(
       [
-        STORE_NAMES.ITERATION_METADATA,
-        STORE_NAMES.ITERATIONS,
+        STORE_NAMES.SESSION_METADATA,
+        STORE_NAMES.SESSIONS,
         STORE_NAMES.EVENTS,
         STORE_NAMES.TASK_CHAT_METADATA,
         STORE_NAMES.TASK_CHAT_SESSIONS,
@@ -874,8 +874,8 @@ export class EventDatabase {
     )
 
     await Promise.all([
-      tx.objectStore(STORE_NAMES.ITERATION_METADATA).clear(),
-      tx.objectStore(STORE_NAMES.ITERATIONS).clear(),
+      tx.objectStore(STORE_NAMES.SESSION_METADATA).clear(),
+      tx.objectStore(STORE_NAMES.SESSIONS).clear(),
       tx.objectStore(STORE_NAMES.EVENTS).clear(),
       tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).clear(),
       tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).clear(),
@@ -901,7 +901,7 @@ export class EventDatabase {
    * Get database statistics.
    */
   async getStats(): Promise<{
-    iterationCount: number
+    sessionCount: number
     eventCount: number
     taskChatSessionCount: number
     eventLogCount: number
@@ -909,16 +909,16 @@ export class EventDatabase {
   }> {
     const db = await this.ensureDb()
 
-    const [iterationCount, eventCount, taskChatSessionCount, eventLogCount, syncStateCount] =
+    const [sessionCount, eventCount, taskChatSessionCount, eventLogCount, syncStateCount] =
       await Promise.all([
-        db.count(STORE_NAMES.ITERATION_METADATA),
+        db.count(STORE_NAMES.SESSION_METADATA),
         db.count(STORE_NAMES.EVENTS),
         db.count(STORE_NAMES.TASK_CHAT_METADATA),
         db.count(STORE_NAMES.EVENT_LOG_METADATA),
         db.count(STORE_NAMES.SYNC_STATE),
       ])
 
-    return { iterationCount, eventCount, taskChatSessionCount, eventLogCount, syncStateCount }
+    return { sessionCount, eventCount, taskChatSessionCount, eventLogCount, syncStateCount }
   }
 }
 

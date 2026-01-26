@@ -23,7 +23,7 @@ If a task will take more than a few minutes of focused work, break it into subta
 
 - Create child issues under the parent with `--parent={id}`
 - Apply the parent's priority to all children
-- End your turn after creating subtasks (you'll pick one up next iteration)
+- End your turn after creating subtasks (you'll pick one up next session)
 
 ## Wrap-up steps
 

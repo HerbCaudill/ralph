@@ -236,27 +236,27 @@ export const EpicType: Story = {
   },
 }
 
-export const WithIterationHistory: Story = {
+export const WithSessionHistory: Story = {
   args: {
     task: {
       ...baseTask,
-      title: "Task with saved iteration logs",
+      title: "Task with saved session logs",
       status: "closed",
     },
-    hasIterations: true,
+    hasSessions: true,
   },
 }
 
-export const WithIterationHistoryAndSubtasks: Story = {
+export const WithSessionHistoryAndSubtasks: Story = {
   args: {
     task: {
       id: "rui-epic-1",
-      title: "Epic with iteration history",
+      title: "Epic with session history",
       status: "in_progress",
       priority: 1,
       issue_type: "epic",
     },
-    hasIterations: true,
+    hasSessions: true,
     onToggleCollapse: fn(),
     subtaskCount: 3,
     isCollapsed: false,

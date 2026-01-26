@@ -1,11 +1,11 @@
-type DebugNamespace = "messagequeue" | "iteration" | "sdk" | "stdin-command" | "worktree"
+type DebugNamespace = "messagequeue" | "session" | "sdk" | "stdin-command" | "worktree"
 
 /**
  * Check if debug logging is enabled for the given namespace.
  * Controlled by RALPH_DEBUG environment variable:
  * - RALPH_DEBUG=1 or RALPH_DEBUG=true or RALPH_DEBUG=all - enable all logging
  * - RALPH_DEBUG=messagequeue - enable only that namespace
- * - RALPH_DEBUG=messagequeue,iteration - enable multiple namespaces
+ * - RALPH_DEBUG=messagequeue,session - enable multiple namespaces
  */
 const isDebugEnabled = (
   /** The debug namespace to check, or undefined to check global debug setting */

@@ -246,7 +246,7 @@ export class TaskChatManager extends EventEmitter {
         return
       }
 
-      // After iteration completes, add assistant message to history
+      // After session completes, add assistant message to history
       if (this.currentResponse) {
         // Assign a sequence number that places this message AFTER all tool uses in the turn
         // This ensures the final text appears at the end, after any interleaved tool uses

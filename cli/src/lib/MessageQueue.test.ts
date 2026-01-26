@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import { MessageQueue, createUserMessage } from "./MessageQueue.js"
 
 describe("MessageQueue", () => {
-  it("should yield messages that were pushed before iteration started", async () => {
+  it("should yield messages that were pushed before session started", async () => {
     const queue = new MessageQueue()
     const msg1 = createUserMessage("hello")
     const msg2 = createUserMessage("world")
@@ -19,12 +19,12 @@ describe("MessageQueue", () => {
     expect(messages).toEqual([msg1, msg2])
   })
 
-  it("should yield messages pushed during iteration", async () => {
+  it("should yield messages pushed during session", async () => {
     const queue = new MessageQueue()
     const msg1 = createUserMessage("first")
     const msg2 = createUserMessage("second")
 
-    // Start iteration
+    // Start session
     const iterator = queue[Symbol.asyncIterator]()
 
     // Push first message while waiting
@@ -126,7 +126,7 @@ describe("MessageQueue hang scenarios", () => {
    *
    * In this case, next() returns a Promise that never resolves
    * until close() is called. If close() is only called after the
-   * SDK iteration completes, we have a deadlock.
+   * SDK session completes, we have a deadlock.
    */
   it("should hang if next() is called on empty unclosed queue", async () => {
     const queue = new MessageQueue()
@@ -161,7 +161,7 @@ describe("MessageQueue hang scenarios", () => {
     expect(resolved).toBe(true)
   })
 
-  it("should allow timeout-based iteration completion", async () => {
+  it("should allow timeout-based session completion", async () => {
     const queue = new MessageQueue()
     const msg = createUserMessage("test")
     queue.push(msg)

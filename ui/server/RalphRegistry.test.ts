@@ -6,7 +6,7 @@ import {
   eventsToConversationContext,
 } from "./RalphRegistry.js"
 import type { RalphStatus } from "./RalphManager.js"
-import type { IterationStateStore, PersistedIterationState } from "./IterationStateStore.js"
+import type { SessionStateStore, PersistedSessionState } from "./SessionStateStore.js"
 
 // Mock the RalphManager to avoid spawning real processes
 vi.mock("./RalphManager.js", async () => {
@@ -573,18 +573,18 @@ describe("RalphRegistry", () => {
     })
   })
 
-  describe("iteration state persistence", () => {
+  describe("session state persistence", () => {
     /**
-     * Create a mock IterationStateStore for testing iteration state persistence.
+     * Create a mock SessionStateStore for testing session state persistence.
      */
-    function createMockStore(): IterationStateStore & {
-      savedStates: Map<string, PersistedIterationState>
-      saveCalls: PersistedIterationState[]
+    function createMockStore(): SessionStateStore & {
+      savedStates: Map<string, PersistedSessionState>
+      saveCalls: PersistedSessionState[]
       deleteCalls: string[]
       loadCalls: string[]
     } {
-      const savedStates = new Map<string, PersistedIterationState>()
-      const saveCalls: PersistedIterationState[] = []
+      const savedStates = new Map<string, PersistedSessionState>()
+      const saveCalls: PersistedSessionState[] = []
       const deleteCalls: string[] = []
       const loadCalls: string[] = []
 
@@ -594,14 +594,14 @@ describe("RalphRegistry", () => {
         deleteCalls,
         loadCalls,
         getWorkspacePath: () => "/test/workspace",
-        getStoreDir: () => "/test/workspace/.ralph/iterations",
+        getStoreDir: () => "/test/workspace/.ralph/sessions",
         exists: async () => true,
         has: async (instanceId: string) => savedStates.has(instanceId),
         load: async (instanceId: string) => {
           loadCalls.push(instanceId)
           return savedStates.get(instanceId) ?? null
         },
-        save: async (state: PersistedIterationState) => {
+        save: async (state: PersistedSessionState) => {
           saveCalls.push(state)
           savedStates.set(state.instanceId, state)
         },
@@ -617,57 +617,57 @@ describe("RalphRegistry", () => {
       }
     }
 
-    describe("setIterationStateStore and getIterationStateStore", () => {
-      it("can set and get the iteration state store", () => {
+    describe("setSessionStateStore and getSessionStateStore", () => {
+      it("can set and get the session state store", () => {
         const mockStore = createMockStore()
 
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
-        expect(registry.getIterationStateStore()).toBe(mockStore)
+        expect(registry.getSessionStateStore()).toBe(mockStore)
       })
 
       it("can set store to null to disable persistence", () => {
         const mockStore = createMockStore()
 
-        registry.setIterationStateStore(mockStore)
-        registry.setIterationStateStore(null)
+        registry.setSessionStateStore(mockStore)
+        registry.setSessionStateStore(null)
 
-        expect(registry.getIterationStateStore()).toBeNull()
+        expect(registry.getSessionStateStore()).toBeNull()
       })
 
       it("can pass store in constructor options", () => {
         const mockStore = createMockStore()
-        const registryWithStore = new RalphRegistry({ iterationStateStore: mockStore })
+        const registryWithStore = new RalphRegistry({ sessionStateStore: mockStore })
 
-        expect(registryWithStore.getIterationStateStore()).toBe(mockStore)
+        expect(registryWithStore.getSessionStateStore()).toBe(mockStore)
       })
     })
 
-    describe("saveIterationState", () => {
+    describe("saveSessionState", () => {
       it("does nothing when no store is configured", async () => {
         registry.create(createTestOptions())
 
         // Should not throw
-        await expect(registry.saveIterationState("test-instance")).resolves.toBeUndefined()
+        await expect(registry.saveSessionState("test-instance")).resolves.toBeUndefined()
       })
 
       it("does nothing for non-existent instance", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
-        await registry.saveIterationState("nonexistent")
+        await registry.saveSessionState("nonexistent")
 
         expect(mockStore.saveCalls).toHaveLength(0)
       })
 
-      it("saves iteration state for an instance", async () => {
+      it("saves session state for an instance", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
         const state = registry.create(createTestOptions())
         await state.manager.start()
 
-        await registry.saveIterationState("test-instance")
+        await registry.saveSessionState("test-instance")
 
         expect(mockStore.saveCalls).toHaveLength(1)
         expect(mockStore.saveCalls[0].instanceId).toBe("test-instance")
@@ -676,7 +676,7 @@ describe("RalphRegistry", () => {
 
       it("includes conversation context derived from event history", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
         const state = registry.create(createTestOptions())
         const simulateEvent = (
@@ -689,7 +689,7 @@ describe("RalphRegistry", () => {
         simulateEvent({ type: "user_message", timestamp: 1000, message: "Hello" })
         simulateEvent({ type: "message", timestamp: 2000, content: "Hi there!" })
 
-        await registry.saveIterationState("test-instance")
+        await registry.saveSessionState("test-instance")
 
         expect(mockStore.saveCalls).toHaveLength(1)
         const context = mockStore.saveCalls[0].conversationContext
@@ -698,9 +698,9 @@ describe("RalphRegistry", () => {
       })
     })
 
-    describe("deleteIterationState", () => {
+    describe("deleteSessionState", () => {
       it("returns false when no store is configured", async () => {
-        const result = await registry.deleteIterationState("test-instance")
+        const result = await registry.deleteSessionState("test-instance")
         expect(result).toBe(false)
       })
 
@@ -718,9 +718,9 @@ describe("RalphRegistry", () => {
           savedAt: Date.now(),
           version: 1,
         })
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
-        const result = await registry.deleteIterationState("test-instance")
+        const result = await registry.deleteSessionState("test-instance")
 
         expect(result).toBe(true)
         expect(mockStore.deleteCalls).toContain("test-instance")
@@ -728,23 +728,23 @@ describe("RalphRegistry", () => {
 
       it("returns false when state does not exist", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
-        const result = await registry.deleteIterationState("nonexistent")
+        const result = await registry.deleteSessionState("nonexistent")
 
         expect(result).toBe(false)
       })
     })
 
-    describe("loadIterationState", () => {
+    describe("loadSessionState", () => {
       it("returns null when no store is configured", async () => {
-        const result = await registry.loadIterationState("test-instance")
+        const result = await registry.loadSessionState("test-instance")
         expect(result).toBeNull()
       })
 
       it("returns saved state when it exists", async () => {
         const mockStore = createMockStore()
-        const savedState: PersistedIterationState = {
+        const savedState: PersistedSessionState = {
           instanceId: "test-instance",
           conversationContext: {
             messages: [{ role: "user", content: "Hello", timestamp: 1000 }],
@@ -758,33 +758,33 @@ describe("RalphRegistry", () => {
           version: 1,
         }
         mockStore.savedStates.set("test-instance", savedState)
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
-        const result = await registry.loadIterationState("test-instance")
+        const result = await registry.loadSessionState("test-instance")
 
         expect(result).toEqual(savedState)
       })
 
       it("returns null when state does not exist", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
-        const result = await registry.loadIterationState("nonexistent")
+        const result = await registry.loadSessionState("nonexistent")
 
         expect(result).toBeNull()
       })
     })
 
-    describe("saveAllIterationStates", () => {
+    describe("saveAllSessionStates", () => {
       it("does nothing when no store is configured", async () => {
         registry.create(createTestOptions({ id: "instance-1" }))
 
-        await expect(registry.saveAllIterationStates()).resolves.toBeUndefined()
+        await expect(registry.saveAllSessionStates()).resolves.toBeUndefined()
       })
 
       it("saves state for all running instances", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
         const state1 = registry.create(createTestOptions({ id: "instance-1" }))
         const state2 = registry.create(createTestOptions({ id: "instance-2" }))
@@ -793,7 +793,7 @@ describe("RalphRegistry", () => {
         await state1.manager.start()
         await state2.manager.start()
 
-        await registry.saveAllIterationStates()
+        await registry.saveAllSessionStates()
 
         expect(mockStore.saveCalls.map(s => s.instanceId).sort()).toEqual([
           "instance-1",
@@ -803,7 +803,7 @@ describe("RalphRegistry", () => {
 
       it("includes paused instances", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
         const state1 = registry.create(createTestOptions({ id: "instance-1" }))
         await state1.manager.start()
@@ -813,9 +813,9 @@ describe("RalphRegistry", () => {
         await new Promise(resolve => setTimeout(resolve, 10))
         mockStore.saveCalls.length = 0 // Clear auto-saves
 
-        await registry.saveAllIterationStates()
+        await registry.saveAllSessionStates()
 
-        // Should have exactly one save from saveAllIterationStates
+        // Should have exactly one save from saveAllSessionStates
         expect(mockStore.saveCalls).toHaveLength(1)
         expect(mockStore.saveCalls[0].instanceId).toBe("instance-1")
       })
@@ -824,7 +824,7 @@ describe("RalphRegistry", () => {
     describe("auto-save on events", () => {
       it("auto-saves on result event", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
         const state = registry.create(createTestOptions())
         const simulateEvent = (
@@ -843,7 +843,7 @@ describe("RalphRegistry", () => {
 
       it("auto-saves on ralph_task_completed event", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
         const state = registry.create(createTestOptions())
         const simulateEvent = (
@@ -862,7 +862,7 @@ describe("RalphRegistry", () => {
 
       it("auto-saves on status change to paused", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
         const state = registry.create(createTestOptions())
         await state.manager.start()
@@ -880,7 +880,7 @@ describe("RalphRegistry", () => {
     describe("auto-save on dispose", () => {
       it("saves state before stopping running instance", async () => {
         const mockStore = createMockStore()
-        registry.setIterationStateStore(mockStore)
+        registry.setSessionStateStore(mockStore)
 
         const state = registry.create(createTestOptions())
         await state.manager.start()

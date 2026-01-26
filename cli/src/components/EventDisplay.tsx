@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect, useRef } from "react"
 import { Box, Text, useInput } from "ink"
-import { formatIterationHeader } from "../lib/formatIterationHeader.js"
+import { formatSessionHeader } from "../lib/formatSessionHeader.js"
 import { processEvents } from "./processEvents.js"
 import { blocksToLines } from "./blocksToLines.js"
 
-export const EventDisplay = ({ events, iteration, completedIterations, height }: Props) => {
+export const EventDisplay = ({ events, session, completedSessions, height }: Props) => {
   // Scroll offset from bottom (0 = at bottom, positive = scrolled up)
   const [scrollOffset, setScrollOffset] = useState(0)
   // Track if user has manually scrolled
@@ -16,26 +16,26 @@ export const EventDisplay = ({ events, iteration, completedIterations, height }:
   const allLines = useMemo(() => {
     const lines: string[] = []
 
-    // Add completed iterations
-    for (const completed of completedIterations) {
+    // Add completed sessions
+    for (const completed of completedSessions) {
       lines.push("")
       lines.push("")
-      lines.push(formatIterationHeader(completed.iteration))
+      lines.push(formatSessionHeader(completed.session))
       lines.push("")
       const blocks = processEvents(completed.events)
       lines.push(...blocksToLines(blocks))
     }
 
-    // Add current iteration
+    // Add current session
     lines.push("")
     lines.push("")
-    lines.push(formatIterationHeader(iteration))
+    lines.push(formatSessionHeader(session))
     lines.push("")
     const currentBlocks = processEvents(events)
     lines.push(...blocksToLines(currentBlocks))
 
     return lines
-  }, [events, iteration, completedIterations])
+  }, [events, session, completedSessions])
 
   // Auto-scroll to bottom when new content arrives (unless user scrolled up)
   useEffect(() => {
@@ -102,14 +102,14 @@ export const EventDisplay = ({ events, iteration, completedIterations, height }:
   )
 }
 
-type IterationEvents = {
-  iteration: number
+type SessionEvents = {
+  session: number
   events: Array<Record<string, unknown>>
 }
 
 type Props = {
   events: Array<Record<string, unknown>>
-  iteration: number
-  completedIterations: IterationEvents[]
+  session: number
+  completedSessions: SessionEvents[]
   height?: number
 }

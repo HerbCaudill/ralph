@@ -111,19 +111,19 @@
       "description": "Open command palette",
       "category": "Help"
     },
-    "previousIteration": {
+    "previousSession": {
       "key": "cmd+[",
-      "description": "Go to previous iteration",
+      "description": "Go to previous session",
       "category": "Navigation"
     },
-    "nextIteration": {
+    "nextSession": {
       "key": "cmd+]",
-      "description": "Go to next iteration",
+      "description": "Go to next session",
       "category": "Navigation"
     },
-    "latestIteration": {
+    "latestSession": {
       "key": "cmd+\\",
-      "description": "Go to latest iteration",
+      "description": "Go to latest session",
       "category": "Navigation"
     },
     "focusSearch": {

@@ -100,16 +100,16 @@ export function hasCustomPrompt(
 }
 
 /**
- * Load the iteration prompt by combining core-prompt.md with workflow.md.
+ * Load the session prompt by combining core-prompt.md with workflow.md.
  *
  * The core prompt is always loaded from templates (bundled).
  * The workflow is loaded from .ralph/workflow.md if it exists, otherwise from templates.
  * The workflow content replaces {WORKFLOW} placeholder in the core prompt.
  */
-export function loadIterationPrompt(
+export function loadSessionPrompt(
   /** Configuration for loading the prompt */
-  options: LoadIterationPromptOptions,
-): LoadIterationPromptResult {
+  options: LoadSessionPromptOptions,
+): LoadSessionPromptResult {
   const { templatesDir, cwd = process.cwd() } = options
 
   // Load core prompt (always from templates)
@@ -190,16 +190,16 @@ export type LoadPromptResult = {
   isCustom: boolean
 }
 
-/**  Configuration for loading iteration prompts. */
-export type LoadIterationPromptOptions = {
+/**  Configuration for loading session prompts. */
+export type LoadSessionPromptOptions = {
   /** Path to the templates directory containing core-prompt.md and workflow.md */
   templatesDir: string
   /** Working directory to search for custom workflow (defaults to process.cwd()) */
   cwd?: string
 }
 
-/**  Result from loading iteration prompt. */
-export type LoadIterationPromptResult = {
+/**  Result from loading session prompt. */
+export type LoadSessionPromptResult = {
   /** The combined prompt content (core + workflow) */
   content: string
   /** Whether a custom workflow was used */

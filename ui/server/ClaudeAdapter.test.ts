@@ -481,7 +481,7 @@ describe("ClaudeAdapter", () => {
 
       adapter.send({ type: "user_message", content: "Hi" })
 
-      // Advance through all retries - need to wait for each iteration
+      // Advance through all retries - need to wait for each session
       // Initial attempt + 3 retries with delays
       for (let i = 0; i < 10; i++) {
         await vi.advanceTimersByTimeAsync(500)

@@ -2,7 +2,7 @@
  * Integration tests for persistence layer.
  *
  * These tests verify the complete flow of:
- * 1. Saving iterations/task chat sessions to IndexedDB
+ * 1. Saving sessions/task chat sessions to IndexedDB
  * 2. Recovering data after simulated page reload
  *
  * Unlike unit tests which mock the database, these tests use the real
@@ -14,14 +14,14 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import "fake-indexeddb/auto"
 import { EventDatabase } from "./EventDatabase"
 import {
-  useIterationPersistence,
-  type UseIterationPersistenceOptions,
-} from "@/hooks/useIterationPersistence"
+  useSessionPersistence,
+  type UseSessionPersistenceOptions,
+} from "@/hooks/useSessionPersistence"
 import {
   useTaskChatPersistence,
   type UseTaskChatPersistenceOptions,
 } from "@/hooks/useTaskChatPersistence"
-import type { ChatEvent, TaskChatMessage, TokenUsage, ContextWindow, IterationInfo } from "@/types"
+import type { ChatEvent, TaskChatMessage, TokenUsage, ContextWindow, SessionInfo } from "@/types"
 
 /**
  * Create a fresh EventDatabase instance for each test.
@@ -44,10 +44,10 @@ describe("Persistence Integration Tests", () => {
     db.close()
   })
 
-  describe("Iteration Lifecycle", () => {
+  describe("Session Lifecycle", () => {
     const mockTokenUsage: TokenUsage = { input: 1000, output: 500 }
     const mockContextWindow: ContextWindow = { used: 5000, max: 200000 }
-    const mockIterationInfo: IterationInfo = { current: 1, total: 5 }
+    const mockSessionInfo: SessionInfo = { current: 1, total: 5 }
 
     const createSystemInitEvent = (timestamp: number): ChatEvent =>
       ({
@@ -83,11 +83,11 @@ describe("Persistence Integration Tests", () => {
         timestamp,
       }) as ChatEvent
 
-    it("saves iteration on completion and can be recovered", async () => {
+    it("saves session on completion and can be recovered", async () => {
       const instanceId = "test-instance"
       const startTime = Date.now()
 
-      // Build a complete iteration sequence
+      // Build a complete session sequence
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
         createRalphTaskStartedEvent(startTime + 100, "r-abc123", "Fix the bug"),
@@ -95,18 +95,18 @@ describe("Persistence Integration Tests", () => {
         createRalphTaskCompletedEvent(startTime + 300),
       ]
 
-      // Simulate the iteration running - add events progressively
+      // Simulate the session running - add events progressively
       let currentEvents: ChatEvent[] = []
 
       const { rerender } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         {
           initialProps: {
             instanceId,
             events: currentEvents,
             tokenUsage: mockTokenUsage,
             contextWindow: mockContextWindow,
-            iteration: mockIterationInfo,
+            session: mockSessionInfo,
             enabled: true,
           },
         },
@@ -120,7 +120,7 @@ describe("Persistence Integration Tests", () => {
           events: currentEvents,
           tokenUsage: mockTokenUsage,
           contextWindow: mockContextWindow,
-          iteration: mockIterationInfo,
+          session: mockSessionInfo,
           enabled: true,
         })
 
@@ -134,99 +134,99 @@ describe("Persistence Integration Tests", () => {
         await new Promise(resolve => setTimeout(resolve, 100))
       })
 
-      // Verify the iteration was saved to the database
-      const savedIterations = await db.listIterations(instanceId)
-      expect(savedIterations.length).toBeGreaterThan(0)
+      // Verify the session was saved to the database
+      const savedSessions = await db.listSessions(instanceId)
+      expect(savedSessions.length).toBeGreaterThan(0)
 
-      // Get the full iteration data
-      const savedIteration = await db.getIteration(savedIterations[0].id)
-      expect(savedIteration).toBeDefined()
-      expect(savedIteration?.instanceId).toBe(instanceId)
-      expect(savedIteration?.events?.length).toBe(events.length)
-      expect(savedIteration?.taskId).toBe("r-abc123")
-      expect(savedIteration?.taskTitle).toBe("Fix the bug")
-      expect(savedIteration?.completedAt).not.toBeNull()
+      // Get the full session data
+      const savedSession = await db.getSession(savedSessions[0].id)
+      expect(savedSession).toBeDefined()
+      expect(savedSession?.instanceId).toBe(instanceId)
+      expect(savedSession?.events?.length).toBe(events.length)
+      expect(savedSession?.taskId).toBe("r-abc123")
+      expect(savedSession?.taskTitle).toBe("Fix the bug")
+      expect(savedSession?.completedAt).not.toBeNull()
     })
 
-    it("preserves active iteration across simulated page reload", async () => {
+    it("preserves active session across simulated page reload", async () => {
       const instanceId = "test-instance"
       const startTime = Date.now()
 
-      // Build an in-progress iteration (not completed)
+      // Build an in-progress session (not completed)
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
         createAssistantEvent(startTime + 100, "Working on the task..."),
         createAssistantEvent(startTime + 200, "Still working..."),
       ]
 
-      // First session - create the iteration
+      // First session - create the session
       const { result: session1Result, unmount: unmountSession1 } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         {
           initialProps: {
             instanceId,
             events,
             tokenUsage: mockTokenUsage,
             contextWindow: mockContextWindow,
-            iteration: mockIterationInfo,
+            session: mockSessionInfo,
             enabled: true,
           },
         },
       )
 
-      // Wait for the iteration to be tracked
+      // Wait for the session to be tracked
       await waitFor(() => {
-        expect(session1Result.current.currentIterationId).not.toBeNull()
+        expect(session1Result.current.currentSessionId).not.toBeNull()
       })
 
       // Manual save to ensure data is persisted
       await act(async () => {
-        await session1Result.current.saveCurrentIteration()
+        await session1Result.current.saveCurrentSession()
       })
 
       // Simulate page unload
       unmountSession1()
 
       // Verify data persists after unmount
-      const savedIterations = await db.listIterations(instanceId)
-      expect(savedIterations.length).toBeGreaterThan(0)
+      const savedSessions = await db.listSessions(instanceId)
+      expect(savedSessions.length).toBeGreaterThan(0)
 
-      // The iteration should still be "active" (completedAt is null)
-      const savedIteration = await db.getIteration(savedIterations[0].id)
-      expect(savedIteration).toBeDefined()
-      expect(savedIteration?.completedAt).toBeNull()
-      expect(savedIteration?.events?.length).toBe(events.length)
+      // The session should still be "active" (completedAt is null)
+      const savedSession = await db.getSession(savedSessions[0].id)
+      expect(savedSession).toBeDefined()
+      expect(savedSession?.completedAt).toBeNull()
+      expect(savedSession?.events?.length).toBe(events.length)
     })
 
-    it("handles multiple iterations correctly", async () => {
+    it("handles multiple sessions correctly", async () => {
       const instanceId = "test-instance"
       const startTime = Date.now()
 
-      // First iteration
+      // First session
       const events1: ChatEvent[] = [
         createSystemInitEvent(startTime),
-        createAssistantEvent(startTime + 100, "First iteration work"),
+        createAssistantEvent(startTime + 100, "First session work"),
         createRalphTaskCompletedEvent(startTime + 200),
       ]
 
-      // Second iteration (starts 1 second later)
+      // Second session (starts 1 second later)
       const events2: ChatEvent[] = [
         createSystemInitEvent(startTime + 1000),
-        createAssistantEvent(startTime + 1100, "Second iteration work"),
+        createAssistantEvent(startTime + 1100, "Second session work"),
       ]
 
       // Combine events (simulating continuous session)
       const allEvents = [...events1, ...events2]
 
       const { rerender } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         {
           initialProps: {
             instanceId,
             events: [] as ChatEvent[],
             tokenUsage: mockTokenUsage,
             contextWindow: mockContextWindow,
-            iteration: mockIterationInfo,
+            session: mockSessionInfo,
             enabled: true,
           },
         },
@@ -239,7 +239,7 @@ describe("Persistence Integration Tests", () => {
           events: allEvents.slice(0, i + 1),
           tokenUsage: mockTokenUsage,
           contextWindow: mockContextWindow,
-          iteration: mockIterationInfo,
+          session: mockSessionInfo,
           enabled: true,
         })
 
@@ -253,14 +253,14 @@ describe("Persistence Integration Tests", () => {
         await new Promise(resolve => setTimeout(resolve, 100))
       })
 
-      // Should have saved both iterations
-      const savedIterations = await db.listIterations(instanceId)
-      expect(savedIterations.length).toBeGreaterThanOrEqual(1)
+      // Should have saved both sessions
+      const savedSessions = await db.listSessions(instanceId)
+      expect(savedSessions.length).toBeGreaterThanOrEqual(1)
 
-      // First iteration should be marked as complete
-      const iteration1 = savedIterations.find(i => i.startedAt === startTime)
-      if (iteration1) {
-        expect(iteration1.completedAt).not.toBeNull()
+      // First session should be marked as complete
+      const session1 = savedSessions.find(i => i.startedAt === startTime)
+      if (session1) {
+        expect(session1.completedAt).not.toBeNull()
       }
     })
   })
@@ -471,11 +471,11 @@ describe("Persistence Integration Tests", () => {
   })
 
   describe("Store Hydration Recovery", () => {
-    it("can recover iteration events from database", async () => {
+    it("can recover session events from database", async () => {
       const instanceId = "test-instance"
       const startTime = Date.now()
 
-      // Manually save an iteration to the database (simulating a previous session)
+      // Manually save an session to the database (simulating a previous session)
       const events: ChatEvent[] = [
         {
           type: "system",
@@ -489,24 +489,24 @@ describe("Persistence Integration Tests", () => {
         } as ChatEvent,
       ]
 
-      await db.saveIteration({
+      await db.saveSession({
         id: `${instanceId}-${startTime}`,
         instanceId,
         workspaceId: null,
         startedAt: startTime,
-        completedAt: null, // Active iteration
+        completedAt: null, // Active session
         taskId: null,
         taskTitle: null,
         tokenUsage: { input: 100, output: 50 },
         contextWindow: { used: 150, max: 200000 },
-        iteration: { current: 1, total: 1 },
+        session: { current: 1, total: 1 },
         eventCount: events.length,
         lastEventSequence: events.length - 1,
         events,
       })
 
-      // Recover the iteration
-      const recovered = await db.getLatestActiveIteration(instanceId)
+      // Recover the session
+      const recovered = await db.getLatestActiveSession(instanceId)
       expect(recovered).toBeDefined()
       expect(recovered?.events?.length).toBe(events.length)
       expect(recovered?.completedAt).toBeNull()
@@ -554,12 +554,12 @@ describe("Persistence Integration Tests", () => {
       expect(recovered?.taskId).toBe(taskId)
     })
 
-    it("returns latest active iteration, not completed ones", async () => {
+    it("returns latest active session, not completed ones", async () => {
       const instanceId = "test-instance"
       const now = Date.now()
 
-      // Save a completed iteration
-      await db.saveIteration({
+      // Save a completed session
+      await db.saveSession({
         id: `${instanceId}-${now - 10000}`,
         instanceId,
         workspaceId: null,
@@ -569,14 +569,14 @@ describe("Persistence Integration Tests", () => {
         taskTitle: "Old Task",
         tokenUsage: { input: 100, output: 50 },
         contextWindow: { used: 150, max: 200000 },
-        iteration: { current: 1, total: 1 },
+        session: { current: 1, total: 1 },
         eventCount: 2,
         lastEventSequence: 1,
         events: [{ type: "system", timestamp: now - 10000, subtype: "init" }] as ChatEvent[],
       })
 
-      // Save an active iteration
-      await db.saveIteration({
+      // Save an active session
+      await db.saveSession({
         id: `${instanceId}-${now}`,
         instanceId,
         workspaceId: null,
@@ -586,14 +586,14 @@ describe("Persistence Integration Tests", () => {
         taskTitle: "Current Task",
         tokenUsage: { input: 200, output: 100 },
         contextWindow: { used: 300, max: 200000 },
-        iteration: { current: 1, total: 1 },
+        session: { current: 1, total: 1 },
         eventCount: 3,
         lastEventSequence: 2,
         events: [{ type: "system", timestamp: now, subtype: "init" }] as ChatEvent[],
       })
 
       // Should get the active one
-      const recovered = await db.getLatestActiveIteration(instanceId)
+      const recovered = await db.getLatestActiveSession(instanceId)
       expect(recovered).toBeDefined()
       expect(recovered?.taskTitle).toBe("Current Task")
       expect(recovered?.completedAt).toBeNull()
@@ -639,7 +639,7 @@ describe("Persistence Integration Tests", () => {
       ]
 
       // Save to database
-      await db.saveIteration({
+      await db.saveSession({
         id: `${instanceId}-${now}`,
         instanceId,
         workspaceId: null,
@@ -649,14 +649,14 @@ describe("Persistence Integration Tests", () => {
         taskTitle: null,
         tokenUsage: { input: 100, output: 50 },
         contextWindow: { used: 150, max: 200000 },
-        iteration: { current: 1, total: 1 },
+        session: { current: 1, total: 1 },
         eventCount: originalEvents.length,
         lastEventSequence: originalEvents.length - 1,
         events: originalEvents,
       })
 
       // Load from database
-      const recovered = await db.getIteration(`${instanceId}-${now}`)
+      const recovered = await db.getSession(`${instanceId}-${now}`)
       expect(recovered).toBeDefined()
       expect(recovered?.events ?? []).toEqual(originalEvents)
     })
@@ -675,7 +675,7 @@ describe("Persistence Integration Tests", () => {
         })),
       ] as ChatEvent[]
 
-      await db.saveIteration({
+      await db.saveSession({
         id: `${instanceId}-${now}`,
         instanceId,
         workspaceId: null,
@@ -685,13 +685,13 @@ describe("Persistence Integration Tests", () => {
         taskTitle: null,
         tokenUsage: { input: 1000, output: 500 },
         contextWindow: { used: 1500, max: 200000 },
-        iteration: { current: 1, total: 1 },
+        session: { current: 1, total: 1 },
         eventCount: events.length,
         lastEventSequence: events.length - 1,
         events,
       })
 
-      const recovered = await db.getIteration(`${instanceId}-${now}`)
+      const recovered = await db.getSession(`${instanceId}-${now}`)
       expect(recovered).toBeDefined()
       expect(recovered?.events?.length).toBe(101)
     })

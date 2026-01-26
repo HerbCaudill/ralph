@@ -103,7 +103,7 @@ describe("EventStream", () => {
         timestamp: Date.now(),
         taskId: "r-abc1",
         taskTitle: "Implement new feature",
-        iteration: 1,
+        session: 1,
       })
 
       renderEventStream()
@@ -123,7 +123,7 @@ describe("EventStream", () => {
         timestamp: Date.now(),
         taskId: "r-xyz9",
         taskTitle: "Fix the bug",
-        iteration: 1,
+        session: 1,
       })
 
       renderEventStream()
@@ -162,7 +162,7 @@ describe("EventStream", () => {
         timestamp: Date.now(),
         taskId: "r-abc1",
         taskTitle: "Implement new feature",
-        iteration: 1,
+        session: 1,
       })
 
       renderEventStream()
@@ -239,19 +239,19 @@ describe("EventStream", () => {
     })
   })
 
-  describe("IterationBar", () => {
+  describe("SessionBar", () => {
     it("is always visible", () => {
       renderEventStream()
-      expect(screen.getByTestId("iteration-bar")).toBeInTheDocument()
+      expect(screen.getByTestId("session-bar")).toBeInTheDocument()
     })
 
-    it("shows 'No active task' when no task is in progress and no iterations", () => {
+    it("shows 'No active task' when no task is in progress and no sessions", () => {
       renderEventStream()
       expect(screen.getByText("No active task")).toBeInTheDocument()
     })
 
-    it("shows task from iteration events when ralph_task_started event exists", () => {
-      // Add iteration boundary
+    it("shows task from session events when ralph_task_started event exists", () => {
+      // Add session boundary
       useAppStore.getState().addEvent({
         type: "system",
         timestamp: 1705600000000,
@@ -265,18 +265,18 @@ describe("EventStream", () => {
         taskTitle: "Fix the bug",
       })
       renderEventStream()
-      // Check that task is shown in iteration bar
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-123")
-      expect(iterationBar).toHaveTextContent("Fix the bug")
+      // Check that task is shown in session bar
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-123")
+      expect(sessionBar).toHaveTextContent("Fix the bug")
     })
 
-    // Note: Iteration navigation buttons (previous/next/latest) have been removed.
-    // The iteration bar now only shows the current task and provides access to
-    // iteration history via a dropdown.
+    // Note: Session navigation buttons (previous/next/latest) have been removed.
+    // The session bar now only shows the current task and provides access to
+    // session history via a dropdown.
 
-    it("displays current task instead of iteration info when task exists", () => {
-      // Add two iterations
+    it("displays current task instead of session info when task exists", () => {
+      // Add two sessions
       useAppStore.getState().addEvent({
         type: "system",
         timestamp: 1705600000000,
@@ -302,11 +302,11 @@ describe("EventStream", () => {
 
       renderEventStream()
 
-      // Should show task from latest iteration, not iteration info
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-def")
-      expect(iterationBar).toHaveTextContent("Latest work")
-      expect(screen.queryByText(/Iteration \d+ of \d+/)).not.toBeInTheDocument()
+      // Should show task from latest session, not session info
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-def")
+      expect(sessionBar).toHaveTextContent("Latest work")
+      expect(screen.queryByText(/Session \d+ of \d+/)).not.toBeInTheDocument()
     })
 
     it("truncates long task titles", () => {
@@ -322,17 +322,17 @@ describe("EventStream", () => {
         taskTitle: "This is a very long task description that should be truncated",
       })
       renderEventStream()
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-456")
-      // Find the title within the iteration bar specifically
-      const taskTitleInBar = iterationBar.querySelector(".truncate")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-456")
+      // Find the title within the session bar specifically
+      const taskTitleInBar = sessionBar.querySelector(".truncate")
       expect(taskTitleInBar).toBeInTheDocument()
       expect(taskTitleInBar).toHaveTextContent(
         "This is a very long task description that should be truncated",
       )
     })
 
-    // Note: Navigation to past iterations is now done through the iteration history
+    // Note: Navigation to past sessions is now done through the session history
     // dropdown rather than Previous/Next buttons.
 
     it("shows task without ID when ralph_task_started event has only taskTitle", () => {
@@ -345,9 +345,9 @@ describe("EventStream", () => {
 
       renderEventStream()
 
-      // Should show the task title in the iteration bar
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("Support pausing via stdin")
+      // Should show the task title in the session bar
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("Support pausing via stdin")
 
       // Should not show any task ID link
       expect(screen.queryByRole("button", { name: /View task/ })).not.toBeInTheDocument()
@@ -358,7 +358,7 @@ describe("EventStream", () => {
       useAppStore.getState().setTasks([
         {
           id: "rui-xyz9",
-          title: "Fix the iteration toolbar",
+          title: "Fix the session toolbar",
           status: "in_progress",
         },
       ])
@@ -373,9 +373,9 @@ describe("EventStream", () => {
       renderEventStream()
 
       // Should show the task title looked up from the store
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("Fix the iteration toolbar")
-      expect(iterationBar).toHaveTextContent("rui-xyz9")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("Fix the session toolbar")
+      expect(sessionBar).toHaveTextContent("rui-xyz9")
     })
 
     it("shows taskId as title when ralph_task_started has taskId but task not found in store", () => {
@@ -392,8 +392,8 @@ describe("EventStream", () => {
       renderEventStream()
 
       // Should show the task ID as the title (fallback)
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-unknown")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-unknown")
     })
 
     it("shows in-progress task from store when no ralph_task_started event exists", () => {
@@ -421,9 +421,9 @@ describe("EventStream", () => {
       renderEventStream()
 
       // Should show the in-progress task from the store as fallback
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-in-progress")
-      expect(iterationBar).toHaveTextContent("Current task being worked on")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-in-progress")
+      expect(sessionBar).toHaveTextContent("Current task being worked on")
     })
 
     it("prefers ralph_task_started event over in-progress task from store", () => {
@@ -447,10 +447,10 @@ describe("EventStream", () => {
       renderEventStream()
 
       // Should show the task from the event, not the in-progress one from store
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-event-task")
-      expect(iterationBar).toHaveTextContent("Task from event")
-      expect(iterationBar).not.toHaveTextContent("Task from store")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-event-task")
+      expect(sessionBar).toHaveTextContent("Task from event")
+      expect(sessionBar).not.toHaveTextContent("Task from store")
     })
 
     it("shows task from instance currentTaskId/currentTaskTitle on page reload", () => {
@@ -481,9 +481,9 @@ describe("EventStream", () => {
       renderEventStream()
 
       // Should show the task from the instance as fallback
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-restored")
-      expect(iterationBar).toHaveTextContent("Restored task from server")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-restored")
+      expect(sessionBar).toHaveTextContent("Restored task from server")
     })
 
     it("prefers ralph_task_started event over instance currentTaskId", () => {
@@ -514,10 +514,10 @@ describe("EventStream", () => {
       renderEventStream()
 
       // Should show the task from the event, not the instance
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-event")
-      expect(iterationBar).toHaveTextContent("Task from event")
-      expect(iterationBar).not.toHaveTextContent("Task from instance")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-event")
+      expect(sessionBar).toHaveTextContent("Task from event")
+      expect(sessionBar).not.toHaveTextContent("Task from instance")
     })
 
     it("prefers in-progress task from store over instance currentTaskId", () => {
@@ -548,10 +548,10 @@ describe("EventStream", () => {
       renderEventStream()
 
       // Should show the task from the store (higher priority than instance)
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("rui-store")
-      expect(iterationBar).toHaveTextContent("Task from store")
-      expect(iterationBar).not.toHaveTextContent("Task from instance")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("rui-store")
+      expect(sessionBar).toHaveTextContent("Task from store")
+      expect(sessionBar).not.toHaveTextContent("Task from instance")
     })
 
     it("shows task from instance with only currentTaskTitle (no currentTaskId)", () => {
@@ -574,8 +574,8 @@ describe("EventStream", () => {
       renderEventStream()
 
       // Should show the task title even without ID
-      const iterationBar = screen.getByTestId("iteration-bar")
-      expect(iterationBar).toHaveTextContent("Ad-hoc task without ID")
+      const sessionBar = screen.getByTestId("session-bar")
+      expect(sessionBar).toHaveTextContent("Ad-hoc task without ID")
     })
   })
 
@@ -994,8 +994,8 @@ describe("EventStream", () => {
       expect(screen.getByRole("log").querySelector("svg")).toBeInTheDocument()
     })
 
-    it("does not show running or idle spinner when viewing a completed iteration", () => {
-      // Add two iteration boundaries
+    it("does not show running or idle spinner when viewing a completed session", () => {
+      // Add two session boundaries
       useAppStore.getState().addEvent({
         type: "system",
         timestamp: 1705600000000,
@@ -1004,7 +1004,7 @@ describe("EventStream", () => {
       useAppStore.getState().addEvent({
         type: "user_message",
         timestamp: 1705600000500,
-        message: "First iteration message",
+        message: "First session message",
       })
       useAppStore.getState().addEvent({
         type: "system",
@@ -1014,28 +1014,28 @@ describe("EventStream", () => {
       useAppStore.getState().addEvent({
         type: "user_message",
         timestamp: 1705600001500,
-        message: "Second iteration message",
+        message: "Second session message",
       })
 
       // Set Ralph as running
       useAppStore.getState().setRalphStatus("running")
 
-      // Navigate to the first (completed) iteration
-      useAppStore.getState().setViewingIterationIndex(0)
+      // Navigate to the first (completed) session
+      useAppStore.getState().setViewingSessionIndex(0)
 
       renderEventStream()
 
-      // Should show the first iteration's message
-      expect(screen.getByText("First iteration message")).toBeInTheDocument()
-      expect(screen.queryByText("Second iteration message")).not.toBeInTheDocument()
+      // Should show the first session's message
+      expect(screen.getByText("First session message")).toBeInTheDocument()
+      expect(screen.queryByText("Second session message")).not.toBeInTheDocument()
 
-      // Should NOT show running or idle spinner because we're viewing a completed iteration
+      // Should NOT show running or idle spinner because we're viewing a completed session
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
       expect(screen.queryByTestId("ralph-idle-spinner")).not.toBeInTheDocument()
     })
 
-    it("shows spinner when viewing latest iteration and Ralph is running", () => {
-      // Add two iteration boundaries
+    it("shows spinner when viewing latest session and Ralph is running", () => {
+      // Add two session boundaries
       useAppStore.getState().addEvent({
         type: "system",
         timestamp: 1705600000000,
@@ -1044,7 +1044,7 @@ describe("EventStream", () => {
       useAppStore.getState().addEvent({
         type: "user_message",
         timestamp: 1705600000500,
-        message: "First iteration message",
+        message: "First session message",
       })
       useAppStore.getState().addEvent({
         type: "system",
@@ -1054,19 +1054,19 @@ describe("EventStream", () => {
       useAppStore.getState().addEvent({
         type: "user_message",
         timestamp: 1705600001500,
-        message: "Second iteration message",
+        message: "Second session message",
       })
 
       // Set Ralph as running
       useAppStore.getState().setRalphStatus("running")
 
-      // Keep viewing the latest iteration (default)
-      // viewingIterationIndex should be null (latest)
+      // Keep viewing the latest session (default)
+      // viewingSessionIndex should be null (latest)
 
       renderEventStream()
 
-      // Should show the second iteration's message
-      expect(screen.getByText("Second iteration message")).toBeInTheDocument()
+      // Should show the second session's message
+      expect(screen.getByText("Second session message")).toBeInTheDocument()
 
       // Should show spinner because we're viewing latest and Ralph is running
       expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()

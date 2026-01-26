@@ -1,7 +1,7 @@
 {
   "name": "@herbcaudill/ralph",
   "version": "1.0.1",
-  "description": "Autonomous AI iteration engine for Claude CLI",
+  "description": "Autonomous AI session engine for Claude CLI",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -31,7 +31,7 @@
     "ai",
     "automation",
     "cli",
-    "iteration",
+    "session",
     "autonomous"
   ],
   "author": "Herb Caudill",

@@ -38,8 +38,8 @@ describe("exportState", () => {
         objectStore: vi.fn().mockReturnValue(mockStore),
       }),
       objectStoreNames: [
-        "iteration_metadata",
-        "iterations",
+        "session_metadata",
+        "sessions",
         "task_chat_metadata",
         "task_chat_sessions",
         "event_log_metadata",
@@ -177,8 +177,8 @@ describe("exportState", () => {
 
       const result = await exportState()
 
-      expect(result.indexedDb).toHaveProperty("iteration_metadata")
-      expect(result.indexedDb).toHaveProperty("iterations")
+      expect(result.indexedDb).toHaveProperty("session_metadata")
+      expect(result.indexedDb).toHaveProperty("sessions")
       expect(result.indexedDb).toHaveProperty("task_chat_metadata")
       expect(result.indexedDb).toHaveProperty("task_chat_sessions")
       expect(result.indexedDb).toHaveProperty("event_log_metadata")
@@ -280,8 +280,8 @@ describe("exportState", () => {
         },
         localStorage: { sidebarWidth: 300 },
         indexedDb: {
-          iteration_metadata: [],
-          iterations: [],
+          session_metadata: [],
+          sessions: [],
           task_chat_metadata: [],
           task_chat_sessions: [],
           event_log_metadata: [],
@@ -291,7 +291,7 @@ describe("exportState", () => {
       }
 
       expect(validState.meta.version).toBe(1)
-      expect(validState.indexedDb.iterations).toEqual([])
+      expect(validState.indexedDb.sessions).toEqual([])
     })
   })
 })

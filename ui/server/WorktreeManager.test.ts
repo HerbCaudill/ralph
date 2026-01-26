@@ -578,7 +578,7 @@ describe.skipIf(shouldSkip)("WorktreeManager", () => {
     })
   })
 
-  describe("postIterationMerge", () => {
+  describe("postSessionMerge", () => {
     it("successfully merges and rebases when no conflicts", async () => {
       // Create a worktree
       const info = await manager.create({
@@ -589,8 +589,8 @@ describe.skipIf(shouldSkip)("WorktreeManager", () => {
       // Make a commit in the worktree
       await git(info.path, ["commit", "--allow-empty", "-m", "Work from alice"])
 
-      // Run post-iteration merge
-      const result = await manager.postIterationMerge("abc123", "alice")
+      // Run post-session merge
+      const result = await manager.postSessionMerge("abc123", "alice")
 
       expect(result.success).toBe(true)
       expect(result.merge.success).toBe(true)
@@ -619,8 +619,8 @@ describe.skipIf(shouldSkip)("WorktreeManager", () => {
       await git(info.path, ["add", "conflict.txt"])
       await git(info.path, ["commit", "-m", "Add conflict.txt from alice"])
 
-      // Run post-iteration merge
-      const result = await manager.postIterationMerge("abc123", "alice")
+      // Run post-session merge
+      const result = await manager.postSessionMerge("abc123", "alice")
 
       expect(result.success).toBe(false)
       expect(result.merge.success).toBe(false)
@@ -651,10 +651,10 @@ describe.skipIf(shouldSkip)("WorktreeManager", () => {
       await git(mainWorkspace, ["add", "main.txt"])
       await git(mainWorkspace, ["commit", "-m", "Main commit"])
 
-      // Run post-iteration merge
+      // Run post-session merge
       // 1. Merge alice's branch to main - should succeed (no conflicts, different files)
       // 2. Rebase the worktree on main - should succeed
-      const result = await manager.postIterationMerge("abc123", "alice")
+      const result = await manager.postSessionMerge("abc123", "alice")
 
       expect(result.success).toBe(true)
       expect(result.merge.success).toBe(true)

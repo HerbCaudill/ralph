@@ -1,16 +1,16 @@
 # Ralph
 
-Autonomous AI iteration engine for Claude CLI. Ralph spawns Claude CLI processes with custom prompts, captures streaming output, and orchestrates multiple iterations to complete tasks autonomously.
+Autonomous AI session engine for Claude CLI. Ralph spawns Claude CLI processes with custom prompts, captures streaming output, and orchestrates multiple sessions to complete tasks autonomously.
 
 ## Packages
 
 This monorepo contains three packages:
 
-| Package                                | Description                            |
-| -------------------------------------- | -------------------------------------- |
-| [`@herbcaudill/ralph`](cli/)           | CLI tool for terminal-based iterations |
-| [`@herbcaudill/ralph-ui`](ui/)         | Web UI with real-time event streaming  |
-| [`@herbcaudill/ralph-shared`](shared/) | Shared types and utilities             |
+| Package                                | Description                           |
+| -------------------------------------- | ------------------------------------- |
+| [`@herbcaudill/ralph`](cli/)           | CLI tool for terminal-based sessions  |
+| [`@herbcaudill/ralph-ui`](ui/)         | Web UI with real-time event streaming |
+| [`@herbcaudill/ralph-shared`](shared/) | Shared types and utilities            |
 
 ## Installation
 
@@ -30,10 +30,10 @@ npm install -g @herbcaudill/ralph-ui
 # Initialize Ralph in your project
 ralph init
 
-# Run iterations (default: 10)
+# Run sessions (default: 10)
 ralph
 
-# Run specific number of iterations
+# Run specific number of sessions
 ralph 5
 
 # Watch mode: poll for new tasks after completion

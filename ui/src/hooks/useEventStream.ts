@@ -3,26 +3,26 @@ import {
   useAppStore,
   selectEvents,
   selectRalphStatus,
-  selectViewingIterationIndex,
+  selectViewingSessionIndex,
   selectTasks,
   selectInstanceEvents,
   selectInstanceStatus,
   selectActiveInstance,
   selectInstance,
   selectIssuePrefix,
-  getEventsForIteration,
+  getEventsForSession,
 } from "@/store"
-import { useIterations, useEventLogRouter } from "@/hooks"
-import type { IterationSummary } from "@/hooks"
+import { useSessions, useEventLogRouter } from "@/hooks"
+import type { SessionSummary } from "@/hooks"
 import type { ChatEvent, Task, RalphStatus } from "@/types"
 
-export interface IterationTask {
+export interface SessionTask {
   id: string | null
   title: string
 }
 
-export interface IterationNavigationActions {
-  selectIterationHistory: (id: string) => void
+export interface SessionNavigationActions {
+  selectSessionHistory: (id: string) => void
 }
 
 export interface UseEventStreamOptions {
@@ -33,24 +33,24 @@ export interface UseEventStreamOptions {
 }
 
 export interface UseEventStreamResult {
-  /** Events for the current iteration */
-  iterationEvents: ChatEvent[]
+  /** Events for the current session */
+  sessionEvents: ChatEvent[]
   /** Ralph status (running, stopped, etc.) */
   ralphStatus: RalphStatus
-  /** Whether viewing the latest iteration */
+  /** Whether viewing the latest session */
   isViewingLatest: boolean
   /** Whether Ralph is currently running */
   isRunning: boolean
-  /** Current task for the iteration */
-  iterationTask: IterationTask | null
-  /** Past iterations for history dropdown */
-  iterations: IterationSummary[]
-  /** Whether iterations are loading */
-  isLoadingIterations: boolean
+  /** Current task for the session */
+  sessionTask: SessionTask | null
+  /** Past sessions for history dropdown */
+  sessions: SessionSummary[]
+  /** Whether sessions are loading */
+  isLoadingSessions: boolean
   /** Issue prefix for the workspace */
   issuePrefix: string | null
   /** Navigation actions */
-  navigation: IterationNavigationActions
+  navigation: SessionNavigationActions
   /** Ref for the container element */
   containerRef: React.RefObject<HTMLDivElement | null>
 }
@@ -69,7 +69,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const ralphStatus = useAppStore(state =>
     instanceId ? selectInstanceStatus(state, instanceId) : selectRalphStatus(state),
   )
-  const viewingIterationIndex = useAppStore(selectViewingIterationIndex)
+  const viewingSessionIndex = useAppStore(selectViewingSessionIndex)
   const tasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
 
@@ -83,22 +83,22 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     ralphStatus === "running" ||
     ralphStatus === "starting" ||
     ralphStatus === "stopping_after_current"
-  const isViewingLatest = viewingIterationIndex === null
+  const isViewingLatest = viewingSessionIndex === null
 
-  // Fetch iterations for the history dropdown
-  const { iterations, isLoading: isLoadingIterations } = useIterations()
+  // Fetch sessions for the history dropdown
+  const { sessions, isLoading: isLoadingSessions } = useSessions()
   const { navigateToEventLog } = useEventLogRouter()
 
-  // Iteration data - all events when viewing latest
-  const iterationEvents = useMemo(
-    () => getEventsForIteration(allEvents, viewingIterationIndex),
-    [allEvents, viewingIterationIndex],
+  // Session data - all events when viewing latest
+  const sessionEvents = useMemo(
+    () => getEventsForSession(allEvents, viewingSessionIndex),
+    [allEvents, viewingSessionIndex],
   )
 
-  // Determine the current task for the iteration
-  const iterationTask = useMemo((): IterationTask | null => {
-    // First, try to find task from ralph_task_started event in iteration events
-    for (const event of iterationEvents) {
+  // Determine the current task for the session
+  const sessionTask = useMemo((): SessionTask | null => {
+    // First, try to find task from ralph_task_started event in session events
+    for (const event of sessionEvents) {
       if ((event as { type: string }).type === "ralph_task_started") {
         const taskId = (event as { taskId?: string }).taskId
         const taskTitle = (event as { taskTitle?: string }).taskTitle
@@ -130,12 +130,12 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     }
 
     return null
-  }, [iterationEvents, tasks, instance])
+  }, [sessionEvents, tasks, instance])
 
   // Container ref for scrolling
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // When viewing a historical iteration, scroll to bottom on iteration change
+  // When viewing a historical session, scroll to bottom on session change
   useEffect(() => {
     if (!isViewingLatest && containerRef.current) {
       const scrollContainer = containerRef.current.querySelector('[role="log"]')
@@ -143,30 +143,30 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
         scrollContainer.scrollTop = scrollContainer.scrollHeight
       }
     }
-  }, [viewingIterationIndex, isViewingLatest])
+  }, [viewingSessionIndex, isViewingLatest])
 
-  const handleIterationHistorySelect = useCallback(
+  const handleSessionHistorySelect = useCallback(
     (id: string) => {
       navigateToEventLog(id)
     },
     [navigateToEventLog],
   )
 
-  const navigation: IterationNavigationActions = useMemo(
+  const navigation: SessionNavigationActions = useMemo(
     () => ({
-      selectIterationHistory: handleIterationHistorySelect,
+      selectSessionHistory: handleSessionHistorySelect,
     }),
-    [handleIterationHistorySelect],
+    [handleSessionHistorySelect],
   )
 
   return {
-    iterationEvents,
+    sessionEvents,
     ralphStatus,
     isViewingLatest,
     isRunning,
-    iterationTask,
-    iterations,
-    isLoadingIterations,
+    sessionTask,
+    sessions,
+    isLoadingSessions,
     issuePrefix,
     navigation,
     containerRef,

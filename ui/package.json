@@ -37,7 +37,7 @@
     "automation",
     "ui",
     "web",
-    "iteration",
+    "session",
     "autonomous"
   ],
   "files": [
@@ -80,7 +80,7 @@
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.17"
   },
-  "description": "Web UI for Ralph - React frontend and server for the autonomous AI iteration engine",
+  "description": "Web UI for Ralph - React frontend and server for the autonomous AI session engine",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.7",
     "@herbcaudill/ralph-shared": "workspace:*",

@@ -78,7 +78,7 @@ export class MessageQueue implements AsyncIterable<SDKUserMessage> {
   }
 
   /**
-   * Implement the async iterable protocol to allow iteration with for-await-of.
+   * Implement the async iterable protocol to allow session with for-await-of.
    */
   [Symbol.asyncIterator](): AsyncIterator<SDKUserMessage> {
     return {

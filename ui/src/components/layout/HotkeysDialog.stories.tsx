@@ -94,20 +94,20 @@ export const EscapeClosesDialog: Story = {
 }
 
 /**
- * Verifies iteration navigation hotkeys are documented in the dialog.
- * Migrated from Playwright test: "iteration navigation hotkeys are registered"
+ * Verifies session navigation hotkeys are documented in the dialog.
+ * Migrated from Playwright test: "session navigation hotkeys are registered"
  */
-export const ShowsIterationNavigationHotkeys: Story = {
+export const ShowsSessionNavigationHotkeys: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
     // Wait for dialog animation to complete before checking visibility
     await waitFor(
       async () => {
-        // Verify iteration navigation hotkeys are documented
-        await expect(await canvas.findByText(/previous iteration/i)).toBeVisible()
-        await expect(await canvas.findByText(/next iteration/i)).toBeVisible()
-        await expect(await canvas.findByText(/latest iteration/i)).toBeVisible()
+        // Verify session navigation hotkeys are documented
+        await expect(await canvas.findByText(/previous session/i)).toBeVisible()
+        await expect(await canvas.findByText(/next session/i)).toBeVisible()
+        await expect(await canvas.findByText(/latest session/i)).toBeVisible()
       },
       { timeout: 3000 },
     )

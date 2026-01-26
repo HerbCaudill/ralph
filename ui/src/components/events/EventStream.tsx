@@ -12,13 +12,13 @@ import { EventStreamView } from "./EventStreamView"
  */
 export function EventStream({ className, maxEvents = 1000, instanceId }: EventStreamProps) {
   const {
-    iterationEvents,
+    sessionEvents,
     ralphStatus,
     isViewingLatest,
     isRunning,
-    iterationTask,
-    iterations,
-    isLoadingIterations,
+    sessionTask,
+    sessions,
+    isLoadingSessions,
     issuePrefix,
     navigation,
     containerRef,
@@ -29,13 +29,13 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       ref={containerRef}
       className={className}
       maxEvents={maxEvents}
-      iterationEvents={iterationEvents}
+      sessionEvents={sessionEvents}
       ralphStatus={ralphStatus}
       isViewingLatest={isViewingLatest}
       isRunning={isRunning}
-      iterationTask={iterationTask}
-      iterations={iterations}
-      isLoadingIterations={isLoadingIterations}
+      sessionTask={sessionTask}
+      sessions={sessions}
+      isLoadingSessions={isLoadingSessions}
       issuePrefix={issuePrefix}
       navigation={navigation}
     />

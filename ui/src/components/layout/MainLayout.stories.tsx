@@ -45,7 +45,7 @@ export const Default: Story = {
       workspace: "/Users/dev/projects/my-app",
       branch: "main",
       tokenUsage: { input: 12500, output: 3200 },
-      iteration: { current: 3, total: 10 },
+      session: { current: 3, total: 10 },
       accentColor: "#007ACC",
     }),
   ],

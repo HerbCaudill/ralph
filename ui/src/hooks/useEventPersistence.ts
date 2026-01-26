@@ -2,7 +2,7 @@
  * Hook for persisting individual events to IndexedDB.
  *
  * Saves events to the events store for append-only writes. This is part of the
- * v3 schema normalization that separates events from iterations.
+ * v3 schema normalization that separates events from sessions.
  *
  * Auto-saves events as they arrive:
  * - New events are detected by comparing against last saved count
@@ -15,11 +15,11 @@ import { eventDatabase, type PersistedEvent } from "@/lib/persistence"
 import type { ChatEvent } from "@/types"
 
 /**
- * Generates a unique event ID based on iteration ID and event index.
- * Format: "{iterationId}-event-{index}"
+ * Generates a unique event ID based on session ID and event index.
+ * Format: "{sessionId}-event-{index}"
  */
-function generateEventId(iterationId: string, eventIndex: number): string {
-  return `${iterationId}-event-${eventIndex}`
+function generateEventId(sessionId: string, eventIndex: number): string {
+  return `${sessionId}-event-${eventIndex}`
 }
 
 /**
@@ -31,9 +31,9 @@ function getEventType(event: ChatEvent): string {
 }
 
 export interface UseEventPersistenceOptions {
-  /** ID of the current iteration (null if no iteration started) */
-  iterationId: string | null
-  /** All events from the iteration */
+  /** ID of the current session (null if no session started) */
+  sessionId: string | null
+  /** All events from the session */
   events: ChatEvent[]
   /** ID of the workspace (for cross-workspace queries) */
   workspaceId: string | null
@@ -51,22 +51,22 @@ export interface UseEventPersistenceResult {
 /**
  * Hook to persist events to IndexedDB.
  *
- * Automatically saves events as they arrive when an iteration is active.
+ * Automatically saves events as they arrive when an session is active.
  * Events are saved individually to the events store for efficient append-only writes.
  *
- * This hook works alongside useIterationPersistence, which handles the iteration
+ * This hook works alongside useSessionPersistence, which handles the session
  * metadata. Together they implement the v3 normalized schema.
  */
 export function useEventPersistence(
   options: UseEventPersistenceOptions,
 ): UseEventPersistenceResult {
-  const { iterationId, events, workspaceId: _workspaceId, enabled = true } = options
+  const { sessionId, events, workspaceId: _workspaceId, enabled = true } = options
   // Note: workspaceId is reserved for future use in cross-workspace queries
 
   // Track the last saved event count to detect new events
   const lastSavedEventCountRef = useRef(0)
-  // Track the current iteration ID to reset count when iteration changes
-  const currentIterationIdRef = useRef<string | null>(null)
+  // Track the current session ID to reset count when session changes
+  const currentSessionIdRef = useRef<string | null>(null)
 
   /**
    * Build a PersistedEvent from a ChatEvent.
@@ -75,7 +75,7 @@ export function useEventPersistence(
     (event: ChatEvent, eventIndex: number, iterId: string): PersistedEvent => {
       return {
         id: generateEventId(iterId, eventIndex),
-        iterationId: iterId,
+        sessionId: iterId,
         timestamp: event.timestamp ?? Date.now(),
         eventType: getEventType(event),
         event,
@@ -105,29 +105,29 @@ export function useEventPersistence(
    */
   const saveEventsBatch = useCallback(
     async (eventsToSave: ChatEvent[], startIndex: number): Promise<void> => {
-      if (!enabled || !iterationId || eventsToSave.length === 0) return
+      if (!enabled || !sessionId || eventsToSave.length === 0) return
 
       try {
         const persistedEvents = eventsToSave.map((event, i) =>
-          buildPersistedEvent(event, startIndex + i, iterationId),
+          buildPersistedEvent(event, startIndex + i, sessionId),
         )
         await eventDatabase.saveEvents(persistedEvents)
       } catch (error) {
         console.error("[useEventPersistence] Failed to save events batch:", error)
       }
     },
-    [enabled, iterationId, buildPersistedEvent],
+    [enabled, sessionId, buildPersistedEvent],
   )
 
   /**
    * Process new events and save them to IndexedDB.
    */
   useEffect(() => {
-    if (!enabled || !iterationId) return
+    if (!enabled || !sessionId) return
 
-    // Reset count if iteration changed
-    if (currentIterationIdRef.current !== iterationId) {
-      currentIterationIdRef.current = iterationId
+    // Reset count if session changed
+    if (currentSessionIdRef.current !== sessionId) {
+      currentSessionIdRef.current = sessionId
       lastSavedEventCountRef.current = 0
     }
 
@@ -142,13 +142,13 @@ export function useEventPersistence(
     const saveNewEvents = async () => {
       for (let i = 0; i < newEvents.length; i++) {
         const eventIndex = newStartIndex + i
-        await saveEvent(newEvents[i], eventIndex, iterationId)
+        await saveEvent(newEvents[i], eventIndex, sessionId)
       }
       lastSavedEventCountRef.current = events.length
     }
 
     saveNewEvents()
-  }, [enabled, iterationId, events, saveEvent])
+  }, [enabled, sessionId, events, saveEvent])
 
   // Initialize database on mount
   useEffect(() => {

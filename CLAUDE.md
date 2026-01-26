@@ -30,8 +30,8 @@ Ralph supports sending user messages to Claude while it's working:
 
 - **Escape** - Opens a text input to send a message to Claude (only while running; press again to cancel)
 - **Ctrl+T** - Opens a text input to add a todo item (only if todo.md exists)
-- **Ctrl+S** - Stop gracefully after the current iteration completes
-- **Ctrl+P** - Pause/resume: pause after current iteration completes, press again to resume
+- **Ctrl+S** - Stop gracefully after the current session completes
+- **Ctrl+P** - Pause/resume: pause after current session completes, press again to resume
 
 User-injected messages appear in the output stream with a 📨 prefix and green color, so users know their message was received and processed.
 
@@ -40,8 +40,8 @@ User-injected messages appear in the output stream with a 📨 prefix and green 
 When running in JSON mode (`ralph --json`), commands can be sent via stdin as JSON:
 
 - `{"type": "message", "text": "..."}` - Send a message to Claude
-- `{"type": "stop"}` - Stop gracefully after current iteration
-- `{"type": "pause"}` - Pause after current iteration completes
+- `{"type": "stop"}` - Stop gracefully after current session
+- `{"type": "pause"}` - Pause after current session completes
 - `{"type": "resume"}` - Resume from paused state
 
 ### Implementation Details
@@ -50,7 +50,7 @@ The feature uses the Claude Agent SDK's streaming input mode. Instead of passing
 
 1. Yields the initial prompt message
 2. Can receive additional messages pushed via `push()` from the UI
-3. Uses promises to block iteration until new messages arrive
+3. Uses promises to block session until new messages arrive
 
 When a user sends a message via Escape:
 
@@ -71,10 +71,10 @@ RALPH_DEBUG=1 ralph
 
 # Enable specific namespace
 RALPH_DEBUG=messagequeue ralph    # MessageQueue push/next/close operations
-RALPH_DEBUG=iteration ralph       # Iteration lifecycle events
+RALPH_DEBUG=session ralph       # Session lifecycle events
 
 # Enable multiple namespaces
-RALPH_DEBUG=messagequeue,iteration ralph
+RALPH_DEBUG=messagequeue,session ralph
 ```
 
 Debug logs are written to stderr with timestamps, so they don't interfere with the normal output.
@@ -83,26 +83,26 @@ Debug logs are written to stderr with timestamps, so they don't interfere with t
 
 ## Project Overview
 
-Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iterative development workflows. It spawns Claude CLI processes with a custom prompt and todo list, captures streaming JSON output, displays it in a formatted terminal UI using Ink (React for CLIs), and orchestrates multiple iterations.
+Ralph is an autonomous AI session engine that wraps the Claude CLI to run iterative development workflows. It spawns Claude CLI processes with a custom prompt and todo list, captures streaming JSON output, displays it in a formatted terminal UI using Ink (React for CLIs), and orchestrates multiple sessions.
 
 ## Key Architecture
 
 ### Core Flow
 
 1. **CLI Entry** (`cli.ts`) → Defines Commander.js program with modes:
-   - Main mode: Run N iterations (`ralph [iterations]`)
+   - Main mode: Run N sessions (`ralph [sessions]`)
    - Watch mode: Watch for new beads issues after completion (`ralph --watch`)
    - Agent selection: Select AI agent to use (`ralph --agent <name>`, defaults to `claude`)
    - Init mode: Set up `.ralph/` directory (`ralph init`)
    - Replay mode: Replay events from log (`ralph --replay [file]`)
 
-2. **Iteration Runner** (`IterationRunner.tsx`) → Core orchestration:
+2. **Session Runner** (`SessionRunner.tsx`) → Core orchestration:
    - Combines core-prompt.md with .ralph/workflow.md (or bundled default)
    - Spawns `claude` CLI with `--output-format stream-json`
    - Parses streaming JSON events line-by-line
    - Appends events to `.ralph/events-*.jsonl`
    - Detects `<promise>COMPLETE</promise>` to exit early (or enter watch mode if `--watch`)
-   - Recursively runs next iteration after completion
+   - Recursively runs next session after completion
    - In watch mode: polls beads daemon for new issues via Unix socket RPC
 
 3. **Event Processing** (`eventToBlocks.ts`) → Transforms raw JSON events into display blocks:
@@ -117,8 +117,8 @@ Ralph is an autonomous AI iteration engine that wraps the Claude CLI to run iter
 
 Ralph uses a two-tier prompt system:
 
-1. **Core prompt** (`cli/templates/core-prompt.md`) - Bundled iteration protocol (required by Ralph)
-   - Iteration lifecycle (check errors → find issue → work → complete)
+1. **Core prompt** (`cli/templates/core-prompt.md`) - Bundled session protocol (required by Ralph)
+   - Session lifecycle (check errors → find issue → work → complete)
    - Task assignment logic
    - Output tokens (`<promise>COMPLETE</promise>`, `<start_task>`, `<end_task>`)
 
@@ -213,12 +213,12 @@ This is a pnpm workspace with three packages:
 
 ### CLI Package (`cli/`)
 
-The autonomous AI iteration engine that wraps Claude CLI:
+The autonomous AI session engine that wraps Claude CLI:
 
 - Spawns Claude CLI with custom prompts
 - Captures streaming JSON output
 - Displays formatted terminal UI using Ink (React for CLIs)
-- Orchestrates multiple iterations
+- Orchestrates multiple sessions
 
 ### UI Package (`ui/`)
 
@@ -268,9 +268,9 @@ Each adapter normalizes native events into `AgentEvent` types:
 
 - `AgentMessageEvent`, `AgentToolUseEvent`, `AgentToolResultEvent`, `AgentResultEvent`, `AgentErrorEvent`, `AgentStatusEvent`
 
-**User Messages During Iterations:**
+**User Messages During Sessions:**
 
-Users can send messages to Ralph during an active iteration. The message format expected by the Ralph CLI:
+Users can send messages to Ralph during an active session. The message format expected by the Ralph CLI:
 
 ```json
 { "type": "message", "text": "your message here" }
@@ -291,7 +291,7 @@ Shared utilities and types used by both CLI and UI packages:
   - Options types (`BdListOptions`, `BdCreateOptions`, `BdUpdateOptions`)
   - Mutation events (`MutationEvent`, `MutationType`)
 - **Prompt Loading** (`prompts/`):
-  - `loadIterationPrompt()` - Combine core-prompt with workflow
+  - `loadSessionPrompt()` - Combine core-prompt with workflow
   - `loadPrompt()` - Load prompt files with custom overrides
   - `hasCustomWorkflow()` - Check for custom workflow existence
 
@@ -304,7 +304,7 @@ cli/                       # CLI package (@herbcaudill/ralph)
     index.ts                # Entry point
     components/
       App.tsx               # Root component (router)
-      IterationRunner.tsx   # Spawns Claude CLI, handles iterations
+      SessionRunner.tsx   # Spawns Claude CLI, handles sessions
       InitRalph.tsx         # Initialization flow
       EventDisplay.tsx      # Renders event stream
       eventToBlocks.ts      # Parses events → display blocks
@@ -317,7 +317,7 @@ cli/                       # CLI package (@herbcaudill/ralph)
     e2e/                    # E2E tests (skipped by default)
     fixtures/               # Test fixtures
   templates/                # Template files for ralph init
-    core-prompt.md          # Bundled iteration protocol
+    core-prompt.md          # Bundled session protocol
     workflow.md             # Default workflow → .ralph/workflow.md
     skills/                 # → symlink to .claude/skills/
     agents/                 # → symlink to .claude/agents/
@@ -379,18 +379,18 @@ The Claude CLI outputs newline-delimited JSON. Each line is a complete JSON obje
 
 In the CLI UI, tool paths are rendered relative to the current workspace. Set `RALPH_CWD` to override the base path for relative rendering; otherwise it uses `process.cwd()`.
 
-### Iteration Completion Logic
+### Session Completion Logic
 
-An iteration ends when:
+An session ends when:
 
 1. The `claude` process exits (stdout closes AND process closes)
 2. Exit code is checked - non-zero exits the entire program with error
 3. If output contains `<promise>COMPLETE</promise>`, exit entire program successfully
-4. Otherwise, start next iteration after 500ms delay
+4. Otherwise, start next session after 500ms delay
 
 ### Initialization Detection
 
-On startup, `IterationRunner` combines core-prompt.md (bundled) with .ralph/workflow.md (if it exists, otherwise uses bundled default). This allows Ralph to run without requiring `ralph init` first.
+On startup, `SessionRunner` combines core-prompt.md (bundled) with .ralph/workflow.md (if it exists, otherwise uses bundled default). This allows Ralph to run without requiring `ralph init` first.
 
 ## Testing
 

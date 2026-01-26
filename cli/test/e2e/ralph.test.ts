@@ -116,34 +116,34 @@ describe("Ralph E2E Tests", () => {
     })
   })
 
-  describe("iteration execution", () => {
-    it("runs one iteration successfully", async () => {
+  describe("session execution", () => {
+    it("runs one session successfully", async () => {
       const fixturePath = join(FIXTURES_DIR, "realistic-workflow")
-      const workspacePath = join(TEST_WORKSPACE, "iteration-test")
+      const workspacePath = join(TEST_WORKSPACE, "session-test")
       cpSync(fixturePath, workspacePath, { recursive: true })
 
       const result = await runRalph({
         args: ["1"],
         cwd: workspacePath,
         timeout: 120000, // Claude API calls can take time
-        testName: "ralph-one-iteration",
+        testName: "ralph-one-session",
       })
 
-      // May exit with 0 (if COMPLETE) or continue (normal iteration end)
+      // May exit with 0 (if COMPLETE) or continue (normal session end)
       expect(result.exitCode === 0 || result.exitCode === null).toBe(true)
       expect(existsSync(join(workspacePath, ".ralph/events.jsonl"))).toBe(true)
     }, 120000)
 
-    it("runs multiple iterations", async () => {
+    it("runs multiple sessions", async () => {
       const fixturePath = join(FIXTURES_DIR, "realistic-workflow")
-      const workspacePath = join(TEST_WORKSPACE, "multi-iteration-test")
+      const workspacePath = join(TEST_WORKSPACE, "multi-session-test")
       cpSync(fixturePath, workspacePath, { recursive: true })
 
       const result = await runRalph({
         args: ["3"],
         cwd: workspacePath,
-        timeout: 180000, // 3 minutes for multiple iterations
-        testName: "ralph-three-iterations",
+        timeout: 180000, // 3 minutes for multiple sessions
+        testName: "ralph-three-sessions",
       })
 
       expect(existsSync(join(workspacePath, ".ralph/events.jsonl"))).toBe(true)
@@ -160,7 +160,7 @@ describe("Ralph E2E Tests", () => {
       cpSync(fixturePath, workspacePath, { recursive: true })
 
       const result = await runRalph({
-        args: ["10"], // Request many iterations
+        args: ["10"], // Request many sessions
         cwd: workspacePath,
         timeout: 180000,
         testName: "ralph-complete-detection",
@@ -174,7 +174,7 @@ describe("Ralph E2E Tests", () => {
 
 /**
  * Unit-style E2E tests that don't require Claude CLI
- * These verify the CLI interface without actually running iterations
+ * These verify the CLI interface without actually running sessions
  */
 describe("Ralph CLI interface", () => {
   beforeAll(() => {
@@ -192,7 +192,7 @@ describe("Ralph CLI interface", () => {
     expect(result.exitCode).not.toBe(0)
   })
 
-  it("accepts numeric iteration count", async () => {
+  it("accepts numeric session count", async () => {
     // This will fail due to missing files, but should parse the argument
     const result = await runRalph({
       args: ["5"],

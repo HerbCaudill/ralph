@@ -60,7 +60,7 @@ export const ReplayLog = ({
 
   return (
     <FullScreenLayout title="Ralph" footer={footer}>
-      <EventDisplay events={events} iteration={1} completedIterations={[]} height={contentHeight} />
+      <EventDisplay events={events} session={1} completedSessions={[]} height={contentHeight} />
     </FullScreenLayout>
   )
 }

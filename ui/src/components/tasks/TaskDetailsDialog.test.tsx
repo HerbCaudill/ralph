@@ -1217,7 +1217,7 @@ describe("TaskDetailsDialog", () => {
   describe("event log capture on close", () => {
     it("does not save event log when task is already closed", async () => {
       // Track POST calls to eventlogs endpoint (creating new event logs)
-      // GET requests (listing event logs for IterationLinks) are fine
+      // GET requests (listing event logs for SessionLinks) are fine
       let eventLogPostCalled = false
       const mockFetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
         // Handle labels fetch
@@ -1245,7 +1245,7 @@ describe("TaskDetailsDialog", () => {
             json: () => Promise.resolve({ ok: true, eventlog: { id: "mock-event-log-123" } }),
           })
         }
-        // Handle event log GET (listing event logs for IterationLinks)
+        // Handle event log GET (listing event logs for SessionLinks)
         if (typeof url === "string" && url.includes("/api/eventlogs")) {
           return Promise.resolve({
             ok: true,
@@ -1287,7 +1287,7 @@ describe("TaskDetailsDialog", () => {
       expect(mockOnSave).toHaveBeenCalledWith("task-001", { title: "Updated title" })
 
       // Verify event log was NOT saved (task was already closed)
-      // Note: GET requests to /api/eventlogs may still occur for IterationLinks
+      // Note: GET requests to /api/eventlogs may still occur for SessionLinks
       expect(eventLogPostCalled).toBe(false)
 
       vi.useRealTimers()

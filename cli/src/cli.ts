@@ -4,18 +4,18 @@ import React from "react"
 import { App } from "./components/App.js"
 import { InitRalph } from "./components/InitRalph.js"
 import { getClaudeVersion } from "./lib/getClaudeVersion.js"
-import { getDefaultIterations } from "./lib/getDefaultIterations.js"
+import { getDefaultSessions } from "./lib/getDefaultSessions.js"
 import { addTodo } from "./lib/addTodo.js"
 import { getLatestLogFile } from "./lib/getLatestLogFile.js"
 import packageJson from "../package.json" with { type: "json" }
 
 export const program = new Command()
   .name("ralph")
-  .description("Autonomous AI iteration engine for Claude CLI")
+  .description("Autonomous AI session engine for Claude CLI")
   .version(packageJson.version)
   .argument(
-    "[iterations]",
-    "number of iterations (default: 120% of open issues, min 10, max 100)",
+    "[sessions]",
+    "number of sessions (default: 120% of open issues, min 10, max 100)",
     val => parseInt(val, 10),
   )
   .option("--replay [file]", "replay events from log file")
@@ -24,12 +24,12 @@ export const program = new Command()
   .option("--agent <name>", "agent to use (e.g., claude, codex)", "claude")
   .action(
     (
-      /** The number of iterations to run, or undefined to use default */
-      iterationsArg: number | undefined,
+      /** The number of sessions to run, or undefined to use default */
+      sessionsArg: number | undefined,
       /** Command options including replay, watch, json, and agent */
       options,
     ) => {
-      const iterations = iterationsArg ?? getDefaultIterations()
+      const sessions = sessionsArg ?? getDefaultSessions()
       const replayFile =
         options.replay !== undefined ?
           typeof options.replay === "string" ?
@@ -59,7 +59,7 @@ export const program = new Command()
 
       render(
         React.createElement(App, {
-          iterations,
+          sessions,
           replayFile,
           claudeVersion,
           ralphVersion,

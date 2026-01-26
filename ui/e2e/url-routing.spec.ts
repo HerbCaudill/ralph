@@ -134,7 +134,7 @@ test.describe("URL Routing", () => {
   })
 
   test.describe("event log routing", () => {
-    test("clicking iteration link updates URL with #eventlog={id}", async ({ app }) => {
+    test("clicking session link updates URL with #eventlog={id}", async ({ app }) => {
       // Create a task
       const taskName = `Event Log URL Test ${Date.now()}`
       await app.taskList.createTask(taskName)
@@ -142,38 +142,38 @@ test.describe("URL Routing", () => {
       const taskCard = app.taskList.sidebar.locator("[data-task-id]").first()
       await taskCard.click()
       await app.taskDetails.waitForOpen()
-      await app.taskDetails.waitForIterationLinksLoaded()
+      await app.taskDetails.waitForSessionLinksLoaded()
 
-      const hasIterations = await app.taskDetails.hasIterationLinks()
-      if (!hasIterations) {
-        // No iterations available - skip gracefully
+      const hasSessions = await app.taskDetails.hasSessionLinks()
+      if (!hasSessions) {
+        // No sessions available - skip gracefully
         return
       }
 
-      // Click the first iteration link
-      await app.taskDetails.clickIterationLink(0)
+      // Click the first session link
+      await app.taskDetails.clickSessionLink(0)
 
       // URL should have eventlog hash
       await expect.poll(() => app.page.url()).toMatch(/#eventlog=[a-f0-9]{8}/)
     })
 
     test("clearing event log hash closes the right panel", async ({ app }) => {
-      // Create a task and check for iterations
+      // Create a task and check for sessions
       const taskName = `Clear Event Log Test ${Date.now()}`
       await app.taskList.createTask(taskName)
 
       const taskCard = app.taskList.sidebar.locator("[data-task-id]").first()
       await taskCard.click()
       await app.taskDetails.waitForOpen()
-      await app.taskDetails.waitForIterationLinksLoaded()
+      await app.taskDetails.waitForSessionLinksLoaded()
 
-      const hasIterations = await app.taskDetails.hasIterationLinks()
-      if (!hasIterations) {
+      const hasSessions = await app.taskDetails.hasSessionLinks()
+      if (!hasSessions) {
         return
       }
 
-      // Click iteration link to open right panel
-      await app.taskDetails.clickIterationLink(0)
+      // Click session link to open right panel
+      await app.taskDetails.clickSessionLink(0)
       await expect.poll(() => app.page.url()).toMatch(/#eventlog=[a-f0-9]{8}/)
 
       const rightPanel = app.page.getByTestId("right-panel")
@@ -207,15 +207,15 @@ test.describe("URL Routing", () => {
       const taskId = await taskCard.getAttribute("data-task-id")
       await taskCard.click()
       await app.taskDetails.waitForOpen()
-      await app.taskDetails.waitForIterationLinksLoaded()
+      await app.taskDetails.waitForSessionLinksLoaded()
 
-      const hasIterations = await app.taskDetails.hasIterationLinks()
-      if (!hasIterations) {
+      const hasSessions = await app.taskDetails.hasSessionLinks()
+      if (!hasSessions) {
         return
       }
 
-      // Click iteration link
-      await app.taskDetails.clickIterationLink(0)
+      // Click session link
+      await app.taskDetails.clickSessionLink(0)
 
       // URL should have both: path for task and hash for eventlog
       await expect.poll(() => app.page.url()).toContain(`/issue/${taskId}`)

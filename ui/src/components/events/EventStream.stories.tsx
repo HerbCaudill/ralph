@@ -23,12 +23,12 @@ const defaultProps: Partial<EventStreamViewProps> = {
   ralphStatus: "stopped",
   isViewingLatest: true,
   isRunning: false,
-  iterationTask: null,
-  iterations: [],
-  isLoadingIterations: false,
+  sessionTask: null,
+  sessions: [],
+  isLoadingSessions: false,
   issuePrefix: "r-",
   navigation: {
-    selectIterationHistory: () => {},
+    selectSessionHistory: () => {},
   },
 }
 
@@ -230,21 +230,21 @@ describe("App", () => {
 export const Default: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: realEvents,
+    sessionEvents: realEvents,
   },
 }
 
 export const Empty: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [],
+    sessionEvents: [],
   },
 }
 
 export const SingleUserMessage: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [
+    sessionEvents: [
       {
         type: "user_message",
         timestamp: Date.now(),
@@ -257,7 +257,7 @@ export const SingleUserMessage: Story = {
 export const ConversationFlow: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [
+    sessionEvents: [
       {
         type: "user_message",
         timestamp: Date.now() - 30000,
@@ -334,7 +334,7 @@ export const ConversationFlow: Story = {
 export const WithBashOutput: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [
+    sessionEvents: [
       {
         type: "user_message",
         timestamp: Date.now() - 20000,
@@ -396,7 +396,7 @@ Test Files  4 passed (4)
 export const WithError: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [
+    sessionEvents: [
       {
         type: "user_message",
         timestamp: Date.now() - 15000,
@@ -456,7 +456,7 @@ Found 1 error.`,
 export const TodoUpdates: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [
+    sessionEvents: [
       {
         type: "user_message",
         timestamp: Date.now() - 20000,
@@ -543,7 +543,7 @@ export const TodoUpdates: Story = {
 export const LongConversation: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: (() => {
+    sessionEvents: (() => {
       const events = []
       const baseTime = Date.now()
 
@@ -575,7 +575,7 @@ export const LongConversation: Story = {
 export const Running: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [
+    sessionEvents: [
       {
         type: "user_message",
         timestamp: Date.now() - 5000,
@@ -590,32 +590,32 @@ export const Running: Story = {
 export const WithCurrentTask: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [
+    sessionEvents: [
       {
         type: "user_message",
         timestamp: Date.now() - 5000,
         message: "Working on the task",
       },
     ],
-    iterationTask: {
+    sessionTask: {
       id: "r-abc1",
       title: "Implement dark mode toggle",
     },
   },
 }
 
-export const ViewingPastIteration: Story = {
+export const ViewingPastSession: Story = {
   args: {
     ...defaultProps,
-    iterationEvents: [
+    sessionEvents: [
       {
         type: "user_message",
         timestamp: Date.now() - 30000,
-        message: "First iteration work",
+        message: "First session work",
       },
     ],
     isViewingLatest: false,
-    iterationTask: {
+    sessionTask: {
       id: "r-xyz2",
       title: "Fix authentication bug",
     },

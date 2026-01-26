@@ -5,8 +5,8 @@ import {
   type RalphEvent,
   type RalphStatus,
 } from "./RalphManager.js"
-import { type IterationStateStore, type PersistedIterationState } from "./IterationStateStore.js"
-import type { IterationEventPersister } from "./IterationEventPersister.js"
+import { type SessionStateStore, type PersistedSessionState } from "./SessionStateStore.js"
+import type { SessionEventPersister } from "./SessionEventPersister.js"
 import type { ConversationContext, ConversationMessage } from "./ClaudeAdapter.js"
 import type { BdProxy } from "./BdProxy.js"
 
@@ -82,13 +82,13 @@ export interface RalphRegistryOptions {
   /** Maximum number of instances (0 = unlimited). Default: 10 */
   maxInstances?: number
 
-  /** Optional IterationStateStore for persisting iteration state */
-  iterationStateStore?: IterationStateStore
+  /** Optional SessionStateStore for persisting session state */
+  sessionStateStore?: SessionStateStore
 
-  /** Optional IterationEventPersister for persisting events during active iterations */
-  iterationEventPersister?: IterationEventPersister
+  /** Optional SessionEventPersister for persisting events during active sessions */
+  sessionEventPersister?: SessionEventPersister
 
-  /** Optional BdProxy for updating beads issues (e.g., adding iteration log links) */
+  /** Optional BdProxy for updating beads issues (e.g., adding session log links) */
   bdProxy?: BdProxy
 }
 
@@ -104,7 +104,7 @@ export interface RalphRegistryOptions {
  * - content_block_start/delta: Streaming text (accumulated into messages)
  * - tool_use: Tool invocation
  * - tool_result: Tool result
- * - result: Final iteration result (contains usage stats)
+ * - result: Final session result (contains usage stats)
  */
 export function eventsToConversationContext(events: RalphEvent[]): ConversationContext {
   const messages: ConversationMessage[] = []
@@ -305,13 +305,13 @@ export class RalphRegistry extends EventEmitter {
   /** Maximum events to keep per instance */
   private static readonly MAX_EVENT_HISTORY = 1000
 
-  /** Optional IterationStateStore for persisting iteration state */
-  private _iterationStateStore: IterationStateStore | null = null
+  /** Optional SessionStateStore for persisting session state */
+  private _sessionStateStore: SessionStateStore | null = null
 
-  /** Optional IterationEventPersister for persisting events during active iterations */
-  private _iterationEventPersister: IterationEventPersister | null = null
+  /** Optional SessionEventPersister for persisting events during active sessions */
+  private _sessionEventPersister: SessionEventPersister | null = null
 
-  /** Optional BdProxy for updating beads issues (e.g., adding iteration log links) */
+  /** Optional BdProxy for updating beads issues (e.g., adding session log links) */
   private _bdProxy: BdProxy | null = null
 
   /** Track pending save operations to avoid concurrent writes */
@@ -321,48 +321,48 @@ export class RalphRegistry extends EventEmitter {
     super()
     this._defaultManagerOptions = options.defaultManagerOptions ?? {}
     this._maxInstances = options.maxInstances ?? 10
-    this._iterationStateStore = options.iterationStateStore ?? null
-    this._iterationEventPersister = options.iterationEventPersister ?? null
+    this._sessionStateStore = options.sessionStateStore ?? null
+    this._sessionEventPersister = options.sessionEventPersister ?? null
     this._bdProxy = options.bdProxy ?? null
   }
 
   /**
-   * Set the IterationStateStore for persisting iteration state.
+   * Set the SessionStateStore for persisting session state.
    * Can be called after construction to add state persistence.
    *
-   * @param store - The IterationStateStore to use, or null to disable persistence
+   * @param store - The SessionStateStore to use, or null to disable persistence
    */
-  setIterationStateStore(store: IterationStateStore | null): void {
-    this._iterationStateStore = store
+  setSessionStateStore(store: SessionStateStore | null): void {
+    this._sessionStateStore = store
   }
 
   /**
-   * Get the current IterationStateStore, if any.
+   * Get the current SessionStateStore, if any.
    */
-  getIterationStateStore(): IterationStateStore | null {
-    return this._iterationStateStore
+  getSessionStateStore(): SessionStateStore | null {
+    return this._sessionStateStore
   }
 
   /**
-   * Set the IterationEventPersister for persisting events during active iterations.
+   * Set the SessionEventPersister for persisting events during active sessions.
    * Can be called after construction to enable event persistence.
    *
-   * @param persister - The IterationEventPersister to use, or null to disable event persistence
+   * @param persister - The SessionEventPersister to use, or null to disable event persistence
    */
-  setIterationEventPersister(persister: IterationEventPersister | null): void {
-    this._iterationEventPersister = persister
+  setSessionEventPersister(persister: SessionEventPersister | null): void {
+    this._sessionEventPersister = persister
   }
 
   /**
-   * Get the current IterationEventPersister, if any.
+   * Get the current SessionEventPersister, if any.
    */
-  getIterationEventPersister(): IterationEventPersister | null {
-    return this._iterationEventPersister
+  getSessionEventPersister(): SessionEventPersister | null {
+    return this._sessionEventPersister
   }
 
   /**
    * Set the BdProxy for updating beads issues.
-   * Can be called after construction to enable issue updates (e.g., adding iteration log links).
+   * Can be called after construction to enable issue updates (e.g., adding session log links).
    *
    * @param proxy - The BdProxy to use, or null to disable issue updates
    */
@@ -490,7 +490,7 @@ export class RalphRegistry extends EventEmitter {
   /**
    * Clear the event history for an instance.
    *
-   * Also clears any persisted events file via IterationEventPersister if configured.
+   * Also clears any persisted events file via SessionEventPersister if configured.
    *
    * @param instanceId - The instance ID
    */
@@ -501,8 +501,8 @@ export class RalphRegistry extends EventEmitter {
     }
 
     // Also clear persisted events file
-    if (this._iterationEventPersister) {
-      this._iterationEventPersister.clear(instanceId).catch(err => {
+    if (this._sessionEventPersister) {
+      this._sessionEventPersister.clear(instanceId).catch(err => {
         console.error(`[RalphRegistry] Failed to clear persisted events for ${instanceId}:`, err)
       })
     }
@@ -557,18 +557,18 @@ export class RalphRegistry extends EventEmitter {
   }
 
   /**
-   * Save the current iteration state for an instance.
+   * Save the current session state for an instance.
    *
    * This captures the current conversation context (derived from event history),
-   * status, and task info, and persists it to the IterationStateStore.
+   * status, and task info, and persists it to the SessionStateStore.
    *
-   * If no IterationStateStore is configured, this is a no-op.
+   * If no SessionStateStore is configured, this is a no-op.
    *
    * @param instanceId - The instance ID
    * @returns Promise that resolves when save is complete
    */
-  async saveIterationState(instanceId: string): Promise<void> {
-    if (!this._iterationStateStore) {
+  async saveSessionState(instanceId: string): Promise<void> {
+    if (!this._sessionStateStore) {
       return
     }
 
@@ -583,7 +583,7 @@ export class RalphRegistry extends EventEmitter {
       await pendingSave
     }
 
-    const savePromise = this.doSaveIterationState(instanceId, state)
+    const savePromise = this.doSaveSessionState(instanceId, state)
     this._pendingSaves.set(instanceId, savePromise)
 
     try {
@@ -596,15 +596,15 @@ export class RalphRegistry extends EventEmitter {
   /**
    * Internal method to perform the actual state save.
    */
-  private async doSaveIterationState(instanceId: string, state: RalphInstanceState): Promise<void> {
-    if (!this._iterationStateStore) {
+  private async doSaveSessionState(instanceId: string, state: RalphInstanceState): Promise<void> {
+    if (!this._sessionStateStore) {
       return
     }
 
     const events = this._eventHistory.get(instanceId) ?? []
     const conversationContext = eventsToConversationContext(events)
 
-    const persistedState: PersistedIterationState = {
+    const persistedState: PersistedSessionState = {
       instanceId,
       conversationContext,
       status: state.manager.status,
@@ -614,62 +614,62 @@ export class RalphRegistry extends EventEmitter {
     }
 
     try {
-      await this._iterationStateStore.save(persistedState)
+      await this._sessionStateStore.save(persistedState)
     } catch (err) {
-      console.error(`[RalphRegistry] Failed to save iteration state for ${instanceId}:`, err)
+      console.error(`[RalphRegistry] Failed to save session state for ${instanceId}:`, err)
     }
   }
 
   /**
-   * Delete the persisted iteration state for an instance.
+   * Delete the persisted session state for an instance.
    *
-   * Call this when an iteration completes successfully or when
+   * Call this when an session completes successfully or when
    * the instance is disposed.
    *
    * @param instanceId - The instance ID
    * @returns Promise that resolves to true if state was deleted, false if not found
    */
-  async deleteIterationState(instanceId: string): Promise<boolean> {
-    if (!this._iterationStateStore) {
+  async deleteSessionState(instanceId: string): Promise<boolean> {
+    if (!this._sessionStateStore) {
       return false
     }
 
     try {
-      return await this._iterationStateStore.delete(instanceId)
+      return await this._sessionStateStore.delete(instanceId)
     } catch (err) {
-      console.error(`[RalphRegistry] Failed to delete iteration state for ${instanceId}:`, err)
+      console.error(`[RalphRegistry] Failed to delete session state for ${instanceId}:`, err)
       return false
     }
   }
 
   /**
-   * Load persisted iteration state for an instance.
+   * Load persisted session state for an instance.
    *
    * @param instanceId - The instance ID
    * @returns The persisted state, or null if not found
    */
-  async loadIterationState(instanceId: string): Promise<PersistedIterationState | null> {
-    if (!this._iterationStateStore) {
+  async loadSessionState(instanceId: string): Promise<PersistedSessionState | null> {
+    if (!this._sessionStateStore) {
       return null
     }
 
     try {
-      return await this._iterationStateStore.load(instanceId)
+      return await this._sessionStateStore.load(instanceId)
     } catch (err) {
-      console.error(`[RalphRegistry] Failed to load iteration state for ${instanceId}:`, err)
+      console.error(`[RalphRegistry] Failed to load session state for ${instanceId}:`, err)
       return null
     }
   }
 
   /**
-   * Save iteration state for all running instances.
+   * Save session state for all running instances.
    *
    * Useful for graceful shutdown to ensure all state is persisted.
    *
    * @returns Promise that resolves when all saves are complete
    */
-  async saveAllIterationStates(): Promise<void> {
-    if (!this._iterationStateStore) {
+  async saveAllSessionStates(): Promise<void> {
+    if (!this._sessionStateStore) {
       return
     }
 
@@ -678,7 +678,7 @@ export class RalphRegistry extends EventEmitter {
     for (const state of this._instances.values()) {
       // Only save for instances that are running or paused (have active state)
       if (state.manager.status === "running" || state.manager.status === "paused") {
-        savePromises.push(this.saveIterationState(state.id))
+        savePromises.push(this.saveSessionState(state.id))
       }
     }
 
@@ -688,7 +688,7 @@ export class RalphRegistry extends EventEmitter {
   /**
    * Dispose of an instance, stopping its RalphManager.
    *
-   * Before disposal, saves the iteration state (if store is configured)
+   * Before disposal, saves the session state (if store is configured)
    * to enable potential restoration later.
    *
    * @param instanceId - The instance ID
@@ -699,9 +699,9 @@ export class RalphRegistry extends EventEmitter {
       return
     }
 
-    // Save iteration state before stopping (for graceful shutdown)
+    // Save session state before stopping (for graceful shutdown)
     if (state.manager.isRunning || state.manager.status === "paused") {
-      await this.saveIterationState(instanceId)
+      await this.saveSessionState(instanceId)
     }
 
     // Stop the manager if running
@@ -736,8 +736,8 @@ export class RalphRegistry extends EventEmitter {
   /**
    * Wire up event forwarding from a RalphManager.
    *
-   * Also sets up automatic iteration state saving at key points:
-   * - After iteration completion events (result, ralph_task_completed)
+   * Also sets up automatic session state saving at key points:
+   * - After session completion events (result, ralph_task_completed)
    * - On status changes (paused, stopped)
    * - Before process exit
    */
@@ -754,8 +754,8 @@ export class RalphRegistry extends EventEmitter {
       // Forward event
       this.emit("instance:event", id, "ralph:event", event)
 
-      // Auto-save iteration state after key events
-      // - result: iteration/turn completed successfully
+      // Auto-save session state after key events
+      // - result: session/turn completed successfully
       // - ralph_task_completed: task completed
       // - message_stop: assistant message completed
       if (
@@ -763,7 +763,7 @@ export class RalphRegistry extends EventEmitter {
         event.type === "ralph_task_completed" ||
         event.type === "message_stop"
       ) {
-        this.saveIterationState(id).catch(err => {
+        this.saveSessionState(id).catch(err => {
           console.error(`[RalphRegistry] Auto-save failed for ${id} after ${event.type}:`, err)
         })
       }
@@ -774,12 +774,12 @@ export class RalphRegistry extends EventEmitter {
 
       // Auto-save when paused or stopping (but not when fully stopped - exit handles that)
       if (status === "paused" || status === "stopping_after_current") {
-        this.saveIterationState(id).catch(err => {
+        this.saveSessionState(id).catch(err => {
           console.error(`[RalphRegistry] Auto-save failed for ${id} on status ${status}:`, err)
         })
       }
 
-      // Delete iteration state when iteration completes normally (stopped state)
+      // Delete session state when session completes normally (stopped state)
       // This is optional - we could keep it for debugging/replay purposes
       // For now, we keep it to allow restoration on reconnect
     })
@@ -792,7 +792,7 @@ export class RalphRegistry extends EventEmitter {
       this.emit("instance:event", id, "ralph:error", error)
 
       // Save state on error to preserve context for debugging/retry
-      this.saveIterationState(id).catch(err => {
+      this.saveSessionState(id).catch(err => {
         console.error(`[RalphRegistry] Auto-save failed for ${id} on error:`, err)
       })
     })
@@ -800,7 +800,7 @@ export class RalphRegistry extends EventEmitter {
     manager.on("exit", (info: { code: number | null; signal: string | null }) => {
       // Save state before emitting exit event
       // This ensures state is captured even for unexpected exits
-      this.saveIterationState(id)
+      this.saveSessionState(id)
         .catch(err => {
           console.error(`[RalphRegistry] Auto-save failed for ${id} on exit:`, err)
         })
@@ -813,7 +813,7 @@ export class RalphRegistry extends EventEmitter {
   /**
    * Add an event to the history for an instance.
    *
-   * Also persists the event to disk via IterationEventPersister if configured.
+   * Also persists the event to disk via SessionEventPersister if configured.
    */
   private addEventToHistory(instanceId: string, event: RalphEvent): void {
     const history = this._eventHistory.get(instanceId)
@@ -829,8 +829,8 @@ export class RalphRegistry extends EventEmitter {
     }
 
     // Persist event to disk for page reload recovery
-    if (this._iterationEventPersister) {
-      this._iterationEventPersister.appendEvent(instanceId, event).catch(err => {
+    if (this._sessionEventPersister) {
+      this._sessionEventPersister.appendEvent(instanceId, event).catch(err => {
         console.error(`[RalphRegistry] Failed to persist event for ${instanceId}:`, err)
       })
     }

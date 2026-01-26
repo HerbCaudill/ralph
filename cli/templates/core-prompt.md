@@ -1,8 +1,8 @@
-# Ralph Iteration Protocol
+# Ralph Session Protocol
 
-You are running as an autonomous iteration agent. Follow this protocol exactly.
+You are running as an autonomous session agent. Follow this protocol exactly.
 
-## Iteration lifecycle
+## Session lifecycle
 
 ### Step 1: Check for errors
 

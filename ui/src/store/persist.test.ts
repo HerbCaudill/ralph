@@ -26,7 +26,7 @@ function createMockInstance(overrides: Partial<RalphInstance> = {}): RalphInstan
     events: [],
     tokenUsage: { input: 0, output: 0 },
     contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-    iteration: { current: 0, total: 0 },
+    session: { current: 0, total: 0 },
     worktreePath: null,
     branch: null,
     currentTaskId: null,
@@ -70,7 +70,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     issuePrefix: null,
     tokenUsage: { input: 0, output: 0 },
     contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-    iteration: { current: 0, total: 0 },
+    session: { current: 0, total: 0 },
     connectionStatus: "disconnected",
     accentColor: null,
     sidebarWidth: 320,
@@ -83,7 +83,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     taskChatWidth: 400,
     taskChatMessages: [],
     taskChatLoading: false,
-    viewingIterationIndex: null,
+    viewingSessionIndex: null,
     taskSearchQuery: "",
     selectedTaskId: null,
     visibleTaskIds: [],
@@ -149,7 +149,7 @@ describe("persist", () => {
         status: "running",
         tokenUsage: { input: 100, output: 50 },
         contextWindow: { used: 5000, max: 200000 },
-        iteration: { current: 2, total: 5 },
+        session: { current: 2, total: 5 },
         worktreePath: "/path/to/worktree",
         branch: "feature-branch",
         currentTaskId: "task-123",
@@ -173,7 +173,7 @@ describe("persist", () => {
         status: "running",
         tokenUsage: { input: 100, output: 50 },
         contextWindow: { used: 5000, max: 200000 },
-        iteration: { current: 2, total: 5 },
+        session: { current: 2, total: 5 },
         worktreePath: "/path/to/worktree",
         branch: "feature-branch",
         currentTaskId: "task-123",
@@ -207,7 +207,7 @@ describe("persist", () => {
           events: [],
           tokenUsage: { input: 0, output: 0 },
           contextWindow: { used: 0, max: 200000 },
-          iteration: { current: 0, total: 0 },
+          session: { current: 0, total: 0 },
           worktreePath: null,
           branch: null,
           currentTaskId: null,
@@ -235,7 +235,7 @@ describe("persist", () => {
           events: [createMockEvent()],
           tokenUsage: { input: 100, output: 50 },
           contextWindow: { used: 5000, max: 200000 },
-          iteration: { current: 2, total: 5 },
+          session: { current: 2, total: 5 },
           worktreePath: "/path/to/worktree",
           branch: "feature-branch",
           currentTaskId: "task-123",
@@ -261,7 +261,7 @@ describe("persist", () => {
       expect(instance?.events).toHaveLength(1)
       expect(instance?.tokenUsage).toEqual({ input: 100, output: 50 })
       expect(instance?.contextWindow).toEqual({ used: 5000, max: 200000 })
-      expect(instance?.iteration).toEqual({ current: 2, total: 5 })
+      expect(instance?.session).toEqual({ current: 2, total: 5 })
       expect(instance?.worktreePath).toBe("/path/to/worktree")
       expect(instance?.branch).toBe("feature-branch")
       expect(instance?.currentTaskId).toBe("task-123")
@@ -285,7 +285,7 @@ describe("persist", () => {
           events: [],
           tokenUsage: undefined as any,
           contextWindow: undefined as any,
-          iteration: undefined as any,
+          session: undefined as any,
           worktreePath: null,
           branch: null,
           currentTaskId: null,
@@ -302,7 +302,7 @@ describe("persist", () => {
       expect(instance?.events).toEqual([])
       expect(instance?.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(instance?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
-      expect(instance?.iteration).toEqual({ current: 0, total: 0 })
+      expect(instance?.session).toEqual({ current: 0, total: 0 })
       expect(instance?.createdAt).toBeDefined()
     })
 
@@ -321,7 +321,7 @@ describe("persist", () => {
           events: [],
           tokenUsage: { input: 0, output: 0 },
           contextWindow: { used: 0, max: 200000 },
-          iteration: { current: 0, total: 0 },
+          session: { current: 0, total: 0 },
           worktreePath: null,
           branch: null,
           currentTaskId: null,
@@ -338,7 +338,7 @@ describe("persist", () => {
           events: [],
           tokenUsage: { input: 10, output: 5 },
           contextWindow: { used: 100, max: 200000 },
-          iteration: { current: 1, total: 3 },
+          session: { current: 1, total: 3 },
           worktreePath: "/worktree",
           branch: "feature",
           currentTaskId: "task-1",
@@ -366,7 +366,7 @@ describe("persist", () => {
         showToolOutput: true,
         theme: "dark",
         closedTimeFilter: "past_week",
-        viewingIterationIndex: 2,
+        viewingSessionIndex: 2,
         taskSearchQuery: "search term",
         selectedTaskId: "task-123",
         isSearchVisible: true,
@@ -386,7 +386,7 @@ describe("persist", () => {
         showToolOutput: true,
         theme: "dark",
         closedTimeFilter: "past_week",
-        viewingIterationIndex: 2,
+        viewingSessionIndex: 2,
         taskSearchQuery: "search term",
         selectedTaskId: "task-123",
         isSearchVisible: true,
@@ -595,7 +595,7 @@ describe("persist", () => {
           theme: "dark",
           closedTimeFilter: "past_week",
           currentTaskChatSessionId: null,
-          viewingIterationIndex: 3,
+          viewingSessionIndex: 3,
           taskSearchQuery: "test",
           selectedTaskId: "selected",
           isSearchVisible: true,
@@ -613,7 +613,7 @@ describe("persist", () => {
               events: [],
               tokenUsage: { input: 0, output: 0 },
               contextWindow: { used: 0, max: 200000 },
-              iteration: { current: 0, total: 0 },
+              session: { current: 0, total: 0 },
               worktreePath: null,
               branch: null,
               currentTaskId: null,
@@ -656,7 +656,7 @@ describe("persist", () => {
               events: [],
               tokenUsage: { input: 0, output: 0 },
               contextWindow: { used: 0, max: 200000 },
-              iteration: { current: 0, total: 0 },
+              session: { current: 0, total: 0 },
               worktreePath: null,
               branch: null,
               currentTaskId: null,
@@ -673,7 +673,7 @@ describe("persist", () => {
               events: [createMockEvent()],
               tokenUsage: { input: 10, output: 5 },
               contextWindow: { used: 100, max: 200000 },
-              iteration: { current: 1, total: 2 },
+              session: { current: 1, total: 2 },
               worktreePath: "/worktree",
               branch: "feature",
               currentTaskId: "task-1",
@@ -707,7 +707,7 @@ describe("persist", () => {
               events: [],
               tokenUsage: { input: 0, output: 0 },
               contextWindow: { used: 0, max: 200000 },
-              iteration: { current: 0, total: 0 },
+              session: { current: 0, total: 0 },
               worktreePath: null,
               branch: null,
               currentTaskId: null,
@@ -740,7 +740,7 @@ describe("persist", () => {
               events,
               tokenUsage: { input: 100, output: 50 },
               contextWindow: { used: 5000, max: 200000 },
-              iteration: { current: 2, total: 5 },
+              session: { current: 2, total: 5 },
               worktreePath: null,
               branch: null,
               currentTaskId: null,
@@ -760,7 +760,7 @@ describe("persist", () => {
         expect(result.events).toEqual(events)
         expect(result.tokenUsage).toEqual({ input: 100, output: 50 })
         expect(result.contextWindow).toEqual({ used: 5000, max: 200000 })
-        expect(result.iteration).toEqual({ current: 2, total: 5 })
+        expect(result.session).toEqual({ current: 2, total: 5 })
         expect(result.runStartedAt).toBe(1234567900)
       })
 
@@ -796,7 +796,7 @@ describe("persist", () => {
             events,
             tokenUsage: { input: 100, output: 50 },
             contextWindow: { used: 5000, max: 200000 },
-            iteration: { current: 2, total: 5 },
+            session: { current: 2, total: 5 },
             worktreePath: "/worktree/active",
             branch: "feature-active",
             currentTaskId: "task-active",
@@ -820,7 +820,7 @@ describe("persist", () => {
             events: [], // Will not be preserved for inactive
             tokenUsage: { input: 10, output: 5 },
             contextWindow: { used: 100, max: 200000 },
-            iteration: { current: 1, total: 2 },
+            session: { current: 1, total: 2 },
             worktreePath: "/worktree/inactive",
             branch: "feature-inactive",
             currentTaskId: null,
@@ -846,7 +846,7 @@ describe("persist", () => {
       expect(activeRestored.events).toEqual(activeOriginal.events)
       expect(activeRestored.tokenUsage).toEqual(activeOriginal.tokenUsage)
       expect(activeRestored.contextWindow).toEqual(activeOriginal.contextWindow)
-      expect(activeRestored.iteration).toEqual(activeOriginal.iteration)
+      expect(activeRestored.session).toEqual(activeOriginal.session)
       expect(activeRestored.worktreePath).toBe(activeOriginal.worktreePath)
       expect(activeRestored.branch).toBe(activeOriginal.branch)
       expect(activeRestored.currentTaskId).toBe(activeOriginal.currentTaskId)

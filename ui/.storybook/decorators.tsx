@@ -13,7 +13,7 @@ export interface StoreState {
   workspace?: string | null
   branch?: string | null
   tokenUsage?: { input: number; output: number }
-  iteration?: { current: number; total: number }
+  session?: { current: number; total: number }
   accentColor?: string | null
   /** Multi-instance state */
   instances?: Map<string, RalphInstance>
@@ -41,8 +41,8 @@ export function withStoreState(state: StoreState): Decorator {
       if (state.tokenUsage !== undefined) {
         store.setTokenUsage(state.tokenUsage)
       }
-      if (state.iteration !== undefined) {
-        store.setIteration(state.iteration)
+      if (state.session !== undefined) {
+        store.setSession(state.session)
       }
       if (state.accentColor !== undefined) {
         store.setAccentColor(state.accentColor)

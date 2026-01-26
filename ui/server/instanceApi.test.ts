@@ -113,8 +113,8 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
         return
       }
 
-      const { iterations } = req.body as { iterations?: number }
-      await instance.manager.start(iterations)
+      const { sessions } = req.body as { sessions?: number }
+      await instance.manager.start(sessions)
       res.status(200).json({ ok: true, status: instance.manager.status })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to start"
@@ -503,7 +503,7 @@ describe("Instance API endpoints", () => {
       expect(data).toEqual({ ok: true, status: "running" })
     })
 
-    it("starts instance with iterations parameter", async () => {
+    it("starts instance with sessions parameter", async () => {
       registry.create({
         id: "test-1",
         name: "Test 1",
@@ -515,7 +515,7 @@ describe("Instance API endpoints", () => {
       const response = await fetch(`http://localhost:${port}/api/ralph/test-1/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ iterations: 5 }),
+        body: JSON.stringify({ sessions: 5 }),
       })
       const data = await response.json()
 

@@ -15,7 +15,7 @@ function createInstance(id: string, name: string, status: RalphStatus = "stopped
     events: [],
     tokenUsage: { input: 0, output: 0 },
     contextWindow: { used: 0, max: 200000 },
-    iteration: { current: 0, total: 0 },
+    session: { current: 0, total: 0 },
     worktreePath: null,
     branch: null,
     currentTaskId: null,

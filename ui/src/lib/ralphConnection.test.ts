@@ -26,9 +26,9 @@ vi.mock("../store", () => {
   }
 })
 
-vi.mock("./iterationStateApi", () => ({
-  checkForSavedIterationState: vi.fn().mockResolvedValue(null),
-  restoreIterationState: vi.fn().mockResolvedValue({ ok: true }),
+vi.mock("./sessionStateApi", () => ({
+  checkForSavedSessionState: vi.fn().mockResolvedValue(null),
+  restoreSessionState: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
 describe("ralphConnection event index tracking", () => {

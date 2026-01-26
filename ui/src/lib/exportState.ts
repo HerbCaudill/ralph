@@ -32,8 +32,8 @@ export interface ExportedState {
   localStorage: unknown
   /** All IndexedDB data by store name */
   indexedDb: {
-    iteration_metadata: unknown[]
-    iterations: unknown[]
+    session_metadata: unknown[]
+    sessions: unknown[]
     task_chat_metadata: unknown[]
     task_chat_sessions: unknown[]
     event_log_metadata: unknown[]
@@ -47,7 +47,7 @@ export interface ExportedState {
  *
  * Captures:
  * - localStorage state (Zustand persisted state)
- * - All IndexedDB stores (iterations, task chat sessions, event logs, sync state)
+ * - All IndexedDB stores (sessions, task chat sessions, event logs, sync state)
  *
  * @returns Promise resolving to the complete exported state
  * @throws Error if IndexedDB access fails
@@ -73,16 +73,16 @@ export async function exportState(): Promise<ExportedState> {
 
   // Read all data from each store
   const [
-    iterationMetadata,
-    iterations,
+    sessionMetadata,
+    sessions,
     taskChatMetadata,
     taskChatSessions,
     eventLogMetadata,
     eventLogs,
     syncState,
   ] = await Promise.all([
-    getAllFromStore(db, STORE_NAMES.ITERATION_METADATA),
-    getAllFromStore(db, STORE_NAMES.ITERATIONS),
+    getAllFromStore(db, STORE_NAMES.SESSION_METADATA),
+    getAllFromStore(db, STORE_NAMES.SESSIONS),
     getAllFromStore(db, STORE_NAMES.TASK_CHAT_METADATA),
     getAllFromStore(db, STORE_NAMES.TASK_CHAT_SESSIONS),
     getAllFromStore(db, STORE_NAMES.EVENT_LOG_METADATA),
@@ -99,8 +99,8 @@ export async function exportState(): Promise<ExportedState> {
     },
     localStorage: localStorageState,
     indexedDb: {
-      iteration_metadata: iterationMetadata,
-      iterations: iterations,
+      session_metadata: sessionMetadata,
+      sessions: sessions,
       task_chat_metadata: taskChatMetadata,
       task_chat_sessions: taskChatSessions,
       event_log_metadata: eventLogMetadata,

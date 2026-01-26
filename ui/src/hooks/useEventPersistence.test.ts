@@ -37,7 +37,7 @@ describe("useEventPersistence", () => {
   })
 
   const defaultOptions: UseEventPersistenceOptions = {
-    iterationId: "test-iteration-123",
+    sessionId: "test-session-123",
     events: [],
     workspaceId: "test-workspace",
     enabled: true,
@@ -105,16 +105,16 @@ describe("useEventPersistence", () => {
       // Check the first saved event
       const firstCall = vi.mocked(eventDatabase.saveEvent).mock.calls[0]?.[0]
       expect(firstCall).toMatchObject({
-        id: "test-iteration-123-event-0",
-        iterationId: "test-iteration-123",
+        id: "test-session-123-event-0",
+        sessionId: "test-session-123",
         eventType: "system",
       })
 
       // Check the second saved event
       const secondCall = vi.mocked(eventDatabase.saveEvent).mock.calls[1]?.[0]
       expect(secondCall).toMatchObject({
-        id: "test-iteration-123-event-1",
-        iterationId: "test-iteration-123",
+        id: "test-session-123-event-1",
+        sessionId: "test-session-123",
         eventType: "assistant",
       })
     })
@@ -149,11 +149,11 @@ describe("useEventPersistence", () => {
 
       // Should only save the new events (indices 1 and 2)
       const calls = vi.mocked(eventDatabase.saveEvent).mock.calls
-      expect(calls[0]?.[0]?.id).toBe("test-iteration-123-event-1")
-      expect(calls[1]?.[0]?.id).toBe("test-iteration-123-event-2")
+      expect(calls[0]?.[0]?.id).toBe("test-session-123-event-1")
+      expect(calls[1]?.[0]?.id).toBe("test-session-123-event-2")
     })
 
-    it("resets event count when iteration changes", async () => {
+    it("resets event count when session changes", async () => {
       const timestamp = Date.now()
       const events1: ChatEvent[] = [createSystemInitEvent(timestamp)]
       const events2: ChatEvent[] = [createSystemInitEvent(timestamp + 1000)]
@@ -170,10 +170,10 @@ describe("useEventPersistence", () => {
 
       vi.clearAllMocks()
 
-      // Change iteration
+      // Change session
       rerender({
         ...defaultOptions,
-        iterationId: "test-iteration-456",
+        sessionId: "test-session-456",
         events: events2,
       })
 
@@ -181,10 +181,10 @@ describe("useEventPersistence", () => {
         expect(eventDatabase.saveEvent).toHaveBeenCalledTimes(1)
       })
 
-      // Should save with new iteration ID and reset index to 0
+      // Should save with new session ID and reset index to 0
       const call = vi.mocked(eventDatabase.saveEvent).mock.calls[0]?.[0]
-      expect(call?.id).toBe("test-iteration-456-event-0")
-      expect(call?.iterationId).toBe("test-iteration-456")
+      expect(call?.id).toBe("test-session-456-event-0")
+      expect(call?.sessionId).toBe("test-session-456")
     })
 
     it("uses Date.now() as fallback when event has no timestamp", async () => {
@@ -233,16 +233,16 @@ describe("useEventPersistence", () => {
       expect(eventDatabase.saveEvent).not.toHaveBeenCalled()
     })
 
-    it("does not save events when iterationId is null", async () => {
+    it("does not save events when sessionId is null", async () => {
       const timestamp = Date.now()
       const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
 
       const { rerender } = renderHook(
         (props: UseEventPersistenceOptions) => useEventPersistence(props),
-        { initialProps: { ...defaultOptions, iterationId: null } },
+        { initialProps: { ...defaultOptions, sessionId: null } },
       )
 
-      rerender({ ...defaultOptions, iterationId: null, events })
+      rerender({ ...defaultOptions, sessionId: null, events })
 
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 50))
@@ -276,9 +276,9 @@ describe("useEventPersistence", () => {
 
       const savedEvents = vi.mocked(eventDatabase.saveEvents).mock.calls[0]?.[0]
       expect(savedEvents).toHaveLength(3)
-      expect(savedEvents?.[0]?.id).toBe("test-iteration-123-event-0")
-      expect(savedEvents?.[1]?.id).toBe("test-iteration-123-event-1")
-      expect(savedEvents?.[2]?.id).toBe("test-iteration-123-event-2")
+      expect(savedEvents?.[0]?.id).toBe("test-session-123-event-0")
+      expect(savedEvents?.[1]?.id).toBe("test-session-123-event-1")
+      expect(savedEvents?.[2]?.id).toBe("test-session-123-event-2")
     })
 
     it("saves batch starting from specified index", async () => {
@@ -300,8 +300,8 @@ describe("useEventPersistence", () => {
       })
 
       const savedEvents = vi.mocked(eventDatabase.saveEvents).mock.calls[0]?.[0]
-      expect(savedEvents?.[0]?.id).toBe("test-iteration-123-event-5")
-      expect(savedEvents?.[1]?.id).toBe("test-iteration-123-event-6")
+      expect(savedEvents?.[0]?.id).toBe("test-session-123-event-5")
+      expect(savedEvents?.[1]?.id).toBe("test-session-123-event-6")
     })
 
     it("does nothing on batch save when disabled", async () => {
@@ -322,14 +322,14 @@ describe("useEventPersistence", () => {
       expect(eventDatabase.saveEvents).not.toHaveBeenCalled()
     })
 
-    it("does nothing on batch save when iterationId is null", async () => {
+    it("does nothing on batch save when sessionId is null", async () => {
       const timestamp = Date.now()
       const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
 
       const { result } = renderHook(() =>
         useEventPersistence({
           ...defaultOptions,
-          iterationId: null,
+          sessionId: null,
         }),
       )
 

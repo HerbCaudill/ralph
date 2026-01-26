@@ -24,7 +24,7 @@ import {
   selectEvents,
   selectTokenUsage,
   selectContextWindow,
-  selectIteration,
+  selectSession,
   selectTaskChatMessages,
   selectTaskChatEvents,
   selectCurrentTask,
@@ -39,7 +39,7 @@ import {
   useEventLogRouter,
   useWorkspaces,
   useStoreHydration,
-  useIterationPersistence,
+  useSessionPersistence,
   useTaskChatPersistence,
 } from "./hooks"
 import { startRalph } from "./lib/startRalph"
@@ -66,19 +66,19 @@ export function App() {
   // Hydrate store from IndexedDB on startup (restores events and task chat from last session)
   useStoreHydration({ instanceId: activeInstanceId })
 
-  // Subscribe to state for iteration persistence
+  // Subscribe to state for session persistence
   const events = useAppStore(selectEvents)
   const tokenUsage = useAppStore(selectTokenUsage)
   const contextWindow = useAppStore(selectContextWindow)
-  const iteration = useAppStore(selectIteration)
+  const session = useAppStore(selectSession)
 
-  // Persist iteration events to IndexedDB (auto-saves on iteration boundaries and completion)
-  useIterationPersistence({
+  // Persist session events to IndexedDB (auto-saves on session boundaries and completion)
+  useSessionPersistence({
     instanceId: activeInstanceId,
     events,
     tokenUsage,
     contextWindow,
-    iteration,
+    session,
   })
 
   // Subscribe to state for task chat persistence
@@ -127,10 +127,10 @@ export function App() {
   const isConnected = useAppStore(selectIsConnected)
   const toggleTaskChat = useAppStore(state => state.toggleTaskChat)
 
-  // Iteration navigation
-  const goToPreviousIteration = useAppStore(state => state.goToPreviousIteration)
-  const goToNextIteration = useAppStore(state => state.goToNextIteration)
-  const goToLatestIteration = useAppStore(state => state.goToLatestIteration)
+  // Session navigation
+  const goToPreviousSession = useAppStore(state => state.goToPreviousSession)
+  const goToNextSession = useAppStore(state => state.goToNextSession)
+  const goToLatestSession = useAppStore(state => state.goToLatestSession)
 
   // Task navigation
   const selectedTaskId = useAppStore(selectSelectedTaskId)
@@ -338,9 +338,9 @@ export function App() {
       toggleTaskChat: handleToggleTaskChat,
       focusTaskChatInput: handleFocusTaskChatInput,
       showCommandPalette: handleShowCommandPalette,
-      previousIteration: goToPreviousIteration,
-      nextIteration: goToNextIteration,
-      latestIteration: goToLatestIteration,
+      previousSession: goToPreviousSession,
+      nextSession: goToNextSession,
+      latestSession: goToLatestSession,
       focusSearch: handleFocusSearch,
       previousWorkspace: goToPreviousWorkspace,
       nextWorkspace: goToNextWorkspace,

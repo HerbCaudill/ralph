@@ -536,25 +536,25 @@ describe("TaskCard", () => {
     })
   })
 
-  describe("iteration indicator", () => {
-    it("displays iteration history icon when hasIterations is true", () => {
-      render(<TaskCard task={baseTask} hasIterations={true} />)
-      expect(screen.getByLabelText("Has iteration history")).toBeInTheDocument()
+  describe("session indicator", () => {
+    it("displays session history icon when hasSessions is true", () => {
+      render(<TaskCard task={baseTask} hasSessions={true} />)
+      expect(screen.getByLabelText("Has session history")).toBeInTheDocument()
     })
 
-    it("does not display iteration history icon when hasIterations is false", () => {
-      render(<TaskCard task={baseTask} hasIterations={false} />)
-      expect(screen.queryByLabelText("Has iteration history")).not.toBeInTheDocument()
+    it("does not display session history icon when hasSessions is false", () => {
+      render(<TaskCard task={baseTask} hasSessions={false} />)
+      expect(screen.queryByLabelText("Has session history")).not.toBeInTheDocument()
     })
 
-    it("does not display iteration history icon by default", () => {
+    it("does not display session history icon by default", () => {
       render(<TaskCard task={baseTask} />)
-      expect(screen.queryByLabelText("Has iteration history")).not.toBeInTheDocument()
+      expect(screen.queryByLabelText("Has session history")).not.toBeInTheDocument()
     })
 
-    it("iteration icon has correct styling", () => {
-      const { container } = render(<TaskCard task={baseTask} hasIterations={true} />)
-      const icon = container.querySelector('svg[aria-label="Has iteration history"]')
+    it("session icon has correct styling", () => {
+      const { container } = render(<TaskCard task={baseTask} hasSessions={true} />)
+      const icon = container.querySelector('svg[aria-label="Has session history"]')
       expect(icon).toHaveClass("text-muted-foreground")
       expect(icon).toHaveClass("size-3.5")
     })

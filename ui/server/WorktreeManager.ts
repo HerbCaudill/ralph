@@ -175,21 +175,21 @@ export class WorktreeManager {
   }
 
   /**
-   * Perform the post-iteration merge workflow.
+   * Perform the post-session merge workflow.
    *
-   * This is the standard workflow after an iteration completes:
+   * This is the standard workflow after an session completes:
    * 1. Merge the instance branch to main
    * 2. If merge succeeds, rebase the worktree on the updated main
    *
    * If there are merge conflicts, the merge will fail and the caller
    * should handle conflict resolution before retrying.
    */
-  async postIterationMerge(
+  async postSessionMerge(
     /** The instance ID */
     instanceId: string,
     /** The instance name */
     instanceName: string,
-  ): Promise<PostIterationResult> {
+  ): Promise<PostSessionResult> {
     const branchName = this.getBranchName(instanceId, instanceName)
 
     // Step 1: Merge the instance branch to main
@@ -833,8 +833,8 @@ export interface CleanupResult {
   message: string
 }
 
-/**  Result of post-iteration merge workflow. */
-export interface PostIterationResult {
+/**  Result of post-session merge workflow. */
+export interface PostSessionResult {
   /** Overall success - true only if both merge and rebase succeeded */
   success: boolean
 

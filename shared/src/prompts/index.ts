@@ -5,9 +5,9 @@ export {
   hasCustomPrompt,
   type LoadPromptOptions,
   type LoadPromptResult,
-  loadIterationPrompt,
+  loadSessionPrompt,
   hasCustomWorkflow,
   getCustomWorkflowPath,
-  type LoadIterationPromptOptions,
-  type LoadIterationPromptResult,
+  type LoadSessionPromptOptions,
+  type LoadSessionPromptResult,
 } from "./loadPrompt.js"

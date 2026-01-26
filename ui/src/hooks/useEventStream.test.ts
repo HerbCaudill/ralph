@@ -3,13 +3,13 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { useEventStream } from "./useEventStream"
 import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
 
-// Mock useIterations
+// Mock useSessions
 vi.mock("@/hooks", async importOriginal => {
   const actual = await importOriginal<typeof import("@/hooks")>()
   return {
     ...actual,
-    useIterations: vi.fn(() => ({
-      iterations: [],
+    useSessions: vi.fn(() => ({
+      sessions: [],
       isLoading: false,
       error: null,
       refresh: vi.fn(),
@@ -29,7 +29,7 @@ describe("useEventStream", () => {
   })
 
   describe("basic functionality", () => {
-    it("returns iteration events from store", () => {
+    it("returns session events from store", () => {
       useAppStore.getState().addEvent({
         type: "user_message",
         timestamp: 1705600000000,
@@ -38,8 +38,8 @@ describe("useEventStream", () => {
 
       const { result } = renderHook(() => useEventStream())
 
-      expect(result.current.iterationEvents).toHaveLength(1)
-      expect(result.current.iterationEvents[0]).toMatchObject({
+      expect(result.current.sessionEvents).toHaveLength(1)
+      expect(result.current.sessionEvents[0]).toMatchObject({
         type: "user_message",
         message: "Hello",
       })
@@ -55,7 +55,7 @@ describe("useEventStream", () => {
     })
 
     it("returns isViewingLatest state", () => {
-      // Add two iterations
+      // Add two sessions
       useAppStore.getState().addEvent({
         type: "system",
         timestamp: 1705600000000,
@@ -113,7 +113,7 @@ describe("useEventStream", () => {
     })
   })
 
-  describe("iteration task detection", () => {
+  describe("session task detection", () => {
     it("returns task from ralph_task_started event", () => {
       useAppStore.getState().addEvent({
         type: "ralph_task_started",
@@ -124,7 +124,7 @@ describe("useEventStream", () => {
 
       const { result } = renderHook(() => useEventStream())
 
-      expect(result.current.iterationTask).toEqual({
+      expect(result.current.sessionTask).toEqual({
         id: "rui-123",
         title: "Fix the bug",
       })
@@ -139,7 +139,7 @@ describe("useEventStream", () => {
 
       const { result } = renderHook(() => useEventStream())
 
-      expect(result.current.iterationTask).toEqual({
+      expect(result.current.sessionTask).toEqual({
         id: null,
         title: "Ad hoc task",
       })
@@ -161,7 +161,7 @@ describe("useEventStream", () => {
 
       const { result } = renderHook(() => useEventStream())
 
-      expect(result.current.iterationTask).toEqual({
+      expect(result.current.sessionTask).toEqual({
         id: "rui-123",
         title: "Task from store",
       })
@@ -183,7 +183,7 @@ describe("useEventStream", () => {
 
       const { result } = renderHook(() => useEventStream())
 
-      expect(result.current.iterationTask).toEqual({
+      expect(result.current.sessionTask).toEqual({
         id: "rui-456",
         title: "In progress task",
       })
@@ -207,7 +207,7 @@ describe("useEventStream", () => {
 
       const { result } = renderHook(() => useEventStream())
 
-      expect(result.current.iterationTask).toEqual({
+      expect(result.current.sessionTask).toEqual({
         id: "rui-789",
         title: "Restored task",
       })
@@ -215,17 +215,17 @@ describe("useEventStream", () => {
 
     it("returns null when no task information available", () => {
       const { result } = renderHook(() => useEventStream())
-      expect(result.current.iterationTask).toBe(null)
+      expect(result.current.sessionTask).toBe(null)
     })
   })
 
   describe("navigation actions", () => {
-    it("provides selectIterationHistory action", () => {
+    it("provides selectSessionHistory action", () => {
       const { result } = renderHook(() => useEventStream())
 
-      // The navigation object should have selectIterationHistory
-      expect(result.current.navigation.selectIterationHistory).toBeDefined()
-      expect(typeof result.current.navigation.selectIterationHistory).toBe("function")
+      // The navigation object should have selectSessionHistory
+      expect(result.current.navigation.selectSessionHistory).toBeDefined()
+      expect(typeof result.current.navigation.selectSessionHistory).toBe("function")
     })
   })
 
@@ -255,8 +255,8 @@ describe("useEventStream", () => {
       const { result } = renderHook(() => useEventStream({ instanceId: "instance-2" }))
 
       // Should have instance-2's event
-      expect(result.current.iterationEvents).toHaveLength(1)
-      expect(result.current.iterationEvents[0]).toMatchObject({
+      expect(result.current.sessionEvents).toHaveLength(1)
+      expect(result.current.sessionEvents[0]).toMatchObject({
         message: "Instance 2 message",
       })
     })

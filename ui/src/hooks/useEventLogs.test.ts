@@ -24,7 +24,7 @@ describe("useEventLogs", () => {
       eventCount: 42,
       taskId: "r-test.1",
       taskTitle: "Test task 1",
-      source: "iteration",
+      source: "session",
       workspacePath: "/test/workspace",
     },
     {
@@ -33,7 +33,7 @@ describe("useEventLogs", () => {
       eventCount: 128,
       taskId: "r-test.2",
       taskTitle: "Test task 2",
-      source: "iteration",
+      source: "session",
       workspacePath: "/test/workspace",
     },
     {

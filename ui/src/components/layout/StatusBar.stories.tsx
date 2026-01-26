@@ -25,7 +25,7 @@ export const Default: Story = {
       workspace: "/Users/dev/projects/my-app",
       branch: "main",
       tokenUsage: { input: 12500, output: 3200 },
-      iteration: { current: 3, total: 10 },
+      session: { current: 3, total: 10 },
     }),
   ],
 }
@@ -37,7 +37,7 @@ export const Stopped: Story = {
       workspace: "/Users/dev/projects/my-app",
       branch: "feature/new-feature",
       tokenUsage: { input: 0, output: 0 },
-      iteration: { current: 0, total: 0 },
+      session: { current: 0, total: 0 },
     }),
   ],
 }
@@ -49,7 +49,7 @@ export const Starting: Story = {
       workspace: "/Users/dev/projects/my-app",
       branch: "main",
       tokenUsage: { input: 0, output: 0 },
-      iteration: { current: 0, total: 5 },
+      session: { current: 0, total: 5 },
     }),
   ],
 }
@@ -61,7 +61,7 @@ export const Stopping: Story = {
       workspace: "/Users/dev/projects/my-app",
       branch: "main",
       tokenUsage: { input: 45000, output: 12000 },
-      iteration: { current: 5, total: 5 },
+      session: { current: 5, total: 5 },
     }),
   ],
 }
@@ -73,7 +73,7 @@ export const HighTokenUsage: Story = {
       workspace: "/Users/dev/projects/enterprise-app",
       branch: "develop",
       tokenUsage: { input: 1_500_000, output: 450_000 },
-      iteration: { current: 47, total: 100 },
+      session: { current: 47, total: 100 },
     }),
   ],
 }
@@ -85,19 +85,19 @@ export const NoWorkspace: Story = {
       workspace: null,
       branch: null,
       tokenUsage: { input: 0, output: 0 },
-      iteration: { current: 0, total: 0 },
+      session: { current: 0, total: 0 },
     }),
   ],
 }
 
-export const NoIteration: Story = {
+export const NoSession: Story = {
   decorators: [
     withStoreState({
       ralphStatus: "running",
       workspace: "/Users/dev/projects/my-app",
       branch: "main",
       tokenUsage: { input: 5000, output: 1500 },
-      iteration: { current: 0, total: 0 },
+      session: { current: 0, total: 0 },
     }),
   ],
 }
@@ -110,7 +110,7 @@ export const Disconnected: Story = {
       workspace: "/Users/dev/projects/my-app",
       branch: "main",
       tokenUsage: { input: 5000, output: 1500 },
-      iteration: { current: 0, total: 0 },
+      session: { current: 0, total: 0 },
     }),
   ],
 }
@@ -123,7 +123,7 @@ export const Connecting: Story = {
       workspace: "/Users/dev/projects/my-app",
       branch: "main",
       tokenUsage: { input: 0, output: 0 },
-      iteration: { current: 0, total: 0 },
+      session: { current: 0, total: 0 },
     }),
   ],
 }

@@ -64,7 +64,7 @@ export interface ContextWindow {
   max: number
 }
 
-export interface IterationInfo {
+export interface SessionInfo {
   current: number
   total: number
 }
@@ -289,8 +289,8 @@ export interface RalphInstance {
   /** Context window usage for this instance */
   contextWindow: ContextWindow
 
-  /** Iteration progress for this instance */
-  iteration: IterationInfo
+  /** Session progress for this instance */
+  session: SessionInfo
 
   /** Path to the git worktree (null for main workspace) */
   worktreePath: string | null

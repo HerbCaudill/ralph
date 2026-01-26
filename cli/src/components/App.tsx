@@ -1,14 +1,14 @@
 import React from "react"
-import { IterationRunner } from "./IterationRunner.js"
+import { SessionRunner } from "./SessionRunner.js"
 import { ReplayLog } from "./ReplayLog.js"
 import { JsonOutput } from "./JsonOutput.js"
 
 /**
  * Root application component that routes to the appropriate mode based on props.
- * Supports replay mode, JSON output mode, and normal iteration mode.
+ * Supports replay mode, JSON output mode, and normal session mode.
  */
 export const App = ({
-  iterations,
+  sessions,
   replayFile,
   claudeVersion,
   ralphVersion,
@@ -21,12 +21,12 @@ export const App = ({
   }
 
   if (json) {
-    return <JsonOutput totalIterations={iterations} agent={agent} />
+    return <JsonOutput totalSessions={sessions} agent={agent} />
   }
 
   return (
-    <IterationRunner
-      totalIterations={iterations}
+    <SessionRunner
+      totalSessions={sessions}
       claudeVersion={claudeVersion}
       ralphVersion={ralphVersion}
       watch={watch}
@@ -36,7 +36,7 @@ export const App = ({
 }
 
 type Props = {
-  iterations: number
+  sessions: number
   replayFile?: string
   claudeVersion: string
   ralphVersion: string

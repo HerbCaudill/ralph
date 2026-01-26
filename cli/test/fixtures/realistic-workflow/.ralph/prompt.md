@@ -1,6 +1,6 @@
 # Realistic Workflow Test Prompt
 
-You are testing Ralph's iteration system.
+You are testing Ralph's session system.
 
 ## Instructions
 

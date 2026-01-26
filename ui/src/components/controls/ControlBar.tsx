@@ -36,7 +36,7 @@ export function ControlBar({
   const isPaused = status === "paused"
 
   /**
-   * Start a new Ralph iteration.
+   * Start a new Ralph session.
    */
   const handleStart = useCallback(async () => {
     setIsLoading(true)
@@ -49,7 +49,7 @@ export function ControlBar({
   }, [])
 
   /**
-   * Pause the current Ralph iteration or resume if paused.
+   * Pause the current Ralph session or resume if paused.
    */
   const handlePause = useCallback(async () => {
     setIsLoading(true)
@@ -63,7 +63,7 @@ export function ControlBar({
   }, [status])
 
   /**
-   * Stop the current Ralph iteration immediately.
+   * Stop the current Ralph session immediately.
    */
   const handleStop = useCallback(async () => {
     setIsLoading(true)

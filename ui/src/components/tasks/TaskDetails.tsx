@@ -24,7 +24,7 @@ import { MarkdownContent } from "@/components/ui/MarkdownContent"
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor"
 import { RelatedTasks } from "./RelatedTasks"
 import { ParentCombobox } from "./ParentCombobox"
-import { IterationLinks } from "./IterationLinks"
+import { SessionLinks } from "./SessionLinks"
 import type { IssueType, TaskFormValues } from "@/hooks/useTaskDetails"
 
 /**
@@ -470,8 +470,8 @@ export function TaskDetails({
           </div>
         </div>
 
-        {/* Iteration Links - links to iteration logs for this task */}
-        <IterationLinks taskId={task.id} />
+        {/* Session Links - links to session logs for this task */}
+        <SessionLinks taskId={task.id} />
 
         {/* Related Tasks (text list - children and blockers) */}
         <RelatedTasks taskId={task.id} task={task} readOnly={readOnly} />

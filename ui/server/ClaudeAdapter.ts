@@ -70,7 +70,7 @@ export interface ConversationMessage {
 
 /**
  * Serializable conversation context that can be saved and restored
- * to preserve iteration state across reconnections.
+ * to preserve session state across reconnections.
  */
 export interface ConversationContext {
   /** The conversation history */
@@ -358,7 +358,7 @@ export class ClaudeAdapter extends AgentAdapter {
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,
             includePartialMessages: true,
-            maxTurns: options.maxIterations ?? 1,
+            maxTurns: options.maxSessions ?? 1,
             abortController: this.abortController,
             // Resume from the session if we have one from a previous attempt
             resume: sessionToResume,

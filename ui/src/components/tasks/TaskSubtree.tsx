@@ -50,7 +50,7 @@ export function TaskSubtree({
         onToggleCollapse={hasChildren ? () => onToggleCollapse(task.id) : undefined}
         subtaskCount={descendantCount}
         isActivelyWorking={activelyWorkingTaskIds.has(task.id)}
-        hasIterations={taskIdsWithEventLogs?.has(task.id) ?? false}
+        hasSessions={taskIdsWithEventLogs?.has(task.id) ?? false}
         className={cn(paddingClass)}
       />
       {hasChildren && !isCollapsed && (

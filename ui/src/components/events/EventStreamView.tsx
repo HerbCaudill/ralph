@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils"
 import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
 import { TopologySpinner } from "@/components/ui/TopologySpinner"
 import { EventList, useEventListState } from "./EventList"
-import { EventStreamIterationBar } from "./EventStreamIterationBar"
-import type { IterationSummary } from "@/hooks"
-import type { IterationTask, IterationNavigationActions } from "@/hooks/useEventStream"
+import { EventStreamSessionBar } from "./EventStreamSessionBar"
+import type { SessionSummary } from "@/hooks"
+import type { SessionTask, SessionNavigationActions } from "@/hooks/useEventStream"
 import type { ChatEvent, RalphStatus } from "@/types"
 
 /**
@@ -17,24 +17,24 @@ export interface EventStreamViewProps {
   className?: string
   /** Maximum number of events to display */
   maxEvents?: number
-  /** Events for the current iteration */
-  iterationEvents: ChatEvent[]
+  /** Events for the current session */
+  sessionEvents: ChatEvent[]
   /** Ralph status (running, stopped, etc.) */
   ralphStatus: RalphStatus
-  /** Whether viewing the latest iteration */
+  /** Whether viewing the latest session */
   isViewingLatest: boolean
   /** Whether Ralph is currently running */
   isRunning: boolean
-  /** Current task for the iteration */
-  iterationTask: IterationTask | null
-  /** Past iterations for history dropdown */
-  iterations: IterationSummary[]
-  /** Whether iterations are loading */
-  isLoadingIterations: boolean
+  /** Current task for the session */
+  sessionTask: SessionTask | null
+  /** Past sessions for history dropdown */
+  sessions: SessionSummary[]
+  /** Whether sessions are loading */
+  isLoadingSessions: boolean
   /** Issue prefix for the workspace */
   issuePrefix: string | null
   /** Navigation actions */
-  navigation: IterationNavigationActions
+  navigation: SessionNavigationActions
 }
 
 /**
@@ -50,21 +50,21 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
     {
       className,
       maxEvents = 1000,
-      iterationEvents,
+      sessionEvents,
       // ralphStatus is passed for potential future use but currently derived values (isRunning) are used
       ralphStatus: _ralphStatus,
       isViewingLatest,
       isRunning,
-      iterationTask,
-      iterations,
-      isLoadingIterations,
+      sessionTask,
+      sessions,
+      isLoadingSessions,
       issuePrefix,
       navigation,
     },
     ref,
   ) {
     // Use the shared hook to get content state for empty state handling
-    const { hasContent } = useEventListState(iterationEvents, maxEvents)
+    const { hasContent } = useEventListState(sessionEvents, maxEvents)
 
     // Show active spinner when running, stopped spinner when idle with content
     const bottomIndicator = useMemo(() => {
@@ -101,24 +101,24 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
 
     return (
       <div ref={ref} className={cn("relative flex h-full flex-col", className)}>
-        <EventStreamIterationBar
-          currentTask={iterationTask}
-          iterations={iterations}
-          isLoadingIterations={isLoadingIterations}
+        <EventStreamSessionBar
+          currentTask={sessionTask}
+          sessions={sessions}
+          isLoadingSessions={isLoadingSessions}
           issuePrefix={issuePrefix}
-          onIterationHistorySelect={navigation.selectIterationHistory}
+          onSessionHistorySelect={navigation.selectSessionHistory}
         />
 
         <ContentStreamContainer
           className="flex-1"
           ariaLabel="Event stream"
-          dependencies={[iterationEvents]}
+          dependencies={[sessionEvents]}
           emptyState={emptyState}
           autoScrollEnabled={isViewingLatest}
         >
           {hasContent ?
             <EventList
-              events={iterationEvents}
+              events={sessionEvents}
               maxEvents={maxEvents}
               loadingIndicator={bottomIndicator}
             />

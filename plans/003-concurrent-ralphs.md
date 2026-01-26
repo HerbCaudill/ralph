@@ -21,7 +21,7 @@ project-worktrees/           # Sibling folder (keeps worktrees out of main repo)
 
 1. On instance creation: `git worktree add ../project-worktrees/{name}-{id} -b ralph/{name}-{id}`
 2. Ralph runs in the worktree directory
-3. After each iteration: agent resolves any conflicts, then merges branch back to main, rebases worktree on updated main
+3. After each session: agent resolves any conflicts, then merges branch back to main, rebases worktree on updated main
 4. On instance removal: merge final changes, `git worktree remove`, auto-delete branch
 
 ### Task assignment
@@ -47,7 +47,7 @@ Convert singletons to registries keyed by instance ID:
 
 1. Create `WorktreeManager` class to handle worktree lifecycle (create, merge, rebase, remove)
 2. Implement worktree creation on instance start (`git worktree add`)
-3. Implement post-iteration merge workflow (merge instance branch → main, rebase instance on main)
+3. Implement post-session merge workflow (merge instance branch → main, rebase instance on main)
 4. Implement worktree cleanup on instance removal
 5. Handle merge conflicts (agent resolves conflicts during merge, retry if resolution fails)
 6. ~~Add `.worktrees/` to `.gitignore`~~ (not needed - worktrees in sibling folder)

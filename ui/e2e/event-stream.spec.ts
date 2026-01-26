@@ -7,7 +7,7 @@ import { test, expect } from "./fixtures"
  * are covered in Storybook: EventStream.stories.tsx
  *
  * These E2E tests focus on integration behavior that requires the full app context:
- * - Iteration navigation
+ * - Session navigation
  * - Event stream visibility and interaction
  * - Integration with other app components
  */
@@ -18,37 +18,37 @@ test.describe("Event Stream", () => {
       await expect(app.eventStream.container).toBeVisible()
     })
 
-    test("iteration bar is visible on page load", async ({ app }) => {
-      // The iteration bar should be visible above the event stream
-      await expect(app.eventStream.iterationBar).toBeVisible()
+    test("session bar is visible on page load", async ({ app }) => {
+      // The session bar should be visible above the event stream
+      await expect(app.eventStream.sessionBar).toBeVisible()
     })
   })
 
-  test.describe("iteration navigation", () => {
+  test.describe("session navigation", () => {
     test("shows 'No active task' when no task is running", async ({ app }) => {
-      // When no task is running, the iteration bar should show a message
-      const iterationBar = app.eventStream.iterationBar
+      // When no task is running, the session bar should show a message
+      const sessionBar = app.eventStream.sessionBar
       await expect(
-        iterationBar
+        sessionBar
           .getByText("No active task")
-          .or(iterationBar.locator('[data-testid="iteration-history-dropdown-trigger"]')),
+          .or(sessionBar.locator('[data-testid="session-history-dropdown-trigger"]')),
       ).toBeVisible()
     })
 
-    test("iteration navigation buttons appear with multiple iterations", async ({ app }) => {
-      // This test checks the structure when iterations exist
-      // In a fresh environment, there may be no iterations yet
-      const iterationBar = app.eventStream.iterationBar
+    test("session navigation buttons appear with multiple sessions", async ({ app }) => {
+      // This test checks the structure when sessions exist
+      // In a fresh environment, there may be no sessions yet
+      const sessionBar = app.eventStream.sessionBar
 
-      // Check if Previous/Next buttons exist (they'll be hidden if only 1 iteration)
-      const prevButton = iterationBar.getByRole("button", { name: "Previous iteration" })
-      const nextButton = iterationBar.getByRole("button", { name: "Next iteration" })
+      // Check if Previous/Next buttons exist (they'll be hidden if only 1 session)
+      const prevButton = sessionBar.getByRole("button", { name: "Previous session" })
+      const nextButton = sessionBar.getByRole("button", { name: "Next session" })
 
-      // In a test environment without iterations, these buttons won't be visible
+      // In a test environment without sessions, these buttons won't be visible
       // If they are visible, verify they're properly configured
       const hasPrevButton = await prevButton.count()
       if (hasPrevButton > 0) {
-        // When viewing latest iteration, Next should be disabled
+        // When viewing latest session, Next should be disabled
         const isNextDisabled = await nextButton.isDisabled()
         expect(isNextDisabled).toBe(true)
       }
@@ -86,7 +86,7 @@ test.describe("Event Stream", () => {
 
       // Event stream should still be visible
       await expect(app.eventStream.container).toBeVisible()
-      await expect(app.eventStream.iterationBar).toBeVisible()
+      await expect(app.eventStream.sessionBar).toBeVisible()
     })
   })
 

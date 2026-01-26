@@ -11,8 +11,8 @@ const log = createDebugLogger("stdin-command")
  *
  * Commands:
  * - {"type": "message", "text": "..."} - Send a message to Claude
- * - {"type": "stop"} - Request graceful stop after current iteration
- * - {"type": "pause"} - Pause after current iteration completes
+ * - {"type": "stop"} - Request graceful stop after current session
+ * - {"type": "pause"} - Pause after current session completes
  * - {"type": "resume"} - Resume from paused state
  */
 export const createStdinCommandHandler = (

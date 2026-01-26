@@ -1,6 +1,6 @@
 # Ralph UI
 
-Web UI for Ralph - A React frontend and server for the autonomous AI iteration engine.
+Web UI for Ralph - A React frontend and server for the autonomous AI session engine.
 
 ## Overview
 
@@ -12,7 +12,7 @@ Ralph UI provides a visual interface for managing and monitoring autonomous AI a
 - **Multi-Agent Support** - Choose between Claude and Codex agents
 - **Task Management** - Create, track, and organize tasks with dependencies
 - **Event Log Viewer** - Detailed view of agent actions, tool uses, and outputs
-- **Iteration History** - Automatic persistence of agent work sessions with full replay capability
+- **Session History** - Automatic persistence of agent work sessions with full replay capability
 - **Dark Mode** - Customizable themes with VSCode color scheme support
 - **WebSocket Integration** - Live updates without polling
 
@@ -67,7 +67,7 @@ Ralph UI supports multiple AI coding agents through an adapter architecture. Eac
 
 ### Using Different Agents
 
-The agent is selected when starting Ralph iterations. By default, Claude is used unless explicitly specified:
+The agent is selected when starting Ralph sessions. By default, Claude is used unless explicitly specified:
 
 ```bash
 # Use Claude (default)
@@ -106,23 +106,23 @@ This design allows:
 - Testing with mock agents
 - Consistent event handling across all agents
 
-## Iteration Event Logs
+## Session Event Logs
 
-Ralph UI automatically saves iteration event logs when tasks complete. These logs capture the full agent conversation including messages, tool uses, and outputs, allowing you to review past work.
+Ralph UI automatically saves session event logs when tasks complete. These logs capture the full agent conversation including messages, tool uses, and outputs, allowing you to review past work.
 
 ### How It Works
 
-1. **Automatic Saving**: When a task is closed, the current iteration's events are saved to the browser's IndexedDB storage
+1. **Automatic Saving**: When a task is closed, the current session's events are saved to the browser's IndexedDB storage
 2. **Comment Link**: A closing comment is added to the task with a link to the saved event log (e.g., `#eventlog=abcd1234`)
 3. **Persistent Storage**: Event logs are stored locally in your browser and persist across sessions
 
 ### Accessing Event Logs
 
-There are several ways to view saved iteration logs:
+There are several ways to view saved session logs:
 
-- **Task Details Dialog**: Click any task to open its details. If the task has saved iterations, they appear in the "Iterations" section with timestamps and event counts
-- **History Panel**: Click the "History" button (clock icon) in the status bar to open a searchable panel showing all saved iterations across all tasks
-- **Comment Links**: Click any `#eventlog=...` link in task comments to view that specific iteration
+- **Task Details Dialog**: Click any task to open its details. If the task has saved sessions, they appear in the "Sessions" section with timestamps and event counts
+- **History Panel**: Click the "History" button (clock icon) in the status bar to open a searchable panel showing all saved sessions across all tasks
+- **Comment Links**: Click any `#eventlog=...` link in task comments to view that specific session
 
 ### Data Storage
 
@@ -228,7 +228,7 @@ pnpm format
 │   ├── ClaudeAdapter.ts     # Claude implementation
 │   ├── CodexAdapter.ts      # Codex implementation
 │   ├── RalphManager.ts      # Ralph CLI management
-│   └── IterationRunner.ts   # Iteration execution
+│   └── SessionRunner.ts   # Session execution
 ├── bin/               # CLI scripts
 └── e2e/               # Playwright tests
 ```
@@ -263,7 +263,7 @@ manager.on("event", event => {
 })
 
 // Start Ralph
-await manager.start(10) // Run 10 iterations
+await manager.start(10) // Run 10 sessions
 
 // Send messages
 manager.send("Continue with the next task")

@@ -198,9 +198,9 @@ pnpm test:watch    # Run unit tests in watch mode
 pnpm test:pw       # Run Playwright e2e tests
 ```
 
-## Iteration Event Logs
+## Session Event Logs
 
-Ralph UI persists iteration event logs to IndexedDB for later review. This section documents how the feature works.
+Ralph UI persists session event logs to IndexedDB for later review. This section documents how the feature works.
 
 ### Architecture
 
@@ -213,8 +213,8 @@ The event log system consists of:
 
 ### Key Components
 
-- **IterationHistoryPanel** - Full history browser with search/filter, opened from status bar "History" button
-- **IterationLinks** - Shows saved iterations in task details dialog
+- **SessionHistoryPanel** - Full history browser with search/filter, opened from status bar "History" button
+- **SessionLinks** - Shows saved sessions in task details dialog
 - **EventLogLink** - Renders `#eventlog=abcd1234` references as clickable links in comments
 
 ### Event Log Flow

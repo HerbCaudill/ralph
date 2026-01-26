@@ -2,7 +2,7 @@
  * Hook for hydrating the store from IndexedDB on startup.
  *
  * Loads:
- * - Most recent active iteration (if not ended) to restore events
+ * - Most recent active session (if not ended) to restore events
  * - Most recent task chat session to restore task chat messages/events
  *
  * This enables the UI to restore state after page reload or browser restart.
@@ -32,7 +32,7 @@ export interface UseStoreHydrationResult {
  * Hook to hydrate the store from IndexedDB on startup.
  *
  * On mount, it loads:
- * 1. The most recent active (incomplete) iteration and restores its events
+ * 1. The most recent active (incomplete) session and restores its events
  * 2. The most recent task chat session and restores its messages/events
  *
  * This allows the UI to pick up where it left off after a page reload.
@@ -70,23 +70,23 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
         // Initialize the database
         await eventDatabase.init()
 
-        // Load the most recent active iteration
-        const activeIteration = await eventDatabase.getLatestActiveIteration(instanceId)
+        // Load the most recent active session
+        const activeSession = await eventDatabase.getLatestActiveSession(instanceId)
 
         // In v3+ schema, events are stored separately. For v2 data, events are inline.
-        const iterationEvents = activeIteration?.events ?? []
-        if (activeIteration && iterationEvents.length > 0) {
+        const sessionEvents = activeSession?.events ?? []
+        if (activeSession && sessionEvents.length > 0) {
           // Restore events to the store
           // Use setEventsForInstance for the specific instance
-          setEventsForInstance(instanceId, iterationEvents)
+          setEventsForInstance(instanceId, sessionEvents)
 
           // If this is the active instance, also update the flat events array
           if (instanceId === activeInstanceId) {
-            setEvents(iterationEvents)
+            setEvents(sessionEvents)
           }
 
           console.log(
-            `[useStoreHydration] Restored ${iterationEvents.length} events from active iteration ${activeIteration.id}`,
+            `[useStoreHydration] Restored ${sessionEvents.length} events from active session ${activeSession.id}`,
           )
         }
 

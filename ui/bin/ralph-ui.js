@@ -128,7 +128,7 @@ const program = new Command()
 
 program
   .name("ralph-ui")
-  .description("Web UI for Ralph - autonomous AI iteration engine")
+  .description("Web UI for Ralph - autonomous AI session engine")
   .version("0.8.4")
 
 program

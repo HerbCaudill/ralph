@@ -14,8 +14,8 @@ import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
 import { getPromptContent } from "../lib/getPromptContent.js"
 import { outputEvent } from "../lib/outputEvent.js"
 
-/**  Debug logger for iteration lifecycle events */
-const log = createDebugLogger("iteration")
+/**  Debug logger for session lifecycle events */
+const log = createDebugLogger("session")
 
 /**  Path to the todo.md file in the .ralph directory */
 const todoFile = join(process.cwd(), ".ralph", "todo.md")
@@ -24,22 +24,22 @@ const todoFile = join(process.cwd(), ".ralph", "todo.md")
 const repoName = basename(process.cwd())
 
 /**
- * Component that runs Claude Agent SDK iterations in JSON output mode.
+ * Component that runs Claude Agent SDK sessions in JSON output mode.
  * Manages message queues, task lifecycle tracking, pause/resume, and
  * streams SDK events to stdout as newline-delimited JSON.
  */
-export const JsonOutput = ({ totalIterations, agent }: Props) => {
+export const JsonOutput = ({ totalSessions, agent }: Props) => {
   const { exit } = useApp()
-  const [currentIteration, setCurrentIteration] = useState(1)
+  const [currentSession, setCurrentSession] = useState(1)
   const [error, setError] = useState<string>()
   const [isRunning, setIsRunning] = useState(false)
   const [startupSnapshot] = useState<StartupSnapshot | undefined>(() => captureStartupSnapshot())
   const messageQueueRef = useRef<MessageQueue | null>(null)
-  // Log file path for this run (set once at startup, persisted across iterations)
+  // Log file path for this run (set once at startup, persisted across sessions)
   const logFileRef = useRef<string | null>(null)
-  const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current iteration
+  const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current session
   const stopAfterCurrentRef = useRef(false) // Ref to access in async callbacks
-  const [isPaused, setIsPaused] = useState(false) // Pause after current iteration completes
+  const [isPaused, setIsPaused] = useState(false) // Pause after current session completes
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const stdinCleanupRef = useRef<(() => void) | null>(null)
   const currentTaskIdRef = useRef<string | null>(null)
@@ -71,9 +71,9 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
         const wasPaused = isPausedRef.current
         setIsPaused(false)
         outputEvent({ type: "ralph_resumed" })
-        // If we were paused between iterations, trigger the next iteration
+        // If we were paused between sessions, trigger the next session
         if (wasPaused && !isRunning) {
-          setTimeout(() => setCurrentIteration(i => i + 1), 100)
+          setTimeout(() => setCurrentSession(i => i + 1), 100)
         }
       },
       onMessage: (text: string) => {
@@ -93,8 +93,8 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
   }, [])
 
   useEffect(() => {
-    if (currentIteration > totalIterations) {
-      outputEvent({ type: "ralph_exit", reason: "max_iterations" })
+    if (currentSession > totalSessions) {
+      outputEvent({ type: "ralph_exit", reason: "max_sessions" })
       exit()
       return
     }
@@ -114,7 +114,7 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
     }
 
     // Get or create the log file path for this run
-    // Only create a new sequential log file on the first iteration
+    // Only create a new sequential log file on the first session
     if (!logFileRef.current) {
       logFileRef.current = getNextLogFile()
       writeFileSync(logFileRef.current, "")
@@ -130,17 +130,17 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
     const abortController = new AbortController()
     setIsRunning(true)
 
-    // Output iteration start event
+    // Output session start event
     outputEvent({
-      type: "ralph_iteration_start",
-      iteration: currentIteration,
-      totalIterations,
+      type: "ralph_session_start",
+      session: currentSession,
+      totalSessions,
       repo: repoName,
       taskId: currentTaskIdRef.current,
       taskTitle: currentTaskTitleRef.current,
     })
 
-    // Create a message queue for this iteration
+    // Create a message queue for this session
     const messageQueue = new MessageQueue()
     messageQueueRef.current = messageQueue
 
@@ -149,7 +149,7 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
 
     const runQuery = async () => {
       let finalResult = ""
-      log(`Starting iteration ${currentIteration}`)
+      log(`Starting session ${currentSession}`)
 
       try {
         log(`Beginning query() loop`)
@@ -192,7 +192,7 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
                         type: "ralph_task_started",
                         taskId: taskInfo.taskId,
                         taskTitle: taskInfo.taskTitle,
-                        iteration: currentIteration,
+                        session: currentSession,
                       })
                     } else if (taskInfo.action === "completed") {
                       log(
@@ -203,7 +203,7 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
                         type: "ralph_task_completed",
                         taskId: taskInfo.taskId,
                         taskTitle: taskInfo.taskTitle,
-                        iteration: currentIteration,
+                        session: currentSession,
                       })
                     }
                   }
@@ -232,10 +232,10 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
         messageQueue.close()
         messageQueueRef.current = null
 
-        // Output iteration end event
+        // Output session end event
         outputEvent({
-          type: "ralph_iteration_end",
-          iteration: currentIteration,
+          type: "ralph_session_end",
+          session: currentSession,
           taskId: currentTaskIdRef.current,
           taskTitle: currentTaskTitleRef.current,
         })
@@ -259,14 +259,14 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
 
         // Check for pause request - if paused, we wait for resume via stdin
         if (isPausedRef.current) {
-          log(`Paused after iteration ${currentIteration}`)
-          outputEvent({ type: "ralph_paused", iteration: currentIteration })
-          // Don't move to next iteration - the resume handler will trigger it
+          log(`Paused after session ${currentSession}`)
+          outputEvent({ type: "ralph_paused", session: currentSession })
+          // Don't move to next session - the resume handler will trigger it
           return
         }
 
-        // Move to next iteration
-        setTimeout(() => setCurrentIteration(i => i + 1), 500)
+        // Move to next session
+        setTimeout(() => setCurrentSession(i => i + 1), 500)
       } catch (err) {
         log(`query() loop error: ${err instanceof Error ? err.message : String(err)}`)
         setIsRunning(false)
@@ -290,12 +290,12 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
     runQuery()
 
     return () => {
-      log(`Cleanup: aborting and closing queue for iteration ${currentIteration}`)
+      log(`Cleanup: aborting and closing queue for session ${currentSession}`)
       abortController.abort()
       messageQueue.close()
       messageQueueRef.current = null
     }
-  }, [currentIteration, totalIterations, exit, startupSnapshot])
+  }, [currentSession, totalSessions, exit, startupSnapshot])
 
   // In JSON mode, we output to stdout, so no visual rendering needed
   // Just return an empty component (Ink requires something to render)
@@ -307,6 +307,6 @@ export const JsonOutput = ({ totalIterations, agent }: Props) => {
 }
 
 type Props = {
-  totalIterations: number
+  totalSessions: number
   agent: string
 }
