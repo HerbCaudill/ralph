@@ -1,34 +1,13 @@
+import logoSvg from "@/assets/logo.svg?raw"
+
 /**
  * Application logo component displaying the Ralph robot icon and name.
- * Uses currentColor to inherit from the surrounding text color.
+ * The logo.svg uses currentColor for stroke, so it inherits the text color from its parent.
  */
 export function Logo() {
   return (
     <div className="flex items-center gap-2">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="28"
-        height="22"
-        viewBox="0 0 719.4 552.1"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="42"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {/* Head outline */}
-        <path d="M83.9,392.8c152.4,152.4,399.1,152.4,551.5,0,0,0,0-233.6,0-233.6C483,6.8,236.4,6.8,83.9,159.2c0,0,0,233.6,0,233.6Z" />
-        {/* Hair lines */}
-        <line x1="359.7" y1="44.9" x2="359.7" y2="175.1" />
-        <line x1="478.3" y1="71.1" x2="478.3" y2="175.1" />
-        <line x1="241.1" y1="71.1" x2="241.1" y2="175.1" />
-        {/* Eyes */}
-        <line x1="241.1" y1="267.2" x2="241.1" y2="284.9" />
-        <line x1="478.3" y1="267.2" x2="478.3" y2="284.9" />
-        {/* Ears */}
-        <rect x="39.5" y="257.4" width="37.3" height="37.3" />
-        <rect x="642.6" y="257.4" width="37.3" height="37.3" />
-      </svg>
+      <div className="h-[22px] w-[28px]" dangerouslySetInnerHTML={{ __html: logoSvg }} />
       <span className="text-lg font-semibold">Ralph</span>
     </div>
   )
