@@ -211,12 +211,15 @@ export class TaskChatManager extends EventEmitter {
             preset: "claude_code",
             append: appendSystemPrompt,
           },
+          // Disable hooks to avoid "tool use concurrency" errors
+          // See: https://github.com/anthropics/claude-agent-sdk-python/issues/265
+          hooks: {},
           // Tools from skill metadata (with fallback defaults)
           tools: skillTools,
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           includePartialMessages: true, // Enable streaming
-          maxTurns: 30, // Allow multiple turns for tool use (increased from 10 to handle longer queries)
+          maxTurns: 30, // Allow multiple turns for tool use
           abortController: this.abortController,
           pathToClaudeCodeExecutable: this.options.pathToClaudeCodeExecutable,
         },
