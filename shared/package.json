@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/ralph-shared",
-  "version": "0.8.5",
+  "version": "1.0.1",
   "description": "Shared utilities and types for Ralph CLI and UI",
   "type": "module",
   "main": "./dist/index.js",
