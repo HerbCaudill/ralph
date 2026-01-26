@@ -136,10 +136,7 @@ export function loadSessionPrompt(
     hasCustomWorkflow = false
     workflowPath = defaultWorkflowPath
   } else {
-    // Minimal fallback
-    workflowContent = "Work on the highest-priority task."
-    hasCustomWorkflow = false
-    workflowPath = ""
+    throw new Error(`Workflow file not found at ${customWorkflowPath} or ${defaultWorkflowPath}`)
   }
 
   // Combine by replacing placeholder

@@ -1,35 +1,32 @@
-import { readFileSync, existsSync } from "fs"
+import { existsSync, readFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
+import { loadSessionPrompt } from "@herbcaudill/ralph-shared"
 
 /**
- * Get the prompt content, falling back to templates if .ralph/prompt.md doesn't exist.
- * Uses the appropriate template based on the project setup:
- * - If .beads directory exists OR no .ralph/todo.md: use prompt-beads.md
- * - If .ralph/todo.md exists: use prompt-todos.md (todo-based workflow)
+ * Get the prompt content by combining core-prompt.md with workflow.md.
+ *
+ * First checks for a custom prompt at .ralph/prompt.md. If that exists, uses it directly.
+ * Otherwise, loads the session prompt which combines:
+ * - core-prompt.md (always from templates)
+ * - workflow.md (from .ralph/workflow.md if it exists, otherwise from templates)
  */
 export const getPromptContent = (): string => {
   const __dirname = dirname(fileURLToPath(import.meta.url))
   const ralphDir = join(process.cwd(), ".ralph")
   const promptFile = join(ralphDir, "prompt.md")
-  const todoFile = join(ralphDir, "todo.md")
-  const beadsDir = join(process.cwd(), ".beads")
   const templatesDir = join(__dirname, "..", "..", "templates")
 
-  // First, try to read from .ralph/prompt.md
+  // First, try to read from .ralph/prompt.md (custom override)
   if (existsSync(promptFile)) {
     return readFileSync(promptFile, "utf-8")
   }
 
-  // Fall back to templates based on project setup
-  const useBeadsTemplate = existsSync(beadsDir) || !existsSync(todoFile)
-  const templateFile = useBeadsTemplate ? "prompt-beads.md" : "prompt-todos.md"
-  const templatePath = join(templatesDir, templateFile)
+  // Load session prompt (combines core-prompt.md with workflow.md)
+  const { content } = loadSessionPrompt({
+    templatesDir,
+    cwd: process.cwd(),
+  })
 
-  if (existsSync(templatePath)) {
-    return readFileSync(templatePath, "utf-8")
-  }
-
-  // Last resort: return a minimal prompt
-  return "Work on the highest-priority task."
+  return content
 }
