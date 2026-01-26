@@ -21,10 +21,10 @@ import { getPromptContent } from "../lib/getPromptContent.js"
 import { sdkMessageToEvent } from "../lib/sdkMessageToEvent.js"
 import { processEvents } from "../lib/processEvents.js"
 import { renderStaticItem } from "./renderStaticItem.js"
-import { type StaticItem, type IterationRunnerProps } from "./IterationRunner.types.js"
+import { type StaticItem, type SessionRunnerProps } from "./SessionRunner.types.js"
 
-/** Debug logger for iteration lifecycle events */
-const log = createDebugLogger("iteration")
+/** Debug logger for session lifecycle events */
+const log = createDebugLogger("session")
 
 /** The .ralph directory path in the current working directory */
 const ralphDir = join(process.cwd(), ".ralph")
@@ -36,21 +36,21 @@ const todoFile = join(ralphDir, "todo.md")
 const repoName = basename(process.cwd())
 
 /**
- * Orchestrates the iterative execution of Claude AI iterations.
+ * Orchestrates the iterative execution of Claude AI sessions.
  *
  * Spawns Claude CLI with prompts, captures streaming output, displays formatted UI,
- * and handles user input during iteration execution.
+ * and handles user input during session execution.
  */
-export const IterationRunner = ({
-  totalIterations,
+export const SessionRunner = ({
+  totalSessions,
   claudeVersion,
   ralphVersion,
   watch,
   agent,
-}: IterationRunnerProps) => {
+}: SessionRunnerProps) => {
   const { exit } = useApp()
   const { columns } = useTerminalSize()
-  const [currentIteration, setCurrentIteration] = useState(1)
+  const [currentSession, setCurrentSession] = useState(1)
   const [events, setEvents] = useState<Array<Record<string, unknown>>>([])
   const eventsRef = useRef<Array<Record<string, unknown>>>([])
   const [error, setError] = useState<string>()
@@ -77,9 +77,9 @@ export const IterationRunner = ({
   const [detectedIssue, setDetectedIssue] = useState<MutationEvent | null>(null)
   const watchCleanupRef = useRef<(() => void) | null>(null)
   const [watchCycle, setWatchCycle] = useState(0) // Increments to force useEffect re-run
-  const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current iteration
+  const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current session
   const stopAfterCurrentRef = useRef(false) // Ref to access in async callbacks
-  const [isPaused, setIsPaused] = useState(false) // Pause after current iteration completes
+  const [isPaused, setIsPaused] = useState(false) // Pause after current session completes
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
   const [currentTaskTitle, setCurrentTaskTitle] = useState<string | null>(null)
@@ -89,10 +89,10 @@ export const IterationRunner = ({
     { type: "header", claudeVersion, ralphVersion, key: "header" },
   ])
   const renderedBlocksRef = useRef<Set<string>>(new Set())
-  const lastIterationRef = useRef<number>(0)
+  const lastSessionRef = useRef<number>(0)
   // Message queue for sending user messages to Claude while running
   const messageQueueRef = useRef<MessageQueue | null>(null)
-  // Log file path for this run (set once at startup, persisted across iterations)
+  // Log file path for this run (set once at startup, persisted across sessions)
   const logFileRef = useRef<string | null>(null)
 
   /** Whether stdin supports raw mode (required for keyboard input handling) */
@@ -132,7 +132,7 @@ export const IterationRunner = ({
   }
 
   /**
-   * Handle submitting a user message to Claude during iteration.
+   * Handle submitting a user message to Claude during session.
    */
   const handleUserMessageSubmit = (
     /** The message text from the user */
@@ -189,20 +189,20 @@ export const IterationRunner = ({
         setTodoText("")
         setTodoMessage(null)
       }
-      // Ctrl-S to request stop after current iteration
+      // Ctrl-S to request stop after current session
       if (key.ctrl && input === "s" && isRunning && !stopAfterCurrent) {
         setStopAfterCurrent(true)
       }
       // Ctrl-P to toggle pause state
       if (key.ctrl && input === "p") {
         if (isPaused) {
-          // Resume - if we were paused between iterations, trigger next iteration
+          // Resume - if we were paused between sessions, trigger next session
           setIsPaused(false)
           if (!isRunning) {
-            setTimeout(() => setCurrentIteration(i => i + 1), 100)
+            setTimeout(() => setCurrentSession(i => i + 1), 100)
           }
         } else if (isRunning) {
-          // Request pause after current iteration
+          // Request pause after current session
           setIsPaused(true)
         }
       }
@@ -233,12 +233,12 @@ export const IterationRunner = ({
     isPausedRef.current = isPaused
   }, [isPaused])
 
-  // Update progress data when iteration changes or running stops
+  // Update progress data when session changes or running stops
   useEffect(() => {
     if (!isRunning && startupSnapshot) {
       setProgressData(getProgress(startupSnapshot.initialCount, startupSnapshot.timestamp))
     }
-  }, [currentIteration, isRunning, startupSnapshot])
+  }, [currentSession, isRunning, startupSnapshot])
 
   // Poll progress data periodically while running to catch newly created/closed issues
   useEffect(() => {
@@ -270,7 +270,7 @@ export const IterationRunner = ({
         // Reset rendered blocks for new cycle
         renderedBlocksRef.current.clear()
         // Increment round number when picking up new issue
-        setCurrentIteration(i => i + 1)
+        setCurrentSession(i => i + 1)
         setWatchCycle(c => c + 1)
       }, 1500)
     })
@@ -287,14 +287,14 @@ export const IterationRunner = ({
   useEffect(() => {
     const newItems: StaticItem[] = []
 
-    // Add iteration header if this is a new iteration
-    if (currentIteration > lastIterationRef.current) {
+    // Add session header if this is a new session
+    if (currentSession > lastSessionRef.current) {
       newItems.push({
-        type: "iteration",
-        iteration: currentIteration,
-        key: `iteration-${currentIteration}`,
+        type: "session",
+        session: currentSession,
+        key: `session-${currentSession}`,
       })
-      lastIterationRef.current = currentIteration
+      lastSessionRef.current = currentSession
     }
 
     // Process current events into blocks
@@ -315,10 +315,10 @@ export const IterationRunner = ({
     if (newItems.length > 0) {
       setStaticItems(prev => [...prev, ...newItems])
     }
-  }, [events, currentIteration])
+  }, [events, currentSession])
 
   useEffect(() => {
-    if (currentIteration > totalIterations) {
+    if (currentSession > totalSessions) {
       exit()
       return
     }
@@ -342,7 +342,7 @@ export const IterationRunner = ({
     }
 
     // Get or create the log file path for this run
-    // Only create a new sequential log file on the first iteration
+    // Only create a new sequential log file on the first session
     if (!logFileRef.current) {
       logFileRef.current = getNextLogFile()
       writeFileSync(logFileRef.current, "")
@@ -355,7 +355,7 @@ export const IterationRunner = ({
     const todoExists = existsSync(todoFile)
     setHasTodoFile(todoExists)
     const todoContent = todoExists ? readFileSync(todoFile, "utf-8") : ""
-    const roundHeader = `# Ralph, round ${currentIteration}\n\n`
+    const roundHeader = `# Ralph, round ${currentSession}\n\n`
     const fullPrompt =
       todoContent ?
         `${roundHeader}${promptContent}\n\n## Current Todo List\n\n${todoContent}`
@@ -364,7 +364,7 @@ export const IterationRunner = ({
     const abortController = new AbortController()
     setIsRunning(true)
 
-    // Create a message queue for this iteration
+    // Create a message queue for this session
     // This allows us to send user messages to Claude while it's running
     const messageQueue = new MessageQueue()
     messageQueueRef.current = messageQueue
@@ -377,7 +377,7 @@ export const IterationRunner = ({
      */
     const runQuery = async () => {
       let finalResult = ""
-      log(`Starting iteration ${currentIteration}`)
+      log(`Starting session ${currentSession}`)
 
       try {
         log(`Beginning query() loop`)
@@ -427,7 +427,7 @@ export const IterationRunner = ({
                         type: "ralph_task_started",
                         taskId: taskInfo.taskId,
                         taskTitle: taskInfo.taskTitle,
-                        iteration: currentIteration,
+                        session: currentSession,
                       }
                       appendFileSync(logFile, JSON.stringify(taskStartedEvent) + "\n")
                     } else if (taskInfo.action === "completed") {
@@ -439,7 +439,7 @@ export const IterationRunner = ({
                         type: "ralph_task_completed",
                         taskId: taskInfo.taskId,
                         taskTitle: taskInfo.taskTitle,
-                        iteration: currentIteration,
+                        session: currentSession,
                       }
                       appendFileSync(logFile, JSON.stringify(taskCompletedEvent) + "\n")
                       // Keep tracking the same task until a new one starts
@@ -498,13 +498,13 @@ export const IterationRunner = ({
 
         // Check for pause request - if paused, we wait for resume via Ctrl-P
         if (isPausedRef.current) {
-          log(`Paused after iteration ${currentIteration}`)
-          // Don't move to next iteration - the resume handler (Ctrl-P) will trigger it
+          log(`Paused after session ${currentSession}`)
+          // Don't move to next session - the resume handler (Ctrl-P) will trigger it
           return
         }
 
-        // Move to next iteration
-        setTimeout(() => setCurrentIteration(i => i + 1), 500)
+        // Move to next session
+        setTimeout(() => setCurrentSession(i => i + 1), 500)
       } catch (err) {
         log(`query() loop error: ${err instanceof Error ? err.message : String(err)}`)
         setIsRunning(false)
@@ -526,12 +526,12 @@ export const IterationRunner = ({
     runQuery()
 
     return () => {
-      log(`Cleanup: aborting and closing queue for iteration ${currentIteration}`)
+      log(`Cleanup: aborting and closing queue for session ${currentSession}`)
       abortController.abort()
       messageQueue.close()
       messageQueueRef.current = null
     }
-  }, [currentIteration, totalIterations, exit, watch, watchCycle])
+  }, [currentSession, totalSessions, exit, watch, watchCycle])
 
   if (error) {
     return (
@@ -614,25 +614,25 @@ export const IterationRunner = ({
 
         : isPaused && !isRunning ?
           <Text color="magenta">
-            ⏸ Paused after round <Text color="yellow">{currentIteration}</Text>{" "}
+            ⏸ Paused after round <Text color="yellow">{currentSession}</Text>{" "}
             <Text dimColor>(Ctrl-P to resume)</Text>
           </Text>
         : isRunning ?
           stopAfterCurrent ?
             <Text color="yellow">
               <Spinner type="dots" /> Stopping after round{" "}
-              <Text color="yellow">{currentIteration}</Text> completes...{" "}
+              <Text color="yellow">{currentSession}</Text> completes...{" "}
               <Text dimColor>(Ctrl-S pressed)</Text>
             </Text>
           : isPaused ?
             <Text color="magenta">
               <Spinner type="dots" /> Pausing after round{" "}
-              <Text color="yellow">{currentIteration}</Text> completes...{" "}
+              <Text color="yellow">{currentSession}</Text> completes...{" "}
               <Text dimColor>(Ctrl-P pressed)</Text>
             </Text>
           : <Text color="cyan">
-              <Spinner type="dots" /> Running round <Text color="yellow">{currentIteration}</Text>{" "}
-              (max {totalIterations})
+              <Spinner type="dots" /> Running round <Text color="yellow">{currentSession}</Text>{" "}
+              (max {totalSessions})
             </Text>
 
         : <Text color="cyan">

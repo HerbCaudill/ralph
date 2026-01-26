@@ -1,15 +1,15 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
-import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
-import type { IterationSummary } from "@/hooks"
+import { SessionHistoryDropdown } from "./SessionHistoryDropdown"
+import type { SessionSummary } from "@/hooks"
 
 // Mock event logs for testing
-const createMockIteration = (
+const createMockSession = (
   id: string,
   createdAt: string,
   taskId?: string,
   title?: string,
-): IterationSummary => ({
+): SessionSummary => ({
   id,
   createdAt,
   eventCount: 10,
@@ -28,24 +28,24 @@ const yesterdayStr = yesterday.toISOString()
 const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
 const weekAgoStr = weekAgo.toISOString()
 
-describe("IterationHistoryDropdown", () => {
+describe("SessionHistoryDropdown", () => {
   const defaultProps = {
     currentTask: null,
-    iterations: [] as IterationSummary[],
-    isLoadingIterations: false,
+    sessions: [] as SessionSummary[],
+    isLoadingSessions: false,
     issuePrefix: null,
-    onIterationHistorySelect: vi.fn(),
+    onSessionHistorySelect: vi.fn(),
   }
 
   describe("trigger display", () => {
     it("shows 'No active task' when no task", () => {
-      render(<IterationHistoryDropdown {...defaultProps} />)
+      render(<SessionHistoryDropdown {...defaultProps} />)
       expect(screen.getByText("No active task")).toBeInTheDocument()
     })
 
     it("shows task title when currentTask is provided", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
           currentTask={{ id: "r-abc1", title: "Fix the bug" }}
         />,
@@ -56,7 +56,7 @@ describe("IterationHistoryDropdown", () => {
 
     it("shows task title without ID when ID is null", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
           currentTask={{ id: null, title: "Ad-hoc task" }}
         />,
@@ -67,7 +67,7 @@ describe("IterationHistoryDropdown", () => {
 
     it("strips issue prefix from task ID", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
           currentTask={{ id: "ralph-123", title: "Test task" }}
           issuePrefix="ralph"
@@ -81,43 +81,43 @@ describe("IterationHistoryDropdown", () => {
   describe("dropdown content", () => {
     it("opens dropdown when trigger is clicked", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
-          iterations={[createMockIteration("abc12345", todayStr, "r-xyz", "Past task")]}
+          sessions={[createMockSession("abc12345", todayStr, "r-xyz", "Past task")]}
         />,
       )
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
-      expect(screen.getByPlaceholderText("Search iterations...")).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
+      expect(screen.getByPlaceholderText("Search sessions...")).toBeInTheDocument()
     })
 
-    it("shows loading state when iterations are loading", () => {
-      render(<IterationHistoryDropdown {...defaultProps} isLoadingIterations={true} />)
+    it("shows loading state when sessions are loading", () => {
+      render(<SessionHistoryDropdown {...defaultProps} isLoadingSessions={true} />)
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
       expect(screen.getByText("Loading history...")).toBeInTheDocument()
     })
 
-    it("shows empty state when no iterations", () => {
-      render(<IterationHistoryDropdown {...defaultProps} iterations={[]} />)
+    it("shows empty state when no sessions", () => {
+      render(<SessionHistoryDropdown {...defaultProps} sessions={[]} />)
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
-      expect(screen.getByText("No iteration history yet.")).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
+      expect(screen.getByText("No session history yet.")).toBeInTheDocument()
     })
 
     it("groups event logs by date", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
-          iterations={[
-            createMockIteration("abc12345", todayStr, "r-001", "Today's task"),
-            createMockIteration("def12345", yesterdayStr, "r-002", "Yesterday's task"),
-            createMockIteration("ghi12345", weekAgoStr, "r-003", "Old task"),
+          sessions={[
+            createMockSession("abc12345", todayStr, "r-001", "Today's task"),
+            createMockSession("def12345", yesterdayStr, "r-002", "Yesterday's task"),
+            createMockSession("ghi12345", weekAgoStr, "r-003", "Old task"),
           ]}
         />,
       )
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
       expect(screen.getByText("Today")).toBeInTheDocument()
       expect(screen.getByText("Yesterday")).toBeInTheDocument()
       // The week-ago date will show as a formatted date string
@@ -125,67 +125,67 @@ describe("IterationHistoryDropdown", () => {
 
     it("shows event log task info", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
-          iterations={[createMockIteration("abc12345", todayStr, "r-task1", "Historical task")]}
+          sessions={[createMockSession("abc12345", todayStr, "r-task1", "Historical task")]}
         />,
       )
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
       expect(screen.getByText("r-task1")).toBeInTheDocument()
       expect(screen.getByText("Historical task")).toBeInTheDocument()
     })
   })
 
   describe("interactions", () => {
-    it("calls onIterationHistorySelect when clicking a past iteration", () => {
-      const onIterationHistorySelect = vi.fn()
+    it("calls onSessionHistorySelect when clicking a past session", () => {
+      const onSessionHistorySelect = vi.fn()
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
-          iterations={[createMockIteration("abc12345", todayStr, "r-task1", "Historical task")]}
-          onIterationHistorySelect={onIterationHistorySelect}
+          sessions={[createMockSession("abc12345", todayStr, "r-task1", "Historical task")]}
+          onSessionHistorySelect={onSessionHistorySelect}
         />,
       )
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
       fireEvent.click(screen.getByText("Historical task"))
 
-      expect(onIterationHistorySelect).toHaveBeenCalledWith("abc12345")
+      expect(onSessionHistorySelect).toHaveBeenCalledWith("abc12345")
     })
 
     it("closes dropdown after selection", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
-          iterations={[createMockIteration("abc12345", todayStr, "r-task1", "Historical task")]}
+          sessions={[createMockSession("abc12345", todayStr, "r-task1", "Historical task")]}
         />,
       )
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
-      expect(screen.getByPlaceholderText("Search iterations...")).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
+      expect(screen.getByPlaceholderText("Search sessions...")).toBeInTheDocument()
 
       fireEvent.click(screen.getByText("Historical task"))
 
       // Dropdown should be closed
-      expect(screen.queryByPlaceholderText("Search iterations...")).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText("Search sessions...")).not.toBeInTheDocument()
     })
   })
 
   describe("search functionality", () => {
     it("search input is available for filtering", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
-          iterations={[
-            createMockIteration("abc12345", todayStr, "r-task1", "First task"),
-            createMockIteration("def12345", todayStr, "r-task2", "Second task"),
+          sessions={[
+            createMockSession("abc12345", todayStr, "r-task1", "First task"),
+            createMockSession("def12345", todayStr, "r-task2", "Second task"),
           ]}
         />,
       )
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
-      const searchInput = screen.getByPlaceholderText("Search iterations...")
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
+      const searchInput = screen.getByPlaceholderText("Search sessions...")
 
       // Verify search input is available
       expect(searchInput).toBeInTheDocument()
@@ -203,17 +203,17 @@ describe("IterationHistoryDropdown", () => {
 
     it("filters event logs by title", () => {
       render(
-        <IterationHistoryDropdown
+        <SessionHistoryDropdown
           {...defaultProps}
-          iterations={[
-            createMockIteration("abc12345", todayStr, "r-001", "Bug fix"),
-            createMockIteration("def12345", todayStr, "r-002", "New feature"),
+          sessions={[
+            createMockSession("abc12345", todayStr, "r-001", "Bug fix"),
+            createMockSession("def12345", todayStr, "r-002", "New feature"),
           ]}
         />,
       )
 
-      fireEvent.click(screen.getByTestId("iteration-history-dropdown-trigger"))
-      const searchInput = screen.getByPlaceholderText("Search iterations...")
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
+      const searchInput = screen.getByPlaceholderText("Search sessions...")
 
       // Both items initially visible
       expect(screen.getByText("New feature")).toBeInTheDocument()
@@ -229,9 +229,9 @@ describe("IterationHistoryDropdown", () => {
 
   describe("accessibility", () => {
     it("has accessible trigger button", () => {
-      render(<IterationHistoryDropdown {...defaultProps} />)
-      const trigger = screen.getByTestId("iteration-history-dropdown-trigger")
-      expect(trigger).toHaveAttribute("aria-label", "View iteration history")
+      render(<SessionHistoryDropdown {...defaultProps} />)
+      const trigger = screen.getByTestId("session-history-dropdown-trigger")
+      expect(trigger).toHaveAttribute("aria-label", "View session history")
     })
   })
 })

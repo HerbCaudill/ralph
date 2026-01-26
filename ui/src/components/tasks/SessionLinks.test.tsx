@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
-import { IterationLinks } from "./IterationLinks"
+import { SessionLinks } from "./SessionLinks"
 import { eventDatabase, type EventLogMetadata } from "@/lib/persistence"
 
 // Mock the eventDatabase
@@ -16,7 +16,7 @@ vi.mock("@/lib/persistence", () => ({
 const mockInit = eventDatabase.init as ReturnType<typeof vi.fn>
 const mockGetEventLogsForTask = eventDatabase.getEventLogsForTask as ReturnType<typeof vi.fn>
 
-describe("IterationLinks", () => {
+describe("SessionLinks", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockInit.mockResolvedValue(undefined)
@@ -36,16 +36,16 @@ describe("IterationLinks", () => {
         }),
     )
 
-    render(<IterationLinks taskId="task-001" />)
+    render(<SessionLinks taskId="task-001" />)
 
     expect(screen.getByText("Loading...")).toBeInTheDocument()
-    expect(screen.getByText("Iterations")).toBeInTheDocument()
+    expect(screen.getByText("Sessions")).toBeInTheDocument()
   })
 
-  it("renders nothing when there are no iteration logs for the task", async () => {
+  it("renders nothing when there are no session logs for the task", async () => {
     mockGetEventLogsForTask.mockResolvedValue([])
 
-    const { container } = render(<IterationLinks taskId="task-001" />)
+    const { container } = render(<SessionLinks taskId="task-001" />)
 
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -58,7 +58,7 @@ describe("IterationLinks", () => {
   it("renders nothing when fetch returns an error", async () => {
     mockGetEventLogsForTask.mockRejectedValue(new Error("Database error"))
 
-    const { container } = render(<IterationLinks taskId="task-001" />)
+    const { container } = render(<SessionLinks taskId="task-001" />)
 
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -68,7 +68,7 @@ describe("IterationLinks", () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it("renders iteration logs for the task", async () => {
+  it("renders session logs for the task", async () => {
     const logsForTask: EventLogMetadata[] = [
       {
         id: "log-001",
@@ -91,14 +91,14 @@ describe("IterationLinks", () => {
     ]
     mockGetEventLogsForTask.mockResolvedValue(logsForTask)
 
-    render(<IterationLinks taskId="task-001" />)
+    render(<SessionLinks taskId="task-001" />)
 
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
     })
 
-    // Should show the "Iterations" label
-    expect(screen.getByText("Iterations")).toBeInTheDocument()
+    // Should show the "Sessions" label
+    expect(screen.getByText("Sessions")).toBeInTheDocument()
 
     // Should show both logs for task-001
     expect(screen.getByText("10 events")).toBeInTheDocument()
@@ -119,7 +119,7 @@ describe("IterationLinks", () => {
     ]
     mockGetEventLogsForTask.mockResolvedValue(logsForTask)
 
-    render(<IterationLinks taskId="task-001" />)
+    render(<SessionLinks taskId="task-001" />)
 
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -127,15 +127,15 @@ describe("IterationLinks", () => {
 
     const user = userEvent.setup()
 
-    // Click on the iteration link
-    const iterationButton = screen.getByRole("button", { name: /view iteration/i })
-    await user.click(iterationButton)
+    // Click on the session link
+    const sessionButton = screen.getByRole("button", { name: /view session/i })
+    await user.click(sessionButton)
 
     // Should update the URL hash
     expect(window.location.hash).toBe("#eventlog=abcdef12")
   })
 
-  it("sorts iteration logs by date, most recent first", async () => {
+  it("sorts session logs by date, most recent first", async () => {
     const logsForTask: EventLogMetadata[] = [
       {
         id: "log-old",
@@ -167,7 +167,7 @@ describe("IterationLinks", () => {
     ]
     mockGetEventLogsForTask.mockResolvedValue(logsForTask)
 
-    render(<IterationLinks taskId="task-001" />)
+    render(<SessionLinks taskId="task-001" />)
 
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
@@ -185,7 +185,7 @@ describe("IterationLinks", () => {
   it("renders nothing when eventlogs is empty", async () => {
     mockGetEventLogsForTask.mockResolvedValue([])
 
-    const { container } = render(<IterationLinks taskId="task-001" />)
+    const { container } = render(<SessionLinks taskId="task-001" />)
 
     await waitFor(() => {
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument()

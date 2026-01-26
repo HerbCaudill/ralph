@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react"
-import { eventDatabase, type IterationMetadata } from "@/lib/persistence"
+import { eventDatabase, type SessionMetadata } from "@/lib/persistence"
 
 /**
- * Summary of an iteration (without full event data).
- * Returned by the hook for efficient browsing of past iterations.
+ * Summary of an session (without full event data).
+ * Returned by the hook for efficient browsing of past sessions.
  */
-export interface IterationSummary {
+export interface SessionSummary {
   id: string
   createdAt: string
   eventCount: number
@@ -15,19 +15,19 @@ export interface IterationSummary {
   }
 }
 
-export interface UseIterationsOptions {
-  /** Optional task ID to filter iterations by */
+export interface UseSessionsOptions {
+  /** Optional task ID to filter sessions by */
   taskId?: string
 }
 
-export interface UseIterationsResult {
-  /** List of iteration summaries */
-  iterations: IterationSummary[]
-  /** Whether iterations are currently loading */
+export interface UseSessionsResult {
+  /** List of session summaries */
+  sessions: SessionSummary[]
+  /** Whether sessions are currently loading */
   isLoading: boolean
   /** Error message if fetch failed */
   error: string | null
-  /** Manually refresh iterations */
+  /** Manually refresh sessions */
   refresh: () => Promise<void>
 }
 
@@ -40,14 +40,14 @@ function isValidTimestamp(timestamp: number | undefined | null): timestamp is nu
 }
 
 /**
- * Converts IterationMetadata from IndexedDB to IterationSummary for consumers.
+ * Converts SessionMetadata from IndexedDB to SessionSummary for consumers.
  * Returns null if the metadata has an invalid timestamp.
  */
-function toIterationSummary(metadata: IterationMetadata): IterationSummary | null {
+function toSessionSummary(metadata: SessionMetadata): SessionSummary | null {
   // Validate timestamp before attempting conversion
   if (!isValidTimestamp(metadata.startedAt)) {
     console.warn(
-      `[useIterations] Skipping iteration ${metadata.id} with invalid startedAt: ${metadata.startedAt}`,
+      `[useSessions] Skipping session ${metadata.id} with invalid startedAt: ${metadata.startedAt}`,
     )
     return null
   }
@@ -67,16 +67,16 @@ function toIterationSummary(metadata: IterationMetadata): IterationSummary | nul
 }
 
 /**
- * Hook to fetch and manage iteration summaries from IndexedDB.
+ * Hook to fetch and manage session summaries from IndexedDB.
  * Returns summaries (without full event data) for efficient browsing.
  *
- * Iterations are stored client-side in IndexedDB by useIterationPersistence
+ * Sessions are stored client-side in IndexedDB by useSessionPersistence
  * and persist across sessions.
  */
-export function useIterations(options: UseIterationsOptions = {}): UseIterationsResult {
+export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult {
   const { taskId } = options
 
-  const [iterations, setIterations] = useState<IterationSummary[]>([])
+  const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -86,17 +86,17 @@ export function useIterations(options: UseIterationsOptions = {}): UseIterations
 
       const metadata =
         taskId ?
-          await eventDatabase.getIterationsForTask(taskId)
-        : await eventDatabase.listAllIterations()
+          await eventDatabase.getSessionsForTask(taskId)
+        : await eventDatabase.listAllSessions()
 
-      // Filter out iterations with invalid timestamps
+      // Filter out sessions with invalid timestamps
       const summaries = metadata
-        .map(toIterationSummary)
-        .filter((s): s is IterationSummary => s !== null)
-      setIterations(summaries)
+        .map(toSessionSummary)
+        .filter((s): s is SessionSummary => s !== null)
+      setSessions(summaries)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load iterations")
+      setError(err instanceof Error ? err.message : "Failed to load sessions")
     } finally {
       setIsLoading(false)
     }
@@ -107,5 +107,5 @@ export function useIterations(options: UseIterationsOptions = {}): UseIterations
     refresh()
   }, [refresh])
 
-  return { iterations, isLoading, error, refresh }
+  return { sessions, isLoading, error, refresh }
 }

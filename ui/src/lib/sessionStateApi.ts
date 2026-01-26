@@ -1,12 +1,12 @@
 /**
- * Client-side API for iteration state management.
- * Used for saving and restoring iteration context across page reloads and reconnections.
+ * Client-side API for session state management.
+ * Used for saving and restoring session context across page reloads and reconnections.
  */
 
 import { useAppStore } from "../store"
 
-/** Saved iteration state from the server */
-export interface IterationState {
+/** Saved session state from the server */
+export interface SessionState {
   instanceId: string
   status: string
   currentTaskId: string | null
@@ -17,10 +17,10 @@ export interface IterationState {
   }
 }
 
-/** Response from GET /api/ralph/:instanceId/iteration-state */
-interface GetIterationStateResponse {
+/** Response from GET /api/ralph/:instanceId/session-state */
+interface GetSessionStateResponse {
   ok: boolean
-  state?: IterationState
+  state?: SessionState
   error?: string
 }
 
@@ -37,8 +37,8 @@ interface RestoreStateResponse {
   error?: string
 }
 
-/** Response from DELETE /api/ralph/:instanceId/iteration-state */
-interface DeleteIterationStateResponse {
+/** Response from DELETE /api/ralph/:instanceId/session-state */
+interface DeleteSessionStateResponse {
   ok: boolean
   error?: string
 }
@@ -47,12 +47,12 @@ interface DeleteIterationStateResponse {
 const MAX_STATE_AGE_MS = 60 * 60 * 1000 // 1 hour
 
 /**
- * Fetch saved iteration state for an instance.
+ * Fetch saved session state for an instance.
  * Returns null if no state exists or it's too old.
  */
-export async function getIterationState(instanceId: string): Promise<IterationState | null> {
+export async function getSessionState(instanceId: string): Promise<SessionState | null> {
   try {
-    const response = await fetch(`/api/ralph/${encodeURIComponent(instanceId)}/iteration-state`)
+    const response = await fetch(`/api/ralph/${encodeURIComponent(instanceId)}/session-state`)
 
     if (response.status === 404) {
       // No saved state - this is normal
@@ -60,11 +60,11 @@ export async function getIterationState(instanceId: string): Promise<IterationSt
     }
 
     if (!response.ok) {
-      console.warn(`[iterationStateApi] Failed to fetch iteration state: ${response.status}`)
+      console.warn(`[sessionStateApi] Failed to fetch session state: ${response.status}`)
       return null
     }
 
-    const data: GetIterationStateResponse = await response.json()
+    const data: GetSessionStateResponse = await response.json()
 
     if (!data.ok || !data.state) {
       return null
@@ -74,23 +74,23 @@ export async function getIterationState(instanceId: string): Promise<IterationSt
     const stateAge = Date.now() - data.state.savedAt
     if (stateAge > MAX_STATE_AGE_MS) {
       console.log(
-        `[iterationStateApi] Saved state is too old (${Math.round(stateAge / 1000 / 60)} minutes), ignoring`,
+        `[sessionStateApi] Saved state is too old (${Math.round(stateAge / 1000 / 60)} minutes), ignoring`,
       )
       return null
     }
 
     return data.state
   } catch (err) {
-    console.error("[iterationStateApi] Error fetching iteration state:", err)
+    console.error("[sessionStateApi] Error fetching session state:", err)
     return null
   }
 }
 
 /**
- * Restore iteration state on the server (updates current task tracking etc.)
+ * Restore session state on the server (updates current task tracking etc.)
  * This is called automatically on reconnection to resume the previous session.
  */
-export async function restoreIterationState(
+export async function restoreSessionState(
   instanceId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
@@ -106,25 +106,25 @@ export async function restoreIterationState(
     }
 
     console.log(
-      `[iterationStateApi] Restored state for ${instanceId}: ${data.restored?.messageCount} messages`,
+      `[sessionStateApi] Restored state for ${instanceId}: ${data.restored?.messageCount} messages`,
     )
     return { ok: true }
   } catch (err) {
     const error = err instanceof Error ? err.message : "Unknown error restoring state"
-    console.error("[iterationStateApi] Error restoring state:", err)
+    console.error("[sessionStateApi] Error restoring state:", err)
     return { ok: false, error }
   }
 }
 
 /**
- * Delete saved iteration state.
+ * Delete saved session state.
  * This can be called to clear saved state when starting a new session.
  */
-export async function deleteIterationState(
+export async function deleteSessionState(
   instanceId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const response = await fetch(`/api/ralph/${encodeURIComponent(instanceId)}/iteration-state`, {
+    const response = await fetch(`/api/ralph/${encodeURIComponent(instanceId)}/session-state`, {
       method: "DELETE",
     })
 
@@ -133,30 +133,28 @@ export async function deleteIterationState(
       return { ok: true }
     }
 
-    const data: DeleteIterationStateResponse = await response.json()
+    const data: DeleteSessionStateResponse = await response.json()
 
     if (!data.ok) {
       return { ok: false, error: data.error ?? "Failed to delete state" }
     }
 
-    console.log(`[iterationStateApi] Deleted saved state for ${instanceId}`)
+    console.log(`[sessionStateApi] Deleted saved state for ${instanceId}`)
     return { ok: true }
   } catch (err) {
     const error = err instanceof Error ? err.message : "Unknown error deleting state"
-    console.error("[iterationStateApi] Error deleting state:", err)
+    console.error("[sessionStateApi] Error deleting state:", err)
     return { ok: false, error }
   }
 }
 
 /**
- * Check if there's a recent saved iteration state that can be restored.
+ * Check if there's a recent saved session state that can be restored.
  * This is called on reconnection to determine whether to auto-resume.
  *
  * The function checks the active instance by default, but can check a specific instance.
  */
-export async function checkForSavedIterationState(
-  instanceId?: string,
-): Promise<IterationState | null> {
+export async function checkForSavedSessionState(instanceId?: string): Promise<SessionState | null> {
   const targetInstanceId = instanceId ?? useAppStore.getState().activeInstanceId
-  return getIterationState(targetInstanceId)
+  return getSessionState(targetInstanceId)
 }

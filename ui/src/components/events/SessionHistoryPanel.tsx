@@ -8,21 +8,21 @@ import {
   IconX,
 } from "@tabler/icons-react"
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { useIterations, useEventLogRouter, type IterationSummary } from "@/hooks"
+import { useSessions, useEventLogRouter, type SessionSummary } from "@/hooks"
 import { formatEventLogDate, formatEventLogTime } from "@/lib/formatEventLogDate"
 import { useAppStore, selectIssuePrefix } from "@/store"
 
-/** Groups iterations by date (Today, Yesterday, or specific date). */
-function groupIterationsByDate(
-  iterations: IterationSummary[],
-): Array<{ dateLabel: string; logs: IterationSummary[] }> {
-  const groups = new Map<string, IterationSummary[]>()
+/** Groups sessions by date (Today, Yesterday, or specific date). */
+function groupSessionsByDate(
+  sessions: SessionSummary[],
+): Array<{ dateLabel: string; logs: SessionSummary[] }> {
+  const groups = new Map<string, SessionSummary[]>()
 
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
 
-  for (const log of iterations) {
+  for (const log of sessions) {
     const logDate = new Date(log.createdAt)
     const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
 
@@ -48,16 +48,16 @@ function groupIterationsByDate(
     }
   }
 
-  // Convert to array (order preserved from original iterations which are sorted newest first)
+  // Convert to array (order preserved from original sessions which are sorted newest first)
   return Array.from(groups.entries()).map(([dateLabel, logs]) => ({ dateLabel, logs }))
 }
 
-/** Filters iterations by search query (matches task ID or title). */
-function filterIterations(iterations: IterationSummary[], query: string): IterationSummary[] {
+/** Filters sessions by search query (matches task ID or title). */
+function filterSessions(sessions: SessionSummary[], query: string): SessionSummary[] {
   const trimmedQuery = query.trim().toLowerCase()
-  if (!trimmedQuery) return iterations
+  if (!trimmedQuery) return sessions
 
-  return iterations.filter(log => {
+  return sessions.filter(log => {
     const taskId = log.metadata?.taskId?.toLowerCase() ?? ""
     const title = log.metadata?.title?.toLowerCase() ?? ""
     return taskId.includes(trimmedQuery) || title.includes(trimmedQuery)
@@ -65,19 +65,19 @@ function filterIterations(iterations: IterationSummary[], query: string): Iterat
 }
 
 /**
- * Panel for browsing iteration history.
- * Shows a list of all past iterations grouped by date with search/filter.
- * This is a thin wrapper that fetches data and delegates to IterationHistoryPanelView.
+ * Panel for browsing session history.
+ * Shows a list of all past sessions grouped by date with search/filter.
+ * This is a thin wrapper that fetches data and delegates to SessionHistoryPanelView.
  */
-export function IterationHistoryPanel({ className }: IterationHistoryPanelProps) {
-  const { iterations, isLoading, error, refresh } = useIterations()
+export function SessionHistoryPanel({ className }: SessionHistoryPanelProps) {
+  const { sessions, isLoading, error, refresh } = useSessions()
   const { navigateToEventLog } = useEventLogRouter()
   const issuePrefix = useAppStore(selectIssuePrefix)
 
   return (
-    <IterationHistoryPanelView
+    <SessionHistoryPanelView
       className={className}
-      iterations={iterations}
+      sessions={sessions}
       isLoading={isLoading}
       error={error}
       issuePrefix={issuePrefix}
@@ -88,26 +88,23 @@ export function IterationHistoryPanel({ className }: IterationHistoryPanelProps)
 }
 
 /**
- * Presentational component for the iteration history panel.
+ * Presentational component for the session history panel.
  * Receives all data as props, making it easy to test in Storybook.
  */
-export function IterationHistoryPanelView({
+export function SessionHistoryPanelView({
   className,
-  iterations,
+  sessions,
   isLoading,
   error,
   issuePrefix,
   onItemClick,
   onRetry,
-}: IterationHistoryPanelViewProps) {
+}: SessionHistoryPanelViewProps) {
   const [searchQuery, setSearchQuery] = useState("")
 
-  const filteredLogs = useMemo(
-    () => filterIterations(iterations, searchQuery),
-    [iterations, searchQuery],
-  )
+  const filteredLogs = useMemo(() => filterSessions(sessions, searchQuery), [sessions, searchQuery])
 
-  const groupedLogs = useMemo(() => groupIterationsByDate(filteredLogs), [filteredLogs])
+  const groupedLogs = useMemo(() => groupSessionsByDate(filteredLogs), [filteredLogs])
 
   const handleItemClick = useCallback(
     (id: string) => {
@@ -126,10 +123,10 @@ export function IterationHistoryPanelView({
 
   if (isLoading) {
     return (
-      <div className={cn("flex h-full flex-col", className)} data-testid="iteration-history-panel">
+      <div className={cn("flex h-full flex-col", className)} data-testid="session-history-panel">
         <div className="border-border flex items-center gap-2 border-b px-4 py-3">
           <IconHistory className="text-muted-foreground size-4" />
-          <span className="text-sm font-medium">Iteration History</span>
+          <span className="text-sm font-medium">Session History</span>
         </div>
         <div
           className="text-muted-foreground flex flex-1 items-center justify-center"
@@ -137,7 +134,7 @@ export function IterationHistoryPanelView({
         >
           <div className="flex items-center gap-2">
             <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
-            <span className="text-sm">Loading iterations...</span>
+            <span className="text-sm">Loading sessions...</span>
           </div>
         </div>
       </div>
@@ -146,10 +143,10 @@ export function IterationHistoryPanelView({
 
   if (error) {
     return (
-      <div className={cn("flex h-full flex-col", className)} data-testid="iteration-history-panel">
+      <div className={cn("flex h-full flex-col", className)} data-testid="session-history-panel">
         <div className="border-border flex items-center gap-2 border-b px-4 py-3">
           <IconHistory className="text-muted-foreground size-4" />
-          <span className="text-sm font-medium">Iteration History</span>
+          <span className="text-sm font-medium">Session History</span>
         </div>
         <div
           className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center"
@@ -169,17 +166,17 @@ export function IterationHistoryPanelView({
   }
 
   return (
-    <div className={cn("flex h-full flex-col", className)} data-testid="iteration-history-panel">
+    <div className={cn("flex h-full flex-col", className)} data-testid="session-history-panel">
       <div className="border-border flex items-center gap-2 border-b px-4 py-3">
         <IconHistory className="text-muted-foreground size-4" />
-        <span className="text-sm font-medium">Iteration History</span>
-        <span className="text-muted-foreground text-xs" data-testid="iteration-count">
-          ({iterations.length})
+        <span className="text-sm font-medium">Session History</span>
+        <span className="text-muted-foreground text-xs" data-testid="session-count">
+          ({sessions.length})
         </span>
       </div>
 
       {/* Search input */}
-      {iterations.length > 0 && (
+      {sessions.length > 0 && (
         <div className="border-border border-b px-4 py-2">
           <div className="relative">
             <div className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2">
@@ -190,7 +187,7 @@ export function IterationHistoryPanelView({
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder="Search by task ID or title..."
-              aria-label="Search iterations"
+              aria-label="Search sessions"
               data-testid="search-input"
               className={cn(
                 "border-border bg-background text-foreground h-8 w-full rounded-md border pr-8 pl-9 text-sm",
@@ -214,28 +211,28 @@ export function IterationHistoryPanelView({
       )}
 
       <div className="flex-1 overflow-y-auto">
-        {iterations.length === 0 ?
+        {sessions.length === 0 ?
           <div
             className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
             data-testid="empty-state"
           >
-            No iteration history yet.
+            No session history yet.
             <br />
-            Completed iterations will appear here.
+            Completed sessions will appear here.
           </div>
         : filteredLogs.length === 0 ?
           <div
             className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
             data-testid="no-results"
           >
-            No matching iterations found.
+            No matching sessions found.
           </div>
-        : <div role="list" aria-label="Iteration history" data-testid="iteration-list">
+        : <div role="list" aria-label="Session history" data-testid="session-list">
             {groupedLogs.map(({ dateLabel, logs }) => (
               <div
                 key={dateLabel}
                 role="group"
-                aria-label={`Iterations from ${dateLabel}`}
+                aria-label={`Sessions from ${dateLabel}`}
                 data-testid="date-group"
               >
                 <div className="bg-muted/30 border-border sticky top-0 border-b px-4 py-2">
@@ -248,7 +245,7 @@ export function IterationHistoryPanelView({
                 </div>
                 <ul className="divide-border divide-y">
                   {logs.map(log => (
-                    <IterationHistoryItem
+                    <SessionHistoryItem
                       key={log.id}
                       log={log}
                       issuePrefix={issuePrefix}
@@ -265,13 +262,13 @@ export function IterationHistoryPanelView({
   )
 }
 
-/** Single item in the iteration history list. */
-function IterationHistoryItem({
+/** Single item in the session history list. */
+function SessionHistoryItem({
   log,
   issuePrefix,
   onClick,
 }: {
-  log: IterationSummary
+  log: SessionSummary
   issuePrefix: string | null
   onClick: (id: string) => void
 }) {
@@ -279,15 +276,15 @@ function IterationHistoryItem({
   const taskTitle = log.metadata?.title
 
   return (
-    <li data-testid="iteration-item">
+    <li data-testid="session-item">
       <button
         className={cn(
           "hover:bg-muted/50 flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
           "focus:bg-muted/50 focus:outline-none",
         )}
         onClick={() => onClick(log.id)}
-        aria-label={`View iteration from ${formatEventLogDate(log.createdAt)}`}
-        data-testid="iteration-item-button"
+        aria-label={`View session from ${formatEventLogDate(log.createdAt)}`}
+        data-testid="session-item-button"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -317,25 +314,25 @@ function IterationHistoryItem({
   )
 }
 
-/** Props for the IterationHistoryPanel component */
-export interface IterationHistoryPanelProps {
+/** Props for the SessionHistoryPanel component */
+export interface SessionHistoryPanelProps {
   /** Optional CSS class to apply to the container */
   className?: string
 }
 
-/** Props for the IterationHistoryPanelView presentational component */
-export interface IterationHistoryPanelViewProps {
+/** Props for the SessionHistoryPanelView presentational component */
+export interface SessionHistoryPanelViewProps {
   /** Optional CSS class to apply to the container */
   className?: string
-  /** Iterations to display */
-  iterations: IterationSummary[]
+  /** Sessions to display */
+  sessions: SessionSummary[]
   /** Whether data is loading */
   isLoading: boolean
   /** Error message if loading failed */
   error: string | null
   /** Issue prefix for stripping from task IDs */
   issuePrefix: string | null
-  /** Callback when an iteration item is clicked */
+  /** Callback when an session item is clicked */
   onItemClick?: (id: string) => void
   /** Callback when retry button is clicked */
   onRetry?: () => void

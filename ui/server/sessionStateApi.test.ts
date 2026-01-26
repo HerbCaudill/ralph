@@ -8,7 +8,7 @@ import { tmpdir } from "node:os"
 import { RalphManager, type RalphManagerOptions } from "./RalphManager.js"
 import { RalphRegistry, type RalphInstanceState } from "./RalphRegistry.js"
 import type { RalphStatus } from "./RalphManager.js"
-import { IterationStateStore, type PersistedIterationState } from "./IterationStateStore.js"
+import { SessionStateStore, type PersistedSessionState } from "./SessionStateStore.js"
 
 // Test setup - create mock child process
 
@@ -46,8 +46,8 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
   const app = express()
   app.use(express.json())
 
-  // Get saved iteration state for an instance
-  app.get("/api/ralph/:instanceId/iteration-state", async (req: Request, res: Response) => {
+  // Get saved session state for an instance
+  app.get("/api/ralph/:instanceId/session-state", async (req: Request, res: Response) => {
     const instanceId = req.params.instanceId as string
     const registry = getRegistry()
 
@@ -57,16 +57,16 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
     }
 
     try {
-      const state = await registry.loadIterationState(instanceId)
+      const state = await registry.loadSessionState(instanceId)
 
       if (!state) {
-        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        res.status(404).json({ ok: false, error: "No saved session state found" })
         return
       }
 
       res.status(200).json({ ok: true, state })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load iteration state"
+      const message = err instanceof Error ? err.message : "Failed to load session state"
       res.status(500).json({ ok: false, error: message })
     }
   })
@@ -83,10 +83,10 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
     }
 
     try {
-      const state = await registry.loadIterationState(instanceId)
+      const state = await registry.loadSessionState(instanceId)
 
       if (!state) {
-        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        res.status(404).json({ ok: false, error: "No saved session state found" })
         return
       }
 
@@ -107,13 +107,13 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
         },
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to restore iteration state"
+      const message = err instanceof Error ? err.message : "Failed to restore session state"
       res.status(500).json({ ok: false, error: message })
     }
   })
 
-  // Delete saved iteration state (for "start fresh")
-  app.delete("/api/ralph/:instanceId/iteration-state", async (req: Request, res: Response) => {
+  // Delete saved session state (for "start fresh")
+  app.delete("/api/ralph/:instanceId/session-state", async (req: Request, res: Response) => {
     const instanceId = req.params.instanceId as string
     const registry = getRegistry()
 
@@ -123,16 +123,16 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
     }
 
     try {
-      const deleted = await registry.deleteIterationState(instanceId)
+      const deleted = await registry.deleteSessionState(instanceId)
 
       if (!deleted) {
-        res.status(404).json({ ok: false, error: "No saved iteration state found" })
+        res.status(404).json({ ok: false, error: "No saved session state found" })
         return
       }
 
       res.status(200).json({ ok: true })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete iteration state"
+      const message = err instanceof Error ? err.message : "Failed to delete session state"
       res.status(500).json({ ok: false, error: message })
     }
   })
@@ -142,24 +142,24 @@ function createTestApp(getRegistry: () => RalphRegistry): Express {
 
 // Tests
 
-describe("Iteration State API endpoints", () => {
+describe("Session State API endpoints", () => {
   let server: Server
   let registry: RalphRegistry
   let tempDir: string
-  let iterationStateStore: IterationStateStore
-  const port = 3100 // Use a unique port for iteration state API tests
+  let sessionStateStore: SessionStateStore
+  const port = 3100 // Use a unique port for session state API tests
 
   beforeAll(async () => {
-    // Create a temp directory for the iteration state store
-    tempDir = await mkdtemp(join(tmpdir(), "ralph-iteration-state-api-test-"))
-    iterationStateStore = new IterationStateStore(tempDir)
+    // Create a temp directory for the session state store
+    tempDir = await mkdtemp(join(tmpdir(), "ralph-session-state-api-test-"))
+    sessionStateStore = new SessionStateStore(tempDir)
 
     const managerOptions: RalphManagerOptions = {
       spawn: () => createMockChildProcess() as ReturnType<RalphManagerOptions["spawn"] & {}>,
     }
     registry = new RalphRegistry({
       defaultManagerOptions: managerOptions,
-      iterationStateStore,
+      sessionStateStore,
     })
 
     const app = createTestApp(() => registry)
@@ -189,19 +189,19 @@ describe("Iteration State API endpoints", () => {
   beforeEach(async () => {
     // Clean up any existing instances before each test
     await registry.disposeAll()
-    // Clear any saved iteration states
-    await iterationStateStore.clear()
+    // Clear any saved session states
+    await sessionStateStore.clear()
   })
 
   afterEach(async () => {
     // Clean up after each test
     await registry.disposeAll()
-    await iterationStateStore.clear()
+    await sessionStateStore.clear()
   })
 
-  describe("GET /api/ralph/:instanceId/iteration-state", () => {
+  describe("GET /api/ralph/:instanceId/session-state", () => {
     it("returns 404 when instance does not exist", async () => {
-      const response = await fetch(`http://localhost:${port}/api/ralph/nonexistent/iteration-state`)
+      const response = await fetch(`http://localhost:${port}/api/ralph/nonexistent/session-state`)
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -217,14 +217,14 @@ describe("Iteration State API endpoints", () => {
         branch: null,
       })
 
-      const response = await fetch(`http://localhost:${port}/api/ralph/test-1/iteration-state`)
+      const response = await fetch(`http://localhost:${port}/api/ralph/test-1/session-state`)
       const data = await response.json()
 
       expect(response.status).toBe(404)
-      expect(data).toEqual({ ok: false, error: "No saved iteration state found" })
+      expect(data).toEqual({ ok: false, error: "No saved session state found" })
     })
 
-    it("returns saved iteration state", async () => {
+    it("returns saved session state", async () => {
       registry.create({
         id: "test-1",
         name: "Test 1",
@@ -233,8 +233,8 @@ describe("Iteration State API endpoints", () => {
         branch: null,
       })
 
-      // Save some iteration state directly
-      const savedState: PersistedIterationState = {
+      // Save some session state directly
+      const savedState: PersistedSessionState = {
         instanceId: "test-1",
         conversationContext: {
           messages: [
@@ -250,9 +250,9 @@ describe("Iteration State API endpoints", () => {
         savedAt: Date.now(),
         version: 1,
       }
-      await iterationStateStore.save(savedState)
+      await sessionStateStore.save(savedState)
 
-      const response = await fetch(`http://localhost:${port}/api/ralph/test-1/iteration-state`)
+      const response = await fetch(`http://localhost:${port}/api/ralph/test-1/session-state`)
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -293,10 +293,10 @@ describe("Iteration State API endpoints", () => {
       const data = await response.json()
 
       expect(response.status).toBe(404)
-      expect(data).toEqual({ ok: false, error: "No saved iteration state found" })
+      expect(data).toEqual({ ok: false, error: "No saved session state found" })
     })
 
-    it("restores iteration state and returns summary", async () => {
+    it("restores session state and returns summary", async () => {
       const instance = registry.create({
         id: "test-1",
         name: "Test 1",
@@ -305,9 +305,9 @@ describe("Iteration State API endpoints", () => {
         branch: null,
       })
 
-      // Save some iteration state directly
+      // Save some session state directly
       const savedAt = Date.now()
-      const savedState: PersistedIterationState = {
+      const savedState: PersistedSessionState = {
         instanceId: "test-1",
         conversationContext: {
           messages: [
@@ -324,7 +324,7 @@ describe("Iteration State API endpoints", () => {
         savedAt,
         version: 1,
       }
-      await iterationStateStore.save(savedState)
+      await sessionStateStore.save(savedState)
 
       // Verify the instance doesn't have a current task before restoration
       expect(instance.currentTaskId).toBeNull()
@@ -355,8 +355,8 @@ describe("Iteration State API endpoints", () => {
         branch: null,
       })
 
-      // Save iteration state with null currentTaskId
-      const savedState: PersistedIterationState = {
+      // Save session state with null currentTaskId
+      const savedState: PersistedSessionState = {
         instanceId: "test-1",
         conversationContext: {
           messages: [{ role: "user", content: "Hello", timestamp: 1000 }],
@@ -369,7 +369,7 @@ describe("Iteration State API endpoints", () => {
         savedAt: Date.now(),
         version: 1,
       }
-      await iterationStateStore.save(savedState)
+      await sessionStateStore.save(savedState)
 
       const response = await fetch(`http://localhost:${port}/api/ralph/test-1/restore-state`, {
         method: "POST",
@@ -386,14 +386,11 @@ describe("Iteration State API endpoints", () => {
     })
   })
 
-  describe("DELETE /api/ralph/:instanceId/iteration-state", () => {
+  describe("DELETE /api/ralph/:instanceId/session-state", () => {
     it("returns 404 when instance does not exist", async () => {
-      const response = await fetch(
-        `http://localhost:${port}/api/ralph/nonexistent/iteration-state`,
-        {
-          method: "DELETE",
-        },
-      )
+      const response = await fetch(`http://localhost:${port}/api/ralph/nonexistent/session-state`, {
+        method: "DELETE",
+      })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -409,16 +406,16 @@ describe("Iteration State API endpoints", () => {
         branch: null,
       })
 
-      const response = await fetch(`http://localhost:${port}/api/ralph/test-1/iteration-state`, {
+      const response = await fetch(`http://localhost:${port}/api/ralph/test-1/session-state`, {
         method: "DELETE",
       })
       const data = await response.json()
 
       expect(response.status).toBe(404)
-      expect(data).toEqual({ ok: false, error: "No saved iteration state found" })
+      expect(data).toEqual({ ok: false, error: "No saved session state found" })
     })
 
-    it("deletes saved iteration state", async () => {
+    it("deletes saved session state", async () => {
       registry.create({
         id: "test-1",
         name: "Test 1",
@@ -427,8 +424,8 @@ describe("Iteration State API endpoints", () => {
         branch: null,
       })
 
-      // Save some iteration state directly
-      const savedState: PersistedIterationState = {
+      // Save some session state directly
+      const savedState: PersistedSessionState = {
         instanceId: "test-1",
         conversationContext: {
           messages: [{ role: "user", content: "Hello", timestamp: 1000 }],
@@ -441,13 +438,13 @@ describe("Iteration State API endpoints", () => {
         savedAt: Date.now(),
         version: 1,
       }
-      await iterationStateStore.save(savedState)
+      await sessionStateStore.save(savedState)
 
       // Verify state exists
-      const stateBefore = await iterationStateStore.load("test-1")
+      const stateBefore = await sessionStateStore.load("test-1")
       expect(stateBefore).not.toBeNull()
 
-      const response = await fetch(`http://localhost:${port}/api/ralph/test-1/iteration-state`, {
+      const response = await fetch(`http://localhost:${port}/api/ralph/test-1/session-state`, {
         method: "DELETE",
       })
       const data = await response.json()
@@ -456,7 +453,7 @@ describe("Iteration State API endpoints", () => {
       expect(data).toEqual({ ok: true })
 
       // Verify state was deleted
-      const stateAfter = await iterationStateStore.load("test-1")
+      const stateAfter = await sessionStateStore.load("test-1")
       expect(stateAfter).toBeNull()
     })
   })

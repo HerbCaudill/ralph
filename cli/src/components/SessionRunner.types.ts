@@ -1,21 +1,21 @@
 import { type ContentBlock } from "./eventToBlocks.js"
 import { type MutationEvent } from "../lib/beadsClient.js"
 
-/**  Iteration events collection for a given iteration number. */
-export type IterationEvents = {
-  iteration: number
+/**  Session events collection for a given session number. */
+export type SessionEvents = {
+  session: number
   events: Array<Record<string, unknown>>
 }
 
-/**  Static item representing either header, iteration header, or content block. */
+/**  Static item representing either header, session header, or content block. */
 export type StaticItem =
   | { type: "header"; claudeVersion: string; ralphVersion: string; key: string }
-  | { type: "iteration"; iteration: number; key: string }
+  | { type: "session"; session: number; key: string }
   | { type: "block"; block: ContentBlock; key: string }
 
-/**  Props for the IterationRunner component. */
-export type IterationRunnerProps = {
-  totalIterations: number
+/**  Props for the SessionRunner component. */
+export type SessionRunnerProps = {
+  totalSessions: number
   claudeVersion: string
   ralphVersion: string
   watch?: boolean

@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
-import type { IterationSummary } from "@/hooks"
+import { SessionHistoryDropdown } from "./SessionHistoryDropdown"
+import type { SessionSummary } from "@/hooks"
 import { fn } from "storybook/test"
 
 // Helper to create event log summaries
-function createIteration(
+function createSession(
   id: string,
   taskId: string | null,
   title: string | null,
   createdAt: string,
   eventCount: number,
-): IterationSummary {
+): SessionSummary {
   return {
     id,
     createdAt,
@@ -27,9 +27,9 @@ const yesterday = new Date(now.getTime() - 86400000).toISOString()
 const twoDaysAgo = new Date(now.getTime() - 172800000).toISOString()
 const threeDaysAgo = new Date(now.getTime() - 259200000).toISOString()
 
-const meta: Meta<typeof IterationHistoryDropdown> = {
-  title: "Selectors/IterationHistoryDropdown",
-  component: IterationHistoryDropdown,
+const meta: Meta<typeof SessionHistoryDropdown> = {
+  title: "Selectors/SessionHistoryDropdown",
+  component: SessionHistoryDropdown,
   parameters: {},
   tags: ["autodocs"],
   decorators: [
@@ -41,10 +41,10 @@ const meta: Meta<typeof IterationHistoryDropdown> = {
   ],
   args: {
     currentTask: null,
-    iterations: [],
-    isLoadingIterations: false,
+    sessions: [],
+    isLoadingSessions: false,
     issuePrefix: "PROJ-",
-    onIterationHistorySelect: fn(),
+    onSessionHistorySelect: fn(),
   },
 }
 
@@ -54,10 +54,10 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   args: {
     currentTask: { id: "PROJ-123", title: "Fix authentication bug" },
-    iterations: [
-      createIteration("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
-      createIteration("log-2", "PROJ-119", "Previous task B", yesterday, 32),
-      createIteration("log-3", "PROJ-118", "Older task", twoDaysAgo, 28),
+    sessions: [
+      createSession("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
+      createSession("log-2", "PROJ-119", "Previous task B", yesterday, 32),
+      createSession("log-3", "PROJ-118", "Older task", twoDaysAgo, 28),
     ],
   },
 }
@@ -65,9 +65,9 @@ export const Default: Story = {
 export const NoCurrentTask: Story = {
   args: {
     currentTask: null,
-    iterations: [
-      createIteration("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
-      createIteration("log-2", "PROJ-119", "Previous task B", yesterday, 32),
+    sessions: [
+      createSession("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
+      createSession("log-2", "PROJ-119", "Previous task B", yesterday, 32),
     ],
   },
 }
@@ -75,36 +75,36 @@ export const NoCurrentTask: Story = {
 export const WithCurrentTaskOnly: Story = {
   args: {
     currentTask: { id: "PROJ-123", title: "Fix authentication bug" },
-    iterations: [],
+    sessions: [],
   },
 }
 
-export const LoadingIterations: Story = {
+export const LoadingSessions: Story = {
   args: {
     currentTask: { id: "PROJ-123", title: "Fix authentication bug" },
-    isLoadingIterations: true,
-    iterations: [],
+    isLoadingSessions: true,
+    sessions: [],
   },
 }
 
 export const EmptyHistory: Story = {
   args: {
     currentTask: null,
-    iterations: [],
-    isLoadingIterations: false,
+    sessions: [],
+    isLoadingSessions: false,
   },
 }
 
-export const ManyIterations: Story = {
+export const ManySessions: Story = {
   args: {
     currentTask: { id: "PROJ-123", title: "Current task" },
-    iterations: [
+    sessions: [
       // Today
-      createIteration("today-1", "PROJ-120", "Task from today", oneHourAgo, 45),
-      createIteration("today-2", "PROJ-119", "Earlier today", twoHoursAgo, 32),
+      createSession("today-1", "PROJ-120", "Task from today", oneHourAgo, 45),
+      createSession("today-2", "PROJ-119", "Earlier today", twoHoursAgo, 32),
       // Yesterday
-      createIteration("yesterday-1", "PROJ-118", "Yesterday task 1", yesterday, 28),
-      createIteration(
+      createSession("yesterday-1", "PROJ-118", "Yesterday task 1", yesterday, 28),
+      createSession(
         "yesterday-2",
         "PROJ-117",
         `${new Date(yesterday).toISOString().slice(0, 10)} task 2`,
@@ -112,8 +112,8 @@ export const ManyIterations: Story = {
         22,
       ),
       // Older
-      createIteration("old-1", "PROJ-116", "Two days ago", twoDaysAgo, 15),
-      createIteration("old-2", "PROJ-115", "Three days ago", threeDaysAgo, 12),
+      createSession("old-1", "PROJ-116", "Two days ago", twoDaysAgo, 15),
+      createSession("old-2", "PROJ-115", "Three days ago", threeDaysAgo, 12),
     ],
   },
 }
@@ -125,11 +125,11 @@ export const WithLongTaskTitles: Story = {
       title:
         "This is a very long task title that should truncate properly in the dropdown trigger and menu",
     },
-    iterations: [
-      createIteration(
+    sessions: [
+      createSession(
         "log-1",
         "PROJ-120",
-        "Another extremely long title to test the truncation behavior of the iteration history dropdown component",
+        "Another extremely long title to test the truncation behavior of the session history dropdown component",
         oneHourAgo,
         45,
       ),
@@ -140,17 +140,17 @@ export const WithLongTaskTitles: Story = {
 export const TaskWithoutId: Story = {
   args: {
     currentTask: { id: null, title: "Untitled task" },
-    iterations: [],
+    sessions: [],
   },
 }
 
-export const IterationsWithoutTaskInfo: Story = {
+export const SessionsWithoutTaskInfo: Story = {
   args: {
     currentTask: null,
-    iterations: [
-      createIteration("log-1", null, null, oneHourAgo, 45),
-      createIteration("log-2", "PROJ-119", null, yesterday, 32),
-      createIteration("log-3", null, "Task with title only", twoDaysAgo, 28),
+    sessions: [
+      createSession("log-1", null, null, oneHourAgo, 45),
+      createSession("log-2", "PROJ-119", null, yesterday, 32),
+      createSession("log-3", null, "Task with title only", twoDaysAgo, 28),
     ],
   },
 }
@@ -159,8 +159,6 @@ export const NoIssuePrefix: Story = {
   args: {
     currentTask: { id: "fix-auth-bug", title: "Fix authentication bug" },
     issuePrefix: null,
-    iterations: [
-      createIteration("log-1", "add-dark-mode", "Add dark mode support", oneHourAgo, 45),
-    ],
+    sessions: [createSession("log-1", "add-dark-mode", "Add dark mode support", oneHourAgo, 45)],
   },
 }

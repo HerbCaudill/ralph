@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { IterationLinks } from "./IterationLinks"
+import { SessionLinks } from "./SessionLinks"
 import { useAppStore } from "@/store"
 import { useEffect } from "react"
 
-const meta: Meta<typeof IterationLinks> = {
-  title: "Collections/IterationLinks",
-  component: IterationLinks,
+const meta: Meta<typeof SessionLinks> = {
+  title: "Collections/SessionLinks",
+  component: SessionLinks,
   parameters: {},
   decorators: [
     Story => (
@@ -27,14 +27,14 @@ function StoreSetter({ prefix }: { prefix: string }) {
   return null
 }
 
-// Note: IterationLinks fetches event logs from IndexedDB using useEventLogs hook
+// Note: SessionLinks fetches event logs from IndexedDB using useEventLogs hook
 // In Storybook without populated IndexedDB, it will show loading state
 
 export const Default: Story = {
   render: () => (
     <>
       <StoreSetter prefix="rui" />
-      <IterationLinks taskId="rui-4rt" />
+      <SessionLinks taskId="rui-4rt" />
     </>
   ),
 }
@@ -43,12 +43,12 @@ export const WithCustomClassName: Story = {
   render: () => (
     <>
       <StoreSetter prefix="rui" />
-      <IterationLinks taskId="rui-4rt" className="bg-muted/20 rounded-lg p-4" />
+      <SessionLinks taskId="rui-4rt" className="bg-muted/20 rounded-lg p-4" />
     </>
   ),
 }
 
-// Note: To see the full functionality with iteration links, you would need to:
+// Note: To see the full functionality with session links, you would need to:
 // 1. Mock the IndexedDB calls
 // 2. Or have event logs stored in IndexedDB
 // The component handles loading and empty states gracefully

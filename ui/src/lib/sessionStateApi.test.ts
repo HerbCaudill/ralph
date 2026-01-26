@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
-  getIterationState,
-  restoreIterationState,
-  deleteIterationState,
-  checkForSavedIterationState,
-  type IterationState,
-} from "./iterationStateApi"
+  getSessionState,
+  restoreSessionState,
+  deleteSessionState,
+  checkForSavedSessionState,
+  type SessionState,
+} from "./sessionStateApi"
 
 // Mock fetch
 const mockFetch = vi.fn()
@@ -20,7 +20,7 @@ vi.mock("../store", () => ({
   },
 }))
 
-describe("iterationStateApi", () => {
+describe("sessionStateApi", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -29,9 +29,9 @@ describe("iterationStateApi", () => {
     vi.restoreAllMocks()
   })
 
-  describe("getIterationState", () => {
+  describe("getSessionState", () => {
     it("returns saved state when available", async () => {
-      const savedState: IterationState = {
+      const savedState: SessionState = {
         instanceId: "test-1",
         status: "running",
         currentTaskId: "task-1",
@@ -47,9 +47,9 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: true, state: savedState }),
       })
 
-      const result = await getIterationState("test-1")
+      const result = await getSessionState("test-1")
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/test-1/iteration-state")
+      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/test-1/session-state")
       expect(result).toEqual(savedState)
     })
 
@@ -60,13 +60,13 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: false, error: "Not found" }),
       })
 
-      const result = await getIterationState("test-1")
+      const result = await getSessionState("test-1")
 
       expect(result).toBeNull()
     })
 
     it("returns null when state is too old (> 1 hour)", async () => {
-      const oldState: IterationState = {
+      const oldState: SessionState = {
         instanceId: "test-1",
         status: "running",
         currentTaskId: "task-1",
@@ -82,7 +82,7 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: true, state: oldState }),
       })
 
-      const result = await getIterationState("test-1")
+      const result = await getSessionState("test-1")
 
       expect(result).toBeNull()
     })
@@ -90,7 +90,7 @@ describe("iterationStateApi", () => {
     it("returns null on fetch error", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network error"))
 
-      const result = await getIterationState("test-1")
+      const result = await getSessionState("test-1")
 
       expect(result).toBeNull()
     })
@@ -102,7 +102,7 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: false, error: "Internal error" }),
       })
 
-      const result = await getIterationState("test-1")
+      const result = await getSessionState("test-1")
 
       expect(result).toBeNull()
     })
@@ -114,13 +114,13 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: false }),
       })
 
-      await getIterationState("instance/with/slashes")
+      await getSessionState("instance/with/slashes")
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/instance%2Fwith%2Fslashes/iteration-state")
+      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/instance%2Fwith%2Fslashes/session-state")
     })
   })
 
-  describe("restoreIterationState", () => {
+  describe("restoreSessionState", () => {
     it("calls restore endpoint successfully", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -137,7 +137,7 @@ describe("iterationStateApi", () => {
         }),
       })
 
-      const result = await restoreIterationState("test-1")
+      const result = await restoreSessionState("test-1")
 
       expect(mockFetch).toHaveBeenCalledWith("/api/ralph/test-1/restore-state", {
         method: "POST",
@@ -156,7 +156,7 @@ describe("iterationStateApi", () => {
         }),
       })
 
-      const result = await restoreIterationState("test-1")
+      const result = await restoreSessionState("test-1")
 
       expect(result).toEqual({ ok: false, error: "No saved state found" })
     })
@@ -164,14 +164,14 @@ describe("iterationStateApi", () => {
     it("handles network errors", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network error"))
 
-      const result = await restoreIterationState("test-1")
+      const result = await restoreSessionState("test-1")
 
       expect(result.ok).toBe(false)
       expect(result.error).toBe("Network error")
     })
   })
 
-  describe("deleteIterationState", () => {
+  describe("deleteSessionState", () => {
     it("calls delete endpoint successfully", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -179,9 +179,9 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: true }),
       })
 
-      const result = await deleteIterationState("test-1")
+      const result = await deleteSessionState("test-1")
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/test-1/iteration-state", {
+      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/test-1/session-state", {
         method: "DELETE",
       })
       expect(result).toEqual({ ok: true })
@@ -194,7 +194,7 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: false, error: "Not found" }),
       })
 
-      const result = await deleteIterationState("test-1")
+      const result = await deleteSessionState("test-1")
 
       expect(result).toEqual({ ok: true })
     })
@@ -209,7 +209,7 @@ describe("iterationStateApi", () => {
         }),
       })
 
-      const result = await deleteIterationState("test-1")
+      const result = await deleteSessionState("test-1")
 
       expect(result).toEqual({ ok: false, error: "Failed to delete state" })
     })
@@ -217,14 +217,14 @@ describe("iterationStateApi", () => {
     it("handles network errors", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network error"))
 
-      const result = await deleteIterationState("test-1")
+      const result = await deleteSessionState("test-1")
 
       expect(result.ok).toBe(false)
       expect(result.error).toBe("Network error")
     })
   })
 
-  describe("checkForSavedIterationState", () => {
+  describe("checkForSavedSessionState", () => {
     it("uses provided instanceId", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -232,9 +232,9 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: false }),
       })
 
-      await checkForSavedIterationState("specific-instance")
+      await checkForSavedSessionState("specific-instance")
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/specific-instance/iteration-state")
+      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/specific-instance/session-state")
     })
 
     it("uses active instance ID when none provided", async () => {
@@ -244,9 +244,9 @@ describe("iterationStateApi", () => {
         json: async () => ({ ok: false }),
       })
 
-      await checkForSavedIterationState()
+      await checkForSavedSessionState()
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/test-instance/iteration-state")
+      expect(mockFetch).toHaveBeenCalledWith("/api/ralph/test-instance/session-state")
     })
   })
 })

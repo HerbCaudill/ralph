@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { IterationHistoryPanel } from "./IterationHistoryPanel"
+import { SessionHistoryPanel } from "./SessionHistoryPanel"
 import { useAppStore } from "@/store"
-import type { IterationSummary } from "@/hooks"
+import type { SessionSummary } from "@/hooks"
 
 // Mock the hooks
 const mockNavigateToEventLog = vi.fn()
@@ -16,16 +16,16 @@ vi.mock("@/hooks", async importOriginal => {
       closeEventLogViewer: vi.fn(),
       eventLogId: null,
     }),
-    useIterations: vi.fn(),
+    useSessions: vi.fn(),
   }
 })
 
 // Import the mocked module so we can control it
-import { useIterations } from "@/hooks"
-const mockUseIterations = vi.mocked(useIterations)
+import { useSessions } from "@/hooks"
+const mockUseSessions = vi.mocked(useSessions)
 
 // Test data
-const mockIterations: IterationSummary[] = [
+const mockSessions: SessionSummary[] = [
   {
     id: "abc12345",
     createdAt: "2026-01-23T10:00:00.000Z",
@@ -48,11 +48,11 @@ const mockIterations: IterationSummary[] = [
     id: "ghi11111",
     createdAt: "2026-01-21T09:00:00.000Z",
     eventCount: 15,
-    // No metadata - represents an iteration with no task
+    // No metadata - represents an session with no task
   },
 ]
 
-describe("IterationHistoryPanel", () => {
+describe("SessionHistoryPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset store state
@@ -65,31 +65,31 @@ describe("IterationHistoryPanel", () => {
 
   describe("loading state", () => {
     it("shows loading indicator when loading", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: [],
+      mockUseSessions.mockReturnValue({
+        sessions: [],
         isLoading: true,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      expect(screen.getByText("Loading iterations...")).toBeInTheDocument()
-      expect(screen.getByText("Iteration History")).toBeInTheDocument()
+      expect(screen.getByText("Loading sessions...")).toBeInTheDocument()
+      expect(screen.getByText("Session History")).toBeInTheDocument()
     })
   })
 
   describe("error state", () => {
     it("shows error message when error occurs", () => {
       const mockRefresh = vi.fn()
-      mockUseIterations.mockReturnValue({
-        iterations: [],
+      mockUseSessions.mockReturnValue({
+        sessions: [],
         isLoading: false,
         error: "Failed to connect to server",
         refresh: mockRefresh,
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       expect(screen.getByText("Failed to connect to server")).toBeInTheDocument()
       expect(screen.getByText("Retry")).toBeInTheDocument()
@@ -97,14 +97,14 @@ describe("IterationHistoryPanel", () => {
 
     it("calls refresh when retry is clicked", () => {
       const mockRefresh = vi.fn()
-      mockUseIterations.mockReturnValue({
-        iterations: [],
+      mockUseSessions.mockReturnValue({
+        sessions: [],
         isLoading: false,
         error: "Network error",
         refresh: mockRefresh,
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       fireEvent.click(screen.getByText("Retry"))
       expect(mockRefresh).toHaveBeenCalled()
@@ -113,30 +113,30 @@ describe("IterationHistoryPanel", () => {
 
   describe("empty state", () => {
     it("shows empty message when no event logs exist", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: [],
+      mockUseSessions.mockReturnValue({
+        sessions: [],
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      expect(screen.getByText(/No iteration history yet/)).toBeInTheDocument()
-      expect(screen.getByText(/Completed iterations will appear here/)).toBeInTheDocument()
+      expect(screen.getByText(/No session history yet/)).toBeInTheDocument()
+      expect(screen.getByText(/Completed sessions will appear here/)).toBeInTheDocument()
     })
   })
 
   describe("list rendering", () => {
     it("renders list of event logs", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       // Should show count in header
       expect(screen.getByText("(3)")).toBeInTheDocument()
@@ -147,14 +147,14 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("displays task IDs with prefix stripped", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       // Should display stripped task IDs
       expect(screen.getByText("test.1")).toBeInTheDocument()
@@ -162,29 +162,29 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("displays event counts", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       expect(screen.getByText("42 events")).toBeInTheDocument()
       expect(screen.getByText("128 events")).toBeInTheDocument()
       expect(screen.getByText("15 events")).toBeInTheDocument()
     })
 
-    it("displays 'No task' for iterations without metadata", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+    it("displays 'No task' for sessions without metadata", () => {
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       // The third item has no metadata
       expect(screen.getByText("No task")).toBeInTheDocument()
@@ -193,14 +193,14 @@ describe("IterationHistoryPanel", () => {
 
   describe("navigation", () => {
     it("navigates to event log when item is clicked", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       // Click on the first item
       fireEvent.click(screen.getByText("Fix authentication bug"))
@@ -209,77 +209,77 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("has accessible button labels", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       // Each item should have an accessible label
       const buttons = screen.getAllByRole("button")
       expect(buttons.length).toBe(3)
-      expect(buttons[0]).toHaveAttribute("aria-label", expect.stringContaining("View iteration"))
+      expect(buttons[0]).toHaveAttribute("aria-label", expect.stringContaining("View session"))
     })
   })
 
   describe("accessibility", () => {
     it("has proper list structure", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      const list = screen.getByRole("list", { name: "Iteration history" })
+      const list = screen.getByRole("list", { name: "Session history" })
       expect(list).toBeInTheDocument()
     })
   })
 
   describe("search functionality", () => {
     it("shows search input when event logs exist", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      expect(screen.getByLabelText("Search iterations")).toBeInTheDocument()
+      expect(screen.getByLabelText("Search sessions")).toBeInTheDocument()
       expect(screen.getByPlaceholderText("Search by task ID or title...")).toBeInTheDocument()
     })
 
     it("does not show search input when no event logs", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: [],
+      mockUseSessions.mockReturnValue({
+        sessions: [],
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      expect(screen.queryByLabelText("Search iterations")).not.toBeInTheDocument()
+      expect(screen.queryByLabelText("Search sessions")).not.toBeInTheDocument()
     })
 
     it("filters by task title", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      const searchInput = screen.getByLabelText("Search iterations")
+      const searchInput = screen.getByLabelText("Search sessions")
       fireEvent.change(searchInput, { target: { value: "authentication" } })
 
       // Should show only matching result
@@ -289,16 +289,16 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("filters by task ID", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      const searchInput = screen.getByLabelText("Search iterations")
+      const searchInput = screen.getByLabelText("Search sessions")
       fireEvent.change(searchInput, { target: { value: "test.2" } })
 
       // Should show only matching result
@@ -307,32 +307,32 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("shows no results message when filter matches nothing", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      const searchInput = screen.getByLabelText("Search iterations")
+      const searchInput = screen.getByLabelText("Search sessions")
       fireEvent.change(searchInput, { target: { value: "nonexistent" } })
 
-      expect(screen.getByText("No matching iterations found.")).toBeInTheDocument()
+      expect(screen.getByText("No matching sessions found.")).toBeInTheDocument()
     })
 
     it("clears search when clear button is clicked", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      const searchInput = screen.getByLabelText("Search iterations")
+      const searchInput = screen.getByLabelText("Search sessions")
       fireEvent.change(searchInput, { target: { value: "authentication" } })
 
       // Only one result visible
@@ -347,16 +347,16 @@ describe("IterationHistoryPanel", () => {
     })
 
     it("is case-insensitive", () => {
-      mockUseIterations.mockReturnValue({
-        iterations: mockIterations,
+      mockUseSessions.mockReturnValue({
+        sessions: mockSessions,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
-      const searchInput = screen.getByLabelText("Search iterations")
+      const searchInput = screen.getByLabelText("Search sessions")
       fireEvent.change(searchInput, { target: { value: "AUTHENTICATION" } })
 
       // Should still find the result
@@ -365,13 +365,13 @@ describe("IterationHistoryPanel", () => {
   })
 
   describe("date grouping", () => {
-    it("groups iterations by date", () => {
+    it("groups sessions by date", () => {
       // Create logs with different dates relative to "today"
       const today = new Date()
       const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
       const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)
 
-      const logsWithDates: IterationSummary[] = [
+      const logsWithDates: SessionSummary[] = [
         {
           id: "today1",
           createdAt: today.toISOString(),
@@ -392,14 +392,14 @@ describe("IterationHistoryPanel", () => {
         },
       ]
 
-      mockUseIterations.mockReturnValue({
-        iterations: logsWithDates,
+      mockUseSessions.mockReturnValue({
+        sessions: logsWithDates,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       // Should show date group headers
       expect(screen.getByText("Today")).toBeInTheDocument()
@@ -408,10 +408,10 @@ describe("IterationHistoryPanel", () => {
       expect(screen.getByText("Older task")).toBeInTheDocument()
     })
 
-    it("groups multiple iterations under the same date", () => {
+    it("groups multiple sessions under the same date", () => {
       const today = new Date()
 
-      const logsWithSameDate: IterationSummary[] = [
+      const logsWithSameDate: SessionSummary[] = [
         {
           id: "today1",
           createdAt: new Date(today.getTime() - 1000).toISOString(),
@@ -426,14 +426,14 @@ describe("IterationHistoryPanel", () => {
         },
       ]
 
-      mockUseIterations.mockReturnValue({
-        iterations: logsWithSameDate,
+      mockUseSessions.mockReturnValue({
+        sessions: logsWithSameDate,
         isLoading: false,
         error: null,
         refresh: vi.fn(),
       })
 
-      render(<IterationHistoryPanel />)
+      render(<SessionHistoryPanel />)
 
       // Should have one "Today" header with both tasks under it
       const todayHeaders = screen.getAllByText("Today")

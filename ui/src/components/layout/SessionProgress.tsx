@@ -1,16 +1,16 @@
-import { useAppStore, selectIteration } from "@/store"
+import { useAppStore, selectSession } from "@/store"
 
-export function IterationProgress({}: Props) {
-  const iteration = useAppStore(selectIteration)
+export function SessionProgress({}: Props) {
+  const session = useAppStore(selectSession)
 
-  if (iteration.total === 0) return null
+  if (session.total === 0) return null
 
-  const progress = (iteration.current / iteration.total) * 100
+  const progress = (session.current / session.total) * 100
 
   return (
     <div
       className="flex items-center gap-2"
-      title={`Iteration ${iteration.current} of ${iteration.total}`}
+      title={`Session ${session.current} of ${session.total}`}
     >
       <div className="bg-muted h-1.5 w-16 overflow-hidden rounded-full">
         <div
@@ -19,7 +19,7 @@ export function IterationProgress({}: Props) {
         />
       </div>
       <span className="text-muted-foreground text-xs">
-        {iteration.current}/{iteration.total}
+        {session.current}/{session.total}
       </span>
     </div>
   )

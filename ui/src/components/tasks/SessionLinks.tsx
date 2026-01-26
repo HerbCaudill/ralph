@@ -5,22 +5,22 @@ import { Label } from "@/components/ui/label"
 import { formatEventLogDate } from "@/lib/formatEventLogDate"
 import { useEventLogs, type EventLogSummary } from "@/hooks/useEventLogs"
 
-interface IterationLinksProps {
-  /** The task ID to show iteration links for */
+interface SessionLinksProps {
+  /** The task ID to show session links for */
   taskId: string
   /** Optional CSS class */
   className?: string
 }
 
 /**
- * Displays clickable links to iteration logs associated with a task.
+ * Displays clickable links to session logs associated with a task.
  * Fetches event logs from IndexedDB filtered by task ID.
  */
-export function IterationLinks({ taskId, className }: IterationLinksProps) {
+export function SessionLinks({ taskId, className }: SessionLinksProps) {
   const { eventLogs, isLoading, error } = useEventLogs({ taskId })
 
   // Sort by date, most recent first
-  const iterationLogs = useMemo(() => {
+  const sessionLogs = useMemo(() => {
     return [...eventLogs].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
@@ -32,7 +32,7 @@ export function IterationLinks({ taskId, className }: IterationLinksProps) {
       <div className={cn("grid gap-2", className)}>
         <Label className="flex items-center gap-1.5">
           <IconHistory className="size-3.5" />
-          Iterations
+          Sessions
         </Label>
         <div className="text-muted-foreground flex items-center gap-2 text-xs">
           <IconLoader2 className="size-3 animate-spin" />
@@ -47,8 +47,8 @@ export function IterationLinks({ taskId, className }: IterationLinksProps) {
     return null
   }
 
-  // Don't render section if no iteration logs
-  if (iterationLogs.length === 0) {
+  // Don't render section if no session logs
+  if (sessionLogs.length === 0) {
     return null
   }
 
@@ -56,19 +56,19 @@ export function IterationLinks({ taskId, className }: IterationLinksProps) {
     <div className={cn("grid gap-2", className)}>
       <Label className="flex items-center gap-1.5">
         <IconHistory className="size-3.5" />
-        Iterations
+        Sessions
       </Label>
       <div className="space-y-1.5">
-        {iterationLogs.map(log => (
-          <IterationLogItem key={log.id} log={log} />
+        {sessionLogs.map(log => (
+          <SessionLogItem key={log.id} log={log} />
         ))}
       </div>
     </div>
   )
 }
 
-/**  Single iteration log item with clickable link. */
-function IterationLogItem({ log }: { log: EventLogSummary }) {
+/**  Single session log item with clickable link. */
+function SessionLogItem({ log }: { log: EventLogSummary }) {
   const handleClick = () => {
     // Navigate using hash - the useEventLogRouter hook will handle the rest
     window.location.hash = `eventlog=${log.id}`
@@ -81,7 +81,7 @@ function IterationLogItem({ log }: { log: EventLogSummary }) {
         "hover:bg-muted/50 flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors",
         "focus:bg-muted/50 focus:outline-none",
       )}
-      aria-label={`View iteration from ${formatEventLogDate(log.createdAt)}`}
+      aria-label={`View session from ${formatEventLogDate(log.createdAt)}`}
       type="button"
     >
       <div className="min-w-0 flex-1">

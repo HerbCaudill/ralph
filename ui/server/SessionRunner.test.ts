@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { EventEmitter } from "node:events"
-import { IterationRunner } from "./IterationRunner.js"
+import { SessionRunner } from "./SessionRunner.js"
 import type {
   AgentAdapter,
   AgentEvent,
@@ -111,19 +111,19 @@ class MockAdapter extends EventEmitter implements AgentAdapter {
   }
 }
 
-describe("IterationRunner", () => {
+describe("SessionRunner", () => {
   let adapter: MockAdapter
-  let runner: IterationRunner
+  let runner: SessionRunner
 
   beforeEach(() => {
     adapter = new MockAdapter()
-    runner = new IterationRunner({
+    runner = new SessionRunner({
       adapter,
       cwd: "/test/cwd",
       env: { TEST: "value" },
       systemPrompt: "Test prompt",
       model: "test-model",
-      maxIterations: 5,
+      maxSessions: 5,
     })
   })
 
@@ -148,7 +148,7 @@ describe("IterationRunner", () => {
         env: { TEST: "value" },
         systemPrompt: "Test prompt",
         model: "test-model",
-        maxIterations: 5,
+        maxSessions: 5,
       })
     })
 
@@ -193,7 +193,7 @@ describe("IterationRunner", () => {
     })
 
     it("throws if not started", async () => {
-      const newRunner = new IterationRunner({ adapter: new MockAdapter() })
+      const newRunner = new SessionRunner({ adapter: new MockAdapter() })
 
       await expect(newRunner.sendMessage("Hello")).rejects.toThrow("not started")
     })
@@ -233,7 +233,7 @@ describe("IterationRunner", () => {
     })
 
     it("throws if not started", () => {
-      const newRunner = new IterationRunner({ adapter: new MockAdapter() })
+      const newRunner = new SessionRunner({ adapter: new MockAdapter() })
 
       expect(() => newRunner.pause()).toThrow("not started")
     })
@@ -272,7 +272,7 @@ describe("IterationRunner", () => {
     })
 
     it("throws if not started", () => {
-      const newRunner = new IterationRunner({ adapter: new MockAdapter() })
+      const newRunner = new SessionRunner({ adapter: new MockAdapter() })
 
       expect(() => newRunner.resume()).toThrow("not started")
     })
@@ -313,7 +313,7 @@ describe("IterationRunner", () => {
     })
 
     it("does nothing if not started", async () => {
-      const newRunner = new IterationRunner({ adapter: new MockAdapter() })
+      const newRunner = new SessionRunner({ adapter: new MockAdapter() })
 
       await newRunner.stop()
 
@@ -434,7 +434,7 @@ describe("IterationRunner", () => {
       expect(agentStatuses).toContain("paused")
     })
 
-    it("maps agent status to iteration status", () => {
+    it("maps agent status to session status", () => {
       const statuses: string[] = []
       runner.on("status", status => statuses.push(status))
 

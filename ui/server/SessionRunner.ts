@@ -7,10 +7,10 @@ import type {
   AgentStatus,
 } from "./AgentAdapter.js"
 
-export type IterationStatus = "idle" | "running" | "paused" | "stopping" | "stopped" | "error"
+export type SessionStatus = "idle" | "running" | "paused" | "stopping" | "stopped" | "error"
 
-export interface IterationRunnerOptions {
-  /** The agent adapter to use for running iterations */
+export interface SessionRunnerOptions {
+  /** The agent adapter to use for running sessions */
   adapter: AgentAdapter
   /** Working directory for the agent */
   cwd?: string
@@ -20,37 +20,37 @@ export interface IterationRunnerOptions {
   systemPrompt?: string
   /** Model to use (agent-specific) */
   model?: string
-  /** Maximum number of iterations/turns */
-  maxIterations?: number
+  /** Maximum number of sessions/turns */
+  maxSessions?: number
   /** Additional agent-specific options */
   [key: string]: unknown
 }
 
-/**  Events emitted by IterationRunner */
-export interface IterationRunnerEvents {
+/**  Events emitted by SessionRunner */
+export interface SessionRunnerEvents {
   /** Agent event received */
   event: (event: AgentEvent) => void
   /** Status changed */
-  status: (status: IterationStatus) => void
+  status: (status: SessionStatus) => void
   /** Agent status changed */
   agentStatus: (status: AgentStatus) => void
   /** An error occurred */
   error: (error: Error) => void
-  /** Iteration completed */
+  /** Session completed */
   complete: (info: { success: boolean; error?: Error }) => void
 }
 
 /**
- * Manages agent iterations using an AgentAdapter.
+ * Manages agent sessions using an AgentAdapter.
  *
- * Provides a consistent API for running iterations with different agents
+ * Provides a consistent API for running sessions with different agents
  * via the adapter pattern. Handles event forwarding, status management,
  * and lifecycle control.
  *
  * @example
  * ```ts
  * const adapter = createAdapter('claude')
- * const runner = new IterationRunner({ adapter, cwd: '/project' })
+ * const runner = new SessionRunner({ adapter, cwd: '/project' })
  *
  * runner.on('event', (event) => {
  *   if (event.type === 'message') {
@@ -63,14 +63,14 @@ export interface IterationRunnerEvents {
  * await runner.stop()
  * ```
  */
-export class IterationRunner extends EventEmitter {
+export class SessionRunner extends EventEmitter {
   private adapter: AgentAdapter
-  private _status: IterationStatus = "idle"
+  private _status: SessionStatus = "idle"
   private startOptions: AgentStartOptions
   private isStarted = false
   private hasCompleted = false
 
-  constructor(options: IterationRunnerOptions) {
+  constructor(options: SessionRunnerOptions) {
     super()
 
     this.adapter = options.adapter
@@ -79,7 +79,7 @@ export class IterationRunner extends EventEmitter {
       env: options.env,
       systemPrompt: options.systemPrompt,
       model: options.model,
-      maxIterations: options.maxIterations,
+      maxSessions: options.maxSessions,
     }
 
     // Forward adapter events
@@ -87,14 +87,14 @@ export class IterationRunner extends EventEmitter {
   }
 
   /**
-   * Current status of the iteration runner.
+   * Current status of the session runner.
    */
-  get status(): IterationStatus {
+  get status(): SessionStatus {
     return this._status
   }
 
   /**
-   * Whether an iteration is currently running.
+   * Whether an session is currently running.
    */
   get isRunning(): boolean {
     return this._status === "running"
@@ -108,13 +108,13 @@ export class IterationRunner extends EventEmitter {
   }
 
   /**
-   * Start the agent and prepare for iterations.
+   * Start the agent and prepare for sessions.
    *
    * @returns Promise that resolves when agent is ready
    */
   async start(): Promise<void> {
     if (this.isStarted) {
-      throw new Error("IterationRunner is already started")
+      throw new Error("SessionRunner is already started")
     }
 
     this.setStatus("running")
@@ -137,7 +137,7 @@ export class IterationRunner extends EventEmitter {
    */
   async sendMessage(content: string): Promise<void> {
     if (!this.isStarted) {
-      throw new Error("IterationRunner is not started")
+      throw new Error("SessionRunner is not started")
     }
 
     if (this._status !== "running") {
@@ -158,7 +158,7 @@ export class IterationRunner extends EventEmitter {
    */
   pause(): void {
     if (!this.isStarted) {
-      throw new Error("IterationRunner is not started")
+      throw new Error("SessionRunner is not started")
     }
 
     if (this._status !== "running") {
@@ -180,7 +180,7 @@ export class IterationRunner extends EventEmitter {
    */
   resume(): void {
     if (!this.isStarted) {
-      throw new Error("IterationRunner is not started")
+      throw new Error("SessionRunner is not started")
     }
 
     if (this._status !== "paused") {
@@ -245,7 +245,7 @@ export class IterationRunner extends EventEmitter {
     this.adapter.on("status", (status: AgentStatus) => {
       this.emit("agentStatus", status)
 
-      // Map agent status to iteration status
+      // Map agent status to session status
       switch (status) {
         case "starting":
         case "running":
@@ -293,7 +293,7 @@ export class IterationRunner extends EventEmitter {
   /**
    * Update status and emit status event.
    */
-  private setStatus(status: IterationStatus): void {
+  private setStatus(status: SessionStatus): void {
     if (this._status !== status) {
       this._status = status
       this.emit("status", status)

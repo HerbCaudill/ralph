@@ -1,36 +1,36 @@
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
-import { IterationHistoryDropdown } from "./IterationHistoryDropdown"
-import type { IterationSummary } from "@/hooks"
+import { SessionHistoryDropdown } from "./SessionHistoryDropdown"
+import type { SessionSummary } from "@/hooks"
 
 /**
- * Navigation bar showing current task and providing access to iteration history.
- * Features a dropdown to browse past iterations from event logs.
+ * Navigation bar showing current task and providing access to session history.
+ * Features a dropdown to browse past sessions from event logs.
  */
-export function EventStreamIterationBar({
+export function EventStreamSessionBar({
   currentTask,
-  iterations,
-  isLoadingIterations,
+  sessions,
+  isLoadingSessions,
   issuePrefix,
-  onIterationHistorySelect,
+  onSessionHistorySelect,
 }: Props) {
-  const hasIterations = iterations.length > 0
+  const hasSessions = sessions.length > 0
 
-  // Show dropdown when there are iterations to browse or loading
-  const showDropdown = hasIterations || isLoadingIterations
+  // Show dropdown when there are sessions to browse or loading
+  const showDropdown = hasSessions || isLoadingSessions
 
   return (
     <div
       className="bg-muted/50 border-border flex items-center justify-center border-b px-3 py-1.5"
-      data-testid="iteration-bar"
+      data-testid="session-bar"
     >
       <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
         {showDropdown ?
-          <IterationHistoryDropdown
+          <SessionHistoryDropdown
             currentTask={currentTask}
-            iterations={iterations}
-            isLoadingIterations={isLoadingIterations}
+            sessions={sessions}
+            isLoadingSessions={isLoadingSessions}
             issuePrefix={issuePrefix}
-            onIterationHistorySelect={onIterationHistorySelect}
+            onSessionHistorySelect={onSessionHistorySelect}
           />
         : currentTask ?
           <div
@@ -56,8 +56,8 @@ export function EventStreamIterationBar({
 
 type Props = {
   currentTask: { id: string | null; title: string } | null
-  iterations: IterationSummary[]
-  isLoadingIterations: boolean
+  sessions: SessionSummary[]
+  isLoadingSessions: boolean
   issuePrefix: string | null
-  onIterationHistorySelect: (id: string) => void
+  onSessionHistorySelect: (id: string) => void
 }

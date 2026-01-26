@@ -4,24 +4,24 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { randomBytes } from "node:crypto"
 import {
-  IterationEventPersister,
-  getIterationEventPersister,
-  resetIterationEventPersisters,
-} from "./IterationEventPersister"
+  SessionEventPersister,
+  getSessionEventPersister,
+  resetSessionEventPersisters,
+} from "./SessionEventPersister"
 import type { RalphEvent } from "./RalphManager"
 
-describe("IterationEventPersister", () => {
+describe("SessionEventPersister", () => {
   let testDir: string
-  let persister: IterationEventPersister
+  let persister: SessionEventPersister
 
   /**
    * Create a unique test directory for each test
    */
   beforeEach(async () => {
-    testDir = join(tmpdir(), `iteration-event-test-${randomBytes(8).toString("hex")}`)
+    testDir = join(tmpdir(), `session-event-test-${randomBytes(8).toString("hex")}`)
     await mkdir(testDir, { recursive: true })
-    persister = new IterationEventPersister(testDir)
-    resetIterationEventPersisters()
+    persister = new SessionEventPersister(testDir)
+    resetSessionEventPersisters()
   })
 
   /**
@@ -101,7 +101,7 @@ describe("IterationEventPersister", () => {
 
       // Verify the file was created
       const content = await readFile(
-        join(testDir, ".ralph", "iteration-events-test-1.jsonl"),
+        join(testDir, ".ralph", "session-events-test-1.jsonl"),
         "utf-8",
       )
       expect(content).toContain("message")
@@ -225,7 +225,7 @@ describe("IterationEventPersister", () => {
   })
 
   describe("clearAll", () => {
-    it("clears all iteration event files", async () => {
+    it("clears all session event files", async () => {
       await persister.appendEvent("test-1", createTestEvent())
       await persister.appendEvent("test-2", createTestEvent())
       await persister.appendEvent("test-3", createTestEvent())
@@ -238,7 +238,7 @@ describe("IterationEventPersister", () => {
     })
 
     it("handles non-existent directory", async () => {
-      const newPersister = new IterationEventPersister(join(testDir, "new-workspace"))
+      const newPersister = new SessionEventPersister(join(testDir, "new-workspace"))
       await newPersister.clearAll() // Should not throw
     })
   })
@@ -251,7 +251,7 @@ describe("IterationEventPersister", () => {
       await persister.appendEvent("test-1", event2)
 
       const content = await readFile(
-        join(testDir, ".ralph", "iteration-events-test-1.jsonl"),
+        join(testDir, ".ralph", "session-events-test-1.jsonl"),
         "utf-8",
       )
       const lines = content.trim().split("\n")
@@ -264,7 +264,7 @@ describe("IterationEventPersister", () => {
     it("handles invalid JSON lines gracefully", async () => {
       await mkdir(join(testDir, ".ralph"), { recursive: true })
       await writeFile(
-        join(testDir, ".ralph", "iteration-events-test-1.jsonl"),
+        join(testDir, ".ralph", "session-events-test-1.jsonl"),
         '{"type":"valid"}\ninvalid json line\n{"type":"also-valid"}\n',
         "utf-8",
       )
@@ -279,7 +279,7 @@ describe("IterationEventPersister", () => {
     it("handles empty lines gracefully", async () => {
       await mkdir(join(testDir, ".ralph"), { recursive: true })
       await writeFile(
-        join(testDir, ".ralph", "iteration-events-test-1.jsonl"),
+        join(testDir, ".ralph", "session-events-test-1.jsonl"),
         '{"type":"event-1"}\n\n\n{"type":"event-2"}\n',
         "utf-8",
       )
@@ -290,20 +290,20 @@ describe("IterationEventPersister", () => {
     })
   })
 
-  describe("getIterationEventPersister singleton", () => {
+  describe("getSessionEventPersister singleton", () => {
     it("returns the same persister for the same workspace path", () => {
-      const p1 = getIterationEventPersister(testDir)
-      const p2 = getIterationEventPersister(testDir)
+      const p1 = getSessionEventPersister(testDir)
+      const p2 = getSessionEventPersister(testDir)
       expect(p1).toBe(p2)
     })
 
     it("returns different persisters for different workspace paths", async () => {
-      const testDir2 = join(tmpdir(), `iteration-event-test-2-${randomBytes(8).toString("hex")}`)
+      const testDir2 = join(tmpdir(), `session-event-test-2-${randomBytes(8).toString("hex")}`)
       await mkdir(testDir2, { recursive: true })
 
       try {
-        const p1 = getIterationEventPersister(testDir)
-        const p2 = getIterationEventPersister(testDir2)
+        const p1 = getSessionEventPersister(testDir)
+        const p2 = getSessionEventPersister(testDir2)
         expect(p1).not.toBe(p2)
       } finally {
         await rm(testDir2, { recursive: true, force: true })
@@ -311,9 +311,9 @@ describe("IterationEventPersister", () => {
     })
 
     it("can be reset for testing", () => {
-      const p1 = getIterationEventPersister(testDir)
-      resetIterationEventPersisters()
-      const p2 = getIterationEventPersister(testDir)
+      const p1 = getSessionEventPersister(testDir)
+      resetSessionEventPersisters()
+      const p2 = getSessionEventPersister(testDir)
       expect(p1).not.toBe(p2)
     })
   })
@@ -332,7 +332,7 @@ describe("IterationEventPersister", () => {
       await persister.appendEvent("session-1", createTestEvent({ type: "tool_use", tool: "Read" }))
 
       // Simulate page reload - create new persister instance
-      const newPersister = new IterationEventPersister(testDir)
+      const newPersister = new SessionEventPersister(testDir)
       const restored = await newPersister.readEvents("session-1")
 
       expect(restored).toHaveLength(3)
@@ -341,16 +341,16 @@ describe("IterationEventPersister", () => {
       expect(restored[2].tool).toBe("Read")
     })
 
-    it("handles completed iteration cleanup", async () => {
-      // Write events during iteration
+    it("handles completed session cleanup", async () => {
+      // Write events during session
       await persister.appendEvent("session-1", createTestEvent())
       await persister.appendEvent("session-1", createTestEvent())
 
-      // Iteration completes - clear events
+      // Session completes - clear events
       await persister.clear("session-1")
 
       // After reload, no events should exist
-      const newPersister = new IterationEventPersister(testDir)
+      const newPersister = new SessionEventPersister(testDir)
       const restored = await newPersister.readEvents("session-1")
       expect(restored).toEqual([])
     })
@@ -359,7 +359,7 @@ describe("IterationEventPersister", () => {
       await persister.appendEvent("instance-1", createTestEvent({ type: "task-a" }))
       await persister.appendEvent("instance-2", createTestEvent({ type: "task-b" }))
 
-      const newPersister = new IterationEventPersister(testDir)
+      const newPersister = new SessionEventPersister(testDir)
       const events1 = await newPersister.readEvents("instance-1")
       const events2 = await newPersister.readEvents("instance-2")
 

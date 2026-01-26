@@ -1,24 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
-import {
-  useIterationPersistence,
-  type UseIterationPersistenceOptions,
-} from "./useIterationPersistence"
+import { useSessionPersistence, type UseSessionPersistenceOptions } from "./useSessionPersistence"
 import { eventDatabase } from "@/lib/persistence"
-import type { ChatEvent, TokenUsage, ContextWindow, IterationInfo } from "@/types"
+import type { ChatEvent, TokenUsage, ContextWindow, SessionInfo } from "@/types"
 
 // Mock the eventDatabase
 vi.mock("@/lib/persistence", () => ({
   eventDatabase: {
     init: vi.fn().mockResolvedValue(undefined),
-    saveIteration: vi.fn().mockResolvedValue(undefined),
+    saveSession: vi.fn().mockResolvedValue(undefined),
   },
 }))
 
-describe("useIterationPersistence", () => {
+describe("useSessionPersistence", () => {
   const mockTokenUsage: TokenUsage = { input: 1000, output: 500 }
   const mockContextWindow: ContextWindow = { used: 5000, max: 200000 }
-  const mockIteration: IterationInfo = { current: 1, total: 5 }
+  const mockSession: SessionInfo = { current: 1, total: 5 }
 
   const createSystemInitEvent = (timestamp: number): ChatEvent => ({
     type: "system",
@@ -50,12 +47,12 @@ describe("useIterationPersistence", () => {
     timestamp,
   })
 
-  const defaultOptions: UseIterationPersistenceOptions = {
+  const defaultOptions: UseSessionPersistenceOptions = {
     instanceId: "default",
     events: [],
     tokenUsage: mockTokenUsage,
     contextWindow: mockContextWindow,
-    iteration: mockIteration,
+    session: mockSession,
     enabled: true,
   }
 
@@ -69,7 +66,7 @@ describe("useIterationPersistence", () => {
 
   describe("initialization", () => {
     it("initializes the database on mount", async () => {
-      renderHook(() => useIterationPersistence(defaultOptions))
+      renderHook(() => useSessionPersistence(defaultOptions))
 
       await waitFor(() => {
         expect(eventDatabase.init).toHaveBeenCalledTimes(1)
@@ -78,7 +75,7 @@ describe("useIterationPersistence", () => {
 
     it("does not initialize when disabled", async () => {
       renderHook(() =>
-        useIterationPersistence({
+        useSessionPersistence({
           ...defaultOptions,
           enabled: false,
         }),
@@ -92,26 +89,26 @@ describe("useIterationPersistence", () => {
       expect(eventDatabase.init).not.toHaveBeenCalled()
     })
 
-    it("returns null currentIterationId when no events", () => {
-      const { result } = renderHook(() => useIterationPersistence(defaultOptions))
-      expect(result.current.currentIterationId).toBeNull()
+    it("returns null currentSessionId when no events", () => {
+      const { result } = renderHook(() => useSessionPersistence(defaultOptions))
+      expect(result.current.currentSessionId).toBeNull()
     })
   })
 
-  describe("iteration detection", () => {
-    it("detects a new iteration on system init event", async () => {
+  describe("session detection", () => {
+    it("detects a new session on system init event", async () => {
       const timestamp = Date.now()
       const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
 
       const { result } = renderHook(() =>
-        useIterationPersistence({
+        useSessionPersistence({
           ...defaultOptions,
           events,
         }),
       )
 
       await waitFor(() => {
-        expect(result.current.currentIterationId).toBe(`default-${timestamp}`)
+        expect(result.current.currentSessionId).toBe(`default-${timestamp}`)
       })
     })
 
@@ -127,7 +124,7 @@ describe("useIterationPersistence", () => {
       const beforeTime = Date.now()
 
       const { result } = renderHook(() =>
-        useIterationPersistence({
+        useSessionPersistence({
           ...defaultOptions,
           events: [eventWithoutTimestamp],
         }),
@@ -136,11 +133,11 @@ describe("useIterationPersistence", () => {
       const afterTime = Date.now()
 
       await waitFor(() => {
-        expect(result.current.currentIterationId).not.toBeNull()
+        expect(result.current.currentSessionId).not.toBeNull()
         // The ID should be generated with a fallback timestamp
-        expect(result.current.currentIterationId).toMatch(/^default-\d+$/)
+        expect(result.current.currentSessionId).toMatch(/^default-\d+$/)
         // Extract the timestamp from the ID
-        const idTimestamp = parseInt(result.current.currentIterationId!.split("-")[1], 10)
+        const idTimestamp = parseInt(result.current.currentSessionId!.split("-")[1], 10)
         // The fallback timestamp should be between beforeTime and afterTime
         expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime)
         expect(idTimestamp).toBeLessThanOrEqual(afterTime)
@@ -158,7 +155,7 @@ describe("useIterationPersistence", () => {
       const beforeTime = Date.now()
 
       const { result } = renderHook(() =>
-        useIterationPersistence({
+        useSessionPersistence({
           ...defaultOptions,
           events: [eventWithZeroTimestamp],
         }),
@@ -167,11 +164,11 @@ describe("useIterationPersistence", () => {
       const afterTime = Date.now()
 
       await waitFor(() => {
-        expect(result.current.currentIterationId).not.toBeNull()
+        expect(result.current.currentSessionId).not.toBeNull()
         // The ID should be generated with a fallback timestamp (not 0)
-        expect(result.current.currentIterationId).toMatch(/^default-\d+$/)
+        expect(result.current.currentSessionId).toMatch(/^default-\d+$/)
         // Extract the timestamp from the ID
-        const idTimestamp = parseInt(result.current.currentIterationId!.split("-")[1], 10)
+        const idTimestamp = parseInt(result.current.currentSessionId!.split("-")[1], 10)
         // The fallback timestamp should be between beforeTime and afterTime (not 0)
         expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime)
         expect(idTimestamp).toBeLessThanOrEqual(afterTime)
@@ -179,11 +176,11 @@ describe("useIterationPersistence", () => {
       })
     })
 
-    it("generates stable iteration IDs based on instance and timestamp", async () => {
+    it("generates stable session IDs based on instance and timestamp", async () => {
       const timestamp = 1706123456789
 
       const { result: result1 } = renderHook(() =>
-        useIterationPersistence({
+        useSessionPersistence({
           ...defaultOptions,
           instanceId: "instance-1",
           events: [createSystemInitEvent(timestamp)],
@@ -191,7 +188,7 @@ describe("useIterationPersistence", () => {
       )
 
       const { result: result2 } = renderHook(() =>
-        useIterationPersistence({
+        useSessionPersistence({
           ...defaultOptions,
           instanceId: "instance-2",
           events: [createSystemInitEvent(timestamp)],
@@ -199,14 +196,14 @@ describe("useIterationPersistence", () => {
       )
 
       await waitFor(() => {
-        expect(result1.current.currentIterationId).toBe("instance-1-1706123456789")
-        expect(result2.current.currentIterationId).toBe("instance-2-1706123456789")
+        expect(result1.current.currentSessionId).toBe("instance-1-1706123456789")
+        expect(result2.current.currentSessionId).toBe("instance-2-1706123456789")
       })
     })
   })
 
-  describe("auto-save on iteration end", () => {
-    it("saves iteration on ralph_task_completed event", async () => {
+  describe("auto-save on session end", () => {
+    it("saves session on ralph_task_completed event", async () => {
       const startTime = Date.now()
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
@@ -216,7 +213,7 @@ describe("useIterationPersistence", () => {
       ]
 
       const { rerender } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
       )
 
@@ -229,18 +226,18 @@ describe("useIterationPersistence", () => {
       }
 
       await waitFor(() => {
-        expect(eventDatabase.saveIteration).toHaveBeenCalled()
+        expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
 
       // Check the saved data
-      const savedIteration = vi.mocked(eventDatabase.saveIteration).mock.calls[0]?.[0]
-      expect(savedIteration).toBeDefined()
-      expect(savedIteration?.instanceId).toBe("default")
-      expect(savedIteration?.completedAt).not.toBeNull()
-      expect(savedIteration?.events).toHaveLength(events.length)
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession).toBeDefined()
+      expect(savedSession?.instanceId).toBe("default")
+      expect(savedSession?.completedAt).not.toBeNull()
+      expect(savedSession?.events).toHaveLength(events.length)
     })
 
-    it("saves iteration on COMPLETE promise signal", async () => {
+    it("saves session on COMPLETE promise signal", async () => {
       const startTime = Date.now()
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
@@ -249,7 +246,7 @@ describe("useIterationPersistence", () => {
       ]
 
       const { rerender } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
       )
 
@@ -262,30 +259,30 @@ describe("useIterationPersistence", () => {
       }
 
       await waitFor(() => {
-        expect(eventDatabase.saveIteration).toHaveBeenCalled()
+        expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
 
-      const savedIteration = vi.mocked(eventDatabase.saveIteration).mock.calls[0]?.[0]
-      expect(savedIteration?.completedAt).not.toBeNull()
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.completedAt).not.toBeNull()
     })
   })
 
-  describe("auto-save on iteration boundary", () => {
-    it("saves previous iteration when new iteration starts", async () => {
+  describe("auto-save on session boundary", () => {
+    it("saves previous session when new session starts", async () => {
       const startTime1 = Date.now()
       const startTime2 = startTime1 + 1000
 
       const { rerender } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
       )
 
-      // First iteration
+      // First session
       rerender({
         ...defaultOptions,
         events: [
           createSystemInitEvent(startTime1),
-          createAssistantEvent(startTime1 + 100, "First iteration"),
+          createAssistantEvent(startTime1 + 100, "First session"),
         ] as ChatEvent[],
       })
 
@@ -293,23 +290,23 @@ describe("useIterationPersistence", () => {
         await new Promise(resolve => setTimeout(resolve, 10))
       })
 
-      // Second iteration starts - should save the first
+      // Second session starts - should save the first
       rerender({
         ...defaultOptions,
         events: [
           createSystemInitEvent(startTime1),
-          createAssistantEvent(startTime1 + 100, "First iteration"),
+          createAssistantEvent(startTime1 + 100, "First session"),
           createSystemInitEvent(startTime2),
         ] as ChatEvent[],
       })
 
       await waitFor(() => {
-        expect(eventDatabase.saveIteration).toHaveBeenCalled()
+        expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
 
-      const savedIteration = vi.mocked(eventDatabase.saveIteration).mock.calls[0]?.[0]
-      expect(savedIteration?.id).toBe(`default-${startTime1}`)
-      expect(savedIteration?.completedAt).not.toBeNull()
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.id).toBe(`default-${startTime1}`)
+      expect(savedSession?.completedAt).not.toBeNull()
     })
   })
 
@@ -323,7 +320,7 @@ describe("useIterationPersistence", () => {
       ]
 
       const { rerender } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
       )
 
@@ -335,17 +332,17 @@ describe("useIterationPersistence", () => {
       }
 
       await waitFor(() => {
-        expect(eventDatabase.saveIteration).toHaveBeenCalled()
+        expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
 
-      const savedIteration = vi.mocked(eventDatabase.saveIteration).mock.calls[0]?.[0]
-      expect(savedIteration?.taskId).toBe("r-abc123")
-      expect(savedIteration?.taskTitle).toBe("Fix the bug")
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.taskId).toBe("r-abc123")
+      expect(savedSession?.taskTitle).toBe("Fix the bug")
     })
   })
 
   describe("manual save", () => {
-    it("allows manual save of current iteration", async () => {
+    it("allows manual save of current session", async () => {
       const startTime = Date.now()
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
@@ -353,21 +350,21 @@ describe("useIterationPersistence", () => {
       ]
 
       const { result } = renderHook(() =>
-        useIterationPersistence({
+        useSessionPersistence({
           ...defaultOptions,
           events,
         }),
       )
 
       await waitFor(() => {
-        expect(result.current.currentIterationId).toBe(`default-${startTime}`)
+        expect(result.current.currentSessionId).toBe(`default-${startTime}`)
       })
 
       await act(async () => {
-        await result.current.saveCurrentIteration()
+        await result.current.saveCurrentSession()
       })
 
-      expect(eventDatabase.saveIteration).toHaveBeenCalledWith(
+      expect(eventDatabase.saveSession).toHaveBeenCalledWith(
         expect.objectContaining({
           id: `default-${startTime}`,
           instanceId: "default",
@@ -379,7 +376,7 @@ describe("useIterationPersistence", () => {
 
     it("does nothing on manual save when disabled", async () => {
       const { result } = renderHook(() =>
-        useIterationPersistence({
+        useSessionPersistence({
           ...defaultOptions,
           enabled: false,
           events: [createSystemInitEvent(Date.now())],
@@ -387,10 +384,10 @@ describe("useIterationPersistence", () => {
       )
 
       await act(async () => {
-        await result.current.saveCurrentIteration()
+        await result.current.saveCurrentSession()
       })
 
-      expect(eventDatabase.saveIteration).not.toHaveBeenCalled()
+      expect(eventDatabase.saveSession).not.toHaveBeenCalled()
     })
   })
 
@@ -403,7 +400,7 @@ describe("useIterationPersistence", () => {
       ]
 
       const { rerender } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         {
           initialProps: {
             ...defaultOptions,
@@ -419,7 +416,7 @@ describe("useIterationPersistence", () => {
         await new Promise(resolve => setTimeout(resolve, 50))
       })
 
-      expect(eventDatabase.saveIteration).not.toHaveBeenCalled()
+      expect(eventDatabase.saveSession).not.toHaveBeenCalled()
     })
   })
 
@@ -436,7 +433,7 @@ describe("useIterationPersistence", () => {
       ]
 
       const { rerender } = renderHook(
-        (props: UseIterationPersistenceOptions) => useIterationPersistence(props),
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
       )
 
@@ -450,7 +447,7 @@ describe("useIterationPersistence", () => {
 
       // Should have saved at least once (at 10+ events)
       await waitFor(() => {
-        expect(eventDatabase.saveIteration).toHaveBeenCalled()
+        expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
     })
   })

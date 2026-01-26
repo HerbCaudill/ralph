@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within, userEvent, fn } from "storybook/test"
-import { IterationHistoryPanelView } from "./IterationHistoryPanel"
-import type { IterationSummary } from "@/hooks"
+import { SessionHistoryPanelView } from "./SessionHistoryPanel"
+import type { SessionSummary } from "@/hooks"
 
 /** Helper to create event log mock data */
-function createIteration(
+function createSession(
   id: string,
   taskId: string | undefined,
   title: string | undefined,
   createdAt: string,
   eventCount: number,
-): IterationSummary {
+): SessionSummary {
   return {
     id,
     createdAt,
@@ -27,9 +27,9 @@ const twoHoursAgo = new Date(now.getTime() - 7200000).toISOString()
 const yesterday = new Date(now.getTime() - 86400000).toISOString()
 const twoDaysAgo = new Date(now.getTime() - 172800000).toISOString()
 
-const meta: Meta<typeof IterationHistoryPanelView> = {
-  title: "Panels/IterationHistoryPanel",
-  component: IterationHistoryPanelView,
+const meta: Meta<typeof SessionHistoryPanelView> = {
+  title: "Panels/SessionHistoryPanel",
+  component: SessionHistoryPanelView,
   parameters: {},
   tags: ["autodocs"],
   decorators: [
@@ -40,7 +40,7 @@ const meta: Meta<typeof IterationHistoryPanelView> = {
     ),
   ],
   args: {
-    iterations: [],
+    sessions: [],
     isLoading: false,
     error: null,
     issuePrefix: "PROJ-",
@@ -55,7 +55,7 @@ type Story = StoryObj<typeof meta>
 /** Default empty state. */
 export const Empty: Story = {
   args: {
-    iterations: [],
+    sessions: [],
     isLoading: false,
     error: null,
   },
@@ -64,7 +64,7 @@ export const Empty: Story = {
 /** Loading state. */
 export const Loading: Story = {
   args: {
-    iterations: [],
+    sessions: [],
     isLoading: true,
     error: null,
   },
@@ -73,35 +73,35 @@ export const Loading: Story = {
 /** Error state with retry button. */
 export const WithError: Story = {
   args: {
-    iterations: [],
+    sessions: [],
     isLoading: false,
-    error: "Failed to load iterations",
+    error: "Failed to load sessions",
   },
 }
 
-/** With iteration data. */
-export const WithIterations: Story = {
+/** With session data. */
+export const WithSessions: Story = {
   args: {
-    iterations: [
-      createIteration("log-1", "PROJ-123", "Fix authentication bug", oneHourAgo, 42),
-      createIteration("log-2", "PROJ-124", "Add dark mode support", twoHoursAgo, 28),
-      createIteration("log-3", "PROJ-125", "Refactor API endpoints", yesterday, 156),
-      createIteration("log-4", "PROJ-126", "Update documentation", twoDaysAgo, 15),
+    sessions: [
+      createSession("log-1", "PROJ-123", "Fix authentication bug", oneHourAgo, 42),
+      createSession("log-2", "PROJ-124", "Add dark mode support", twoHoursAgo, 28),
+      createSession("log-3", "PROJ-125", "Refactor API endpoints", yesterday, 156),
+      createSession("log-4", "PROJ-126", "Update documentation", twoDaysAgo, 15),
     ],
   },
 }
 
-/** With many iterations across multiple days. */
-export const ManyIterations: Story = {
+/** With many sessions across multiple days. */
+export const ManySessions: Story = {
   args: {
-    iterations: [
+    sessions: [
       // Today
-      createIteration("today-1", "PROJ-101", "Task 1 - Today", today, 45),
-      createIteration("today-2", "PROJ-102", "Task 2 - Today", oneHourAgo, 32),
-      createIteration("today-3", "PROJ-103", "Task 3 - Today", twoHoursAgo, 18),
+      createSession("today-1", "PROJ-101", "Task 1 - Today", today, 45),
+      createSession("today-2", "PROJ-102", "Task 2 - Today", oneHourAgo, 32),
+      createSession("today-3", "PROJ-103", "Task 3 - Today", twoHoursAgo, 18),
       // Yesterday
-      createIteration("yesterday-1", "PROJ-201", "Task 1 - Yesterday", yesterday, 67),
-      createIteration(
+      createSession("yesterday-1", "PROJ-201", "Task 1 - Yesterday", yesterday, 67),
+      createSession(
         "yesterday-2",
         "PROJ-202",
         "Task 2 - Yesterday",
@@ -109,8 +109,8 @@ export const ManyIterations: Story = {
         54,
       ),
       // Older
-      createIteration("older-1", "PROJ-301", "Task 1 - Older", twoDaysAgo, 89),
-      createIteration(
+      createSession("older-1", "PROJ-301", "Task 1 - Older", twoDaysAgo, 89),
+      createSession(
         "older-2",
         "PROJ-302",
         "Task 2 - Older",
@@ -121,12 +121,12 @@ export const ManyIterations: Story = {
   },
 }
 
-/** Iteration without a task (no task metadata). */
+/** Session without a task (no task metadata). */
 export const WithoutTask: Story = {
   args: {
-    iterations: [
-      createIteration("log-1", undefined, undefined, oneHourAgo, 42),
-      createIteration("log-2", "PROJ-124", "Has a task", twoHoursAgo, 28),
+    sessions: [
+      createSession("log-1", undefined, undefined, oneHourAgo, 42),
+      createSession("log-2", "PROJ-124", "Has a task", twoHoursAgo, 28),
     ],
   },
 }
@@ -134,15 +134,15 @@ export const WithoutTask: Story = {
 /** With long task titles. */
 export const LongTitles: Story = {
   args: {
-    iterations: [
-      createIteration(
+    sessions: [
+      createSession(
         "log-1",
         "PROJ-123",
         "This is a very long task title that should truncate properly in the panel when it overflows the available width",
         oneHourAgo,
         42,
       ),
-      createIteration(
+      createSession(
         "log-2",
         "PROJ-124",
         "Another extremely long title to test the truncation behavior of the component in various scenarios",
@@ -157,10 +157,10 @@ export const LongTitles: Story = {
 // Interaction tests (migrated from Playwright)
 // ============================================================================
 
-/** Verifies empty state message is shown when no iterations exist. */
+/** Verifies empty state message is shown when no sessions exist. */
 export const EmptyStateMessage: Story = {
   args: {
-    iterations: [],
+    sessions: [],
     isLoading: false,
     error: null,
   },
@@ -168,14 +168,14 @@ export const EmptyStateMessage: Story = {
     const canvas = within(canvasElement)
     const emptyState = await canvas.findByTestId("empty-state")
     await expect(emptyState).toBeVisible()
-    await expect(emptyState).toHaveTextContent("No iteration history yet")
+    await expect(emptyState).toHaveTextContent("No session history yet")
   },
 }
 
 /** Verifies loading state is displayed correctly. */
 export const LoadingStateDisplay: Story = {
   args: {
-    iterations: [],
+    sessions: [],
     isLoading: true,
     error: null,
   },
@@ -183,14 +183,14 @@ export const LoadingStateDisplay: Story = {
     const canvas = within(canvasElement)
     const loadingState = await canvas.findByTestId("loading-state")
     await expect(loadingState).toBeVisible()
-    await expect(loadingState).toHaveTextContent("Loading iterations...")
+    await expect(loadingState).toHaveTextContent("Loading sessions...")
   },
 }
 
 /** Verifies error state with retry button. */
 export const ErrorStateWithRetry: Story = {
   args: {
-    iterations: [],
+    sessions: [],
     isLoading: false,
     error: "Connection failed",
   },
@@ -209,24 +209,24 @@ export const ErrorStateWithRetry: Story = {
   },
 }
 
-/** Verifies search input is visible when iterations exist. */
+/** Verifies search input is visible when sessions exist. */
 export const SearchInputVisible: Story = {
   args: {
-    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    sessions: [createSession("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const searchInput = await canvas.findByTestId("search-input")
     await expect(searchInput).toBeVisible()
     await expect(searchInput).toHaveAttribute("placeholder", "Search by task ID or title...")
-    await expect(searchInput).toHaveAttribute("aria-label", "Search iterations")
+    await expect(searchInput).toHaveAttribute("aria-label", "Search sessions")
   },
 }
 
-/** Verifies search input is hidden when no iterations exist. */
+/** Verifies search input is hidden when no sessions exist. */
 export const SearchInputHiddenWhenEmpty: Story = {
   args: {
-    iterations: [],
+    sessions: [],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -238,7 +238,7 @@ export const SearchInputHiddenWhenEmpty: Story = {
 /** Verifies clear button appears when search has text. */
 export const ClearButtonAppearsWithText: Story = {
   args: {
-    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    sessions: [createSession("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -260,7 +260,7 @@ export const ClearButtonAppearsWithText: Story = {
 /** Verifies clear button clears search text. */
 export const ClearButtonClearsText: Story = {
   args: {
-    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    sessions: [createSession("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -282,7 +282,7 @@ export const ClearButtonClearsText: Story = {
 /** Verifies searching with no matches shows 'no results' message. */
 export const NoResultsMessage: Story = {
   args: {
-    iterations: [createIteration("log-1", "PROJ-123", "Fix bug", oneHourAgo, 42)],
+    sessions: [createSession("log-1", "PROJ-123", "Fix bug", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -294,7 +294,7 @@ export const NoResultsMessage: Story = {
     // Should show no results message
     const noResults = await canvas.findByTestId("no-results")
     await expect(noResults).toBeVisible()
-    await expect(noResults).toHaveTextContent("No matching iterations found")
+    await expect(noResults).toHaveTextContent("No matching sessions found")
   },
 }
 
@@ -304,15 +304,15 @@ export const DateGroupsDisplay: Story = {
   // This ensures "10 minutes ago" is always relative to when the story actually renders,
   // preventing flaky tests when the module is cached from previous test runs.
   render: args => {
-    const freshIterations = [
-      createIteration(
+    const freshSessions = [
+      createSession(
         "log-1",
         "PROJ-123",
         "Today task",
         new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 minutes ago (definitely today)
         42,
       ),
-      createIteration(
+      createSession(
         "log-2",
         "PROJ-124",
         "Yesterday task",
@@ -320,7 +320,7 @@ export const DateGroupsDisplay: Story = {
         28,
       ),
     ]
-    return <IterationHistoryPanelView {...args} iterations={freshIterations} />
+    return <SessionHistoryPanelView {...args} sessions={freshSessions} />
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -337,10 +337,10 @@ export const DateGroupsDisplay: Story = {
   },
 }
 
-/** Verifies iteration items show event count. */
+/** Verifies session items show event count. */
 export const ItemsShowEventCount: Story = {
   args: {
-    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    sessions: [createSession("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -351,15 +351,15 @@ export const ItemsShowEventCount: Story = {
   },
 }
 
-/** Verifies iteration items are clickable. */
+/** Verifies session items are clickable. */
 export const ItemsAreClickable: Story = {
   args: {
-    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    sessions: [createSession("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
 
-    const itemButton = await canvas.findByTestId("iteration-item-button")
+    const itemButton = await canvas.findByTestId("session-item-button")
     await expect(itemButton).toBeVisible()
 
     await userEvent.click(itemButton)
@@ -367,47 +367,47 @@ export const ItemsAreClickable: Story = {
   },
 }
 
-/** Verifies iteration list has proper ARIA role. */
+/** Verifies session list has proper ARIA role. */
 export const ListHasProperAriaRole: Story = {
   args: {
-    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    sessions: [createSession("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
-    const list = await canvas.findByTestId("iteration-list")
+    const list = await canvas.findByTestId("session-list")
     await expect(list).toHaveAttribute("role", "list")
-    await expect(list).toHaveAttribute("aria-label", "Iteration history")
+    await expect(list).toHaveAttribute("aria-label", "Session history")
   },
 }
 
-/** Verifies iteration item buttons have accessible labels. */
+/** Verifies session item buttons have accessible labels. */
 export const ItemsHaveAccessibleLabels: Story = {
   args: {
-    iterations: [createIteration("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
+    sessions: [createSession("log-1", "PROJ-123", "Test task", oneHourAgo, 42)],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
-    const itemButton = await canvas.findByTestId("iteration-item-button")
+    const itemButton = await canvas.findByTestId("session-item-button")
     const ariaLabel = itemButton.getAttribute("aria-label")
-    await expect(ariaLabel).toMatch(/view iteration/i)
+    await expect(ariaLabel).toMatch(/view session/i)
   },
 }
 
-/** Verifies iteration count is shown in header. */
-export const ShowsIterationCount: Story = {
+/** Verifies session count is shown in header. */
+export const ShowsSessionCount: Story = {
   args: {
-    iterations: [
-      createIteration("log-1", "PROJ-123", "Task 1", oneHourAgo, 42),
-      createIteration("log-2", "PROJ-124", "Task 2", twoHoursAgo, 28),
-      createIteration("log-3", "PROJ-125", "Task 3", yesterday, 15),
+    sessions: [
+      createSession("log-1", "PROJ-123", "Task 1", oneHourAgo, 42),
+      createSession("log-2", "PROJ-124", "Task 2", twoHoursAgo, 28),
+      createSession("log-3", "PROJ-125", "Task 3", yesterday, 15),
     ],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
-    const count = await canvas.findByTestId("iteration-count")
+    const count = await canvas.findByTestId("session-count")
     await expect(count).toBeVisible()
     await expect(count).toHaveTextContent("(3)")
   },

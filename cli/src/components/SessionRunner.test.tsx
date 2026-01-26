@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest"
 
 /**
- * Tests for IterationRunner component.
+ * Tests for SessionRunner component.
  *
- * Full integration testing of IterationRunner would require:
+ * Full integration testing of SessionRunner would require:
  * 1. Mocking child_process.spawn to simulate Claude CLI
  * 2. Mocking file system operations
  * 3. Testing React component rendering with ink-testing-library
@@ -12,10 +12,10 @@ import { describe, it, expect } from "vitest"
  * and can be tested there. These tests have been removed as they were testing
  * implementation details of the prompt loading logic.
  */
-describe("IterationRunner", () => {
+describe("SessionRunner", () => {
   /**
-   * Placeholder test confirming IterationRunner is a React component.
-   * IterationRunner is primarily tested through integration tests and e2e tests
+   * Placeholder test confirming SessionRunner is a React component.
+   * SessionRunner is primarily tested through integration tests and e2e tests
    * that involve spawning the actual Claude CLI. Unit tests for isolated
    * components (EventDisplay, Header, etc) are in their own files.
    */
@@ -43,7 +43,7 @@ describe("IterationRunner", () => {
  *    - Use ink-testing-library to render component
  *    - Test initialization prompts
  *    - Test error display
- *    - Test iteration counter
+ *    - Test session counter
  *
  * Example structure for a full integration test:
  *
@@ -60,7 +60,7 @@ describe("IterationRunner", () => {
  * }))
  *
  * it('parses streaming JSON events', () => {
- *   const { lastFrame } = render(<IterationRunner totalIterations={1} />)
+ *   const { lastFrame } = render(<SessionRunner totalSessions={1} />)
  *   const mockChild = getLastSpawnedProcess()
  *
  *   mockChild.stdout.emit('data', Buffer.from('{"type":"assistant"}\n'))

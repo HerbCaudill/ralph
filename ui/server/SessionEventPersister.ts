@@ -3,22 +3,22 @@ import { join } from "node:path"
 import type { RalphEvent } from "./RalphManager.js"
 
 /**
- * IterationEventPersister provides file-based persistence for events during active iterations.
+ * SessionEventPersister provides file-based persistence for events during active sessions.
  *
  * Events are stored in JSONL format (one JSON object per line) in:
- * {workspacePath}/.ralph/iteration-events-{instanceId}.jsonl
+ * {workspacePath}/.ralph/session-events-{instanceId}.jsonl
  *
  * This enables recovery of events on page reload by:
  * 1. Appending each event as it arrives (minimal I/O overhead)
  * 2. Reading all events back when reconnecting
- * 3. Deleting the file when the iteration completes
+ * 3. Deleting the file when the session completes
  *
  * The JSONL format is ideal because:
  * - Appending is an atomic operation (no need to read-modify-write)
  * - Reading is simple (split by newlines, parse each line)
  * - File can grow without rewriting the entire content
  */
-export class IterationEventPersister {
+export class SessionEventPersister {
   private workspacePath: string
   private storeDir: string
 
@@ -45,7 +45,7 @@ export class IterationEventPersister {
    * Get the path to an instance's event file.
    */
   private getEventFilePath(instanceId: string): string {
-    return join(this.storeDir, `iteration-events-${instanceId}.jsonl`)
+    return join(this.storeDir, `session-events-${instanceId}.jsonl`)
   }
 
   /**
@@ -116,7 +116,7 @@ export class IterationEventPersister {
           const event = JSON.parse(line) as RalphEvent
           events.push(event)
         } catch {
-          console.warn(`[IterationEventPersister] Skipping invalid event line for ${instanceId}`)
+          console.warn(`[SessionEventPersister] Skipping invalid event line for ${instanceId}`)
         }
       }
 
@@ -132,7 +132,7 @@ export class IterationEventPersister {
   /**
    * Clear all events for an instance (delete the file).
    *
-   * Call this when an iteration completes successfully.
+   * Call this when an session completes successfully.
    * Returns true if the file was deleted, false if it didn't exist.
    */
   async clear(instanceId: string): Promise<boolean> {
@@ -150,7 +150,7 @@ export class IterationEventPersister {
   /**
    * Reset the event file for an instance (delete and recreate empty).
    *
-   * Useful when starting a new iteration.
+   * Useful when starting a new session.
    */
   async reset(instanceId: string): Promise<void> {
     await this.ensureDir()
@@ -178,7 +178,7 @@ export class IterationEventPersister {
   }
 
   /**
-   * Clear all iteration event files in the .ralph directory.
+   * Clear all session event files in the .ralph directory.
    *
    * Useful for cleanup during testing or when resetting state.
    */
@@ -187,9 +187,7 @@ export class IterationEventPersister {
 
     try {
       const files = await readdir(this.storeDir)
-      const eventFiles = files.filter(
-        f => f.startsWith("iteration-events-") && f.endsWith(".jsonl"),
-      )
+      const eventFiles = files.filter(f => f.startsWith("session-events-") && f.endsWith(".jsonl"))
 
       for (const file of eventFiles) {
         await rm(join(this.storeDir, file)).catch(() => {
@@ -206,22 +204,22 @@ export class IterationEventPersister {
 }
 
 // Store instances per workspace path
-const iterationEventPersisters = new Map<string, IterationEventPersister>()
+const sessionEventPersisters = new Map<string, SessionEventPersister>()
 
 /**
- * Get the IterationEventPersister for a workspace.
+ * Get the SessionEventPersister for a workspace.
  * Creates a new persister if one doesn't exist for the workspace.
  */
-export function getIterationEventPersister(workspacePath: string): IterationEventPersister {
-  let persister = iterationEventPersisters.get(workspacePath)
+export function getSessionEventPersister(workspacePath: string): SessionEventPersister {
+  let persister = sessionEventPersisters.get(workspacePath)
   if (!persister) {
-    persister = new IterationEventPersister(workspacePath)
-    iterationEventPersisters.set(workspacePath, persister)
+    persister = new SessionEventPersister(workspacePath)
+    sessionEventPersisters.set(workspacePath, persister)
   }
   return persister
 }
 
-/**  Reset all IterationEventPersister instances (for testing). */
-export function resetIterationEventPersisters(): void {
-  iterationEventPersisters.clear()
+/**  Reset all SessionEventPersister instances (for testing). */
+export function resetSessionEventPersisters(): void {
+  sessionEventPersisters.clear()
 }

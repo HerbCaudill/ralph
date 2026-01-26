@@ -3,16 +3,16 @@ import { join } from "node:path"
 import type { RalphStatus } from "./RalphManager.js"
 import type { ConversationContext } from "./ClaudeAdapter.js"
 
-/**  Maximum age of iteration state files before they're considered stale (1 hour) */
+/**  Maximum age of session state files before they're considered stale (1 hour) */
 const STALE_THRESHOLD_MS = 60 * 60 * 1000
 
 /**
- * Persisted iteration state.
+ * Persisted session state.
  *
- * This is the data saved to disk to enable resuming iterations
+ * This is the data saved to disk to enable resuming sessions
  * after page reloads or disconnections.
  */
-export interface PersistedIterationState {
+export interface PersistedSessionState {
   /** Instance ID this state belongs to */
   instanceId: string
 
@@ -36,22 +36,22 @@ export interface PersistedIterationState {
 }
 
 /**
- * IterationStateStore provides file-based persistence for iteration state.
+ * SessionStateStore provides file-based persistence for session state.
  *
- * Iteration state is stored in .ralph/iterations/{instanceId}.json within the workspace.
- * Each instance has its own state file, which is deleted when the iteration completes
+ * Session state is stored in .ralph/sessions/{instanceId}.json within the workspace.
+ * Each instance has its own state file, which is deleted when the session completes
  * or when stale states are cleaned up.
  *
- * Note: Each workspace has its own IterationStateStore. The store path is
+ * Note: Each workspace has its own SessionStateStore. The store path is
  * determined by the workspace path provided at construction time.
  */
-export class IterationStateStore {
+export class SessionStateStore {
   private workspacePath: string
   private storeDir: string
 
   constructor(workspacePath: string) {
     this.workspacePath = workspacePath
-    this.storeDir = join(workspacePath, ".ralph", "iterations")
+    this.storeDir = join(workspacePath, ".ralph", "sessions")
   }
 
   /**
@@ -76,7 +76,7 @@ export class IterationStateStore {
   }
 
   /**
-   * Ensure the iterations directory exists.
+   * Ensure the sessions directory exists.
    */
   private async ensureDir(): Promise<void> {
     await mkdir(this.storeDir, { recursive: true })
@@ -107,25 +107,25 @@ export class IterationStateStore {
   }
 
   /**
-   * Load iteration state for an instance.
+   * Load session state for an instance.
    * Returns null if not found or if the state is malformed.
    */
-  async load(instanceId: string): Promise<PersistedIterationState | null> {
+  async load(instanceId: string): Promise<PersistedSessionState | null> {
     try {
       const content = await readFile(this.getStatePath(instanceId), "utf-8")
-      const state = JSON.parse(content) as PersistedIterationState
+      const state = JSON.parse(content) as PersistedSessionState
 
       // Validate version
       if (state.version !== 1) {
         console.warn(
-          `[IterationStateStore] Unknown state version: ${state.version} for instance ${instanceId}, ignoring`,
+          `[SessionStateStore] Unknown state version: ${state.version} for instance ${instanceId}, ignoring`,
         )
         return null
       }
 
       // Validate basic structure
       if (!state.instanceId || !state.conversationContext) {
-        console.warn(`[IterationStateStore] Malformed state for instance ${instanceId}, ignoring`)
+        console.warn(`[SessionStateStore] Malformed state for instance ${instanceId}, ignoring`)
         return null
       }
 
@@ -134,19 +134,19 @@ export class IterationStateStore {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         return null
       }
-      console.warn(`[IterationStateStore] Error loading state for instance ${instanceId}:`, err)
+      console.warn(`[SessionStateStore] Error loading state for instance ${instanceId}:`, err)
       return null
     }
   }
 
   /**
-   * Save iteration state for an instance.
+   * Save session state for an instance.
    */
-  async save(state: PersistedIterationState): Promise<void> {
+  async save(state: PersistedSessionState): Promise<void> {
     await this.ensureDir()
 
     // Ensure savedAt is set and version is correct
-    const stateToSave: PersistedIterationState = {
+    const stateToSave: PersistedSessionState = {
       ...state,
       savedAt: Date.now(),
       version: 1,
@@ -160,7 +160,7 @@ export class IterationStateStore {
   }
 
   /**
-   * Delete iteration state for an instance.
+   * Delete session state for an instance.
    * Returns true if deleted, false if not found.
    */
   async delete(instanceId: string): Promise<boolean> {
@@ -176,12 +176,12 @@ export class IterationStateStore {
   }
 
   /**
-   * Get all saved iteration states.
+   * Get all saved session states.
    */
-  async getAll(): Promise<PersistedIterationState[]> {
+  async getAll(): Promise<PersistedSessionState[]> {
     try {
       const files = await readdir(this.storeDir)
-      const states: PersistedIterationState[] = []
+      const states: PersistedSessionState[] = []
 
       for (const file of files) {
         if (file.endsWith(".json")) {
@@ -218,7 +218,7 @@ export class IterationStateStore {
   }
 
   /**
-   * Get the count of saved iteration states.
+   * Get the count of saved session states.
    */
   async count(): Promise<number> {
     const ids = await this.getAllInstanceIds()
@@ -226,7 +226,7 @@ export class IterationStateStore {
   }
 
   /**
-   * Clean up stale iteration states.
+   * Clean up stale session states.
    *
    * Removes states that are older than the stale threshold (default 1 hour).
    * Returns the number of states removed.
@@ -243,7 +243,7 @@ export class IterationStateStore {
       const age = now - state.savedAt
       if (age > thresholdMs) {
         console.log(
-          `[IterationStateStore] Removing stale state for instance ${state.instanceId} (age: ${Math.round(age / 1000 / 60)}m)`,
+          `[SessionStateStore] Removing stale state for instance ${state.instanceId} (age: ${Math.round(age / 1000 / 60)}m)`,
         )
         await this.delete(state.instanceId)
         removed++
@@ -254,7 +254,7 @@ export class IterationStateStore {
   }
 
   /**
-   * Clear all saved iteration states.
+   * Clear all saved session states.
    */
   async clear(): Promise<void> {
     const ids = await this.getAllInstanceIds()
@@ -265,25 +265,25 @@ export class IterationStateStore {
 }
 
 // Store instances per workspace path
-const iterationStateStores = new Map<string, IterationStateStore>()
+const sessionStateStores = new Map<string, SessionStateStore>()
 
 /**
- * Get the IterationStateStore for a workspace.
+ * Get the SessionStateStore for a workspace.
  * Creates a new store if one doesn't exist for the workspace.
  */
-export function getIterationStateStore(
+export function getSessionStateStore(
   /** The workspace path */
   workspacePath: string,
-): IterationStateStore {
-  let store = iterationStateStores.get(workspacePath)
+): SessionStateStore {
+  let store = sessionStateStores.get(workspacePath)
   if (!store) {
-    store = new IterationStateStore(workspacePath)
-    iterationStateStores.set(workspacePath, store)
+    store = new SessionStateStore(workspacePath)
+    sessionStateStores.set(workspacePath, store)
   }
   return store
 }
 
-/**  Reset all IterationStateStore instances (for testing). */
-export function resetIterationStateStores(): void {
-  iterationStateStores.clear()
+/**  Reset all SessionStateStore instances (for testing). */
+export function resetSessionStateStores(): void {
+  sessionStateStores.clear()
 }

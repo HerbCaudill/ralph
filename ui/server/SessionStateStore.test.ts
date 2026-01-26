@@ -4,25 +4,25 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { randomBytes } from "node:crypto"
 import {
-  IterationStateStore,
-  getIterationStateStore,
-  resetIterationStateStores,
-  type PersistedIterationState,
-} from "./IterationStateStore"
+  SessionStateStore,
+  getSessionStateStore,
+  resetSessionStateStores,
+  type PersistedSessionState,
+} from "./SessionStateStore"
 import type { ConversationContext } from "./ClaudeAdapter"
 
-describe("IterationStateStore", () => {
+describe("SessionStateStore", () => {
   let testDir: string
-  let store: IterationStateStore
+  let store: SessionStateStore
 
   /**
    * Create a unique test directory for each test
    */
   beforeEach(async () => {
-    testDir = join(tmpdir(), `iteration-state-test-${randomBytes(8).toString("hex")}`)
+    testDir = join(tmpdir(), `session-state-test-${randomBytes(8).toString("hex")}`)
     await mkdir(testDir, { recursive: true })
-    store = new IterationStateStore(testDir)
-    resetIterationStateStores()
+    store = new SessionStateStore(testDir)
+    resetSessionStateStores()
   })
 
   /**
@@ -56,11 +56,9 @@ describe("IterationStateStore", () => {
   }
 
   /**
-   * Helper to create a test iteration state
+   * Helper to create a test session state
    */
-  function createTestState(
-    overrides: Partial<PersistedIterationState> = {},
-  ): PersistedIterationState {
+  function createTestState(overrides: Partial<PersistedSessionState> = {}): PersistedSessionState {
     return {
       instanceId: overrides.instanceId ?? randomBytes(4).toString("hex"),
       conversationContext: overrides.conversationContext ?? createTestContext(),
@@ -78,7 +76,7 @@ describe("IterationStateStore", () => {
     })
 
     it("constructs the correct store directory", () => {
-      expect(store.getStoreDir()).toBe(join(testDir, ".ralph", "iterations"))
+      expect(store.getStoreDir()).toBe(join(testDir, ".ralph", "sessions"))
     })
   })
 
@@ -88,7 +86,7 @@ describe("IterationStateStore", () => {
     })
 
     it("returns true when store directory exists", async () => {
-      await mkdir(join(testDir, ".ralph", "iterations"), { recursive: true })
+      await mkdir(join(testDir, ".ralph", "sessions"), { recursive: true })
       expect(await store.exists()).toBe(true)
     })
   })
@@ -106,7 +104,7 @@ describe("IterationStateStore", () => {
   })
 
   describe("save and load", () => {
-    it("saves and loads iteration state", async () => {
+    it("saves and loads session state", async () => {
       const state = createTestState({ instanceId: "test-1" })
       await store.save(state)
       const loaded = await store.load("test-1")
@@ -138,7 +136,7 @@ describe("IterationStateStore", () => {
       expect(loaded?.conversationContext.lastPrompt).toBe("Second prompt")
     })
 
-    it("creates the iterations directory if it does not exist", async () => {
+    it("creates the sessions directory if it does not exist", async () => {
       const state = createTestState({ instanceId: "test-1" })
       await store.save(state)
 
@@ -341,20 +339,20 @@ describe("IterationStateStore", () => {
     })
   })
 
-  describe("getIterationStateStore singleton", () => {
+  describe("getSessionStateStore singleton", () => {
     it("returns the same store for the same workspace path", () => {
-      const store1 = getIterationStateStore(testDir)
-      const store2 = getIterationStateStore(testDir)
+      const store1 = getSessionStateStore(testDir)
+      const store2 = getSessionStateStore(testDir)
       expect(store1).toBe(store2)
     })
 
     it("returns different stores for different workspace paths", async () => {
-      const testDir2 = join(tmpdir(), `iteration-state-test-2-${randomBytes(8).toString("hex")}`)
+      const testDir2 = join(tmpdir(), `session-state-test-2-${randomBytes(8).toString("hex")}`)
       await mkdir(testDir2, { recursive: true })
 
       try {
-        const store1 = getIterationStateStore(testDir)
-        const store2 = getIterationStateStore(testDir2)
+        const store1 = getSessionStateStore(testDir)
+        const store2 = getSessionStateStore(testDir2)
         expect(store1).not.toBe(store2)
       } finally {
         await rm(testDir2, { recursive: true, force: true })
@@ -362,9 +360,9 @@ describe("IterationStateStore", () => {
     })
 
     it("can be reset for testing", () => {
-      const store1 = getIterationStateStore(testDir)
-      resetIterationStateStores()
-      const store2 = getIterationStateStore(testDir)
+      const store1 = getSessionStateStore(testDir)
+      resetSessionStateStores()
+      const store2 = getSessionStateStore(testDir)
       expect(store1).not.toBe(store2)
     })
   })
@@ -386,7 +384,7 @@ describe("IterationStateStore", () => {
       await store.save(state)
 
       // Simulate page reload - create new store instance
-      const newStore = new IterationStateStore(testDir)
+      const newStore = new SessionStateStore(testDir)
       const restored = await newStore.load("session-1")
 
       expect(restored).not.toBeNull()
@@ -395,15 +393,15 @@ describe("IterationStateStore", () => {
       expect(restored?.currentTaskId).toBe("task-123")
     })
 
-    it("handles completed iteration cleanup", async () => {
-      // Save state during iteration
+    it("handles completed session cleanup", async () => {
+      // Save state during session
       await store.save(createTestState({ instanceId: "session-1", status: "running" }))
 
-      // Iteration completes - delete state
+      // Session completes - delete state
       await store.delete("session-1")
 
       // After reload, no state should exist
-      const newStore = new IterationStateStore(testDir)
+      const newStore = new SessionStateStore(testDir)
       const restored = await newStore.load("session-1")
       expect(restored).toBeNull()
     })
@@ -422,7 +420,7 @@ describe("IterationStateStore", () => {
         }),
       )
 
-      const newStore = new IterationStateStore(testDir)
+      const newStore = new SessionStateStore(testDir)
       const state1 = await newStore.load("instance-1")
       const state2 = await newStore.load("instance-2")
 

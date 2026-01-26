@@ -11,31 +11,31 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { formatEventLogTime } from "@/lib/formatEventLogDate"
-import type { IterationSummary } from "@/hooks"
+import type { SessionSummary } from "@/hooks"
 
 /**
- * Dropdown for selecting iterations from persisted history.
- * Shows current task info as the trigger, with a searchable list of past iterations.
+ * Dropdown for selecting sessions from persisted history.
+ * Shows current task info as the trigger, with a searchable list of past sessions.
  */
-export function IterationHistoryDropdown({
+export function SessionHistoryDropdown({
   currentTask,
-  iterations,
-  isLoadingIterations,
+  sessions,
+  isLoadingSessions,
   issuePrefix,
-  onIterationHistorySelect,
-}: IterationHistoryDropdownProps) {
+  onSessionHistorySelect,
+}: SessionHistoryDropdownProps) {
   const [open, setOpen] = useState(false)
 
-  // Group iterations by date (Today, Yesterday, or specific date)
-  const groupedIterations = useMemo(() => {
-    if (!iterations.length) return []
+  // Group sessions by date (Today, Yesterday, or specific date)
+  const groupedSessions = useMemo(() => {
+    if (!sessions.length) return []
 
-    const groups = new Map<string, IterationSummary[]>()
+    const groups = new Map<string, SessionSummary[]>()
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
 
-    for (const log of iterations) {
+    for (const log of sessions) {
       const logDate = new Date(log.createdAt)
       const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate())
 
@@ -61,14 +61,14 @@ export function IterationHistoryDropdown({
     }
 
     return Array.from(groups.entries()).map(([dateLabel, logs]) => ({ dateLabel, logs }))
-  }, [iterations])
+  }, [sessions])
 
-  const handleIterationHistorySelect = useCallback(
+  const handleSessionHistorySelect = useCallback(
     (id: string) => {
-      onIterationHistorySelect(id)
+      onSessionHistorySelect(id)
       setOpen(false)
     },
-    [onIterationHistorySelect],
+    [onSessionHistorySelect],
   )
 
   // Build the trigger label
@@ -93,9 +93,9 @@ export function IterationHistoryDropdown({
             "text-muted-foreground hover:text-foreground flex min-w-0 items-center gap-1.5 text-xs transition-colors",
             "focus:ring-ring rounded focus:ring-1 focus:outline-none",
           )}
-          title="View iteration history"
-          aria-label="View iteration history"
-          data-testid="iteration-history-dropdown-trigger"
+          title="View session history"
+          aria-label="View session history"
+          data-testid="session-history-dropdown-trigger"
         >
           {triggerLabel.id && (
             <span className="shrink-0 font-mono opacity-70">
@@ -108,23 +108,23 @@ export function IterationHistoryDropdown({
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="center">
         <Command>
-          <CommandInput placeholder="Search iterations..." />
+          <CommandInput placeholder="Search sessions..." />
           <CommandList>
-            <CommandEmpty>No iterations found.</CommandEmpty>
+            <CommandEmpty>No sessions found.</CommandEmpty>
 
-            {/* Iterations grouped by date */}
-            {isLoadingIterations ?
+            {/* Sessions grouped by date */}
+            {isLoadingSessions ?
               <div className="text-muted-foreground flex items-center justify-center py-4 text-sm">
                 Loading history...
               </div>
-            : groupedIterations.length > 0 ?
-              groupedIterations.map(({ dateLabel, logs }) => (
+            : groupedSessions.length > 0 ?
+              groupedSessions.map(({ dateLabel, logs }) => (
                 <CommandGroup key={dateLabel} heading={dateLabel}>
                   {logs.map(log => (
                     <CommandItem
                       key={log.id}
                       value={`${log.metadata?.taskId || ""} ${log.metadata?.title || ""} ${log.id}`}
-                      onSelect={() => handleIterationHistorySelect(log.id)}
+                      onSelect={() => handleSessionHistorySelect(log.id)}
                       className="flex items-center gap-2"
                     >
                       <IconHistory className="text-muted-foreground size-4 shrink-0" />
@@ -155,7 +155,7 @@ export function IterationHistoryDropdown({
                 </CommandGroup>
               ))
             : <div className="text-muted-foreground py-4 text-center text-sm">
-                No iteration history yet.
+                No session history yet.
               </div>
             }
           </CommandList>
@@ -165,15 +165,15 @@ export function IterationHistoryDropdown({
   )
 }
 
-export interface IterationHistoryDropdownProps {
-  /** Current task info (from iteration events) */
+export interface SessionHistoryDropdownProps {
+  /** Current task info (from session events) */
   currentTask: { id: string | null; title: string } | null
-  /** List of past iteration summaries */
-  iterations: IterationSummary[]
-  /** Whether iterations are loading */
-  isLoadingIterations: boolean
+  /** List of past session summaries */
+  sessions: SessionSummary[]
+  /** Whether sessions are loading */
+  isLoadingSessions: boolean
   /** Issue prefix for stripping from task IDs */
   issuePrefix: string | null
-  /** Callback when selecting a past iteration from history */
-  onIterationHistorySelect: (id: string) => void
+  /** Callback when selecting a past session from history */
+  onSessionHistorySelect: (id: string) => void
 }
