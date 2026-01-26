@@ -22,6 +22,7 @@ export function SessionHistoryDropdown({
   sessions,
   isLoadingSessions,
   issuePrefix,
+  isRunning,
   onSessionHistorySelect,
 }: SessionHistoryDropdownProps) {
   const [open, setOpen] = useState(false)
@@ -81,9 +82,9 @@ export function SessionHistoryDropdown({
     }
     return {
       id: null,
-      title: "No active task",
+      title: isRunning ? "Choosing a task..." : "No active task",
     }
-  }, [currentTask])
+  }, [currentTask, isRunning])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -174,6 +175,8 @@ export interface SessionHistoryDropdownProps {
   isLoadingSessions: boolean
   /** Issue prefix for stripping from task IDs */
   issuePrefix: string | null
+  /** Whether Ralph is currently running */
+  isRunning: boolean
   /** Callback when selecting a past session from history */
   onSessionHistorySelect: (id: string) => void
 }

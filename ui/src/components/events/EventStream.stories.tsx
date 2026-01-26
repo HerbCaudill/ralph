@@ -587,6 +587,16 @@ export const Running: Story = {
   },
 }
 
+export const ChoosingTask: Story = {
+  args: {
+    ...defaultProps,
+    sessionEvents: [],
+    ralphStatus: "running",
+    isRunning: true,
+    sessionTask: null,
+  },
+}
+
 export const WithCurrentTask: Story = {
   args: {
     ...defaultProps,

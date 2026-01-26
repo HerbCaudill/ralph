@@ -34,13 +34,19 @@ describe("SessionHistoryDropdown", () => {
     sessions: [] as SessionSummary[],
     isLoadingSessions: false,
     issuePrefix: null,
+    isRunning: false,
     onSessionHistorySelect: vi.fn(),
   }
 
   describe("trigger display", () => {
-    it("shows 'No active task' when no task", () => {
-      render(<SessionHistoryDropdown {...defaultProps} />)
+    it("shows 'No active task' when no task and not running", () => {
+      render(<SessionHistoryDropdown {...defaultProps} isRunning={false} />)
       expect(screen.getByText("No active task")).toBeInTheDocument()
+    })
+
+    it("shows 'Choosing a task...' when no task and running", () => {
+      render(<SessionHistoryDropdown {...defaultProps} isRunning={true} />)
+      expect(screen.getByText("Choosing a task...")).toBeInTheDocument()
     })
 
     it("shows task title when currentTask is provided", () => {

@@ -11,12 +11,16 @@ export function EventStreamSessionBar({
   sessions,
   isLoadingSessions,
   issuePrefix,
+  isRunning,
   onSessionHistorySelect,
 }: Props) {
   const hasSessions = sessions.length > 0
 
   // Show dropdown when there are sessions to browse or loading
   const showDropdown = hasSessions || isLoadingSessions
+
+  // Determine placeholder text when no task is selected
+  const noTaskText = isRunning ? "Choosing a task..." : "No active task"
 
   return (
     <div
@@ -30,6 +34,7 @@ export function EventStreamSessionBar({
             sessions={sessions}
             isLoadingSessions={isLoadingSessions}
             issuePrefix={issuePrefix}
+            isRunning={isRunning}
             onSessionHistorySelect={onSessionHistorySelect}
           />
         : currentTask ?
@@ -48,7 +53,7 @@ export function EventStreamSessionBar({
             : null}
             <span className="truncate">{currentTask.title}</span>
           </div>
-        : <span className="text-muted-foreground text-xs">No active task</span>}
+        : <span className="text-muted-foreground text-xs">{noTaskText}</span>}
       </div>
     </div>
   )
@@ -59,5 +64,6 @@ type Props = {
   sessions: SessionSummary[]
   isLoadingSessions: boolean
   issuePrefix: string | null
+  isRunning: boolean
   onSessionHistorySelect: (id: string) => void
 }

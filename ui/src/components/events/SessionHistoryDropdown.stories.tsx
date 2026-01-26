@@ -44,6 +44,7 @@ const meta: Meta<typeof SessionHistoryDropdown> = {
     sessions: [],
     isLoadingSessions: false,
     issuePrefix: "PROJ-",
+    isRunning: false,
     onSessionHistorySelect: fn(),
   },
 }
@@ -65,6 +66,17 @@ export const Default: Story = {
 export const NoCurrentTask: Story = {
   args: {
     currentTask: null,
+    sessions: [
+      createSession("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
+      createSession("log-2", "PROJ-119", "Previous task B", yesterday, 32),
+    ],
+  },
+}
+
+export const ChoosingTask: Story = {
+  args: {
+    currentTask: null,
+    isRunning: true,
     sessions: [
       createSession("log-1", "PROJ-120", "Previous task A", oneHourAgo, 45),
       createSession("log-2", "PROJ-119", "Previous task B", yesterday, 32),

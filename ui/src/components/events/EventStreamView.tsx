@@ -106,6 +106,7 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
           sessions={sessions}
           isLoadingSessions={isLoadingSessions}
           issuePrefix={issuePrefix}
+          isRunning={isRunning}
           onSessionHistorySelect={navigation.selectSessionHistory}
         />
 

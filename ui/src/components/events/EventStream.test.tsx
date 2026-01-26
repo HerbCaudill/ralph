@@ -245,9 +245,22 @@ describe("EventStream", () => {
       expect(screen.getByTestId("session-bar")).toBeInTheDocument()
     })
 
-    it("shows 'No active task' when no task is in progress and no sessions", () => {
+    it("shows 'No active task' when stopped and no task is in progress", () => {
+      useAppStore.getState().setRalphStatus("stopped")
       renderEventStream()
       expect(screen.getByText("No active task")).toBeInTheDocument()
+    })
+
+    it("shows 'Choosing a task...' when running but no task selected yet", () => {
+      useAppStore.getState().setRalphStatus("running")
+      renderEventStream()
+      expect(screen.getByText("Choosing a task...")).toBeInTheDocument()
+    })
+
+    it("shows 'Choosing a task...' when starting but no task selected yet", () => {
+      useAppStore.getState().setRalphStatus("starting")
+      renderEventStream()
+      expect(screen.getByText("Choosing a task...")).toBeInTheDocument()
     })
 
     it("shows task from session events when ralph_task_started event exists", () => {
