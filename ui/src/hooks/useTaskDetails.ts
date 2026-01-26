@@ -20,6 +20,8 @@ export interface UseTaskDetailsOptions {
   onDelete?: (id: string) => void | Promise<void>
   /** Callback when close is triggered */
   onClose: () => void
+  /** Current session ID for linking to tasks when closed (optional) */
+  currentSessionId?: string | null
 }
 
 export interface TaskFormValues {
@@ -94,9 +96,9 @@ export function useTaskDetails({
   onSave,
   onDelete,
   onClose,
+  currentSessionId,
 }: UseTaskDetailsOptions): UseTaskDetailsResult {
   // Store access
-  const currentSessionId = useAppStore(state => state.currentSessionId)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const allTasks = useAppStore(selectTasks)
 
@@ -217,7 +219,7 @@ export function useTaskDetails({
         // If closing the task (status changed to closed), link the current session
         const isClosing = currentValues.status === "closed" && lastSaved.status !== "closed"
         if (isClosing) {
-          await linkSessionToTask(task.id, currentSessionId)
+          await linkSessionToTask(task.id, currentSessionId ?? null)
         }
 
         await onSave(task.id, updates)

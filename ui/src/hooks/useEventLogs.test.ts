@@ -27,15 +27,9 @@ describe("useEventLogs", () => {
       completedAt: new Date("2026-01-23T11:00:00.000Z").getTime(),
       taskId: "r-test.1",
       taskTitle: "Test task 1",
-      tokenUsage: {
-        inputTokens: 0,
-        outputTokens: 0,
-        cacheCreationInputTokens: 0,
-        cacheReadInputTokens: 0,
-        totalCost: 0,
-      },
-      contextWindow: { used: 0, total: 200000, percentUsed: 0 },
-      session: { compact: "idle" },
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 200000 },
+      session: { current: 0, total: 0 },
       eventCount: 42,
       lastEventSequence: 41,
     },
@@ -47,15 +41,9 @@ describe("useEventLogs", () => {
       completedAt: new Date("2026-01-22T16:30:00.000Z").getTime(),
       taskId: "r-test.2",
       taskTitle: "Test task 2",
-      tokenUsage: {
-        inputTokens: 0,
-        outputTokens: 0,
-        cacheCreationInputTokens: 0,
-        cacheReadInputTokens: 0,
-        totalCost: 0,
-      },
-      contextWindow: { used: 0, total: 200000, percentUsed: 0 },
-      session: { compact: "idle" },
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 200000 },
+      session: { current: 0, total: 0 },
       eventCount: 128,
       lastEventSequence: 127,
     },
@@ -67,15 +55,9 @@ describe("useEventLogs", () => {
       completedAt: new Date("2026-01-21T10:00:00.000Z").getTime(),
       taskId: null,
       taskTitle: null,
-      tokenUsage: {
-        inputTokens: 0,
-        outputTokens: 0,
-        cacheCreationInputTokens: 0,
-        cacheReadInputTokens: 0,
-        totalCost: 0,
-      },
-      contextWindow: { used: 0, total: 200000, percentUsed: 0 },
-      session: { compact: "idle" },
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 200000 },
+      session: { current: 0, total: 0 },
       eventCount: 15,
       lastEventSequence: 14,
     },
@@ -107,7 +89,7 @@ describe("useEventLogs", () => {
     it("sets isLoading while fetching", async () => {
       // Create a promise we can control
       let resolvePromise: () => void
-      const controlledPromise = new Promise<EventLogMetadata[]>(resolve => {
+      const controlledPromise = new Promise<SessionMetadata[]>(resolve => {
         resolvePromise = () => resolve(mockSessionMetadata)
       })
 
@@ -168,7 +150,7 @@ describe("useEventLogs", () => {
 
   describe("filtering by taskId", () => {
     it("fetches event logs for a specific task when taskId is provided", async () => {
-      const taskSpecificLogs: EventLogMetadata[] = [mockSessionMetadata[0]]
+      const taskSpecificLogs: SessionMetadata[] = [mockSessionMetadata[0]]
       mockGetSessionsForTask.mockResolvedValue(taskSpecificLogs)
 
       const { result } = renderHook(() => useEventLogs({ taskId: "r-test.1" }))
@@ -182,8 +164,8 @@ describe("useEventLogs", () => {
     })
 
     it("refetches when taskId changes", async () => {
-      const task1Logs: EventLogMetadata[] = [mockSessionMetadata[0]]
-      const task2Logs: EventLogMetadata[] = [mockSessionMetadata[1]]
+      const task1Logs: SessionMetadata[] = [mockSessionMetadata[0]]
+      const task2Logs: SessionMetadata[] = [mockSessionMetadata[1]]
 
       mockGetSessionsForTask.mockImplementation(async (taskId: string) => {
         if (taskId === "r-test.1") return task1Logs
@@ -259,15 +241,9 @@ describe("useEventLogs", () => {
         completedAt: new Date("2026-01-24T13:00:00.000Z").getTime(),
         taskId: null,
         taskTitle: null,
-        tokenUsage: {
-          inputTokens: 0,
-          outputTokens: 0,
-          cacheCreationInputTokens: 0,
-          cacheReadInputTokens: 0,
-          totalCost: 0,
-        },
-        contextWindow: { used: 0, total: 200000, percentUsed: 0 },
-        session: { compact: "idle" },
+        tokenUsage: { input: 0, output: 0 },
+        contextWindow: { used: 0, max: 200000 },
+        session: { current: 0, total: 0 },
         eventCount: 99,
         lastEventSequence: 98,
       }

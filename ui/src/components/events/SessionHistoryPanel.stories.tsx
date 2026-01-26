@@ -301,24 +301,18 @@ export const NoResultsMessage: Story = {
 /** Verifies date groups are shown correctly. */
 export const DateGroupsDisplay: Story = {
   // Use render to create fresh dates at render time, not module load time.
-  // This ensures "10 minutes ago" is always relative to when the story actually renders,
+  // This ensures timestamps are relative to when the story actually renders,
   // preventing flaky tests when the module is cached from previous test runs.
   render: args => {
+    // Create a timestamp that's definitely "today" in local timezone by using noon local time
+    const now = new Date()
+    const todayNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0)
+    // Create a timestamp that's definitely yesterday by going back 36 hours from now
+    const definitelyYesterday = new Date(now.getTime() - 36 * 60 * 60 * 1000)
+
     const freshSessions = [
-      createSession(
-        "log-1",
-        "PROJ-123",
-        "Today task",
-        new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 minutes ago (definitely today)
-        42,
-      ),
-      createSession(
-        "log-2",
-        "PROJ-124",
-        "Yesterday task",
-        new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), // 25 hours ago (definitely yesterday or older)
-        28,
-      ),
+      createSession("log-1", "PROJ-123", "Today task", todayNoon.toISOString(), 42),
+      createSession("log-2", "PROJ-124", "Yesterday task", definitelyYesterday.toISOString(), 28),
     ]
     return <SessionHistoryPanelView {...args} sessions={freshSessions} />
   },
@@ -331,7 +325,7 @@ export const DateGroupsDisplay: Story = {
     const dateLabels = await canvas.findAllByTestId("date-label")
     await expect(dateLabels.length).toBeGreaterThan(0)
 
-    // Should include "Today" label
+    // Should include "Today" label since one session is from today noon
     const todayLabel = dateLabels.find(label => label.textContent?.toLowerCase().includes("today"))
     await expect(todayLabel).toBeTruthy()
   },

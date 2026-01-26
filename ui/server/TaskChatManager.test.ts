@@ -118,8 +118,8 @@ describe("TaskChatManager", () => {
           tools: expect.arrayContaining(["Read", "Bash", "Grep", "Glob"]),
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
-          includePartialMessages: false, // Disabled to avoid potential concurrency issues
-          maxTurns: 10, // Conservative limit for multiple turns for tool use
+          includePartialMessages: true, // Enable streaming
+          maxTurns: 30, // Allow multiple turns for tool use
         }),
       })
     })
