@@ -12,7 +12,6 @@
     "typecheck": "pnpm -r --parallel typecheck",
     "test:all": "node scripts/test-all.js",
     "format": "git diff --name-only HEAD --diff-filter=ACMR | xargs -r prettier --write --ignore-unknown",
-    "format:all": "pnpm -r format",
     "cli": "pnpm --filter @herbcaudill/ralph ralph",
     "cli:build": "pnpm --filter @herbcaudill/ralph build",
     "cli:test": "pnpm --filter @herbcaudill/ralph test",
@@ -31,6 +30,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "prettier-plugin-tailwindcss": "^0.7.2"
   }
 }
