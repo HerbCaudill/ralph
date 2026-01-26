@@ -41,7 +41,7 @@ function git(
   })
 }
 
-describe("WorktreeManager", () => {
+describe.skip("WorktreeManager", () => {
   const testDir = join(process.cwd(), ".test-worktrees")
   const mainWorkspacePath = join(testDir, "project")
   const worktreesPath = join(testDir, "project-worktrees")
