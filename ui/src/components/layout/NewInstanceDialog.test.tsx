@@ -225,19 +225,13 @@ describe("NewInstanceDialog", () => {
     })
 
     it("shows loading state while creating", async () => {
-      // Make fetch hang
+      // Use a promise that we control to ensure loading state is visible
+      let resolvePromise: (value: unknown) => void = () => {}
       mockFetch.mockImplementationOnce(
         () =>
-          new Promise(resolve =>
-            setTimeout(
-              () =>
-                resolve({
-                  ok: true,
-                  json: () => Promise.resolve({ ok: true, instance: {} }),
-                }),
-              100,
-            ),
-          ),
+          new Promise(resolve => {
+            resolvePromise = resolve
+          }),
       )
 
       const user = userEvent.setup()
@@ -247,13 +241,19 @@ describe("NewInstanceDialog", () => {
       await user.type(nameInput, "My Instance")
 
       const createButton = screen.getByTestId("new-instance-create-button")
-      await user.click(createButton)
+      // Use fireEvent instead of userEvent to avoid waiting for state updates
+      fireEvent.click(createButton)
 
       // Button should show "Creating..." and be disabled while in progress
-      // Check both conditions together to avoid race conditions
       await waitFor(() => {
         expect(screen.getByText("Creating...")).toBeInTheDocument()
         expect(createButton).toBeDisabled()
+      })
+
+      // Resolve the promise to clean up the test
+      resolvePromise({
+        ok: true,
+        json: () => Promise.resolve({ ok: true, instance: {} }),
       })
     })
   })
