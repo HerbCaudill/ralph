@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "types": "./dist/server/index.d.ts",
   "type": "module",
   "scripts": {
@@ -19,7 +19,7 @@
     "dev": "vite --open",
     "dev:headless": "vite",
     "build-storybook": "storybook build",
-    "build": "tsc -b && vite build && tsc -p tsconfig.server.json && cp -r server/prompts dist/server/"
+    "build": "tsc -b && vite build && tsup --config tsup.server.config.ts && cp -r server/prompts dist/server/"
   },
   "repository": {
     "url": "https://github.com/HerbCaudill/ralph.git",
@@ -48,6 +48,7 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@herbcaudill/ralph-shared": "workspace:*",
     "@playwright/test": "^1.58.0",
     "@storybook/addon-vitest": "^10.2.0",
     "@storybook/react": "^10.2.0",
@@ -73,6 +74,7 @@
     "prettier-plugin-tailwindcss": "^0.7.2",
     "storybook": "^10.2.0",
     "tailwindcss": "^4.1.18",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "tw-animate-css": "^1.4.0",
     "typescript": "~5.9.3",
@@ -83,7 +85,6 @@
   "description": "Web UI for Ralph - React frontend and server for the autonomous AI session engine",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.7",
-    "@herbcaudill/ralph-shared": "workspace:*",
     "@mdxeditor/editor": "^3.52.3",
     "@openai/codex-sdk": "^0.87.0",
     "@radix-ui/react-dialog": "^1.1.15",

@@ -5,7 +5,6 @@ import { TaskDetails } from "./TaskDetails"
 import type { TaskCardTask } from "@/types"
 import type { IssueType, TaskFormValues } from "@/hooks/useTaskDetails"
 import { Button } from "@/components/ui/button"
-import { wait } from "../../../.storybook/test-utils"
 
 const meta: Meta<typeof TaskDetails> = {
   title: "Tasks/TaskDetails",

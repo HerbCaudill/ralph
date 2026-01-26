@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/ralph",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Autonomous AI session engine for Claude CLI",
   "type": "module",
   "main": "./dist/index.js",
@@ -14,7 +14,7 @@
     "templates"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "ralph": "tsx src/index.ts",
@@ -42,7 +42,6 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.7",
-    "@herbcaudill/ralph-shared": "workspace:*",
     "chalk": "^5.6.2",
     "commander": "^14.0.2",
     "ink": "^6.6.0",
@@ -54,12 +53,14 @@
     "react": "^19.2.3"
   },
   "devDependencies": {
+    "@herbcaudill/ralph-shared": "workspace:*",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.8",
     "@vitest/ui": "^4.0.17",
     "execa": "^9.6.1",
     "ink-testing-library": "^4.0.0",
     "prettier": "^3.5.3",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "vitest": "^4.0.17"

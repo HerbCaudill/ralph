@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/ralph-shared",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Shared utilities and types for Ralph CLI and UI",
   "type": "module",
   "main": "./dist/index.js",
@@ -32,6 +32,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/HerbCaudill/ralph.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
