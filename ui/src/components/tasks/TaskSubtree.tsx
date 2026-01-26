@@ -21,8 +21,8 @@ export function TaskSubtree({
   newTaskIds,
   /** Set of task IDs that are actively being worked on */
   activelyWorkingTaskIds,
-  /** Set of task IDs that have saved event logs */
-  taskIdsWithEventLogs,
+  /** Set of task IDs that have saved sessions */
+  taskIdsWithSessions,
   /** Record of collapsed state by task ID */
   collapsedState,
   /** Callback to toggle collapse state for a task */
@@ -50,7 +50,7 @@ export function TaskSubtree({
         onToggleCollapse={hasChildren ? () => onToggleCollapse(task.id) : undefined}
         subtaskCount={descendantCount}
         isActivelyWorking={activelyWorkingTaskIds.has(task.id)}
-        hasSessions={taskIdsWithEventLogs?.has(task.id) ?? false}
+        hasSessions={taskIdsWithSessions?.has(task.id) ?? false}
         className={cn(paddingClass)}
       />
       {hasChildren && !isCollapsed && (
@@ -64,7 +64,7 @@ export function TaskSubtree({
               onTaskClick={onTaskClick}
               newTaskIds={newTaskIds}
               activelyWorkingTaskIds={activelyWorkingTaskIds}
-              taskIdsWithEventLogs={taskIdsWithEventLogs}
+              taskIdsWithSessions={taskIdsWithSessions}
               collapsedState={collapsedState}
               onToggleCollapse={onToggleCollapse}
             />
@@ -111,8 +111,8 @@ export interface TaskSubtreeProps {
   newTaskIds: Set<string>
   /** Set of task IDs that are actively being worked on */
   activelyWorkingTaskIds: Set<string>
-  /** Set of task IDs that have saved event logs */
-  taskIdsWithEventLogs?: Set<string>
+  /** Set of task IDs that have saved sessions */
+  taskIdsWithSessions?: Set<string>
   /** Record of collapsed state by task ID */
   collapsedState: Record<string, boolean>
   /** Callback to toggle collapse state */

@@ -770,10 +770,27 @@ export class EventDatabase {
   /**
    * Get all unique task IDs that have event logs.
    * Efficient method for checking which tasks have sessions.
+   * @deprecated Use getTaskIdsWithSessions() instead
    */
   async getTaskIdsWithEventLogs(): Promise<Set<string>> {
     const db = await this.ensureDb()
     const all = await db.getAll(STORE_NAMES.EVENT_LOG_METADATA)
+    const taskIds = new Set<string>()
+    for (const meta of all) {
+      if (meta.taskId) {
+        taskIds.add(meta.taskId)
+      }
+    }
+    return taskIds
+  }
+
+  /**
+   * Get all unique task IDs that have sessions.
+   * Efficient method for checking which tasks have saved sessions.
+   */
+  async getTaskIdsWithSessions(): Promise<Set<string>> {
+    const db = await this.ensureDb()
+    const all = await db.getAll(STORE_NAMES.SESSION_METADATA)
     const taskIds = new Set<string>()
     for (const meta of all) {
       if (meta.taskId) {

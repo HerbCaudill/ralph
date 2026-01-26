@@ -21,7 +21,7 @@ import {
   countAllNodes,
   type TaskTreeNode,
 } from "@/lib/buildTaskTree"
-import { useTasksWithEventLogs } from "@/hooks/useTasksWithEventLogs"
+import { useTasksWithSessions } from "@/hooks/useTasksWithSessions"
 import type { TaskCardTask, TaskGroup, TaskStatus } from "@/types"
 import { TaskListSkeleton } from "./TaskListSkeleton"
 
@@ -61,8 +61,8 @@ export function TaskList({
     [activelyWorkingTaskIdsList],
   )
 
-  // Get task IDs that have saved event logs for session indicator
-  const { taskIdsWithEventLogs } = useTasksWithEventLogs()
+  // Get task IDs that have saved sessions for session indicator
+  const { taskIdsWithSessions } = useTasksWithSessions()
 
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set())
   const previousTaskIdsRef = useRef<Set<string> | null>(null)
@@ -489,7 +489,7 @@ export function TaskList({
                       onTaskClick={onTaskClick}
                       newTaskIds={newTaskIds}
                       activelyWorkingTaskIds={activelyWorkingTaskIds}
-                      taskIdsWithEventLogs={taskIdsWithEventLogs}
+                      taskIdsWithSessions={taskIdsWithSessions}
                       collapsedState={parentCollapsedState}
                       onToggleCollapse={toggleParentGroup}
                     />
