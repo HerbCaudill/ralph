@@ -125,7 +125,7 @@ export function TaskChat({
         : null}
       </ContentStreamContainer>
 
-      <div className="border-border border-t p-3">
+      <div className="p-3">
         {error && <div className="text-status-error pb-2 text-xs">Error: {error}</div>}
         <ChatInput
           ref={chatInputRef}

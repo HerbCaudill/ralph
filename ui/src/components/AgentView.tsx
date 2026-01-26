@@ -22,7 +22,7 @@ export function AgentView({
 
       {/* Chat input - only show when viewing the latest session */}
       {isViewingLatest && (
-        <div className="border-border border-t p-4">
+        <div className="p-4">
           <ChatInput
             ref={chatInputRef}
             onSubmit={sendMessage}
