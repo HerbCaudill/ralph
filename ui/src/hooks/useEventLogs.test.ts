@@ -1,57 +1,91 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useEventLogs } from "./useEventLogs"
-import { eventDatabase, type EventLogMetadata } from "@/lib/persistence"
+import { eventDatabase, type SessionMetadata } from "@/lib/persistence"
 
 // Mock the eventDatabase
 vi.mock("@/lib/persistence", () => ({
   eventDatabase: {
     init: vi.fn(),
-    listEventLogs: vi.fn(),
-    getEventLogsForTask: vi.fn(),
+    listAllSessions: vi.fn(),
+    getSessionsForTask: vi.fn(),
   },
 }))
 
 const mockInit = eventDatabase.init as ReturnType<typeof vi.fn>
-const mockListEventLogs = eventDatabase.listEventLogs as ReturnType<typeof vi.fn>
-const mockGetEventLogsForTask = eventDatabase.getEventLogsForTask as ReturnType<typeof vi.fn>
+const mockListAllSessions = eventDatabase.listAllSessions as ReturnType<typeof vi.fn>
+const mockGetSessionsForTask = eventDatabase.getSessionsForTask as ReturnType<typeof vi.fn>
 
 describe("useEventLogs", () => {
-  const mockEventLogMetadata: EventLogMetadata[] = [
+  // Mock session metadata that will be returned by the database
+  const mockSessionMetadata: SessionMetadata[] = [
     {
       id: "abc12345",
-      createdAt: new Date("2026-01-23T10:00:00.000Z").getTime(),
-      eventCount: 42,
+      instanceId: "test-instance",
+      workspaceId: "/test/workspace",
+      startedAt: new Date("2026-01-23T10:00:00.000Z").getTime(),
+      completedAt: new Date("2026-01-23T11:00:00.000Z").getTime(),
       taskId: "r-test.1",
       taskTitle: "Test task 1",
-      source: "session",
-      workspacePath: "/test/workspace",
+      tokenUsage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        totalCost: 0,
+      },
+      contextWindow: { used: 0, total: 200000, percentUsed: 0 },
+      session: { compact: "idle" },
+      eventCount: 42,
+      lastEventSequence: 41,
     },
     {
       id: "def67890",
-      createdAt: new Date("2026-01-22T15:30:00.000Z").getTime(),
-      eventCount: 128,
+      instanceId: "test-instance",
+      workspaceId: "/test/workspace",
+      startedAt: new Date("2026-01-22T15:30:00.000Z").getTime(),
+      completedAt: new Date("2026-01-22T16:30:00.000Z").getTime(),
       taskId: "r-test.2",
       taskTitle: "Test task 2",
-      source: "session",
-      workspacePath: "/test/workspace",
+      tokenUsage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        totalCost: 0,
+      },
+      contextWindow: { used: 0, total: 200000, percentUsed: 0 },
+      session: { compact: "idle" },
+      eventCount: 128,
+      lastEventSequence: 127,
     },
     {
       id: "ghi11111",
-      createdAt: new Date("2026-01-21T09:00:00.000Z").getTime(),
-      eventCount: 15,
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: new Date("2026-01-21T09:00:00.000Z").getTime(),
+      completedAt: new Date("2026-01-21T10:00:00.000Z").getTime(),
       taskId: null,
       taskTitle: null,
-      source: null,
-      workspacePath: null,
+      tokenUsage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        totalCost: 0,
+      },
+      contextWindow: { used: 0, total: 200000, percentUsed: 0 },
+      session: { compact: "idle" },
+      eventCount: 15,
+      lastEventSequence: 14,
     },
   ]
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockInit.mockResolvedValue(undefined)
-    mockListEventLogs.mockResolvedValue(mockEventLogMetadata)
-    mockGetEventLogsForTask.mockResolvedValue([])
+    mockListAllSessions.mockResolvedValue(mockSessionMetadata)
+    mockGetSessionsForTask.mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -67,17 +101,17 @@ describe("useEventLogs", () => {
       })
 
       expect(mockInit).toHaveBeenCalled()
-      expect(mockListEventLogs).toHaveBeenCalled()
+      expect(mockListAllSessions).toHaveBeenCalled()
     })
 
     it("sets isLoading while fetching", async () => {
       // Create a promise we can control
       let resolvePromise: () => void
       const controlledPromise = new Promise<EventLogMetadata[]>(resolve => {
-        resolvePromise = () => resolve(mockEventLogMetadata)
+        resolvePromise = () => resolve(mockSessionMetadata)
       })
 
-      mockListEventLogs.mockReturnValue(controlledPromise)
+      mockListAllSessions.mockReturnValue(controlledPromise)
 
       const { result } = renderHook(() => useEventLogs())
 
@@ -134,8 +168,8 @@ describe("useEventLogs", () => {
 
   describe("filtering by taskId", () => {
     it("fetches event logs for a specific task when taskId is provided", async () => {
-      const taskSpecificLogs: EventLogMetadata[] = [mockEventLogMetadata[0]]
-      mockGetEventLogsForTask.mockResolvedValue(taskSpecificLogs)
+      const taskSpecificLogs: EventLogMetadata[] = [mockSessionMetadata[0]]
+      mockGetSessionsForTask.mockResolvedValue(taskSpecificLogs)
 
       const { result } = renderHook(() => useEventLogs({ taskId: "r-test.1" }))
 
@@ -143,15 +177,15 @@ describe("useEventLogs", () => {
         expect(result.current.eventLogs).toHaveLength(1)
       })
 
-      expect(mockGetEventLogsForTask).toHaveBeenCalledWith("r-test.1")
-      expect(mockListEventLogs).not.toHaveBeenCalled()
+      expect(mockGetSessionsForTask).toHaveBeenCalledWith("r-test.1")
+      expect(mockListAllSessions).not.toHaveBeenCalled()
     })
 
     it("refetches when taskId changes", async () => {
-      const task1Logs: EventLogMetadata[] = [mockEventLogMetadata[0]]
-      const task2Logs: EventLogMetadata[] = [mockEventLogMetadata[1]]
+      const task1Logs: EventLogMetadata[] = [mockSessionMetadata[0]]
+      const task2Logs: EventLogMetadata[] = [mockSessionMetadata[1]]
 
-      mockGetEventLogsForTask.mockImplementation(async (taskId: string) => {
+      mockGetSessionsForTask.mockImplementation(async (taskId: string) => {
         if (taskId === "r-test.1") return task1Logs
         if (taskId === "r-test.2") return task2Logs
         return []
@@ -176,7 +210,7 @@ describe("useEventLogs", () => {
 
   describe("error handling", () => {
     it("sets error when database operation fails", async () => {
-      mockListEventLogs.mockRejectedValue(new Error("Database error"))
+      mockListAllSessions.mockRejectedValue(new Error("Database error"))
 
       const { result } = renderHook(() => useEventLogs())
 
@@ -188,7 +222,7 @@ describe("useEventLogs", () => {
     })
 
     it("sets generic error for non-Error failures", async () => {
-      mockListEventLogs.mockRejectedValue("Unknown failure")
+      mockListAllSessions.mockRejectedValue("Unknown failure")
 
       const { result } = renderHook(() => useEventLogs())
 
@@ -217,16 +251,27 @@ describe("useEventLogs", () => {
       })
 
       // Setup new mock response with more logs
-      const additionalLog: EventLogMetadata = {
+      const additionalSession: SessionMetadata = {
         id: "jkl22222",
-        createdAt: new Date("2026-01-24T12:00:00.000Z").getTime(),
-        eventCount: 99,
+        instanceId: "test-instance",
+        workspaceId: null,
+        startedAt: new Date("2026-01-24T12:00:00.000Z").getTime(),
+        completedAt: new Date("2026-01-24T13:00:00.000Z").getTime(),
         taskId: null,
         taskTitle: null,
-        source: null,
-        workspacePath: null,
+        tokenUsage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+          totalCost: 0,
+        },
+        contextWindow: { used: 0, total: 200000, percentUsed: 0 },
+        session: { compact: "idle" },
+        eventCount: 99,
+        lastEventSequence: 98,
       }
-      mockListEventLogs.mockResolvedValue([...mockEventLogMetadata, additionalLog])
+      mockListAllSessions.mockResolvedValue([...mockSessionMetadata, additionalSession])
 
       await act(async () => {
         await result.current.refresh()
@@ -237,7 +282,7 @@ describe("useEventLogs", () => {
 
     it("clears error on successful refresh", async () => {
       // First request fails
-      mockListEventLogs.mockRejectedValueOnce(new Error("Initial error"))
+      mockListAllSessions.mockRejectedValueOnce(new Error("Initial error"))
 
       const { result } = renderHook(() => useEventLogs())
 
@@ -246,7 +291,7 @@ describe("useEventLogs", () => {
       })
 
       // Second request succeeds
-      mockListEventLogs.mockResolvedValue(mockEventLogMetadata)
+      mockListAllSessions.mockResolvedValue(mockSessionMetadata)
 
       await act(async () => {
         await result.current.refresh()
@@ -259,7 +304,7 @@ describe("useEventLogs", () => {
 
   describe("empty state", () => {
     it("handles empty event logs list", async () => {
-      mockListEventLogs.mockResolvedValue([])
+      mockListAllSessions.mockResolvedValue([])
 
       const { result } = renderHook(() => useEventLogs())
 

@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from "react"
-import { eventDatabase, type EventLogMetadata } from "@/lib/persistence"
+import { eventDatabase, type SessionMetadata } from "@/lib/persistence"
 
 /**
  * Summary of an event log (without full event data).
  * Returned by the list endpoint for efficient browsing.
+ *
+ * Note: This interface is kept for backward compatibility.
+ * Internally, event logs are now stored as sessions.
  */
 export interface EventLogSummary {
   id: string
@@ -32,12 +35,14 @@ export interface UseEventLogsResult {
 }
 
 /**
- * Converts EventLogMetadata from IndexedDB to EventLogSummary for consumers.
+ * Converts SessionMetadata from IndexedDB to EventLogSummary for consumers.
+ * Maps session fields to the event log summary interface.
  */
-function toEventLogSummary(metadata: EventLogMetadata): EventLogSummary {
+function toEventLogSummary(metadata: SessionMetadata): EventLogSummary {
   return {
     id: metadata.id,
-    createdAt: new Date(metadata.createdAt).toISOString(),
+    // Use startedAt as the creation time for the event log
+    createdAt: new Date(metadata.startedAt).toISOString(),
     eventCount: metadata.eventCount,
     metadata:
       metadata.taskId || metadata.taskTitle ?
@@ -53,7 +58,7 @@ function toEventLogSummary(metadata: EventLogMetadata): EventLogSummary {
  * Hook to fetch and manage event log summaries from IndexedDB.
  * Returns summaries (without full event data) for efficient browsing.
  *
- * Event logs are stored client-side in IndexedDB and persist across sessions.
+ * Event logs are stored client-side in IndexedDB as sessions.
  */
 export function useEventLogs(options: UseEventLogsOptions = {}): UseEventLogsResult {
   const { taskId } = options
@@ -68,8 +73,8 @@ export function useEventLogs(options: UseEventLogsOptions = {}): UseEventLogsRes
 
       const metadata =
         taskId ?
-          await eventDatabase.getEventLogsForTask(taskId)
-        : await eventDatabase.listEventLogs()
+          await eventDatabase.getSessionsForTask(taskId)
+        : await eventDatabase.listAllSessions()
 
       const summaries = metadata.map(toEventLogSummary)
       setEventLogs(summaries)
