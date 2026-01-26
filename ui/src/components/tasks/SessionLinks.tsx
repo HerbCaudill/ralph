@@ -3,7 +3,7 @@ import { IconHistory, IconClock, IconLoader2 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { formatEventLogDate } from "@/lib/formatEventLogDate"
-import { useEventLogs, type EventLogSummary } from "@/hooks/useEventLogs"
+import { useSessions, type SessionSummary } from "@/hooks/useSessions"
 
 interface SessionLinksProps {
   /** The task ID to show session links for */
@@ -14,17 +14,17 @@ interface SessionLinksProps {
 
 /**
  * Displays clickable links to session logs associated with a task.
- * Fetches event logs from IndexedDB filtered by task ID.
+ * Fetches sessions from IndexedDB filtered by task ID.
  */
 export function SessionLinks({ taskId, className }: SessionLinksProps) {
-  const { eventLogs, isLoading, error } = useEventLogs({ taskId })
+  const { sessions, isLoading, error } = useSessions({ taskId })
 
   // Sort by date, most recent first
   const sessionLogs = useMemo(() => {
-    return [...eventLogs].sort(
+    return [...sessions].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
-  }, [eventLogs])
+  }, [sessions])
 
   // Don't render if loading and no logs found yet
   if (isLoading) {
@@ -68,7 +68,7 @@ export function SessionLinks({ taskId, className }: SessionLinksProps) {
 }
 
 /**  Single session log item with clickable link. */
-function SessionLogItem({ log }: { log: EventLogSummary }) {
+function SessionLogItem({ log }: { log: SessionSummary }) {
   const handleClick = () => {
     // Navigate using hash - the useEventLogRouter hook will handle the rest
     window.location.hash = `session=${log.id}`
