@@ -4,22 +4,33 @@ import { test as base, expect, type Page, type Locator } from "@playwright/test"
 export class TaskListPage {
   readonly page: Page
   readonly sidebar: Locator
-  readonly quickTaskInput: Locator
   readonly searchInput: Locator
 
   constructor(page: Page) {
     this.page = page
     this.sidebar = page.getByRole("complementary", { name: "Task sidebar" })
-    this.quickTaskInput = page.getByLabel("New task title")
     this.searchInput = page.getByPlaceholder("Search")
   }
 
-  /** Create a new task using the quick input */
+  /**
+   * Create a new task using the API.
+   * Note: After creation, refreshes the page to ensure the task list is updated.
+   */
   async createTask(title: string) {
-    await this.quickTaskInput.fill(title)
-    await this.quickTaskInput.press("Enter")
-    // Wait for the task to appear in the list - look specifically for the task card's title span
-    await expect(this.sidebar.locator("span.truncate", { hasText: title })).toBeVisible()
+    // Use the page's request context to call the API directly
+    const response = await this.page.request.post("/api/tasks", {
+      data: { title },
+    })
+    const result = await response.json()
+
+    // Refresh to ensure the task list is updated (websocket updates may not work in test env)
+    await this.page.reload()
+
+    // Wait for the task to appear in the list
+    await expect(this.sidebar.locator("span.truncate", { hasText: title })).toBeVisible({
+      timeout: 10000,
+    })
+    return result
   }
 
   /** Search for tasks */

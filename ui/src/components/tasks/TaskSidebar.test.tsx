@@ -45,14 +45,8 @@ describe("TaskSidebar", () => {
       expect(screen.queryByText("No tasks yet")).not.toBeInTheDocument()
     })
 
-    it("renders both quickInput and taskList together", () => {
-      render(
-        <TaskSidebar
-          quickInput={<div data-testid="quick-input">Quick input</div>}
-          taskList={<div data-testid="task-list">Task list</div>}
-        />,
-      )
-      expect(screen.getByTestId("quick-input")).toBeInTheDocument()
+    it("renders taskList standalone (no quickInput)", () => {
+      render(<TaskSidebar taskList={<div data-testid="task-list">Task list</div>} />)
       expect(screen.getByTestId("task-list")).toBeInTheDocument()
     })
 
@@ -100,12 +94,6 @@ describe("TaskSidebar", () => {
   })
 
   describe("styling", () => {
-    it("quick input area has correct border styling", () => {
-      render(<TaskSidebar quickInput={<div>Input</div>} />)
-      const inputContainer = screen.getByText("Input").parentElement
-      expect(inputContainer).toHaveClass("border-b", "border-border")
-    })
-
     it("iteration history area has correct border styling", () => {
       render(<TaskSidebar iterationHistory={<div>History</div>} />)
       const historyContainer = screen.getByText("History").parentElement
@@ -124,17 +112,15 @@ describe("TaskSidebar", () => {
       expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
     })
 
-    it("renders search input between quick input and task list when visible", () => {
+    it("renders search input above task list when visible", () => {
       render(
         <TaskSidebar
-          quickInput={<div data-testid="quick-input">Quick input</div>}
           taskList={<div data-testid="task-list">Task list</div>}
           isSearchVisible={true}
         />,
       )
       // Verify all elements are present
       expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
-      expect(screen.getByTestId("quick-input")).toBeInTheDocument()
       expect(screen.getByTestId("task-list")).toBeInTheDocument()
 
       // Get the elements in DOM order
@@ -144,8 +130,7 @@ describe("TaskSidebar", () => {
         el => el.getAttribute("data-testid") || el.getAttribute("aria-label"),
       )
 
-      // Quick input should come first, then search, then task list
-      expect(elementOrder.indexOf("quick-input")).toBeLessThan(elementOrder.indexOf("Search tasks"))
+      // Search should come before task list
       expect(elementOrder.indexOf("Search tasks")).toBeLessThan(elementOrder.indexOf("task-list"))
     })
   })

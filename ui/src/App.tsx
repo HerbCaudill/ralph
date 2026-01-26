@@ -9,7 +9,6 @@ import {
 import { type ChatInputHandle } from "./components/chat/ChatInput"
 import { EventLogViewer } from "./components/events"
 import { TaskDetailsController } from "./components/tasks/TaskDetailsController"
-import { type QuickTaskInputHandle } from "./components/tasks/QuickTaskInput"
 import { type SearchInputHandle } from "./components/tasks/SearchInput"
 import {
   useAppStore,
@@ -57,7 +56,6 @@ import { AgentView } from "./components/AgentView"
 export function App() {
   const layoutRef = useRef<MainLayoutHandle>(null)
   const chatInputRef = useRef<ChatInputHandle>(null)
-  const quickTaskInputRef = useRef<QuickTaskInputHandle>(null)
   const searchInputRef = useRef<SearchInputHandle>(null)
 
   // Initialize theme management (applies dark class and listens for system changes)
@@ -217,38 +215,30 @@ export function App() {
   }, [])
 
   const handleFocusTaskInput = useCallback(() => {
-    quickTaskInputRef.current?.focus()
-  }, [])
+    // Show and focus the search input (task input has been removed)
+    showSearch()
+    // Focus the input after a brief delay to allow it to render
+    setTimeout(() => {
+      searchInputRef.current?.focus()
+    }, 50)
+  }, [showSearch])
 
   const handleFocusChatInput = useCallback(() => {
     chatInputRef.current?.focus()
   }, [])
 
-  // Toggle focus between task input, search input (if visible), and chat input
+  // Toggle focus between search input and chat input
   const handleToggleInputFocus = useCallback(() => {
     const activeElement = document.activeElement
-    const taskInput = document.querySelector('[aria-label="New task title"]')
     const searchInput = document.querySelector('[aria-label="Search tasks"]')
 
-    // When search is visible, rotate through all three inputs
-    // Order: task input -> search input -> chat input -> task input
-    if (isSearchVisible && searchInput) {
-      if (activeElement === taskInput) {
-        ;(searchInput as HTMLElement).focus()
-      } else if (activeElement === searchInput) {
-        chatInputRef.current?.focus()
-      } else {
-        quickTaskInputRef.current?.focus()
-      }
+    // Toggle between search input and chat input
+    if (activeElement === searchInput) {
+      chatInputRef.current?.focus()
     } else {
-      // When search is hidden, toggle between task input and chat input
-      if (activeElement === taskInput) {
-        chatInputRef.current?.focus()
-      } else {
-        quickTaskInputRef.current?.focus()
-      }
+      searchInputRef.current?.focus()
     }
-  }, [isSearchVisible])
+  }, [])
 
   const handleCycleTheme = useCallback(() => {
     cycleTheme()
@@ -414,11 +404,11 @@ export function App() {
     }
   }, [isConnected, ralphStatus])
 
-  // Auto-focus task input on mount
+  // Auto-focus chat input on mount
   useEffect(() => {
     // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
-      quickTaskInputRef.current?.focus()
+      chatInputRef.current?.focus()
     }, 100)
     return () => clearTimeout(timer)
   }, [])
@@ -429,7 +419,6 @@ export function App() {
         ref={layoutRef}
         sidebar={
           <TasksSidebarPanel
-            quickInputRef={quickTaskInputRef}
             searchInputRef={searchInputRef}
             onTaskClick={handleTaskClick}
             onOpenTask={handleTaskClick}

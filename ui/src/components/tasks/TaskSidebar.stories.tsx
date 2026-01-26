@@ -33,17 +33,6 @@ const sampleTasks: Task[] = [
   { id: "rui-5", title: "Refactor database layer", status: "closed", priority: 2 },
 ]
 
-/** Sample quick input component */
-function QuickInput() {
-  return (
-    <input
-      type="text"
-      placeholder="Quick add task..."
-      className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
-    />
-  )
-}
-
 /** Sample task list component */
 function TaskListMock({ tasks }: { tasks: Task[] }) {
   return (
@@ -98,7 +87,6 @@ function MockIterationHistory() {
 
 export const Default: Story = {
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
     iterationHistory: <MockIterationHistory />,
     progressBar: <MockProgressBar closed={1} total={5} />,
@@ -107,7 +95,6 @@ export const Default: Story = {
 
 export const WithSearchVisible: Story = {
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
     iterationHistory: <MockIterationHistory />,
     progressBar: <MockProgressBar closed={1} total={5} />,
@@ -118,7 +105,6 @@ export const WithSearchVisible: Story = {
 
 export const EmptyState: Story = {
   args: {
-    quickInput: <QuickInput />,
     iterationHistory: <MockIterationHistory />,
   },
 }
@@ -145,7 +131,6 @@ export const WithManyTasks: Story = {
     const closedCount = manyTasks.filter(t => t.status === "closed").length
     return (
       <TaskSidebar
-        quickInput={<QuickInput />}
         taskList={
           <div className="h-full overflow-y-auto">
             <TaskListMock tasks={manyTasks} />
@@ -160,7 +145,6 @@ export const WithManyTasks: Story = {
 
 export const WhenStopped: Story = {
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
     iterationHistory: <MockIterationHistory />,
     // No progress bar when stopped
@@ -169,7 +153,6 @@ export const WhenStopped: Story = {
 
 export const WithCustomClassName: Story = {
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
     iterationHistory: <MockIterationHistory />,
     progressBar: <MockProgressBar closed={1} total={5} />,
@@ -200,7 +183,6 @@ function StoreSetter({ tasks, query }: { tasks: Task[]; query?: string }) {
  */
 export const HasAccessibleRole: Story = {
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
   },
   play: async ({ canvasElement }) => {
@@ -214,9 +196,7 @@ export const HasAccessibleRole: Story = {
  * Verifies the empty state is displayed when no taskList is provided.
  */
 export const ShowsEmptyState: Story = {
-  args: {
-    quickInput: <QuickInput />,
-  },
+  args: {},
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText("No tasks yet")).toBeInTheDocument()
@@ -234,7 +214,6 @@ export const SearchIsVisible: Story = {
     </>
   ),
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
     isSearchVisible: true,
   },
@@ -256,7 +235,6 @@ export const EscapeHidesSearch: Story = {
     </>
   ),
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
     isSearchVisible: true,
   },
@@ -290,7 +268,6 @@ export const SearchWithQueryAndClear: Story = {
     </>
   ),
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
     isSearchVisible: true,
   },
@@ -323,7 +300,6 @@ export const SearchWithQueryAndClear: Story = {
  */
 export const ProgressBarVisible: Story = {
   args: {
-    quickInput: <QuickInput />,
     taskList: <TaskListMock tasks={sampleTasks} />,
     progressBar: <MockProgressBar closed={2} total={5} />,
   },
@@ -349,11 +325,6 @@ export const AllSlotsRenderedInOrder: Story = {
     </>
   ),
   args: {
-    quickInput: (
-      <div data-testid="slot-quick-input">
-        <QuickInput />
-      </div>
-    ),
     taskList: (
       <div data-testid="slot-task-list">
         <TaskListMock tasks={sampleTasks} />
@@ -375,28 +346,24 @@ export const AllSlotsRenderedInOrder: Story = {
     const canvas = within(canvasElement)
 
     // Get all elements in DOM order
-    const quickInput = canvas.getByTestId("slot-quick-input")
     const searchInput = canvas.getByRole("textbox", { name: "Search tasks" })
     const taskList = canvas.getByTestId("slot-task-list")
     const iterationHistory = canvas.getByTestId("slot-iteration-history")
     const progressBar = canvas.getByTestId("slot-progress-bar")
 
     // All should be in the document
-    await expect(quickInput).toBeInTheDocument()
     await expect(searchInput).toBeInTheDocument()
     await expect(taskList).toBeInTheDocument()
     await expect(iterationHistory).toBeInTheDocument()
     await expect(progressBar).toBeInTheDocument()
 
     // Check visual order by comparing positions
-    const quickInputRect = quickInput.getBoundingClientRect()
     const searchInputRect = searchInput.getBoundingClientRect()
     const taskListRect = taskList.getBoundingClientRect()
     const iterationHistoryRect = iterationHistory.getBoundingClientRect()
     const progressBarRect = progressBar.getBoundingClientRect()
 
-    // Verify vertical order: quickInput < search < taskList < iterationHistory < progressBar
-    await expect(quickInputRect.top).toBeLessThan(searchInputRect.top)
+    // Verify vertical order: search < taskList < iterationHistory < progressBar
     await expect(searchInputRect.top).toBeLessThan(taskListRect.top)
     await expect(taskListRect.bottom).toBeLessThan(iterationHistoryRect.bottom)
     await expect(iterationHistoryRect.bottom).toBeLessThanOrEqual(progressBarRect.bottom)

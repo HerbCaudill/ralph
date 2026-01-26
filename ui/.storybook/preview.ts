@@ -67,41 +67,28 @@ const preview: Preview = {
       // Build the inline style object with theme variables and repo accent
       const style = {
         ...themeCssVars,
-        "--repo-accent": "#0d9488",
+        "--repo-accent": "#ff0000",
         "--repo-accent-foreground": "#ffffff",
       } as React.CSSProperties
 
-      // If no theme data, render without the provider
-      if (!themeData) {
-        return React.createElement(
-          TestProviders,
-          null,
-          React.createElement(
-            "div",
-            {
-              className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
-              style,
-            },
-            React.createElement(Story),
-          ),
-        )
-      }
+      // Extract the common story content
+      const storyContent = React.createElement(
+        "div",
+        {
+          className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
+          style,
+        },
+        React.createElement(Story),
+      )
+
+      // Conditionally wrap with StorybookThemeProvider if theme data exists
 
       return React.createElement(
         TestProviders,
         null,
-        React.createElement(
-          StorybookThemeProvider,
-          { theme: themeData },
-          React.createElement(
-            "div",
-            {
-              className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
-              style,
-            },
-            React.createElement(Story),
-          ),
-        ),
+        themeData ?
+          React.createElement(StorybookThemeProvider, { theme: themeData, children: storyContent })
+        : storyContent,
       )
     },
   ],

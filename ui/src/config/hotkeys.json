@@ -48,12 +48,12 @@
     },
     "focusTaskInput": {
       "key": "cmd+k",
-      "description": "Focus quick task input",
+      "description": "Show task search",
       "category": "Navigation",
       "commandPalette": {
-        "label": "New task",
-        "icon": "ListCheck",
-        "keywords": ["task", "create", "add", "new", "issue", "todo"]
+        "label": "Search tasks",
+        "icon": "Search",
+        "keywords": ["task", "search", "find", "filter", "issue"]
       }
     },
     "focusChatInput": {

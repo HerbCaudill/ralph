@@ -10,10 +10,11 @@ import { test, expect } from "./fixtures"
  * These E2E tests focus on global hotkeys that require the full app context.
  */
 test.describe("Navigation", () => {
-  test("Cmd+K focuses quick task input", async ({ app }) => {
+  test("Cmd+K focuses search input", async ({ app }) => {
     await app.page.locator("body").focus()
     await app.page.keyboard.press("Meta+k")
-    await expect(app.taskList.quickTaskInput).toBeFocused()
+    const searchInput = app.page.getByRole("textbox", { name: "Search tasks" })
+    await expect(searchInput).toBeFocused()
   })
 
   test("Cmd+F shows search, accepts input, and Escape closes it", async ({ app }) => {
@@ -51,11 +52,12 @@ test.describe("Navigation", () => {
       .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
       .toBeGreaterThan(0)
 
-    // Focus something else first
-    await app.taskList.quickTaskInput.click()
-    await expect(app.taskList.quickTaskInput).toBeFocused()
+    // Focus something else first (main chat input)
+    const mainChatInput = app.page.getByLabel("Message input")
+    await mainChatInput.click()
+    await expect(mainChatInput).toBeFocused()
 
-    // First press: Focus the chat input (not toggle off)
+    // First press: Focus the task chat input (not toggle off)
     await app.page.keyboard.press("Meta+j")
     await expect(taskChatInput).toBeFocused()
 

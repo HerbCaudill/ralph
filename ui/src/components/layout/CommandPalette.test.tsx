@@ -49,7 +49,7 @@ describe("CommandPalette", () => {
       expect(screen.getByText("Start Ralph")).toBeInTheDocument()
       expect(screen.getByText("Toggle theme")).toBeInTheDocument()
       expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument()
-      expect(screen.getByText("New task")).toBeInTheDocument()
+      expect(screen.getByText("Search tasks")).toBeInTheDocument()
       expect(screen.getByText("Focus chat")).toBeInTheDocument()
       expect(screen.getByText("Toggle task chat")).toBeInTheDocument()
     })

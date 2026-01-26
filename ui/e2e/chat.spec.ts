@@ -51,11 +51,12 @@ test.describe("Task Chat", () => {
       // Wait for chat input to be enabled (connected)
       await expect(chatInput).toBeEnabled({ timeout: 10000 })
 
-      // First focus something else
-      await app.taskList.quickTaskInput.click()
-      await expect(app.taskList.quickTaskInput).toBeFocused()
+      // First focus something else (main chat input)
+      const mainChatInput = app.page.getByLabel("Message input")
+      await mainChatInput.click()
+      await expect(mainChatInput).toBeFocused()
 
-      // Use Cmd+J to focus chat
+      // Use Cmd+J to focus task chat
       await app.page.keyboard.press("Meta+j")
 
       await expect(chatInput).toBeFocused()
