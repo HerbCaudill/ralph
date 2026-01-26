@@ -61,6 +61,9 @@ export interface PersistedState {
   theme: Theme
   closedTimeFilter: ClosedTasksTimeFilter
 
+  // Task chat session (for restoration on refresh)
+  currentTaskChatSessionId: string | null
+
   // View state
   viewingIterationIndex: number | null
   taskSearchQuery: string
@@ -188,6 +191,9 @@ export function partialize(state: AppState): PersistedState {
     showToolOutput: state.showToolOutput,
     theme: state.theme,
     closedTimeFilter: state.closedTimeFilter,
+
+    // Task chat session (for restoration on refresh)
+    currentTaskChatSessionId: state.currentTaskChatSessionId,
 
     // View state
     viewingIterationIndex: state.viewingIterationIndex,

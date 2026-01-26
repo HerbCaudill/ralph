@@ -90,30 +90,41 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
           )
         }
 
-        // Load the most recent task chat session
-        const latestTaskChat = await eventDatabase.getLatestTaskChatSessionForInstance(instanceId)
+        // Load the task chat session - use stored session ID if available
+        const storedSessionId = useAppStore.getState().currentTaskChatSessionId
+        const taskChatSession =
+          storedSessionId ?
+            await eventDatabase.getTaskChatSession(storedSessionId)
+          : await eventDatabase.getLatestTaskChatSessionForInstance(instanceId)
 
-        if (latestTaskChat) {
+        if (taskChatSession) {
           // Restore task chat messages
-          if (latestTaskChat.messages.length > 0) {
+          if (taskChatSession.messages.length > 0) {
             useAppStore.setState({
-              taskChatMessages: latestTaskChat.messages,
+              taskChatMessages: taskChatSession.messages,
             })
 
             console.log(
-              `[useStoreHydration] Restored ${latestTaskChat.messages.length} task chat messages from session ${latestTaskChat.id}`,
+              `[useStoreHydration] Restored ${taskChatSession.messages.length} task chat messages from session ${taskChatSession.id}`,
             )
           }
 
           // Restore task chat events
-          if (latestTaskChat.events.length > 0) {
+          if (taskChatSession.events.length > 0) {
             useAppStore.setState({
-              taskChatEvents: latestTaskChat.events,
+              taskChatEvents: taskChatSession.events,
             })
 
             console.log(
-              `[useStoreHydration] Restored ${latestTaskChat.events.length} task chat events from session ${latestTaskChat.id}`,
+              `[useStoreHydration] Restored ${taskChatSession.events.length} task chat events from session ${taskChatSession.id}`,
             )
+          }
+
+          // Ensure the session ID is set in the store for useTaskChatPersistence to continue
+          if (taskChatSession.id !== storedSessionId) {
+            useAppStore.setState({
+              currentTaskChatSessionId: taskChatSession.id,
+            })
           }
         }
 

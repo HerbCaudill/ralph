@@ -155,6 +155,7 @@ export interface AppState {
   taskChatWidth: number
   taskChatMessages: TaskChatMessage[]
   taskChatLoading: boolean
+  currentTaskChatSessionId: string | null
 
   // Iteration view state (null = show current/latest iteration)
   viewingIterationIndex: number | null
@@ -256,6 +257,7 @@ export interface AppActions {
   removeTaskChatMessage: (id: string) => void
   clearTaskChatMessages: () => void
   setTaskChatLoading: (loading: boolean) => void
+  setCurrentTaskChatSessionId: (sessionId: string | null) => void
 
   // Task chat events (unified array)
   addTaskChatEvent: (event: ChatEvent) => void
@@ -525,6 +527,7 @@ const initialState: AppState = {
   taskChatWidth: defaultTaskChatWidth,
   taskChatMessages: [],
   taskChatLoading: false,
+  currentTaskChatSessionId: null,
   viewingIterationIndex: null,
   taskSearchQuery: "",
   selectedTaskId: null,
@@ -878,6 +881,7 @@ export const useAppStore = create<AppState & AppActions>()(
         set({ taskChatMessages: [], taskChatEvents: [] })
       },
       setTaskChatLoading: loading => set({ taskChatLoading: loading }),
+      setCurrentTaskChatSessionId: sessionId => set({ currentTaskChatSessionId: sessionId }),
 
       // Task chat events (unified array like EventStream)
       // Uses batching to reduce re-renders during rapid WebSocket events
@@ -1470,6 +1474,7 @@ export const selectTaskChatOpen = (state: AppState) => state.taskChatOpen
 export const selectTaskChatWidth = (state: AppState) => state.taskChatWidth
 export const selectTaskChatMessages = (state: AppState) => state.taskChatMessages
 export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
+export const selectCurrentTaskChatSessionId = (state: AppState) => state.currentTaskChatSessionId
 export const selectTaskChatEvents = (state: AppState) => state.taskChatEvents
 export const selectViewingIterationIndex = (state: AppState) => state.viewingIterationIndex
 export const selectIterationCount = (state: AppState) => countIterations(state.events)

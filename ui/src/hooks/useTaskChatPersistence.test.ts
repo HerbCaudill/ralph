@@ -5,6 +5,7 @@ import {
   type UseTaskChatPersistenceOptions,
 } from "./useTaskChatPersistence"
 import { eventDatabase } from "@/lib/persistence"
+import { useAppStore } from "@/store"
 import type { ChatEvent, TaskChatMessage } from "@/types"
 
 // Mock the eventDatabase
@@ -60,11 +61,15 @@ describe("useTaskChatPersistence", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
+    // Reset the store to clear any previous session ID
+    useAppStore.getState().reset()
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
     vi.useRealTimers()
+    // Clean up store after each test
+    useAppStore.getState().reset()
   })
 
   describe("initialization", () => {

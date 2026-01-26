@@ -12,6 +12,7 @@ import { useEffect, useRef, useCallback, useState } from "react"
 import { eventDatabase } from "@/lib/persistence"
 import type { PersistedTaskChatSession } from "@/lib/persistence"
 import type { ChatEvent, TaskChatMessage } from "@/types"
+import { useAppStore } from "@/store"
 
 /** Debounce interval for auto-saving (in milliseconds) */
 const SAVE_DEBOUNCE_MS = 500
@@ -63,8 +64,13 @@ export function useTaskChatPersistence(
 ): UseTaskChatPersistenceResult {
   const { instanceId, taskId, taskTitle, messages, events, enabled = true } = options
 
+  // Get setter for syncing session ID to store
+  const setStoreSessionId = useAppStore(state => state.setCurrentTaskChatSessionId)
+
   // Track current session ID in state (for reactivity)
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(
+    () => useAppStore.getState().currentTaskChatSessionId,
+  )
 
   // Track the current session state in ref (for effect processing)
   const currentSessionRef = useRef<{
@@ -175,10 +181,16 @@ export function useTaskChatPersistence(
     // Reset session state
     currentSessionRef.current = null
     setCurrentSessionId(null)
-  }, [enabled, cancelDebouncedSave])
+    // Clear the store session ID so a new session starts fresh
+    setStoreSessionId(null)
+  }, [enabled, cancelDebouncedSave, setStoreSessionId])
+
+  // Track whether we've initialized from the store (to avoid re-triggering on store changes)
+  const hasInitializedFromStoreRef = useRef(false)
 
   /**
    * Start or update session tracking based on task changes.
+   * If there's a session ID in the store (from hydration), restore that session on first init.
    */
   useEffect(() => {
     if (!enabled) return
@@ -199,6 +211,33 @@ export function useTaskChatPersistence(
         saveImmediately()
       }
 
+      // Check if there's a session ID in the store (from hydration) on first init only
+      // Use getState() to read the store value without adding it to deps
+      const currentStoreSessionId = useAppStore.getState().currentTaskChatSessionId
+      if (
+        currentStoreSessionId &&
+        !currentSessionRef.current &&
+        !hasInitializedFromStoreRef.current
+      ) {
+        hasInitializedFromStoreRef.current = true
+        // Parse the session ID to extract the createdAt timestamp
+        // Format is: "{instanceId}-task-{taskId}-{timestamp}"
+        const parts = currentStoreSessionId.split("-")
+        const timestampStr = parts[parts.length - 1]
+        const createdAt = parseInt(timestampStr, 10) || Date.now()
+
+        currentSessionRef.current = {
+          id: currentStoreSessionId,
+          taskId,
+          createdAt,
+          // Treat existing data as already saved to avoid immediate re-save
+          lastSavedEventCount: events.length,
+          lastSavedMessageCount: messages.length,
+        }
+        setCurrentSessionId(currentStoreSessionId)
+        return
+      }
+
       // Start tracking new session
       const createdAt = Date.now()
       const newId = generateSessionId(instanceId, taskId, createdAt)
@@ -211,8 +250,18 @@ export function useTaskChatPersistence(
         lastSavedMessageCount: 0,
       }
       setCurrentSessionId(newId)
+      // Sync the new session ID to the store for persistence
+      setStoreSessionId(newId)
     }
-  }, [enabled, instanceId, taskId, messages.length, events.length, saveImmediately])
+  }, [
+    enabled,
+    instanceId,
+    taskId,
+    messages.length,
+    events.length,
+    saveImmediately,
+    setStoreSessionId,
+  ])
 
   /**
    * Auto-save when events or messages change (debounced).
