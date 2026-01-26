@@ -11,8 +11,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 3,
-  // Limit workers to reduce flakiness from resource contention
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 4,
   // Use dot reporter for minimal output in CI or when running under Ralph
   reporter: process.env.CI || process.env.RALPH_QUIET ? "dot" : "html",
   globalSetup: "./e2e/global-setup.ts",
@@ -24,10 +23,8 @@ export default defineConfig({
     timeout: 10000,
   },
   use: {
-    // Use port 5180 for tests to avoid conflict with Ralph UI on 5179
     baseURL,
     trace: "on-first-retry",
-    // Increase action timeout for more resilience
     actionTimeout: 10000,
   },
   projects: [
