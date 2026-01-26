@@ -59,6 +59,8 @@ export class WorkspaceContextManager extends EventEmitter {
         watch: this._defaultOptions.watch,
         env: this._defaultOptions.env,
         logRalphEvents: this._defaultOptions.logRalphEvents,
+        ralphCommand: this._defaultOptions.ralphCommand,
+        ralphArgs: this._defaultOptions.ralphArgs,
       }
       context = new WorkspaceContext(contextOptions)
       this._contexts.set(workspacePath, context)
@@ -304,4 +306,8 @@ export interface WorkspaceContextManagerOptions {
   maxContexts?: number
   /** Log ralph process events to console. Defaults to false. */
   logRalphEvents?: boolean
+  /** Command to spawn Ralph CLI (default: "npx") */
+  ralphCommand?: string
+  /** Arguments for the Ralph CLI command (default: ["@herbcaudill/ralph", "--json"]) */
+  ralphArgs?: string[]
 }

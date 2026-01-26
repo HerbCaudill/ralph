@@ -31,6 +31,10 @@ export interface WorkspaceContextOptions {
   mutationPollingInterval?: number
   /** Log ralph process events to console */
   logRalphEvents?: boolean
+  /** Command to spawn Ralph CLI (default: "npx") */
+  ralphCommand?: string
+  /** Arguments for the Ralph CLI command (default: ["@herbcaudill/ralph", "--json"]) */
+  ralphArgs?: string[]
 }
 
 /**
@@ -103,6 +107,8 @@ export class WorkspaceContext extends EventEmitter {
       cwd: options.workspacePath,
       watch: options.watch,
       env: options.env,
+      command: options.ralphCommand,
+      args: options.ralphArgs,
     })
     this.wireRalphManagerEvents()
 

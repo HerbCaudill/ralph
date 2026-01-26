@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response } from "express"
 import { createServer, type Server } from "node:http"
 import path from "node:path"
+import { existsSync, readFileSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
@@ -76,15 +77,57 @@ export interface ServerConfig {
   workspacePath?: string
   /** Log ralph process events to console. Defaults to false. */
   logRalphEvents?: boolean
+  /** Command to spawn Ralph CLI (default: "npx", or "tsx" in dev mode) */
+  ralphCommand?: string
+  /** Arguments for the Ralph CLI command */
+  ralphArgs?: string[]
+}
+
+/**
+ * Detect if we're running in dev mode from within the ralph monorepo.
+ * Checks for the monorepo's package.json with name "ralph-monorepo".
+ */
+function isDevMode(): boolean {
+  // Allow explicit override via environment variable
+  if (process.env.RALPH_DEV === "true") return true
+  if (process.env.RALPH_DEV === "false") return false
+
+  try {
+    // Check for monorepo package.json two levels up from server directory
+    const monorepoPackageJson = path.resolve(import.meta.dirname, "../../package.json")
+    if (!existsSync(monorepoPackageJson)) return false
+
+    const content = JSON.parse(readFileSync(monorepoPackageJson, "utf-8")) as {
+      name?: string
+    }
+    return content.name === "ralph-monorepo"
+  } catch {
+    return false
+  }
 }
 
 export function getConfig(): ServerConfig {
+  const devMode = isDevMode()
+
+  // In dev mode, use tsx to run the local CLI package directly
+  let ralphCommand: string | undefined
+  let ralphArgs: string[] | undefined
+
+  if (devMode) {
+    const cliEntryPoint = path.resolve(import.meta.dirname, "../../cli/src/index.ts")
+    ralphCommand = "tsx"
+    ralphArgs = [cliEntryPoint, "--json"]
+    console.log("[config] Dev mode detected, using local CLI:", cliEntryPoint)
+  }
+
   return {
     host: process.env.HOST || "localhost",
     port: parseInt(process.env.PORT || "4242", 10),
     appDir: path.resolve(import.meta.dirname, ".."),
     workspacePath: process.env.WORKSPACE_PATH || undefined,
     logRalphEvents: process.env.LOG_RALPH_EVENTS === "true",
+    ralphCommand,
+    ralphArgs,
   }
 }
 
@@ -1739,6 +1782,12 @@ let configuredWorkspacePath: string | undefined
 /**  Whether to log ralph events to console (set by startServer) */
 let configuredLogRalphEvents: boolean = false
 
+/**  Configured Ralph CLI command (set by startServer) */
+let configuredRalphCommand: string | undefined
+
+/**  Configured Ralph CLI arguments (set by startServer) */
+let configuredRalphArgs: string[] | undefined
+
 /**  Get the singleton WorkspaceContextManager instance, creating it if needed. */
 export function getWorkspaceContextManager(): WorkspaceContextManager {
   if (!workspaceContextManager) {
@@ -1746,6 +1795,8 @@ export function getWorkspaceContextManager(): WorkspaceContextManager {
       watch: true,
       env: process.env as Record<string, string>,
       logRalphEvents: configuredLogRalphEvents,
+      ralphCommand: configuredRalphCommand,
+      ralphArgs: configuredRalphArgs,
     })
 
     // Wire up event forwarding from the context manager to WebSocket clients
@@ -2136,9 +2187,11 @@ export async function startServer(
   /** Server configuration */
   config: ServerConfig,
 ): Promise<void> {
-  // Set the configured workspace path for use by BdProxy, RalphManager, etc.
+  // Set the configured options for use by BdProxy, RalphManager, etc.
   configuredWorkspacePath = config.workspacePath
   configuredLogRalphEvents = config.logRalphEvents ?? false
+  configuredRalphCommand = config.ralphCommand
+  configuredRalphArgs = config.ralphArgs
 
   if (configuredWorkspacePath) {
     console.log(`[server] Using workspace: ${configuredWorkspacePath}`)
@@ -2146,6 +2199,12 @@ export async function startServer(
 
   if (configuredLogRalphEvents) {
     console.log("[server] Ralph event logging enabled")
+  }
+
+  if (configuredRalphCommand) {
+    console.log(
+      `[server] Using Ralph command: ${configuredRalphCommand} ${configuredRalphArgs?.join(" ") ?? ""}`,
+    )
   }
 
   // Cleanup stale session states at startup (files older than 1 hour)
@@ -2183,6 +2242,10 @@ export async function startServer(
       agentName: DEFAULT_AGENT_NAME,
       worktreePath: null,
       branch: null,
+      managerOptions: {
+        command: configuredRalphCommand,
+        args: configuredRalphArgs,
+      },
     })
     console.log(`[server] Created default instance: ${DEFAULT_INSTANCE_ID}`)
   }
