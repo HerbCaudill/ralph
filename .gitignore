@@ -17,3 +17,6 @@ ui/playwright-report
 ui/storybook-static
 ui/.ralph/*.jsonl
 ui/e2e/test-workspace
+
+# Benchmark results
+benchmark-results
