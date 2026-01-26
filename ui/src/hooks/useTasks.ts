@@ -12,9 +12,8 @@ export interface UseTasksOptions {
   /** Include closed tasks */
   all?: boolean
   /**
-   * Polling interval in ms (default: 0 to disable).
-   * Polling is generally not needed since mutation events from the beads daemon
-   * trigger automatic task list refreshes via WebSocket.
+   * Polling interval in ms (default: 2000).
+   * Provides reliable updates when WebSocket mutation events are delayed or unavailable.
    */
   pollInterval?: number
 }
@@ -94,17 +93,14 @@ export async function fetchBlockedTasks(parent?: string): Promise<TasksResponse>
 /**
  * Hook to fetch and manage tasks from the beads API.
  *
- * Tasks are automatically refreshed when mutation events arrive from the beads daemon
- * via WebSocket. Polling is disabled by default but can be enabled as a fallback.
- *
  * The hook subscribes to the global store's task list, which is updated by:
  * 1. Initial fetch when the hook mounts
  * 2. Mutation events from the beads daemon (create, update, delete, status changes)
  * 3. Manual refresh calls
- * 4. Optional polling (disabled by default)
+ * 4. Polling every 2 seconds (configurable via pollInterval option)
  */
 export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
-  const { status, ready, all, pollInterval = 0 } = options
+  const { status, ready, all, pollInterval = 2000 } = options
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -140,7 +136,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
     refresh()
   }, [refresh])
 
-  // Optional polling (disabled by default since mutation events handle updates)
+  // Poll for updates (default: every 2 seconds)
   useEffect(() => {
     if (pollInterval <= 0) return
 
