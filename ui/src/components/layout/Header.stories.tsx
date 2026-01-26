@@ -69,6 +69,10 @@ export const DefaultAccentColor: Story = {
   args: {
     accentColor: null,
   },
+  argTypes: {
+    // Disable color control for this story since it tests null value
+    accentColor: { control: false },
+  },
   decorators: [
     withStoreState({
       workspace: "/Users/dev/projects/my-app",
