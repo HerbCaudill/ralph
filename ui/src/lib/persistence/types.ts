@@ -55,6 +55,9 @@ export interface IterationMetadata {
   /** ID of the Ralph instance this iteration belongs to */
   instanceId: string
 
+  /** Path to the workspace this iteration belongs to (for cross-workspace queries) */
+  workspaceId: string | null
+
   /** Timestamp when the iteration started */
   startedAt: number
 
@@ -84,12 +87,50 @@ export interface IterationMetadata {
 }
 
 /**
- * Full persisted iteration data including all events.
- * Stored in IndexedDB for offline access and reconnection.
+ * Full persisted iteration data.
+ *
+ * Schema v2: Events stored inline in the `events` array.
+ * Schema v3+: Events stored separately in the events table, fetched via join.
+ *
+ * The `events` field is optional during migration:
+ * - When reading v2 data, events will be present
+ * - When reading v3 data, events are fetched separately
+ * - New writes in v3+ should not include events (use the events table instead)
  */
 export interface PersistedIteration extends IterationMetadata {
-  /** All events for this iteration */
-  events: ChatEvent[]
+  /**
+   * Events for this iteration.
+   * @deprecated In v3+, events are stored in the separate events table.
+   * This field exists for backward compatibility with v2 data.
+   */
+  events?: ChatEvent[]
+}
+
+/**
+ * Metadata about a persisted event.
+ * Used for listing/browsing events without loading full event data.
+ */
+export interface EventMetadata {
+  /** Unique identifier for the event (e.g., "iteration-123-event-0") */
+  id: string
+
+  /** ID of the iteration this event belongs to */
+  iterationId: string
+
+  /** Timestamp when the event occurred */
+  timestamp: number
+
+  /** Event type for filtering (e.g., "user", "assistant", "tool_use") */
+  eventType: string
+}
+
+/**
+ * Full persisted event data.
+ * Stored in the events object store for append-only writes.
+ */
+export interface PersistedEvent extends EventMetadata {
+  /** The full event data */
+  event: ChatEvent
 }
 
 /**
@@ -138,15 +179,18 @@ export interface PersistedTaskChatSession extends TaskChatSessionMetadata {
 }
 
 /**  Database schema version for migrations. */
-export const PERSISTENCE_SCHEMA_VERSION = 2
+export const PERSISTENCE_SCHEMA_VERSION = 3
 
 /**  IndexedDB store names. */
 export const STORE_NAMES = {
   /** Store for iteration metadata (for fast listing) */
   ITERATION_METADATA: "iteration_metadata",
 
-  /** Store for full iteration data including events */
+  /** Store for full iteration data (metadata only in v3+, events stored separately) */
   ITERATIONS: "iterations",
+
+  /** Store for individual events (v3+, normalized from iterations) */
+  EVENTS: "events",
 
   /** Store for task chat session metadata (for fast listing) */
   TASK_CHAT_METADATA: "task_chat_metadata",

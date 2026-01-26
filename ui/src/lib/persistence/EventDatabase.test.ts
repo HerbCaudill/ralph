@@ -11,6 +11,7 @@ function createTestIteration(overrides: Partial<PersistedIteration> = {}): Persi
   return {
     id,
     instanceId: "test-instance",
+    workspaceId: null,
     startedAt: Date.now(),
     completedAt: null,
     taskId: null,

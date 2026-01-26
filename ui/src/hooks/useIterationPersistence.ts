@@ -132,6 +132,7 @@ export function useIterationPersistence(
       return {
         id: iterationId,
         instanceId,
+        workspaceId: null, // Will be populated by server in a future update
         startedAt,
         completedAt: completed ? Date.now() : null,
         taskId: taskInfo?.id ?? null,

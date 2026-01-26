@@ -142,7 +142,7 @@ describe("Persistence Integration Tests", () => {
       const savedIteration = await db.getIteration(savedIterations[0].id)
       expect(savedIteration).toBeDefined()
       expect(savedIteration?.instanceId).toBe(instanceId)
-      expect(savedIteration?.events.length).toBe(events.length)
+      expect(savedIteration?.events?.length).toBe(events.length)
       expect(savedIteration?.taskId).toBe("r-abc123")
       expect(savedIteration?.taskTitle).toBe("Fix the bug")
       expect(savedIteration?.completedAt).not.toBeNull()
@@ -195,7 +195,7 @@ describe("Persistence Integration Tests", () => {
       const savedIteration = await db.getIteration(savedIterations[0].id)
       expect(savedIteration).toBeDefined()
       expect(savedIteration?.completedAt).toBeNull()
-      expect(savedIteration?.events.length).toBe(events.length)
+      expect(savedIteration?.events?.length).toBe(events.length)
     })
 
     it("handles multiple iterations correctly", async () => {
@@ -492,6 +492,7 @@ describe("Persistence Integration Tests", () => {
       await db.saveIteration({
         id: `${instanceId}-${startTime}`,
         instanceId,
+        workspaceId: null,
         startedAt: startTime,
         completedAt: null, // Active iteration
         taskId: null,
@@ -507,7 +508,7 @@ describe("Persistence Integration Tests", () => {
       // Recover the iteration
       const recovered = await db.getLatestActiveIteration(instanceId)
       expect(recovered).toBeDefined()
-      expect(recovered?.events.length).toBe(events.length)
+      expect(recovered?.events?.length).toBe(events.length)
       expect(recovered?.completedAt).toBeNull()
     })
 
@@ -549,7 +550,7 @@ describe("Persistence Integration Tests", () => {
       const recovered = await db.getLatestTaskChatSessionForInstance(instanceId)
       expect(recovered).toBeDefined()
       expect(recovered?.messages.length).toBe(messages.length)
-      expect(recovered?.events.length).toBe(events.length)
+      expect(recovered?.events?.length).toBe(events.length)
       expect(recovered?.taskId).toBe(taskId)
     })
 
@@ -561,6 +562,7 @@ describe("Persistence Integration Tests", () => {
       await db.saveIteration({
         id: `${instanceId}-${now - 10000}`,
         instanceId,
+        workspaceId: null,
         startedAt: now - 10000,
         completedAt: now - 5000, // Completed
         taskId: "task-1",
@@ -577,6 +579,7 @@ describe("Persistence Integration Tests", () => {
       await db.saveIteration({
         id: `${instanceId}-${now}`,
         instanceId,
+        workspaceId: null,
         startedAt: now,
         completedAt: null, // Still active
         taskId: "task-2",
@@ -639,6 +642,7 @@ describe("Persistence Integration Tests", () => {
       await db.saveIteration({
         id: `${instanceId}-${now}`,
         instanceId,
+        workspaceId: null,
         startedAt: now,
         completedAt: null,
         taskId: null,
@@ -654,7 +658,7 @@ describe("Persistence Integration Tests", () => {
       // Load from database
       const recovered = await db.getIteration(`${instanceId}-${now}`)
       expect(recovered).toBeDefined()
-      expect(recovered?.events).toEqual(originalEvents)
+      expect(recovered?.events ?? []).toEqual(originalEvents)
     })
 
     it("handles large event arrays", async () => {
@@ -674,6 +678,7 @@ describe("Persistence Integration Tests", () => {
       await db.saveIteration({
         id: `${instanceId}-${now}`,
         instanceId,
+        workspaceId: null,
         startedAt: now,
         completedAt: null,
         taskId: null,
@@ -688,7 +693,7 @@ describe("Persistence Integration Tests", () => {
 
       const recovered = await db.getIteration(`${instanceId}-${now}`)
       expect(recovered).toBeDefined()
-      expect(recovered?.events.length).toBe(101)
+      expect(recovered?.events?.length).toBe(101)
     })
   })
 })

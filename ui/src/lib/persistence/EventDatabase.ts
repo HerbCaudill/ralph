@@ -201,6 +201,7 @@ export class EventDatabase {
     const metadata: IterationMetadata = {
       id: iteration.id,
       instanceId: iteration.instanceId,
+      workspaceId: iteration.workspaceId,
       startedAt: iteration.startedAt,
       completedAt: iteration.completedAt,
       taskId: iteration.taskId,

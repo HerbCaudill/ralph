@@ -73,18 +73,20 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
         // Load the most recent active iteration
         const activeIteration = await eventDatabase.getLatestActiveIteration(instanceId)
 
-        if (activeIteration && activeIteration.events.length > 0) {
+        // In v3+ schema, events are stored separately. For v2 data, events are inline.
+        const iterationEvents = activeIteration?.events ?? []
+        if (activeIteration && iterationEvents.length > 0) {
           // Restore events to the store
           // Use setEventsForInstance for the specific instance
-          setEventsForInstance(instanceId, activeIteration.events)
+          setEventsForInstance(instanceId, iterationEvents)
 
           // If this is the active instance, also update the flat events array
           if (instanceId === activeInstanceId) {
-            setEvents(activeIteration.events)
+            setEvents(iterationEvents)
           }
 
           console.log(
-            `[useStoreHydration] Restored ${activeIteration.events.length} events from active iteration ${activeIteration.id}`,
+            `[useStoreHydration] Restored ${iterationEvents.length} events from active iteration ${activeIteration.id}`,
           )
         }
 

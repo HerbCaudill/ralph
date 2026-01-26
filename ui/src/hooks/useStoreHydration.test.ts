@@ -58,6 +58,7 @@ describe("useStoreHydration", () => {
     const mockIteration: PersistedIteration = {
       id: "default-1000",
       instanceId: "default",
+      workspaceId: null,
       startedAt: 1000,
       completedAt: null,
       taskId: null,
@@ -158,6 +159,7 @@ describe("useStoreHydration", () => {
     const mockIteration: PersistedIteration = {
       id: "default-1000",
       instanceId: "default",
+      workspaceId: null,
       startedAt: 1000,
       completedAt: null,
       taskId: null,
