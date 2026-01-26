@@ -249,11 +249,12 @@ describe("NewInstanceDialog", () => {
       const createButton = screen.getByTestId("new-instance-create-button")
       await user.click(createButton)
 
-      // Button should show "Creating..." while in progress
+      // Button should show "Creating..." and be disabled while in progress
+      // Check both conditions together to avoid race conditions
       await waitFor(() => {
         expect(screen.getByText("Creating...")).toBeInTheDocument()
+        expect(createButton).toBeDisabled()
       })
-      expect(createButton).toBeDisabled()
     })
   })
 
