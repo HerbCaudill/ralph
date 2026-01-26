@@ -66,11 +66,9 @@ export const WithPeacockColor: Story = {
 }
 
 export const DefaultAccentColor: Story = {
-  args: {
-    accentColor: null,
-  },
+  // Use render to pass null directly, avoiding Storybook control type checking
+  render: args => <HeaderView {...args} accentColor={null} />,
   argTypes: {
-    // Disable color control for this story since it tests null value
     accentColor: { control: false },
   },
   decorators: [

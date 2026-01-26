@@ -634,9 +634,12 @@ function connect(): void {
       currentReconnectDelay = calculateReconnectDelay()
       reconnectAttempts++
 
-      console.log(
-        `[ralphConnection] Reconnecting in ${currentReconnectDelay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`,
-      )
+      // Only log in non-test environments
+      if (!(globalThis as Record<string, unknown>).__vitest_worker__) {
+        console.log(
+          `[ralphConnection] Reconnecting in ${currentReconnectDelay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`,
+        )
+      }
 
       reconnectTimeout = setTimeout(() => {
         connect()
