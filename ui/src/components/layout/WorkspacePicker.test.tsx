@@ -12,6 +12,9 @@ describe("WorkspacePicker", () => {
     // Reset store state before each test
     useAppStore.getState().reset()
     vi.clearAllMocks()
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
   afterEach(() => {

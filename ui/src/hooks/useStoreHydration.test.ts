@@ -7,14 +7,14 @@ import { renderHook, waitFor } from "@testing-library/react"
 import { useStoreHydration } from "./useStoreHydration"
 import { eventDatabase } from "@/lib/persistence"
 import { useAppStore } from "@/store"
-import type { PersistedIteration, PersistedTaskChatSession } from "@/lib/persistence"
+import type { PersistedSession, PersistedTaskChatSession } from "@/lib/persistence"
 import type { ChatEvent, TaskChatMessage } from "@/types"
 
 // Mock the eventDatabase
 vi.mock("@/lib/persistence", () => ({
   eventDatabase: {
     init: vi.fn().mockResolvedValue(undefined),
-    getLatestActiveIteration: vi.fn().mockResolvedValue(undefined),
+    getLatestActiveSession: vi.fn().mockResolvedValue(undefined),
     getLatestTaskChatSessionForInstance: vi.fn().mockResolvedValue(undefined),
   },
 }))
@@ -23,9 +23,13 @@ describe("useStoreHydration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.getState().reset()
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     useAppStore.getState().reset()
   })
 
@@ -45,7 +49,7 @@ describe("useStoreHydration", () => {
     })
   })
 
-  it("should restore events from active iteration", async () => {
+  it("should restore events from active session", async () => {
     const mockEvents: ChatEvent[] = [
       { type: "system", timestamp: 1000, subtype: "init" } as any,
       {
@@ -55,7 +59,7 @@ describe("useStoreHydration", () => {
       } as any,
     ]
 
-    const mockIteration: PersistedIteration = {
+    const mockSession: PersistedSession = {
       id: "default-1000",
       instanceId: "default",
       workspaceId: null,
@@ -65,13 +69,13 @@ describe("useStoreHydration", () => {
       taskTitle: null,
       tokenUsage: { input: 100, output: 50 },
       contextWindow: { used: 150, max: 200000 },
-      iteration: { current: 1, total: 1 },
+      session: { current: 1, total: 1 },
       eventCount: 2,
       lastEventSequence: 1,
       events: mockEvents,
     }
 
-    vi.mocked(eventDatabase.getLatestActiveIteration).mockResolvedValue(mockIteration)
+    vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
 
     const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
 
@@ -155,8 +159,8 @@ describe("useStoreHydration", () => {
     expect(eventDatabase.init).toHaveBeenCalledTimes(1)
   })
 
-  it("should not restore events if iteration has no events", async () => {
-    const mockIteration: PersistedIteration = {
+  it("should not restore events if session has no events", async () => {
+    const mockSession: PersistedSession = {
       id: "default-1000",
       instanceId: "default",
       workspaceId: null,
@@ -166,13 +170,13 @@ describe("useStoreHydration", () => {
       taskTitle: null,
       tokenUsage: { input: 0, output: 0 },
       contextWindow: { used: 0, max: 200000 },
-      iteration: { current: 0, total: 0 },
+      session: { current: 0, total: 0 },
       eventCount: 0,
       lastEventSequence: -1,
       events: [],
     }
 
-    vi.mocked(eventDatabase.getLatestActiveIteration).mockResolvedValue(mockIteration)
+    vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
 
     const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
 
