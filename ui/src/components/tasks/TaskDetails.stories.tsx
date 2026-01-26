@@ -309,6 +309,85 @@ function TaskDetailsTestWrapper({
 }
 
 /**
+ * Stateful test wrapper with no artificial delays.
+ * Use this for interaction tests that need real state updates.
+ */
+function StatefulTaskDetailsWrapper({
+  initialTask,
+  readOnly = false,
+  initialLabels = [],
+}: {
+  initialTask: TaskCardTask
+  readOnly?: boolean
+  initialLabels?: string[]
+}) {
+  const [task] = useState(initialTask)
+  const [formValues, setFormValues] = useState<TaskFormValues>({
+    title: initialTask.title,
+    description: initialTask.description ?? "",
+    status: initialTask.status,
+    priority: initialTask.priority ?? 2,
+    issueType: (initialTask.issue_type as IssueType) ?? "task",
+    parent: initialTask.parent ?? null,
+  })
+  const [labels, setLabels] = useState<string[]>(initialLabels)
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
+  const [newLabel, setNewLabel] = useState("")
+  const [showLabelInput, setShowLabelInput] = useState(false)
+
+  const handleSave = useCallback((field: keyof TaskFormValues, value: unknown) => {
+    setFormValues(prev => ({ ...prev, [field]: value }))
+  }, [])
+
+  const handleAddLabel = useCallback(() => {
+    if (!newLabel.trim()) return
+    setLabels(prev => [...prev, newLabel.trim()])
+    setNewLabel("")
+    setShowLabelInput(false)
+  }, [newLabel])
+
+  const handleRemoveLabel = useCallback((label: string) => {
+    setLabels(prev => prev.filter(l => l !== label))
+  }, [])
+
+  return (
+    <div className="h-screen w-[400px]">
+      <TaskDetails
+        task={task}
+        open={true}
+        readOnly={readOnly}
+        formValues={formValues}
+        labels={labels}
+        issuePrefix="rui-"
+        allTasks={allTasks}
+        isSaving={false}
+        isDeleting={false}
+        isAddingLabel={false}
+        isConfirmingDelete={isConfirmingDelete}
+        deleteError={null}
+        newLabel={newLabel}
+        showLabelInput={showLabelInput}
+        canDelete={!readOnly}
+        onUpdateTitle={title => handleSave("title", title)}
+        onUpdateDescription={desc => handleSave("description", desc)}
+        onUpdateStatus={status => handleSave("status", status)}
+        onUpdatePriority={priority => handleSave("priority", priority)}
+        onUpdateIssueType={type => handleSave("issueType", type)}
+        onUpdateParent={parent => handleSave("parent", parent)}
+        onSetNewLabel={setNewLabel}
+        onSetShowLabelInput={setShowLabelInput}
+        onAddLabel={handleAddLabel}
+        onRemoveLabel={handleRemoveLabel}
+        onStartDelete={() => setIsConfirmingDelete(true)}
+        onCancelDelete={() => setIsConfirmingDelete(false)}
+        onConfirmDelete={() => setIsConfirmingDelete(false)}
+        onClose={() => {}}
+      />
+    </div>
+  )
+}
+
+/**
  * Verifies the dialog renders task ID and title.
  */
 export const ShowsTaskDetails: Story = {
@@ -355,7 +434,7 @@ export const CloseButtonCallsOnClose: Story = {
  * Verifies the title textarea is editable and has correct initial value.
  */
 export const TitleInputEditable: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -376,7 +455,7 @@ export const TitleInputEditable: Story = {
  * Verifies clicking status buttons changes the status.
  */
 export const StatusButtonsWork: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -402,7 +481,7 @@ export const StatusButtonsWork: Story = {
  * Verifies clicking priority buttons changes the priority.
  */
 export const PriorityButtonsWork: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -428,7 +507,7 @@ export const PriorityButtonsWork: Story = {
  * Verifies clicking type buttons changes the issue type.
  */
 export const TypeButtonsWork: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -454,7 +533,7 @@ export const TypeButtonsWork: Story = {
  * Verifies the Add label button shows the label input.
  */
 export const AddLabelShowsInput: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -474,7 +553,7 @@ export const AddLabelShowsInput: Story = {
  * Verifies typing and submitting a label adds it.
  */
 export const AddLabelSubmission: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -502,7 +581,10 @@ export const AddLabelSubmission: Story = {
  */
 export const RemoveLabel: Story = {
   render: () => (
-    <TaskDetailsDemo initialTask={sampleTask} initialLabels={["test-label", "another-label"]} />
+    <StatefulTaskDetailsWrapper
+      initialTask={sampleTask}
+      initialLabels={["test-label", "another-label"]}
+    />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -529,7 +611,7 @@ export const RemoveLabel: Story = {
  * Verifies delete confirmation flow works.
  */
 export const DeleteConfirmation: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -552,7 +634,7 @@ export const DeleteConfirmation: Story = {
  * Verifies canceling delete confirmation hides it.
  */
 export const CancelDeleteConfirmation: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -581,16 +663,15 @@ export const CancelDeleteConfirmation: Story = {
  * Verifies read-only mode hides interactive elements.
  */
 export const ReadOnlyHidesInteractiveElements: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} readOnly />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} readOnly />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
-    // Wait for the dialog to render
-    await wait(100)
+    // Wait for task title to render, then check readonly elements
+    await expect(await canvas.findByText(sampleTask.title)).toBeVisible()
 
     // Title should be text, not input
     await expect(canvas.queryByRole("textbox")).not.toBeInTheDocument()
-    await expect(await canvas.findByText(sampleTask.title)).toBeVisible()
 
     // Delete button should not be present
     await expect(canvas.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument()
@@ -604,7 +685,7 @@ export const ReadOnlyHidesInteractiveElements: Story = {
  * Verifies keyboard navigation with arrow keys in type button group.
  */
 export const KeyboardNavigationTypeButtons: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -628,7 +709,7 @@ export const KeyboardNavigationTypeButtons: Story = {
  * Verifies pressing Enter in label input adds the label.
  */
 export const EnterKeyAddsLabel: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
@@ -654,7 +735,7 @@ export const EnterKeyAddsLabel: Story = {
  * Verifies pressing Escape in label input cancels and hides the input.
  */
 export const EscapeKeyCancelsLabelInput: Story = {
-  render: () => <TaskDetailsDemo initialTask={sampleTask} />,
+  render: () => <StatefulTaskDetailsWrapper initialTask={sampleTask} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
 
