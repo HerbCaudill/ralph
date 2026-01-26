@@ -102,6 +102,7 @@ describe("EventDatabase", () => {
       const stats = await db.getStats()
       expect(stats).toEqual({
         iterationCount: 0,
+        eventCount: 0,
         taskChatSessionCount: 0,
         eventLogCount: 0,
         syncStateCount: 0,
@@ -731,6 +732,7 @@ describe("EventDatabase", () => {
         const stats = await db.getStats()
         expect(stats).toEqual({
           iterationCount: 0,
+          eventCount: 0,
           taskChatSessionCount: 0,
           eventLogCount: 0,
           syncStateCount: 0,
@@ -752,6 +754,7 @@ describe("EventDatabase", () => {
         const stats = await db.getStats()
         expect(stats).toEqual({
           iterationCount: 2,
+          eventCount: 0,
           taskChatSessionCount: 1,
           eventLogCount: 2,
           syncStateCount: 3,

@@ -11,6 +11,7 @@ import {
   STORE_NAMES,
   type EventLogMetadata,
   type IterationMetadata,
+  type PersistedEvent,
   type PersistedEventLog,
   type PersistedIteration,
   type PersistedTaskChatSession,
@@ -31,6 +32,8 @@ interface RalphDBSchema extends DBSchema {
       "by-started-at": number
       "by-instance-and-started-at": [string, number]
       "by-task": string
+      // Note: Records with null workspaceId won't be indexed by this compound index
+      "by-workspace-and-started-at": [string, number]
     }
   }
   [STORE_NAMES.ITERATIONS]: {
@@ -38,6 +41,14 @@ interface RalphDBSchema extends DBSchema {
     value: PersistedIteration
     indexes: {
       "by-instance": string
+    }
+  }
+  [STORE_NAMES.EVENTS]: {
+    key: string
+    value: PersistedEvent
+    indexes: {
+      "by-iteration": string
+      "by-timestamp": number
     }
   }
   [STORE_NAMES.TASK_CHAT_METADATA]: {
@@ -108,7 +119,7 @@ export class EventDatabase {
 
   private async openDatabase(): Promise<void> {
     this.db = await openDB<RalphDBSchema>(DB_NAME, PERSISTENCE_SCHEMA_VERSION, {
-      upgrade(db, oldVersion, _newVersion) {
+      upgrade(db, oldVersion, _newVersion, transaction) {
         // Version 1: Initial schema
         if (oldVersion < 1) {
           // Iteration metadata store with indexes
@@ -164,8 +175,28 @@ export class EventDatabase {
           eventLogStore.createIndex("by-task", "taskId")
         }
 
+        // Version 3: Add events store for normalized event storage and workspace index
+        if (oldVersion < 3) {
+          // Events store for append-only event writes
+          const eventsStore = db.createObjectStore(STORE_NAMES.EVENTS, {
+            keyPath: "id",
+          })
+          eventsStore.createIndex("by-iteration", "iterationId")
+          eventsStore.createIndex("by-timestamp", "timestamp")
+
+          // Add workspace index to iteration metadata for cross-workspace queries
+          // Access the existing store through the upgrade transaction
+          if (db.objectStoreNames.contains(STORE_NAMES.ITERATION_METADATA)) {
+            const iterationMetaStore = transaction.objectStore(STORE_NAMES.ITERATION_METADATA)
+            iterationMetaStore.createIndex("by-workspace-and-started-at", [
+              "workspaceId",
+              "startedAt",
+            ])
+          }
+        }
+
         // Future migrations can be added here:
-        // if (oldVersion < 3) { ... }
+        // if (oldVersion < 4) { ... }
       },
       blocked() {
         console.warn("[EventDatabase] Database upgrade blocked by other tabs")
@@ -639,6 +670,7 @@ export class EventDatabase {
       [
         STORE_NAMES.ITERATION_METADATA,
         STORE_NAMES.ITERATIONS,
+        STORE_NAMES.EVENTS,
         STORE_NAMES.TASK_CHAT_METADATA,
         STORE_NAMES.TASK_CHAT_SESSIONS,
         STORE_NAMES.EVENT_LOG_METADATA,
@@ -651,6 +683,7 @@ export class EventDatabase {
     await Promise.all([
       tx.objectStore(STORE_NAMES.ITERATION_METADATA).clear(),
       tx.objectStore(STORE_NAMES.ITERATIONS).clear(),
+      tx.objectStore(STORE_NAMES.EVENTS).clear(),
       tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).clear(),
       tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).clear(),
       tx.objectStore(STORE_NAMES.EVENT_LOG_METADATA).clear(),
@@ -676,22 +709,23 @@ export class EventDatabase {
    */
   async getStats(): Promise<{
     iterationCount: number
+    eventCount: number
     taskChatSessionCount: number
     eventLogCount: number
     syncStateCount: number
   }> {
     const db = await this.ensureDb()
 
-    const [iterationCount, taskChatSessionCount, eventLogCount, syncStateCount] = await Promise.all(
-      [
+    const [iterationCount, eventCount, taskChatSessionCount, eventLogCount, syncStateCount] =
+      await Promise.all([
         db.count(STORE_NAMES.ITERATION_METADATA),
+        db.count(STORE_NAMES.EVENTS),
         db.count(STORE_NAMES.TASK_CHAT_METADATA),
         db.count(STORE_NAMES.EVENT_LOG_METADATA),
         db.count(STORE_NAMES.SYNC_STATE),
-      ],
-    )
+      ])
 
-    return { iterationCount, taskChatSessionCount, eventLogCount, syncStateCount }
+    return { iterationCount, eventCount, taskChatSessionCount, eventLogCount, syncStateCount }
   }
 }
 
