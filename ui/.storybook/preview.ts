@@ -1,10 +1,11 @@
 import type { Preview } from "@storybook/react-vite"
 import React from "react"
 import { TestProviders } from "../src/components/TestProviders"
-import { mapThemeToCSSVariables } from "../src/lib/theme"
-import { storybookThemes, getTheme, defaultThemeId } from "./themeLoader"
-import { StorybookThemeProvider } from "./StorybookThemeProvider"
 import "../src/index.css"
+import { mapThemeToCSSVariables } from "../src/lib/theme"
+import { cn } from "../src/lib/utils"
+import { StorybookThemeProvider } from "./StorybookThemeProvider"
+import { defaultThemeId, getTheme, storybookThemes } from "./themeLoader"
 
 const preview: Preview = {
   parameters: {
@@ -75,7 +76,7 @@ const preview: Preview = {
       const storyContent = React.createElement(
         "div",
         {
-          className: `${isDark ? "dark" : ""} bg-background text-foreground min-h-screen p-10`,
+          className: cn("bg-background text-foreground min-h-screen p-10", isDark && "dark"),
           style,
         },
         React.createElement(Story),
