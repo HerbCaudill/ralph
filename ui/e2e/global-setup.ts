@@ -10,12 +10,50 @@ import path from "node:path"
 
 const TEST_WORKSPACE_DIR = path.join(import.meta.dirname, "test-workspace")
 
+/**
+ * Attempts to remove a directory with retry logic.
+ * Handles ENOTEMPTY and EBUSY errors that can occur when file handles
+ * haven't been released yet (e.g., from bd daemon).
+ */
+async function removeDirectoryWithRetry(
+  dirPath: string,
+  maxRetries = 3,
+  delayMs = 500,
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      rmSync(dirPath, { recursive: true, force: true })
+      return // Success
+    } catch (error) {
+      const isRetryableError =
+        error instanceof Error &&
+        "code" in error &&
+        (error.code === "ENOTEMPTY" || error.code === "EBUSY")
+
+      if (!isRetryableError || attempt === maxRetries) {
+        throw error
+      }
+
+      // Wait before retrying to allow file handles to be released
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
+}
+
 export default async function globalSetup() {
   const quiet = process.env.PW_QUIET || process.env.CI
 
-  // Remove existing test workspace to start fresh
+  // Stop any running bd daemon for the test workspace before cleanup
+  // This helps release file handles that could cause ENOTEMPTY errors
+  try {
+    execSync(`bd daemon stop "${TEST_WORKSPACE_DIR}"`, { stdio: "pipe" })
+  } catch {
+    // Daemon may not be running, that's fine
+  }
+
+  // Remove existing test workspace to start fresh (with retry for file lock issues)
   if (existsSync(TEST_WORKSPACE_DIR)) {
-    rmSync(TEST_WORKSPACE_DIR, { recursive: true, force: true })
+    await removeDirectoryWithRetry(TEST_WORKSPACE_DIR)
   }
 
   // Create the test workspace directory
