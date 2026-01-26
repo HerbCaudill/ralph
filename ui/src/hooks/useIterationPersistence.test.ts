@@ -147,6 +147,38 @@ describe("useIterationPersistence", () => {
       })
     })
 
+    it("uses Date.now() as fallback when boundary event has timestamp of 0", async () => {
+      // Create a system init event with timestamp=0 (falsy but not nullish)
+      const eventWithZeroTimestamp = {
+        type: "system",
+        subtype: "init",
+        timestamp: 0,
+      } as unknown as ChatEvent
+
+      const beforeTime = Date.now()
+
+      const { result } = renderHook(() =>
+        useIterationPersistence({
+          ...defaultOptions,
+          events: [eventWithZeroTimestamp],
+        }),
+      )
+
+      const afterTime = Date.now()
+
+      await waitFor(() => {
+        expect(result.current.currentIterationId).not.toBeNull()
+        // The ID should be generated with a fallback timestamp (not 0)
+        expect(result.current.currentIterationId).toMatch(/^default-\d+$/)
+        // Extract the timestamp from the ID
+        const idTimestamp = parseInt(result.current.currentIterationId!.split("-")[1], 10)
+        // The fallback timestamp should be between beforeTime and afterTime (not 0)
+        expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime)
+        expect(idTimestamp).toBeLessThanOrEqual(afterTime)
+        expect(idTimestamp).not.toBe(0)
+      })
+    })
+
     it("generates stable iteration IDs based on instance and timestamp", async () => {
       const timestamp = 1706123456789
 

@@ -32,9 +32,26 @@ export interface UseIterationsResult {
 }
 
 /**
- * Converts IterationMetadata from IndexedDB to IterationSummary for consumers.
+ * Validates a timestamp and returns a valid Date, or null if invalid.
+ * A timestamp is considered invalid if it's undefined, null, NaN, or 0.
  */
-function toIterationSummary(metadata: IterationMetadata): IterationSummary {
+function isValidTimestamp(timestamp: number | undefined | null): timestamp is number {
+  return timestamp !== undefined && timestamp !== null && !isNaN(timestamp) && timestamp > 0
+}
+
+/**
+ * Converts IterationMetadata from IndexedDB to IterationSummary for consumers.
+ * Returns null if the metadata has an invalid timestamp.
+ */
+function toIterationSummary(metadata: IterationMetadata): IterationSummary | null {
+  // Validate timestamp before attempting conversion
+  if (!isValidTimestamp(metadata.startedAt)) {
+    console.warn(
+      `[useIterations] Skipping iteration ${metadata.id} with invalid startedAt: ${metadata.startedAt}`,
+    )
+    return null
+  }
+
   return {
     id: metadata.id,
     createdAt: new Date(metadata.startedAt).toISOString(),
@@ -72,7 +89,10 @@ export function useIterations(options: UseIterationsOptions = {}): UseIterations
           await eventDatabase.getIterationsForTask(taskId)
         : await eventDatabase.listAllIterations()
 
-      const summaries = metadata.map(toIterationSummary)
+      // Filter out iterations with invalid timestamps
+      const summaries = metadata
+        .map(toIterationSummary)
+        .filter((s): s is IterationSummary => s !== null)
       setIterations(summaries)
       setError(null)
     } catch (err) {
