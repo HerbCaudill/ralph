@@ -23,7 +23,7 @@
     "test:e2e": "vitest --config vitest.e2e.config.ts",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
-    "format": "prettier --write .",
+    "format": "prettier --write . --log-level silent",
     "prepublishOnly": "pnpm build"
   },
   "keywords": [

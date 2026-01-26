@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest --watch",
-    "format": "prettier --write ."
+    "format": "prettier --write . --log-level silent"
   },
   "keywords": [
     "ralph",
