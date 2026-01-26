@@ -13,6 +13,11 @@ vi.mock("@/hooks", async importOriginal => {
       isLoading: false,
       error: null,
       refresh: vi.fn(),
+      loadSessionEvents: vi.fn(),
+      selectedSession: null,
+      isLoadingEvents: false,
+      eventsError: null,
+      clearSelectedSession: vi.fn(),
     })),
     useEventLogRouter: vi.fn(() => ({
       navigateToEventLog: vi.fn(),
