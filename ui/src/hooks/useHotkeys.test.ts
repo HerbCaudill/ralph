@@ -105,6 +105,7 @@ describe("useHotkeys", () => {
       expect(actions).toContain("previousTask")
       expect(actions).toContain("nextTask")
       expect(actions).toContain("openTask")
+      expect(actions).toContain("exportState")
     })
   })
 
@@ -450,6 +451,32 @@ describe("useHotkeys", () => {
       act(() => {
         const event = new KeyboardEvent("keydown", {
           key: "Enter",
+          bubbles: true,
+        })
+        window.dispatchEvent(event)
+      })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("handles exportState hotkey (Cmd+Shift+E)", () => {
+      mockNavigator("MacIntel")
+      const handler = vi.fn()
+
+      renderHook(() =>
+        useHotkeys({
+          handlers: {
+            exportState: handler,
+          },
+        }),
+      )
+
+      // Simulate Cmd+Shift+E
+      act(() => {
+        const event = new KeyboardEvent("keydown", {
+          key: "e",
+          metaKey: true,
+          shiftKey: true,
           bubbles: true,
         })
         window.dispatchEvent(event)

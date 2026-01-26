@@ -103,5 +103,6 @@ export type HotkeyAction =
   | "previousTask"
   | "nextTask"
   | "openTask"
+  | "exportState"
 
 export type HotkeysConfig = Record<HotkeyAction, HotkeyConfig>

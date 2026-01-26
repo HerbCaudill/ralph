@@ -12,6 +12,7 @@ describe("CommandPalette", () => {
     focusTaskInput: vi.fn(),
     focusChatInput: vi.fn(),
     toggleTaskChat: vi.fn(),
+    exportState: vi.fn(),
   }
 
   beforeEach(() => {
@@ -52,6 +53,7 @@ describe("CommandPalette", () => {
       expect(screen.getByText("Search tasks")).toBeInTheDocument()
       expect(screen.getByText("Focus chat")).toBeInTheDocument()
       expect(screen.getByText("Toggle task chat")).toBeInTheDocument()
+      expect(screen.getByText("Export state")).toBeInTheDocument()
     })
 
     it("displays command descriptions from hotkeys config", () => {

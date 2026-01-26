@@ -9,6 +9,7 @@ import {
   IconMessage,
   IconListCheck,
   IconTerminal,
+  IconDownload,
 } from "@tabler/icons-react"
 import { hotkeys } from "@/config"
 import { getShortcut } from "@/lib/getShortcut"
@@ -25,6 +26,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Message: IconMessage,
   ListCheck: IconListCheck,
   Terminal: IconTerminal,
+  Download: IconDownload,
 }
 
 /** Get icon component from config icon name */
@@ -213,6 +215,7 @@ export type CommandAction =
   | "focusTaskInput"
   | "focusChatInput"
   | "toggleTaskChat"
+  | "exportState"
 
 type CommandItem = {
   id: CommandAction

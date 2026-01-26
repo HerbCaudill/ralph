@@ -51,6 +51,7 @@ import { pauseRalph } from "./lib/pauseRalph"
 import { resumeRalph } from "./lib/resumeRalph"
 import { stopAfterCurrentRalph } from "./lib/stopAfterCurrentRalph"
 import { clearTaskChatHistory } from "./lib/clearTaskChatHistory"
+import { downloadStateExport } from "./lib/exportState"
 import { TasksSidebarPanel } from "./components/TasksSidebarPanel"
 import { AgentView } from "./components/AgentView"
 
@@ -335,6 +336,14 @@ export function App() {
     }
   }, [selectedTaskId, taskDialog])
 
+  const handleExportState = useCallback(async () => {
+    try {
+      await downloadStateExport()
+    } catch (err) {
+      console.error("[App] Failed to export state:", err)
+    }
+  }, [])
+
   // Register hotkeys
   useHotkeys({
     handlers: {
@@ -363,6 +372,7 @@ export function App() {
       previousTask: handlePreviousTask,
       nextTask: handleNextTask,
       openTask: handleOpenTask,
+      exportState: handleExportState,
     },
   })
 
@@ -432,6 +442,7 @@ export function App() {
           focusTaskInput: handleFocusTaskInput,
           focusChatInput: handleFocusChatInput,
           toggleTaskChat: handleToggleTaskChat,
+          exportState: handleExportState,
         }}
         ralphStatus={ralphStatus}
         isConnected={isConnected}

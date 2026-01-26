@@ -165,6 +165,16 @@
       "key": "Enter",
       "description": "Open selected task",
       "category": "Navigation"
+    },
+    "exportState": {
+      "key": "cmd+shift+e",
+      "description": "Export application state",
+      "category": "Help",
+      "commandPalette": {
+        "label": "Export state",
+        "icon": "Download",
+        "keywords": ["export", "download", "state", "debug", "backup"]
+      }
     }
   }
 }
