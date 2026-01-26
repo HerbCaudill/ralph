@@ -1892,6 +1892,72 @@ describe("useAppStore", () => {
         const task = getTaskFromIterationEvents(events)
         expect(task).toEqual({ id: "rui-111", title: "First task" })
       })
+
+      // Fallback tests - parsing from assistant message text
+      it("extracts task from <start_task> tag in assistant message when no ralph_task_started event", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "assistant",
+            timestamp: 1001,
+            message: {
+              content: [{ type: "text", text: "<start_task>rui-123</start_task>" }],
+            },
+          },
+        ] as ChatEvent[]
+        const task = getTaskFromIterationEvents(events)
+        expect(task).toEqual({ id: "rui-123", title: "rui-123" })
+      })
+
+      it("extracts task from emoji format in assistant message when no ralph_task_started event", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "assistant",
+            timestamp: 1001,
+            message: {
+              content: [{ type: "text", text: "✨ Starting **rui-456 Fix the button layout**" }],
+            },
+          },
+        ] as ChatEvent[]
+        const task = getTaskFromIterationEvents(events)
+        expect(task).toEqual({ id: "rui-456", title: "Fix the button layout" })
+      })
+
+      it("prefers ralph_task_started event over assistant message text", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-111",
+            taskTitle: "From event",
+          },
+          {
+            type: "assistant",
+            timestamp: 1002,
+            message: {
+              content: [{ type: "text", text: "✨ Starting **rui-222 From text**" }],
+            },
+          },
+        ] as ChatEvent[]
+        const task = getTaskFromIterationEvents(events)
+        expect(task).toEqual({ id: "rui-111", title: "From event" })
+      })
+
+      it("returns null when assistant message has no task lifecycle event", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "assistant",
+            timestamp: 1001,
+            message: {
+              content: [{ type: "text", text: "Just a normal message without task info" }],
+            },
+          },
+        ] as ChatEvent[]
+        expect(getTaskFromIterationEvents(events)).toBeNull()
+      })
     })
 
     describe("getIterationTaskInfos", () => {

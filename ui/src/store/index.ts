@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
 import type { ConnectionStatus } from "../hooks/useWebSocket"
 import type {
   ClosedTasksTimeFilter,
@@ -389,12 +390,14 @@ export function getEventsForIteration(
 
 /**
  * Extracts task information from iteration events.
- * Looks for ralph_task_started events to get the task being worked on.
+ * First looks for ralph_task_started events (emitted by newer CLI versions).
+ * Falls back to parsing <start_task> tags from assistant messages.
  * Returns task info if found, with title falling back to taskId if not provided.
  */
 export function getTaskFromIterationEvents(
   events: ChatEvent[],
 ): { id: string | null; title: string } | null {
+  // First, check for explicit ralph_task_started events (newer CLI)
   for (const event of events) {
     if (event.type === "ralph_task_started") {
       const taskId = (event as any).taskId as string | undefined
@@ -408,6 +411,28 @@ export function getTaskFromIterationEvents(
       }
     }
   }
+
+  // Fallback: Parse task lifecycle from assistant message text
+  // This handles older CLI versions that don't emit ralph_task_started events
+  for (const event of events) {
+    if (event.type === "assistant") {
+      const content = (event as any).message?.content
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === "text" && typeof block.text === "string") {
+            const taskInfo = parseTaskLifecycleEvent(block.text, event.timestamp ?? Date.now())
+            if (taskInfo && taskInfo.action === "starting" && taskInfo.taskId) {
+              return {
+                id: taskInfo.taskId,
+                title: taskInfo.taskTitle ?? taskInfo.taskId,
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   return null
 }
 
