@@ -24,12 +24,23 @@ export class TaskListPage {
     const result = await response.json()
 
     // Refresh to ensure the task list is updated (websocket updates may not work in test env)
-    await this.page.reload()
+    await this.page.reload({ waitUntil: "networkidle" })
 
-    // Wait for the task to appear in the list
-    await expect(this.sidebar.locator("span.truncate", { hasText: title })).toBeVisible({
-      timeout: 10000,
-    })
+    // Wait for sidebar to be visible first
+    await expect(this.sidebar).toBeVisible({ timeout: 10000 })
+
+    // Wait for the task to appear in the list by its unique ID (not title, which could match multiple tasks)
+    const taskId = result.issue?.id
+    if (taskId) {
+      await expect(this.page.locator(`[data-task-id="${taskId}"]`)).toBeVisible({
+        timeout: 10000,
+      })
+    } else {
+      // Fallback to title-based search if no ID returned (shouldn't happen normally)
+      await expect(this.sidebar.locator("span.truncate", { hasText: title }).first()).toBeVisible({
+        timeout: 10000,
+      })
+    }
     return result
   }
 
