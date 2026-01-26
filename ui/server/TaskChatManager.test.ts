@@ -119,7 +119,7 @@ describe("TaskChatManager", () => {
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           includePartialMessages: true, // Enable streaming
-          maxTurns: 30, // Allow multiple turns for tool use
+          maxTurns: 100, // Allow multiple turns for tool use
         }),
       })
     })
