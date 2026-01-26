@@ -335,13 +335,13 @@ export class EventDatabase {
     }
 
     // Use a transaction to update both stores atomically
+    // Note: We must await the put operations before tx.done to ensure the transaction
+    // doesn't auto-commit before the operations complete
     const tx = db.transaction([STORE_NAMES.SESSION_METADATA, STORE_NAMES.SESSIONS], "readwrite")
 
-    await Promise.all([
-      tx.objectStore(STORE_NAMES.SESSION_METADATA).put(metadata),
-      tx.objectStore(STORE_NAMES.SESSIONS).put(session),
-      tx.done,
-    ])
+    await tx.objectStore(STORE_NAMES.SESSION_METADATA).put(metadata)
+    await tx.objectStore(STORE_NAMES.SESSIONS).put(session)
+    await tx.done
   }
 
   /**
@@ -381,11 +381,13 @@ export class EventDatabase {
   }
 
   /**
-   * Get sessions for a specific task.
+   * Get sessions for a specific task, sorted by startedAt descending.
    */
   async getSessionsForTask(taskId: string): Promise<SessionMetadata[]> {
     const db = await this.ensureDb()
-    return db.getAllFromIndex(STORE_NAMES.SESSION_METADATA, "by-task", taskId)
+    const all = await db.getAllFromIndex(STORE_NAMES.SESSION_METADATA, "by-task", taskId)
+    // Sort by startedAt descending (most recent first)
+    return all.sort((a, b) => b.startedAt - a.startedAt)
   }
 
   /**
@@ -426,11 +428,9 @@ export class EventDatabase {
     // Then delete the session metadata and data
     const tx = db.transaction([STORE_NAMES.SESSION_METADATA, STORE_NAMES.SESSIONS], "readwrite")
 
-    await Promise.all([
-      tx.objectStore(STORE_NAMES.SESSION_METADATA).delete(id),
-      tx.objectStore(STORE_NAMES.SESSIONS).delete(id),
-      tx.done,
-    ])
+    await tx.objectStore(STORE_NAMES.SESSION_METADATA).delete(id)
+    await tx.objectStore(STORE_NAMES.SESSIONS).delete(id)
+    await tx.done
   }
 
   /**
@@ -452,11 +452,12 @@ export class EventDatabase {
     const metaStore = tx.objectStore(STORE_NAMES.SESSION_METADATA)
     const iterStore = tx.objectStore(STORE_NAMES.SESSIONS)
 
-    await Promise.all([
-      ...ids.map(id => metaStore.delete(id)),
-      ...ids.map(id => iterStore.delete(id)),
-      tx.done,
-    ])
+    // Delete all entries sequentially within the transaction
+    for (const id of ids) {
+      await metaStore.delete(id)
+      await iterStore.delete(id)
+    }
+    await tx.done
   }
 
   // ============================================================================
@@ -483,7 +484,10 @@ export class EventDatabase {
     const tx = db.transaction(STORE_NAMES.EVENTS, "readwrite")
     const store = tx.objectStore(STORE_NAMES.EVENTS)
 
-    await Promise.all([...events.map(event => store.put(event)), tx.done])
+    for (const event of events) {
+      await store.put(event)
+    }
+    await tx.done
   }
 
   /**
@@ -518,7 +522,10 @@ export class EventDatabase {
     const tx = db.transaction(STORE_NAMES.EVENTS, "readwrite")
     const store = tx.objectStore(STORE_NAMES.EVENTS)
 
-    await Promise.all([...events.map(event => store.delete(event.id)), tx.done])
+    for (const event of events) {
+      await store.delete(event.id)
+    }
+    await tx.done
   }
 
   /**
@@ -562,11 +569,9 @@ export class EventDatabase {
       "readwrite",
     )
 
-    await Promise.all([
-      tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).put(metadata),
-      tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).put(session),
-      tx.done,
-    ])
+    await tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).put(metadata)
+    await tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).put(session)
+    await tx.done
   }
 
   /**
@@ -595,11 +600,13 @@ export class EventDatabase {
   }
 
   /**
-   * Get task chat sessions for a specific task.
+   * Get task chat sessions for a specific task, sorted by updatedAt descending.
    */
   async getTaskChatSessionsForTask(taskId: string): Promise<TaskChatSessionMetadata[]> {
     const db = await this.ensureDb()
-    return db.getAllFromIndex(STORE_NAMES.TASK_CHAT_METADATA, "by-task", taskId)
+    const all = await db.getAllFromIndex(STORE_NAMES.TASK_CHAT_METADATA, "by-task", taskId)
+    // Sort by updatedAt descending (most recent first)
+    return all.sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
   /**
@@ -651,11 +658,9 @@ export class EventDatabase {
       "readwrite",
     )
 
-    await Promise.all([
-      tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).delete(id),
-      tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).delete(id),
-      tx.done,
-    ])
+    await tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).delete(id)
+    await tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).delete(id)
+    await tx.done
   }
 
   /**
@@ -675,11 +680,12 @@ export class EventDatabase {
     const metaStore = tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA)
     const sessionStore = tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS)
 
-    await Promise.all([
-      ...ids.map(id => metaStore.delete(id)),
-      ...ids.map(id => sessionStore.delete(id)),
-      tx.done,
-    ])
+    // Delete all entries sequentially within the transaction
+    for (const id of ids) {
+      await metaStore.delete(id)
+      await sessionStore.delete(id)
+    }
+    await tx.done
   }
 
   /**
@@ -749,15 +755,13 @@ export class EventDatabase {
       "readwrite",
     )
 
-    await Promise.all([
-      tx.objectStore(STORE_NAMES.SESSION_METADATA).clear(),
-      tx.objectStore(STORE_NAMES.SESSIONS).clear(),
-      tx.objectStore(STORE_NAMES.EVENTS).clear(),
-      tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).clear(),
-      tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).clear(),
-      tx.objectStore(STORE_NAMES.SYNC_STATE).clear(),
-      tx.done,
-    ])
+    await tx.objectStore(STORE_NAMES.SESSION_METADATA).clear()
+    await tx.objectStore(STORE_NAMES.SESSIONS).clear()
+    await tx.objectStore(STORE_NAMES.EVENTS).clear()
+    await tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).clear()
+    await tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).clear()
+    await tx.objectStore(STORE_NAMES.SYNC_STATE).clear()
+    await tx.done
   }
 
   /**
