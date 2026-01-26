@@ -1,5 +1,11 @@
 ---
+name: run-tests
+description: Runs tests and returns a summarized result
 model: haiku
+tools:
+  - Bash
+  - Read
+  - Glob
 ---
 
 # Test Runner Agent

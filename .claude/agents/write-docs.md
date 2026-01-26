@@ -1,5 +1,13 @@
 ---
+name: write-docs
+description: Writes documentation for specified code
 model: haiku
+tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # Documentation Writing Agent

@@ -1,5 +1,13 @@
 ---
+name: make-tests
+description: Generates tests for specified code
 model: haiku
+tools:
+  - Bash
+  - Read
+  - Write
+  - Glob
+  - Grep
 ---
 
 # Test Writing Agent
