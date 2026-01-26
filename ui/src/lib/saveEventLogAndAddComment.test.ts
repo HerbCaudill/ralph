@@ -1,177 +1,113 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import "fake-indexeddb/auto"
-import { saveEventLogAndAddComment } from "./saveEventLogAndAddComment"
-import { eventDatabase } from "@/lib/persistence"
-import type { ChatEvent } from "@/types"
+import { linkSessionToTask, saveEventLogAndAddComment } from "./saveEventLogAndAddComment"
 
-describe("saveEventLogAndAddComment", () => {
-  beforeEach(async () => {
-    await eventDatabase.init()
-    // Mock fetch for the comment API
+describe("linkSessionToTask", () => {
+  beforeEach(() => {
     vi.spyOn(global, "fetch")
   })
 
-  afterEach(async () => {
-    await eventDatabase.clearAll()
-    eventDatabase.close()
+  afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  describe("saving event logs to IndexedDB", () => {
-    it("returns null when events array is empty", async () => {
-      const result = await saveEventLogAndAddComment("task-1", "Test Task", [], null)
-      expect(result).toBeNull()
+  describe("linking sessions to tasks", () => {
+    it("returns false when sessionId is null", async () => {
+      const result = await linkSessionToTask("task-1", null)
+      expect(result).toBe(false)
+      expect(fetch).not.toHaveBeenCalled()
     })
 
-    it("saves event log to IndexedDB and returns the generated ID", async () => {
-      const events: ChatEvent[] = [
-        { type: "user_message", timestamp: Date.now(), message: "Hello" },
-        { type: "assistant_text", timestamp: Date.now() + 1, content: "Hi there!" },
-      ]
-
+    it("calls the comments API with the session ID", async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
 
-      const eventLogId = await saveEventLogAndAddComment(
-        "task-123",
-        "Test Task",
-        events,
-        "/Users/test/project",
-      )
+      const result = await linkSessionToTask("task-abc", "session-123")
 
-      expect(eventLogId).not.toBeNull()
-      expect(eventLogId).toMatch(/^event-log-\d+-[a-z0-9]+$/)
-
-      // Verify the event log was saved to IndexedDB
-      const savedLog = await eventDatabase.getEventLog(eventLogId!)
-      expect(savedLog).toBeDefined()
-      expect(savedLog!.taskId).toBe("task-123")
-      expect(savedLog!.taskTitle).toBe("Test Task")
-      expect(savedLog!.source).toBe("task-close")
-      expect(savedLog!.workspacePath).toBe("/Users/test/project")
-      expect(savedLog!.eventCount).toBe(2)
-      expect(savedLog!.events).toHaveLength(2)
-    })
-
-    it("saves event log with null workspacePath", async () => {
-      const events: ChatEvent[] = [
-        { type: "user_message", timestamp: Date.now(), message: "Hello" },
-      ]
-
-      vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
-
-      const eventLogId = await saveEventLogAndAddComment("task-456", "Another Task", events, null)
-
-      expect(eventLogId).not.toBeNull()
-
-      const savedLog = await eventDatabase.getEventLog(eventLogId!)
-      expect(savedLog).toBeDefined()
-      expect(savedLog!.workspacePath).toBeNull()
-    })
-
-    it("event log can be retrieved by task ID", async () => {
-      const events: ChatEvent[] = [
-        { type: "user_message", timestamp: Date.now(), message: "Hello" },
-      ]
-
-      vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
-
-      const eventLogId = await saveEventLogAndAddComment(
-        "task-789",
-        "Task Title",
-        events,
-        "/workspace",
-      )
-
-      const logsForTask = await eventDatabase.getEventLogsForTask("task-789")
-      expect(logsForTask).toHaveLength(1)
-      expect(logsForTask[0].id).toBe(eventLogId)
-    })
-  })
-
-  describe("adding comments via API", () => {
-    it("calls the comments API with the event log ID", async () => {
-      const events: ChatEvent[] = [
-        { type: "user_message", timestamp: Date.now(), message: "Hello" },
-      ]
-
-      vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
-
-      const eventLogId = await saveEventLogAndAddComment(
-        "task-abc",
-        "Test Task",
-        events,
-        "/workspace",
-      )
-
+      expect(result).toBe(true)
       expect(fetch).toHaveBeenCalledWith(
         "/api/tasks/task-abc/comments",
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: expect.stringContaining(`#eventlog=${eventLogId}`),
+          body: expect.stringContaining("#session=session-123"),
         }),
       )
     })
 
-    it("includes 'Closed. Event log:' prefix in the comment", async () => {
-      const events: ChatEvent[] = [
-        { type: "user_message", timestamp: Date.now(), message: "Hello" },
-      ]
-
+    it("includes 'Closed. Session log:' prefix in the comment", async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
 
-      await saveEventLogAndAddComment("task-def", "Test Task", events, "/workspace")
+      await linkSessionToTask("task-def", "session-456")
 
       expect(fetch).toHaveBeenCalledWith(
         "/api/tasks/task-def/comments",
         expect.objectContaining({
-          body: expect.stringContaining("Closed. Event log:"),
+          body: expect.stringContaining("Closed. Session log:"),
         }),
       )
     })
 
-    it("logs error when comment API fails but still returns event log ID", async () => {
+    it("returns false and logs error when comment API fails", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-      const events: ChatEvent[] = [
-        { type: "user_message", timestamp: Date.now(), message: "Hello" },
-      ]
 
       vi.mocked(fetch).mockResolvedValueOnce(
         new Response("Server error", { status: 500, statusText: "Internal Server Error" }),
       )
 
-      const eventLogId = await saveEventLogAndAddComment(
-        "task-ghi",
-        "Test Task",
-        events,
-        "/workspace",
-      )
+      const result = await linkSessionToTask("task-ghi", "session-789")
 
-      // Event log should still be saved
-      expect(eventLogId).not.toBeNull()
-      const savedLog = await eventDatabase.getEventLog(eventLogId!)
-      expect(savedLog).toBeDefined()
-
-      // Error should be logged
+      expect(result).toBe(false)
       expect(consoleSpy).toHaveBeenCalledWith("Failed to add closing comment:", expect.any(String))
     })
-  })
 
-  describe("error handling", () => {
-    it("returns null and logs error when IndexedDB save fails", async () => {
+    it("returns false and logs error on network error", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
-      // Close the database to cause save to fail
-      eventDatabase.close()
+      vi.mocked(fetch).mockRejectedValueOnce(new Error("Network error"))
 
-      const events: ChatEvent[] = [
-        { type: "user_message", timestamp: Date.now(), message: "Hello" },
-      ]
+      const result = await linkSessionToTask("task-jkl", "session-abc")
 
-      const result = await saveEventLogAndAddComment("task-xyz", "Test Task", events, "/workspace")
-
-      expect(result).toBeNull()
-      expect(consoleSpy).toHaveBeenCalledWith("Error saving event log:", expect.any(Error))
+      expect(result).toBe(false)
+      expect(consoleSpy).toHaveBeenCalledWith("Error linking session to task:", expect.any(Error))
     })
+  })
+})
+
+describe("saveEventLogAndAddComment (deprecated)", () => {
+  beforeEach(() => {
+    vi.spyOn(global, "fetch")
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("returns null when events array is empty and no sessionId", async () => {
+    const result = await saveEventLogAndAddComment("task-1", "Test Task", [], null)
+    expect(result).toBeNull()
+  })
+
+  it("delegates to linkSessionToTask when sessionId is provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
+
+    const result = await saveEventLogAndAddComment("task-123", "Test Task", [], null, "session-xyz")
+
+    expect(result).toBe("session-xyz")
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/tasks/task-123/comments",
+      expect.objectContaining({
+        body: expect.stringContaining("#session=session-xyz"),
+      }),
+    )
+  })
+
+  it("returns null when linkSessionToTask fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response("Server error", { status: 500, statusText: "Internal Server Error" }),
+    )
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    const result = await saveEventLogAndAddComment("task-456", "Test Task", [], null, "session-abc")
+
+    expect(result).toBeNull()
   })
 })

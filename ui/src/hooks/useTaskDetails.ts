@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { useAppStore, selectIssuePrefix, selectTasks } from "@/store"
 import type { TaskCardTask, TaskStatus, TaskUpdateData } from "@/types"
-import { saveEventLogAndAddComment } from "@/lib/saveEventLogAndAddComment"
+import { linkSessionToTask } from "@/lib/saveEventLogAndAddComment"
 
 // Types
 
@@ -96,8 +96,7 @@ export function useTaskDetails({
   onClose,
 }: UseTaskDetailsOptions): UseTaskDetailsResult {
   // Store access
-  const events = useAppStore(state => state.events)
-  const workspace = useAppStore(state => state.workspace)
+  const currentSessionId = useAppStore(state => state.currentSessionId)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const allTasks = useAppStore(selectTasks)
 
@@ -215,10 +214,10 @@ export function useTaskDetails({
 
       setIsSaving(true)
       try {
-        // If closing the task (status changed to closed), save event log first
+        // If closing the task (status changed to closed), link the current session
         const isClosing = currentValues.status === "closed" && lastSaved.status !== "closed"
         if (isClosing) {
-          await saveEventLogAndAddComment(task.id, task.title, events, workspace)
+          await linkSessionToTask(task.id, currentSessionId)
         }
 
         await onSave(task.id, updates)
@@ -230,7 +229,7 @@ export function useTaskDetails({
         setIsSaving(false)
       }
     },
-    [task, onSave, readOnly, events, workspace],
+    [task, onSave, readOnly, currentSessionId],
   )
 
   // Schedules an autosave with a 500ms debounce

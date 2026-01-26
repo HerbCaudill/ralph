@@ -1,61 +1,55 @@
-import { eventDatabase } from "@/lib/persistence"
-import type { PersistedEventLog } from "@/lib/persistence/types"
-import type { ChatEvent } from "@/types"
-
 /**
- * Generate a unique ID for an event log.
+ * Add a closing comment to a task with a link to the session.
+ *
+ * When a task is closed, this adds a comment linking to the current session
+ * for viewing the event log later.
  */
-function generateEventLogId(): string {
-  return `event-log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-export async function saveEventLogAndAddComment(
+export async function linkSessionToTask(
   taskId: string,
-  taskTitle: string,
-  events: ChatEvent[],
-  workspacePath: string | null,
-): Promise<string | null> {
-  if (events.length === 0) {
-    return null
+  sessionId: string | null,
+): Promise<boolean> {
+  if (!sessionId) {
+    return false
   }
 
   try {
-    // Generate unique ID and create event log
-    const eventLogId = generateEventLogId()
-    const now = Date.now()
-
-    const eventLog: PersistedEventLog = {
-      id: eventLogId,
-      taskId,
-      taskTitle,
-      source: "task-close",
-      workspacePath,
-      createdAt: now,
-      eventCount: events.length,
-      events,
-    }
-
-    // Save to IndexedDB
-    await eventDatabase.init()
-    await eventDatabase.saveEventLog(eventLog)
-
     // Add closing comment to the task via API
     const commentResponse = await fetch(`/api/tasks/${taskId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        comment: `Closed. Event log: #eventlog=${eventLogId}`,
+        comment: `Closed. Session log: #session=${sessionId}`,
         author: "Ralph",
       }),
     })
 
     if (!commentResponse.ok) {
       console.error("Failed to add closing comment:", await commentResponse.text())
+      return false
     }
 
-    return eventLogId
+    return true
   } catch (err) {
-    console.error("Error saving event log:", err)
+    console.error("Error linking session to task:", err)
+    return false
+  }
+}
+
+/**
+ * @deprecated Use linkSessionToTask instead.
+ * This function is kept for backward compatibility but now just delegates to linkSessionToTask.
+ */
+export async function saveEventLogAndAddComment(
+  taskId: string,
+  _taskTitle: string,
+  events: unknown[],
+  _workspacePath: string | null,
+  sessionId?: string | null,
+): Promise<string | null> {
+  if (events.length === 0 && !sessionId) {
     return null
   }
+
+  const success = await linkSessionToTask(taskId, sessionId ?? null)
+  return success ? (sessionId ?? null) : null
 }
