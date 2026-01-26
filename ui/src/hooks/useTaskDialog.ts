@@ -118,9 +118,10 @@ export function useTaskDialog(options: UseTaskDialogOptions = {}): UseTaskDialog
   // Track pending close timeout to cancel if dialog is reopened quickly
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Get store actions for task management
+  // Get store actions and cached tasks
   const refreshTasks = useAppStore(state => state.refreshTasks)
   const removeTask = useAppStore(state => state.removeTask)
+  const tasks = useAppStore(state => state.tasks)
 
   const openDialog = useCallback((task: TaskCardTask) => {
     // Cancel any pending close timeout to prevent clearing state
@@ -133,32 +134,45 @@ export function useTaskDialog(options: UseTaskDialogOptions = {}): UseTaskDialog
     setError(null)
   }, [])
 
-  const openDialogById = useCallback(async (id: string) => {
-    // Cancel any pending close timeout to prevent clearing state
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current)
-      closeTimeoutRef.current = null
-    }
-    setIsLoading(true)
-    setIsOpen(true)
-    setError(null)
-
-    try {
-      const result = await fetchTask(id)
-
-      if (result.ok && result.issue) {
-        setSelectedTask(result.issue)
-      } else {
-        throw new Error(result.error ?? "Task not found")
+  const openDialogById = useCallback(
+    async (id: string) => {
+      // Cancel any pending close timeout to prevent clearing state
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current)
+        closeTimeoutRef.current = null
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to fetch task"
-      setError(message)
-      setIsOpen(false)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+      setError(null)
+
+      // Check cache first for instant dialog opening
+      const cachedTask = tasks.find(t => t.id === id)
+      if (cachedTask) {
+        setSelectedTask(cachedTask)
+        setIsOpen(true)
+        return
+      }
+
+      // Fallback to fetching from API if not in cache
+      setIsLoading(true)
+      setIsOpen(true)
+
+      try {
+        const result = await fetchTask(id)
+
+        if (result.ok && result.issue) {
+          setSelectedTask(result.issue)
+        } else {
+          throw new Error(result.error ?? "Task not found")
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to fetch task"
+        setError(message)
+        setIsOpen(false)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [tasks],
+  )
 
   const closeDialog = useCallback(() => {
     setIsOpen(false)
