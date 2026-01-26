@@ -6,7 +6,6 @@ import type { ChatEvent } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
 import { useCallback, useEffect, useRef } from "react"
 import { ChatInput, type ChatInputHandle } from "./ChatInput"
-import { TaskChatHistoryDropdown } from "./TaskChatHistoryDropdown"
 
 /**
  * Presentational component for task chat.
@@ -63,7 +62,6 @@ export function TaskChat({
           <span className="text-sm font-medium">Task Chat</span>
         </div>
         <div className="flex items-center gap-1">
-          <TaskChatHistoryDropdown />
           <button
             onClick={handleClearHistory}
             disabled={isLoading}

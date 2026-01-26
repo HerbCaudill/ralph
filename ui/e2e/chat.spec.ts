@@ -98,12 +98,6 @@ test.describe("Task Chat", () => {
       const clearButton = app.page.getByLabel("Clear chat history")
       await expect(clearButton).toBeVisible()
     })
-
-    test("chat history dropdown is visible", async ({ app }) => {
-      // The history dropdown should be present in the header
-      const historyDropdown = app.page.getByLabel("View chat history")
-      await expect(historyDropdown).toBeVisible()
-    })
   })
 
   test.describe("empty state", () => {

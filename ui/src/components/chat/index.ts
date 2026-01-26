@@ -14,6 +14,3 @@ export type { TaskChatPanelProps } from "./TaskChatPanel"
 
 export { TaskChatHistoryPanel } from "./TaskChatHistoryPanel"
 export type { TaskChatHistoryPanelProps } from "./TaskChatHistoryPanel"
-
-export { TaskChatHistoryDropdown } from "./TaskChatHistoryDropdown"
-export type { TaskChatHistoryDropdownProps } from "./TaskChatHistoryDropdown"
