@@ -2096,6 +2096,41 @@ const DEFAULT_INSTANCE_ID = "default"
 const DEFAULT_INSTANCE_NAME = "Main"
 const DEFAULT_AGENT_NAME = "Ralph"
 
+/**
+ * Gracefully shutdown the server, stopping all Ralph processes.
+ * Called on SIGINT (Ctrl+C) and SIGTERM.
+ */
+async function gracefulShutdown(signal: string): Promise<void> {
+  console.log(`\n[server] Received ${signal}, shutting down gracefully...`)
+
+  // Stop all Ralph instances in the registry
+  const registry = ralphRegistry
+  if (registry) {
+    console.log("[server] Stopping all Ralph instances...")
+    try {
+      await registry.disposeAll()
+      console.log("[server] All Ralph instances stopped")
+    } catch (err) {
+      console.error("[server] Error stopping Ralph instances:", err)
+    }
+  }
+
+  // Stop all workspace contexts
+  const contextManager = workspaceContextManager
+  if (contextManager) {
+    console.log("[server] Disposing workspace contexts...")
+    try {
+      await contextManager.disposeAll()
+      console.log("[server] Workspace contexts disposed")
+    } catch (err) {
+      console.error("[server] Error disposing workspace contexts:", err)
+    }
+  }
+
+  console.log("[server] Shutdown complete")
+  process.exit(0)
+}
+
 /**  Start the server with the given configuration. */
 export async function startServer(
   /** Server configuration */
@@ -2166,4 +2201,8 @@ export async function startServer(
     console.log(`[server] ralph-ui running at http://${config.host}:${config.port}`)
     console.log(`[server] WebSocket available at ws://${config.host}:${config.port}/ws`)
   })
+
+  // Register signal handlers for graceful shutdown
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"))
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
 }
