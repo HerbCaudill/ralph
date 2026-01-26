@@ -14,9 +14,17 @@ const originalError = logger.error.bind(logger)
 const originalWarn = logger.warn.bind(logger)
 logger.error = (msg, options) => {
   if (typeof msg === "string") {
-    // Ignore WebSocket proxy errors (EPIPE, ECONNRESET) from rapid reconnects
-    if (msg.includes("ws proxy") && (msg.includes("EPIPE") || msg.includes("ECONNRESET"))) {
-      return
+    // Ignore WebSocket proxy errors from rapid reconnects or missing backend
+    if (msg.includes("ws proxy")) {
+      // EPIPE/ECONNRESET: rapid reconnects; AggregateError/empty: connection refused (no backend)
+      if (
+        msg.includes("EPIPE") ||
+        msg.includes("ECONNRESET") ||
+        msg.includes("AggregateError") ||
+        msg.trim().endsWith("ws proxy error:") // Empty error message = connection failed
+      ) {
+        return
+      }
     }
     // Ignore HTTP proxy errors when backend isn't running (e.g., during Storybook tests)
     if (msg.includes("http proxy error")) {
@@ -48,10 +56,19 @@ export default defineConfig({
         target: `http://localhost:${serverPort}`,
         ws: true,
         configure: proxy => {
-          // Suppress EPIPE and ECONNRESET errors that occur when WebSocket clients disconnect
+          // Suppress connection errors that occur when backend isn't running or clients disconnect
           proxy.on("error", (err: NodeJS.ErrnoException, _req, res) => {
-            if (err.code === "EPIPE" || err.code === "ECONNRESET") {
-              // Silently ignore - these errors are expected during rapid reconnects
+            // EPIPE/ECONNRESET: rapid reconnects
+            // ECONNREFUSED: backend not running
+            // AggregateError: connection failed (no backend) - check constructor name
+            const isExpectedError =
+              err.code === "EPIPE" ||
+              err.code === "ECONNRESET" ||
+              err.code === "ECONNREFUSED" ||
+              err.constructor?.name === "AggregateError" ||
+              (err as Error).name === "AggregateError"
+            if (isExpectedError) {
+              // Silently ignore - these errors are expected during tests without backend
               // End the response if it exists and hasn't been sent
               if (res && "writeHead" in res && !res.headersSent) {
                 res.writeHead(502)
