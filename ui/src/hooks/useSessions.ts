@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { eventDatabase, type SessionMetadata } from "@/lib/persistence"
+import type { ChatEvent } from "@/types"
 
 /**
  * Summary of an session (without full event data).
@@ -13,6 +14,15 @@ export interface SessionSummary {
     taskId?: string
     title?: string
   }
+}
+
+/**
+ * A session with its events loaded.
+ * Combines session summary with the full event data from IndexedDB.
+ */
+export interface SessionWithEvents extends SessionSummary {
+  /** Events for this session, loaded from the events table */
+  events: ChatEvent[]
 }
 
 export interface UseSessionsOptions {
@@ -29,6 +39,16 @@ export interface UseSessionsResult {
   error: string | null
   /** Manually refresh sessions */
   refresh: () => Promise<void>
+  /** Load events for a specific session */
+  loadSessionEvents: (sessionId: string) => Promise<SessionWithEvents | null>
+  /** Currently selected session with events */
+  selectedSession: SessionWithEvents | null
+  /** Whether events are currently loading for the selected session */
+  isLoadingEvents: boolean
+  /** Error message if loading events failed */
+  eventsError: string | null
+  /** Clear the selected session */
+  clearSelectedSession: () => void
 }
 
 /**
@@ -72,6 +92,9 @@ function toSessionSummary(metadata: SessionMetadata): SessionSummary | null {
  *
  * Sessions are stored client-side in IndexedDB by useSessionPersistence
  * and persist across sessions.
+ *
+ * Use `loadSessionEvents` to fetch events for a specific session when needed
+ * (e.g., when viewing a historical session).
  */
 export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult {
   const { taskId } = options
@@ -79,6 +102,11 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // State for selected session with events
+  const [selectedSession, setSelectedSession] = useState<SessionWithEvents | null>(null)
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false)
+  const [eventsError, setEventsError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -102,10 +130,80 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
     }
   }, [taskId])
 
+  /**
+   * Load events for a specific session from IndexedDB.
+   * Returns the session with its events, or null if not found.
+   * Also sets the selected session state for easy access.
+   */
+  const loadSessionEvents = useCallback(
+    async (sessionId: string): Promise<SessionWithEvents | null> => {
+      setIsLoadingEvents(true)
+      setEventsError(null)
+
+      try {
+        await eventDatabase.init()
+
+        // Get session metadata
+        const metadata = await eventDatabase.getSessionMetadata(sessionId)
+        if (!metadata) {
+          setEventsError("Session not found")
+          setSelectedSession(null)
+          return null
+        }
+
+        // Get events for this session from the events table
+        const persistedEvents = await eventDatabase.getEventsForSession(sessionId)
+
+        // Convert PersistedEvent to ChatEvent
+        const events = persistedEvents.map(pe => pe.event)
+
+        // Combine metadata with events
+        const summary = toSessionSummary(metadata)
+        if (!summary) {
+          setEventsError("Invalid session metadata")
+          setSelectedSession(null)
+          return null
+        }
+
+        const sessionWithEvents: SessionWithEvents = {
+          ...summary,
+          events,
+        }
+
+        setSelectedSession(sessionWithEvents)
+        return sessionWithEvents
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to load session events"
+        setEventsError(errorMessage)
+        setSelectedSession(null)
+        return null
+      } finally {
+        setIsLoadingEvents(false)
+      }
+    },
+    [],
+  )
+
+  /** Clear the selected session and its events. */
+  const clearSelectedSession = useCallback(() => {
+    setSelectedSession(null)
+    setEventsError(null)
+  }, [])
+
   // Initial fetch
   useEffect(() => {
     refresh()
   }, [refresh])
 
-  return { sessions, isLoading, error, refresh }
+  return {
+    sessions,
+    isLoading,
+    error,
+    refresh,
+    loadSessionEvents,
+    selectedSession,
+    isLoadingEvents,
+    eventsError,
+    clearSelectedSession,
+  }
 }

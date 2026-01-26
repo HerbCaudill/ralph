@@ -67,6 +67,7 @@ export {
 export {
   useSessions,
   type SessionSummary,
+  type SessionWithEvents,
   type UseSessionsOptions,
   type UseSessionsResult,
 } from "./useSessions"

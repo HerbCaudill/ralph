@@ -21,8 +21,29 @@ vi.mock("@/hooks", async importOriginal => {
 })
 
 // Import the mocked module so we can control it
-import { useSessions } from "@/hooks"
+import { useSessions, type UseSessionsResult } from "@/hooks"
 const mockUseSessions = vi.mocked(useSessions)
+
+/** Default mock values for the new session events properties */
+const defaultEventProps = {
+  loadSessionEvents: vi.fn().mockResolvedValue(null),
+  selectedSession: null,
+  isLoadingEvents: false,
+  eventsError: null,
+  clearSelectedSession: vi.fn(),
+}
+
+/** Helper to create a mock useSessions return value */
+function createMockUseSessions(overrides: Partial<UseSessionsResult> = {}): UseSessionsResult {
+  return {
+    sessions: [],
+    isLoading: false,
+    error: null,
+    refresh: vi.fn(),
+    ...defaultEventProps,
+    ...overrides,
+  }
+}
 
 // Test data
 const mockSessions: SessionSummary[] = [
@@ -65,12 +86,11 @@ describe("SessionHistoryPanel", () => {
 
   describe("loading state", () => {
     it("shows loading indicator when loading", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: [],
-        isLoading: true,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          isLoading: true,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -82,12 +102,12 @@ describe("SessionHistoryPanel", () => {
   describe("error state", () => {
     it("shows error message when error occurs", () => {
       const mockRefresh = vi.fn()
-      mockUseSessions.mockReturnValue({
-        sessions: [],
-        isLoading: false,
-        error: "Failed to connect to server",
-        refresh: mockRefresh,
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          error: "Failed to connect to server",
+          refresh: mockRefresh,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -97,12 +117,12 @@ describe("SessionHistoryPanel", () => {
 
     it("calls refresh when retry is clicked", () => {
       const mockRefresh = vi.fn()
-      mockUseSessions.mockReturnValue({
-        sessions: [],
-        isLoading: false,
-        error: "Network error",
-        refresh: mockRefresh,
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          error: "Network error",
+          refresh: mockRefresh,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -113,12 +133,7 @@ describe("SessionHistoryPanel", () => {
 
   describe("empty state", () => {
     it("shows empty message when no event logs exist", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: [],
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(createMockUseSessions())
 
       render(<SessionHistoryPanel />)
 
@@ -129,12 +144,11 @@ describe("SessionHistoryPanel", () => {
 
   describe("list rendering", () => {
     it("renders list of event logs", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -147,12 +161,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("displays task IDs with prefix stripped", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -162,12 +175,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("displays event counts", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -177,12 +189,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("displays 'No task' for sessions without metadata", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -193,12 +204,11 @@ describe("SessionHistoryPanel", () => {
 
   describe("navigation", () => {
     it("navigates to event log when item is clicked", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -209,12 +219,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("has accessible button labels", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -227,12 +236,11 @@ describe("SessionHistoryPanel", () => {
 
   describe("accessibility", () => {
     it("has proper list structure", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -243,12 +251,11 @@ describe("SessionHistoryPanel", () => {
 
   describe("search functionality", () => {
     it("shows search input when event logs exist", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -257,12 +264,7 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("does not show search input when no event logs", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: [],
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(createMockUseSessions())
 
       render(<SessionHistoryPanel />)
 
@@ -270,12 +272,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("filters by task title", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -289,12 +290,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("filters by task ID", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -307,12 +307,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("shows no results message when filter matches nothing", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -323,12 +322,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("clears search when clear button is clicked", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -347,12 +345,11 @@ describe("SessionHistoryPanel", () => {
     })
 
     it("is case-insensitive", () => {
-      mockUseSessions.mockReturnValue({
-        sessions: mockSessions,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: mockSessions,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -392,12 +389,11 @@ describe("SessionHistoryPanel", () => {
         },
       ]
 
-      mockUseSessions.mockReturnValue({
-        sessions: logsWithDates,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: logsWithDates,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 
@@ -426,12 +422,11 @@ describe("SessionHistoryPanel", () => {
         },
       ]
 
-      mockUseSessions.mockReturnValue({
-        sessions: logsWithSameDate,
-        isLoading: false,
-        error: null,
-        refresh: vi.fn(),
-      })
+      mockUseSessions.mockReturnValue(
+        createMockUseSessions({
+          sessions: logsWithSameDate,
+        }),
+      )
 
       render(<SessionHistoryPanel />)
 

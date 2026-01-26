@@ -9,6 +9,8 @@ vi.mock("@/lib/persistence", () => ({
     init: vi.fn().mockResolvedValue(undefined),
     listAllSessions: vi.fn().mockResolvedValue([]),
     getSessionsForTask: vi.fn().mockResolvedValue([]),
+    getSessionMetadata: vi.fn().mockResolvedValue(undefined),
+    getEventsForSession: vi.fn().mockResolvedValue([]),
   },
 }))
 
@@ -294,6 +296,164 @@ describe("useSessions", () => {
       await waitFor(() => {
         expect(result.current.sessions).toHaveLength(2)
       })
+    })
+  })
+
+  describe("loadSessionEvents", () => {
+    it("loads events for a session and updates selectedSession", async () => {
+      const timestamp = Date.now()
+      const metadata = createValidMetadata("session-1", timestamp, "task-1", "Test Task")
+
+      mockDatabase.getSessionMetadata.mockResolvedValue(metadata)
+      mockDatabase.getEventsForSession.mockResolvedValue([
+        {
+          id: "event-1",
+          sessionId: "session-1",
+          timestamp: timestamp + 100,
+          eventType: "user",
+          event: { type: "user", message: { content: "Hello" }, timestamp: timestamp + 100 },
+        },
+        {
+          id: "event-2",
+          sessionId: "session-1",
+          timestamp: timestamp + 200,
+          eventType: "assistant",
+          event: {
+            type: "assistant",
+            message: { content: [{ type: "text", text: "Hi!" }] },
+            timestamp: timestamp + 200,
+          },
+        },
+      ])
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Load session events
+      const sessionWithEvents = await result.current.loadSessionEvents("session-1")
+
+      expect(sessionWithEvents).not.toBeNull()
+      expect(sessionWithEvents?.id).toBe("session-1")
+      expect(sessionWithEvents?.events).toHaveLength(2)
+      expect(sessionWithEvents?.events[0].type).toBe("user")
+      expect(sessionWithEvents?.events[1].type).toBe("assistant")
+
+      // Should also update selectedSession state (wait for state update)
+      await waitFor(() => {
+        expect(result.current.selectedSession).not.toBeNull()
+      })
+      expect(result.current.selectedSession?.id).toBe("session-1")
+      expect(result.current.selectedSession?.events).toHaveLength(2)
+      expect(result.current.isLoadingEvents).toBe(false)
+      expect(result.current.eventsError).toBeNull()
+    })
+
+    it("returns null and sets error when session not found", async () => {
+      mockDatabase.getSessionMetadata.mockResolvedValue(undefined)
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      const sessionWithEvents = await result.current.loadSessionEvents("nonexistent")
+
+      expect(sessionWithEvents).toBeNull()
+      await waitFor(() => {
+        expect(result.current.eventsError).toBe("Session not found")
+      })
+      expect(result.current.selectedSession).toBeNull()
+    })
+
+    it("handles database errors gracefully", async () => {
+      mockDatabase.getSessionMetadata.mockRejectedValue(new Error("Database error"))
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      const sessionWithEvents = await result.current.loadSessionEvents("session-1")
+
+      expect(sessionWithEvents).toBeNull()
+      await waitFor(() => {
+        expect(result.current.eventsError).toBe("Database error")
+      })
+      expect(result.current.selectedSession).toBeNull()
+    })
+
+    it("sets isLoadingEvents while loading", async () => {
+      const timestamp = Date.now()
+      const metadata = createValidMetadata("session-1", timestamp)
+
+      // Create a promise we can control
+      let resolveMetadata: (value: SessionMetadata) => void
+      const metadataPromise = new Promise<SessionMetadata>(resolve => {
+        resolveMetadata = resolve
+      })
+
+      mockDatabase.getSessionMetadata.mockReturnValue(metadataPromise)
+      mockDatabase.getEventsForSession.mockResolvedValue([])
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Start loading events (don't await)
+      const loadPromise = result.current.loadSessionEvents("session-1")
+
+      // isLoadingEvents should be true while loading
+      await waitFor(() => {
+        expect(result.current.isLoadingEvents).toBe(true)
+      })
+
+      // Resolve the metadata
+      resolveMetadata!(metadata)
+
+      // Wait for loading to complete
+      await loadPromise
+
+      // Wait for state to update after promise resolves
+      await waitFor(() => {
+        expect(result.current.isLoadingEvents).toBe(false)
+      })
+    })
+  })
+
+  describe("clearSelectedSession", () => {
+    it("clears the selected session and error", async () => {
+      const timestamp = Date.now()
+      const metadata = createValidMetadata("session-1", timestamp, "task-1", "Test Task")
+
+      mockDatabase.getSessionMetadata.mockResolvedValue(metadata)
+      mockDatabase.getEventsForSession.mockResolvedValue([])
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Load a session
+      await result.current.loadSessionEvents("session-1")
+      await waitFor(() => {
+        expect(result.current.selectedSession).not.toBeNull()
+      })
+
+      // Clear it
+      result.current.clearSelectedSession()
+
+      await waitFor(() => {
+        expect(result.current.selectedSession).toBeNull()
+      })
+      expect(result.current.eventsError).toBeNull()
     })
   })
 })
