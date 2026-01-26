@@ -8,43 +8,6 @@
 import type { ChatEvent, TokenUsage, ContextWindow, SessionInfo, TaskChatMessage } from "@/types"
 
 /**
- * Metadata about a persisted event log.
- * Used for listing/browsing event logs without loading full event data.
- * These are standalone event logs saved from completed sessions.
- */
-export interface EventLogMetadata {
-  /** Unique identifier for the event log */
-  id: string
-
-  /** ID of the task this event log is associated with (optional) */
-  taskId: string | null
-
-  /** Title of the task (for display without fetching task data) */
-  taskTitle: string | null
-
-  /** Source description (e.g., "session", "task-chat") */
-  source: string | null
-
-  /** Path to the workspace (for display purposes) */
-  workspacePath: string | null
-
-  /** Timestamp when the event log was created */
-  createdAt: number
-
-  /** Total number of events in this log */
-  eventCount: number
-}
-
-/**
- * Full persisted event log data including all events.
- * Stored in IndexedDB for viewing saved session event logs.
- */
-export interface PersistedEventLog extends EventLogMetadata {
-  /** All events in this log */
-  events: ChatEvent[]
-}
-
-/**
  * Metadata about a persisted session.
  * Used for listing/browsing sessions without loading full event data.
  */
@@ -179,7 +142,7 @@ export interface PersistedTaskChatSession extends TaskChatSessionMetadata {
 }
 
 /**  Database schema version for migrations. */
-export const PERSISTENCE_SCHEMA_VERSION = 3
+export const PERSISTENCE_SCHEMA_VERSION = 4
 
 /**  IndexedDB store names. */
 export const STORE_NAMES = {
@@ -197,12 +160,6 @@ export const STORE_NAMES = {
 
   /** Store for full task chat session data including messages and events */
   TASK_CHAT_SESSIONS: "task_chat_sessions",
-
-  /** Store for event log metadata (for fast listing) */
-  EVENT_LOG_METADATA: "event_log_metadata",
-
-  /** Store for full event log data including events */
-  EVENT_LOGS: "event_logs",
 
   /** Store for key-value settings and sync state */
   SYNC_STATE: "sync_state",

@@ -98,7 +98,6 @@ describe("EventDatabase", () => {
         sessionCount: 0,
         eventCount: 0,
         taskChatSessionCount: 0,
-        eventLogCount: 0,
         syncStateCount: 0,
       })
     })
@@ -758,7 +757,6 @@ describe("EventDatabase", () => {
           sessionCount: 0,
           eventCount: 0,
           taskChatSessionCount: 0,
-          eventLogCount: 0,
           syncStateCount: 0,
         })
       })
@@ -778,7 +776,6 @@ describe("EventDatabase", () => {
           sessionCount: 2,
           eventCount: 0,
           taskChatSessionCount: 1,
-          eventLogCount: 0,
           syncStateCount: 3,
         })
       })

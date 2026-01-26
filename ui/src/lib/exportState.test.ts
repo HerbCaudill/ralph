@@ -179,10 +179,9 @@ describe("exportState", () => {
 
       expect(result.indexedDb).toHaveProperty("session_metadata")
       expect(result.indexedDb).toHaveProperty("sessions")
+      expect(result.indexedDb).toHaveProperty("events")
       expect(result.indexedDb).toHaveProperty("task_chat_metadata")
       expect(result.indexedDb).toHaveProperty("task_chat_sessions")
-      expect(result.indexedDb).toHaveProperty("event_log_metadata")
-      expect(result.indexedDb).toHaveProperty("event_logs")
       expect(result.indexedDb).toHaveProperty("sync_state")
     })
   })
@@ -282,10 +281,9 @@ describe("exportState", () => {
         indexedDb: {
           session_metadata: [],
           sessions: [],
+          events: [],
           task_chat_metadata: [],
           task_chat_sessions: [],
-          event_log_metadata: [],
-          event_logs: [],
           sync_state: [],
         },
       }

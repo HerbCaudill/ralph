@@ -9,10 +9,8 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb"
 import {
   PERSISTENCE_SCHEMA_VERSION,
   STORE_NAMES,
-  type EventLogMetadata,
   type SessionMetadata,
   type PersistedEvent,
-  type PersistedEventLog,
   type PersistedSession,
   type PersistedTaskChatSession,
   type SyncState,
@@ -66,21 +64,6 @@ interface RalphDBSchema extends DBSchema {
     value: PersistedTaskChatSession
     indexes: {
       "by-instance": string
-      "by-task": string
-    }
-  }
-  [STORE_NAMES.EVENT_LOG_METADATA]: {
-    key: string
-    value: EventLogMetadata
-    indexes: {
-      "by-task": string
-      "by-created-at": number
-    }
-  }
-  [STORE_NAMES.EVENT_LOGS]: {
-    key: string
-    value: PersistedEventLog
-    indexes: {
       "by-task": string
     }
   }
@@ -161,21 +144,8 @@ export class EventDatabase {
           })
         }
 
-        // Version 2: Add event log stores
-        if (oldVersion < 2) {
-          // Event log metadata store with indexes
-          const eventLogMetaStore = db.createObjectStore(STORE_NAMES.EVENT_LOG_METADATA, {
-            keyPath: "id",
-          })
-          eventLogMetaStore.createIndex("by-task", "taskId")
-          eventLogMetaStore.createIndex("by-created-at", "createdAt")
-
-          // Full event logs store
-          const eventLogStore = db.createObjectStore(STORE_NAMES.EVENT_LOGS, {
-            keyPath: "id",
-          })
-          eventLogStore.createIndex("by-task", "taskId")
-        }
+        // Version 2: Event log stores were added in v2 but are now removed in v4
+        // (No action needed for fresh installs - stores don't exist)
 
         // Version 3: Add events store for normalized event storage and workspace index
         if (oldVersion < 3) {
@@ -203,8 +173,19 @@ export class EventDatabase {
           }
         }
 
-        // Future migrations can be added here:
-        // if (oldVersion < 4) { ... }
+        // Version 4: Remove event_log stores (superseded by sessions table)
+        if (oldVersion < 4) {
+          // Delete the event_logs stores if they exist (created in v2)
+          // Note: We cast to `unknown` because these stores are no longer in the schema
+          // but may exist in databases created with v2/v3
+          const rawDb = db as unknown as IDBDatabase
+          if (rawDb.objectStoreNames.contains("event_log_metadata")) {
+            rawDb.deleteObjectStore("event_log_metadata")
+          }
+          if (rawDb.objectStoreNames.contains("event_logs")) {
+            rawDb.deleteObjectStore("event_logs")
+          }
+        }
       },
       blocked() {
         console.warn("[EventDatabase] Database upgrade blocked by other tabs")
@@ -701,89 +682,6 @@ export class EventDatabase {
     ])
   }
 
-  // ============================================================================
-  // Event Log Methods
-  // ============================================================================
-
-  /**
-   * Save an event log (both metadata and full data).
-   */
-  async saveEventLog(eventLog: PersistedEventLog): Promise<void> {
-    const db = await this.ensureDb()
-
-    // Extract metadata
-    const metadata: EventLogMetadata = {
-      id: eventLog.id,
-      taskId: eventLog.taskId,
-      taskTitle: eventLog.taskTitle,
-      source: eventLog.source,
-      workspacePath: eventLog.workspacePath,
-      createdAt: eventLog.createdAt,
-      eventCount: eventLog.eventCount,
-    }
-
-    const tx = db.transaction([STORE_NAMES.EVENT_LOG_METADATA, STORE_NAMES.EVENT_LOGS], "readwrite")
-
-    await Promise.all([
-      tx.objectStore(STORE_NAMES.EVENT_LOG_METADATA).put(metadata),
-      tx.objectStore(STORE_NAMES.EVENT_LOGS).put(eventLog),
-      tx.done,
-    ])
-  }
-
-  /**
-   * Get event log metadata by ID.
-   */
-  async getEventLogMetadata(id: string): Promise<EventLogMetadata | undefined> {
-    const db = await this.ensureDb()
-    return db.get(STORE_NAMES.EVENT_LOG_METADATA, id)
-  }
-
-  /**
-   * Get full event log data by ID (including events).
-   */
-  async getEventLog(id: string): Promise<PersistedEventLog | undefined> {
-    const db = await this.ensureDb()
-    return db.get(STORE_NAMES.EVENT_LOGS, id)
-  }
-
-  /**
-   * List all event log metadata, sorted by createdAt descending.
-   */
-  async listEventLogs(): Promise<EventLogMetadata[]> {
-    const db = await this.ensureDb()
-    const all = await db.getAll(STORE_NAMES.EVENT_LOG_METADATA)
-    // Sort by createdAt descending (most recent first)
-    return all.sort((a, b) => b.createdAt - a.createdAt)
-  }
-
-  /**
-   * Get event logs for a specific task.
-   */
-  async getEventLogsForTask(taskId: string): Promise<EventLogMetadata[]> {
-    const db = await this.ensureDb()
-    const all = await db.getAllFromIndex(STORE_NAMES.EVENT_LOG_METADATA, "by-task", taskId)
-    // Sort by createdAt descending (most recent first)
-    return all.sort((a, b) => b.createdAt - a.createdAt)
-  }
-
-  /**
-   * Get all unique task IDs that have event logs.
-   * Efficient method for checking which tasks have sessions.
-   * @deprecated Use getTaskIdsWithSessions() instead
-   */
-  async getTaskIdsWithEventLogs(): Promise<Set<string>> {
-    const db = await this.ensureDb()
-    const all = await db.getAll(STORE_NAMES.EVENT_LOG_METADATA)
-    const taskIds = new Set<string>()
-    for (const meta of all) {
-      if (meta.taskId) {
-        taskIds.add(meta.taskId)
-      }
-    }
-    return taskIds
-  }
-
   /**
    * Get all unique task IDs that have sessions.
    * Efficient method for checking which tasks have saved sessions.
@@ -798,43 +696,6 @@ export class EventDatabase {
       }
     }
     return taskIds
-  }
-
-  /**
-   * Delete an event log (both metadata and full data).
-   */
-  async deleteEventLog(id: string): Promise<void> {
-    const db = await this.ensureDb()
-    const tx = db.transaction([STORE_NAMES.EVENT_LOG_METADATA, STORE_NAMES.EVENT_LOGS], "readwrite")
-
-    await Promise.all([
-      tx.objectStore(STORE_NAMES.EVENT_LOG_METADATA).delete(id),
-      tx.objectStore(STORE_NAMES.EVENT_LOGS).delete(id),
-      tx.done,
-    ])
-  }
-
-  /**
-   * Delete all event logs for a specific task.
-   */
-  async deleteAllEventLogsForTask(taskId: string): Promise<void> {
-    const db = await this.ensureDb()
-
-    const eventLogs = await this.getEventLogsForTask(taskId)
-    const ids = eventLogs.map(e => e.id)
-
-    if (ids.length === 0) return
-
-    const tx = db.transaction([STORE_NAMES.EVENT_LOG_METADATA, STORE_NAMES.EVENT_LOGS], "readwrite")
-
-    const metaStore = tx.objectStore(STORE_NAMES.EVENT_LOG_METADATA)
-    const logStore = tx.objectStore(STORE_NAMES.EVENT_LOGS)
-
-    await Promise.all([
-      ...ids.map(id => metaStore.delete(id)),
-      ...ids.map(id => logStore.delete(id)),
-      tx.done,
-    ])
   }
 
   // ============================================================================
@@ -883,8 +744,6 @@ export class EventDatabase {
         STORE_NAMES.EVENTS,
         STORE_NAMES.TASK_CHAT_METADATA,
         STORE_NAMES.TASK_CHAT_SESSIONS,
-        STORE_NAMES.EVENT_LOG_METADATA,
-        STORE_NAMES.EVENT_LOGS,
         STORE_NAMES.SYNC_STATE,
       ],
       "readwrite",
@@ -896,8 +755,6 @@ export class EventDatabase {
       tx.objectStore(STORE_NAMES.EVENTS).clear(),
       tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).clear(),
       tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).clear(),
-      tx.objectStore(STORE_NAMES.EVENT_LOG_METADATA).clear(),
-      tx.objectStore(STORE_NAMES.EVENT_LOGS).clear(),
       tx.objectStore(STORE_NAMES.SYNC_STATE).clear(),
       tx.done,
     ])
@@ -921,21 +778,18 @@ export class EventDatabase {
     sessionCount: number
     eventCount: number
     taskChatSessionCount: number
-    eventLogCount: number
     syncStateCount: number
   }> {
     const db = await this.ensureDb()
 
-    const [sessionCount, eventCount, taskChatSessionCount, eventLogCount, syncStateCount] =
-      await Promise.all([
-        db.count(STORE_NAMES.SESSION_METADATA),
-        db.count(STORE_NAMES.EVENTS),
-        db.count(STORE_NAMES.TASK_CHAT_METADATA),
-        db.count(STORE_NAMES.EVENT_LOG_METADATA),
-        db.count(STORE_NAMES.SYNC_STATE),
-      ])
+    const [sessionCount, eventCount, taskChatSessionCount, syncStateCount] = await Promise.all([
+      db.count(STORE_NAMES.SESSION_METADATA),
+      db.count(STORE_NAMES.EVENTS),
+      db.count(STORE_NAMES.TASK_CHAT_METADATA),
+      db.count(STORE_NAMES.SYNC_STATE),
+    ])
 
-    return { sessionCount, eventCount, taskChatSessionCount, eventLogCount, syncStateCount }
+    return { sessionCount, eventCount, taskChatSessionCount, syncStateCount }
   }
 }
 
