@@ -49,6 +49,12 @@ export function TaskChat({
     [onSendMessage],
   )
 
+  const handleClearHistory = useCallback(() => {
+    onClearHistory()
+    // Focus the chat input after clearing history
+    chatInputRef.current?.focus()
+  }, [onClearHistory])
+
   return (
     <div className={cn("flex h-full flex-col", className)}>
       <div className="border-border flex items-center justify-between border-b px-4 py-2">
@@ -59,7 +65,7 @@ export function TaskChat({
         <div className="flex items-center gap-1">
           <TaskChatHistoryDropdown />
           <button
-            onClick={onClearHistory}
+            onClick={handleClearHistory}
             disabled={isLoading}
             className="text-muted-foreground hover:text-foreground rounded p-1 transition-colors disabled:opacity-50"
             aria-label="Clear chat history"

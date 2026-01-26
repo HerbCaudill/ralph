@@ -384,6 +384,25 @@ describe("TaskChatPanel", () => {
         expect(screen.getByText("Manage your tasks")).toBeInTheDocument()
       })
     })
+
+    it("focuses chat input after clearing history", async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: true }),
+      })
+
+      render(<TaskChatPanel />)
+      const clearButton = screen.getByRole("button", { name: "Clear chat history" })
+      const input = screen.getByRole("textbox")
+
+      // Ensure input doesn't have focus initially
+      expect(input).not.toHaveFocus()
+
+      fireEvent.click(clearButton)
+
+      await waitFor(() => {
+        expect(input).toHaveFocus()
+      })
+    })
   })
 
   describe("close button", () => {
