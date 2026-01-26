@@ -8,8 +8,10 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
 
-const DEFAULT_SERVER_PORT = 4242
-const DEFAULT_UI_PORT = 5179
+const DEV_SERVER_PORT = 4242 // Default port used by `pnpm dev`
+const DEV_UI_PORT = 5179 // Default Vite port used by `pnpm dev`
+const TEST_SERVER_START_PORT = 4243 // Start searching for test server port here
+const TEST_UI_START_PORT = 5180 // Start searching for test UI port here
 const MAX_ATTEMPTS = 10
 const WAIT_TIMEOUT_MS = 30000
 const WAIT_INTERVAL_MS = 250
@@ -74,8 +76,30 @@ async function runPlaywright(args, env) {
 
 async function main() {
   const args = process.argv.slice(2)
-  const serverPort = await findAvailablePort(DEFAULT_SERVER_PORT)
-  const uiPort = await findAvailablePort(DEFAULT_UI_PORT)
+
+  // Check if dev server is already running - this can cause test pollution
+  // if a user accidentally interacts with the dev UI while tests are running
+  const devServerRunning = !(await checkPortAvailable(DEV_SERVER_PORT))
+  const devUiRunning = !(await checkPortAvailable(DEV_UI_PORT))
+
+  if (devServerRunning || devUiRunning) {
+    console.error("\x1b[31m" + "⚠️  WARNING: Ralph dev server appears to be running!" + "\x1b[0m")
+    console.error("")
+    console.error("   E2E tests use an isolated test workspace, but if you interact")
+    console.error("   with the dev server UI while tests are running, tasks will be")
+    console.error("   created in your main repo instead of the test workspace.")
+    console.error("")
+    console.error("   To avoid pollution of your main repo's task database:")
+    console.error("   • Stop the dev server (Ctrl+C on `pnpm dev`)")
+    console.error("   • Or avoid interacting with the Ralph UI during tests")
+    console.error("")
+    console.error("   Continuing with tests in 3 seconds...")
+    console.error("")
+    await delay(3000)
+  }
+
+  const serverPort = await findAvailablePort(TEST_SERVER_START_PORT)
+  const uiPort = await findAvailablePort(TEST_UI_START_PORT)
   const baseURL = `http://localhost:${uiPort}`
 
   await mkdir(logDir, { recursive: true })
