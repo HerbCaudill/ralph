@@ -16,8 +16,11 @@ export function EventStreamSessionBar({
 }: Props) {
   const hasSessions = sessions.length > 0
 
-  // Show dropdown when there are sessions to browse or loading
-  const showDropdown = hasSessions || isLoadingSessions
+  // Show dropdown when:
+  // - There are sessions to browse, OR
+  // - Sessions are loading, OR
+  // - There's an active session (isRunning) so user can access the dropdown
+  const showDropdown = hasSessions || isLoadingSessions || isRunning
 
   // Determine placeholder text when no task is selected
   const noTaskText = isRunning ? "Choosing a task..." : "No active task"
