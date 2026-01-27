@@ -1,4 +1,5 @@
 import { AssistantText } from "./AssistantText"
+import { ThinkingBlock } from "./ThinkingBlock"
 import { ToolUseCard } from "./ToolUseCard"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
@@ -10,6 +11,12 @@ import type { AssistantTextEvent, StreamingContentBlock, ToolUseEvent } from "@/
  * Handles parsing task lifecycle events from text and incomplete tool use JSON.
  */
 export function StreamingBlockRenderer({ block, timestamp }: Props) {
+  if (block.type === "thinking") {
+    if (!block.thinking) return null
+    // Show thinking blocks expanded while streaming so user can see progress
+    return <ThinkingBlock content={block.thinking} defaultExpanded={true} />
+  }
+
   if (block.type === "text") {
     if (!block.text) return null
 

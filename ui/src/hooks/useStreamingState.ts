@@ -182,6 +182,11 @@ export function useStreamingState(events: ChatEvent[]): {
                 type: "text",
                 text: block.text || "",
               })
+            } else if (block.type === "thinking") {
+              state.currentMessage.contentBlocks.push({
+                type: "thinking",
+                thinking: block.thinking || "",
+              })
             } else if (block.type === "tool_use") {
               state.currentMessage.contentBlocks.push({
                 type: "tool_use",
@@ -201,6 +206,8 @@ export function useStreamingState(events: ChatEvent[]): {
 
             if (delta?.type === "text_delta" && block.type === "text") {
               block.text += delta.text || ""
+            } else if (delta?.type === "thinking_delta" && block.type === "thinking") {
+              block.thinking += delta.thinking || ""
             } else if (delta?.type === "input_json_delta" && block.type === "tool_use") {
               block.input += delta.partial_json || ""
             }
@@ -217,8 +224,10 @@ export function useStreamingState(events: ChatEvent[]): {
             const content = state.currentMessage.contentBlocks.map(block => {
               if (block.type === "text") {
                 return { type: "text" as const, text: block.text }
+              } else if (block.type === "thinking") {
+                return { type: "thinking" as const, thinking: block.thinking }
               } else {
-                // Parse the accumulated JSON input
+                // tool_use block - parse the accumulated JSON input
                 let input = {}
                 try {
                   input = JSON.parse(block.input)

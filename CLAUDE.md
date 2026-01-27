@@ -239,6 +239,20 @@ Web app with integrated Express server and React frontend:
   - Theme support (VS Code theme integration)
   - ToolUseCard renders Bash output as plain text after stripping ANSI codes
   - Bash tool output strips ANSI color codes before display
+  - Extended thinking blocks support for Claude's internal reasoning
+
+**Extended Thinking Support:**
+
+The UI supports Claude's extended thinking (internal monologue) blocks:
+
+- **`ThinkingBlock`** component (`ui/src/components/events/ThinkingBlock.tsx`) - Renders thinking content
+- **Types**: `AssistantThinkingContentBlock` and `StreamingThinkingBlock` in `ui/src/types.ts`
+- **Features**:
+  - Collapsible display (collapsed by default to reduce visual prominence)
+  - Brain icon indicator
+  - Muted/italic styling to differentiate from user-facing content
+  - Works in both streaming and non-streaming contexts
+  - Uses MarkdownContent for rich text rendering
 
 Run with `npx @herbcaudill/ralph-ui` after installing.
 

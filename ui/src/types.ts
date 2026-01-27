@@ -168,6 +168,11 @@ export interface AssistantTextContentBlock {
   text: string
 }
 
+export interface AssistantThinkingContentBlock {
+  type: "thinking"
+  thinking: string
+}
+
 export interface AssistantToolUseContentBlock {
   type: "tool_use"
   id: string
@@ -175,11 +180,19 @@ export interface AssistantToolUseContentBlock {
   input: Record<string, unknown>
 }
 
-export type AssistantContentBlock = AssistantTextContentBlock | AssistantToolUseContentBlock
+export type AssistantContentBlock =
+  | AssistantTextContentBlock
+  | AssistantThinkingContentBlock
+  | AssistantToolUseContentBlock
 
 export interface StreamingTextBlock {
   type: "text"
   text: string
+}
+
+export interface StreamingThinkingBlock {
+  type: "thinking"
+  thinking: string
 }
 
 export interface StreamingToolUseBlock {
@@ -189,7 +202,10 @@ export interface StreamingToolUseBlock {
   input: string
 }
 
-export type StreamingContentBlock = StreamingTextBlock | StreamingToolUseBlock
+export type StreamingContentBlock =
+  | StreamingTextBlock
+  | StreamingThinkingBlock
+  | StreamingToolUseBlock
 
 export interface StreamingMessage {
   timestamp: number

@@ -1,4 +1,5 @@
 import { AssistantText } from "@/components/events/AssistantText"
+import { ThinkingBlock } from "@/components/events/ThinkingBlock"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
 import { TaskLifecycleEvent } from "@/components/events/TaskLifecycleEvent"
 import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
@@ -11,6 +12,10 @@ export function renderEventContentBlock(
   toolResults: Map<string, { output?: string; error?: string }>,
   options?: { hasStructuredLifecycleEvents?: boolean },
 ) {
+  if (block.type === "thinking") {
+    return <ThinkingBlock key={`thinking-${index}`} content={block.thinking} />
+  }
+
   if (block.type === "text") {
     const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
     if (lifecycleEvent) {
