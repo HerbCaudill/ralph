@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { useSessions } from "./useSessions"
 import { eventDatabase, type SessionMetadata } from "@/lib/persistence"
+import { useAppStore } from "@/store"
+import type { Task } from "@/types"
 
 // Mock the eventDatabase
 vi.mock("@/lib/persistence", () => ({
@@ -454,6 +456,185 @@ describe("useSessions", () => {
         expect(result.current.selectedSession).toBeNull()
       })
       expect(result.current.eventsError).toBeNull()
+    })
+  })
+
+  describe("task title enrichment", () => {
+    const createTask = (id: string, title: string): Task => ({
+      id,
+      title,
+      status: "open",
+      issue_type: "task",
+      priority: 2,
+    })
+
+    beforeEach(() => {
+      // Reset store state before each test
+      useAppStore.setState({ tasks: [] })
+    })
+
+    afterEach(() => {
+      // Clean up store state
+      useAppStore.setState({ tasks: [] })
+    })
+
+    it("enriches session with task title from store when title matches taskId", async () => {
+      const timestamp = Date.now()
+      // Session has taskId but title is the same as ID (fallback)
+      mockDatabase.listAllSessions.mockResolvedValue([
+        createValidMetadata("session-1", timestamp, "task-123", "task-123"),
+      ])
+
+      // Store has the actual task with proper title
+      useAppStore.setState({
+        tasks: [createTask("task-123", "Fix login bug")],
+      })
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // The session should have the enriched title from the store
+      expect(result.current.sessions[0].metadata?.title).toBe("Fix login bug")
+      expect(result.current.sessions[0].metadata?.taskId).toBe("task-123")
+    })
+
+    it("enriches session with task title when title is undefined", async () => {
+      const timestamp = Date.now()
+      // Session has taskId but no title
+      mockDatabase.listAllSessions.mockResolvedValue([
+        createValidMetadata("session-1", timestamp, "task-456"),
+      ])
+
+      // Store has the actual task with proper title
+      useAppStore.setState({
+        tasks: [createTask("task-456", "Add dark mode")],
+      })
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // The session should have the enriched title from the store
+      expect(result.current.sessions[0].metadata?.title).toBe("Add dark mode")
+    })
+
+    it("preserves existing title when it differs from taskId", async () => {
+      const timestamp = Date.now()
+      // Session already has a real title
+      mockDatabase.listAllSessions.mockResolvedValue([
+        createValidMetadata("session-1", timestamp, "task-789", "Original Title"),
+      ])
+
+      // Store has a different title (stale data shouldn't override good stored title)
+      useAppStore.setState({
+        tasks: [createTask("task-789", "Updated Title")],
+      })
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Should keep the original stored title since it's different from taskId
+      expect(result.current.sessions[0].metadata?.title).toBe("Original Title")
+    })
+
+    it("does not modify sessions without taskId", async () => {
+      const timestamp = Date.now()
+      // Session has no taskId
+      mockDatabase.listAllSessions.mockResolvedValue([createValidMetadata("session-1", timestamp)])
+
+      useAppStore.setState({
+        tasks: [createTask("task-123", "Some Task")],
+      })
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Session without metadata should remain unchanged
+      expect(result.current.sessions[0].metadata).toBeUndefined()
+    })
+
+    it("returns sessions unchanged when store has no tasks", async () => {
+      const timestamp = Date.now()
+      // Session has taskId but no title
+      mockDatabase.listAllSessions.mockResolvedValue([
+        createValidMetadata("session-1", timestamp, "task-123", "task-123"),
+      ])
+
+      // Store has no tasks
+      useAppStore.setState({ tasks: [] })
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Should keep the original title (taskId as fallback)
+      expect(result.current.sessions[0].metadata?.title).toBe("task-123")
+    })
+
+    it("returns session unchanged when task not found in store", async () => {
+      const timestamp = Date.now()
+      mockDatabase.listAllSessions.mockResolvedValue([
+        createValidMetadata("session-1", timestamp, "task-123", "task-123"),
+      ])
+
+      // Store has different tasks, not the one we're looking for
+      useAppStore.setState({
+        tasks: [createTask("task-other", "Other Task")],
+      })
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Should keep the original title since task not found
+      expect(result.current.sessions[0].metadata?.title).toBe("task-123")
+    })
+
+    it("enriches multiple sessions correctly", async () => {
+      const timestamp = Date.now()
+      mockDatabase.listAllSessions.mockResolvedValue([
+        createValidMetadata("session-1", timestamp, "task-1", "task-1"),
+        createValidMetadata("session-2", timestamp + 1000, "task-2", "Already Has Title"),
+        createValidMetadata("session-3", timestamp + 2000, "task-3"),
+      ])
+
+      useAppStore.setState({
+        tasks: [
+          createTask("task-1", "First Task Title"),
+          createTask("task-2", "Updated Title"),
+          createTask("task-3", "Third Task Title"),
+        ],
+      })
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // First session: title was taskId fallback, should be enriched
+      expect(result.current.sessions[0].metadata?.title).toBe("First Task Title")
+
+      // Second session: had real title, should be preserved
+      expect(result.current.sessions[1].metadata?.title).toBe("Already Has Title")
+
+      // Third session: no title, should be enriched
+      expect(result.current.sessions[2].metadata?.title).toBe("Third Task Title")
     })
   })
 })

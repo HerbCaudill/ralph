@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { eventDatabase, type PersistedSession } from "@/lib/persistence"
-import type { ChatEvent } from "@/types"
+import type { ChatEvent, Task } from "@/types"
+import { useAppStore, selectTasks } from "@/store"
 
 /**
  * Summary of an session (without full event data).
@@ -195,8 +196,40 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
     refresh()
   }, [refresh])
 
+  // Get current tasks from store for on-the-fly title lookup
+  const tasks = useAppStore(selectTasks)
+
+  // Enrich sessions with task titles from the store
+  // This looks up task titles on-the-fly instead of relying on stale IndexedDB data
+  const enrichedSessions = useMemo(() => {
+    if (!tasks.length) return sessions
+
+    return sessions.map(session => {
+      // If the session already has a title that's different from the ID, keep it
+      if (session.metadata?.title && session.metadata.title !== session.metadata.taskId) {
+        return session
+      }
+
+      // If we have a taskId, try to look up the title from the current tasks
+      if (session.metadata?.taskId) {
+        const task = tasks.find((t: Task) => t.id === session.metadata?.taskId)
+        if (task?.title) {
+          return {
+            ...session,
+            metadata: {
+              ...session.metadata,
+              title: task.title,
+            },
+          }
+        }
+      }
+
+      return session
+    })
+  }, [sessions, tasks])
+
   return {
-    sessions,
+    sessions: enrichedSessions,
     isLoading,
     error,
     refresh,
