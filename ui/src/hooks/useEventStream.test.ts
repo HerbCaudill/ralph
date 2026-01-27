@@ -7,7 +7,17 @@ import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
 const mockLoadSessionEvents = vi.fn()
 const mockClearSelectedSession = vi.fn()
 let mockSelectedSession: {
-  events: Array<{ type: string; timestamp: number; message?: string }>
+  id: string
+  createdAt: string
+  eventCount: number
+  events: Array<{
+    type: string
+    timestamp: number
+    message?: string
+    taskId?: string
+    taskTitle?: string
+  }>
+  metadata?: { taskId?: string; title?: string }
 } | null = null
 
 vi.mock("@/hooks", async importOriginal => {
@@ -24,11 +34,6 @@ vi.mock("@/hooks", async importOriginal => {
       isLoadingEvents: false,
       eventsError: null,
       clearSelectedSession: mockClearSelectedSession,
-    })),
-    useEventLogRouter: vi.fn(() => ({
-      navigateToEventLog: vi.fn(),
-      closeEventLogViewer: vi.fn(),
-      eventLogId: null,
     })),
   }
 })
@@ -85,6 +90,22 @@ describe("useEventStream", () => {
       const { result } = renderHook(() => useEventStream())
 
       expect(result.current.isViewingLatest).toBe(true)
+    })
+
+    it("returns isViewingLatest as false when viewing historical session even if viewingSessionIndex is null", () => {
+      // viewingSessionIndex remains null (would normally mean viewing latest)
+      // but selectedSession is set (viewing historical via dropdown)
+      mockSelectedSession = {
+        id: "session-123",
+        createdAt: new Date().toISOString(),
+        eventCount: 0,
+        events: [],
+      }
+
+      const { result } = renderHook(() => useEventStream())
+
+      expect(result.current.isViewingLatest).toBe(false)
+      expect(result.current.isViewingHistorical).toBe(true)
     })
 
     it("returns issue prefix from store", () => {
@@ -232,6 +253,73 @@ describe("useEventStream", () => {
       const { result } = renderHook(() => useEventStream())
       expect(result.current.sessionTask).toBe(null)
     })
+
+    it("uses task from historical session metadata", () => {
+      mockSelectedSession = {
+        id: "session-123",
+        createdAt: new Date().toISOString(),
+        eventCount: 0,
+        events: [],
+        metadata: {
+          taskId: "rui-historical",
+          title: "Historical task title",
+        },
+      }
+
+      const { result } = renderHook(() => useEventStream())
+
+      expect(result.current.sessionTask).toEqual({
+        id: "rui-historical",
+        title: "Historical task title",
+      })
+    })
+
+    it("uses taskId as title fallback when historical metadata has only taskId", () => {
+      mockSelectedSession = {
+        id: "session-123",
+        createdAt: new Date().toISOString(),
+        eventCount: 0,
+        events: [],
+        metadata: {
+          taskId: "rui-999",
+        },
+      }
+
+      const { result } = renderHook(() => useEventStream())
+
+      expect(result.current.sessionTask).toEqual({
+        id: "rui-999",
+        title: "rui-999",
+      })
+    })
+
+    it("historical metadata takes precedence over events in session", () => {
+      mockSelectedSession = {
+        id: "session-123",
+        createdAt: new Date().toISOString(),
+        eventCount: 1,
+        events: [
+          {
+            type: "ralph_task_started",
+            timestamp: 1705600000000,
+            taskId: "event-task",
+            taskTitle: "Event Task",
+          },
+        ],
+        metadata: {
+          taskId: "metadata-task",
+          title: "Metadata Task",
+        },
+      }
+
+      const { result } = renderHook(() => useEventStream())
+
+      // Should use metadata, not event
+      expect(result.current.sessionTask).toEqual({
+        id: "metadata-task",
+        title: "Metadata Task",
+      })
+    })
   })
 
   describe("navigation actions", () => {
@@ -285,6 +373,9 @@ describe("useEventStream", () => {
 
     it("returns isViewingHistorical as true when selectedSession is not null", () => {
       mockSelectedSession = {
+        id: "session-123",
+        createdAt: new Date().toISOString(),
+        eventCount: 1,
         events: [{ type: "user_message", timestamp: 1705600000000, message: "Historical message" }],
       }
 
@@ -303,6 +394,9 @@ describe("useEventStream", () => {
 
       // Set up a historical session with different events
       mockSelectedSession = {
+        id: "session-123",
+        createdAt: new Date().toISOString(),
+        eventCount: 2,
         events: [
           { type: "user_message", timestamp: 1705600000000, message: "Historical message 1" },
           { type: "user_message", timestamp: 1705600000500, message: "Historical message 2" },
@@ -321,6 +415,19 @@ describe("useEventStream", () => {
         type: "user_message",
         message: "Historical message 2",
       })
+    })
+
+    it("returns currentSessionId from selectedSession", () => {
+      mockSelectedSession = {
+        id: "session-456",
+        createdAt: new Date().toISOString(),
+        eventCount: 0,
+        events: [],
+      }
+
+      const { result } = renderHook(() => useEventStream())
+
+      expect(result.current.currentSessionId).toBe("session-456")
     })
   })
 

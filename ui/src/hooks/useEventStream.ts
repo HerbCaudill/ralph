@@ -12,7 +12,7 @@ import {
   selectIssuePrefix,
   getEventsForSession,
 } from "@/store"
-import { useSessions } from "@/hooks"
+import { useSessions, buildSessionPath, parseSessionIdFromUrl } from "@/hooks"
 import type { SessionSummary } from "@/hooks"
 import type { ChatEvent, Task, RalphStatus } from "@/types"
 
@@ -92,7 +92,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     ralphStatus === "stopping_after_current"
   const isViewingLatest = viewingSessionIndex === null
 
-  // Fetch sessions for the history dropdown
+  // Fetch sessions for the history dropdown and manage selected session
   const {
     sessions,
     isLoading: isLoadingSessions,
@@ -174,14 +174,47 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     }
   }, [viewingSessionIndex, isViewingLatest])
 
+  // Handle URL-based session loading on mount and browser back/forward
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const sessionId = parseSessionIdFromUrl(window.location)
+      if (sessionId) {
+        // URL has a session ID, load it
+        loadSessionEvents(sessionId)
+      } else if (selectedSession) {
+        // URL was cleared but we have a selected session, clear it
+        clearSelectedSession()
+      }
+    }
+
+    // Check URL on mount
+    handleUrlChange()
+
+    // Listen for popstate (browser back/forward)
+    window.addEventListener("popstate", handleUrlChange)
+    // Also listen for hashchange for legacy URL support
+    window.addEventListener("hashchange", handleUrlChange)
+
+    return () => {
+      window.removeEventListener("popstate", handleUrlChange)
+      window.removeEventListener("hashchange", handleUrlChange)
+    }
+  }, [loadSessionEvents, clearSelectedSession, selectedSession])
+
   const handleSessionHistorySelect = useCallback(
     (id: string) => {
+      // Update URL to reflect the selected session
+      window.history.pushState({ sessionId: id }, "", buildSessionPath(id))
+      // Load the session data
       loadSessionEvents(id)
     },
     [loadSessionEvents],
   )
 
   const handleReturnToLive = useCallback(() => {
+    // Clear the URL (go back to root)
+    window.history.pushState(null, "", "/")
+    // Clear the selected session
     clearSelectedSession()
   }, [clearSelectedSession])
 
