@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils"
 import { ControlBar } from "@/components/controls/ControlBar"
-import { ConnectionStatusIndicator } from "./ConnectionStatusIndicator"
 import { ContextWindowProgress } from "./ContextWindowProgress"
 import { SessionProgress } from "./SessionProgress"
 import { RepoBranch } from "./RepoBranch"
@@ -14,7 +13,6 @@ export function StatusBar({ className }: StatusBarProps) {
     <div className={cn("flex items-center justify-between gap-4 text-sm", className)}>
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <ControlBar />
-        <ConnectionStatusIndicator />
         <StatusIndicator />
         <RunDuration />
       </div>

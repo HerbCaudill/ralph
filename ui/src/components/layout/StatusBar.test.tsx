@@ -11,45 +11,7 @@ describe("StatusBar", () => {
     useAppStore.getState().setConnectionStatus("connected")
   })
 
-  describe("ConnectionStatusIndicator", () => {
-    it("shows only icon when connected", () => {
-      useAppStore.getState().setConnectionStatus("connected")
-      render(<StatusBar />)
-      // Should have the icon but not the label text
-      expect(screen.getByTestId("connection-status-icon")).toBeInTheDocument()
-      expect(screen.queryByTestId("connection-status-label")).not.toBeInTheDocument()
-    })
-
-    it("shows 'Connecting' label when connecting", () => {
-      useAppStore.getState().setConnectionStatus("connecting")
-      render(<StatusBar />)
-      expect(screen.getByTestId("connection-status-label")).toHaveTextContent("Connecting")
-    })
-
-    it("shows 'Disconnected' label when disconnected", () => {
-      useAppStore.getState().setConnectionStatus("disconnected")
-      render(<StatusBar />)
-      expect(screen.getByTestId("connection-status-label")).toHaveTextContent("Disconnected")
-    })
-
-    it("has success color when connected", () => {
-      useAppStore.getState().setConnectionStatus("connected")
-      render(<StatusBar />)
-      expect(screen.getByTestId("connection-status-icon")).toHaveClass("text-status-success")
-    })
-
-    it("has warning color when connecting", () => {
-      useAppStore.getState().setConnectionStatus("connecting")
-      render(<StatusBar />)
-      expect(screen.getByTestId("connection-status-icon")).toHaveClass("text-status-warning")
-    })
-
-    it("has error color when disconnected", () => {
-      useAppStore.getState().setConnectionStatus("disconnected")
-      render(<StatusBar />)
-      expect(screen.getByTestId("connection-status-icon")).toHaveClass("text-status-error")
-    })
-  })
+  // Note: ConnectionStatusIndicator has been moved to the Header (see r-iwp9)
 
   describe("StatusIndicator", () => {
     it("shows 'Stopped' when ralph is stopped", () => {

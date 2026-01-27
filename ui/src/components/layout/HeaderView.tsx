@@ -6,6 +6,7 @@ import { SettingsDropdown } from "./SettingsDropdown"
 import { HelpButton } from "./HelpButton"
 import { InstanceCountBadge } from "./InstanceCountBadge"
 import { MergeConflictNotification } from "./MergeConflictNotification"
+import { ConnectionStatusIndicator } from "./ConnectionStatusIndicator"
 
 /**
  * Presentational component for the application header.
@@ -33,6 +34,7 @@ export function HeaderView({ className, accentColor, instanceCount }: HeaderView
       </div>
 
       <div className="flex items-center gap-2">
+        <ConnectionStatusIndicator />
         <HelpButton textColor={textColor} />
         <SettingsDropdown textColor={textColor} />
       </div>
