@@ -24,13 +24,11 @@ export function ThemePickerView({
   textColor,
   themes,
   activeThemeId,
-  currentVSCodeTheme,
   isLoading = false,
   error,
   onApplyTheme,
   onPreviewTheme,
   onClearPreview,
-  onResetToDefault,
   onRefresh,
 }: ThemePickerViewProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -74,11 +72,6 @@ export function ThemePickerView({
 
   const handleThemeSelect = async (themeId: string) => {
     await onApplyTheme(themeId)
-    setIsOpen(false)
-  }
-
-  const handleResetToDefault = () => {
-    onResetToDefault()
     setIsOpen(false)
   }
 
@@ -141,26 +134,6 @@ export function ThemePickerView({
 
           {!error && (
             <div className="max-h-80 overflow-y-auto p-1">
-              <button
-                onClick={handleResetToDefault}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
-                  "hover:bg-muted",
-                  !activeThemeId && "bg-repo-accent/50",
-                )}
-                onMouseEnter={handleMouseLeave}
-                data-testid="theme-picker-default"
-              >
-                <span className="flex-1">Default</span>
-                {!activeThemeId && <IconCheck className="text-primary size-3" />}
-              </button>
-
-              {currentVSCodeTheme && (
-                <div className="text-muted-foreground px-2 py-1 text-xs">
-                  VS Code: {currentVSCodeTheme}
-                </div>
-              )}
-
               {themeGroups.length === 0 && (
                 <div className="text-muted-foreground px-2 py-2 text-xs">No themes found</div>
               )}
@@ -231,8 +204,6 @@ export type ThemePickerViewProps = {
   themes: ThemeMeta[]
   /** ID of the currently active theme, or null for default */
   activeThemeId: string | null
-  /** Current VS Code theme name for display */
-  currentVSCodeTheme: string | null
   /** Whether themes are being loaded */
   isLoading?: boolean
   /** Error message to display, if any */
@@ -243,8 +214,6 @@ export type ThemePickerViewProps = {
   onPreviewTheme: (themeId: string) => void
   /** Callback to clear the preview */
   onClearPreview: () => void
-  /** Callback to reset to default theme */
-  onResetToDefault: () => void
   /** Callback to refresh the theme list */
   onRefresh: () => void
 }

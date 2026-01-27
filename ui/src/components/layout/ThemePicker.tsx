@@ -11,7 +11,6 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
   const {
     themes,
     activeThemeId,
-    currentVSCodeTheme,
     isLoadingList,
     isLoadingTheme,
     error,
@@ -19,7 +18,6 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
     applyTheme,
     previewTheme,
     clearPreview,
-    resetToDefault,
   } = useVSCodeTheme()
 
   return (
@@ -29,13 +27,11 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
       textColor={textColor}
       themes={themes}
       activeThemeId={activeThemeId}
-      currentVSCodeTheme={currentVSCodeTheme}
       isLoading={isLoadingList || isLoadingTheme}
       error={error}
       onApplyTheme={applyTheme}
       onPreviewTheme={previewTheme}
       onClearPreview={clearPreview}
-      onResetToDefault={resetToDefault}
       onRefresh={fetchThemes}
     />
   )

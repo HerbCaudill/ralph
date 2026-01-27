@@ -26,13 +26,11 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
   const {
     themes,
     activeThemeId,
-    currentVSCodeTheme,
     error,
     fetchThemes,
     applyTheme,
     previewTheme,
     clearPreview,
-    resetToDefault,
     theme: appearanceMode,
     setTheme: setAppearanceMode,
     setMode,
@@ -43,14 +41,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const themeGroups = useMemo(() => groupThemesByType(themes), [themes])
-
-  const displayName = useMemo(() => {
-    if (activeThemeId) {
-      const activeTheme = themes.find(t => t.id === activeThemeId)
-      return activeTheme?.label ?? "Custom Theme"
-    }
-    return "Default"
-  }, [activeThemeId, themes])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -80,10 +70,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
 
   const handleThemeSelect = async (themeId: string) => {
     await applyTheme(themeId)
-  }
-
-  const handleResetToDefault = () => {
-    resetToDefault()
   }
 
   const handleMouseEnter = (themeId: string) => {
@@ -183,30 +169,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
 
           {!error && (
             <div className="max-h-64 overflow-y-auto p-1">
-              <div className="text-muted-foreground mb-1 px-2 pt-1 text-xs font-medium">
-                Theme: {displayName}
-              </div>
-
-              <button
-                onClick={handleResetToDefault}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
-                  "hover:bg-muted",
-                  !activeThemeId && "bg-repo-accent/50",
-                )}
-                onMouseEnter={handleMouseLeave}
-                data-testid="settings-theme-default"
-              >
-                <span className="flex-1">Default</span>
-                {!activeThemeId && <IconCheck className="text-primary size-3" />}
-              </button>
-
-              {currentVSCodeTheme && (
-                <div className="text-muted-foreground px-2 py-1 text-xs">
-                  VS Code: {currentVSCodeTheme}
-                </div>
-              )}
-
               {themeGroups.length === 0 && (
                 <div className="text-muted-foreground px-2 py-2 text-xs">No themes found</div>
               )}

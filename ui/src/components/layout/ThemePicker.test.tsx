@@ -46,13 +46,11 @@ function createDefaultProps(overrides: Partial<Parameters<typeof ThemePickerView
   return {
     themes: createMockThemes(),
     activeThemeId: null as string | null,
-    currentVSCodeTheme: "Gruvbox Dark" as string | null,
     isLoading: false,
     error: null as string | null,
     onApplyTheme: vi.fn(),
     onPreviewTheme: vi.fn(),
     onClearPreview: vi.fn(),
-    onResetToDefault: vi.fn(),
     onRefresh: vi.fn(),
     ...overrides,
   }
@@ -209,26 +207,6 @@ describe("ThemePickerView", () => {
   })
 
   describe("dropdown content", () => {
-    it("shows Default option in dropdown", () => {
-      render(<ThemePickerView {...createDefaultProps()} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Default option should be visible
-      expect(screen.getByTestId("theme-picker-default")).toBeInTheDocument()
-    })
-
-    it("shows current VS Code theme info", () => {
-      render(<ThemePickerView {...createDefaultProps()} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Should show current VS Code theme info
-      expect(screen.getByText("VS Code: Gruvbox Dark")).toBeInTheDocument()
-    })
-
     it("has refresh button in dropdown", () => {
       render(<ThemePickerView {...createDefaultProps()} />)
 
@@ -250,17 +228,6 @@ describe("ThemePickerView", () => {
       const draculaItem = screen.getByTestId("theme-picker-item-dracula")
       expect(draculaItem).toHaveClass("bg-repo-accent/50")
     })
-
-    it("shows checkmark on Default when no theme is active", () => {
-      render(<ThemePickerView {...createDefaultProps({ activeThemeId: null })} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Default option should have active styling
-      const defaultItem = screen.getByTestId("theme-picker-default")
-      expect(defaultItem).toHaveClass("bg-repo-accent/50")
-    })
   })
 
   describe("theme selection", () => {
@@ -278,20 +245,6 @@ describe("ThemePickerView", () => {
       await waitFor(() => {
         expect(props.onApplyTheme).toHaveBeenCalledWith("dracula")
       })
-    })
-
-    it("calls onResetToDefault when clicking Default option", async () => {
-      const props = createDefaultProps({ activeThemeId: "dracula" })
-      render(<ThemePickerView {...props} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Click Default
-      fireEvent.click(screen.getByTestId("theme-picker-default"))
-
-      // onResetToDefault should be called
-      expect(props.onResetToDefault).toHaveBeenCalled()
     })
 
     it("closes dropdown after selecting a theme", async () => {
@@ -406,26 +359,6 @@ describe("ThemePickerView", () => {
 
       // Should show empty state
       expect(screen.getByText("No themes found")).toBeInTheDocument()
-    })
-  })
-
-  describe("VS Code theme indicator", () => {
-    it("shows VS Code theme when available", () => {
-      render(<ThemePickerView {...createDefaultProps({ currentVSCodeTheme: "Monokai Pro" })} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      expect(screen.getByText("VS Code: Monokai Pro")).toBeInTheDocument()
-    })
-
-    it("does not show VS Code theme indicator when null", () => {
-      render(<ThemePickerView {...createDefaultProps({ currentVSCodeTheme: null })} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      expect(screen.queryByText(/VS Code:/)).not.toBeInTheDocument()
     })
   })
 })

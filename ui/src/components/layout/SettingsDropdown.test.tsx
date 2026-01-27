@@ -9,14 +9,12 @@ const mockFetchThemes = vi.fn()
 const mockApplyTheme = vi.fn()
 const mockPreviewTheme = vi.fn()
 const mockClearPreview = vi.fn()
-const mockResetToDefault = vi.fn()
 const mockSetTheme = vi.fn()
 const mockSetMode = vi.fn()
 const mockCycleTheme = vi.fn()
 
 let mockThemes: ThemeMeta[] = []
 let mockActiveThemeId: string | null = null
-let mockCurrentVSCodeTheme: string | null = "Gruvbox Dark"
 let mockIsLoadingList = false
 let mockIsLoadingTheme = false
 let mockError: string | null = null
@@ -29,7 +27,6 @@ vi.mock("@/hooks", () => ({
     themes: mockThemes,
     activeTheme: null,
     activeThemeId: mockActiveThemeId,
-    currentVSCodeTheme: mockCurrentVSCodeTheme,
     variant: "VS Code",
     isLoadingList: mockIsLoadingList,
     isLoadingTheme: mockIsLoadingTheme,
@@ -38,7 +35,6 @@ vi.mock("@/hooks", () => ({
     applyTheme: mockApplyTheme,
     previewTheme: mockPreviewTheme,
     clearPreview: mockClearPreview,
-    resetToDefault: mockResetToDefault,
     // Light/dark theme values
     theme: mockTheme,
     resolvedTheme: mockTheme === "system" ? "dark" : mockTheme,
@@ -84,7 +80,6 @@ describe("SettingsDropdown", () => {
     // Reset mock values
     mockThemes = createMockThemes()
     mockActiveThemeId = null
-    mockCurrentVSCodeTheme = "Gruvbox Dark"
     mockIsLoadingList = false
     mockIsLoadingTheme = false
     mockError = null
@@ -94,7 +89,6 @@ describe("SettingsDropdown", () => {
     mockApplyTheme.mockClear()
     mockPreviewTheme.mockClear()
     mockClearPreview.mockClear()
-    mockResetToDefault.mockClear()
     mockSetTheme.mockClear()
     mockSetMode.mockClear()
     mockCycleTheme.mockClear()
@@ -213,35 +207,6 @@ describe("SettingsDropdown", () => {
   })
 
   describe("theme section", () => {
-    it("shows Default option in dropdown", () => {
-      render(<SettingsDropdown />)
-      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
-
-      expect(screen.getByTestId("settings-theme-default")).toBeInTheDocument()
-    })
-
-    it("shows current VS Code theme info", () => {
-      render(<SettingsDropdown />)
-      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
-
-      expect(screen.getByText("VS Code: Gruvbox Dark")).toBeInTheDocument()
-    })
-
-    it("displays theme name in header", () => {
-      render(<SettingsDropdown />)
-      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
-
-      expect(screen.getByText("Theme: Default")).toBeInTheDocument()
-    })
-
-    it("displays active theme name when theme is selected", () => {
-      mockActiveThemeId = "dracula"
-      render(<SettingsDropdown />)
-      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
-
-      expect(screen.getByText("Theme: Dracula")).toBeInTheDocument()
-    })
-
     it("groups themes by dark and light types", () => {
       render(<SettingsDropdown />)
       fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
@@ -262,16 +227,6 @@ describe("SettingsDropdown", () => {
       await waitFor(() => {
         expect(mockApplyTheme).toHaveBeenCalledWith("dracula")
       })
-    })
-
-    it("calls resetToDefault when clicking Default option", () => {
-      mockActiveThemeId = "dracula"
-      render(<SettingsDropdown />)
-      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
-
-      fireEvent.click(screen.getByTestId("settings-theme-default"))
-
-      expect(mockResetToDefault).toHaveBeenCalled()
     })
 
     it("keeps dropdown open after selecting a theme", async () => {

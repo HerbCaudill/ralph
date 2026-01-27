@@ -52,13 +52,11 @@ const meta: Meta<typeof ThemePickerView> = {
   args: {
     themes: mockThemes,
     activeThemeId: null,
-    currentVSCodeTheme: "Gruvbox Dark",
     isLoading: false,
     error: null,
     onApplyTheme: fn(),
     onPreviewTheme: fn(),
     onClearPreview: fn(),
-    onResetToDefault: fn(),
     onRefresh: fn(),
   },
 }
@@ -201,27 +199,6 @@ export const ShowsAllThemes: Story = {
 }
 
 /**
- * Verifies the current VS Code theme is shown.
- */
-export const ShowsVSCodeTheme: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement.ownerDocument.body)
-
-    // Open dropdown
-    const trigger = await canvas.findByTestId("theme-picker-trigger")
-    await userEvent.click(trigger)
-
-    // Should show VS Code theme info
-    await waitFor(
-      async () => {
-        await expect(await canvas.findByText("VS Code: Gruvbox Dark")).toBeVisible()
-      },
-      { timeout: 3000 },
-    )
-  },
-}
-
-/**
  * Verifies clicking a theme calls onApplyTheme.
  */
 export const SelectingThemeCallsHandler: Story = {
@@ -243,34 +220,6 @@ export const SelectingThemeCallsHandler: Story = {
 
     // onApplyTheme should be called with the theme id
     await expect(args.onApplyTheme).toHaveBeenCalledWith("dracula")
-  },
-}
-
-/**
- * Verifies clicking Default calls onResetToDefault.
- */
-export const SelectingDefaultResetsTheme: Story = {
-  args: {
-    activeThemeId: "dracula",
-  },
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement.ownerDocument.body)
-
-    // Open dropdown
-    const trigger = await canvas.findByTestId("theme-picker-trigger")
-    await userEvent.click(trigger)
-
-    // Wait for dropdown
-    await waitFor(async () => {
-      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
-    })
-
-    // Click Default
-    const defaultItem = await canvas.findByTestId("theme-picker-default")
-    await userEvent.click(defaultItem)
-
-    // onResetToDefault should be called
-    await expect(args.onResetToDefault).toHaveBeenCalled()
   },
 }
 
@@ -423,7 +372,6 @@ export const ErrorState: Story = {
 export const EmptyState: Story = {
   args: {
     themes: [],
-    currentVSCodeTheme: null,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
