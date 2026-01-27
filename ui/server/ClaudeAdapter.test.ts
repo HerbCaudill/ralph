@@ -651,6 +651,80 @@ describe("ClaudeAdapter", () => {
     })
   })
 
+  describe("working directory in system prompt", () => {
+    it("includes working directory context in system prompt when cwd is provided", async () => {
+      await adapter.start({ cwd: "/test/working/dir" })
+      mockQuery.mockReturnValueOnce(createMessageStream([]))
+
+      adapter.send({ type: "user_message", content: "Hello" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            systemPrompt: expect.stringContaining("Working directory: /test/working/dir"),
+          }),
+        }),
+      )
+    })
+
+    it("prepends working directory context to custom system prompt", async () => {
+      await adapter.start({
+        cwd: "/custom/path",
+        systemPrompt: "You are a helpful assistant.",
+      })
+
+      mockQuery.mockReturnValueOnce(createMessageStream([]))
+
+      adapter.send({ type: "user_message", content: "Hello" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            systemPrompt: expect.stringMatching(
+              /## Environment\n\nWorking directory: \/custom\/path\n\nYou are a helpful assistant\./,
+            ),
+          }),
+        }),
+      )
+    })
+
+    it("includes only working directory context when no custom system prompt is provided", async () => {
+      await adapter.start({ cwd: "/some/path" })
+
+      mockQuery.mockReturnValueOnce(createMessageStream([]))
+
+      adapter.send({ type: "user_message", content: "Hello" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            systemPrompt: "## Environment\n\nWorking directory: /some/path",
+          }),
+        }),
+      )
+    })
+
+    it("does not add working directory context when cwd is not provided", async () => {
+      await adapter.start({ systemPrompt: "Custom prompt only" })
+
+      mockQuery.mockReturnValueOnce(createMessageStream([]))
+
+      adapter.send({ type: "user_message", content: "Hello" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            systemPrompt: "Custom prompt only",
+          }),
+        }),
+      )
+    })
+  })
+
   describe("conversation context tracking", () => {
     beforeEach(async () => {
       await adapter.start()

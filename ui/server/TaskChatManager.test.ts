@@ -469,6 +469,52 @@ describe("TaskChatManager", () => {
     })
   })
 
+  describe("system prompt with working directory", () => {
+    it("includes working directory in system prompt", async () => {
+      const customCwd = "/test/project/directory"
+      manager = new TaskChatManager({
+        getBdProxy: () => mockBdProxy,
+        cwd: customCwd,
+      })
+
+      await sendAndRespond("Test message", "Response")
+
+      expect(mockQuery).toHaveBeenCalled()
+      const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
+      const systemPromptConfig = callArgs.options?.systemPrompt as {
+        type: string
+        preset: string
+        append: string
+      }
+
+      // Verify the appended prompt contains working directory context
+      expect(systemPromptConfig.append).toContain("## Environment")
+      expect(systemPromptConfig.append).toContain("Working directory:")
+      expect(systemPromptConfig.append).toContain(customCwd)
+    })
+
+    it("uses process.cwd() as default working directory in system prompt", async () => {
+      manager = new TaskChatManager({
+        getBdProxy: () => mockBdProxy,
+      })
+
+      await sendAndRespond("Test message", "Response")
+
+      expect(mockQuery).toHaveBeenCalled()
+      const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
+      const systemPromptConfig = callArgs.options?.systemPrompt as {
+        type: string
+        preset: string
+        append: string
+      }
+
+      // Verify working directory is included (will be process.cwd())
+      expect(systemPromptConfig.append).toContain("## Environment")
+      expect(systemPromptConfig.append).toContain("Working directory:")
+      expect(systemPromptConfig.append).toContain(process.cwd())
+    })
+  })
+
   describe("system prompt with task context", () => {
     it("includes task context in system prompt", async () => {
       const issues: BdIssue[] = [

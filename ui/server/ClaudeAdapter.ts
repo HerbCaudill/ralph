@@ -323,6 +323,13 @@ export class ClaudeAdapter extends AgentAdapter {
     let attempt = 0
     let lastError: Error | null = null
 
+    // Build system prompt with working directory context
+    let systemPrompt = options.systemPrompt
+    if (options.cwd) {
+      const cwdContext = `## Environment\n\nWorking directory: ${options.cwd}\n\n`
+      systemPrompt = systemPrompt ? cwdContext + systemPrompt : cwdContext.trim()
+    }
+
     while (attempt <= maxRetries) {
       this.abortController = new AbortController()
 
@@ -352,7 +359,7 @@ export class ClaudeAdapter extends AgentAdapter {
               ...options.env,
               ...(this.options.apiKey ? { ANTHROPIC_API_KEY: this.options.apiKey } : {}),
             },
-            systemPrompt: options.systemPrompt,
+            systemPrompt,
             tools:
               Array.isArray(options.allowedTools) ? (options.allowedTools as string[]) : undefined,
             permissionMode: "bypassPermissions",

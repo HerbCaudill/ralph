@@ -300,6 +300,10 @@ export class TaskChatManager extends EventEmitter {
       basePrompt = "You are a task management assistant. Help users manage their issues and tasks."
     }
 
+    // Add working directory context at the beginning of the prompt
+    const cwdContext = `## Environment\n\nWorking directory: ${this.options.cwd}\n\n`
+    basePrompt = cwdContext + basePrompt
+
     // Add current task context if BdProxy is available
     let taskContext = ""
     if (this.getBdProxy) {
