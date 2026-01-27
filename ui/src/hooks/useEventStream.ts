@@ -80,7 +80,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const tasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
 
-  // Get instance for currentTaskId/currentTaskTitle fallback
+  // Get instance for currentTaskId fallback
   const instance = useAppStore(state =>
     instanceId ? selectInstance(state, instanceId) : selectActiveInstance(state),
   )
@@ -114,48 +114,42 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   }, [allEvents, viewingSessionIndex, selectedSession])
 
   // Determine the current task for the session
+  // Task ID comes from ralph_task_started events, title is looked up from beads
   const sessionTask = useMemo((): SessionTask | null => {
+    // Find taskId from various sources
+    let taskId: string | null = null
+
     // If viewing a historical session, use its metadata
-    if (selectedSession?.metadata) {
-      const { taskId, title } = selectedSession.metadata
-      if (taskId || title) {
-        return {
-          id: taskId ?? null,
-          title: title ?? taskId ?? "Unknown task",
+    if (selectedSession?.metadata?.taskId) {
+      taskId = selectedSession.metadata.taskId
+    }
+
+    // Try to find task from ralph_task_started event in session events
+    if (!taskId) {
+      for (const event of sessionEvents) {
+        if ((event as { type: string }).type === "ralph_task_started") {
+          taskId = (event as { taskId?: string }).taskId ?? null
+          break
         }
       }
     }
 
-    // First, try to find task from ralph_task_started event in session events
-    for (const event of sessionEvents) {
-      if ((event as { type: string }).type === "ralph_task_started") {
-        const taskId = (event as { taskId?: string }).taskId
-        const taskTitle = (event as { taskTitle?: string }).taskTitle
-        // Accept tasks with taskTitle, or look up title from store if we have taskId
-        if (taskTitle) {
-          return { id: taskId || null, title: taskTitle }
-        }
-        if (taskId) {
-          // Look up the task title from the store
-          const task = tasks.find((t: Task) => t.id === taskId)
-          const title = task?.title ?? taskId // Fall back to showing the ID if title not found
-          return { id: taskId, title }
-        }
-      }
+    // Fallback: use the instance's currentTaskId if available
+    if (!taskId && instance?.currentTaskId) {
+      taskId = instance.currentTaskId
     }
 
-    // Fallback: if no ralph_task_started event, show the first in-progress task from the store
+    // If we found a taskId, look up the title from beads
+    if (taskId) {
+      const task = tasks.find((t: Task) => t.id === taskId)
+      const title = task?.title ?? taskId // Fall back to showing the ID if title not found
+      return { id: taskId, title }
+    }
+
+    // Fallback: if no task in session, show the first in-progress task from the store
     const inProgressTask = tasks.find((t: Task) => t.status === "in_progress")
     if (inProgressTask) {
       return { id: inProgressTask.id, title: inProgressTask.title }
-    }
-
-    // Final fallback: use the instance's currentTaskId/currentTaskTitle if available
-    if (instance?.currentTaskId || instance?.currentTaskTitle) {
-      return {
-        id: instance.currentTaskId ?? null,
-        title: instance.currentTaskTitle ?? instance.currentTaskId ?? "Unknown task",
-      }
     }
 
     return null

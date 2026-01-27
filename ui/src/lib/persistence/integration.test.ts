@@ -65,16 +65,11 @@ describe("Persistence Integration Tests", () => {
         },
       }) as ChatEvent
 
-    const createRalphTaskStartedEvent = (
-      timestamp: number,
-      taskId: string,
-      taskTitle: string,
-    ): ChatEvent =>
+    const createRalphTaskStartedEvent = (timestamp: number, taskId: string): ChatEvent =>
       ({
         type: "ralph_task_started",
         timestamp,
         taskId,
-        taskTitle,
       }) as ChatEvent
 
     const createRalphTaskCompletedEvent = (timestamp: number): ChatEvent =>
@@ -90,7 +85,7 @@ describe("Persistence Integration Tests", () => {
       // Build a complete session sequence
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
-        createRalphTaskStartedEvent(startTime + 100, "r-abc123", "Fix the bug"),
+        createRalphTaskStartedEvent(startTime + 100, "r-abc123"),
         createAssistantEvent(startTime + 200, "I will fix this bug now."),
         createRalphTaskCompletedEvent(startTime + 300),
       ]
@@ -146,7 +141,6 @@ describe("Persistence Integration Tests", () => {
       expect(savedSession?.eventCount).toBe(events.length)
       expect(savedSession?.events).toBeUndefined()
       expect(savedSession?.taskId).toBe("r-abc123")
-      expect(savedSession?.taskTitle).toBe("Fix the bug")
       expect(savedSession?.completedAt).not.toBeNull()
     })
 
@@ -492,7 +486,6 @@ describe("Persistence Integration Tests", () => {
         startedAt: startTime,
         completedAt: null, // Active session
         taskId: null,
-        taskTitle: null,
         tokenUsage: { input: 100, output: 50 },
         contextWindow: { used: 150, max: 200000 },
         session: { current: 1, total: 1 },
@@ -558,7 +551,6 @@ describe("Persistence Integration Tests", () => {
         startedAt: now - 10000,
         completedAt: now - 5000, // Completed
         taskId: "task-1",
-        taskTitle: "Old Task",
         tokenUsage: { input: 100, output: 50 },
         contextWindow: { used: 150, max: 200000 },
         session: { current: 1, total: 1 },
@@ -575,7 +567,6 @@ describe("Persistence Integration Tests", () => {
         startedAt: now,
         completedAt: null, // Still active
         taskId: "task-2",
-        taskTitle: "Current Task",
         tokenUsage: { input: 200, output: 100 },
         contextWindow: { used: 300, max: 200000 },
         session: { current: 1, total: 1 },
@@ -587,7 +578,7 @@ describe("Persistence Integration Tests", () => {
       // Should get the active one
       const recovered = await db.getLatestActiveSession(instanceId)
       expect(recovered).toBeDefined()
-      expect(recovered?.taskTitle).toBe("Current Task")
+      expect(recovered?.taskId).toBe("task-2")
       expect(recovered?.completedAt).toBeNull()
     })
   })
@@ -638,7 +629,6 @@ describe("Persistence Integration Tests", () => {
         startedAt: now,
         completedAt: null,
         taskId: null,
-        taskTitle: null,
         tokenUsage: { input: 100, output: 50 },
         contextWindow: { used: 150, max: 200000 },
         session: { current: 1, total: 1 },
@@ -674,7 +664,6 @@ describe("Persistence Integration Tests", () => {
         startedAt: now,
         completedAt: null,
         taskId: null,
-        taskTitle: null,
         tokenUsage: { input: 1000, output: 500 },
         contextWindow: { used: 1500, max: 200000 },
         session: { current: 1, total: 1 },

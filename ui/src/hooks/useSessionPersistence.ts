@@ -94,10 +94,9 @@ function shouldFilterSession(events: ChatEvent[]): boolean {
   }
 
   // Filter sessions that ended with COMPLETE signal and have no task
-  const taskInfo = getTaskFromSessionEvents(events)
-  const hasTask = taskInfo !== null && (taskInfo.id !== null || taskInfo.title !== null)
+  const taskId = getTaskFromSessionEvents(events)
 
-  if (sessionEndedWithComplete(events) && !hasTask) {
+  if (sessionEndedWithComplete(events) && !taskId) {
     return true
   }
 
@@ -188,7 +187,7 @@ export function useSessionPersistence(
       sessionEvents: ChatEvent[],
       completed: boolean,
     ): PersistedSession => {
-      const taskInfo = getTaskFromSessionEvents(sessionEvents)
+      const taskId = getTaskFromSessionEvents(sessionEvents)
 
       // Find the last event sequence number (using event index as proxy since we don't have server sequence numbers yet)
       const lastEventSequence = sessionEvents.length - 1
@@ -199,8 +198,7 @@ export function useSessionPersistence(
         workspaceId,
         startedAt,
         completedAt: completed ? Date.now() : null,
-        taskId: taskInfo?.id ?? null,
-        taskTitle: taskInfo?.title ?? null,
+        taskId,
         tokenUsage,
         contextWindow,
         session,

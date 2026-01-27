@@ -31,7 +31,6 @@ export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycl
       timestamp: event.timestamp,
       action: "starting",
       taskId: taskEvent.taskId,
-      taskTitle: taskEvent.taskTitle,
     }
     return <TaskLifecycleEvent event={lifecycleEvent} />
   }
@@ -43,7 +42,6 @@ export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycl
       timestamp: event.timestamp,
       action: "completed",
       taskId: taskEvent.taskId,
-      taskTitle: taskEvent.taskTitle,
     }
     return <TaskLifecycleEvent event={lifecycleEvent} />
   }

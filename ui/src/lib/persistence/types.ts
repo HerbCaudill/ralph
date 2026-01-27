@@ -30,9 +30,6 @@ export interface SessionMetadata {
   /** ID of the task being worked on during this session (if any) */
   taskId: string | null
 
-  /** Title of the task being worked on (for display without fetching task data) */
-  taskTitle: string | null
-
   /** Token usage at the end of this session */
   tokenUsage: TokenUsage
 

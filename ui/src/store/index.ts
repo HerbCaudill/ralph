@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
 import type { ConnectionStatus } from "../hooks/useWebSocket"
 import type {
   ClosedTasksTimeFilter,
@@ -78,7 +77,6 @@ export function createRalphInstance(
     worktreePath: null,
     branch: null,
     currentTaskId: null,
-    currentTaskTitle: null,
     createdAt: Date.now(),
     runStartedAt: null,
     mergeConflict: null,
@@ -1211,7 +1209,6 @@ export const useAppStore = create<AppState & AppActions>()(
             session: { current: 0, total: 0 },
             runStartedAt: null,
             currentTaskId: null,
-            currentTaskTitle: null,
             mergeConflict: null,
           }
 
@@ -1259,7 +1256,6 @@ export const useAppStore = create<AppState & AppActions>()(
                 branch: serverInstance.branch,
                 createdAt: serverInstance.createdAt,
                 currentTaskId: serverInstance.currentTaskId,
-                currentTaskTitle: serverInstance.currentTaskTitle,
                 status: serverInstance.status,
                 mergeConflict: serverInstance.mergeConflict,
               }
@@ -1278,7 +1274,6 @@ export const useAppStore = create<AppState & AppActions>()(
                 worktreePath: serverInstance.worktreePath,
                 branch: serverInstance.branch,
                 currentTaskId: serverInstance.currentTaskId,
-                currentTaskTitle: serverInstance.currentTaskTitle,
                 createdAt: serverInstance.createdAt,
                 runStartedAt: null,
                 mergeConflict: serverInstance.mergeConflict,
@@ -1579,9 +1574,6 @@ export const selectActiveInstanceName = (state: AppState) =>
   state.instances.get(state.activeInstanceId)?.name ?? DEFAULT_INSTANCE_NAME
 export const selectActiveInstanceAgentName = (state: AppState) =>
   state.instances.get(state.activeInstanceId)?.agentName ?? DEFAULT_AGENT_NAME
-export const selectActiveInstanceCurrentTaskTitle = (state: AppState) =>
-  state.instances.get(state.activeInstanceId)?.currentTaskTitle ?? null
-
 export const selectRalphStatus = (state: AppState) => {
   const activeInstance = state.instances?.get(state.activeInstanceId)
   return activeInstance?.status ?? state.ralphStatus
@@ -1713,14 +1705,6 @@ export const selectInstanceBranch = (state: AppState, instanceId: string): strin
 export const selectInstanceCurrentTaskId = (state: AppState, instanceId: string): string | null => {
   const instance = state.instances.get(instanceId)
   return instance?.currentTaskId ?? null
-}
-
-export const selectInstanceCurrentTaskTitle = (
-  state: AppState,
-  instanceId: string,
-): string | null => {
-  const instance = state.instances.get(instanceId)
-  return instance?.currentTaskTitle ?? null
 }
 
 export const selectInstanceName = (state: AppState, instanceId: string): string => {

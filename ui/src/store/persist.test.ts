@@ -41,7 +41,6 @@ function createMockInstance(overrides: Partial<RalphInstance> = {}): RalphInstan
     worktreePath: null,
     branch: null,
     currentTaskId: null,
-    currentTaskTitle: null,
     createdAt: Date.now(),
     runStartedAt: null,
     mergeConflict: null,
@@ -163,7 +162,6 @@ describe("persist", () => {
         worktreePath: "/path/to/worktree",
         branch: "feature-branch",
         currentTaskId: "task-123",
-        currentTaskTitle: "Fix bug",
         createdAt: 1234567890,
         runStartedAt: 1234567900,
         mergeConflict: {
@@ -187,7 +185,6 @@ describe("persist", () => {
         worktreePath: "/path/to/worktree",
         branch: "feature-branch",
         currentTaskId: "task-123",
-        currentTaskTitle: "Fix bug",
         createdAt: 1234567890,
         runStartedAt: 1234567900,
         mergeConflict: {
@@ -220,7 +217,6 @@ describe("persist", () => {
           worktreePath: null,
           branch: null,
           currentTaskId: null,
-          currentTaskTitle: null,
           createdAt: 1234567890,
           runStartedAt: null,
           mergeConflict: null,
@@ -247,7 +243,6 @@ describe("persist", () => {
           worktreePath: "/path/to/worktree",
           branch: "feature-branch",
           currentTaskId: "task-123",
-          currentTaskTitle: "Fix bug",
           createdAt: 1234567890,
           runStartedAt: 1234567900,
           mergeConflict: {
@@ -274,7 +269,6 @@ describe("persist", () => {
       expect(instance?.worktreePath).toBe("/path/to/worktree")
       expect(instance?.branch).toBe("feature-branch")
       expect(instance?.currentTaskId).toBe("task-123")
-      expect(instance?.currentTaskTitle).toBe("Fix bug")
       expect(instance?.createdAt).toBe(1234567890)
       expect(instance?.runStartedAt).toBe(1234567900)
       expect(instance?.mergeConflict).toEqual({
@@ -297,7 +291,6 @@ describe("persist", () => {
           worktreePath: null,
           branch: null,
           currentTaskId: null,
-          currentTaskTitle: null,
           createdAt: undefined as any,
           runStartedAt: null,
           mergeConflict: null,
@@ -332,7 +325,6 @@ describe("persist", () => {
           worktreePath: null,
           branch: null,
           currentTaskId: null,
-          currentTaskTitle: null,
           createdAt: 1234567890,
           runStartedAt: null,
           mergeConflict: null,
@@ -348,7 +340,6 @@ describe("persist", () => {
           worktreePath: "/worktree",
           branch: "feature",
           currentTaskId: "task-1",
-          currentTaskTitle: "Task One",
           createdAt: 1234567891,
           runStartedAt: 1234567895,
           mergeConflict: null,
@@ -625,7 +616,6 @@ describe("persist", () => {
               worktreePath: null,
               branch: null,
               currentTaskId: null,
-              currentTaskTitle: null,
               createdAt: 1234567890,
               runStartedAt: null,
               mergeConflict: null,
@@ -667,7 +657,6 @@ describe("persist", () => {
               worktreePath: null,
               branch: null,
               currentTaskId: null,
-              currentTaskTitle: null,
               createdAt: 1234567890,
               runStartedAt: null,
               mergeConflict: null,
@@ -683,7 +672,6 @@ describe("persist", () => {
               worktreePath: "/worktree",
               branch: "feature",
               currentTaskId: "task-1",
-              currentTaskTitle: "Task",
               createdAt: 1234567891,
               runStartedAt: 1234567900,
               mergeConflict: null,
@@ -716,7 +704,6 @@ describe("persist", () => {
               worktreePath: null,
               branch: null,
               currentTaskId: null,
-              currentTaskTitle: null,
               createdAt: 1234567890,
               runStartedAt: null,
               mergeConflict: null,
@@ -747,7 +734,6 @@ describe("persist", () => {
               worktreePath: null,
               branch: null,
               currentTaskId: null,
-              currentTaskTitle: null,
               createdAt: 1234567890,
               runStartedAt: 1234567900,
               mergeConflict: null,
@@ -804,7 +790,6 @@ describe("persist", () => {
             worktreePath: "/worktree/active",
             branch: "feature-active",
             currentTaskId: "task-active",
-            currentTaskTitle: "Active Task",
             createdAt: 1234567890,
             runStartedAt: 1234567900,
             mergeConflict: {
@@ -828,7 +813,6 @@ describe("persist", () => {
             worktreePath: "/worktree/inactive",
             branch: "feature-inactive",
             currentTaskId: null,
-            currentTaskTitle: null,
             createdAt: 1234567891,
             runStartedAt: null,
             mergeConflict: null,
@@ -855,7 +839,6 @@ describe("persist", () => {
       expect(activeRestored.worktreePath).toBe(activeOriginal.worktreePath)
       expect(activeRestored.branch).toBe(activeOriginal.branch)
       expect(activeRestored.currentTaskId).toBe(activeOriginal.currentTaskId)
-      expect(activeRestored.currentTaskTitle).toBe(activeOriginal.currentTaskTitle)
       expect(activeRestored.createdAt).toBe(activeOriginal.createdAt)
       expect(activeRestored.runStartedAt).toBe(activeOriginal.runStartedAt)
       expect(activeRestored.mergeConflict).toEqual(activeOriginal.mergeConflict)

@@ -24,7 +24,6 @@ export const Starting: Story = {
       timestamp: Date.now(),
       action: "starting",
       taskId: "rui-4rt",
-      taskTitle: "Implement user authentication",
     },
   },
 }
@@ -36,7 +35,6 @@ export const Completed: Story = {
       timestamp: Date.now(),
       action: "completed",
       taskId: "rui-4rt",
-      taskTitle: "Implement user authentication",
     },
   },
 }
@@ -70,8 +68,6 @@ export const StartingLongTitle: Story = {
       timestamp: Date.now(),
       action: "starting",
       taskId: "rui-long",
-      taskTitle:
-        "This is a very long task title that might need to be truncated when displayed in the UI component",
     },
   },
 }
@@ -83,8 +79,6 @@ export const CompletedLongTitle: Story = {
       timestamp: Date.now(),
       action: "completed",
       taskId: "rui-long",
-      taskTitle:
-        "Refactor the authentication module to use OAuth2 with support for multiple providers including Google, GitHub, and Microsoft Azure AD",
     },
   },
 }
@@ -96,7 +90,6 @@ export const SubtaskStarting: Story = {
       timestamp: Date.now(),
       action: "starting",
       taskId: "rui-4rt.5",
-      taskTitle: "Configure OAuth callback URLs",
     },
   },
 }
@@ -108,7 +101,6 @@ export const SubtaskCompleted: Story = {
       timestamp: Date.now(),
       action: "completed",
       taskId: "rui-4rt.5.2",
-      taskTitle: "Test Google OAuth flow",
     },
   },
 }
@@ -122,7 +114,6 @@ export const BothStates: Story = {
           timestamp: Date.now() - 60000,
           action: "starting",
           taskId: "rui-4rt",
-          taskTitle: "Implement user authentication",
         }}
       />
       <TaskLifecycleEvent
@@ -131,7 +122,6 @@ export const BothStates: Story = {
           timestamp: Date.now(),
           action: "completed",
           taskId: "rui-4rt",
-          taskTitle: "Implement user authentication",
         }}
       />
     </div>

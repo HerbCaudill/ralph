@@ -15,7 +15,6 @@ function createTestSession(overrides: Partial<PersistedSession> = {}): Persisted
     startedAt: Date.now(),
     completedAt: null,
     taskId: null,
-    taskTitle: null,
     tokenUsage: { input: 100, output: 50 },
     contextWindow: { used: 1000, max: 200000 },
     session: { current: 1, total: 10 },
@@ -922,7 +921,6 @@ describe("EventDatabase", () => {
         id: "v2-session",
         instanceId: "test-instance",
         taskId: "task-123",
-        taskTitle: "Test Task",
         startedAt: now,
         eventCount: 3,
         events: [
@@ -974,7 +972,6 @@ describe("EventDatabase", () => {
         startedAt: Date.now(),
         completedAt: null,
         taskId: null,
-        taskTitle: null,
         tokenUsage: { input: 0, output: 0 },
         contextWindow: { used: 0, max: 200000 },
         session: { current: 0, total: 0 },
@@ -1591,7 +1588,6 @@ describe("EventDatabase", () => {
         startedAt: Date.now(),
         completedAt: null,
         taskId: null,
-        taskTitle: null,
         tokenUsage: { input: 0, output: 0 },
         contextWindow: { used: 0, max: 200000 },
         session: { current: 0, total: 0 },
@@ -1604,7 +1600,6 @@ describe("EventDatabase", () => {
       const retrieved = await db.getSession("minimal")
       expect(retrieved).toBeDefined()
       expect(retrieved?.taskId).toBeNull()
-      expect(retrieved?.taskTitle).toBeNull()
       expect(retrieved?.completedAt).toBeNull()
     })
 
@@ -1663,13 +1658,11 @@ describe("EventDatabase", () => {
         createTestSession({
           id: "empty-strings",
           taskId: "", // Empty string instead of null
-          taskTitle: "",
         }),
       )
 
       const session = await db.getSession("empty-strings")
       expect(session?.taskId).toBe("")
-      expect(session?.taskTitle).toBe("")
     })
 
     it("handles very long session IDs", async () => {

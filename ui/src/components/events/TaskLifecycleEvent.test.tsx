@@ -15,7 +15,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "starting",
         taskId: "r-abc1",
-        taskTitle: undefined,
       })
     })
 
@@ -28,7 +27,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "starting",
         taskId: "r-abc1.2",
-        taskTitle: undefined,
       })
     })
 
@@ -41,7 +39,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "starting",
         taskId: "rui-4rt.5.a2",
-        taskTitle: undefined,
       })
     })
 
@@ -54,7 +51,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "starting",
         taskId: "r-xyz9",
-        taskTitle: undefined,
       })
     })
 
@@ -67,7 +63,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "starting",
         taskId: "r-abc1",
-        taskTitle: undefined,
       })
     })
 
@@ -80,7 +75,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "starting",
         taskId: "r-def3",
-        taskTitle: undefined,
       })
     })
   })
@@ -95,7 +89,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "completed",
         taskId: "r-abc1",
-        taskTitle: undefined,
       })
     })
 
@@ -108,7 +101,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "completed",
         taskId: "r-abc1.2",
-        taskTitle: undefined,
       })
     })
 
@@ -121,7 +113,6 @@ describe("parseTaskLifecycleEvent", () => {
         timestamp: 1234567890,
         action: "completed",
         taskId: "r-xyz9",
-        taskTitle: undefined,
       })
     })
   })
@@ -145,59 +136,29 @@ describe("parseTaskLifecycleEvent", () => {
       expect(parseTaskLifecycleEvent("<start_task>invalidid</start_task>", 1234567890)).toBeNull()
     })
 
-    it("parses emoji starting format", () => {
+    it("does not parse emoji starting format (no longer supported)", () => {
       const result = parseTaskLifecycleEvent("✨ Starting **r-abc1**", 1234567890)
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "starting",
-        taskId: "r-abc1",
-        taskTitle: undefined,
-      })
+      expect(result).toBeNull()
     })
 
     it("parses emoji completed format", () => {
       const result = parseTaskLifecycleEvent("✅ Completed **r-abc1**", 1234567890)
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "completed",
-        taskId: "r-abc1",
-        taskTitle: undefined,
-      })
+      expect(result).toBeNull()
     })
 
-    it("parses emoji format with task title", () => {
+    it("does not parse emoji format with task title (no longer supported)", () => {
       const result = parseTaskLifecycleEvent("✨ Starting **r-abc1 Fix the bug**", 1234567890)
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "starting",
-        taskId: "r-abc1",
-        taskTitle: "Fix the bug",
-      })
+      expect(result).toBeNull()
     })
 
-    it("parses emoji completed format with task title", () => {
+    it("does not parse emoji completed format with task title (no longer supported)", () => {
       const result = parseTaskLifecycleEvent("✅ Completed **r-xyz9 Add new feature**", 1234567890)
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "completed",
-        taskId: "r-xyz9",
-        taskTitle: "Add new feature",
-      })
+      expect(result).toBeNull()
     })
 
-    it("parses emoji format with sub-task ID", () => {
+    it("does not parse emoji format with sub-task ID (no longer supported)", () => {
       const result = parseTaskLifecycleEvent("✨ Starting **r-abc1.2**", 1234567890)
-      expect(result).toEqual({
-        type: "task_lifecycle",
-        timestamp: 1234567890,
-        action: "starting",
-        taskId: "r-abc1.2",
-        taskTitle: undefined,
-      })
+      expect(result).toBeNull()
     })
   })
 })
@@ -211,6 +172,15 @@ describe("TaskLifecycleEvent", () => {
   })
 
   it("renders starting event", () => {
+    // Add task to store for title lookup
+    useAppStore.getState().setTasks([
+      {
+        id: "r-abc1",
+        title: "Add new feature",
+        status: "in_progress",
+      },
+    ])
+
     render(
       <TaskLifecycleEvent
         event={{
@@ -218,7 +188,6 @@ describe("TaskLifecycleEvent", () => {
           timestamp: 1234567890,
           action: "starting",
           taskId: "r-abc1",
-          taskTitle: "Add new feature",
         }}
       />,
     )
@@ -233,6 +202,15 @@ describe("TaskLifecycleEvent", () => {
   })
 
   it("renders completed event", () => {
+    // Add task to store for title lookup
+    useAppStore.getState().setTasks([
+      {
+        id: "r-xyz9",
+        title: "Fix the bug",
+        status: "closed",
+      },
+    ])
+
     render(
       <TaskLifecycleEvent
         event={{
@@ -240,7 +218,6 @@ describe("TaskLifecycleEvent", () => {
           timestamp: 1234567890,
           action: "completed",
           taskId: "r-xyz9",
-          taskTitle: "Fix the bug",
         }}
       />,
     )
@@ -269,7 +246,7 @@ describe("TaskLifecycleEvent", () => {
     expect(screen.getByRole("link", { name: "View task r-def3" })).toBeInTheDocument()
   })
 
-  it("looks up task title from store when not provided in event", () => {
+  it("looks up task title from store", () => {
     // Add task to store
     useAppStore.getState().setTasks([
       {
@@ -286,7 +263,6 @@ describe("TaskLifecycleEvent", () => {
           timestamp: 1234567890,
           action: "starting",
           taskId: "r-store1",
-          // No taskTitle provided
         }}
       />,
     )
@@ -297,8 +273,8 @@ describe("TaskLifecycleEvent", () => {
     expect(screen.getByText("Task from store")).toBeInTheDocument()
   })
 
-  it("prefers event taskTitle over store title", () => {
-    // Add task to store with different title
+  it("uses store title for task", () => {
+    // Add task to store
     useAppStore.getState().setTasks([
       {
         id: "r-pref1",
@@ -314,14 +290,12 @@ describe("TaskLifecycleEvent", () => {
           timestamp: 1234567890,
           action: "starting",
           taskId: "r-pref1",
-          taskTitle: "Event title",
         }}
       />,
     )
 
-    // Event title should take precedence
-    expect(screen.getByText("Event title")).toBeInTheDocument()
-    expect(screen.queryByText("Store title")).not.toBeInTheDocument()
+    // Store title should be used
+    expect(screen.getByText("Store title")).toBeInTheDocument()
   })
 
   it("looks up task title from store for completed events", () => {
@@ -341,7 +315,6 @@ describe("TaskLifecycleEvent", () => {
           timestamp: 1234567890,
           action: "completed",
           taskId: "r-comp1",
-          // No taskTitle provided
         }}
       />,
     )
@@ -379,7 +352,6 @@ describe("TaskLifecycleEvent", () => {
           timestamp: 1234567890,
           action: "starting",
           taskId: "r-target",
-          // No taskTitle provided
         }}
       />,
     )
@@ -432,7 +404,6 @@ describe("TaskLifecycleEvent", () => {
           timestamp: 1234567890,
           action: "starting",
           taskId: "r-abc1",
-          taskTitle: "Test task",
         }}
       />,
     )

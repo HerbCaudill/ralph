@@ -32,15 +32,10 @@ describe("useSessionPersistence", () => {
     },
   })
 
-  const createRalphTaskStartedEvent = (
-    timestamp: number,
-    taskId: string,
-    taskTitle: string,
-  ): ChatEvent => ({
+  const createRalphTaskStartedEvent = (timestamp: number, taskId: string): ChatEvent => ({
     type: "ralph_task_started",
     timestamp,
     taskId,
-    taskTitle,
   })
 
   const createRalphTaskCompletedEvent = (timestamp: number): ChatEvent => ({
@@ -230,7 +225,7 @@ describe("useSessionPersistence", () => {
       const startTime = Date.now()
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
-        createRalphTaskStartedEvent(startTime + 100, "task-1", "Test Task"),
+        createRalphTaskStartedEvent(startTime + 100, "task-1"),
         createAssistantEvent(startTime + 200, "Working on the task..."),
         createRalphTaskCompletedEvent(startTime + 300),
       ]
@@ -270,7 +265,7 @@ describe("useSessionPersistence", () => {
       // Include a task so this session is NOT filtered out
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
-        createRalphTaskStartedEvent(startTime + 50, "task-1", "Test Task"),
+        createRalphTaskStartedEvent(startTime + 50, "task-1"),
         createAssistantEvent(startTime + 100, "Working on it..."),
         createAssistantEvent(startTime + 200, "Done! <promise>COMPLETE</promise>"),
       ]
@@ -315,7 +310,7 @@ describe("useSessionPersistence", () => {
         ...defaultOptions,
         events: [
           createSystemInitEvent(startTime1),
-          createRalphTaskStartedEvent(startTime1 + 50, "task-1", "First Task"),
+          createRalphTaskStartedEvent(startTime1 + 50, "task-1"),
           createAssistantEvent(startTime1 + 100, "First session"),
         ] as ChatEvent[],
       })
@@ -329,7 +324,7 @@ describe("useSessionPersistence", () => {
         ...defaultOptions,
         events: [
           createSystemInitEvent(startTime1),
-          createRalphTaskStartedEvent(startTime1 + 50, "task-1", "First Task"),
+          createRalphTaskStartedEvent(startTime1 + 50, "task-1"),
           createAssistantEvent(startTime1 + 100, "First session"),
           createSystemInitEvent(startTime2),
         ] as ChatEvent[],
@@ -358,7 +353,7 @@ describe("useSessionPersistence", () => {
       const startTime = Date.now()
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
-        createRalphTaskStartedEvent(startTime + 100, "r-abc123", "Fix the bug"),
+        createRalphTaskStartedEvent(startTime + 100, "r-abc123"),
         createRalphTaskCompletedEvent(startTime + 200),
       ]
 
@@ -379,11 +374,10 @@ describe("useSessionPersistence", () => {
       })
 
       // Session is saved multiple times as events arrive. The final save (on completion)
-      // should have the task info extracted from the ralph_task_started event.
+      // should have the task ID extracted from the ralph_task_started event.
       const mockCalls = vi.mocked(eventDatabase.saveSession).mock.calls
       const savedSession = mockCalls[mockCalls.length - 1]?.[0]
       expect(savedSession?.taskId).toBe("r-abc123")
-      expect(savedSession?.taskTitle).toBe("Fix the bug")
     })
   })
 
@@ -616,7 +610,7 @@ describe("useSessionPersistence", () => {
       const startTime = Date.now()
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
-        createRalphTaskStartedEvent(startTime + 100, "task-1", "Test Task"),
+        createRalphTaskStartedEvent(startTime + 100, "task-1"),
         createAssistantEvent(startTime + 200, "Working on the task..."),
         createRalphTaskCompletedEvent(startTime + 300),
       ]
@@ -643,11 +637,10 @@ describe("useSessionPersistence", () => {
       expect(eventDatabase.deleteSession).not.toHaveBeenCalled()
       expect(eventDatabase.saveSession).toHaveBeenCalled()
 
-      // Verify the final save has the task info
+      // Verify the final save has the task ID
       const mockCalls = vi.mocked(eventDatabase.saveSession).mock.calls
       const finalSave = mockCalls[mockCalls.length - 1]?.[0]
       expect(finalSave?.taskId).toBe("task-1")
-      expect(finalSave?.taskTitle).toBe("Test Task")
     })
 
     it("filters sessions with very few events (< 3)", async () => {
@@ -728,7 +721,7 @@ describe("useSessionPersistence", () => {
       // This session has a task started event, even though it also has COMPLETE signal
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
-        createRalphTaskStartedEvent(startTime + 100, "task-1", "Fix bug"),
+        createRalphTaskStartedEvent(startTime + 100, "task-1"),
         createAssistantEvent(startTime + 200, "Done. <promise>COMPLETE</promise>"),
       ]
 

@@ -30,7 +30,6 @@ function createSessionMetadata(
     startedAt,
     completedAt: null,
     taskId: taskId ?? null,
-    taskTitle: null,
     tokenUsage: { input: 0, output: 0 },
     contextWindow: { used: 0, max: 200000 },
     session: { current: 1, total: 1 },

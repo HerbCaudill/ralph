@@ -97,12 +97,20 @@ describe("EventStream", () => {
     })
 
     it("renders ralph_task_started events as structured blocks", () => {
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "r-abc1",
+          title: "Implement new feature",
+          status: "in_progress",
+        },
+      ])
+
       // Add a ralph_task_started event (emitted by CLI)
       useAppStore.getState().addEvent({
         type: "ralph_task_started",
         timestamp: Date.now(),
         taskId: "r-abc1",
-        taskTitle: "Implement new feature",
         session: 1,
       })
 
@@ -117,12 +125,20 @@ describe("EventStream", () => {
     })
 
     it("renders ralph_task_completed events as structured blocks", () => {
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "r-xyz9",
+          title: "Fix the bug",
+          status: "closed",
+        },
+      ])
+
       // Add a ralph_task_completed event (emitted by CLI)
       useAppStore.getState().addEvent({
         type: "ralph_task_completed",
         timestamp: Date.now(),
         taskId: "r-xyz9",
-        taskTitle: "Fix the bug",
         session: 1,
       })
 
@@ -141,6 +157,15 @@ describe("EventStream", () => {
       // Simulate the scenario where CLI emits both:
       // 1. The assistant message with text
       // 2. The structured ralph_task_started event
+
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "r-abc1",
+          title: "Implement new feature",
+          status: "in_progress",
+        },
+      ])
 
       // First, the assistant message with task lifecycle text
       useAppStore.getState().addEvent({
@@ -161,7 +186,6 @@ describe("EventStream", () => {
         type: "ralph_task_started",
         timestamp: Date.now(),
         taskId: "r-abc1",
-        taskTitle: "Implement new feature",
         session: 1,
       })
 
@@ -264,6 +288,15 @@ describe("EventStream", () => {
     })
 
     it("shows task from session events when ralph_task_started event exists", () => {
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-123",
+          title: "Fix the bug",
+          status: "in_progress",
+        },
+      ])
+
       // Add session boundary
       useAppStore.getState().addEvent({
         type: "system",
@@ -275,7 +308,6 @@ describe("EventStream", () => {
         type: "ralph_task_started",
         timestamp: 1705600001000,
         taskId: "rui-123",
-        taskTitle: "Fix the bug",
       })
       renderEventStream()
       // Check that task is shown in session bar
@@ -289,6 +321,20 @@ describe("EventStream", () => {
     // session history via a dropdown.
 
     it("displays current task instead of session info when task exists", () => {
+      // Add tasks to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-abc",
+          title: "Current work",
+          status: "open",
+        },
+        {
+          id: "rui-def",
+          title: "Latest work",
+          status: "in_progress",
+        },
+      ])
+
       // Add two sessions
       useAppStore.getState().addEvent({
         type: "system",
@@ -299,7 +345,6 @@ describe("EventStream", () => {
         type: "ralph_task_started",
         timestamp: 1705600000500,
         taskId: "rui-abc",
-        taskTitle: "Current work",
       })
       useAppStore.getState().addEvent({
         type: "system",
@@ -310,7 +355,6 @@ describe("EventStream", () => {
         type: "ralph_task_started",
         timestamp: 1705600001500,
         taskId: "rui-def",
-        taskTitle: "Latest work",
       })
 
       renderEventStream()
@@ -323,6 +367,15 @@ describe("EventStream", () => {
     })
 
     it("truncates long task titles", () => {
+      // Add task with long title to store for lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-456",
+          title: "This is a very long task description that should be truncated",
+          status: "in_progress",
+        },
+      ])
+
       useAppStore.getState().addEvent({
         type: "system",
         timestamp: 1705600000000,
@@ -332,7 +385,6 @@ describe("EventStream", () => {
         type: "ralph_task_started",
         timestamp: 1705600000500,
         taskId: "rui-456",
-        taskTitle: "This is a very long task description that should be truncated",
       })
       renderEventStream()
       const sessionBar = screen.getByTestId("session-bar")
@@ -348,19 +400,19 @@ describe("EventStream", () => {
     // Note: Navigation to past sessions is now done through the session history
     // dropdown rather than Previous/Next buttons.
 
-    it("shows task without ID when ralph_task_started event has only taskTitle", () => {
-      // Add a ralph_task_started event with only taskTitle (no taskId)
+    it("shows no active task when ralph_task_started event has no taskId", () => {
+      // Add a ralph_task_started event with no taskId
+      // (taskTitle is no longer supported on events - titles are looked up from store)
       useAppStore.getState().addEvent({
         type: "ralph_task_started",
         timestamp: 1705600000500,
-        taskTitle: "Support pausing via stdin",
       })
 
       renderEventStream()
 
-      // Should show the task title in the session bar
+      // Should show "No active task" since there's no taskId to look up
       const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("Support pausing via stdin")
+      expect(sessionBar).toHaveTextContent("No active task")
 
       // Should not show any task ID link
       expect(screen.queryByRole("button", { name: /View task/ })).not.toBeInTheDocument()
@@ -440,12 +492,17 @@ describe("EventStream", () => {
     })
 
     it("prefers ralph_task_started event over in-progress task from store", () => {
-      // Set up tasks store with an in-progress task
+      // Set up tasks store with both tasks
       useAppStore.getState().setTasks([
         {
           id: "rui-in-progress",
           title: "Task from store",
           status: "in_progress",
+        },
+        {
+          id: "rui-event-task",
+          title: "Task from event",
+          status: "open",
         },
       ])
 
@@ -454,7 +511,6 @@ describe("EventStream", () => {
         type: "ralph_task_started",
         timestamp: 1705600000500,
         taskId: "rui-event-task",
-        taskTitle: "Task from event",
       })
 
       renderEventStream()
@@ -478,9 +534,17 @@ describe("EventStream", () => {
           worktreePath: null,
           branch: null,
           currentTaskId: "rui-restored",
-          currentTaskTitle: "Restored task from server",
           createdAt: Date.now(),
           mergeConflict: null,
+        },
+      ])
+
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-restored",
+          title: "Restored task from server",
+          status: "in_progress",
         },
       ])
 
@@ -510,9 +574,22 @@ describe("EventStream", () => {
           worktreePath: null,
           branch: null,
           currentTaskId: "rui-instance",
-          currentTaskTitle: "Task from instance",
           createdAt: Date.now(),
           mergeConflict: null,
+        },
+      ])
+
+      // Add tasks to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-event",
+          title: "Task from event",
+          status: "in_progress",
+        },
+        {
+          id: "rui-instance",
+          title: "Task from instance",
+          status: "open",
         },
       ])
 
@@ -521,7 +598,6 @@ describe("EventStream", () => {
         type: "ralph_task_started",
         timestamp: 1705600000500,
         taskId: "rui-event",
-        taskTitle: "Task from event",
       })
 
       renderEventStream()
@@ -533,13 +609,19 @@ describe("EventStream", () => {
       expect(sessionBar).not.toHaveTextContent("Task from instance")
     })
 
-    it("prefers in-progress task from store over instance currentTaskId", () => {
+    it("uses instance currentTaskId over in-progress task from store (fallback priority)", () => {
       // Simulate page reload where both store task and instance info exist
+      // but no ralph_task_started event
       useAppStore.getState().setTasks([
         {
           id: "rui-store",
           title: "Task from store",
           status: "in_progress",
+        },
+        {
+          id: "rui-instance",
+          title: "Task from instance",
+          status: "open",
         },
       ])
 
@@ -552,7 +634,6 @@ describe("EventStream", () => {
           worktreePath: null,
           branch: null,
           currentTaskId: "rui-instance",
-          currentTaskTitle: "Task from instance",
           createdAt: Date.now(),
           mergeConflict: null,
         },
@@ -560,15 +641,16 @@ describe("EventStream", () => {
 
       renderEventStream()
 
-      // Should show the task from the store (higher priority than instance)
+      // Should show the task from instance (higher priority than in-progress fallback)
+      // Priority: ralph_task_started event > instance.currentTaskId > in-progress task from store
       const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-store")
-      expect(sessionBar).toHaveTextContent("Task from store")
-      expect(sessionBar).not.toHaveTextContent("Task from instance")
+      expect(sessionBar).toHaveTextContent("rui-instance")
+      expect(sessionBar).toHaveTextContent("Task from instance")
+      expect(sessionBar).not.toHaveTextContent("Task from store")
     })
 
-    it("shows task from instance with only currentTaskTitle (no currentTaskId)", () => {
-      // Simulate scenario where task doesn't have an ID but has a title
+    it("shows nothing when instance has no currentTaskId and no tasks in store", () => {
+      // Simulate scenario where there's no task ID
       useAppStore.getState().hydrateInstances([
         {
           id: DEFAULT_INSTANCE_ID,
@@ -578,7 +660,6 @@ describe("EventStream", () => {
           worktreePath: null,
           branch: null,
           currentTaskId: null,
-          currentTaskTitle: "Ad-hoc task without ID",
           createdAt: Date.now(),
           mergeConflict: null,
         },
@@ -586,9 +667,9 @@ describe("EventStream", () => {
 
       renderEventStream()
 
-      // Should show the task title even without ID
+      // Session bar should exist but not show any task info
       const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("Ad-hoc task without ID")
+      expect(sessionBar).toBeInTheDocument()
     })
   })
 

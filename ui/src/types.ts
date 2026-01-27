@@ -131,7 +131,6 @@ export interface TaskLifecycleEventData {
   timestamp: number
   action: "starting" | "completed"
   taskId: string
-  taskTitle?: string
 }
 
 export interface ErrorEventData {
@@ -317,9 +316,6 @@ export interface RalphInstance {
   /** ID of the current task being worked on */
   currentTaskId: string | null
 
-  /** Title of the current task being worked on (for display purposes) */
-  currentTaskTitle: string | null
-
   /** Timestamp when the instance was created */
   createdAt: number
 
@@ -342,7 +338,6 @@ export interface SerializedInstance {
   branch: string | null
   createdAt: number
   currentTaskId: string | null
-  currentTaskTitle: string | null
   status: RalphStatus
   mergeConflict: MergeConflict | null
 }

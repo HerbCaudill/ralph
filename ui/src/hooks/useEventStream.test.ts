@@ -15,7 +15,6 @@ let mockSelectedSession: {
     timestamp: number
     message?: string
     taskId?: string
-    taskTitle?: string
   }>
   metadata?: { taskId?: string; title?: string }
 } | null = null
@@ -150,12 +149,19 @@ describe("useEventStream", () => {
   })
 
   describe("session task detection", () => {
-    it("returns task from ralph_task_started event", () => {
+    it("returns task from ralph_task_started event with title from store", () => {
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-123",
+          title: "Fix the bug",
+          status: "in_progress",
+        },
+      ])
       useAppStore.getState().addEvent({
         type: "ralph_task_started",
         timestamp: 1705600000000,
         taskId: "rui-123",
-        taskTitle: "Fix the bug",
       })
 
       const { result } = renderHook(() => useEventStream())
@@ -166,22 +172,37 @@ describe("useEventStream", () => {
       })
     })
 
-    it("returns task with only title when no taskId in event", () => {
+    it("falls back to taskId as title when no taskId in event", () => {
+      // ralph_task_started without taskId results in null being extracted
       useAppStore.getState().addEvent({
         type: "ralph_task_started",
         timestamp: 1705600000000,
-        taskTitle: "Ad hoc task",
+        // No taskId in event
       })
 
       const { result } = renderHook(() => useEventStream())
 
+      // No task ID found, so sessionTask should be null
+      expect(result.current.sessionTask).toBeNull()
+    })
+
+    it("falls back to taskId when task not found in store", () => {
+      useAppStore.getState().addEvent({
+        type: "ralph_task_started",
+        timestamp: 1705600000000,
+        taskId: "rui-123",
+      })
+
+      const { result } = renderHook(() => useEventStream())
+
+      // Falls back to showing the ID as the title
       expect(result.current.sessionTask).toEqual({
-        id: null,
-        title: "Ad hoc task",
+        id: "rui-123",
+        title: "rui-123",
       })
     })
 
-    it("looks up task title from store when event has only taskId", () => {
+    it("looks up task title from store when event has taskId", () => {
       useAppStore.getState().setTasks([
         {
           id: "rui-123",
@@ -235,7 +256,6 @@ describe("useEventStream", () => {
           worktreePath: null,
           branch: null,
           currentTaskId: "rui-789",
-          currentTaskTitle: "Restored task",
           createdAt: Date.now(),
           mergeConflict: null,
         },
@@ -243,9 +263,10 @@ describe("useEventStream", () => {
 
       const { result } = renderHook(() => useEventStream())
 
+      // Title falls back to the task ID since task not in store
       expect(result.current.sessionTask).toEqual({
         id: "rui-789",
-        title: "Restored task",
+        title: "rui-789",
       })
     })
 
@@ -255,6 +276,15 @@ describe("useEventStream", () => {
     })
 
     it("uses task from historical session metadata", () => {
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "rui-historical",
+          title: "Historical task title",
+          status: "closed",
+        },
+      ])
+
       mockSelectedSession = {
         id: "session-123",
         createdAt: new Date().toISOString(),
@@ -262,7 +292,6 @@ describe("useEventStream", () => {
         events: [],
         metadata: {
           taskId: "rui-historical",
-          title: "Historical task title",
         },
       }
 
@@ -303,7 +332,6 @@ describe("useEventStream", () => {
             type: "ralph_task_started",
             timestamp: 1705600000000,
             taskId: "event-task",
-            taskTitle: "Event Task",
           },
         ],
         metadata: {
@@ -311,6 +339,15 @@ describe("useEventStream", () => {
           title: "Metadata Task",
         },
       }
+
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "metadata-task",
+          title: "Metadata Task",
+          status: "in_progress",
+        },
+      ])
 
       const { result } = renderHook(() => useEventStream())
 

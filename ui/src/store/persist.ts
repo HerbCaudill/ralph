@@ -47,7 +47,6 @@ export interface SerializedRalphInstance {
   worktreePath: string | null
   branch: string | null
   currentTaskId: string | null
-  currentTaskTitle: string | null
   createdAt: number
   runStartedAt: number | null
   mergeConflict: {
@@ -136,7 +135,6 @@ export function serializeInstances(
       worktreePath: instance.worktreePath,
       branch: instance.branch,
       currentTaskId: instance.currentTaskId,
-      currentTaskTitle: instance.currentTaskTitle,
       createdAt: instance.createdAt,
       runStartedAt: instance.runStartedAt,
       mergeConflict: instance.mergeConflict,
@@ -173,7 +171,6 @@ export function deserializeInstances(
       worktreePath: item.worktreePath,
       branch: item.branch,
       currentTaskId: item.currentTaskId,
-      currentTaskTitle: item.currentTaskTitle,
       createdAt: item.createdAt ?? Date.now(),
       runStartedAt: item.runStartedAt,
       mergeConflict: item.mergeConflict,

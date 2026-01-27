@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { EventList, useEventListState } from "./EventList"
 import type { ChatEvent } from "@/types"
 import { renderHook } from "@testing-library/react"
+import { useAppStore } from "@/store"
 
 // Helper to render EventList
 function renderEventList(props: Parameters<typeof EventList>[0]) {
@@ -144,13 +145,29 @@ describe("EventList", () => {
   })
 
   describe("task lifecycle events", () => {
+    beforeEach(() => {
+      useAppStore.getState().reset()
+    })
+
+    afterEach(() => {
+      useAppStore.getState().reset()
+    })
+
     it("renders task started events", () => {
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "task-1",
+          title: "Test task",
+          status: "in_progress",
+        },
+      ])
+
       const events: ChatEvent[] = [
         {
           type: "ralph_task_started",
           timestamp: Date.now(),
           taskId: "task-1",
-          taskTitle: "Test task",
         },
       ]
 
@@ -159,12 +176,20 @@ describe("EventList", () => {
     })
 
     it("renders task completed events", () => {
+      // Add task to store for title lookup
+      useAppStore.getState().setTasks([
+        {
+          id: "task-1",
+          title: "Test task",
+          status: "closed",
+        },
+      ])
+
       const events: ChatEvent[] = [
         {
           type: "ralph_task_completed",
           timestamp: Date.now(),
           taskId: "task-1",
-          taskTitle: "Test task",
         },
       ]
 
@@ -307,7 +332,6 @@ describe("useEventListState", () => {
         type: "ralph_task_started",
         timestamp: Date.now(),
         taskId: "task-1",
-        taskTitle: "Test task",
       },
     ]
 
@@ -332,7 +356,6 @@ describe("useEventListState", () => {
         type: "ralph_task_completed",
         timestamp: Date.now(),
         taskId: "task-1",
-        taskTitle: "Test task",
       },
     ]
 

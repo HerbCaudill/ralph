@@ -44,7 +44,6 @@ describe("importState", () => {
           startedAt: 1706313600000,
           completedAt: null,
           taskId: "task-1",
-          taskTitle: "Test Task",
           tokenUsage: { input: 100, output: 50 },
           contextWindow: { used: 150, max: 200000 },
           session: { current: 1, total: 5 },

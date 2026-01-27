@@ -68,7 +68,6 @@ describe("useStoreHydration", () => {
       startedAt: 1000,
       completedAt: null,
       taskId: null,
-      taskTitle: null,
       tokenUsage: { input: 100, output: 50 },
       contextWindow: { used: 150, max: 200000 },
       session: { current: 1, total: 1 },
@@ -100,7 +99,6 @@ describe("useStoreHydration", () => {
     const mockSession: PersistedTaskChatSession = {
       id: "default-task-abc-1000",
       taskId: "abc",
-      taskTitle: "Test Task",
       instanceId: "default",
       createdAt: 1000,
       updatedAt: 2000,
@@ -169,7 +167,6 @@ describe("useStoreHydration", () => {
       startedAt: 1000,
       completedAt: null,
       taskId: null,
-      taskTitle: null,
       tokenUsage: { input: 0, output: 0 },
       contextWindow: { used: 0, max: 200000 },
       session: { current: 0, total: 0 },
@@ -200,7 +197,6 @@ describe("useStoreHydration", () => {
     const mockSession: PersistedTaskChatSession = {
       id: "default-task-abc-1000",
       taskId: "abc",
-      taskTitle: "Test Task",
       instanceId: "default",
       createdAt: 1000,
       updatedAt: 2000,

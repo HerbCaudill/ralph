@@ -9,10 +9,9 @@ export function TaskLifecycleEvent({ event, className }: Props) {
   const isStarting = event.action === "starting"
   const Icon = isStarting ? IconPlayerPlay : IconCheck
 
-  // Look up task title from store if not provided in the event
+  // Look up task title from store
   const tasks = useAppStore(selectTasks)
-  const taskTitle =
-    event.taskTitle || (event.taskId ? tasks.find(t => t.id === event.taskId)?.title : undefined)
+  const taskTitle = event.taskId ? tasks.find(t => t.id === event.taskId)?.title : undefined
 
   return (
     <div

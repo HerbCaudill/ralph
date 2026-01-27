@@ -26,7 +26,6 @@ describe("useEventLogs", () => {
       startedAt: new Date("2026-01-23T10:00:00.000Z").getTime(),
       completedAt: new Date("2026-01-23T11:00:00.000Z").getTime(),
       taskId: "r-test.1",
-      taskTitle: "Test task 1",
       tokenUsage: { input: 0, output: 0 },
       contextWindow: { used: 0, max: 200000 },
       session: { current: 0, total: 0 },
@@ -40,7 +39,6 @@ describe("useEventLogs", () => {
       startedAt: new Date("2026-01-22T15:30:00.000Z").getTime(),
       completedAt: new Date("2026-01-22T16:30:00.000Z").getTime(),
       taskId: "r-test.2",
-      taskTitle: "Test task 2",
       tokenUsage: { input: 0, output: 0 },
       contextWindow: { used: 0, max: 200000 },
       session: { current: 0, total: 0 },
@@ -54,7 +52,6 @@ describe("useEventLogs", () => {
       startedAt: new Date("2026-01-21T09:00:00.000Z").getTime(),
       completedAt: new Date("2026-01-21T10:00:00.000Z").getTime(),
       taskId: null,
-      taskTitle: null,
       tokenUsage: { input: 0, output: 0 },
       contextWindow: { used: 0, max: 200000 },
       session: { current: 0, total: 0 },
@@ -121,7 +118,8 @@ describe("useEventLogs", () => {
       expect(log.id).toBe("abc12345")
       expect(log.eventCount).toBe(42)
       expect(log.metadata?.taskId).toBe("r-test.1")
-      expect(log.metadata?.title).toBe("Test task 1")
+      // Title is undefined here - it's looked up from beads by the component, not stored in the log
+      expect(log.metadata?.title).toBeUndefined()
     })
 
     it("handles event logs without metadata", async () => {
@@ -240,7 +238,6 @@ describe("useEventLogs", () => {
         startedAt: new Date("2026-01-24T12:00:00.000Z").getTime(),
         completedAt: new Date("2026-01-24T13:00:00.000Z").getTime(),
         taskId: null,
-        taskTitle: null,
         tokenUsage: { input: 0, output: 0 },
         contextWindow: { used: 0, max: 200000 },
         session: { current: 0, total: 0 },

@@ -78,10 +78,11 @@ function toSessionSummary(metadata: PersistedSession): SessionSummary | null {
     createdAt: new Date(metadata.startedAt).toISOString(),
     eventCount: metadata.eventCount,
     metadata:
-      metadata.taskId || metadata.taskTitle ?
+      metadata.taskId ?
         {
-          taskId: metadata.taskId ?? undefined,
-          title: metadata.taskTitle ?? undefined,
+          taskId: metadata.taskId,
+          // Title will be looked up from beads by enrichedSessions
+          title: undefined,
         }
       : undefined,
   }
@@ -161,27 +162,20 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
         // Convert PersistedEvent to ChatEvent
         const events = persistedEvents.map(pe => pe.event)
 
-        // Derive task info from events (same logic as useEventStream's sessionTask)
+        // Derive task ID from events
         let derivedTaskId: string | undefined
-        let derivedTaskTitle: string | undefined
         for (const event of events) {
           if ((event as { type: string }).type === "ralph_task_started") {
             derivedTaskId = (event as { taskId?: string }).taskId ?? undefined
-            derivedTaskTitle = (event as { taskTitle?: string }).taskTitle ?? undefined
             break
           }
         }
 
-        // If we derived task info from events that differs from stored metadata, update it
-        const needsUpdate =
-          (derivedTaskId && derivedTaskId !== metadata.taskId) ||
-          (derivedTaskTitle && derivedTaskTitle !== metadata.taskTitle)
-
-        if (needsUpdate) {
+        // If we derived task ID from events that differs from stored metadata, update it
+        if (derivedTaskId && derivedTaskId !== metadata.taskId) {
           const updatedMetadata = {
             ...metadata,
-            taskId: derivedTaskId ?? metadata.taskId,
-            taskTitle: derivedTaskTitle ?? metadata.taskTitle,
+            taskId: derivedTaskId,
           }
           await eventDatabase.saveSession(updatedMetadata)
           // Refresh sessions to update the dropdown
@@ -190,12 +184,8 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
 
         // Use updated metadata for the summary
         const summaryMetadata =
-          needsUpdate ?
-            {
-              ...metadata,
-              taskId: derivedTaskId ?? metadata.taskId,
-              taskTitle: derivedTaskTitle ?? metadata.taskTitle,
-            }
+          derivedTaskId && derivedTaskId !== metadata.taskId ?
+            { ...metadata, taskId: derivedTaskId }
           : metadata
 
         // Combine metadata with events
@@ -240,17 +230,10 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
   const tasks = useAppStore(selectTasks)
 
   // Enrich sessions with task titles from the store
-  // This looks up task titles on-the-fly instead of relying on stale IndexedDB data
+  // Task titles are always looked up on-the-fly from beads, never cached
   const enrichedSessions = useMemo(() => {
-    if (!tasks.length) return sessions
-
     return sessions.map(session => {
-      // If the session already has a title that's different from the ID, keep it
-      if (session.metadata?.title && session.metadata.title !== session.metadata.taskId) {
-        return session
-      }
-
-      // If we have a taskId, try to look up the title from the current tasks
+      // If we have a taskId, look up the title from the current tasks
       if (session.metadata?.taskId) {
         const task = tasks.find((t: Task) => t.id === session.metadata?.taskId)
         if (task?.title) {
@@ -263,7 +246,6 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
           }
         }
       }
-
       return session
     })
   }, [sessions, tasks])

@@ -7,7 +7,7 @@ import {
   countSessions,
   getEventsForSession,
   getTaskFromSessionEvents,
-  getSessionTaskInfos,
+  getSessionTaskIds,
   selectSessionCount,
   selectCurrentSessionEvents,
   selectViewingSessionIndex,
@@ -971,7 +971,6 @@ describe("useAppStore", () => {
           branch: "feature/branch1",
           createdAt: 1700000000000,
           currentTaskId: "task-1",
-          currentTaskTitle: "Fix bug",
           status: "running",
           mergeConflict: null,
         },
@@ -983,7 +982,6 @@ describe("useAppStore", () => {
           branch: null,
           createdAt: 1700000001000,
           currentTaskId: null,
-          currentTaskTitle: null,
           status: "stopped",
           mergeConflict: null,
         },
@@ -1031,7 +1029,6 @@ describe("useAppStore", () => {
           branch: "feature/new",
           createdAt: 1700000000000,
           currentTaskId: "new-task",
-          currentTaskTitle: "New task title",
           status: "running",
           mergeConflict: null,
         },
@@ -1064,7 +1061,6 @@ describe("useAppStore", () => {
           branch: null,
           createdAt: Date.now(),
           currentTaskId: null,
-          currentTaskTitle: null,
           status: "stopped",
           mergeConflict: null,
         },
@@ -1076,7 +1072,6 @@ describe("useAppStore", () => {
           branch: null,
           createdAt: Date.now(),
           currentTaskId: null,
-          currentTaskTitle: null,
           status: "stopped",
           mergeConflict: null,
         },
@@ -1104,7 +1099,6 @@ describe("useAppStore", () => {
           branch: null,
           createdAt: Date.now(),
           currentTaskId: null,
-          currentTaskTitle: null,
           status: "stopped",
           mergeConflict: null,
         },
@@ -1136,7 +1130,6 @@ describe("useAppStore", () => {
           branch: "main",
           createdAt: 1700000000000,
           currentTaskId: "task-1",
-          currentTaskTitle: "Task 1",
           status: "running",
           mergeConflict: null,
         },
@@ -1948,26 +1941,27 @@ describe("useAppStore", () => {
         expect(getTaskFromSessionEvents(events)).toBeNull()
       })
 
-      it("extracts task from ralph_task_started event", () => {
+      it("extracts task ID from ralph_task_started event", () => {
         const events = [
           { type: "system", timestamp: 1000, subtype: "init" },
           {
             type: "ralph_task_started",
             timestamp: 1001,
             taskId: "rui-123",
-            taskTitle: "Fix the bug",
           },
           { type: "assistant", timestamp: 1002 },
         ] as ChatEvent[]
-        const task = getTaskFromSessionEvents(events)
-        expect(task).toEqual({ id: "rui-123", title: "Fix the bug" })
+        const taskId = getTaskFromSessionEvents(events)
+        // Returns just the task ID string, not an object
+        expect(taskId).toBe("rui-123")
       })
 
-      it("returns task with ID as title if ralph_task_started event has taskId but no taskTitle", () => {
+      it("returns task ID from ralph_task_started event", () => {
         const events = [
           { type: "ralph_task_started", timestamp: 1000, taskId: "rui-123" },
         ] as ChatEvent[]
-        expect(getTaskFromSessionEvents(events)).toEqual({ id: "rui-123", title: "rui-123" })
+        // Returns just the task ID string, not an object
+        expect(getTaskFromSessionEvents(events)).toBe("rui-123")
       })
 
       it("returns null if ralph_task_started event is missing both taskId and taskTitle", () => {
@@ -1975,27 +1969,27 @@ describe("useAppStore", () => {
         expect(getTaskFromSessionEvents(events)).toBeNull()
       })
 
-      it("returns the first task when multiple ralph_task_started events exist", () => {
+      it("returns the first task ID when multiple ralph_task_started events exist", () => {
         const events = [
           {
             type: "ralph_task_started",
             timestamp: 1000,
             taskId: "rui-111",
-            taskTitle: "First task",
           },
           {
             type: "ralph_task_started",
             timestamp: 1001,
             taskId: "rui-222",
-            taskTitle: "Second task",
           },
         ] as ChatEvent[]
-        const task = getTaskFromSessionEvents(events)
-        expect(task).toEqual({ id: "rui-111", title: "First task" })
+        const taskId = getTaskFromSessionEvents(events)
+        // Returns just the task ID string, not an object
+        expect(taskId).toBe("rui-111")
       })
 
-      // Fallback tests - parsing from assistant message text
-      it("extracts task from <start_task> tag in assistant message when no ralph_task_started event", () => {
+      // Note: The function no longer parses task info from assistant message text.
+      // It only looks at ralph_task_started events. Task titles are looked up from beads.
+      it("returns null when only <start_task> tag in assistant message (no ralph_task_started event)", () => {
         const events = [
           { type: "system", timestamp: 1000, subtype: "init" },
           {
@@ -2006,11 +2000,12 @@ describe("useAppStore", () => {
             },
           },
         ] as ChatEvent[]
-        const task = getTaskFromSessionEvents(events)
-        expect(task).toEqual({ id: "rui-123", title: "rui-123" })
+        const taskId = getTaskFromSessionEvents(events)
+        // Function only looks at ralph_task_started events, not assistant message text
+        expect(taskId).toBeNull()
       })
 
-      it("extracts task from emoji format in assistant message when no ralph_task_started event", () => {
+      it("returns null when only emoji format in assistant message (no ralph_task_started event)", () => {
         const events = [
           { type: "system", timestamp: 1000, subtype: "init" },
           {
@@ -2021,18 +2016,18 @@ describe("useAppStore", () => {
             },
           },
         ] as ChatEvent[]
-        const task = getTaskFromSessionEvents(events)
-        expect(task).toEqual({ id: "rui-456", title: "Fix the button layout" })
+        const taskId = getTaskFromSessionEvents(events)
+        // Function only looks at ralph_task_started events, not assistant message text
+        expect(taskId).toBeNull()
       })
 
-      it("prefers ralph_task_started event over assistant message text", () => {
+      it("returns task ID from ralph_task_started event ignoring assistant message text", () => {
         const events = [
           { type: "system", timestamp: 1000, subtype: "init" },
           {
             type: "ralph_task_started",
             timestamp: 1001,
             taskId: "rui-111",
-            taskTitle: "From event",
           },
           {
             type: "assistant",
@@ -2042,11 +2037,12 @@ describe("useAppStore", () => {
             },
           },
         ] as ChatEvent[]
-        const task = getTaskFromSessionEvents(events)
-        expect(task).toEqual({ id: "rui-111", title: "From event" })
+        const taskId = getTaskFromSessionEvents(events)
+        // Only returns the ID from ralph_task_started event
+        expect(taskId).toBe("rui-111")
       })
 
-      it("returns null when assistant message has no task lifecycle event", () => {
+      it("returns null when assistant message has no ralph_task_started event", () => {
         const events = [
           { type: "system", timestamp: 1000, subtype: "init" },
           {
@@ -2061,9 +2057,9 @@ describe("useAppStore", () => {
       })
     })
 
-    describe("getSessionTaskInfos", () => {
+    describe("getSessionTaskIds", () => {
       it("returns empty array when no events", () => {
-        expect(getSessionTaskInfos([])).toEqual([])
+        expect(getSessionTaskIds([])).toEqual([])
       })
 
       it("returns empty array when no session boundaries", () => {
@@ -2071,10 +2067,10 @@ describe("useAppStore", () => {
           { type: "assistant", timestamp: 1000 },
           { type: "user_message", timestamp: 1001 },
         ] as ChatEvent[]
-        expect(getSessionTaskInfos(events)).toEqual([])
+        expect(getSessionTaskIds(events)).toEqual([])
       })
 
-      it("returns task info for each session", () => {
+      it("returns task ID for each session", () => {
         const events = [
           // First session
           { type: "system", timestamp: 1000, subtype: "init" },
@@ -2082,7 +2078,6 @@ describe("useAppStore", () => {
             type: "ralph_task_started",
             timestamp: 1001,
             taskId: "rui-111",
-            taskTitle: "First task",
           },
           { type: "assistant", timestamp: 1002 },
           // Second session
@@ -2091,7 +2086,6 @@ describe("useAppStore", () => {
             type: "ralph_task_started",
             timestamp: 2001,
             taskId: "rui-222",
-            taskTitle: "Second task",
           },
           { type: "assistant", timestamp: 2002 },
           // Third session
@@ -2100,14 +2094,9 @@ describe("useAppStore", () => {
             type: "ralph_task_started",
             timestamp: 3001,
             taskId: "rui-333",
-            taskTitle: "Third task",
           },
         ] as ChatEvent[]
-        expect(getSessionTaskInfos(events)).toEqual([
-          { id: "rui-111", title: "First task" },
-          { id: "rui-222", title: "Second task" },
-          { id: "rui-333", title: "Third task" },
-        ])
+        expect(getSessionTaskIds(events)).toEqual(["rui-111", "rui-222", "rui-333"])
       })
 
       it("returns null values for sessions without tasks", () => {
@@ -2118,7 +2107,6 @@ describe("useAppStore", () => {
             type: "ralph_task_started",
             timestamp: 1001,
             taskId: "rui-111",
-            taskTitle: "First task",
           },
           // Second session - no task
           { type: "system", timestamp: 2000, subtype: "init" },
@@ -2129,14 +2117,9 @@ describe("useAppStore", () => {
             type: "ralph_task_started",
             timestamp: 3001,
             taskId: "rui-333",
-            taskTitle: "Third task",
           },
         ] as ChatEvent[]
-        expect(getSessionTaskInfos(events)).toEqual([
-          { id: "rui-111", title: "First task" },
-          { id: null, title: null },
-          { id: "rui-333", title: "Third task" },
-        ])
+        expect(getSessionTaskIds(events)).toEqual(["rui-111", null, "rui-333"])
       })
     })
 
@@ -2156,13 +2139,12 @@ describe("useAppStore", () => {
           type: "ralph_task_started",
           timestamp: 1001,
           taskId: "rui-999",
-          taskTitle: "Latest task",
         })
-        const task = selectSessionTask(useAppStore.getState())
-        expect(task).toEqual({ id: "rui-999", title: "Latest task" })
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBe("rui-999")
       })
 
-      it("returns task from specific session when viewingSessionIndex is set", () => {
+      it("returns task ID from specific session when viewingSessionIndex is set", () => {
         // First session
         useAppStore.getState().addEvent({
           type: "system",
@@ -2173,7 +2155,6 @@ describe("useAppStore", () => {
           type: "ralph_task_started",
           timestamp: 1001,
           taskId: "rui-111",
-          taskTitle: "First task",
         })
 
         // Second session
@@ -2186,19 +2167,18 @@ describe("useAppStore", () => {
           type: "ralph_task_started",
           timestamp: 2001,
           taskId: "rui-222",
-          taskTitle: "Second task",
         })
 
         // View first session
         useAppStore.getState().setViewingSessionIndex(0)
 
-        const task = selectSessionTask(useAppStore.getState())
-        expect(task).toEqual({ id: "rui-111", title: "First task" })
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBe("rui-111")
       })
 
-      it("falls back to instance currentTaskId/currentTaskTitle when no events", () => {
+      it("falls back to instance currentTaskId when no events", () => {
         // Simulate page reload scenario where server sends instance info
-        // with currentTaskId/currentTaskTitle but events don't include ralph_task_started
+        // with currentTaskId but events don't include ralph_task_started
         useAppStore.getState().hydrateInstances([
           {
             id: DEFAULT_INSTANCE_ID,
@@ -2208,18 +2188,17 @@ describe("useAppStore", () => {
             worktreePath: null,
             branch: null,
             currentTaskId: "rui-restored",
-            currentTaskTitle: "Restored task from server",
             createdAt: Date.now(),
             mergeConflict: null,
           },
         ])
 
-        const task = selectSessionTask(useAppStore.getState())
-        expect(task).toEqual({ id: "rui-restored", title: "Restored task from server" })
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBe("rui-restored")
       })
 
-      it("falls back to instance with only currentTaskTitle (no currentTaskId)", () => {
-        // Simulate scenario where task doesn't have an ID but has a title
+      it("returns null when instance has no currentTaskId", () => {
+        // Simulate scenario where there's no task ID
         useAppStore.getState().hydrateInstances([
           {
             id: DEFAULT_INSTANCE_ID,
@@ -2229,14 +2208,13 @@ describe("useAppStore", () => {
             worktreePath: null,
             branch: null,
             currentTaskId: null,
-            currentTaskTitle: "Ad-hoc task without ID",
             createdAt: Date.now(),
             mergeConflict: null,
           },
         ])
 
-        const task = selectSessionTask(useAppStore.getState())
-        expect(task).toEqual({ id: null, title: "Ad-hoc task without ID" })
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBeNull()
       })
 
       it("prefers event task over instance fallback", () => {
@@ -2250,7 +2228,6 @@ describe("useAppStore", () => {
             worktreePath: null,
             branch: null,
             currentTaskId: "rui-instance",
-            currentTaskTitle: "Task from instance",
             createdAt: Date.now(),
             mergeConflict: null,
           },
@@ -2261,11 +2238,10 @@ describe("useAppStore", () => {
           type: "ralph_task_started",
           timestamp: 1001,
           taskId: "rui-event",
-          taskTitle: "Task from event",
         })
 
-        const task = selectSessionTask(useAppStore.getState())
-        expect(task).toEqual({ id: "rui-event", title: "Task from event" })
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBe("rui-event")
       })
     })
 

@@ -45,10 +45,11 @@ function toEventLogSummary(metadata: SessionMetadata): EventLogSummary {
     createdAt: new Date(metadata.startedAt).toISOString(),
     eventCount: metadata.eventCount,
     metadata:
-      metadata.taskId || metadata.taskTitle ?
+      metadata.taskId ?
         {
-          taskId: metadata.taskId ?? undefined,
-          title: metadata.taskTitle ?? undefined,
+          taskId: metadata.taskId,
+          // Title will be looked up from beads by the component
+          title: undefined,
         }
       : undefined,
   }

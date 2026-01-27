@@ -19,7 +19,6 @@ function createInstance(id: string, name: string, status: RalphStatus = "stopped
     worktreePath: null,
     branch: null,
     currentTaskId: null,
-    currentTaskTitle: null,
     createdAt: Date.now(),
     runStartedAt: null,
     mergeConflict: null,
