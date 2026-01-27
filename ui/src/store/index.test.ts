@@ -1808,6 +1808,16 @@ describe("useAppStore", () => {
         expect(isSessionBoundary(event)).toBe(true)
       })
 
+      it("returns true for ralph_session_start events", () => {
+        const event = {
+          type: "ralph_session_start",
+          session: 1,
+          totalSessions: 5,
+          timestamp: 1000,
+        } as ChatEvent
+        expect(isSessionBoundary(event)).toBe(true)
+      })
+
       it("returns false for other events", () => {
         expect(isSessionBoundary({ type: "assistant", timestamp: 1000 } as ChatEvent)).toBe(false)
         expect(isSessionBoundary({ type: "user_message", timestamp: 1000 } as ChatEvent)).toBe(
@@ -1827,6 +1837,28 @@ describe("useAppStore", () => {
       it("returns indices of all session boundaries", () => {
         const events = createEventsWithSessions()
         expect(getSessionBoundaries(events)).toEqual([0, 3, 5])
+      })
+
+      it("returns indices for ralph_session_start events", () => {
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 2,
+            totalSessions: 5,
+            timestamp: 2000,
+          } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 3,
+            totalSessions: 5,
+            timestamp: 3000,
+          } as ChatEvent,
+          { type: "assistant", timestamp: 3001 } as ChatEvent,
+        ]
+        expect(getSessionBoundaries(events)).toEqual([0, 2, 4])
       })
 
       it("returns empty array when no boundaries exist", () => {

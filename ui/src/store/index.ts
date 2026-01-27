@@ -362,9 +362,11 @@ export interface AppActions {
   reset: () => void
 }
 
-/**  Checks if an event is an session boundary (system init event). */
+/**  Checks if an event is a session boundary (system init or ralph_session_start event). */
 export function isSessionBoundary(event: ChatEvent): boolean {
-  return event.type === "system" && (event as any).subtype === "init"
+  if (event.type === "system" && (event as any).subtype === "init") return true
+  if (event.type === "ralph_session_start") return true
+  return false
 }
 
 /**
