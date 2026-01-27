@@ -119,14 +119,24 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
             )
           }
 
+          // In v7+ schema, events are stored separately in the events table.
+          // For v6 data (migration), events may be inline.
+          let taskChatEvents = taskChatSession.events ?? []
+
+          // If no inline events (v7 schema), load from the events table
+          if (taskChatEvents.length === 0) {
+            const persistedEvents = await eventDatabase.getEventsForSession(taskChatSession.id)
+            taskChatEvents = persistedEvents.map(pe => pe.event)
+          }
+
           // Restore task chat events
-          if (taskChatSession.events.length > 0) {
+          if (taskChatEvents.length > 0) {
             useAppStore.setState({
-              taskChatEvents: taskChatSession.events,
+              taskChatEvents: taskChatEvents,
             })
 
             console.log(
-              `[useStoreHydration] Restored ${taskChatSession.events.length} task chat events from session ${taskChatSession.id}`,
+              `[useStoreHydration] Restored ${taskChatEvents.length} task chat events from session ${taskChatSession.id}`,
             )
           }
 

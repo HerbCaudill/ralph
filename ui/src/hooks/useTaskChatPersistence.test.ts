@@ -13,6 +13,7 @@ vi.mock("@/lib/persistence", () => ({
   eventDatabase: {
     init: vi.fn().mockResolvedValue(undefined),
     saveTaskChatSession: vi.fn().mockResolvedValue(undefined),
+    saveEvent: vi.fn().mockResolvedValue(undefined),
     deleteTaskChatSession: vi.fn().mockResolvedValue(undefined),
   },
 }))
@@ -262,13 +263,19 @@ describe("useTaskChatPersistence", () => {
         await result.current.saveCurrentSession()
       })
 
+      // Session data should not include events (v7+ schema - events stored separately)
       expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledWith(
         expect.objectContaining({
           instanceId: "default",
           taskId: "task-123",
           taskTitle: "Test Task",
           messages,
-          events,
+        }),
+      )
+      // Verify events are NOT included in session data
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          events: expect.anything(),
         }),
       )
     })
@@ -473,7 +480,7 @@ describe("useTaskChatPersistence", () => {
   })
 
   describe("session data", () => {
-    it("includes correct metadata in saved session", async () => {
+    it("includes correct metadata in saved session (v7+ schema - events stored separately)", async () => {
       vi.setSystemTime(new Date(1706123456789))
 
       const messages: TaskChatMessage[] = [
@@ -496,7 +503,7 @@ describe("useTaskChatPersistence", () => {
         }),
       )
 
-      // Allow session to be created
+      // Allow session to be created and events to be saved
       await act(async () => {
         await vi.advanceTimersByTimeAsync(10)
       })
@@ -507,6 +514,7 @@ describe("useTaskChatPersistence", () => {
         await result.current.saveCurrentSession()
       })
 
+      // Session metadata should not include events (v7+ schema)
       expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledWith(
         expect.objectContaining({
           instanceId: "test-instance",
@@ -516,7 +524,27 @@ describe("useTaskChatPersistence", () => {
           eventCount: 2,
           lastEventSequence: 1,
           messages,
-          events,
+        }),
+      )
+      // Verify events are NOT included in session data
+      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          events: expect.anything(),
+        }),
+      )
+
+      // Events should be saved separately to the events store
+      expect(eventDatabase.saveEvent).toHaveBeenCalledTimes(2)
+      expect(eventDatabase.saveEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: result.current.currentSessionId,
+          eventType: "user",
+        }),
+      )
+      expect(eventDatabase.saveEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: result.current.currentSessionId,
+          eventType: "assistant",
         }),
       )
     })

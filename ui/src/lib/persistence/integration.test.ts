@@ -361,7 +361,8 @@ describe("Persistence Integration Tests", () => {
       expect(savedSession).toBeDefined()
       expect(savedSession?.taskId).toBe(taskId)
       expect(savedSession?.messages.length).toBe(messages.length)
-      expect(savedSession?.events.length).toBe(events.length)
+      // In v7+ schema, events are stored separately in the events table
+      expect(savedSession?.eventCount).toBe(events.length)
     })
 
     it("preserves task chat across simulated page reload", async () => {
@@ -418,7 +419,8 @@ describe("Persistence Integration Tests", () => {
       const recoveredSession = await db.getLatestTaskChatSession(instanceId, taskId)
       expect(recoveredSession).toBeDefined()
       expect(recoveredSession?.messages.length).toBe(messages.length)
-      expect(recoveredSession?.events.length).toBe(events.length)
+      // In v7+ schema, events are stored separately in the events table
+      expect(recoveredSession?.eventCount).toBe(events.length)
     })
 
     it("clears task chat session correctly", async () => {

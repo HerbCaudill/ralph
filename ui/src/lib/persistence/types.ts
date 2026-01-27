@@ -130,19 +130,29 @@ export interface TaskChatSessionMetadata {
 }
 
 /**
- * Full persisted task chat session data including all messages and events.
+ * Full persisted task chat session data including all messages.
  * Stored in IndexedDB for offline access and reconnection.
+ *
+ * Schema v7+: Events are stored separately in the events table (same as regular sessions).
+ * The `events` field is optional during migration:
+ * - When reading v6 data, events will be present
+ * - When reading v7 data, events are fetched separately from the events store
+ * - New writes in v7+ should not include events (use the events table instead)
  */
 export interface PersistedTaskChatSession extends TaskChatSessionMetadata {
   /** All messages in this task chat session */
   messages: TaskChatMessage[]
 
-  /** All events in this task chat session */
-  events: ChatEvent[]
+  /**
+   * Events for this task chat session.
+   * @deprecated In v7+, events are stored in the separate events table.
+   * This field exists for backward compatibility with v6 data.
+   */
+  events?: ChatEvent[]
 }
 
 /**  Database schema version for migrations. */
-export const PERSISTENCE_SCHEMA_VERSION = 6
+export const PERSISTENCE_SCHEMA_VERSION = 7
 
 /**  IndexedDB store names. */
 export const STORE_NAMES = {

@@ -2,7 +2,8 @@
  * Hook for persisting task chat sessions to IndexedDB.
  *
  * Auto-saves task chat sessions with debouncing:
- * - Debounced save on new events (500ms debounce)
+ * - Debounced save on new messages (500ms debounce)
+ * - Events are saved individually to the events store (unified storage)
  * - Clear session on explicit clear history
  *
  * Generates a stable GUID per session for reliable storage and retrieval.
@@ -10,7 +11,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react"
 import { eventDatabase } from "@/lib/persistence"
-import type { PersistedTaskChatSession } from "@/lib/persistence"
+import type { PersistedEvent, PersistedTaskChatSession } from "@/lib/persistence"
 import type { ChatEvent, TaskChatMessage } from "@/types"
 import { useAppStore } from "@/store"
 
@@ -24,6 +25,22 @@ const SAVE_DEBOUNCE_MS = 500
 function generateSessionId(instanceId: string, taskId: string | null, startedAt: number): string {
   const taskPart = taskId ?? "untitled"
   return `${instanceId}-task-${taskPart}-${startedAt}`
+}
+
+/**
+ * Generates a unique event ID based on session ID and event index.
+ * Format: "{sessionId}-event-{index}"
+ */
+function generateEventId(sessionId: string, eventIndex: number): string {
+  return `${sessionId}-event-${eventIndex}`
+}
+
+/**
+ * Extracts the event type from a ChatEvent.
+ * Falls back to "unknown" if type is not available.
+ */
+function getEventType(event: ChatEvent): string {
+  return event.type ?? "unknown"
 }
 
 export interface UseTaskChatPersistenceOptions {
@@ -54,8 +71,8 @@ export interface UseTaskChatPersistenceResult {
  * Hook to persist task chat sessions to IndexedDB.
  *
  * Automatically saves sessions when:
- * 1. New events are added (debounced to avoid excessive writes)
- * 2. New messages are added (debounced)
+ * 1. New messages are added (debounced to avoid excessive writes)
+ * 2. Events are saved individually to the events store (unified storage)
  *
  * The hook tracks the current session and maintains a stable ID for it.
  */
@@ -95,7 +112,24 @@ export function useTaskChatPersistence(
   }, [])
 
   /**
+   * Build a PersistedEvent from a ChatEvent.
+   */
+  const buildPersistedEvent = useCallback(
+    (event: ChatEvent, eventIndex: number, sessionId: string): PersistedEvent => {
+      return {
+        id: generateEventId(sessionId, eventIndex),
+        sessionId,
+        timestamp: event.timestamp ?? Date.now(),
+        eventType: getEventType(event),
+        event,
+      }
+    },
+    [],
+  )
+
+  /**
    * Build a PersistedTaskChatSession from the current state.
+   * Note: Events are stored separately in the events table (v7+ schema).
    */
   const buildSessionData = useCallback((): PersistedTaskChatSession | null => {
     const session = currentSessionRef.current
@@ -115,12 +149,32 @@ export function useTaskChatPersistence(
       eventCount: events.length,
       lastEventSequence,
       messages,
-      events,
+      // Events are stored separately in the events table (v7+ schema)
     }
   }, [instanceId, taskTitle, messages, events])
 
   /**
+   * Save a single event to IndexedDB.
+   */
+  const saveEvent = useCallback(
+    async (event: ChatEvent, eventIndex: number, sessionId: string): Promise<void> => {
+      try {
+        const persistedEvent = buildPersistedEvent(event, eventIndex, sessionId)
+        await eventDatabase.saveEvent(persistedEvent)
+      } catch (error) {
+        console.error("[useTaskChatPersistence] Failed to save event:", error, {
+          eventIndex,
+          sessionId,
+          eventType: event.type,
+        })
+      }
+    },
+    [buildPersistedEvent],
+  )
+
+  /**
    * Save the session to IndexedDB immediately (no debounce).
+   * This saves session metadata and messages. Events are saved separately.
    */
   const saveImmediately = useCallback(async (): Promise<void> => {
     const sessionData = buildSessionData()
@@ -129,18 +183,17 @@ export function useTaskChatPersistence(
     try {
       await eventDatabase.saveTaskChatSession(sessionData)
 
-      // Update tracking state
+      // Update tracking state (only for messages - events tracked separately)
       if (currentSessionRef.current) {
         currentSessionRef.current = {
           ...currentSessionRef.current,
-          lastSavedEventCount: events.length,
           lastSavedMessageCount: messages.length,
         }
       }
     } catch (error) {
       console.error("[useTaskChatPersistence] Failed to save session:", error)
     }
-  }, [buildSessionData, events.length, messages.length])
+  }, [buildSessionData, messages.length])
 
   /**
    * Save the session with debouncing.
@@ -264,7 +317,8 @@ export function useTaskChatPersistence(
   ])
 
   /**
-   * Auto-save when events or messages change (debounced).
+   * Auto-save new events to the events store (immediately, no debounce).
+   * Events are persisted individually for efficient append-only writes.
    */
   useEffect(() => {
     if (!enabled) return
@@ -272,12 +326,46 @@ export function useTaskChatPersistence(
 
     const session = currentSessionRef.current
     const hasNewEvents = events.length > session.lastSavedEventCount
+
+    if (!hasNewEvents) return
+
+    // Save new events (async, fire and forget)
+    const saveNewEvents = async () => {
+      const newStartIndex = session.lastSavedEventCount
+      const newEvents = events.slice(newStartIndex)
+
+      for (let i = 0; i < newEvents.length; i++) {
+        const eventIndex = newStartIndex + i
+        await saveEvent(newEvents[i], eventIndex, session.id)
+      }
+
+      // Update tracking state
+      if (currentSessionRef.current) {
+        currentSessionRef.current = {
+          ...currentSessionRef.current,
+          lastSavedEventCount: events.length,
+        }
+      }
+    }
+
+    saveNewEvents()
+  }, [enabled, events, saveEvent])
+
+  /**
+   * Auto-save session metadata when messages change (debounced).
+   * Events are saved separately via the effect above.
+   */
+  useEffect(() => {
+    if (!enabled) return
+    if (!currentSessionRef.current) return
+
+    const session = currentSessionRef.current
     const hasNewMessages = messages.length > session.lastSavedMessageCount
 
-    if (hasNewEvents || hasNewMessages) {
+    if (hasNewMessages) {
       saveDebounced()
     }
-  }, [enabled, events.length, messages.length, saveDebounced])
+  }, [enabled, messages.length, saveDebounced])
 
   /**
    * Initialize database on mount.

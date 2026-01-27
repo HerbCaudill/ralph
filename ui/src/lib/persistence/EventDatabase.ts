@@ -86,6 +86,7 @@ export class EventDatabase {
   private async openDatabase(): Promise<void> {
     let needsV3Migration = false
     let needsV6Migration = false
+    let needsV7Migration = false
 
     this.db = await openDB<RalphDBSchema>(DB_NAME, PERSISTENCE_SCHEMA_VERSION, {
       upgrade(db, oldVersion, _newVersion, transaction) {
@@ -213,6 +214,13 @@ export class EventDatabase {
             needsV6Migration = true
           }
         }
+
+        // Version 7: Extract task chat events to the events store (unified event storage)
+        if (oldVersion >= 6 && oldVersion < 7) {
+          // No schema changes needed - the events store already exists
+          // We just need to migrate data (extract events from chat_sessions to events store)
+          needsV7Migration = true
+        }
       },
       blocked() {
         console.warn("[EventDatabase] Database upgrade blocked by other tabs")
@@ -228,6 +236,9 @@ export class EventDatabase {
     }
     if (needsV6Migration) {
       await this.migrateV5ToV6()
+    }
+    if (needsV7Migration) {
+      await this.migrateV6ToV7()
     }
   }
 
@@ -380,6 +391,80 @@ export class EventDatabase {
         "[EventDatabase] Note: Old task_chat_sessions store exists but cannot be deleted outside upgrade",
       )
     }
+  }
+
+  /**
+   * Migrate v6 data to v7 format.
+   *
+   * This migration:
+   * 1. Extracts events from chat_sessions store (where they were embedded in v6)
+   * 2. Creates individual PersistedEvent records in the events store
+   * 3. Updates chat sessions to remove the events array
+   *
+   * This is idempotent - sessions that have already been migrated (no events array)
+   * will be skipped.
+   */
+  private async migrateV6ToV7(): Promise<void> {
+    if (!this.db) return
+
+    console.log("[EventDatabase] Starting v6→v7 data migration...")
+
+    const tx = this.db.transaction([STORE_NAMES.CHAT_SESSIONS, STORE_NAMES.EVENTS], "readwrite")
+
+    const chatSessionsStore = tx.objectStore(STORE_NAMES.CHAT_SESSIONS)
+    const eventsStore = tx.objectStore(STORE_NAMES.EVENTS)
+
+    // Get all chat sessions
+    const sessions = await chatSessionsStore.getAll()
+    let migratedCount = 0
+    let eventCount = 0
+
+    for (const session of sessions) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sessionAny = session as any
+      const sessionId = sessionAny.id as string
+
+      // Skip if already migrated (no events array)
+      if (!sessionAny.events || !Array.isArray(sessionAny.events)) {
+        continue
+      }
+
+      const events = sessionAny.events as Array<{
+        type?: string
+        timestamp?: number
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [key: string]: any
+      }>
+
+      // Create individual PersistedEvent records
+      for (let index = 0; index < events.length; index++) {
+        const event = events[index]
+        const eventId = `${sessionId}-event-${index}`
+        const persistedEvent: PersistedEvent = {
+          id: eventId,
+          sessionId,
+          timestamp: event.timestamp ?? Date.now(),
+          eventType: event.type ?? "unknown",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          event: event as any,
+        }
+        await eventsStore.put(persistedEvent)
+        eventCount++
+      }
+
+      // Update chat session to remove events array
+      const updatedSession = { ...sessionAny }
+      delete updatedSession.events
+      await chatSessionsStore.put(updatedSession)
+
+      migratedCount++
+    }
+
+    await tx.done
+
+    console.log(
+      `[EventDatabase] v6→v7 migration complete: migrated ${migratedCount} chat sessions, created ${eventCount} events`,
+    )
   }
 
   /**
@@ -709,15 +794,20 @@ export class EventDatabase {
   }
 
   /**
-   * Delete a task chat session.
+   * Delete a task chat session and its associated events.
    */
   async deleteTaskChatSession(id: string): Promise<void> {
     const db = await this.ensureDb()
+
+    // First delete events for this session
+    await this.deleteEventsForSession(id)
+
+    // Then delete the session
     await db.delete(STORE_NAMES.CHAT_SESSIONS, id)
   }
 
   /**
-   * Delete all task chat sessions for an instance.
+   * Delete all task chat sessions for an instance (including associated events).
    */
   async deleteAllTaskChatSessionsForInstance(instanceId: string): Promise<void> {
     const db = await this.ensureDb()
@@ -725,6 +815,10 @@ export class EventDatabase {
     const sessions = await this.listTaskChatSessions(instanceId)
     const ids = sessions.map(s => s.id)
 
+    // First delete events for all sessions
+    await Promise.all(ids.map(id => this.deleteEventsForSession(id)))
+
+    // Then delete sessions
     const tx = db.transaction(STORE_NAMES.CHAT_SESSIONS, "readwrite")
     const store = tx.objectStore(STORE_NAMES.CHAT_SESSIONS)
 

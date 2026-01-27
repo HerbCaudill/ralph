@@ -31,6 +31,8 @@ function createTestSession(overrides: Partial<PersistedSession> = {}): Persisted
 
 /**
  * Create a test task chat session with sensible defaults.
+ * Note: In v7+ schema, events are stored separately. The events property here
+ * is for testing backward compatibility with v6 data.
  */
 function createTestTaskChatSession(
   overrides: Partial<PersistedTaskChatSession> = {},
@@ -51,6 +53,8 @@ function createTestTaskChatSession(
       { id: "msg-1", role: "user", content: "How do I fix this?", timestamp: now },
       { id: "msg-2", role: "assistant", content: "Let me help.", timestamp: now + 1 },
     ],
+    // Events are optional in v7+ schema (stored in events table)
+    // Include for backward compatibility testing
     events: [
       { type: "user_message", timestamp: now, message: "How do I fix this?" },
       { type: "assistant_text", timestamp: now + 1, content: "Let me help." },
@@ -672,6 +676,36 @@ describe("EventDatabase", () => {
         expect(await db.getTaskChatSessionMetadata("to-delete")).toBeUndefined()
       })
 
+      it("deletes a session and its associated events (v7+ schema)", async () => {
+        const sessionId = "chat-with-events"
+
+        // Save chat session (v7 style - no embedded events)
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: sessionId,
+            events: undefined,
+            eventCount: 3,
+          }),
+        )
+
+        // Save events separately (v7 pattern)
+        await db.saveEvents([
+          createTestEvent({ id: `${sessionId}-event-0`, sessionId }),
+          createTestEvent({ id: `${sessionId}-event-1`, sessionId }),
+          createTestEvent({ id: `${sessionId}-event-2`, sessionId }),
+        ])
+
+        // Verify events exist
+        expect(await db.countEventsForSession(sessionId)).toBe(3)
+
+        // Delete the chat session (should cascade to events)
+        await db.deleteTaskChatSession(sessionId)
+
+        // Verify both session and events are gone
+        expect(await db.getTaskChatSession(sessionId)).toBeUndefined()
+        expect(await db.countEventsForSession(sessionId)).toBe(0)
+      })
+
       it("does not throw when deleting non-existent session", async () => {
         await expect(db.deleteTaskChatSession("non-existent")).resolves.not.toThrow()
       })
@@ -694,6 +728,35 @@ describe("EventDatabase", () => {
         expect(await db.getTaskChatSession("session-1")).toBeUndefined()
         expect(await db.getTaskChatSession("session-2")).toBeUndefined()
         expect(await db.getTaskChatSession("session-3")).toBeDefined()
+      })
+
+      it("deletes all sessions and associated events for a specific instance (v7+ schema)", async () => {
+        // Save chat sessions with separate events (v7 pattern)
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({ id: "chat-1", instanceId: "instance-a", events: undefined }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({ id: "chat-2", instanceId: "instance-a", events: undefined }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({ id: "chat-3", instanceId: "instance-b", events: undefined }),
+        )
+
+        // Save events for these sessions
+        await db.saveEvents([
+          createTestEvent({ id: "chat-1-event-0", sessionId: "chat-1" }),
+          createTestEvent({ id: "chat-2-event-0", sessionId: "chat-2" }),
+          createTestEvent({ id: "chat-3-event-0", sessionId: "chat-3" }),
+        ])
+
+        // Delete all chat sessions for instance-a
+        await db.deleteAllTaskChatSessionsForInstance("instance-a")
+
+        // Events for instance-a sessions should be deleted
+        expect(await db.getEvent("chat-1-event-0")).toBeUndefined()
+        expect(await db.getEvent("chat-2-event-0")).toBeUndefined()
+        // Events for instance-b session should remain
+        expect(await db.getEvent("chat-3-event-0")).toBeDefined()
       })
     })
   })
@@ -1646,6 +1709,148 @@ describe("EventDatabase", () => {
       expect(events[0].timestamp).toBe(0)
       expect(events[1].timestamp).toBe(1000000000000)
       expect(events[2].timestamp).toBe(2000000000000)
+    })
+  })
+
+  describe("task chat sessions with unified event storage (v7+ schema)", () => {
+    it("stores task chat events separately in the events store", async () => {
+      const sessionId = "chat-session-v7"
+      const now = Date.now()
+
+      // Save chat session metadata (v7 pattern - no embedded events)
+      await db.saveTaskChatSession(
+        createTestTaskChatSession({
+          id: sessionId,
+          events: undefined, // No embedded events in v7+
+          eventCount: 3,
+        }),
+      )
+
+      // Save events separately
+      await db.saveEvents([
+        createTestEvent({
+          id: `${sessionId}-event-0`,
+          sessionId,
+          timestamp: now,
+          eventType: "user_message",
+        }),
+        createTestEvent({
+          id: `${sessionId}-event-1`,
+          sessionId,
+          timestamp: now + 100,
+          eventType: "assistant_text",
+        }),
+        createTestEvent({
+          id: `${sessionId}-event-2`,
+          sessionId,
+          timestamp: now + 200,
+          eventType: "tool_use",
+        }),
+      ])
+
+      // Verify chat session has no embedded events
+      const session = await db.getTaskChatSession(sessionId)
+      expect(session?.events).toBeUndefined()
+
+      // Verify events can be retrieved separately
+      const events = await db.getEventsForSession(sessionId)
+      expect(events.length).toBe(3)
+      expect(events[0].eventType).toBe("user_message")
+      expect(events[1].eventType).toBe("assistant_text")
+      expect(events[2].eventType).toBe("tool_use")
+    })
+
+    it("loads chat session metadata and events in parallel", async () => {
+      const sessionId = "chat-parallel-load"
+      const now = Date.now()
+
+      // Save chat session metadata (v7 pattern)
+      await db.saveTaskChatSession(
+        createTestTaskChatSession({
+          id: sessionId,
+          events: undefined,
+          eventCount: 3,
+        }),
+      )
+
+      // Save events separately
+      await db.saveEvents([
+        createTestEvent({ id: `${sessionId}-0`, sessionId, timestamp: now }),
+        createTestEvent({ id: `${sessionId}-1`, sessionId, timestamp: now + 100 }),
+        createTestEvent({ id: `${sessionId}-2`, sessionId, timestamp: now + 200 }),
+      ])
+
+      // Load both in parallel (as the app would do)
+      const [session, events] = await Promise.all([
+        db.getTaskChatSession(sessionId),
+        db.getEventsForSession(sessionId),
+      ])
+
+      expect(session).toBeDefined()
+      expect(session?.id).toBe(sessionId)
+      expect(session?.eventCount).toBe(3)
+      expect(events.length).toBe(3)
+    })
+
+    it("events table is shared between regular sessions and chat sessions", async () => {
+      const now = Date.now()
+      const regularSessionId = "regular-session"
+      const chatSessionId = "chat-session"
+
+      // Save regular session events
+      await db.saveEvents([
+        createTestEvent({
+          id: `${regularSessionId}-event-0`,
+          sessionId: regularSessionId,
+          timestamp: now,
+        }),
+        createTestEvent({
+          id: `${regularSessionId}-event-1`,
+          sessionId: regularSessionId,
+          timestamp: now + 100,
+        }),
+      ])
+
+      // Save chat session events
+      await db.saveEvents([
+        createTestEvent({
+          id: `${chatSessionId}-event-0`,
+          sessionId: chatSessionId,
+          timestamp: now,
+        }),
+      ])
+
+      // Verify events are correctly isolated by session ID
+      const regularEvents = await db.getEventsForSession(regularSessionId)
+      const chatEvents = await db.getEventsForSession(chatSessionId)
+
+      expect(regularEvents.length).toBe(2)
+      expect(chatEvents.length).toBe(1)
+
+      // Verify total event count in the database
+      const stats = await db.getStats()
+      expect(stats.eventCount).toBe(3)
+    })
+
+    it("supports backward compatibility with v6 data (embedded events)", async () => {
+      const sessionId = "v6-chat-session"
+      const now = Date.now()
+
+      // Save v6-style chat session with embedded events
+      const v6Session = createTestTaskChatSession({
+        id: sessionId,
+        events: [
+          { type: "user_message", timestamp: now, message: "Hello" },
+          { type: "assistant_text", timestamp: now + 100, content: "Hi there!" },
+        ],
+        eventCount: 2,
+      })
+
+      await db.saveTaskChatSession(v6Session)
+
+      // Verify events are still accessible via the session (backward compat)
+      const session = await db.getTaskChatSession(sessionId)
+      expect(session?.events?.length).toBe(2)
     })
   })
 })

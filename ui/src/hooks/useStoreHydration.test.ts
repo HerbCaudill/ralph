@@ -16,6 +16,8 @@ vi.mock("@/lib/persistence", () => ({
     init: vi.fn().mockResolvedValue(undefined),
     getLatestActiveSession: vi.fn().mockResolvedValue(undefined),
     getLatestTaskChatSessionForInstance: vi.fn().mockResolvedValue(undefined),
+    getTaskChatSession: vi.fn().mockResolvedValue(undefined),
+    getEventsForSession: vi.fn().mockResolvedValue([]),
   },
 }))
 
@@ -186,5 +188,68 @@ describe("useStoreHydration", () => {
 
     // Events should remain empty
     expect(useAppStore.getState().events).toEqual([])
+  })
+
+  it("should load task chat events from events store (v7+ schema)", async () => {
+    const mockMessages: TaskChatMessage[] = [
+      { id: "msg-1", role: "user", content: "Hello", timestamp: 1000 },
+      { id: "msg-2", role: "assistant", content: "Hi there!", timestamp: 2000 },
+    ]
+
+    // v7+ session has no embedded events
+    const mockSession: PersistedTaskChatSession = {
+      id: "default-task-abc-1000",
+      taskId: "abc",
+      taskTitle: "Test Task",
+      instanceId: "default",
+      createdAt: 1000,
+      updatedAt: 2000,
+      messageCount: 2,
+      eventCount: 2,
+      lastEventSequence: 1,
+      messages: mockMessages,
+      // No events field (v7+ schema)
+    }
+
+    // Events stored separately in events table
+    const mockPersistedEvents = [
+      {
+        id: "default-task-abc-1000-event-0",
+        sessionId: "default-task-abc-1000",
+        timestamp: 1000,
+        eventType: "user",
+        event: { type: "user", timestamp: 1000, message: { role: "user", content: "Hello" } },
+      },
+      {
+        id: "default-task-abc-1000-event-1",
+        sessionId: "default-task-abc-1000",
+        timestamp: 2000,
+        eventType: "assistant",
+        event: {
+          type: "assistant",
+          timestamp: 2000,
+          message: { content: [{ type: "text", text: "Hi there!" }] },
+        },
+      },
+    ]
+
+    // Set up mocks for this test
+    vi.mocked(eventDatabase.init).mockResolvedValue(undefined)
+    vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(undefined)
+    vi.mocked(eventDatabase.getLatestTaskChatSessionForInstance).mockResolvedValue(mockSession)
+    vi.mocked(eventDatabase.getEventsForSession).mockResolvedValue(mockPersistedEvents as any)
+
+    const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+    await waitFor(() => {
+      expect(result.current.isHydrated).toBe(true)
+    })
+
+    // Check that task chat messages were restored
+    expect(useAppStore.getState().taskChatMessages).toEqual(mockMessages)
+
+    // Check that task chat events were loaded from the events store
+    expect(eventDatabase.getEventsForSession).toHaveBeenCalledWith("default-task-abc-1000")
+    expect(useAppStore.getState().taskChatEvents).toEqual(mockPersistedEvents.map(pe => pe.event))
   })
 })
