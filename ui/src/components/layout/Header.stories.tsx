@@ -12,7 +12,7 @@ import { withStoreState } from "../../../.storybook/decorators"
  * allowing full control over the displayed state without store mocking.
  */
 const meta: Meta<typeof HeaderView> = {
-  title: "Layout/Header",
+  title: "Panels/Header",
   component: HeaderView,
   args: {
     accentColor: "#007ACC",

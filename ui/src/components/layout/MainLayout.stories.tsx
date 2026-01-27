@@ -7,7 +7,7 @@ import { TaskList } from "../tasks/TaskList"
 import type { TaskCardTask } from "@/types"
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Pages/MainLayout",
+  title: "Panels/MainLayout",
   component: MainLayout,
   parameters: {},
   decorators: [fullPageDecorator],

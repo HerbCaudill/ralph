@@ -5,7 +5,7 @@ import { useEffect } from "react"
 import type { ChatEvent } from "@/types"
 
 const meta: Meta<typeof AgentView> = {
-  title: "Pages/AgentView",
+  title: "Panels/AgentView",
   component: AgentView,
   parameters: {},
   decorators: [

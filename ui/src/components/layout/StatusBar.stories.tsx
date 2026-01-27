@@ -3,7 +3,7 @@ import { StatusBar } from "./StatusBar"
 import { withStoreState } from "../../../.storybook/decorators"
 
 const meta: Meta<typeof StatusBar> = {
-  title: "Layout/StatusBar",
+  title: "Panels/StatusBar",
   component: StatusBar,
   parameters: {},
   decorators: [

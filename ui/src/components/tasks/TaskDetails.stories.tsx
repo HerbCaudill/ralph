@@ -7,7 +7,7 @@ import type { IssueType, TaskFormValues } from "@/hooks/useTaskDetails"
 import { Button } from "@/components/ui/button"
 
 const meta: Meta<typeof TaskDetails> = {
-  title: "Tasks/TaskDetails",
+  title: "Panels/TaskDetails",
   component: TaskDetails,
   parameters: {
     layout: "fullscreen",

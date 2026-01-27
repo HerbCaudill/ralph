@@ -5,7 +5,7 @@ import { withStoreState } from "../../../.storybook/decorators"
 import { mockFetch } from "../../../.storybook/test-utils"
 
 const meta: Meta<typeof ControlBar> = {
-  title: "Layout/ControlBar",
+  title: "Panels/ControlBar",
   component: ControlBar,
   parameters: {},
 }
