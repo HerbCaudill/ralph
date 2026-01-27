@@ -15,10 +15,15 @@ import { createJSONStorage, type PersistOptions } from "zustand/middleware"
 import type { AppState, AppActions } from "./index"
 import type { RalphInstance, Theme, ClosedTasksTimeFilter, TaskGroup } from "@/types"
 import { DEFAULT_CONTEXT_WINDOW_MAX } from "./index"
-import { TASK_LIST_STATUS_STORAGE_KEY, TASK_LIST_PARENT_STORAGE_KEY } from "@/constants"
+import {
+  TASK_LIST_STATUS_STORAGE_KEY,
+  TASK_LIST_PARENT_STORAGE_KEY,
+  TASK_INPUT_DRAFT_STORAGE_KEY,
+  TASK_CHAT_INPUT_DRAFT_STORAGE_KEY,
+} from "@/constants"
 
 /** Current schema version for persistence format */
-export const PERSIST_VERSION = 2
+export const PERSIST_VERSION = 3
 
 /** Storage key for persisted state */
 export const PERSIST_NAME = "ralph-ui-store"
@@ -73,6 +78,10 @@ export interface PersistedState {
   // Task list collapsed states
   statusCollapsedState: Record<TaskGroup, boolean>
   parentCollapsedState: Record<string, boolean>
+
+  // Input draft states
+  taskInputDraft: string
+  taskChatInputDraft: string
 
   // Workspace metadata
   workspace: string | null
@@ -208,6 +217,10 @@ export function partialize(state: AppState): PersistedState {
     statusCollapsedState: state.statusCollapsedState,
     parentCollapsedState: state.parentCollapsedState,
 
+    // Input draft states
+    taskInputDraft: state.taskInputDraft,
+    taskChatInputDraft: state.taskChatInputDraft,
+
     // Workspace metadata
     workspace: state.workspace,
     branch: state.branch,
@@ -304,9 +317,10 @@ const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
  * Version history:
  * - v1: Initial schema
  * - v2: Added statusCollapsedState and parentCollapsedState (consolidated from separate localStorage keys)
+ * - v3: Added taskInputDraft and taskChatInputDraft (consolidated from separate localStorage keys)
  */
 export function migrate(persistedState: unknown, version: number): PersistedState {
-  const state = persistedState as PersistedState
+  let state = persistedState as PersistedState
 
   if (version < 2) {
     // Migrate from v1 to v2: Add collapsed states from separate localStorage keys
@@ -341,10 +355,45 @@ export function migrate(persistedState: unknown, version: number): PersistedStat
       // Ignore errors, use defaults
     }
 
-    return {
+    state = {
       ...state,
       statusCollapsedState,
       parentCollapsedState,
+    }
+  }
+
+  if (version < 3) {
+    // Migrate from v2 to v3: Add input draft states from separate localStorage keys
+    let taskInputDraft = ""
+    let taskChatInputDraft = ""
+
+    // Try to load from legacy localStorage keys
+    try {
+      const taskInputStored = localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)
+      if (taskInputStored) {
+        taskInputDraft = taskInputStored
+        // Remove the legacy key after migration
+        localStorage.removeItem(TASK_INPUT_DRAFT_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore errors, use defaults
+    }
+
+    try {
+      const taskChatInputStored = localStorage.getItem(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
+      if (taskChatInputStored) {
+        taskChatInputDraft = taskChatInputStored
+        // Remove the legacy key after migration
+        localStorage.removeItem(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore errors, use defaults
+    }
+
+    state = {
+      ...state,
+      taskInputDraft,
+      taskChatInputDraft,
     }
   }
 

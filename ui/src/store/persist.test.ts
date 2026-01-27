@@ -15,7 +15,12 @@ import {
   type SerializedRalphInstance,
   type PersistedState,
 } from "./persist"
-import { TASK_LIST_STATUS_STORAGE_KEY, TASK_LIST_PARENT_STORAGE_KEY } from "@/constants"
+import {
+  TASK_LIST_STATUS_STORAGE_KEY,
+  TASK_LIST_PARENT_STORAGE_KEY,
+  TASK_INPUT_DRAFT_STORAGE_KEY,
+  TASK_CHAT_INPUT_DRAFT_STORAGE_KEY,
+} from "@/constants"
 import { DEFAULT_CONTEXT_WINDOW_MAX, DEFAULT_INSTANCE_ID } from "./index"
 
 // Helper to create a mock RalphInstance
@@ -104,7 +109,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
 describe("persist", () => {
   describe("constants", () => {
     it("exports PERSIST_VERSION", () => {
-      expect(PERSIST_VERSION).toBe(2)
+      expect(PERSIST_VERSION).toBe(3)
     })
 
     it("exports PERSIST_NAME", () => {
@@ -605,6 +610,8 @@ describe("persist", () => {
           isSearchVisible: true,
           statusCollapsedState: { open: false, deferred: true, closed: true },
           parentCollapsedState: {},
+          taskInputDraft: "",
+          taskChatInputDraft: "",
           workspace: "/new/workspace",
           branch: "develop",
           issuePrefix: "DEV",
@@ -888,7 +895,7 @@ describe("persist", () => {
       global.localStorage = originalLocalStorage
     })
 
-    it("returns state unchanged when version >= 2", () => {
+    it("returns state unchanged when version >= 3", () => {
       const state: PersistedState = {
         sidebarWidth: 400,
         taskChatOpen: true,
@@ -903,6 +910,8 @@ describe("persist", () => {
         isSearchVisible: false,
         statusCollapsedState: { open: true, deferred: false, closed: false },
         parentCollapsedState: { "parent-1": true },
+        taskInputDraft: "my draft",
+        taskChatInputDraft: "chat draft",
         workspace: null,
         branch: null,
         issuePrefix: null,
@@ -912,10 +921,12 @@ describe("persist", () => {
         activeInstanceId: "default",
       }
 
-      const result = migrate(state, 2)
+      const result = migrate(state, 3)
 
       expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
       expect(result.parentCollapsedState).toEqual({ "parent-1": true })
+      expect(result.taskInputDraft).toBe("my draft")
+      expect(result.taskChatInputDraft).toBe("chat draft")
     })
 
     it("migrates from v1 by loading legacy localStorage keys", () => {
@@ -1023,6 +1034,109 @@ describe("persist", () => {
         deferred: true, // default
         closed: true, // default
       })
+    })
+
+    it("migrates from v2 by loading legacy input draft localStorage keys", () => {
+      // Set up legacy localStorage data for input drafts
+      mockStore[TASK_INPUT_DRAFT_STORAGE_KEY] = "My draft task"
+      mockStore[TASK_CHAT_INPUT_DRAFT_STORAGE_KEY] = "My chat draft"
+
+      // v2 state without input drafts
+      const state = {
+        sidebarWidth: 400,
+        taskChatOpen: true,
+        taskChatWidth: 400,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 2)
+
+      expect(result.taskInputDraft).toBe("My draft task")
+      expect(result.taskChatInputDraft).toBe("My chat draft")
+      // Legacy keys should be removed
+      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_INPUT_DRAFT_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
+    })
+
+    it("uses empty strings when no legacy input draft localStorage data exists", () => {
+      // v2 state without input drafts, no legacy localStorage data
+      const state = {
+        sidebarWidth: 400,
+        taskChatOpen: true,
+        taskChatWidth: 400,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 2)
+
+      // Should use empty strings as defaults
+      expect(result.taskInputDraft).toBe("")
+      expect(result.taskChatInputDraft).toBe("")
+    })
+
+    it("migrates from v1 all the way to v3", () => {
+      // Set up legacy localStorage data for both v1->v2 and v2->v3 migrations
+      mockStore[TASK_LIST_STATUS_STORAGE_KEY] = JSON.stringify({
+        open: true,
+        deferred: false,
+        closed: false,
+      })
+      mockStore[TASK_LIST_PARENT_STORAGE_KEY] = JSON.stringify({
+        "parent-1": true,
+      })
+      mockStore[TASK_INPUT_DRAFT_STORAGE_KEY] = "Full migration draft"
+      mockStore[TASK_CHAT_INPUT_DRAFT_STORAGE_KEY] = "Full migration chat"
+
+      // v1 state (no collapsed states, no drafts)
+      const state = {
+        sidebarWidth: 400,
+      } as unknown as PersistedState
+
+      const result = migrate(state, 1)
+
+      // v1->v2 migration results
+      expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
+      expect(result.parentCollapsedState).toEqual({ "parent-1": true })
+      // v2->v3 migration results
+      expect(result.taskInputDraft).toBe("Full migration draft")
+      expect(result.taskChatInputDraft).toBe("Full migration chat")
+      // All legacy keys should be removed
+      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_STATUS_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_PARENT_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_INPUT_DRAFT_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
     })
   })
 })

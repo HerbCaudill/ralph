@@ -187,6 +187,10 @@ export interface AppState {
   statusCollapsedState: Record<TaskGroup, boolean>
   parentCollapsedState: Record<string, boolean>
 
+  // Input draft states (persisted to avoid losing unsent messages)
+  taskInputDraft: string
+  taskChatInputDraft: string
+
   // Task chat events (unified array like EventStream's events[])
   taskChatEvents: ChatEvent[]
 
@@ -308,6 +312,10 @@ export interface AppActions {
   toggleStatusGroup: (group: TaskGroup) => void
   setParentCollapsedState: (state: Record<string, boolean>) => void
   toggleParentGroup: (parentId: string) => void
+
+  // Input draft states
+  setTaskInputDraft: (draft: string) => void
+  setTaskChatInputDraft: (draft: string) => void
 
   // Reconnection state (for auto-resuming when reconnecting mid-session)
   /** Mark that Ralph was running before disconnect (called when connection is lost) */
@@ -581,6 +589,8 @@ const initialState: AppState = {
     closed: true,
   },
   parentCollapsedState: {},
+  taskInputDraft: "",
+  taskChatInputDraft: "",
 }
 
 export const useAppStore = create<AppState & AppActions>()(
@@ -1049,6 +1059,10 @@ export const useAppStore = create<AppState & AppActions>()(
             [parentId]: !state.parentCollapsedState[parentId],
           },
         })),
+
+      // Input draft states
+      setTaskInputDraft: draft => set({ taskInputDraft: draft }),
+      setTaskChatInputDraft: draft => set({ taskChatInputDraft: draft }),
 
       // Reconnection state (for auto-resuming when reconnecting mid-session)
       markRunningBeforeDisconnect: () =>
@@ -1620,6 +1634,8 @@ export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
 export const selectHotkeysDialogOpen = (state: AppState) => state.hotkeysDialogOpen
 export const selectStatusCollapsedState = (state: AppState) => state.statusCollapsedState
 export const selectParentCollapsedState = (state: AppState) => state.parentCollapsedState
+export const selectTaskInputDraft = (state: AppState) => state.taskInputDraft
+export const selectTaskChatInputDraft = (state: AppState) => state.taskChatInputDraft
 
 export const selectInstanceStatus = (state: AppState, instanceId: string): RalphStatus => {
   const instance = state.instances.get(instanceId)

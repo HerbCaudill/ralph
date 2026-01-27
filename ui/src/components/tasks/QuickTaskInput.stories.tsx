@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within, userEvent, fn, waitFor } from "storybook/test"
 import { QuickTaskInput } from "./QuickTaskInput"
 import { clearTaskInputStorage, mockFetch, wait } from "../../../.storybook/test-utils"
-import { TASK_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
+import { useAppStore } from "@/store"
 
 const meta: Meta<typeof QuickTaskInput> = {
   title: "Inputs/QuickTaskInput",
@@ -20,7 +20,7 @@ const meta: Meta<typeof QuickTaskInput> = {
     onError: fn(),
   },
   beforeEach: () => {
-    // Clear localStorage before each story
+    // Clear store draft before each story
     clearTaskInputStorage()
   },
 }
@@ -114,10 +114,10 @@ export const ClearsInputOnSuccess: Story = {
 }
 
 /**
- * Verifies localStorage draft is cleared after successful task submission.
+ * Verifies store draft is cleared after successful task submission.
  * Migrated from Playwright test: "clears localStorage draft after successful task submission"
  */
-export const ClearsLocalStorageOnSuccess: Story = {
+export const ClearsStoreDraftOnSuccess: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const taskTitle = `Storage Test ${Date.now()}`
@@ -146,18 +146,18 @@ export const ClearsLocalStorageOnSuccess: Story = {
       // Type a task title
       await userEvent.type(input, taskTitle)
 
-      // Verify localStorage has the draft
+      // Verify store has the draft
       await waitFor(() => {
-        expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBe(taskTitle)
+        expect(useAppStore.getState().taskInputDraft).toBe(taskTitle)
       })
 
       // Submit by pressing Enter
       await userEvent.keyboard("{Enter}")
 
-      // Wait for localStorage to be cleared
+      // Wait for store draft to be cleared
       await waitFor(
         () => {
-          expect(localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)).toBeNull()
+          expect(useAppStore.getState().taskInputDraft).toBe("")
         },
         { timeout: 5000 },
       )

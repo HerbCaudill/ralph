@@ -3,7 +3,7 @@
  * Provides helpers for mocking APIs and managing test state.
  */
 
-import { TASK_INPUT_DRAFT_STORAGE_KEY } from "../src/constants"
+import { useAppStore } from "../src/store"
 
 /**
  * Creates a mock fetch function that returns the specified response.
@@ -37,14 +37,14 @@ export function mockFetch(response: MockFetchResponse): () => void {
 }
 
 /**
- * Clears localStorage keys used by the QuickTaskInput component.
+ * Clears task input draft from the store.
  */
 export function clearTaskInputStorage(): void {
-  localStorage.removeItem(TASK_INPUT_DRAFT_STORAGE_KEY)
+  useAppStore.getState().setTaskInputDraft("")
 }
 
 /**
- * Clears all test-related localStorage keys.
+ * Clears all test-related storage.
  */
 export function clearTestStorage(): void {
   clearTaskInputStorage()

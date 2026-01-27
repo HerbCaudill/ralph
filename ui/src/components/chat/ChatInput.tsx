@@ -8,6 +8,8 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from "@/components/ui/input-group"
+import { useAppStore, selectTaskChatInputDraft } from "@/store"
+import { TASK_CHAT_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 
 /**
  * Text area input for sending messages to a running agent.
@@ -24,7 +26,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   },
   ref,
 ) {
+  // Check if we should use the store (for task chat input draft)
+  const useStore = storageKey === TASK_CHAT_INPUT_DRAFT_STORAGE_KEY
+
+  // Get draft from store (only used when useStore is true)
+  const taskChatInputDraft = useAppStore(selectTaskChatInputDraft)
+  const setTaskChatInputDraft = useAppStore(state => state.setTaskChatInputDraft)
+
   const [message, setMessage] = useState(() => {
+    if (useStore) {
+      return taskChatInputDraft
+    }
     if (storageKey && typeof window !== "undefined") {
       return localStorage.getItem(storageKey) ?? ""
     }
@@ -32,16 +44,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  /** Persist message to localStorage when it changes. */
+  /** Persist message when it changes. */
   useEffect(() => {
-    if (storageKey && typeof window !== "undefined") {
+    if (useStore) {
+      // Use store for task chat input draft
+      setTaskChatInputDraft(message)
+    } else if (storageKey && typeof window !== "undefined") {
+      // Fall back to localStorage for other keys
       if (message) {
         localStorage.setItem(storageKey, message)
       } else {
         localStorage.removeItem(storageKey)
       }
     }
-  }, [message, storageKey])
+  }, [message, storageKey, useStore, setTaskChatInputDraft])
 
   /** Expose focus method to parent components via ref. */
   useImperativeHandle(ref, () => ({

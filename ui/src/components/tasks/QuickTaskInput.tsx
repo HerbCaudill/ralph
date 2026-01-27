@@ -1,11 +1,12 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react"
 import { flushSync } from "react-dom"
 import type { FormEvent, KeyboardEvent } from "react"
 import { IconArrowUp, IconLoader } from "@tabler/icons-react"
 import { cn, getContrastingColor } from "@/lib/utils"
-import { useAppStore, selectAccentColor } from "@/store"
-import { DEFAULT_INPUT_ACCENT_COLOR, TASK_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
+import { useAppStore, selectAccentColor, selectTaskInputDraft } from "@/store"
+import { DEFAULT_INPUT_ACCENT_COLOR } from "@/constants"
 import { InputGroup, InputGroupAddon, InputGroupButton } from "@/components/ui/input-group"
+import { useState } from "react"
 
 /**
  * Text input for quickly adding tasks.
@@ -20,12 +21,12 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
     const buttonBgColor = accentColor ?? DEFAULT_INPUT_ACCENT_COLOR
     const buttonTextColor = getContrastingColor(buttonBgColor)
 
-    const [title, setTitle] = useState(() => {
-      if (typeof window !== "undefined") {
-        return localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY) ?? ""
-      }
-      return ""
-    })
+    // Get draft from store and setter
+    const taskInputDraft = useAppStore(selectTaskInputDraft)
+    const setTaskInputDraft = useAppStore(state => state.setTaskInputDraft)
+
+    // Local state for the input, initialized from store
+    const [title, setTitle] = useState(taskInputDraft)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const shouldRefocusRef = useRef(false)
@@ -49,17 +50,11 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
     }, [title, adjustTextareaHeight])
 
     /**
-     * Persists the current input value to localStorage.
+     * Persists the current input value to the store.
      */
     useEffect(() => {
-      if (typeof window !== "undefined") {
-        if (title) {
-          localStorage.setItem(TASK_INPUT_DRAFT_STORAGE_KEY, title)
-        } else {
-          localStorage.removeItem(TASK_INPUT_DRAFT_STORAGE_KEY)
-        }
-      }
-    }, [title])
+      setTaskInputDraft(title)
+    }, [title, setTaskInputDraft])
 
     /**
      * Exposes focus method to parent components via ref.
@@ -108,7 +103,6 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
             throw new Error(data.error || "Failed to create task")
           }
 
-          localStorage.removeItem(TASK_INPUT_DRAFT_STORAGE_KEY)
           // Use flushSync to ensure the title is cleared before any callbacks that might
           // trigger re-renders (like task list refresh). This prevents race conditions.
           flushSync(() => {
