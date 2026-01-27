@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
-import { useTheme, getStoredTheme } from "./useTheme"
+import { useTheme } from "./useTheme"
 import { useAppStore } from "@/store"
 
 // Mock matchMedia
@@ -31,31 +31,10 @@ const mockMatchMedia = (matches: boolean) => {
 
 describe("useTheme", () => {
   let originalMatchMedia: typeof window.matchMedia
-  let originalLocalStorage: Storage
 
   beforeEach(() => {
     // Save original implementations
     originalMatchMedia = window.matchMedia
-    originalLocalStorage = window.localStorage
-
-    // Mock localStorage
-    const store: Record<string, string> = {}
-    const mockLocalStorage = {
-      getItem: vi.fn((key: string) => store[key] ?? null),
-      setItem: vi.fn((key: string, value: string) => {
-        store[key] = value
-      }),
-      removeItem: vi.fn((key: string) => {
-        delete store[key]
-      }),
-      clear: vi.fn(() => Object.keys(store).forEach(key => delete store[key])),
-      key: vi.fn((i: number) => Object.keys(store)[i] ?? null),
-      length: 0,
-    }
-    Object.defineProperty(window, "localStorage", {
-      value: mockLocalStorage,
-      writable: true,
-    })
 
     // Default matchMedia to dark
     window.matchMedia = mockMatchMedia(true)
@@ -66,10 +45,6 @@ describe("useTheme", () => {
 
   afterEach(() => {
     window.matchMedia = originalMatchMedia
-    Object.defineProperty(window, "localStorage", {
-      value: originalLocalStorage,
-      writable: true,
-    })
     vi.restoreAllMocks()
   })
 
@@ -132,14 +107,14 @@ describe("useTheme", () => {
       expect(result.current.resolvedTheme).toBe("light")
     })
 
-    it("persists theme to localStorage", () => {
+    it("persists theme to store", () => {
       const { result } = renderHook(() => useTheme())
 
       act(() => {
         result.current.setTheme("dark")
       })
 
-      expect(window.localStorage.setItem).toHaveBeenCalledWith("ralph-ui-theme", "dark")
+      expect(useAppStore.getState().theme).toBe("dark")
     })
   })
 
@@ -199,8 +174,6 @@ describe("useTheme", () => {
 
     it("removes dark class when resolved theme is light", () => {
       document.documentElement.classList.add("dark")
-      // Set localStorage so initialization doesn't overwrite the theme
-      ;(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue("light")
       useAppStore.getState().setTheme("light")
 
       renderHook(() => useTheme())
@@ -228,29 +201,13 @@ describe("useTheme", () => {
     })
   })
 
-  describe("getStoredTheme", () => {
-    it("returns system when no theme is stored", () => {
-      expect(getStoredTheme()).toBe("system")
-    })
+  describe("store initialization", () => {
+    it("uses theme from store", () => {
+      useAppStore.getState().setTheme("dark")
 
-    it("returns stored theme value", () => {
-      ;(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue("dark")
-      expect(getStoredTheme()).toBe("dark")
-    })
+      const { result } = renderHook(() => useTheme())
 
-    it("returns system for invalid stored value", () => {
-      ;(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue("invalid")
-      expect(getStoredTheme()).toBe("system")
-    })
-  })
-
-  describe("localStorage initialization", () => {
-    it("initializes theme from localStorage on mount", () => {
-      ;(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue("dark")
-
-      renderHook(() => useTheme())
-
-      expect(useAppStore.getState().theme).toBe("dark")
+      expect(result.current.theme).toBe("dark")
     })
   })
 
@@ -288,14 +245,14 @@ describe("useTheme", () => {
       expect(onModeSwitch).toHaveBeenCalledWith("light")
     })
 
-    it("persists mode to localStorage", () => {
+    it("persists mode to store", () => {
       const { result } = renderHook(() => useTheme())
 
       act(() => {
         result.current.setMode("light")
       })
 
-      expect(window.localStorage.setItem).toHaveBeenCalledWith("ralph-ui-theme", "light")
+      expect(useAppStore.getState().theme).toBe("light")
     })
   })
 

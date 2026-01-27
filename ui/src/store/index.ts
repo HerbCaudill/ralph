@@ -146,6 +146,11 @@ export interface AppState {
   // Theme
   theme: Theme
 
+  // VS Code theme persistence
+  vscodeThemeId: string | null
+  lastDarkThemeId: string | null
+  lastLightThemeId: string | null
+
   // Event log viewer state
   viewingEventLogId: string | null
   viewingEventLog: EventLog | null
@@ -253,6 +258,9 @@ export interface AppActions {
 
   // Theme
   setTheme: (theme: Theme) => void
+  setVSCodeThemeId: (themeId: string | null) => void
+  setLastDarkThemeId: (themeId: string | null) => void
+  setLastLightThemeId: (themeId: string | null) => void
 
   // Event log viewer
   setViewingEventLogId: (id: string | null) => void
@@ -564,6 +572,9 @@ const initialState: AppState = {
   accentColor: null,
   sidebarWidth: defaultSidebarWidth,
   theme: "system",
+  vscodeThemeId: null,
+  lastDarkThemeId: null,
+  lastLightThemeId: null,
   viewingEventLogId: null,
   viewingEventLog: null,
   eventLogLoading: false,
@@ -919,6 +930,9 @@ export const useAppStore = create<AppState & AppActions>()(
 
       // Theme
       setTheme: theme => set({ theme }),
+      setVSCodeThemeId: themeId => set({ vscodeThemeId: themeId }),
+      setLastDarkThemeId: themeId => set({ lastDarkThemeId: themeId }),
+      setLastLightThemeId: themeId => set({ lastLightThemeId: themeId }),
 
       // Event log viewer
       setViewingEventLogId: id => set({ viewingEventLogId: id }),
@@ -1591,6 +1605,9 @@ export const selectCanAcceptMessages = (state: AppState) =>
 export const selectAccentColor = (state: AppState) => state.accentColor
 export const selectSidebarWidth = (state: AppState) => state.sidebarWidth
 export const selectTheme = (state: AppState) => state.theme
+export const selectVSCodeThemeId = (state: AppState) => state.vscodeThemeId
+export const selectLastDarkThemeId = (state: AppState) => state.lastDarkThemeId
+export const selectLastLightThemeId = (state: AppState) => state.lastLightThemeId
 export const selectCurrentTask = (state: AppState) =>
   state.tasks.find(t => t.status === "in_progress") ?? null
 export const selectViewingEventLogId = (state: AppState) => state.viewingEventLogId

@@ -14,34 +14,11 @@ const mockFetch = vi.fn()
 global.fetch = mockFetch
 
 describe("useThemeCoordinator", () => {
-  let originalLocalStorage: Storage
   let originalMatchMedia: typeof window.matchMedia
-
-  // Mock localStorage storage
-  const store: Record<string, string> = {}
 
   beforeEach(() => {
     // Save originals
-    originalLocalStorage = window.localStorage
     originalMatchMedia = window.matchMedia
-
-    // Mock localStorage
-    const mockLocalStorage = {
-      getItem: vi.fn((key: string) => store[key] ?? null),
-      setItem: vi.fn((key: string, value: string) => {
-        store[key] = value
-      }),
-      removeItem: vi.fn((key: string) => {
-        delete store[key]
-      }),
-      clear: vi.fn(() => Object.keys(store).forEach(key => delete store[key])),
-      key: vi.fn((i: number) => Object.keys(store)[i] ?? null),
-      length: 0,
-    }
-    Object.defineProperty(window, "localStorage", {
-      value: mockLocalStorage,
-      writable: true,
-    })
 
     // Mock matchMedia
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -76,16 +53,9 @@ describe("useThemeCoordinator", () => {
 
     // Reset store
     useAppStore.getState().reset()
-
-    // Clear localStorage store
-    Object.keys(store).forEach(key => delete store[key])
   })
 
   afterEach(() => {
-    Object.defineProperty(window, "localStorage", {
-      value: originalLocalStorage,
-      writable: true,
-    })
     window.matchMedia = originalMatchMedia
     vi.restoreAllMocks()
   })
@@ -156,7 +126,7 @@ describe("useThemeCoordinator", () => {
   })
 
   describe("last theme persistence", () => {
-    it("saves theme ID to last dark/light storage when applying", async () => {
+    it("saves theme ID to store when applying", async () => {
       // Setup mock themes and fetch response
       const mockDarkTheme = {
         id: "test.dark-theme",
@@ -229,11 +199,8 @@ describe("useThemeCoordinator", () => {
         await result.current.applyTheme("test.dark-theme")
       })
 
-      // Check that last dark theme was saved
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(
-        "ralph-ui-last-dark-theme",
-        "test.dark-theme",
-      )
+      // Check that last dark theme was saved in store
+      expect(useAppStore.getState().lastDarkThemeId).toBe("test.dark-theme")
 
       // Check that the light/dark mode was updated to dark
       expect(result.current.theme).toBe("dark")

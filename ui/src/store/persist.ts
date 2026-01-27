@@ -20,10 +20,14 @@ import {
   TASK_LIST_PARENT_STORAGE_KEY,
   TASK_INPUT_DRAFT_STORAGE_KEY,
   TASK_CHAT_INPUT_DRAFT_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+  VSCODE_THEME_STORAGE_KEY,
+  LAST_DARK_THEME_STORAGE_KEY,
+  LAST_LIGHT_THEME_STORAGE_KEY,
 } from "@/constants"
 
 /** Current schema version for persistence format */
-export const PERSIST_VERSION = 3
+export const PERSIST_VERSION = 4
 
 /** Storage key for persisted state */
 export const PERSIST_NAME = "ralph-ui-store"
@@ -65,6 +69,11 @@ export interface PersistedState {
   showToolOutput: boolean
   theme: Theme
   closedTimeFilter: ClosedTasksTimeFilter
+
+  // VS Code theme persistence
+  vscodeThemeId: string | null
+  lastDarkThemeId: string | null
+  lastLightThemeId: string | null
 
   // Task chat session (for restoration on refresh)
   currentTaskChatSessionId: string | null
@@ -204,6 +213,11 @@ export function partialize(state: AppState): PersistedState {
     theme: state.theme,
     closedTimeFilter: state.closedTimeFilter,
 
+    // VS Code theme persistence
+    vscodeThemeId: state.vscodeThemeId,
+    lastDarkThemeId: state.lastDarkThemeId,
+    lastLightThemeId: state.lastLightThemeId,
+
     // Task chat session (for restoration on refresh)
     currentTaskChatSessionId: state.currentTaskChatSessionId,
 
@@ -318,6 +332,7 @@ const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
  * - v1: Initial schema
  * - v2: Added statusCollapsedState and parentCollapsedState (consolidated from separate localStorage keys)
  * - v3: Added taskInputDraft and taskChatInputDraft (consolidated from separate localStorage keys)
+ * - v4: Added vscodeThemeId, lastDarkThemeId, lastLightThemeId (consolidated from separate localStorage keys)
  */
 export function migrate(persistedState: unknown, version: number): PersistedState {
   let state = persistedState as PersistedState
@@ -394,6 +409,67 @@ export function migrate(persistedState: unknown, version: number): PersistedStat
       ...state,
       taskInputDraft,
       taskChatInputDraft,
+    }
+  }
+
+  if (version < 4) {
+    // Migrate from v3 to v4: Add theme states from separate localStorage keys
+    let theme = state.theme ?? "system"
+    let vscodeThemeId: string | null = null
+    let lastDarkThemeId: string | null = null
+    let lastLightThemeId: string | null = null
+
+    // Try to load from legacy localStorage keys
+    try {
+      const themeStored = localStorage.getItem(THEME_STORAGE_KEY)
+      if (themeStored === "light" || themeStored === "dark" || themeStored === "system") {
+        theme = themeStored
+        // Remove the legacy key after migration
+        localStorage.removeItem(THEME_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore errors, use defaults
+    }
+
+    try {
+      const vscodeThemeStored = localStorage.getItem(VSCODE_THEME_STORAGE_KEY)
+      if (vscodeThemeStored) {
+        vscodeThemeId = vscodeThemeStored
+        // Remove the legacy key after migration
+        localStorage.removeItem(VSCODE_THEME_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore errors, use defaults
+    }
+
+    try {
+      const lastDarkThemeStored = localStorage.getItem(LAST_DARK_THEME_STORAGE_KEY)
+      if (lastDarkThemeStored) {
+        lastDarkThemeId = lastDarkThemeStored
+        // Remove the legacy key after migration
+        localStorage.removeItem(LAST_DARK_THEME_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore errors, use defaults
+    }
+
+    try {
+      const lastLightThemeStored = localStorage.getItem(LAST_LIGHT_THEME_STORAGE_KEY)
+      if (lastLightThemeStored) {
+        lastLightThemeId = lastLightThemeStored
+        // Remove the legacy key after migration
+        localStorage.removeItem(LAST_LIGHT_THEME_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore errors, use defaults
+    }
+
+    state = {
+      ...state,
+      theme,
+      vscodeThemeId,
+      lastDarkThemeId,
+      lastLightThemeId,
     }
   }
 

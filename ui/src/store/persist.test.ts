@@ -20,6 +20,10 @@ import {
   TASK_LIST_PARENT_STORAGE_KEY,
   TASK_INPUT_DRAFT_STORAGE_KEY,
   TASK_CHAT_INPUT_DRAFT_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+  VSCODE_THEME_STORAGE_KEY,
+  LAST_DARK_THEME_STORAGE_KEY,
+  LAST_LIGHT_THEME_STORAGE_KEY,
 } from "@/constants"
 import { DEFAULT_CONTEXT_WINDOW_MAX, DEFAULT_INSTANCE_ID } from "./index"
 
@@ -109,7 +113,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
 describe("persist", () => {
   describe("constants", () => {
     it("exports PERSIST_VERSION", () => {
-      expect(PERSIST_VERSION).toBe(3)
+      expect(PERSIST_VERSION).toBe(4)
     })
 
     it("exports PERSIST_NAME", () => {
@@ -603,6 +607,9 @@ describe("persist", () => {
           showToolOutput: true,
           theme: "dark",
           closedTimeFilter: "past_week",
+          vscodeThemeId: null,
+          lastDarkThemeId: null,
+          lastLightThemeId: null,
           currentTaskChatSessionId: null,
           viewingSessionIndex: 3,
           taskSearchQuery: "test",
@@ -895,7 +902,7 @@ describe("persist", () => {
       global.localStorage = originalLocalStorage
     })
 
-    it("returns state unchanged when version >= 3", () => {
+    it("returns state unchanged when version >= 4", () => {
       const state: PersistedState = {
         sidebarWidth: 400,
         taskChatOpen: true,
@@ -903,6 +910,9 @@ describe("persist", () => {
         showToolOutput: false,
         theme: "system",
         closedTimeFilter: "past_day",
+        vscodeThemeId: "my-theme",
+        lastDarkThemeId: "dark-theme",
+        lastLightThemeId: "light-theme",
         currentTaskChatSessionId: null,
         viewingSessionIndex: null,
         taskSearchQuery: "",
@@ -921,12 +931,15 @@ describe("persist", () => {
         activeInstanceId: "default",
       }
 
-      const result = migrate(state, 3)
+      const result = migrate(state, 4)
 
       expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
       expect(result.parentCollapsedState).toEqual({ "parent-1": true })
       expect(result.taskInputDraft).toBe("my draft")
       expect(result.taskChatInputDraft).toBe("chat draft")
+      expect(result.vscodeThemeId).toBe("my-theme")
+      expect(result.lastDarkThemeId).toBe("dark-theme")
+      expect(result.lastLightThemeId).toBe("light-theme")
     })
 
     it("migrates from v1 by loading legacy localStorage keys", () => {
@@ -1106,8 +1119,90 @@ describe("persist", () => {
       expect(result.taskChatInputDraft).toBe("")
     })
 
-    it("migrates from v1 all the way to v3", () => {
-      // Set up legacy localStorage data for both v1->v2 and v2->v3 migrations
+    it("migrates from v3 by loading legacy theme localStorage keys", () => {
+      // Set up legacy localStorage data for theme
+      mockStore[THEME_STORAGE_KEY] = "dark"
+      mockStore[VSCODE_THEME_STORAGE_KEY] = "my-vscode-theme"
+      mockStore[LAST_DARK_THEME_STORAGE_KEY] = "my-dark-theme"
+      mockStore[LAST_LIGHT_THEME_STORAGE_KEY] = "my-light-theme"
+
+      // v3 state without theme fields
+      const state = {
+        sidebarWidth: 400,
+        taskChatOpen: true,
+        taskChatWidth: 400,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 3)
+
+      expect(result.theme).toBe("dark")
+      expect(result.vscodeThemeId).toBe("my-vscode-theme")
+      expect(result.lastDarkThemeId).toBe("my-dark-theme")
+      expect(result.lastLightThemeId).toBe("my-light-theme")
+      // Legacy keys should be removed
+      expect(localStorage.removeItem).toHaveBeenCalledWith(THEME_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(VSCODE_THEME_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(LAST_DARK_THEME_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(LAST_LIGHT_THEME_STORAGE_KEY)
+    })
+
+    it("uses null defaults when no legacy theme localStorage data exists", () => {
+      // v3 state without theme fields, no legacy localStorage data
+      const state = {
+        sidebarWidth: 400,
+        taskChatOpen: true,
+        taskChatWidth: 400,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 3)
+
+      // Should use null as defaults for theme IDs
+      expect(result.theme).toBe("system")
+      expect(result.vscodeThemeId).toBeNull()
+      expect(result.lastDarkThemeId).toBeNull()
+      expect(result.lastLightThemeId).toBeNull()
+    })
+
+    it("migrates from v1 all the way to v4", () => {
+      // Set up legacy localStorage data for all migrations
       mockStore[TASK_LIST_STATUS_STORAGE_KEY] = JSON.stringify({
         open: true,
         deferred: false,
@@ -1118,8 +1213,12 @@ describe("persist", () => {
       })
       mockStore[TASK_INPUT_DRAFT_STORAGE_KEY] = "Full migration draft"
       mockStore[TASK_CHAT_INPUT_DRAFT_STORAGE_KEY] = "Full migration chat"
+      mockStore[THEME_STORAGE_KEY] = "light"
+      mockStore[VSCODE_THEME_STORAGE_KEY] = "full-migration-theme"
+      mockStore[LAST_DARK_THEME_STORAGE_KEY] = "full-dark-theme"
+      mockStore[LAST_LIGHT_THEME_STORAGE_KEY] = "full-light-theme"
 
-      // v1 state (no collapsed states, no drafts)
+      // v1 state (no collapsed states, no drafts, no theme IDs)
       const state = {
         sidebarWidth: 400,
       } as unknown as PersistedState
@@ -1132,11 +1231,20 @@ describe("persist", () => {
       // v2->v3 migration results
       expect(result.taskInputDraft).toBe("Full migration draft")
       expect(result.taskChatInputDraft).toBe("Full migration chat")
+      // v3->v4 migration results
+      expect(result.theme).toBe("light")
+      expect(result.vscodeThemeId).toBe("full-migration-theme")
+      expect(result.lastDarkThemeId).toBe("full-dark-theme")
+      expect(result.lastLightThemeId).toBe("full-light-theme")
       // All legacy keys should be removed
       expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_STATUS_STORAGE_KEY)
       expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_PARENT_STORAGE_KEY)
       expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_INPUT_DRAFT_STORAGE_KEY)
       expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(THEME_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(VSCODE_THEME_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(LAST_DARK_THEME_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(LAST_LIGHT_THEME_STORAGE_KEY)
     })
   })
 })

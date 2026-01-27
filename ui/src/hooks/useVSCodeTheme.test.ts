@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useVSCodeTheme } from "./useVSCodeTheme"
+import { useAppStore } from "@/store"
 import type { ThemeMeta, AppTheme } from "@/lib/theme"
 
 // Mock the theme library functions
@@ -96,30 +97,9 @@ const mockCSSVariables = {
 }
 
 describe("useVSCodeTheme", () => {
-  let originalLocalStorage: Storage
-
   beforeEach(() => {
-    // Save original localStorage
-    originalLocalStorage = window.localStorage
-
-    // Mock localStorage
-    const store: Record<string, string> = {}
-    const mockLocalStorage = {
-      getItem: vi.fn((key: string) => store[key] ?? null),
-      setItem: vi.fn((key: string, value: string) => {
-        store[key] = value
-      }),
-      removeItem: vi.fn((key: string) => {
-        delete store[key]
-      }),
-      clear: vi.fn(() => Object.keys(store).forEach(key => delete store[key])),
-      key: vi.fn((i: number) => Object.keys(store)[i] ?? null),
-      length: 0,
-    }
-    Object.defineProperty(window, "localStorage", {
-      value: mockLocalStorage,
-      writable: true,
-    })
+    // Reset store state
+    useAppStore.getState().reset()
 
     // Reset fetch mock
     mockFetch.mockReset()
@@ -158,10 +138,6 @@ describe("useVSCodeTheme", () => {
   })
 
   afterEach(() => {
-    Object.defineProperty(window, "localStorage", {
-      value: originalLocalStorage,
-      writable: true,
-    })
     vi.restoreAllMocks()
   })
 
@@ -266,7 +242,7 @@ describe("useVSCodeTheme", () => {
       expect(style.getPropertyValue("--foreground")).toBe("#d4d4d4")
     })
 
-    it("persists theme ID to localStorage", async () => {
+    it("persists theme ID to store", async () => {
       const { result } = renderHook(() => useVSCodeTheme())
 
       await waitFor(() => {
@@ -277,10 +253,7 @@ describe("useVSCodeTheme", () => {
         await result.current.applyTheme("test.theme/Dark Theme")
       })
 
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(
-        "ralph-ui-vscode-theme",
-        "test.theme/Dark Theme",
-      )
+      expect(useAppStore.getState().vscodeThemeId).toBe("test.theme/Dark Theme")
     })
 
     it("sets error on theme fetch failure", async () => {
@@ -340,7 +313,7 @@ describe("useVSCodeTheme", () => {
       expect(result.current.activeThemeId).toBe("test.theme/Dark Theme")
     })
 
-    it("does not save preview theme to localStorage", async () => {
+    it("does not save preview theme to store", async () => {
       const { result } = renderHook(() => useVSCodeTheme())
 
       await waitFor(() => {
@@ -352,19 +325,15 @@ describe("useVSCodeTheme", () => {
         await result.current.applyTheme("test.theme/Dark Theme")
       })
 
-      // Clear localStorage mock calls
-      vi.mocked(window.localStorage.setItem).mockClear()
+      const themeIdBefore = useAppStore.getState().vscodeThemeId
 
       // Preview a different theme
       await act(async () => {
         await result.current.previewTheme("test.theme/Light Theme")
       })
 
-      // localStorage should not have been called for the preview
-      expect(window.localStorage.setItem).not.toHaveBeenCalledWith(
-        "ralph-ui-vscode-theme",
-        "test.theme/Light Theme",
-      )
+      // Store should not have changed
+      expect(useAppStore.getState().vscodeThemeId).toBe(themeIdBefore)
     })
   })
 
@@ -424,7 +393,7 @@ describe("useVSCodeTheme", () => {
       expect(result.current.activeThemeId).toBeNull()
     })
 
-    it("removes theme from localStorage", async () => {
+    it("removes theme from store", async () => {
       const { result } = renderHook(() => useVSCodeTheme())
 
       await waitFor(() => {
@@ -441,7 +410,7 @@ describe("useVSCodeTheme", () => {
         result.current.resetToDefault()
       })
 
-      expect(window.localStorage.removeItem).toHaveBeenCalledWith("ralph-ui-vscode-theme")
+      expect(useAppStore.getState().vscodeThemeId).toBeNull()
     })
 
     it("clears custom CSS variables", async () => {
@@ -470,11 +439,9 @@ describe("useVSCodeTheme", () => {
   })
 
   describe("auto-apply current VS Code theme", () => {
-    it("applies stored theme from localStorage on mount", async () => {
-      // Set up localStorage with a stored theme
-      ;(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(
-        "test.theme/Dark Theme",
-      )
+    it("applies stored theme from store on mount", async () => {
+      // Set up store with a stored theme
+      useAppStore.getState().setVSCodeThemeId("test.theme/Dark Theme")
 
       const { result } = renderHook(() => useVSCodeTheme())
 
@@ -485,7 +452,7 @@ describe("useVSCodeTheme", () => {
 
     it("applies current VS Code theme when no stored theme exists", async () => {
       // No stored theme
-      ;(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(null)
+      useAppStore.getState().setVSCodeThemeId(null)
 
       // Mock API to return current VS Code theme
       mockFetch.mockImplementation((url: string) => {
@@ -692,11 +659,8 @@ describe("useVSCodeTheme", () => {
         await result.current.applyTheme("test.theme/Dark Theme")
       })
 
-      // Check that last dark theme was saved
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(
-        "ralph-ui-last-dark-theme",
-        "test.theme/Dark Theme",
-      )
+      // Check that last dark theme was saved in store
+      expect(useAppStore.getState().lastDarkThemeId).toBe("test.theme/Dark Theme")
     })
   })
 })

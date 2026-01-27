@@ -2,54 +2,12 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import type { ThemeMeta, AppTheme } from "@/lib/theme"
 import { loadTheme, applyThemeToElement } from "@/lib/theme"
 import type { CSSVariables } from "@/lib/theme/mapper"
+import { useAppStore, selectVSCodeThemeId } from "@/store"
 
-/** localStorage key for persisting VS Code theme preference */
-const VSCODE_THEME_STORAGE_KEY = "ralph-ui-vscode-theme"
-/** localStorage key for the last used dark theme */
-const LAST_DARK_THEME_KEY = "ralph-ui-last-dark-theme"
-/** localStorage key for the last used light theme */
-const LAST_LIGHT_THEME_KEY = "ralph-ui-last-light-theme"
-
-/**  Get the stored VS Code theme ID from localStorage */
-function getStoredThemeId(): string | null {
-  try {
-    return localStorage.getItem(VSCODE_THEME_STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
-
-/**  Get the last used theme ID for a given mode (dark or light) */
+/**  Get the last used theme ID for a given mode (dark or light) from the store */
 export function getLastThemeIdForMode(mode: "dark" | "light"): string | null {
-  try {
-    const key = mode === "dark" ? LAST_DARK_THEME_KEY : LAST_LIGHT_THEME_KEY
-    return localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
-/**  Save the last used theme ID for a given mode */
-function saveLastThemeIdForMode(mode: "dark" | "light", themeId: string): void {
-  try {
-    const key = mode === "dark" ? LAST_DARK_THEME_KEY : LAST_LIGHT_THEME_KEY
-    localStorage.setItem(key, themeId)
-  } catch {
-    // localStorage may not be available
-  }
-}
-
-/**  Save the VS Code theme ID to localStorage */
-function saveThemeId(themeId: string | null): void {
-  try {
-    if (themeId) {
-      localStorage.setItem(VSCODE_THEME_STORAGE_KEY, themeId)
-    } else {
-      localStorage.removeItem(VSCODE_THEME_STORAGE_KEY)
-    }
-  } catch {
-    // localStorage may not be available
-  }
+  const state = useAppStore.getState()
+  return mode === "dark" ? state.lastDarkThemeId : state.lastLightThemeId
 }
 
 /**  Apply CSS variables to the document root element */
@@ -120,7 +78,7 @@ function clearCSSVariables(): void {
  * - Auto-applies the stored or current VS Code theme on mount
  * - Supports theme switching and preview on hover
  * - Loads themes into Shiki for code highlighting
- * - Persists theme preference to localStorage
+ * - Persists theme preference via the zustand store (ralph-ui-store)
  * - Automatically switches light/dark mode based on theme type
  * - Remembers last used theme for each mode (dark/light)
  *
@@ -129,6 +87,12 @@ function clearCSSVariables(): void {
 export function useVSCodeTheme(
   onModeChange?: (mode: "dark" | "light") => void,
 ): UseVSCodeThemeReturn {
+  // Store selectors
+  const storedThemeId = useAppStore(selectVSCodeThemeId)
+  const setVSCodeThemeId = useAppStore(state => state.setVSCodeThemeId)
+  const setLastDarkThemeId = useAppStore(state => state.setLastDarkThemeId)
+  const setLastLightThemeId = useAppStore(state => state.setLastLightThemeId)
+
   // State
   const [themes, setThemes] = useState<ThemeMeta[]>([])
   const [activeTheme, setActiveTheme] = useState<AppTheme | null>(null)
@@ -174,7 +138,7 @@ export function useVSCodeTheme(
     }
   }, [])
 
-  // Apply a theme by ID (saves to localStorage)
+  // Apply a theme by ID (saves to store)
   const applyTheme = useCallback(
     async (themeId: string) => {
       // Clear any preview state
@@ -201,14 +165,19 @@ export function useVSCodeTheme(
         setActiveTheme(data.theme)
         setActiveThemeId(themeId)
 
-        // Persist to localStorage
-        saveThemeId(themeId)
+        // Persist to store
+        setVSCodeThemeId(themeId)
 
         // Determine theme mode and save as last used for that mode
         const themeType = data.theme.meta.type
         const isDark = themeType === "dark" || themeType === "hcDark"
         const mode = isDark ? "dark" : "light"
-        saveLastThemeIdForMode(mode, themeId)
+
+        if (isDark) {
+          setLastDarkThemeId(themeId)
+        } else {
+          setLastLightThemeId(themeId)
+        }
 
         // Notify of mode change so light/dark toggle can update
         if (onModeChange) {
@@ -221,7 +190,7 @@ export function useVSCodeTheme(
         setIsLoadingTheme(false)
       }
     },
-    [fetchThemeDetails, onModeChange],
+    [fetchThemeDetails, onModeChange, setVSCodeThemeId, setLastDarkThemeId, setLastLightThemeId],
   )
 
   // Preview a theme (temporary application without saving)
@@ -328,9 +297,9 @@ export function useVSCodeTheme(
     setActiveTheme(null)
     setActiveThemeId(null)
 
-    // Remove from localStorage
-    saveThemeId(null)
-  }, [])
+    // Remove from store
+    setVSCodeThemeId(null)
+  }, [setVSCodeThemeId])
 
   // Initialize: fetch themes and apply stored/current theme on mount
   useEffect(() => {
@@ -343,9 +312,8 @@ export function useVSCodeTheme(
       if (!mounted) return
 
       // Try to apply stored theme first
-      const storedId = getStoredThemeId()
-      if (storedId) {
-        await applyTheme(storedId)
+      if (storedThemeId) {
+        await applyTheme(storedThemeId)
         return
       }
 

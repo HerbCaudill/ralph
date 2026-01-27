@@ -2,9 +2,6 @@ import { useEffect, useCallback } from "react"
 import { useAppStore, selectTheme } from "@/store"
 import type { Theme } from "@/types"
 
-/** localStorage key for persisting theme preference */
-const THEME_STORAGE_KEY = "ralph-ui-theme"
-
 /**  Gets the system color scheme preference */
 function getSystemPreference(): "light" | "dark" {
   if (typeof window === "undefined") return "dark"
@@ -21,28 +18,13 @@ function applyTheme(resolvedTheme: "light" | "dark") {
   }
 }
 
-/**  Gets the stored theme from localStorage */
-export function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system"
-  const stored = localStorage.getItem(THEME_STORAGE_KEY)
-  if (stored === "light" || stored === "dark" || stored === "system") {
-    return stored
-  }
-  return "system"
-}
-
-/**  Saves the theme to localStorage */
-function saveTheme(theme: Theme) {
-  localStorage.setItem(THEME_STORAGE_KEY, theme)
-}
-
 /**
  * Hook for managing light/dark theme with system preference support.
  *
  * Features:
  * - Defaults to system preference
  * - Allows manual override to light or dark
- * - Persists preference to localStorage
+ * - Persists preference via the zustand store (ralph-ui-store)
  * - Listens for system preference changes
  * - Applies theme by adding/removing 'dark' class on document.documentElement
  *
@@ -56,11 +38,10 @@ export function useTheme(onModeSwitch?: (mode: "dark" | "light") => void): UseTh
   // Resolve the theme based on system preference when theme is "system"
   const resolvedTheme: "light" | "dark" = theme === "system" ? getSystemPreference() : theme
 
-  // Set theme and persist to localStorage
+  // Set theme (automatically persisted via zustand persist middleware)
   const setTheme = useCallback(
     (newTheme: Theme) => {
       storeSetTheme(newTheme)
-      saveTheme(newTheme)
     },
     [storeSetTheme],
   )
@@ -89,16 +70,6 @@ export function useTheme(onModeSwitch?: (mode: "dark" | "light") => void): UseTh
       onModeSwitch(nextTheme)
     }
   }, [theme, setTheme, onModeSwitch])
-
-  // Initialize theme from localStorage on mount
-  useEffect(() => {
-    const stored = getStoredTheme()
-    if (stored !== theme) {
-      storeSetTheme(stored)
-    }
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Apply theme to document when resolvedTheme changes
   useEffect(() => {

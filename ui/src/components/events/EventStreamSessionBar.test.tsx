@@ -5,18 +5,23 @@ import type { SessionSummary } from "@/hooks"
 
 // Mock the SessionHistoryDropdown component to simplify testing
 vi.mock("./SessionHistoryDropdown", () => ({
-  SessionHistoryDropdown: ({ currentTask, isRunning }: { currentTask: { id: string | null; title: string } | null; isRunning: boolean }) => (
+  SessionHistoryDropdown: ({
+    currentTask,
+    isRunning,
+  }: {
+    currentTask: { id: string | null; title: string } | null
+    isRunning: boolean
+  }) => (
     <div data-testid="session-history-dropdown">
-      {currentTask ? (
+      {currentTask ?
         <>
           {currentTask.id && <span data-testid="dropdown-task-id">{currentTask.id}</span>}
           <span data-testid="dropdown-task-title">{currentTask.title}</span>
         </>
-      ) : (
-        <span data-testid="dropdown-placeholder">
+      : <span data-testid="dropdown-placeholder">
           {isRunning ? "Choosing a task..." : "No active task"}
         </span>
-      )}
+      }
     </div>
   ),
 }))
@@ -181,7 +186,9 @@ describe("EventStreamSessionBar", () => {
         <EventStreamSessionBar
           {...defaultProps}
           currentTask={{ id: "task-1", title: "Current task" }}
-          sessions={[createMockSession("abc123", new Date().toISOString(), "task-1", "Current task")]}
+          sessions={[
+            createMockSession("abc123", new Date().toISOString(), "task-1", "Current task"),
+          ]}
           isLoadingSessions={false}
           isRunning={false}
         />,
