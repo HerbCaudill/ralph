@@ -35,6 +35,9 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   backoffMultiplier: 2,
 }
 
+/** Default thinking budget in tokens when extended thinking is enabled */
+const DEFAULT_MAX_THINKING_TOKENS = 10000
+
 export interface ClaudeAdapterOptions {
   /** Override the SDK query function (for testing) */
   queryFn?: QueryFn
@@ -42,6 +45,13 @@ export interface ClaudeAdapterOptions {
   apiKey?: string
   /** Retry configuration for connection errors */
   retryConfig?: Partial<RetryConfig>
+  /**
+   * Maximum number of tokens for extended thinking.
+   * When set to a positive number, enables extended thinking with the specified token budget.
+   * Can also be set via the CLAUDE_MAX_THINKING_TOKENS environment variable.
+   * Default: 10000 (enables extended thinking by default)
+   */
+  maxThinkingTokens?: number
 }
 
 /**
@@ -124,6 +134,7 @@ export class ClaudeAdapter extends AgentAdapter {
   private abortController: AbortController | null = null
   private startOptions: AgentStartOptions | undefined
   private retryConfig: RetryConfig
+  private maxThinkingTokens: number
   private options: Required<Pick<ClaudeAdapterOptions, "queryFn">> &
     Omit<ClaudeAdapterOptions, "queryFn">
 
@@ -146,6 +157,11 @@ export class ClaudeAdapter extends AgentAdapter {
       ...DEFAULT_RETRY_CONFIG,
       ...options.retryConfig,
     }
+    // Resolve thinking tokens: explicit option > env var > default
+    const envThinkingTokens = process.env.CLAUDE_MAX_THINKING_TOKENS
+    this.maxThinkingTokens =
+      options.maxThinkingTokens ??
+      (envThinkingTokens ? parseInt(envThinkingTokens, 10) : DEFAULT_MAX_THINKING_TOKENS)
   }
 
   /**
@@ -369,6 +385,8 @@ export class ClaudeAdapter extends AgentAdapter {
             abortController: this.abortController,
             // Resume from the session if we have one from a previous attempt
             resume: sessionToResume,
+            // Enable extended thinking with the configured token budget
+            maxThinkingTokens: this.maxThinkingTokens,
           },
         })) {
           this.handleSDKMessage(message)

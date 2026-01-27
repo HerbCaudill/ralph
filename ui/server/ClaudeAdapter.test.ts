@@ -725,6 +725,97 @@ describe("ClaudeAdapter", () => {
     })
   })
 
+  describe("extended thinking", () => {
+    it("uses default maxThinkingTokens when no option or env var is set", async () => {
+      const previous = process.env.CLAUDE_MAX_THINKING_TOKENS
+      delete process.env.CLAUDE_MAX_THINKING_TOKENS
+
+      const adapterWithDefaults = new ClaudeAdapter({ queryFn: mockQuery as unknown as QueryFn })
+      await adapterWithDefaults.start()
+      mockQuery.mockReturnValueOnce(createMessageStream([]))
+
+      adapterWithDefaults.send({ type: "user_message", content: "Hello" })
+      await (adapterWithDefaults as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            maxThinkingTokens: 10000, // Default value
+          }),
+        }),
+      )
+
+      process.env.CLAUDE_MAX_THINKING_TOKENS = previous
+    })
+
+    it("uses maxThinkingTokens from constructor option", async () => {
+      const adapterWithOption = new ClaudeAdapter({
+        queryFn: mockQuery as unknown as QueryFn,
+        maxThinkingTokens: 20000,
+      })
+      await adapterWithOption.start()
+      mockQuery.mockReturnValueOnce(createMessageStream([]))
+
+      adapterWithOption.send({ type: "user_message", content: "Hello" })
+      await (adapterWithOption as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            maxThinkingTokens: 20000,
+          }),
+        }),
+      )
+    })
+
+    it("uses maxThinkingTokens from environment variable", async () => {
+      const previous = process.env.CLAUDE_MAX_THINKING_TOKENS
+      process.env.CLAUDE_MAX_THINKING_TOKENS = "15000"
+
+      const adapterWithEnv = new ClaudeAdapter({ queryFn: mockQuery as unknown as QueryFn })
+      await adapterWithEnv.start()
+      mockQuery.mockReturnValueOnce(createMessageStream([]))
+
+      adapterWithEnv.send({ type: "user_message", content: "Hello" })
+      await (adapterWithEnv as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            maxThinkingTokens: 15000,
+          }),
+        }),
+      )
+
+      process.env.CLAUDE_MAX_THINKING_TOKENS = previous
+    })
+
+    it("prefers constructor option over environment variable", async () => {
+      const previous = process.env.CLAUDE_MAX_THINKING_TOKENS
+      process.env.CLAUDE_MAX_THINKING_TOKENS = "15000"
+
+      const adapterWithBoth = new ClaudeAdapter({
+        queryFn: mockQuery as unknown as QueryFn,
+        maxThinkingTokens: 25000,
+      })
+      await adapterWithBoth.start()
+      mockQuery.mockReturnValueOnce(createMessageStream([]))
+
+      adapterWithBoth.send({ type: "user_message", content: "Hello" })
+      await (adapterWithBoth as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            maxThinkingTokens: 25000, // Constructor option takes precedence
+          }),
+        }),
+      )
+
+      process.env.CLAUDE_MAX_THINKING_TOKENS = previous
+    })
+  })
+
   describe("conversation context tracking", () => {
     beforeEach(async () => {
       await adapter.start()
