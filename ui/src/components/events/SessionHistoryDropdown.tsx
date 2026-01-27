@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react"
-import { IconChevronDown, IconLoader2 } from "@tabler/icons-react"
+import { IconChevronDown, IconLoader2, IconCheck } from "@tabler/icons-react"
 import {
   Command,
   CommandEmpty,
@@ -91,7 +91,7 @@ export function SessionHistoryDropdown({
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs transition-colors",
+            "text-muted-foreground flex w-full max-w-[36rem] min-w-0 items-center gap-1.5 text-xs transition-colors",
             "hover:bg-muted rounded px-1.5 py-0.5",
             "focus:ring-ring focus:ring-1 focus:outline-none",
           )}
@@ -114,7 +114,7 @@ export function SessionHistoryDropdown({
           <IconChevronDown className="size-3 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="center">
+      <PopoverContent className="w-[36rem] max-w-[90vw] p-0" align="center">
         <Command>
           {sessions.length >= 5 && <CommandInput placeholder="Search sessions..." />}
           <CommandList>
@@ -138,7 +138,8 @@ export function SessionHistoryDropdown({
                         value={`${log.metadata?.taskId || ""} ${log.metadata?.title || ""} ${log.id}`}
                         onSelect={() => handleSessionHistorySelect(log.id)}
                         className={cn(
-                          "flex items-center gap-2",
+                          "flex items-center gap-2 text-xs",
+                          "hover:bg-muted",
                           isCurrentSession && "bg-repo-accent/50",
                         )}
                       >
@@ -151,15 +152,21 @@ export function SessionHistoryDropdown({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             {log.metadata?.taskId && (
-                              <span className="text-muted-foreground shrink-0 font-mono text-xs">
+                              <span className="text-muted-foreground shrink-0 font-mono">
                                 {stripTaskPrefix(log.metadata.taskId, issuePrefix)}
                               </span>
                             )}
-                            <span className="truncate text-sm">
+                            <span className="truncate">
                               {log.metadata?.title || (log.metadata?.taskId ? "" : "No task")}
                             </span>
                           </div>
                         </div>
+                        {isCurrentSession && (
+                          <IconCheck
+                            className="text-primary size-3 shrink-0"
+                            data-testid="session-selected-check"
+                          />
+                        )}
                       </CommandItem>
                     )
                   })}

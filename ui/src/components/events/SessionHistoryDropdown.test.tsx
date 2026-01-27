@@ -254,6 +254,57 @@ describe("SessionHistoryDropdown", () => {
     })
   })
 
+  describe("current session indicator", () => {
+    it("shows checkmark icon for the currently selected session", () => {
+      const sessions = [
+        createMockSession("session-1", todayStr, "r-001", "First task"),
+        createMockSession("session-2", todayStr, "r-002", "Second task"),
+        createMockSession("session-3", yesterdayStr, "r-003", "Third task"),
+      ]
+
+      render(
+        <SessionHistoryDropdown
+          {...defaultProps}
+          sessions={sessions}
+          currentSessionId="session-2"
+        />,
+      )
+
+      // Open the dropdown
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
+
+      // Verify the checkmark is displayed for the selected session
+      const checkIcon = screen.getByTestId("session-selected-check")
+      expect(checkIcon).toBeInTheDocument()
+
+      // Verify there's only one checkmark (for the selected session)
+      const allCheckIcons = screen.queryAllByTestId("session-selected-check")
+      expect(allCheckIcons).toHaveLength(1)
+    })
+
+    it("does not show checkmark when no session is selected", () => {
+      const sessions = [
+        createMockSession("session-1", todayStr, "r-001", "First task"),
+        createMockSession("session-2", todayStr, "r-002", "Second task"),
+      ]
+
+      render(
+        <SessionHistoryDropdown
+          {...defaultProps}
+          sessions={sessions}
+          currentSessionId={null}
+        />,
+      )
+
+      // Open the dropdown
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
+
+      // Verify no checkmark is displayed
+      const checkIcon = screen.queryByTestId("session-selected-check")
+      expect(checkIcon).not.toBeInTheDocument()
+    })
+  })
+
   describe("accessibility", () => {
     it("has accessible trigger button", () => {
       render(<SessionHistoryDropdown {...defaultProps} />)

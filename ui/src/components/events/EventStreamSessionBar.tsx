@@ -35,13 +35,13 @@ export function EventStreamSessionBar({
       className="bg-muted/50 border-border flex items-center justify-center border-b px-3 py-1.5"
       data-testid="session-bar"
     >
-      <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+      <div className="flex w-full max-w-[36rem] min-w-0 items-center justify-center gap-2">
         {isViewingHistorical ?
           // When viewing historical session, show return button and session dropdown
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex w-full min-w-0 items-center gap-2">
             <button
               onClick={onReturnToLive}
-              className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-xs transition-colors"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors"
               title="Return to live session"
               aria-label="Return to live session"
               data-testid="return-to-live-button"
@@ -50,7 +50,7 @@ export function EventStreamSessionBar({
               <span>Live</span>
             </button>
             <span className="text-muted-foreground/50">|</span>
-            <div className="flex min-w-0 items-center gap-1.5">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <IconHistory className="text-muted-foreground size-3 shrink-0" />
               <SessionHistoryDropdown
                 currentTask={currentTask}
