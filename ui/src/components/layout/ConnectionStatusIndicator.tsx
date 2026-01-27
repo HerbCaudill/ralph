@@ -4,7 +4,7 @@ import type { ConnectionStatus } from "@/hooks/useWebSocket"
 import { IconBolt, IconBoltOff, IconLoader2 } from "@tabler/icons-react"
 import type { ComponentType } from "react"
 
-type IconProps = { className?: string; size?: number }
+type IconProps = { className?: string; size?: number; style?: React.CSSProperties }
 
 const connectionStatusConfig: Record<
   ConnectionStatus,
