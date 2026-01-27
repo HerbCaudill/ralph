@@ -8,7 +8,7 @@ import {
   IconX,
 } from "@tabler/icons-react"
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { useSessions, useEventLogRouter, type SessionSummary } from "@/hooks"
+import { useSessions, buildSessionPath, type SessionSummary } from "@/hooks"
 import { formatEventLogDate, formatEventLogTime } from "@/lib/formatEventLogDate"
 import { useAppStore, selectIssuePrefix } from "@/store"
 
@@ -70,9 +70,17 @@ function filterSessions(sessions: SessionSummary[], query: string): SessionSumma
  * This is a thin wrapper that fetches data and delegates to SessionHistoryPanelView.
  */
 export function SessionHistoryPanel({ className }: SessionHistoryPanelProps) {
-  const { sessions, isLoading, error, refresh } = useSessions()
-  const { navigateToEventLog } = useEventLogRouter()
+  const { sessions, isLoading, error, refresh, loadSessionEvents } = useSessions()
   const issuePrefix = useAppStore(selectIssuePrefix)
+
+  const handleSessionClick = useCallback(
+    (id: string) => {
+      // Update URL and load session data
+      window.history.pushState({ sessionId: id }, "", buildSessionPath(id))
+      loadSessionEvents(id)
+    },
+    [loadSessionEvents],
+  )
 
   return (
     <SessionHistoryPanelView
@@ -81,7 +89,7 @@ export function SessionHistoryPanel({ className }: SessionHistoryPanelProps) {
       isLoading={isLoading}
       error={error}
       issuePrefix={issuePrefix}
-      onItemClick={navigateToEventLog}
+      onItemClick={handleSessionClick}
       onRetry={refresh}
     />
   )

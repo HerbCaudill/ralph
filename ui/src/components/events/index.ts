@@ -14,9 +14,6 @@ export { UserMessage } from "./UserMessage"
 export { ToolUseCard } from "./ToolUseCard"
 export type { ToolUseCardProps } from "./ToolUseCard"
 
-export { EventLogViewer } from "./EventLogViewer"
-export type { EventLogViewerProps } from "./EventLogViewer"
-
 export { SessionHistoryPanel } from "./SessionHistoryPanel"
 export type { SessionHistoryPanelProps } from "./SessionHistoryPanel"
 

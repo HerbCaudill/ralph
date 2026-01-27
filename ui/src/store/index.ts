@@ -16,7 +16,6 @@ import type {
   TokenUsage,
   ContextWindow,
   SessionInfo,
-  EventLog,
 } from "@/types"
 import { persistConfig } from "./persist"
 
@@ -151,12 +150,6 @@ export interface AppState {
   lastDarkThemeId: string | null
   lastLightThemeId: string | null
 
-  // Event log viewer state
-  viewingEventLogId: string | null
-  viewingEventLog: EventLog | null
-  eventLogLoading: boolean
-  eventLogError: string | null
-
   // Task chat panel state
   taskChatOpen: boolean
   taskChatWidth: number
@@ -261,13 +254,6 @@ export interface AppActions {
   setVSCodeThemeId: (themeId: string | null) => void
   setLastDarkThemeId: (themeId: string | null) => void
   setLastLightThemeId: (themeId: string | null) => void
-
-  // Event log viewer
-  setViewingEventLogId: (id: string | null) => void
-  setViewingEventLog: (eventLog: EventLog | null) => void
-  setEventLogLoading: (loading: boolean) => void
-  setEventLogError: (error: string | null) => void
-  clearEventLogViewer: () => void
 
   // Task chat panel
   setTaskChatOpen: (open: boolean) => void
@@ -575,10 +561,6 @@ const initialState: AppState = {
   vscodeThemeId: null,
   lastDarkThemeId: null,
   lastLightThemeId: null,
-  viewingEventLogId: null,
-  viewingEventLog: null,
-  eventLogLoading: false,
-  eventLogError: null,
   taskChatOpen: true,
   taskChatWidth: defaultTaskChatWidth,
   taskChatMessages: [],
@@ -790,11 +772,6 @@ export const useAppStore = create<AppState & AppActions>()(
             taskChatMessages: [],
             taskChatLoading: false,
             taskChatEvents: [],
-            // Clear event log viewer state
-            viewingEventLogId: null,
-            viewingEventLog: null,
-            eventLogLoading: false,
-            eventLogError: null,
             // Updated instances Map
             instances: updatedInstances,
           }
@@ -933,19 +910,6 @@ export const useAppStore = create<AppState & AppActions>()(
       setVSCodeThemeId: themeId => set({ vscodeThemeId: themeId }),
       setLastDarkThemeId: themeId => set({ lastDarkThemeId: themeId }),
       setLastLightThemeId: themeId => set({ lastLightThemeId: themeId }),
-
-      // Event log viewer
-      setViewingEventLogId: id => set({ viewingEventLogId: id }),
-      setViewingEventLog: eventLog => set({ viewingEventLog: eventLog }),
-      setEventLogLoading: loading => set({ eventLogLoading: loading }),
-      setEventLogError: error => set({ eventLogError: error }),
-      clearEventLogViewer: () =>
-        set({
-          viewingEventLogId: null,
-          viewingEventLog: null,
-          eventLogLoading: false,
-          eventLogError: null,
-        }),
 
       // Task chat panel
       setTaskChatOpen: open => set({ taskChatOpen: open }),
@@ -1610,10 +1574,6 @@ export const selectLastDarkThemeId = (state: AppState) => state.lastDarkThemeId
 export const selectLastLightThemeId = (state: AppState) => state.lastLightThemeId
 export const selectCurrentTask = (state: AppState) =>
   state.tasks.find(t => t.status === "in_progress") ?? null
-export const selectViewingEventLogId = (state: AppState) => state.viewingEventLogId
-export const selectViewingEventLog = (state: AppState) => state.viewingEventLog
-export const selectEventLogLoading = (state: AppState) => state.eventLogLoading
-export const selectEventLogError = (state: AppState) => state.eventLogError
 export const selectTaskChatOpen = (state: AppState) => state.taskChatOpen
 export const selectTaskChatWidth = (state: AppState) => state.taskChatWidth
 export const selectTaskChatMessages = (state: AppState) => state.taskChatMessages

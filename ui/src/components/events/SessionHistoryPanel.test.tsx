@@ -5,17 +5,12 @@ import { useAppStore } from "@/store"
 import type { SessionSummary } from "@/hooks"
 
 // Mock the hooks
-const mockNavigateToEventLog = vi.fn()
+const mockLoadSessionEvents = vi.fn()
 
 vi.mock("@/hooks", async importOriginal => {
   const original = await importOriginal<typeof import("@/hooks")>()
   return {
     ...original,
-    useEventLogRouter: () => ({
-      navigateToEventLog: mockNavigateToEventLog,
-      closeEventLogViewer: vi.fn(),
-      eventLogId: null,
-    }),
     useSessions: vi.fn(),
   }
 })
@@ -26,7 +21,7 @@ const mockUseSessions = vi.mocked(useSessions)
 
 /** Default mock values for the new session events properties */
 const defaultEventProps = {
-  loadSessionEvents: vi.fn().mockResolvedValue(null),
+  loadSessionEvents: mockLoadSessionEvents,
   selectedSession: null,
   isLoadingEvents: false,
   eventsError: null,
@@ -215,7 +210,7 @@ describe("SessionHistoryPanel", () => {
       // Click on the first item
       fireEvent.click(screen.getByText("Fix authentication bug"))
 
-      expect(mockNavigateToEventLog).toHaveBeenCalledWith("abc12345")
+      expect(mockLoadSessionEvents).toHaveBeenCalledWith("abc12345")
     })
 
     it("has accessible button labels", () => {

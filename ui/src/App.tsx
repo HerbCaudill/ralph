@@ -7,7 +7,6 @@ import {
   CommandPalette,
 } from "./components/layout"
 import { type ChatInputHandle } from "./components/chat/ChatInput"
-import { EventLogViewer } from "./components/events"
 import { TaskDetailsController } from "./components/tasks/TaskDetailsController"
 import { type SearchInputHandle } from "./components/tasks/SearchInput"
 import {
@@ -16,7 +15,6 @@ import {
   selectIsConnected,
   selectTaskChatOpen,
   selectTaskChatWidth,
-  selectViewingEventLogId,
   selectSelectedTaskId,
   selectVisibleTaskIds,
   selectHotkeysDialogOpen,
@@ -37,7 +35,6 @@ import {
   useTasks,
   useTaskDialog,
   useTaskDialogRouter,
-  useEventLogRouter,
   useWorkspaces,
   useStoreHydration,
   useSessionPersistence,
@@ -123,9 +120,6 @@ export function App() {
   // Task dialog URL routing - handles /issue/{taskId} path parsing and navigation
   const taskDialogRouter = useTaskDialogRouter({ taskDialog })
 
-  // Event log URL routing - handles #eventlog={id} hash parsing and navigation
-  useEventLogRouter()
-
   // Workspace navigation
   const { goToPreviousWorkspace, goToNextWorkspace } = useWorkspaces()
 
@@ -169,10 +163,6 @@ export function App() {
   const taskChatWidth = useAppStore(selectTaskChatWidth)
   const setTaskChatWidth = useAppStore(state => state.setTaskChatWidth)
   const clearTaskChatMessages = useAppStore(state => state.clearTaskChatMessages)
-
-  // Event log viewer state
-  const viewingEventLogId = useAppStore(selectViewingEventLogId)
-  const isViewingEventLog = viewingEventLogId !== null
 
   // Handle task chat panel width change
   const handleTaskChatWidthChange = useCallback(
@@ -413,10 +403,6 @@ export function App() {
         leftPanelOpen={taskChatOpen}
         leftPanelWidth={taskChatWidth}
         onLeftPanelWidthChange={handleTaskChatWidthChange}
-        rightPanel={<EventLogViewer />}
-        rightPanelOpen={isViewingEventLog}
-        rightPanelWidth={taskChatWidth}
-        onRightPanelWidthChange={handleTaskChatWidthChange}
         detailPanel={
           <TaskDetailsController
             task={taskDialog.selectedTask}

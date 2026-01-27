@@ -31,12 +31,10 @@ export type {
 } from "@/types"
 
 export {
-  useEventLogRouter,
   parseEventLogHash,
   buildEventLogHash,
   parseSessionIdFromUrl,
   buildSessionPath,
-  type UseEventLogRouterReturn,
 } from "./useEventLogRouter"
 
 export {

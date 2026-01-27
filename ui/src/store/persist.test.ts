@@ -86,10 +86,6 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     accentColor: null,
     sidebarWidth: 320,
     theme: "system",
-    viewingEventLogId: null,
-    viewingEventLog: null,
-    eventLogLoading: false,
-    eventLogError: null,
     taskChatOpen: true,
     taskChatWidth: 400,
     taskChatMessages: [],
@@ -416,10 +412,6 @@ describe("persist", () => {
       const state = createMockAppState({
         connectionStatus: "connected",
         ralphStatus: "running",
-        viewingEventLogId: "log-123",
-        viewingEventLog: { id: "log-123", createdAt: "", events: [] },
-        eventLogLoading: true,
-        eventLogError: "some error",
         taskChatMessages: [{ id: "1", role: "user", content: "hi", timestamp: 0 }],
         taskChatLoading: true,
         taskChatEvents: [createMockEvent()],
@@ -435,10 +427,6 @@ describe("persist", () => {
       // These should NOT be in the result
       expect(result).not.toHaveProperty("connectionStatus")
       expect(result).not.toHaveProperty("ralphStatus")
-      expect(result).not.toHaveProperty("viewingEventLogId")
-      expect(result).not.toHaveProperty("viewingEventLog")
-      expect(result).not.toHaveProperty("eventLogLoading")
-      expect(result).not.toHaveProperty("eventLogError")
       expect(result).not.toHaveProperty("taskChatMessages")
       expect(result).not.toHaveProperty("taskChatLoading")
       expect(result).not.toHaveProperty("taskChatEvents")
