@@ -488,20 +488,85 @@ Storybook decorators are defined in `.storybook/decorators.tsx`:
 Use this decorator to reproduce issues by loading exported application state:
 
 ```tsx
-import { withImportedState } from '../../../.storybook/decorators'
+import { withImportedState } from "../../../.storybook/decorators"
 
 export const ReproduceIssue: Story = {
-  decorators: [withImportedState('/fixtures/reproduce-h5j8.json.gz')],
+  decorators: [withImportedState("/fixtures/reproduce-h5j8.json.gz")],
 }
 ```
 
 The decorator:
+
 - Fetches and decompresses the gzipped state file
 - Restores localStorage (Zustand state) and IndexedDB (sessions, events)
 - Shows loading/error states while importing
 - Cleans up imported state on unmount
 
 State files should be placed in `public/fixtures/` and can be generated using the export functionality.
+
+### State Export Format
+
+The UI can export complete application state for debugging and Storybook stories. Export via the Settings dropdown or call `downloadStateExport()` programmatically.
+
+**Type Definition:** `ExportedState` in `ui/src/lib/exportState.ts`
+
+**Structure:**
+
+```typescript
+interface ExportedState {
+  meta: {
+    exportedAt: string // ISO timestamp
+    version: 1 // Export format version
+    indexedDbSchemaVersion: number // Schema version (currently 7)
+    localStorageKey: string // "ralph-ui-store"
+  }
+  localStorage: {
+    state: {
+      /* Zustand persisted state */
+    }
+    version: number
+  }
+  indexedDb: {
+    sessions: PersistedSession[] // Session metadata
+    events: PersistedEvent[] // All events (98% of file size)
+    chat_sessions: PersistedTaskChatSession[]
+    sync_state: SyncState[]
+  }
+}
+```
+
+**Working with large exports (50MB+):**
+
+Events dominate file size. Analyze programmatically:
+
+```javascript
+const fs = require("fs")
+const data = JSON.parse(fs.readFileSync("ralph-state-*.json", "utf8"))
+
+// Size breakdown
+const eventsSize = JSON.stringify(data.indexedDb.events).length
+console.log(`Events: ${(eventsSize / 1024 / 1024).toFixed(1)} MB`)
+
+// Event type distribution
+const types = {}
+for (const e of data.indexedDb.events) {
+  types[e.event?.type] = (types[e.event?.type] || 0) + 1
+}
+console.log(types) // { stream_event: 5919, assistant: 5115, user: 3873, ... }
+
+// Find events for a specific session
+const sessionEvents = data.indexedDb.events.filter(e => e.sessionId === "default-123")
+```
+
+**Import/Export utilities:**
+
+- `exportState()` - Export current state as `ExportedState` object
+- `downloadStateExport(filename?)` - Export and trigger browser download
+- `importState(state)` - Restore state from `ExportedState`
+- `importStateFromUrl(url)` - Fetch `.json.gz` and import
+- `clearImportedState()` - Clean up after Storybook stories
+
+**For Storybook:** Compress exports with gzip, place in `public/fixtures/`, use `withImportedState` decorator.
 
 ### IndexedDB Schema (v7)
 
