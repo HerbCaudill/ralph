@@ -68,7 +68,7 @@ const preview: Preview = {
       // Build the inline style object with theme variables and repo accent
       const style = {
         ...themeCssVars,
-        "--repo-accent": "#ff0000",
+        "--repo-accent": "#14b8a6",
         "--repo-accent-foreground": "#ffffff",
       } as React.CSSProperties
 
