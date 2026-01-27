@@ -117,9 +117,15 @@ describe("importState", () => {
         }),
       )
 
-      await expect(fetchCompressedState("/fixtures/missing.json.gz")).rejects.toThrow(
-        "Failed to fetch state file: 404 Not Found",
-      )
+      let caughtError: Error | undefined
+      try {
+        await fetchCompressedState("/fixtures/missing.json.gz")
+      } catch (error) {
+        caughtError = error as Error
+      }
+
+      expect(caughtError).toBeDefined()
+      expect(caughtError?.message).toBe("Failed to fetch state file: 404 Not Found")
     })
   })
 
