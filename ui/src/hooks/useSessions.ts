@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { eventDatabase, type SessionMetadata } from "@/lib/persistence"
+import { eventDatabase, type PersistedSession } from "@/lib/persistence"
 import type { ChatEvent } from "@/types"
 
 /**
@@ -60,10 +60,10 @@ function isValidTimestamp(timestamp: number | undefined | null): timestamp is nu
 }
 
 /**
- * Converts SessionMetadata from IndexedDB to SessionSummary for consumers.
- * Returns null if the metadata has an invalid timestamp.
+ * Converts PersistedSession from IndexedDB to SessionSummary for consumers.
+ * Returns null if the session has an invalid timestamp.
  */
-function toSessionSummary(metadata: SessionMetadata): SessionSummary | null {
+function toSessionSummary(metadata: PersistedSession): SessionSummary | null {
   // Validate timestamp before attempting conversion
   if (!isValidTimestamp(metadata.startedAt)) {
     console.warn(

@@ -38,12 +38,10 @@ describe("exportState", () => {
         objectStore: vi.fn().mockReturnValue(mockStore),
       }),
       objectStoreNames: [
-        "session_metadata",
         "sessions",
+        "events",
         "task_chat_metadata",
         "task_chat_sessions",
-        "event_log_metadata",
-        "event_logs",
         "sync_state",
       ],
     }
@@ -177,7 +175,6 @@ describe("exportState", () => {
 
       const result = await exportState()
 
-      expect(result.indexedDb).toHaveProperty("session_metadata")
       expect(result.indexedDb).toHaveProperty("sessions")
       expect(result.indexedDb).toHaveProperty("events")
       expect(result.indexedDb).toHaveProperty("task_chat_metadata")
@@ -274,12 +271,11 @@ describe("exportState", () => {
         meta: {
           exportedAt: "2025-01-01T00:00:00.000Z",
           version: 1,
-          indexedDbSchemaVersion: 2,
+          indexedDbSchemaVersion: 5,
           localStorageKey: "ralph-ui-store",
         },
         localStorage: { sidebarWidth: 300 },
         indexedDb: {
-          session_metadata: [],
           sessions: [],
           events: [],
           task_chat_metadata: [],

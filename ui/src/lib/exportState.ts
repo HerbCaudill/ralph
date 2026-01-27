@@ -32,7 +32,6 @@ export interface ExportedState {
   localStorage: unknown
   /** All IndexedDB data by store name */
   indexedDb: {
-    session_metadata: unknown[]
     sessions: unknown[]
     events: unknown[]
     task_chat_metadata: unknown[]
@@ -71,15 +70,13 @@ export async function exportState(): Promise<ExportedState> {
   const db = await getDatabase()
 
   // Read all data from each store
-  const [sessionMetadata, sessions, events, taskChatMetadata, taskChatSessions, syncState] =
-    await Promise.all([
-      getAllFromStore(db, STORE_NAMES.SESSION_METADATA),
-      getAllFromStore(db, STORE_NAMES.SESSIONS),
-      getAllFromStore(db, STORE_NAMES.EVENTS),
-      getAllFromStore(db, STORE_NAMES.TASK_CHAT_METADATA),
-      getAllFromStore(db, STORE_NAMES.TASK_CHAT_SESSIONS),
-      getAllFromStore(db, STORE_NAMES.SYNC_STATE),
-    ])
+  const [sessions, events, taskChatMetadata, taskChatSessions, syncState] = await Promise.all([
+    getAllFromStore(db, STORE_NAMES.SESSIONS),
+    getAllFromStore(db, STORE_NAMES.EVENTS),
+    getAllFromStore(db, STORE_NAMES.TASK_CHAT_METADATA),
+    getAllFromStore(db, STORE_NAMES.TASK_CHAT_SESSIONS),
+    getAllFromStore(db, STORE_NAMES.SYNC_STATE),
+  ])
 
   return {
     meta: {
@@ -90,7 +87,6 @@ export async function exportState(): Promise<ExportedState> {
     },
     localStorage: localStorageState,
     indexedDb: {
-      session_metadata: sessionMetadata,
       sessions: sessions,
       events: events,
       task_chat_metadata: taskChatMetadata,

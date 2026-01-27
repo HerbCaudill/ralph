@@ -9,7 +9,6 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb"
 import {
   PERSISTENCE_SCHEMA_VERSION,
   STORE_NAMES,
-  type SessionMetadata,
   type PersistedEvent,
   type PersistedSession,
   type PersistedTaskChatSession,
@@ -22,9 +21,9 @@ import {
  * Defines the shape of each object store and its indexes.
  */
 interface RalphDBSchema extends DBSchema {
-  [STORE_NAMES.SESSION_METADATA]: {
+  [STORE_NAMES.SESSIONS]: {
     key: string
-    value: SessionMetadata
+    value: PersistedSession
     indexes: {
       "by-instance": string
       "by-started-at": number
@@ -32,13 +31,6 @@ interface RalphDBSchema extends DBSchema {
       "by-task": string
       // Note: Records with null workspaceId won't be indexed by this compound index
       "by-workspace-and-started-at": [string, number]
-    }
-  }
-  [STORE_NAMES.SESSIONS]: {
-    key: string
-    value: PersistedSession
-    indexes: {
-      "by-instance": string
     }
   }
   [STORE_NAMES.EVENTS]: {
@@ -107,20 +99,15 @@ export class EventDatabase {
       upgrade(db, oldVersion, _newVersion, transaction) {
         // Version 1: Initial schema
         if (oldVersion < 1) {
-          // Session metadata store with indexes
-          const sessionMetaStore = db.createObjectStore(STORE_NAMES.SESSION_METADATA, {
-            keyPath: "id",
-          })
-          sessionMetaStore.createIndex("by-instance", "instanceId")
-          sessionMetaStore.createIndex("by-started-at", "startedAt")
-          sessionMetaStore.createIndex("by-instance-and-started-at", ["instanceId", "startedAt"])
-          sessionMetaStore.createIndex("by-task", "taskId")
-
-          // Full sessions store
+          // Sessions store with all indexes (v5+ unified store)
           const sessionsStore = db.createObjectStore(STORE_NAMES.SESSIONS, {
             keyPath: "id",
           })
           sessionsStore.createIndex("by-instance", "instanceId")
+          sessionsStore.createIndex("by-started-at", "startedAt")
+          sessionsStore.createIndex("by-instance-and-started-at", ["instanceId", "startedAt"])
+          sessionsStore.createIndex("by-task", "taskId")
+          sessionsStore.createIndex("by-workspace-and-started-at", ["workspaceId", "startedAt"])
 
           // Task chat metadata store with indexes
           const taskChatMetaStore = db.createObjectStore(STORE_NAMES.TASK_CHAT_METADATA, {
@@ -142,13 +129,20 @@ export class EventDatabase {
           db.createObjectStore(STORE_NAMES.SYNC_STATE, {
             keyPath: "key",
           })
+
+          // Events store for append-only event writes (added in v3, now part of initial schema)
+          const eventsStore = db.createObjectStore(STORE_NAMES.EVENTS, {
+            keyPath: "id",
+          })
+          eventsStore.createIndex("by-session", "sessionId")
+          eventsStore.createIndex("by-timestamp", "timestamp")
         }
 
         // Version 2: Event log stores were added in v2 but are now removed in v4
         // (No action needed for fresh installs - stores don't exist)
 
         // Version 3: Add events store for normalized event storage and workspace index
-        if (oldVersion < 3) {
+        if (oldVersion >= 1 && oldVersion < 3) {
           // Events store for append-only event writes
           db.createObjectStore(STORE_NAMES.EVENTS, {
             keyPath: "id",
@@ -158,23 +152,23 @@ export class EventDatabase {
 
           // Add workspace index to session metadata for cross-workspace queries
           // Access the existing store through the upgrade transaction
-          if (db.objectStoreNames.contains(STORE_NAMES.SESSION_METADATA)) {
-            const sessionMetaStore = transaction.objectStore(STORE_NAMES.SESSION_METADATA)
-            sessionMetaStore.createIndex("by-workspace-and-started-at", [
+          // Note: session_metadata still exists in v3, will be removed in v5
+          const rawDb = db as unknown as IDBDatabase
+          if (rawDb.objectStoreNames.contains("session_metadata")) {
+            const sessionMetaStore = transaction.objectStore("session_metadata" as never)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(sessionMetaStore as any).createIndex("by-workspace-and-started-at", [
               "workspaceId",
               "startedAt",
             ])
           }
 
           // Flag that we need to run the data migration after the upgrade completes
-          // Only if we're upgrading from v1 or v2 (not fresh installs)
-          if (oldVersion >= 1) {
-            needsV3Migration = true
-          }
+          needsV3Migration = true
         }
 
         // Version 4: Remove event_log stores (superseded by sessions table)
-        if (oldVersion < 4) {
+        if (oldVersion >= 1 && oldVersion < 4) {
           // Delete the event_logs stores if they exist (created in v2)
           // Note: We cast to `unknown` because these stores are no longer in the schema
           // but may exist in databases created with v2/v3
@@ -184,6 +178,33 @@ export class EventDatabase {
           }
           if (rawDb.objectStoreNames.contains("event_logs")) {
             rawDb.deleteObjectStore("event_logs")
+          }
+        }
+
+        // Version 5: Remove session_metadata store (merged into sessions)
+        if (oldVersion >= 1 && oldVersion < 5) {
+          const rawDb = db as unknown as IDBDatabase
+
+          // Add missing indexes to sessions store if upgrading from older version
+          const sessionsStore = transaction.objectStore(STORE_NAMES.SESSIONS)
+          const existingIndexes = Array.from(sessionsStore.indexNames)
+
+          if (!existingIndexes.includes("by-started-at")) {
+            sessionsStore.createIndex("by-started-at", "startedAt")
+          }
+          if (!existingIndexes.includes("by-instance-and-started-at")) {
+            sessionsStore.createIndex("by-instance-and-started-at", ["instanceId", "startedAt"])
+          }
+          if (!existingIndexes.includes("by-task")) {
+            sessionsStore.createIndex("by-task", "taskId")
+          }
+          if (!existingIndexes.includes("by-workspace-and-started-at")) {
+            sessionsStore.createIndex("by-workspace-and-started-at", ["workspaceId", "startedAt"])
+          }
+
+          // Delete the session_metadata store if it exists
+          if (rawDb.objectStoreNames.contains("session_metadata")) {
+            rawDb.deleteObjectStore("session_metadata")
           }
         }
       },
@@ -218,13 +239,9 @@ export class EventDatabase {
 
     console.log("[EventDatabase] Starting v2→v3 data migration...")
 
-    const tx = this.db.transaction(
-      [STORE_NAMES.SESSIONS, STORE_NAMES.SESSION_METADATA, STORE_NAMES.EVENTS],
-      "readwrite",
-    )
+    const tx = this.db.transaction([STORE_NAMES.SESSIONS, STORE_NAMES.EVENTS], "readwrite")
 
     const sessionsStore = tx.objectStore(STORE_NAMES.SESSIONS)
-    const metadataStore = tx.objectStore(STORE_NAMES.SESSION_METADATA)
     const eventsStore = tx.objectStore(STORE_NAMES.EVENTS)
 
     // Get all sessions
@@ -279,14 +296,6 @@ export class EventDatabase {
       }
       await sessionsStore.put(updatedSession)
 
-      // Update metadata to ensure workspaceId is set
-      const metadata = await metadataStore.get(sessionId)
-      if (metadata !== undefined && !("workspaceId" in metadata)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const metadataWithWorkspace = { ...(metadata as any), workspaceId: null }
-        await metadataStore.put(metadataWithWorkspace)
-      }
-
       migratedCount++
     }
 
@@ -313,46 +322,27 @@ export class EventDatabase {
   // ============================================================================
 
   /**
-   * Save an session (both metadata and full data).
+   * Save a session.
    */
   async saveSession(session: PersistedSession): Promise<void> {
     console.debug(
       `[EventDatabase] saveSession: id=${session.id}, instanceId=${session.instanceId}, eventCount=${session.eventCount}`,
     )
     const db = await this.ensureDb()
-
-    // Extract metadata
-    const metadata: SessionMetadata = {
-      id: session.id,
-      instanceId: session.instanceId,
-      workspaceId: session.workspaceId,
-      startedAt: session.startedAt,
-      completedAt: session.completedAt,
-      taskId: session.taskId,
-      taskTitle: session.taskTitle,
-      tokenUsage: session.tokenUsage,
-      contextWindow: session.contextWindow,
-      session: session.session,
-      eventCount: session.eventCount,
-      lastEventSequence: session.lastEventSequence,
-    }
-
-    // Use a transaction to update both stores atomically
-    // Note: We must await the put operations before tx.done to ensure the transaction
-    // doesn't auto-commit before the operations complete
-    const tx = db.transaction([STORE_NAMES.SESSION_METADATA, STORE_NAMES.SESSIONS], "readwrite")
-
-    await tx.objectStore(STORE_NAMES.SESSION_METADATA).put(metadata)
-    await tx.objectStore(STORE_NAMES.SESSIONS).put(session)
-    await tx.done
+    await db.put(STORE_NAMES.SESSIONS, session)
   }
 
   /**
    * Get session metadata by ID.
+   * Returns the session without the events array for backward compatibility.
    */
-  async getSessionMetadata(id: string): Promise<SessionMetadata | undefined> {
+  async getSessionMetadata(id: string): Promise<PersistedSession | undefined> {
     const db = await this.ensureDb()
-    return db.get(STORE_NAMES.SESSION_METADATA, id)
+    const session = await db.get(STORE_NAMES.SESSIONS, id)
+    if (!session) return undefined
+    // Return without events array for backward compatibility with metadata consumers
+    const { events: _, ...metadata } = session
+    return metadata as PersistedSession
   }
 
   /**
@@ -366,9 +356,9 @@ export class EventDatabase {
   /**
    * List all session metadata for an instance, sorted by startedAt descending.
    */
-  async listSessions(instanceId: string): Promise<SessionMetadata[]> {
+  async listSessions(instanceId: string): Promise<PersistedSession[]> {
     const db = await this.ensureDb()
-    const all = await db.getAllFromIndex(STORE_NAMES.SESSION_METADATA, "by-instance", instanceId)
+    const all = await db.getAllFromIndex(STORE_NAMES.SESSIONS, "by-instance", instanceId)
     // Sort by startedAt descending (most recent first)
     return all.sort((a, b) => b.startedAt - a.startedAt)
   }
@@ -376,9 +366,9 @@ export class EventDatabase {
   /**
    * List all session metadata across all instances, sorted by startedAt descending.
    */
-  async listAllSessions(): Promise<SessionMetadata[]> {
+  async listAllSessions(): Promise<PersistedSession[]> {
     const db = await this.ensureDb()
-    const all = await db.getAll(STORE_NAMES.SESSION_METADATA)
+    const all = await db.getAll(STORE_NAMES.SESSIONS)
     // Sort by startedAt descending (most recent first)
     return all.sort((a, b) => b.startedAt - a.startedAt)
   }
@@ -386,9 +376,9 @@ export class EventDatabase {
   /**
    * Get sessions for a specific task, sorted by startedAt descending.
    */
-  async getSessionsForTask(taskId: string): Promise<SessionMetadata[]> {
+  async getSessionsForTask(taskId: string): Promise<PersistedSession[]> {
     const db = await this.ensureDb()
-    const all = await db.getAllFromIndex(STORE_NAMES.SESSION_METADATA, "by-task", taskId)
+    const all = await db.getAllFromIndex(STORE_NAMES.SESSIONS, "by-task", taskId)
     // Sort by startedAt descending (most recent first)
     return all.sort((a, b) => b.startedAt - a.startedAt)
   }
@@ -420,7 +410,7 @@ export class EventDatabase {
   }
 
   /**
-   * Delete an session (metadata, full data, and associated events).
+   * Delete a session and its associated events.
    */
   async deleteSession(id: string): Promise<void> {
     const db = await this.ensureDb()
@@ -428,12 +418,8 @@ export class EventDatabase {
     // First delete events for this session
     await this.deleteEventsForSession(id)
 
-    // Then delete the session metadata and data
-    const tx = db.transaction([STORE_NAMES.SESSION_METADATA, STORE_NAMES.SESSIONS], "readwrite")
-
-    await tx.objectStore(STORE_NAMES.SESSION_METADATA).delete(id)
-    await tx.objectStore(STORE_NAMES.SESSIONS).delete(id)
-    await tx.done
+    // Then delete the session
+    await db.delete(STORE_NAMES.SESSIONS, id)
   }
 
   /**
@@ -449,16 +435,13 @@ export class EventDatabase {
     // First delete events for all sessions
     await Promise.all(ids.map(id => this.deleteEventsForSession(id)))
 
-    // Then delete session metadata and data
-    const tx = db.transaction([STORE_NAMES.SESSION_METADATA, STORE_NAMES.SESSIONS], "readwrite")
-
-    const metaStore = tx.objectStore(STORE_NAMES.SESSION_METADATA)
-    const iterStore = tx.objectStore(STORE_NAMES.SESSIONS)
+    // Then delete sessions
+    const tx = db.transaction(STORE_NAMES.SESSIONS, "readwrite")
+    const sessionsStore = tx.objectStore(STORE_NAMES.SESSIONS)
 
     // Delete all entries sequentially within the transaction
     for (const id of ids) {
-      await metaStore.delete(id)
-      await iterStore.delete(id)
+      await sessionsStore.delete(id)
     }
     await tx.done
   }
@@ -699,11 +682,11 @@ export class EventDatabase {
    */
   async getTaskIdsWithSessions(): Promise<Set<string>> {
     const db = await this.ensureDb()
-    const all = await db.getAll(STORE_NAMES.SESSION_METADATA)
+    const all = await db.getAll(STORE_NAMES.SESSIONS)
     const taskIds = new Set<string>()
-    for (const meta of all) {
-      if (meta.taskId) {
-        taskIds.add(meta.taskId)
+    for (const session of all) {
+      if (session.taskId) {
+        taskIds.add(session.taskId)
       }
     }
     return taskIds
@@ -750,7 +733,6 @@ export class EventDatabase {
     const db = await this.ensureDb()
     const tx = db.transaction(
       [
-        STORE_NAMES.SESSION_METADATA,
         STORE_NAMES.SESSIONS,
         STORE_NAMES.EVENTS,
         STORE_NAMES.TASK_CHAT_METADATA,
@@ -760,7 +742,6 @@ export class EventDatabase {
       "readwrite",
     )
 
-    await tx.objectStore(STORE_NAMES.SESSION_METADATA).clear()
     await tx.objectStore(STORE_NAMES.SESSIONS).clear()
     await tx.objectStore(STORE_NAMES.EVENTS).clear()
     await tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).clear()
@@ -792,7 +773,7 @@ export class EventDatabase {
     const db = await this.ensureDb()
 
     const [sessionCount, eventCount, taskChatSessionCount, syncStateCount] = await Promise.all([
-      db.count(STORE_NAMES.SESSION_METADATA),
+      db.count(STORE_NAMES.SESSIONS),
       db.count(STORE_NAMES.EVENTS),
       db.count(STORE_NAMES.TASK_CHAT_METADATA),
       db.count(STORE_NAMES.SYNC_STATE),

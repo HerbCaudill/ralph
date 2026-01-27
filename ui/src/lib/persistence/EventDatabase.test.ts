@@ -139,7 +139,7 @@ describe("EventDatabase", () => {
     })
 
     describe("getSessionMetadata", () => {
-      it("retrieves metadata without full events", async () => {
+      it("retrieves session metadata (without events array)", async () => {
         const session = createTestSession({ id: "meta-test" })
         await db.saveSession(session)
 
@@ -148,8 +148,8 @@ describe("EventDatabase", () => {
         expect(metadata?.id).toBe("meta-test")
         expect(metadata?.instanceId).toBe(session.instanceId)
         expect(metadata?.eventCount).toBe(session.eventCount)
-        // Metadata should not have events property
-        expect((metadata as unknown as PersistedSession).events).toBeUndefined()
+        // getSessionMetadata returns session without events array
+        expect(metadata?.events).toBeUndefined()
       })
     })
 
@@ -795,11 +795,11 @@ describe("EventDatabase", () => {
   })
 
   describe("transactional behavior", () => {
-    it("saves session metadata and full data atomically", async () => {
+    it("saves session data correctly", async () => {
       const session = createTestSession({ id: "atomic-test" })
       await db.saveSession(session)
 
-      // Both metadata and full data should be present
+      // Session data should be present and consistent
       const metadata = await db.getSessionMetadata("atomic-test")
       const full = await db.getSession("atomic-test")
 
@@ -821,7 +821,7 @@ describe("EventDatabase", () => {
       expect(metadata?.id).toBe(full?.id)
     })
 
-    it("deletes session metadata and full data atomically", async () => {
+    it("deletes session data correctly", async () => {
       await db.saveSession(createTestSession({ id: "delete-atomic" }))
       await db.deleteSession("delete-atomic")
 

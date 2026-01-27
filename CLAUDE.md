@@ -461,19 +461,16 @@ src/components/chat/
 
 **Storybook stories test presentational components directly** - no store mocking needed.
 
-### IndexedDB Schema (v3)
+### IndexedDB Schema (v5)
 
-Eight object stores:
+Five object stores:
 
 | Store                | Purpose                           | Key Indexes                                                                                            |
 | -------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `session_metadata`   | Session metadata for fast listing | `by-instance`, `by-started-at`, `by-instance-and-started-at`, `by-task`, `by-workspace-and-started-at` |
-| `sessions`           | Full session data                 | Primary key: `id`                                                                                      |
+| `sessions`           | Session data (metadata + events)  | `by-instance`, `by-started-at`, `by-instance-and-started-at`, `by-task`, `by-workspace-and-started-at` |
 | `events`             | Individual events (normalized)    | `by-session`, `by-timestamp`                                                                           |
-| `task_chat_metadata` | Task chat metadata                | Primary key: `id`                                                                                      |
-| `task_chat_sessions` | Full task chat data               | Primary key: `id`                                                                                      |
-| `event_log_metadata` | Standalone event log metadata     | Primary key: `id`                                                                                      |
-| `event_logs`         | Standalone event log data         | Primary key: `id`                                                                                      |
+| `task_chat_metadata` | Task chat metadata                | `by-instance`, `by-task`, `by-updated-at`, `by-instance-and-task`                                      |
+| `task_chat_sessions` | Full task chat data               | `by-instance`, `by-task`                                                                               |
 | `sync_state`         | Key-value settings                | Primary key: `key`                                                                                     |
 
 **Persistence uses two hooks:**
