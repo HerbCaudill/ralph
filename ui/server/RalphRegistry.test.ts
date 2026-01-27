@@ -276,6 +276,40 @@ describe("RalphRegistry", () => {
 
       expect(history1).not.toBe(history2)
     })
+
+    it("assigns a UUID to events that don't have one", () => {
+      const state = registry.create(createTestOptions())
+      const event = { type: "test_event", timestamp: Date.now() }
+
+      // Simulate an event from the manager
+      ;(state.manager as unknown as { simulateEvent: (e: typeof event) => void }).simulateEvent(
+        event,
+      )
+
+      const history = registry.getEventHistory("test-instance")
+      expect(history).toHaveLength(1)
+      expect(history[0].id).toBeDefined()
+      expect(typeof history[0].id).toBe("string")
+      // UUID format: 8-4-4-4-12 hex characters
+      expect(history[0].id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      )
+    })
+
+    it("preserves existing event IDs", () => {
+      const state = registry.create(createTestOptions())
+      const existingId = "existing-event-id-123"
+      const event = { type: "test_event", timestamp: Date.now(), id: existingId }
+
+      // Simulate an event from the manager
+      ;(state.manager as unknown as { simulateEvent: (e: typeof event) => void }).simulateEvent(
+        event,
+      )
+
+      const history = registry.getEventHistory("test-instance")
+      expect(history).toHaveLength(1)
+      expect(history[0].id).toBe(existingId)
+    })
   })
 
   describe("clearEventHistory", () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { EventEmitter } from "node:events"
 import {
   RalphManager,
@@ -820,12 +821,20 @@ export class RalphRegistry extends EventEmitter {
   /**
    * Add an event to the history for an instance.
    *
+   * Assigns a UUID to the event if it doesn't already have one, enabling
+   * deduplication on the client side.
+   *
    * Also persists the event to disk via SessionEventPersister if configured.
    */
   private addEventToHistory(instanceId: string, event: RalphEvent): void {
     const history = this._eventHistory.get(instanceId)
     if (!history) {
       return
+    }
+
+    // Assign a UUID if the event doesn't already have one
+    if (!event.id) {
+      event.id = randomUUID()
     }
 
     history.push(event)
