@@ -4,6 +4,7 @@
   "type": "module",
   "version": "1.0.2",
   "scripts": {
+    "postinstall": "pnpm --filter @herbcaudill/ralph-shared build",
     "build": "pnpm -r build",
     "version-patch": "pnpm version patch --no-git-tag-version && pnpm -r exec pnpm version patch --no-git-tag-version",
     "version-minor": "pnpm version minor --no-git-tag-version && pnpm -r exec pnpm version minor --no-git-tag-version",
