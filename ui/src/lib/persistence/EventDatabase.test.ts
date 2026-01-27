@@ -97,7 +97,7 @@ describe("EventDatabase", () => {
       expect(stats).toEqual({
         sessionCount: 0,
         eventCount: 0,
-        taskChatSessionCount: 0,
+        chatSessionCount: 0,
         syncStateCount: 0,
       })
     })
@@ -523,8 +523,10 @@ describe("EventDatabase", () => {
         expect(metadata?.taskId).toBe(session.taskId)
         expect(metadata?.messageCount).toBe(session.messageCount)
         // Metadata should not have messages or events properties
-        expect((metadata as unknown as PersistedTaskChatSession).messages).toBeUndefined()
-        expect((metadata as unknown as PersistedTaskChatSession).events).toBeUndefined()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        expect((metadata as any).messages).toBeUndefined()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        expect((metadata as any).events).toBeUndefined()
       })
     })
 
@@ -756,7 +758,7 @@ describe("EventDatabase", () => {
         expect(stats).toEqual({
           sessionCount: 0,
           eventCount: 0,
-          taskChatSessionCount: 0,
+          chatSessionCount: 0,
           syncStateCount: 0,
         })
       })
@@ -775,7 +777,7 @@ describe("EventDatabase", () => {
         expect(stats).toEqual({
           sessionCount: 2,
           eventCount: 0,
-          taskChatSessionCount: 1,
+          chatSessionCount: 1,
           syncStateCount: 3,
         })
       })

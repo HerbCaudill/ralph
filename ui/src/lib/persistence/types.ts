@@ -142,7 +142,7 @@ export interface PersistedTaskChatSession extends TaskChatSessionMetadata {
 }
 
 /**  Database schema version for migrations. */
-export const PERSISTENCE_SCHEMA_VERSION = 5
+export const PERSISTENCE_SCHEMA_VERSION = 6
 
 /**  IndexedDB store names. */
 export const STORE_NAMES = {
@@ -152,11 +152,8 @@ export const STORE_NAMES = {
   /** Store for individual events (v3+, normalized from sessions) */
   EVENTS: "events",
 
-  /** Store for task chat session metadata (for fast listing) */
-  TASK_CHAT_METADATA: "task_chat_metadata",
-
-  /** Store for full task chat session data including messages and events */
-  TASK_CHAT_SESSIONS: "task_chat_sessions",
+  /** Store for task chat session data including messages and events (v6+, unified store) */
+  CHAT_SESSIONS: "chat_sessions",
 
   /** Store for key-value settings and sync state */
   SYNC_STATE: "sync_state",

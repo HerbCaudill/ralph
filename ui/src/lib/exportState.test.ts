@@ -37,13 +37,7 @@ describe("exportState", () => {
       transaction: vi.fn().mockReturnValue({
         objectStore: vi.fn().mockReturnValue(mockStore),
       }),
-      objectStoreNames: [
-        "sessions",
-        "events",
-        "task_chat_metadata",
-        "task_chat_sessions",
-        "sync_state",
-      ],
+      objectStoreNames: ["sessions", "events", "chat_sessions", "sync_state"],
     }
 
     // Mock indexedDB.open
@@ -177,8 +171,7 @@ describe("exportState", () => {
 
       expect(result.indexedDb).toHaveProperty("sessions")
       expect(result.indexedDb).toHaveProperty("events")
-      expect(result.indexedDb).toHaveProperty("task_chat_metadata")
-      expect(result.indexedDb).toHaveProperty("task_chat_sessions")
+      expect(result.indexedDb).toHaveProperty("chat_sessions")
       expect(result.indexedDb).toHaveProperty("sync_state")
     })
   })
@@ -271,15 +264,14 @@ describe("exportState", () => {
         meta: {
           exportedAt: "2025-01-01T00:00:00.000Z",
           version: 1,
-          indexedDbSchemaVersion: 5,
+          indexedDbSchemaVersion: 6,
           localStorageKey: "ralph-ui-store",
         },
         localStorage: { sidebarWidth: 300 },
         indexedDb: {
           sessions: [],
           events: [],
-          task_chat_metadata: [],
-          task_chat_sessions: [],
+          chat_sessions: [],
           sync_state: [],
         },
       }

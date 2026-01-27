@@ -13,7 +13,6 @@ import {
   type PersistedSession,
   type PersistedTaskChatSession,
   type SyncState,
-  type TaskChatSessionMetadata,
 } from "./types"
 
 /**
@@ -41,22 +40,14 @@ interface RalphDBSchema extends DBSchema {
       "by-timestamp": number
     }
   }
-  [STORE_NAMES.TASK_CHAT_METADATA]: {
-    key: string
-    value: TaskChatSessionMetadata
-    indexes: {
-      "by-instance": string
-      "by-task": string
-      "by-updated-at": number
-      "by-instance-and-task": [string, string]
-    }
-  }
-  [STORE_NAMES.TASK_CHAT_SESSIONS]: {
+  [STORE_NAMES.CHAT_SESSIONS]: {
     key: string
     value: PersistedTaskChatSession
     indexes: {
       "by-instance": string
       "by-task": string
+      "by-updated-at": number
+      "by-instance-and-task": [string, string]
     }
   }
   [STORE_NAMES.SYNC_STATE]: {
@@ -94,6 +85,7 @@ export class EventDatabase {
 
   private async openDatabase(): Promise<void> {
     let needsV3Migration = false
+    let needsV6Migration = false
 
     this.db = await openDB<RalphDBSchema>(DB_NAME, PERSISTENCE_SCHEMA_VERSION, {
       upgrade(db, oldVersion, _newVersion, transaction) {
@@ -109,21 +101,14 @@ export class EventDatabase {
           sessionsStore.createIndex("by-task", "taskId")
           sessionsStore.createIndex("by-workspace-and-started-at", ["workspaceId", "startedAt"])
 
-          // Task chat metadata store with indexes
-          const taskChatMetaStore = db.createObjectStore(STORE_NAMES.TASK_CHAT_METADATA, {
+          // Chat sessions store with all indexes (v6+ unified store)
+          const chatSessionsStore = db.createObjectStore(STORE_NAMES.CHAT_SESSIONS, {
             keyPath: "id",
           })
-          taskChatMetaStore.createIndex("by-instance", "instanceId")
-          taskChatMetaStore.createIndex("by-task", "taskId")
-          taskChatMetaStore.createIndex("by-updated-at", "updatedAt")
-          taskChatMetaStore.createIndex("by-instance-and-task", ["instanceId", "taskId"])
-
-          // Full task chat sessions store
-          const taskChatStore = db.createObjectStore(STORE_NAMES.TASK_CHAT_SESSIONS, {
-            keyPath: "id",
-          })
-          taskChatStore.createIndex("by-instance", "instanceId")
-          taskChatStore.createIndex("by-task", "taskId")
+          chatSessionsStore.createIndex("by-instance", "instanceId")
+          chatSessionsStore.createIndex("by-task", "taskId")
+          chatSessionsStore.createIndex("by-updated-at", "updatedAt")
+          chatSessionsStore.createIndex("by-instance-and-task", ["instanceId", "taskId"])
 
           // Sync state key-value store
           db.createObjectStore(STORE_NAMES.SYNC_STATE, {
@@ -207,6 +192,27 @@ export class EventDatabase {
             rawDb.deleteObjectStore("session_metadata")
           }
         }
+
+        // Version 6: Merge task_chat_metadata + task_chat_sessions into chat_sessions
+        if (oldVersion >= 1 && oldVersion < 6) {
+          const rawDb = db as unknown as IDBDatabase
+
+          // Create the new chat_sessions store if it doesn't exist
+          if (!rawDb.objectStoreNames.contains(STORE_NAMES.CHAT_SESSIONS)) {
+            const chatSessionsStore = db.createObjectStore(STORE_NAMES.CHAT_SESSIONS, {
+              keyPath: "id",
+            })
+            chatSessionsStore.createIndex("by-instance", "instanceId")
+            chatSessionsStore.createIndex("by-task", "taskId")
+            chatSessionsStore.createIndex("by-updated-at", "updatedAt")
+            chatSessionsStore.createIndex("by-instance-and-task", ["instanceId", "taskId"])
+          }
+
+          // Flag for post-upgrade data migration (copy data before delete)
+          if (rawDb.objectStoreNames.contains("task_chat_sessions")) {
+            needsV6Migration = true
+          }
+        }
       },
       blocked() {
         console.warn("[EventDatabase] Database upgrade blocked by other tabs")
@@ -216,9 +222,12 @@ export class EventDatabase {
       },
     })
 
-    // Run data migration after the schema upgrade completes
+    // Run data migrations after the schema upgrade completes
     if (needsV3Migration) {
       await this.migrateV2ToV3()
+    }
+    if (needsV6Migration) {
+      await this.migrateV5ToV6()
     }
   }
 
@@ -304,6 +313,73 @@ export class EventDatabase {
     console.log(
       `[EventDatabase] v2→v3 migration complete: migrated ${migratedCount} sessions, created ${eventCount} events`,
     )
+  }
+
+  /**
+   * Migrate v5 data to v6 format.
+   *
+   * This migration:
+   * 1. Copies all data from task_chat_sessions to the new chat_sessions store
+   * 2. Deletes the old task_chat_metadata and task_chat_sessions stores
+   *
+   * The new chat_sessions store is a unified store with all indexes.
+   */
+  private async migrateV5ToV6(): Promise<void> {
+    if (!this.db) return
+
+    console.log("[EventDatabase] Starting v5→v6 data migration...")
+
+    // We need to work with the raw database since the old stores are not in our schema
+    const rawDb = this.db as unknown as IDBDatabase
+
+    // Check if old stores exist
+    const hasOldSessionsStore = rawDb.objectStoreNames.contains("task_chat_sessions")
+    const hasOldMetadataStore = rawDb.objectStoreNames.contains("task_chat_metadata")
+
+    if (!hasOldSessionsStore) {
+      console.log(
+        "[EventDatabase] v5→v6 migration: No old task_chat_sessions store found, skipping",
+      )
+      return
+    }
+
+    // Copy data from old task_chat_sessions to new chat_sessions
+    // We need to use raw IndexedDB API since the old store isn't in our typed schema
+    const oldData = await new Promise<PersistedTaskChatSession[]>((resolve, reject) => {
+      const tx = rawDb.transaction("task_chat_sessions", "readonly")
+      const store = tx.objectStore("task_chat_sessions")
+      const request = store.getAll()
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result ?? [])
+    })
+
+    // Write to new chat_sessions store
+    if (oldData.length > 0) {
+      const tx = this.db.transaction(STORE_NAMES.CHAT_SESSIONS, "readwrite")
+      const store = tx.objectStore(STORE_NAMES.CHAT_SESSIONS)
+      for (const session of oldData) {
+        await store.put(session)
+      }
+      await tx.done
+    }
+
+    console.log(
+      `[EventDatabase] v5→v6 migration complete: migrated ${oldData.length} task chat sessions`,
+    )
+
+    // Note: We cannot delete the old stores here because we're outside the upgrade transaction.
+    // The old stores will remain but won't be used. They'll be cleaned up when the user
+    // clears their data or on a future schema version that does cleanup.
+    if (hasOldMetadataStore) {
+      console.log(
+        "[EventDatabase] Note: Old task_chat_metadata store exists but cannot be deleted outside upgrade",
+      )
+    }
+    if (hasOldSessionsStore) {
+      console.log(
+        "[EventDatabase] Note: Old task_chat_sessions store exists but cannot be deleted outside upgrade",
+      )
+    }
   }
 
   /**
@@ -534,40 +610,26 @@ export class EventDatabase {
   // ============================================================================
 
   /**
-   * Save a task chat session (both metadata and full data).
+   * Save a task chat session.
    */
   async saveTaskChatSession(session: PersistedTaskChatSession): Promise<void> {
     const db = await this.ensureDb()
-
-    // Extract metadata
-    const metadata: TaskChatSessionMetadata = {
-      id: session.id,
-      taskId: session.taskId,
-      taskTitle: session.taskTitle,
-      instanceId: session.instanceId,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-      messageCount: session.messageCount,
-      eventCount: session.eventCount,
-      lastEventSequence: session.lastEventSequence,
-    }
-
-    const tx = db.transaction(
-      [STORE_NAMES.TASK_CHAT_METADATA, STORE_NAMES.TASK_CHAT_SESSIONS],
-      "readwrite",
-    )
-
-    await tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).put(metadata)
-    await tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).put(session)
-    await tx.done
+    await db.put(STORE_NAMES.CHAT_SESSIONS, session)
   }
 
   /**
    * Get task chat session metadata by ID.
+   * Returns the session without the messages and events arrays for listing purposes.
    */
-  async getTaskChatSessionMetadata(id: string): Promise<TaskChatSessionMetadata | undefined> {
+  async getTaskChatSessionMetadata(
+    id: string,
+  ): Promise<Omit<PersistedTaskChatSession, "messages" | "events"> | undefined> {
     const db = await this.ensureDb()
-    return db.get(STORE_NAMES.TASK_CHAT_METADATA, id)
+    const session = await db.get(STORE_NAMES.CHAT_SESSIONS, id)
+    if (!session) return undefined
+    // Return without messages and events for metadata consumers
+    const { messages: _, events: __, ...metadata } = session
+    return metadata
   }
 
   /**
@@ -575,26 +637,37 @@ export class EventDatabase {
    */
   async getTaskChatSession(id: string): Promise<PersistedTaskChatSession | undefined> {
     const db = await this.ensureDb()
-    return db.get(STORE_NAMES.TASK_CHAT_SESSIONS, id)
+    return db.get(STORE_NAMES.CHAT_SESSIONS, id)
   }
 
   /**
-   * List all task chat session metadata for an instance, sorted by updatedAt descending.
+   * List all task chat sessions for an instance, sorted by updatedAt descending.
+   * Returns sessions without messages and events for efficiency.
    */
-  async listTaskChatSessions(instanceId: string): Promise<TaskChatSessionMetadata[]> {
+  async listTaskChatSessions(
+    instanceId: string,
+  ): Promise<Omit<PersistedTaskChatSession, "messages" | "events">[]> {
     const db = await this.ensureDb()
-    const all = await db.getAllFromIndex(STORE_NAMES.TASK_CHAT_METADATA, "by-instance", instanceId)
-    return all.sort((a, b) => b.updatedAt - a.updatedAt)
+    const all = await db.getAllFromIndex(STORE_NAMES.CHAT_SESSIONS, "by-instance", instanceId)
+    // Sort by updatedAt descending and strip heavy fields
+    return all
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map(({ messages: _, events: __, ...metadata }) => metadata)
   }
 
   /**
    * Get task chat sessions for a specific task, sorted by updatedAt descending.
+   * Returns sessions without messages and events for efficiency.
    */
-  async getTaskChatSessionsForTask(taskId: string): Promise<TaskChatSessionMetadata[]> {
+  async getTaskChatSessionsForTask(
+    taskId: string,
+  ): Promise<Omit<PersistedTaskChatSession, "messages" | "events">[]> {
     const db = await this.ensureDb()
-    const all = await db.getAllFromIndex(STORE_NAMES.TASK_CHAT_METADATA, "by-task", taskId)
+    const all = await db.getAllFromIndex(STORE_NAMES.CHAT_SESSIONS, "by-task", taskId)
     // Sort by updatedAt descending (most recent first)
-    return all.sort((a, b) => b.updatedAt - a.updatedAt)
+    return all
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map(({ messages: _, events: __, ...metadata }) => metadata)
   }
 
   /**
@@ -607,19 +680,16 @@ export class EventDatabase {
     const db = await this.ensureDb()
 
     // Use compound index to get sessions for this instance+task
-    const metadata = await db.getAllFromIndex(
-      STORE_NAMES.TASK_CHAT_METADATA,
-      "by-instance-and-task",
-      [instanceId, taskId],
-    )
+    const sessions = await db.getAllFromIndex(STORE_NAMES.CHAT_SESSIONS, "by-instance-and-task", [
+      instanceId,
+      taskId,
+    ])
 
-    if (metadata.length === 0) return undefined
+    if (sessions.length === 0) return undefined
 
     // Sort by updatedAt descending and get the most recent
-    metadata.sort((a, b) => b.updatedAt - a.updatedAt)
-    const latestId = metadata[0].id
-
-    return db.get(STORE_NAMES.TASK_CHAT_SESSIONS, latestId)
+    sessions.sort((a, b) => b.updatedAt - a.updatedAt)
+    return sessions[0]
   }
 
   /**
@@ -629,26 +699,21 @@ export class EventDatabase {
   async getLatestTaskChatSessionForInstance(
     instanceId: string,
   ): Promise<PersistedTaskChatSession | undefined> {
-    const metadata = await this.listTaskChatSessions(instanceId)
-    if (metadata.length === 0) return undefined
+    const db = await this.ensureDb()
+    const all = await db.getAllFromIndex(STORE_NAMES.CHAT_SESSIONS, "by-instance", instanceId)
+    if (all.length === 0) return undefined
 
-    // First entry is the most recent (sorted by updatedAt descending)
-    return this.getTaskChatSession(metadata[0].id)
+    // Sort by updatedAt descending and return the most recent
+    all.sort((a, b) => b.updatedAt - a.updatedAt)
+    return all[0]
   }
 
   /**
-   * Delete a task chat session (both metadata and full data).
+   * Delete a task chat session.
    */
   async deleteTaskChatSession(id: string): Promise<void> {
     const db = await this.ensureDb()
-    const tx = db.transaction(
-      [STORE_NAMES.TASK_CHAT_METADATA, STORE_NAMES.TASK_CHAT_SESSIONS],
-      "readwrite",
-    )
-
-    await tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).delete(id)
-    await tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).delete(id)
-    await tx.done
+    await db.delete(STORE_NAMES.CHAT_SESSIONS, id)
   }
 
   /**
@@ -660,18 +725,12 @@ export class EventDatabase {
     const sessions = await this.listTaskChatSessions(instanceId)
     const ids = sessions.map(s => s.id)
 
-    const tx = db.transaction(
-      [STORE_NAMES.TASK_CHAT_METADATA, STORE_NAMES.TASK_CHAT_SESSIONS],
-      "readwrite",
-    )
-
-    const metaStore = tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA)
-    const sessionStore = tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS)
+    const tx = db.transaction(STORE_NAMES.CHAT_SESSIONS, "readwrite")
+    const store = tx.objectStore(STORE_NAMES.CHAT_SESSIONS)
 
     // Delete all entries sequentially within the transaction
     for (const id of ids) {
-      await metaStore.delete(id)
-      await sessionStore.delete(id)
+      await store.delete(id)
     }
     await tx.done
   }
@@ -732,20 +791,13 @@ export class EventDatabase {
   async clearAll(): Promise<void> {
     const db = await this.ensureDb()
     const tx = db.transaction(
-      [
-        STORE_NAMES.SESSIONS,
-        STORE_NAMES.EVENTS,
-        STORE_NAMES.TASK_CHAT_METADATA,
-        STORE_NAMES.TASK_CHAT_SESSIONS,
-        STORE_NAMES.SYNC_STATE,
-      ],
+      [STORE_NAMES.SESSIONS, STORE_NAMES.EVENTS, STORE_NAMES.CHAT_SESSIONS, STORE_NAMES.SYNC_STATE],
       "readwrite",
     )
 
     await tx.objectStore(STORE_NAMES.SESSIONS).clear()
     await tx.objectStore(STORE_NAMES.EVENTS).clear()
-    await tx.objectStore(STORE_NAMES.TASK_CHAT_METADATA).clear()
-    await tx.objectStore(STORE_NAMES.TASK_CHAT_SESSIONS).clear()
+    await tx.objectStore(STORE_NAMES.CHAT_SESSIONS).clear()
     await tx.objectStore(STORE_NAMES.SYNC_STATE).clear()
     await tx.done
   }
@@ -767,19 +819,19 @@ export class EventDatabase {
   async getStats(): Promise<{
     sessionCount: number
     eventCount: number
-    taskChatSessionCount: number
+    chatSessionCount: number
     syncStateCount: number
   }> {
     const db = await this.ensureDb()
 
-    const [sessionCount, eventCount, taskChatSessionCount, syncStateCount] = await Promise.all([
+    const [sessionCount, eventCount, chatSessionCount, syncStateCount] = await Promise.all([
       db.count(STORE_NAMES.SESSIONS),
       db.count(STORE_NAMES.EVENTS),
-      db.count(STORE_NAMES.TASK_CHAT_METADATA),
+      db.count(STORE_NAMES.CHAT_SESSIONS),
       db.count(STORE_NAMES.SYNC_STATE),
     ])
 
-    return { sessionCount, eventCount, taskChatSessionCount, syncStateCount }
+    return { sessionCount, eventCount, chatSessionCount, syncStateCount }
   }
 }
 
