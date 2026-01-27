@@ -7,6 +7,7 @@ import { useAppStore, flushTaskChatEventsBatch } from "../store"
 import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 import { extractTokenUsageFromEvent } from "./extractTokenUsage"
+import { eventDatabase, type PersistedEvent } from "./persistence"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -47,6 +48,52 @@ let currentReconnectDelay = INITIAL_RECONNECT_DELAY
 // Event index tracking for reconnection sync
 // Maps instanceId to the last known event index for that instance
 const lastEventIndices: Map<string, number> = new Map()
+
+// Session tracking for IndexedDB persistence
+// Maps instanceId to the current session ID for that instance
+const currentSessionIds: Map<string, string> = new Map()
+
+/**
+ * Generate a session ID based on instance ID and timestamp.
+ * Format: "{instanceId}-{timestamp}"
+ */
+function generateSessionId(instanceId: string, timestamp: number): string {
+  return `${instanceId}-${timestamp}`
+}
+
+/**
+ * Persist an event directly to IndexedDB.
+ * Uses the server-assigned UUID as the event ID for deduplication.
+ */
+async function persistEventToIndexedDB(
+  event: { type: string; timestamp: number; id?: string; [key: string]: unknown },
+  sessionId: string,
+): Promise<void> {
+  // Use server-assigned UUID if available, otherwise generate one
+  const eventId =
+    event.id ?? `${sessionId}-event-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+
+  const persistedEvent: PersistedEvent = {
+    id: eventId,
+    sessionId,
+    timestamp: event.timestamp,
+    eventType: event.type ?? "unknown",
+    event: event as PersistedEvent["event"],
+  }
+
+  try {
+    await eventDatabase.saveEvent(persistedEvent)
+    console.debug(
+      `[ralphConnection] Event persisted to IndexedDB: id=${eventId}, type=${event.type}`,
+    )
+  } catch (error) {
+    console.error("[ralphConnection] Failed to persist event to IndexedDB:", error, {
+      eventId,
+      sessionId,
+      eventType: event.type,
+    })
+  }
+}
 
 /**
  * Calculate the next reconnection delay using exponential backoff with jitter.
@@ -178,13 +225,29 @@ function handleMessage(event: MessageEvent): void {
             }
           }
 
-          // Add missed events to the store
+          // Add missed events to the store and persist to IndexedDB
           if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
             console.log(
               `[ralphConnection] Processing ${pendingEvents.length} pending events for instance: ${pendingInstanceId}`,
             )
             const isPendingActive = pendingInstanceId === store.activeInstanceId
             for (const event of pendingEvents) {
+              // Check for session boundary to update session tracking
+              if (isSessionBoundary(event)) {
+                const newSessionId = generateSessionId(pendingInstanceId, event.timestamp)
+                currentSessionIds.set(pendingInstanceId, newSessionId)
+                console.debug(
+                  `[ralphConnection] New session from pending event: id=${newSessionId}, instanceId=${pendingInstanceId}`,
+                )
+              }
+
+              // Persist to IndexedDB (deduplication handled by server UUID)
+              const sessionId = currentSessionIds.get(pendingInstanceId)
+              if (sessionId) {
+                persistEventToIndexedDB(event, sessionId)
+              }
+
+              // Update Zustand for UI
               if (isPendingActive) {
                 store.addEvent(event)
               } else {
@@ -239,9 +302,27 @@ function handleMessage(event: MessageEvent): void {
             } else {
               store.resetSessionStatsForInstance(targetInstanceId)
             }
+
+            // Generate a new session ID for this instance
+            const newSessionId = generateSessionId(targetInstanceId, event.timestamp)
+            currentSessionIds.set(targetInstanceId, newSessionId)
+            console.debug(
+              `[ralphConnection] New session started: id=${newSessionId}, instanceId=${targetInstanceId}`,
+            )
           }
 
-          // Route event to correct instance
+          // Persist event to IndexedDB (before updating Zustand for UI)
+          const sessionId = currentSessionIds.get(targetInstanceId)
+          if (sessionId) {
+            // Fire and forget - don't block on IndexedDB write
+            persistEventToIndexedDB(event, sessionId)
+          } else {
+            console.debug(
+              `[ralphConnection] No active session for instance ${targetInstanceId}, skipping IndexedDB persistence`,
+            )
+          }
+
+          // Route event to correct instance (Zustand update for UI rendering)
           if (isForActiveInstance) {
             store.addEvent(event)
             console.debug(
@@ -634,6 +715,7 @@ function reset(): void {
   intentionalClose = false
   resetReconnectState()
   lastEventIndices.clear()
+  currentSessionIds.clear()
 }
 
 /**
@@ -659,6 +741,23 @@ export function getLastEventIndex(instanceId: string): number | undefined {
  */
 export function clearEventIndices(): void {
   lastEventIndices.clear()
+  currentSessionIds.clear()
+}
+
+/**
+ * Get the current session ID for an instance.
+ * Used for coordination with persistence hooks and testing.
+ */
+export function getCurrentSessionId(instanceId: string): string | undefined {
+  return currentSessionIds.get(instanceId)
+}
+
+/**
+ * Set the current session ID for an instance.
+ * Used when restoring session state on reconnection/reload.
+ */
+export function setCurrentSessionId(instanceId: string, sessionId: string): void {
+  currentSessionIds.set(instanceId, sessionId)
 }
 
 // Export singleton manager
