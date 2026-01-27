@@ -90,6 +90,9 @@ importers:
 
   shared:
     devDependencies:
+      '@types/node':
+        specifier: ^24.10.9
+        version: 24.10.9
       prettier:
         specifier: ^3.5.3
         version: 3.8.0
