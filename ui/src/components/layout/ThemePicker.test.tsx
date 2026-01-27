@@ -257,7 +257,7 @@ describe("ThemePickerView", () => {
   })
 
   describe("error states", () => {
-    it("shows error state when there is an error", () => {
+    it("shows error state when there is an error and themes exist", () => {
       render(<ThemePickerView {...createDefaultProps({ error: "Failed to load themes" })} />)
 
       // Open dropdown
@@ -265,6 +265,57 @@ describe("ThemePickerView", () => {
 
       // Should show error message
       expect(screen.getByText("Failed to load themes")).toBeInTheDocument()
+    })
+
+    it("hides theme list when there is an error and themes exist", () => {
+      render(<ThemePickerView {...createDefaultProps({ error: "Failed to load themes" })} />)
+
+      // Open dropdown
+      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
+
+      // Should show error message but not the theme items
+      expect(screen.getByText("Failed to load themes")).toBeInTheDocument()
+      expect(screen.queryByTestId("theme-picker-item-gruvbox-dark")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("theme-picker-item-dracula")).not.toBeInTheDocument()
+      // Refresh button in footer should also be hidden (only retry in error section)
+      expect(screen.queryByTestId("theme-picker-refresh")).not.toBeInTheDocument()
+    })
+
+    it("calls onRefresh when clicking retry button in error state", () => {
+      const props = createDefaultProps({ error: "Failed to load themes" })
+      render(<ThemePickerView {...props} />)
+
+      // Open dropdown
+      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
+
+      // Click the retry button (it's inside the error section)
+      const retryButton = screen.getByTitle("Retry")
+      fireEvent.click(retryButton)
+
+      // onRefresh should be called
+      expect(props.onRefresh).toHaveBeenCalled()
+    })
+
+    it("shows 'No themes found' instead of error when there are no themes", () => {
+      render(<ThemePickerView {...createDefaultProps({ themes: [], error: "Theme not found" })} />)
+
+      // Open dropdown
+      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
+
+      // Should show "No themes found" instead of the error
+      expect(screen.getByText("No themes found")).toBeInTheDocument()
+      expect(screen.queryByText("Theme not found")).not.toBeInTheDocument()
+    })
+
+    it("shows refresh button when there is an error but no themes", () => {
+      render(<ThemePickerView {...createDefaultProps({ themes: [], error: "Theme not found" })} />)
+
+      // Open dropdown
+      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
+
+      // Should show "No themes found" and the refresh button
+      expect(screen.getByText("No themes found")).toBeInTheDocument()
+      expect(screen.getByTestId("theme-picker-refresh")).toBeInTheDocument()
     })
   })
 

@@ -95,7 +95,7 @@ export function ThemePickerView({
           )}
           data-testid="theme-picker-dropdown"
         >
-          {error && (
+          {error && themes.length > 0 && (
             <div className="p-3">
               <div className="text-status-error flex items-center gap-2 text-sm">
                 <span>{error}</span>
@@ -110,7 +110,7 @@ export function ThemePickerView({
             </div>
           )}
 
-          {!error && (
+          {!(error && themes.length > 0) && (
             <div className="max-h-80 overflow-y-auto p-1">
               {themes.length === 0 && (
                 <div className="text-muted-foreground px-2 py-2 text-xs">No themes found</div>
@@ -134,7 +134,7 @@ export function ThemePickerView({
             </div>
           )}
 
-          {!error && (
+          {!(error && themes.length > 0) && (
             <div className="border-border border-t p-1">
               <button
                 onClick={onRefresh}
