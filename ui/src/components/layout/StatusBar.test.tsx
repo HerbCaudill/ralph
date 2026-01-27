@@ -166,6 +166,19 @@ describe("StatusBar", () => {
   // Note: CurrentTask tests have been moved to EventStream.test.tsx
   // as the current task is now displayed in the SessionBar at the top of the event panel
 
+  describe("RunDuration", () => {
+    it("shows elapsed time when ralph is running", () => {
+      useAppStore.getState().setRalphStatus("running")
+      render(<StatusBar />)
+      expect(screen.getByTitle("Time running")).toBeInTheDocument()
+    })
+
+    it("does not show elapsed time when ralph is stopped", () => {
+      render(<StatusBar />)
+      expect(screen.queryByTitle("Time running")).not.toBeInTheDocument()
+    })
+  })
+
   describe("styling", () => {
     it("applies custom className", () => {
       const { container } = render(<StatusBar className="custom-class" />)

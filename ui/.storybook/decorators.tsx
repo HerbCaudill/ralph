@@ -18,6 +18,8 @@ export interface StoreState {
   /** Multi-instance state */
   instances?: Map<string, RalphInstance>
   activeInstanceId?: string
+  /** When the current run started (timestamp) - auto-set when ralphStatus is "running" */
+  runStartedAt?: number | null
 }
 
 /**  Decorator that initializes the Zustand store with specific state for stories */
@@ -52,6 +54,13 @@ export function withStoreState(state: StoreState): Decorator {
       }
       if (state.activeInstanceId !== undefined) {
         useAppStore.setState({ activeInstanceId: state.activeInstanceId })
+      }
+      // Handle runStartedAt - if explicitly set, use that value; if status is "running" and not set, auto-set to now
+      if (state.runStartedAt !== undefined) {
+        useAppStore.setState({ runStartedAt: state.runStartedAt })
+      } else if (state.ralphStatus === "running") {
+        // Auto-set runStartedAt to a time in the past for a realistic display
+        useAppStore.setState({ runStartedAt: Date.now() - 125000 }) // 2:05 elapsed
       }
     }, [])
 
