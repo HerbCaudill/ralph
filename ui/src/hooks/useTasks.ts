@@ -12,7 +12,7 @@ export interface UseTasksOptions {
   /** Include closed tasks */
   all?: boolean
   /**
-   * Polling interval in ms (default: 2000).
+   * Polling interval in ms (default: 5000).
    * Provides reliable updates when WebSocket mutation events are delayed or unavailable.
    */
   pollInterval?: number
@@ -97,10 +97,10 @@ export async function fetchBlockedTasks(parent?: string): Promise<TasksResponse>
  * 1. Initial fetch when the hook mounts
  * 2. Mutation events from the beads daemon (create, update, delete, status changes)
  * 3. Manual refresh calls
- * 4. Polling every 2 seconds (configurable via pollInterval option)
+ * 4. Polling every 5 seconds (configurable via pollInterval option)
  */
 export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
-  const { status, ready, all, pollInterval = 2000 } = options
+  const { status, ready, all, pollInterval = 5000 } = options
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
