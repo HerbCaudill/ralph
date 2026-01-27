@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react"
-import { IconChevronDown } from "@tabler/icons-react"
+import { IconChevronDown, IconLoader2 } from "@tabler/icons-react"
 import {
   Command,
   CommandEmpty,
@@ -97,6 +97,12 @@ export function SessionHistoryDropdown({
           aria-label="View session history"
           data-testid="session-history-dropdown-trigger"
         >
+          {isRunning && (
+            <IconLoader2
+              className="size-3 shrink-0 animate-spin"
+              data-testid="session-running-spinner"
+            />
+          )}
           {triggerLabel.id && (
             <span className="shrink-0 font-mono opacity-70">
               {stripTaskPrefix(triggerLabel.id, issuePrefix)}
