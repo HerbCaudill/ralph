@@ -11,6 +11,7 @@
     "test": "pnpm --filter @herbcaudill/ralph-shared test && pnpm --filter @herbcaudill/ralph test && pnpm --filter @herbcaudill/ralph-ui test",
     "typecheck": "pnpm -r --parallel typecheck",
     "test:all": "node scripts/test-all.js",
+    "test:changed": "node scripts/test-all.js --changed",
     "format": "git diff --name-only HEAD --diff-filter=ACMR | xargs -r prettier --write --ignore-unknown --log-level silent",
     "cli": "tsx cli/src/index.ts",
     "cli:build": "pnpm --filter @herbcaudill/ralph build",
