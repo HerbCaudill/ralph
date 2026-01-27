@@ -163,6 +163,9 @@ Claude is instructed (via core-prompt + workflow) to:
 # Build all packages
 pnpm build
 
+# Build shared package (required after changes to shared/)
+pnpm --filter @herbcaudill/ralph-shared build
+
 # Typecheck all packages
 pnpm typecheck
 
