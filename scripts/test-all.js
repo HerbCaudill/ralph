@@ -227,7 +227,7 @@ async function main() {
   results.startTime = Date.now()
 
   if (changedMode) {
-    console.log(style.bold("\nRunning tests affected by uncommitted changes\n"))
+    console.log(style.bold("\nRunning all tests (vitest: --changed)\n"))
   } else {
     console.log(style.bold("\nRunning all tests\n"))
   }
@@ -268,9 +268,8 @@ async function main() {
   }
 
   // Phase 3: Run playwright (needs dev server isolation)
-  // Skip in --changed mode since Playwright doesn't support change detection
   const playwrightSuite = testSuites.find(s => s.type === "playwright")
-  if (playwrightSuite && !changedMode) {
+  if (playwrightSuite) {
     process.stdout.write(`  ◌ ${playwrightSuite.name}...`)
     const result = await runTestSuite(playwrightSuite)
     results.suites.push(result)
@@ -283,8 +282,6 @@ async function main() {
       results.endTime = Date.now()
       process.exit(printSummary())
     }
-  } else if (playwrightSuite && changedMode) {
-    console.log(style.dim(`  ○ ${playwrightSuite.name} skipped (no change detection support)`))
   }
 
   results.endTime = Date.now()

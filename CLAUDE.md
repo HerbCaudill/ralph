@@ -168,7 +168,7 @@ pnpm typecheck
 
 # Run all tests across packages
 pnpm test:all          # Run all tests (CLI + UI)
-pnpm test:changed      # Run only tests affected by uncommitted changes (skips Playwright)
+pnpm test:changed      # Run vitest with --changed flag (only affected unit tests)
 pnpm test              # Run tests in each package
 
 # Run the CLI
