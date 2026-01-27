@@ -105,7 +105,7 @@ export function TaskChat({
             loadingIndicator={
               isLoading || streamingMessage ?
                 <div
-                  className="flex items-center justify-start px-4 py-4"
+                  className="flex items-center justify-start px-4 pt-4 pb-[20em]"
                   aria-label="Task chat is loading"
                   data-testid="task-chat-loading-spinner"
                 >
@@ -113,7 +113,7 @@ export function TaskChat({
                 </div>
               : hasContent ?
                 <div
-                  className="flex items-center justify-start px-4 py-4"
+                  className="flex items-center justify-start px-4 pt-4 pb-[20em]"
                   aria-label="Task chat is idle"
                   data-testid="task-chat-idle-spinner"
                 >
