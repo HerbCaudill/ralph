@@ -13,7 +13,7 @@ import type { ThemeMeta } from "@/lib/theme"
 
 /**
  * Presentational component for the theme picker dropdown.
- * Displays VS Code themes grouped by dark/light with hover preview.
+ * Displays VS Code themes grouped by dark/light.
  *
  * All data is passed via props - no store or API access.
  * Use ThemePicker (controller) for the connected version.
@@ -27,8 +27,6 @@ export function ThemePickerView({
   isLoading = false,
   error,
   onApplyTheme,
-  onPreviewTheme,
-  onClearPreview,
   onRefresh,
 }: ThemePickerViewProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -48,7 +46,6 @@ export function ThemePickerView({
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false)
-        onClearPreview()
       }
     }
 
@@ -56,31 +53,22 @@ export function ThemePickerView({
       document.addEventListener("mousedown", handleClickOutside)
       return () => document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [isOpen, onClearPreview])
+  }, [isOpen])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && isOpen) {
         setIsOpen(false)
-        onClearPreview()
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, onClearPreview])
+  }, [isOpen])
 
   const handleThemeSelect = async (themeId: string) => {
     await onApplyTheme(themeId)
     setIsOpen(false)
-  }
-
-  const handleMouseEnter = (themeId: string) => {
-    onPreviewTheme(themeId)
-  }
-
-  const handleMouseLeave = () => {
-    onClearPreview()
   }
 
   const isHeaderVariant = variant === "header"
@@ -147,8 +135,6 @@ export function ThemePickerView({
                     <button
                       key={theme.id}
                       onClick={() => handleThemeSelect(theme.id)}
-                      onMouseEnter={() => handleMouseEnter(theme.id)}
-                      onMouseLeave={handleMouseLeave}
                       className={cn(
                         "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
                         "hover:bg-muted",
@@ -210,10 +196,6 @@ export type ThemePickerViewProps = {
   error?: string | null
   /** Callback to apply a theme */
   onApplyTheme: (themeId: string) => void | Promise<void>
-  /** Callback to preview a theme on hover */
-  onPreviewTheme: (themeId: string) => void
-  /** Callback to clear the preview */
-  onClearPreview: () => void
   /** Callback to refresh the theme list */
   onRefresh: () => void
 }

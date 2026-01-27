@@ -8,17 +8,8 @@ import { ThemePickerView } from "./ThemePickerView"
  * then passes the data to the ThemePickerView presentational component.
  */
 export function ThemePicker({ className, variant = "default", textColor }: ThemePickerProps) {
-  const {
-    themes,
-    activeThemeId,
-    isLoadingList,
-    isLoadingTheme,
-    error,
-    fetchThemes,
-    applyTheme,
-    previewTheme,
-    clearPreview,
-  } = useVSCodeTheme()
+  const { themes, activeThemeId, isLoadingList, isLoadingTheme, error, fetchThemes, applyTheme } =
+    useVSCodeTheme()
 
   return (
     <ThemePickerView
@@ -30,8 +21,6 @@ export function ThemePicker({ className, variant = "default", textColor }: Theme
       isLoading={isLoadingList || isLoadingTheme}
       error={error}
       onApplyTheme={applyTheme}
-      onPreviewTheme={previewTheme}
-      onClearPreview={clearPreview}
       onRefresh={fetchThemes}
     />
   )

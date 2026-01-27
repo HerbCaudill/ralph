@@ -55,8 +55,6 @@ const meta: Meta<typeof ThemePickerView> = {
     isLoading: false,
     error: null,
     onApplyTheme: fn(),
-    onPreviewTheme: fn(),
-    onClearPreview: fn(),
     onRefresh: fn(),
   },
 }
@@ -224,31 +222,6 @@ export const SelectingThemeCallsHandler: Story = {
 }
 
 /**
- * Verifies hovering over a theme calls onPreviewTheme.
- */
-export const HoveringCallsPreview: Story = {
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement.ownerDocument.body)
-
-    // Open dropdown
-    const trigger = await canvas.findByTestId("theme-picker-trigger")
-    await userEvent.click(trigger)
-
-    // Wait for dropdown
-    await waitFor(async () => {
-      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
-    })
-
-    // Hover over Dracula theme
-    const draculaItem = await canvas.findByTestId("theme-picker-item-dracula")
-    await userEvent.hover(draculaItem)
-
-    // onPreviewTheme should be called
-    await expect(args.onPreviewTheme).toHaveBeenCalledWith("dracula")
-  },
-}
-
-/**
  * Verifies clicking Refresh calls onRefresh.
  */
 export const RefreshCallsHandler: Story = {
@@ -277,7 +250,7 @@ export const RefreshCallsHandler: Story = {
  * Verifies Escape closes the dropdown.
  */
 export const EscapeClosesDropdown: Story = {
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
 
     // Open dropdown
@@ -292,8 +265,10 @@ export const EscapeClosesDropdown: Story = {
     // Press Escape
     await userEvent.keyboard("{Escape}")
 
-    // onClearPreview should be called
-    await expect(args.onClearPreview).toHaveBeenCalled()
+    // Dropdown should be closed
+    await waitFor(async () => {
+      await expect(canvas.queryByTestId("theme-picker-dropdown")).not.toBeInTheDocument()
+    })
   },
 }
 

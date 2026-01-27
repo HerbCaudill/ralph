@@ -29,8 +29,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
     error,
     fetchThemes,
     applyTheme,
-    previewTheme,
-    clearPreview,
     theme: appearanceMode,
     setTheme: setAppearanceMode,
     setMode,
@@ -46,7 +44,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false)
-        clearPreview()
       }
     }
 
@@ -54,30 +51,21 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
       document.addEventListener("mousedown", handleClickOutside)
       return () => document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [isOpen, clearPreview])
+  }, [isOpen])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && isOpen) {
         setIsOpen(false)
-        clearPreview()
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, clearPreview])
+  }, [isOpen])
 
   const handleThemeSelect = async (themeId: string) => {
     await applyTheme(themeId)
-  }
-
-  const handleMouseEnter = (themeId: string) => {
-    previewTheme(themeId)
-  }
-
-  const handleMouseLeave = () => {
-    clearPreview()
   }
 
   const handleExportState = useCallback(async () => {
@@ -182,8 +170,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
                     <button
                       key={theme.id}
                       onClick={() => handleThemeSelect(theme.id)}
-                      onMouseEnter={() => handleMouseEnter(theme.id)}
-                      onMouseLeave={handleMouseLeave}
                       className={cn(
                         "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
                         "hover:bg-muted",

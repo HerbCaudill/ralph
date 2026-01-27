@@ -7,8 +7,6 @@ import * as exportStateModule from "@/lib/exportState"
 // Mock values for useThemeCoordinator (combines useVSCodeTheme and useTheme)
 const mockFetchThemes = vi.fn()
 const mockApplyTheme = vi.fn()
-const mockPreviewTheme = vi.fn()
-const mockClearPreview = vi.fn()
 const mockSetTheme = vi.fn()
 const mockSetMode = vi.fn()
 const mockCycleTheme = vi.fn()
@@ -33,8 +31,6 @@ vi.mock("@/hooks", () => ({
     error: mockError,
     fetchThemes: mockFetchThemes,
     applyTheme: mockApplyTheme,
-    previewTheme: mockPreviewTheme,
-    clearPreview: mockClearPreview,
     // Light/dark theme values
     theme: mockTheme,
     resolvedTheme: mockTheme === "system" ? "dark" : mockTheme,
@@ -87,8 +83,6 @@ describe("SettingsDropdown", () => {
     // Clear mock function calls
     mockFetchThemes.mockClear()
     mockApplyTheme.mockClear()
-    mockPreviewTheme.mockClear()
-    mockClearPreview.mockClear()
     mockSetTheme.mockClear()
     mockSetMode.mockClear()
     mockCycleTheme.mockClear()
@@ -239,27 +233,6 @@ describe("SettingsDropdown", () => {
       await waitFor(() => {
         expect(screen.getByTestId("settings-dropdown")).toBeInTheDocument()
       })
-    })
-  })
-
-  describe("preview functionality", () => {
-    it("calls previewTheme on hover", () => {
-      render(<SettingsDropdown />)
-      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
-
-      fireEvent.mouseEnter(screen.getByText("Dracula"))
-
-      expect(mockPreviewTheme).toHaveBeenCalledWith("dracula")
-    })
-
-    it("calls clearPreview on mouse leave", () => {
-      render(<SettingsDropdown />)
-      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
-
-      fireEvent.mouseEnter(screen.getByText("Dracula"))
-      fireEvent.mouseLeave(screen.getByText("Dracula"))
-
-      expect(mockClearPreview).toHaveBeenCalled()
     })
   })
 

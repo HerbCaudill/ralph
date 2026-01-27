@@ -49,8 +49,6 @@ function createDefaultProps(overrides: Partial<Parameters<typeof ThemePickerView
     isLoading: false,
     error: null as string | null,
     onApplyTheme: vi.fn(),
-    onPreviewTheme: vi.fn(),
-    onClearPreview: vi.fn(),
     onRefresh: vi.fn(),
     ...overrides,
   }
@@ -122,9 +120,6 @@ describe("ThemePickerView", () => {
       await waitFor(() => {
         expect(screen.queryByTestId("theme-picker-dropdown")).not.toBeInTheDocument()
       })
-
-      // onClearPreview should be called
-      expect(props.onClearPreview).toHaveBeenCalled()
     })
 
     it("closes dropdown when pressing Escape", async () => {
@@ -142,9 +137,6 @@ describe("ThemePickerView", () => {
       await waitFor(() => {
         expect(screen.queryByTestId("theme-picker-dropdown")).not.toBeInTheDocument()
       })
-
-      // onClearPreview should be called
-      expect(props.onClearPreview).toHaveBeenCalled()
     })
   })
 
@@ -262,37 +254,6 @@ describe("ThemePickerView", () => {
       await waitFor(() => {
         expect(screen.queryByTestId("theme-picker-dropdown")).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe("preview functionality", () => {
-    it("calls onPreviewTheme on hover", () => {
-      const props = createDefaultProps()
-      render(<ThemePickerView {...props} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Hover over a theme
-      fireEvent.mouseEnter(screen.getByText("Dracula"))
-
-      // onPreviewTheme should be called
-      expect(props.onPreviewTheme).toHaveBeenCalledWith("dracula")
-    })
-
-    it("calls onClearPreview on mouse leave", () => {
-      const props = createDefaultProps()
-      render(<ThemePickerView {...props} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Hover then leave
-      fireEvent.mouseEnter(screen.getByText("Dracula"))
-      fireEvent.mouseLeave(screen.getByText("Dracula"))
-
-      // onClearPreview should be called
-      expect(props.onClearPreview).toHaveBeenCalled()
     })
   })
 
