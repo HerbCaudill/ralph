@@ -201,13 +201,30 @@ describe("SettingsDropdown", () => {
   })
 
   describe("theme section", () => {
-    it("groups themes by dark and light types", () => {
+    it("shows themes matching current display mode (dark when resolvedTheme is dark)", () => {
+      // With mockTheme = "system", resolvedTheme will be "dark"
       render(<SettingsDropdown />)
       fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
 
-      // Use getAllByText since "Dark" and "Light" appear in both appearance mode and theme groups
-      expect(screen.getAllByText("Dark").length).toBeGreaterThan(0)
-      expect(screen.getAllByText("Light").length).toBeGreaterThan(0)
+      // Should show dark themes
+      expect(screen.getByText("Gruvbox Dark")).toBeInTheDocument()
+      expect(screen.getByText("Dracula")).toBeInTheDocument()
+
+      // Should NOT show light themes
+      expect(screen.queryByText("Solarized Light")).not.toBeInTheDocument()
+    })
+
+    it("shows themes matching current display mode (light when resolvedTheme is light)", () => {
+      mockTheme = "light"
+      render(<SettingsDropdown />)
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      // Should show light theme
+      expect(screen.getByText("Solarized Light")).toBeInTheDocument()
+
+      // Should NOT show dark themes
+      expect(screen.queryByText("Gruvbox Dark")).not.toBeInTheDocument()
+      expect(screen.queryByText("Dracula")).not.toBeInTheDocument()
     })
   })
 

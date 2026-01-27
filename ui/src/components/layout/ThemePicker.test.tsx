@@ -140,61 +140,18 @@ describe("ThemePickerView", () => {
     })
   })
 
-  describe("theme grouping", () => {
-    it("groups themes by dark and light types", () => {
+  describe("theme display", () => {
+    it("displays all passed themes", () => {
       render(<ThemePickerView {...createDefaultProps()} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
 
-      // Should show Dark and Light group headers
-      expect(screen.getByText("Dark")).toBeInTheDocument()
-      expect(screen.getByText("Light")).toBeInTheDocument()
-    })
-
-    it("displays all themes in alphabetical order within groups", () => {
-      render(<ThemePickerView {...createDefaultProps()} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // All themes should be visible
+      // All themes should be visible (themes are passed pre-filtered by controller)
       expect(screen.getByText("Dracula")).toBeInTheDocument()
       expect(screen.getByText("Gruvbox Dark")).toBeInTheDocument()
       expect(screen.getByText("GitHub Light")).toBeInTheDocument()
       expect(screen.getByText("Solarized Light")).toBeInTheDocument()
-    })
-
-    it("handles high contrast theme types", () => {
-      const hcThemes: ThemeMeta[] = [
-        {
-          id: "hc-black",
-          label: "High Contrast",
-          type: "hcDark",
-          path: "/path/to/hc.json",
-          extensionId: "ms-vscode.theme-defaults",
-          extensionName: "Default Themes",
-        },
-        {
-          id: "hc-light",
-          label: "High Contrast Light",
-          type: "hcLight",
-          path: "/path/to/hcl.json",
-          extensionId: "ms-vscode.theme-defaults",
-          extensionName: "Default Themes",
-        },
-      ]
-
-      render(<ThemePickerView {...createDefaultProps({ themes: hcThemes })} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // HC Dark should be grouped with Dark, HC Light with Light
-      expect(screen.getByText("Dark")).toBeInTheDocument()
-      expect(screen.getByText("Light")).toBeInTheDocument()
-      expect(screen.getByText("High Contrast")).toBeInTheDocument()
-      expect(screen.getByText("High Contrast Light")).toBeInTheDocument()
     })
   })
 

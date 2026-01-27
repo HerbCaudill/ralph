@@ -1,19 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from "react"
-import {
-  IconPalette,
-  IconChevronDown,
-  IconCheck,
-  IconRefresh,
-  IconSun,
-  IconMoon,
-} from "@tabler/icons-react"
+import { IconPalette, IconChevronDown, IconCheck, IconRefresh } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import { groupThemesByType } from "@/lib/groupThemesByType"
 import type { ThemeMeta } from "@/lib/theme"
 
 /**
  * Presentational component for the theme picker dropdown.
- * Displays VS Code themes grouped by dark/light.
+ * Displays VS Code themes filtered by the current display mode.
  *
  * All data is passed via props - no store or API access.
  * Use ThemePicker (controller) for the connected version.
@@ -31,8 +23,6 @@ export function ThemePickerView({
 }: ThemePickerViewProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const themeGroups = useMemo(() => groupThemesByType(themes), [themes])
 
   const displayName = useMemo(() => {
     if (activeThemeId) {
@@ -122,34 +112,24 @@ export function ThemePickerView({
 
           {!error && (
             <div className="max-h-80 overflow-y-auto p-1">
-              {themeGroups.length === 0 && (
+              {themes.length === 0 && (
                 <div className="text-muted-foreground px-2 py-2 text-xs">No themes found</div>
               )}
 
-              {themeGroups.map(group => (
-                <div key={group.type} className="mt-2">
-                  <div className="text-muted-foreground px-2 py-1 text-xs font-medium">
-                    {group.type === "dark" ? "Dark" : "Light"}
-                  </div>
-                  {group.themes.map(theme => (
-                    <button
-                      key={theme.id}
-                      onClick={() => handleThemeSelect(theme.id)}
-                      className={cn(
-                        "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
-                        "hover:bg-muted",
-                        activeThemeId === theme.id && "bg-repo-accent/50",
-                      )}
-                      data-testid={`theme-picker-item-${theme.id}`}
-                    >
-                      {theme.type === "dark" || theme.type === "hcDark" ?
-                        <IconMoon className="text-muted-foreground size-3.5" />
-                      : <IconSun className="text-muted-foreground size-3.5" />}
-                      <span className="flex-1 truncate">{theme.label}</span>
-                      {activeThemeId === theme.id && <IconCheck className="text-primary size-3" />}
-                    </button>
-                  ))}
-                </div>
+              {themes.map(theme => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleThemeSelect(theme.id)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
+                    "hover:bg-muted",
+                    activeThemeId === theme.id && "bg-repo-accent/50",
+                  )}
+                  data-testid={`theme-picker-item-${theme.id}`}
+                >
+                  <span className="flex-1 truncate">{theme.label}</span>
+                  {activeThemeId === theme.id && <IconCheck className="text-primary size-3" />}
+                </button>
               ))}
             </div>
           )}

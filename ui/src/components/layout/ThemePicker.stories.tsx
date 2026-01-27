@@ -151,28 +151,6 @@ export const OpensOnClick: Story = {
 }
 
 /**
- * Verifies the dropdown shows theme groups (Dark and Light).
- */
-export const ShowsThemeGroups: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement.ownerDocument.body)
-
-    // Open dropdown
-    const trigger = await canvas.findByTestId("theme-picker-trigger")
-    await userEvent.click(trigger)
-
-    // Should show Dark and Light group headers
-    await waitFor(
-      async () => {
-        await expect(await canvas.findByText("Dark")).toBeVisible()
-        await expect(await canvas.findByText("Light")).toBeVisible()
-      },
-      { timeout: 3000 },
-    )
-  },
-}
-
-/**
  * Verifies all themes are displayed in the dropdown.
  */
 export const ShowsAllThemes: Story = {
@@ -183,7 +161,7 @@ export const ShowsAllThemes: Story = {
     const trigger = await canvas.findByTestId("theme-picker-trigger")
     await userEvent.click(trigger)
 
-    // All themes should be visible
+    // All themes should be visible (themes are passed pre-filtered by controller)
     await waitFor(
       async () => {
         await expect(await canvas.findByText("Gruvbox Dark")).toBeVisible()

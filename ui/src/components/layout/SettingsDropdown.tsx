@@ -10,7 +10,6 @@ import {
 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { useThemeCoordinator } from "@/hooks"
-import { groupThemesByType } from "@/lib/groupThemesByType"
 import { downloadStateExport } from "@/lib/exportState"
 import { Button } from "@/components/ui/button"
 
@@ -30,6 +29,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
     fetchThemes,
     applyTheme,
     theme: appearanceMode,
+    resolvedTheme,
     setTheme: setAppearanceMode,
     setMode,
   } = useThemeCoordinator()
@@ -38,7 +38,18 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
   const [isExporting, setIsExporting] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const themeGroups = useMemo(() => groupThemesByType(themes), [themes])
+  // Filter themes to match the current display mode
+  const filteredThemes = useMemo(() => {
+    return themes.filter(theme => {
+      const isDarkTheme = theme.type === "dark" || theme.type === "hcDark"
+      return resolvedTheme === "dark" ? isDarkTheme : !isDarkTheme
+    })
+  }, [themes, resolvedTheme])
+
+  // Sort filtered themes alphabetically
+  const sortedThemes = useMemo(() => {
+    return [...filteredThemes].sort((a, b) => a.label.localeCompare(b.label))
+  }, [filteredThemes])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -157,34 +168,24 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
 
           {!error && (
             <div className="max-h-64 overflow-y-auto p-1">
-              {themeGroups.length === 0 && (
+              {sortedThemes.length === 0 && (
                 <div className="text-muted-foreground px-2 py-2 text-xs">No themes found</div>
               )}
 
-              {themeGroups.map(group => (
-                <div key={group.type} className="mt-2">
-                  <div className="text-muted-foreground px-2 py-1 text-xs font-medium">
-                    {group.type === "dark" ? "Dark" : "Light"}
-                  </div>
-                  {group.themes.map(theme => (
-                    <button
-                      key={theme.id}
-                      onClick={() => handleThemeSelect(theme.id)}
-                      className={cn(
-                        "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
-                        "hover:bg-muted",
-                        activeThemeId === theme.id && "bg-repo-accent/50",
-                      )}
-                      data-testid={`settings-theme-item-${theme.id}`}
-                    >
-                      {theme.type === "dark" || theme.type === "hcDark" ?
-                        <IconMoon className="text-muted-foreground size-3.5" />
-                      : <IconSun className="text-muted-foreground size-3.5" />}
-                      <span className="flex-1 truncate">{theme.label}</span>
-                      {activeThemeId === theme.id && <IconCheck className="text-primary size-3" />}
-                    </button>
-                  ))}
-                </div>
+              {sortedThemes.map(theme => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleThemeSelect(theme.id)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
+                    "hover:bg-muted",
+                    activeThemeId === theme.id && "bg-repo-accent/50",
+                  )}
+                  data-testid={`settings-theme-item-${theme.id}`}
+                >
+                  <span className="flex-1 truncate">{theme.label}</span>
+                  {activeThemeId === theme.id && <IconCheck className="text-primary size-3" />}
+                </button>
               ))}
             </div>
           )}
