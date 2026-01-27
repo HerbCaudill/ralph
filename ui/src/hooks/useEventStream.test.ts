@@ -6,7 +6,9 @@ import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
 // Mock useSessions
 const mockLoadSessionEvents = vi.fn()
 const mockClearSelectedSession = vi.fn()
-let mockSelectedSession: { events: Array<{ type: string; timestamp: number; message?: string }> } | null = null
+let mockSelectedSession: {
+  events: Array<{ type: string; timestamp: number; message?: string }>
+} | null = null
 
 vi.mock("@/hooks", async importOriginal => {
   const actual = await importOriginal<typeof import("@/hooks")>()
@@ -283,9 +285,7 @@ describe("useEventStream", () => {
 
     it("returns isViewingHistorical as true when selectedSession is not null", () => {
       mockSelectedSession = {
-        events: [
-          { type: "user_message", timestamp: 1705600000000, message: "Historical message" },
-        ],
+        events: [{ type: "user_message", timestamp: 1705600000000, message: "Historical message" }],
       }
 
       const { result } = renderHook(() => useEventStream())
