@@ -108,7 +108,7 @@ export function SessionHistoryDropdown({
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="center">
         <Command>
-          <CommandInput placeholder="Search sessions..." />
+          {sessions.length >= 5 && <CommandInput placeholder="Search sessions..." />}
           <CommandList>
             <CommandEmpty>No sessions found.</CommandEmpty>
 

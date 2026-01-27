@@ -94,7 +94,7 @@ describe("SessionHistoryDropdown", () => {
       )
 
       fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
-      expect(screen.getByPlaceholderText("Search sessions...")).toBeInTheDocument()
+      expect(screen.getByText("Past task")).toBeInTheDocument()
     })
 
     it("shows loading state when sessions are loading", () => {
@@ -169,17 +169,17 @@ describe("SessionHistoryDropdown", () => {
       )
 
       fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
-      expect(screen.getByPlaceholderText("Search sessions...")).toBeInTheDocument()
+      expect(screen.getByText("Historical task")).toBeInTheDocument()
 
       fireEvent.click(screen.getByText("Historical task"))
 
-      // Dropdown should be closed
-      expect(screen.queryByPlaceholderText("Search sessions...")).not.toBeInTheDocument()
+      // Dropdown should be closed - the task text should no longer be in the dropdown
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
     })
   })
 
   describe("search functionality", () => {
-    it("search input is available for filtering", () => {
+    it("hides search input when fewer than 5 sessions", () => {
       render(
         <SessionHistoryDropdown
           {...defaultProps}
@@ -191,20 +191,38 @@ describe("SessionHistoryDropdown", () => {
       )
 
       fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
+
+      // Search input should not be present with fewer than 5 sessions
+      expect(screen.queryByPlaceholderText("Search sessions...")).not.toBeInTheDocument()
+
+      // Items should still be visible
+      expect(screen.getByText("First task")).toBeInTheDocument()
+      expect(screen.getByText("Second task")).toBeInTheDocument()
+    })
+
+    it("shows search input when 5 or more sessions", () => {
+      render(
+        <SessionHistoryDropdown
+          {...defaultProps}
+          sessions={[
+            createMockSession("abc12345", todayStr, "r-task1", "First task"),
+            createMockSession("def12345", todayStr, "r-task2", "Second task"),
+            createMockSession("ghi12345", todayStr, "r-task3", "Third task"),
+            createMockSession("jkl12345", todayStr, "r-task4", "Fourth task"),
+            createMockSession("mno12345", todayStr, "r-task5", "Fifth task"),
+          ]}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId("session-history-dropdown-trigger"))
       const searchInput = screen.getByPlaceholderText("Search sessions...")
 
       // Verify search input is available
       expect(searchInput).toBeInTheDocument()
 
-      // Verify both items are initially visible
+      // Verify items are visible
       expect(screen.getByText("First task")).toBeInTheDocument()
-      expect(screen.getByText("Second task")).toBeInTheDocument()
-
-      // cmdk handles filtering internally - we verify items with matching values exist
-      fireEvent.change(searchInput, { target: { value: "task1" } })
-
-      // First task should still be visible (matches value)
-      expect(screen.getByText("First task")).toBeInTheDocument()
+      expect(screen.getByText("Fifth task")).toBeInTheDocument()
     })
 
     it("filters event logs by title", () => {
@@ -214,6 +232,9 @@ describe("SessionHistoryDropdown", () => {
           sessions={[
             createMockSession("abc12345", todayStr, "r-001", "Bug fix"),
             createMockSession("def12345", todayStr, "r-002", "New feature"),
+            createMockSession("ghi12345", todayStr, "r-003", "Third task"),
+            createMockSession("jkl12345", todayStr, "r-004", "Fourth task"),
+            createMockSession("mno12345", todayStr, "r-005", "Fifth task"),
           ]}
         />,
       )
