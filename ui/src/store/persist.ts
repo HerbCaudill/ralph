@@ -13,11 +13,12 @@
 
 import { createJSONStorage, type PersistOptions } from "zustand/middleware"
 import type { AppState, AppActions } from "./index"
-import type { RalphInstance, Theme, ClosedTasksTimeFilter } from "@/types"
+import type { RalphInstance, Theme, ClosedTasksTimeFilter, TaskGroup } from "@/types"
 import { DEFAULT_CONTEXT_WINDOW_MAX } from "./index"
+import { TASK_LIST_STATUS_STORAGE_KEY, TASK_LIST_PARENT_STORAGE_KEY } from "@/constants"
 
 /** Current schema version for persistence format */
-export const PERSIST_VERSION = 1
+export const PERSIST_VERSION = 2
 
 /** Storage key for persisted state */
 export const PERSIST_NAME = "ralph-ui-store"
@@ -68,6 +69,10 @@ export interface PersistedState {
   taskSearchQuery: string
   selectedTaskId: string | null
   isSearchVisible: boolean
+
+  // Task list collapsed states
+  statusCollapsedState: Record<TaskGroup, boolean>
+  parentCollapsedState: Record<string, boolean>
 
   // Workspace metadata
   workspace: string | null
@@ -199,6 +204,10 @@ export function partialize(state: AppState): PersistedState {
     selectedTaskId: state.selectedTaskId,
     isSearchVisible: state.isSearchVisible,
 
+    // Task list collapsed states
+    statusCollapsedState: state.statusCollapsedState,
+    parentCollapsedState: state.parentCollapsedState,
+
     // Workspace metadata
     workspace: state.workspace,
     branch: state.branch,
@@ -281,6 +290,67 @@ export function onRehydrateStorage(_state: AppState | undefined) {
   }
 }
 
+/** Default collapsed state for status groups */
+const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
+  open: false,
+  deferred: true,
+  closed: true,
+}
+
+/**
+ * Migration function to handle schema version upgrades.
+ * Migrates state from older versions to the current version.
+ *
+ * Version history:
+ * - v1: Initial schema
+ * - v2: Added statusCollapsedState and parentCollapsedState (consolidated from separate localStorage keys)
+ */
+export function migrate(persistedState: unknown, version: number): PersistedState {
+  const state = persistedState as PersistedState
+
+  if (version < 2) {
+    // Migrate from v1 to v2: Add collapsed states from separate localStorage keys
+    let statusCollapsedState = DEFAULT_STATUS_COLLAPSED_STATE
+    let parentCollapsedState: Record<string, boolean> = {}
+
+    // Try to load from legacy localStorage keys
+    try {
+      const statusStored = localStorage.getItem(TASK_LIST_STATUS_STORAGE_KEY)
+      if (statusStored) {
+        const parsed = JSON.parse(statusStored) as Record<TaskGroup, boolean>
+        statusCollapsedState = {
+          open: parsed.open ?? DEFAULT_STATUS_COLLAPSED_STATE.open,
+          deferred: parsed.deferred ?? DEFAULT_STATUS_COLLAPSED_STATE.deferred,
+          closed: parsed.closed ?? DEFAULT_STATUS_COLLAPSED_STATE.closed,
+        }
+        // Remove the legacy key after migration
+        localStorage.removeItem(TASK_LIST_STATUS_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore errors, use defaults
+    }
+
+    try {
+      const parentStored = localStorage.getItem(TASK_LIST_PARENT_STORAGE_KEY)
+      if (parentStored) {
+        parentCollapsedState = JSON.parse(parentStored) as Record<string, boolean>
+        // Remove the legacy key after migration
+        localStorage.removeItem(TASK_LIST_PARENT_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore errors, use defaults
+    }
+
+    return {
+      ...state,
+      statusCollapsedState,
+      parentCollapsedState,
+    }
+  }
+
+  return state
+}
+
 /**
  * Complete persist configuration for Zustand persist middleware.
  *
@@ -303,6 +373,7 @@ export const persistConfig: PersistOptions<AppState & AppActions, PersistedState
   storage,
   partialize,
   onRehydrateStorage,
+  migrate,
 
   /**
    * Merge function to properly handle rehydration.

@@ -72,6 +72,8 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
     taskSearchQuery: "",
     selectedTaskId: null,
     isSearchVisible: false,
+    statusCollapsedState: { open: false, deferred: true, closed: true },
+    parentCollapsedState: {},
     workspace: null,
     branch: null,
     issuePrefix: null,

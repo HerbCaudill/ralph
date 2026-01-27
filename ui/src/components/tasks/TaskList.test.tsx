@@ -4,7 +4,6 @@ import { TaskList } from "./TaskList"
 import type { TaskCardTask } from "@/types"
 import { useAppStore } from "@/store"
 import type { TaskGroup } from "@/types"
-import { TASK_LIST_STATUS_STORAGE_KEY } from "@/constants"
 import { PERSIST_NAME } from "@/store/persist"
 
 // Helper to get recent date (for closed tasks to be visible with default filter)
@@ -121,7 +120,16 @@ describe("TaskList", () => {
 
     it("shows empty message within empty groups", () => {
       const tasksOnlyOpen: TaskCardTask[] = [{ id: "task-1", title: "Open task", status: "open" }]
-      render(<TaskList tasks={tasksOnlyOpen} showEmptyGroups />)
+      // Use persistCollapsedState={false} to avoid interference from store state
+      // and defaultCollapsed to expand all groups
+      render(
+        <TaskList
+          tasks={tasksOnlyOpen}
+          showEmptyGroups
+          persistCollapsedState={false}
+          defaultCollapsed={{ open: false, deferred: false, closed: false }}
+        />,
+      )
 
       // Closed group should show "No tasks in this group"
       expect(screen.getAllByText("No tasks in this group").length).toBeGreaterThan(0)
@@ -418,7 +426,13 @@ describe("TaskList", () => {
           closed_at: getRecentDate(),
         },
       ]
-      render(<TaskList tasks={tasks} defaultCollapsed={{ closed: false }} />)
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+        />,
+      )
 
       // Task with closed_at should come first, undefined should be last
       const taskTitles = screen.getAllByText(/^(Has|No) close date$/).map(el => el.textContent)
@@ -539,7 +553,13 @@ describe("TaskList", () => {
       const tasksWithRecentClosed = sampleTasks.map(t =>
         t.status === "deferred" || t.status === "closed" ? { ...t, closed_at: getRecentDate() } : t,
       )
-      render(<TaskList tasks={tasksWithRecentClosed} defaultCollapsed={defaultCollapsed} />)
+      render(
+        <TaskList
+          tasks={tasksWithRecentClosed}
+          defaultCollapsed={defaultCollapsed}
+          persistCollapsedState={false}
+        />,
+      )
 
       // Open should be collapsed
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
@@ -561,83 +581,82 @@ describe("TaskList", () => {
     })
   })
 
-  describe("localStorage persistence", () => {
+  describe("store persistence", () => {
     beforeEach(() => {
-      localStorage.clear()
+      // Reset store to initial state
+      useAppStore.getState().reset()
     })
 
-    afterEach(() => {
-      localStorage.clear()
-    })
-
-    // Note: The CLOSED_FILTER_STORAGE_KEY is also stored in localStorage
-
-    it("persists collapsed state to localStorage", () => {
+    it("persists collapsed state to store", () => {
       render(<TaskList tasks={sampleTasks} />)
+
+      // Initial state should have open expanded
+      expect(useAppStore.getState().statusCollapsedState.open).toBe(false)
 
       // Click to collapse Open group
       const openHeader = screen.getByLabelText(/Open section/)
       fireEvent.click(openHeader)
 
-      const stored = JSON.parse(localStorage.getItem(TASK_LIST_STATUS_STORAGE_KEY) ?? "{}")
-      expect(stored.open).toBe(true)
+      // Store should now have open collapsed
+      expect(useAppStore.getState().statusCollapsedState.open).toBe(true)
     })
 
-    it("restores collapsed state from localStorage", () => {
-      // Pre-set localStorage with Open collapsed
-      localStorage.setItem(
-        TASK_LIST_STATUS_STORAGE_KEY,
-        JSON.stringify({
-          open: true,
-          closed: false,
-        }),
-      )
+    it("restores collapsed state from store", () => {
+      // Pre-set store with Open collapsed
+      useAppStore.getState().setStatusCollapsedState({
+        open: true,
+        deferred: true,
+        closed: true,
+      })
 
       render(<TaskList tasks={sampleTasks} />)
 
-      // Open should be collapsed (from localStorage)
+      // Open should be collapsed (from store)
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
     })
 
-    it("does not persist when persistCollapsedState is false", () => {
+    it("does not use store when persistCollapsedState is false", () => {
+      // Pre-set store with Open collapsed
+      useAppStore.getState().setStatusCollapsedState({
+        open: true,
+        deferred: true,
+        closed: true,
+      })
+
+      render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
+
+      // Open should be expanded (ignoring store, using defaults)
+      expect(screen.getByText("Open task 1")).toBeInTheDocument()
+    })
+
+    it("does not update store when persistCollapsedState is false", () => {
       render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
 
       const openHeader = screen.getByLabelText(/Open section/)
       fireEvent.click(openHeader)
 
-      expect(localStorage.getItem(TASK_LIST_STATUS_STORAGE_KEY)).toBeNull()
+      // Store should still have initial value
+      expect(useAppStore.getState().statusCollapsedState.open).toBe(false)
     })
 
-    it("does not read from localStorage when persistCollapsedState is false", () => {
-      // Pre-set localStorage with Open collapsed
-      localStorage.setItem(
-        TASK_LIST_STATUS_STORAGE_KEY,
-        JSON.stringify({
-          open: true,
-          closed: false,
-        }),
+    it("defaultCollapsed prop overrides store when persistCollapsedState is false", () => {
+      // Pre-set store with Open expanded (but we won't use it)
+      useAppStore.getState().setStatusCollapsedState({
+        open: false,
+        deferred: true,
+        closed: true,
+      })
+
+      // But defaultCollapsed says Open should be collapsed, and persistCollapsedState is false
+      render(
+        <TaskList
+          tasks={sampleTasks}
+          defaultCollapsed={{ open: true }}
+          persistCollapsedState={false}
+        />,
       )
 
-      render(<TaskList tasks={sampleTasks} persistCollapsedState={false} />)
-
-      // Open should be expanded (ignoring localStorage, using defaults)
-      expect(screen.getByText("Open task 1")).toBeInTheDocument()
-    })
-
-    it("defaultCollapsed prop overrides localStorage", () => {
-      // Pre-set localStorage with Open expanded
-      localStorage.setItem(
-        TASK_LIST_STATUS_STORAGE_KEY,
-        JSON.stringify({
-          open: false,
-          closed: false,
-        }),
-      )
-
-      // But defaultCollapsed says Open should be collapsed
-      render(<TaskList tasks={sampleTasks} defaultCollapsed={{ open: true }} />)
-
-      // defaultCollapsed should win
+      // defaultCollapsed should win because we're not using the store
       expect(screen.queryByText("Open task 1")).not.toBeInTheDocument()
     })
   })

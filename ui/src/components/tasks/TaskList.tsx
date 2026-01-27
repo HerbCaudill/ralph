@@ -6,15 +6,13 @@ import {
   selectTaskSearchQuery,
   selectClosedTimeFilter,
   selectActivelyWorkingTaskIds,
+  selectStatusCollapsedState,
+  selectParentCollapsedState,
   getTimeFilterCutoff,
 } from "@/store"
 import { TaskGroupHeader } from "./TaskGroupHeader"
 import { TaskSubtree } from "./TaskSubtree"
-import { loadParentCollapsedState } from "@/lib/loadParentCollapsedState"
-import { loadStatusCollapsedState } from "@/lib/loadStatusCollapsedState"
 import { matchesSearchQuery } from "@/lib/matchesSearchQuery"
-import { saveParentCollapsedState } from "@/lib/saveParentCollapsedState"
-import { saveStatusCollapsedState } from "@/lib/saveStatusCollapsedState"
 import {
   buildTaskTree,
   findRootAncestor,
@@ -61,6 +59,12 @@ export function TaskList({
     [activelyWorkingTaskIdsList],
   )
 
+  // Get collapsed states from store
+  const storeStatusCollapsedState = useAppStore(selectStatusCollapsedState)
+  const storeParentCollapsedState = useAppStore(selectParentCollapsedState)
+  const toggleStatusGroup = useAppStore(state => state.toggleStatusGroup)
+  const toggleParentGroup = useAppStore(state => state.toggleParentGroup)
+
   // Get task IDs that have saved sessions for session indicator
   const { taskIdsWithSessions } = useTasksWithSessions()
 
@@ -93,47 +97,51 @@ export function TaskList({
     }
   }, [tasks])
 
-  const [statusCollapsedState, setStatusCollapsedState] = useState<Record<TaskGroup, boolean>>(
-    () => {
-      const stored = persistCollapsedState ? loadStatusCollapsedState() : null
-      const base = stored ?? DEFAULT_STATUS_COLLAPSED_STATE
-      return {
-        open: defaultCollapsed.open ?? base.open,
-        deferred: defaultCollapsed.deferred ?? base.deferred,
-        closed: defaultCollapsed.closed ?? base.closed,
+  // Use local state for tests (when persistCollapsedState is false)
+  // Use store state for production (when persistCollapsedState is true)
+  const [localStatusCollapsed, setLocalStatusCollapsed] = useState<Record<TaskGroup, boolean>>(
+    () => ({
+      open: defaultCollapsed.open ?? DEFAULT_STATUS_COLLAPSED_STATE.open,
+      deferred: defaultCollapsed.deferred ?? DEFAULT_STATUS_COLLAPSED_STATE.deferred,
+      closed: defaultCollapsed.closed ?? DEFAULT_STATUS_COLLAPSED_STATE.closed,
+    }),
+  )
+  const [localParentCollapsed, setLocalParentCollapsed] = useState<Record<string, boolean>>({})
+
+  // Select between store state and local state based on persistCollapsedState
+  const statusCollapsedState =
+    persistCollapsedState ? storeStatusCollapsedState : localStatusCollapsed
+  const parentCollapsedState =
+    persistCollapsedState ? storeParentCollapsedState : localParentCollapsed
+
+  // Create handlers that work with either store or local state
+  const handleToggleStatusGroup = useCallback(
+    (group: TaskGroup) => {
+      if (persistCollapsedState) {
+        toggleStatusGroup(group)
+      } else {
+        setLocalStatusCollapsed(prev => ({
+          ...prev,
+          [group]: !prev[group],
+        }))
       }
     },
+    [persistCollapsedState, toggleStatusGroup],
   )
 
-  const [parentCollapsedState, setParentCollapsedState] = useState<Record<string, boolean>>(() => {
-    return persistCollapsedState ? (loadParentCollapsedState() ?? {}) : {}
-  })
-
-  useEffect(() => {
-    if (persistCollapsedState) {
-      saveStatusCollapsedState(statusCollapsedState)
-    }
-  }, [statusCollapsedState, persistCollapsedState])
-
-  useEffect(() => {
-    if (persistCollapsedState) {
-      saveParentCollapsedState(parentCollapsedState)
-    }
-  }, [parentCollapsedState, persistCollapsedState])
-
-  const toggleStatusGroup = useCallback((group: TaskGroup) => {
-    setStatusCollapsedState(prev => ({
-      ...prev,
-      [group]: !prev[group],
-    }))
-  }, [])
-
-  const toggleParentGroup = useCallback((parentId: string) => {
-    setParentCollapsedState(prev => ({
-      ...prev,
-      [parentId]: !prev[parentId],
-    }))
-  }, [])
+  const handleToggleParentGroup = useCallback(
+    (parentId: string) => {
+      if (persistCollapsedState) {
+        toggleParentGroup(parentId)
+      } else {
+        setLocalParentCollapsed(prev => ({
+          ...prev,
+          [parentId]: !prev[parentId],
+        }))
+      }
+    },
+    [persistCollapsedState, toggleParentGroup],
+  )
 
   const statusGroups = useMemo(() => {
     const closedCutoff = getTimeFilterCutoff(closedTimeFilter)
@@ -473,7 +481,7 @@ export function TaskList({
               label={config.label}
               count={totalCount}
               isCollapsed={isStatusCollapsed}
-              onToggle={() => toggleStatusGroup(config.key)}
+              onToggle={() => handleToggleStatusGroup(config.key)}
               timeFilter={config.key === "closed" ? closedTimeFilter : undefined}
               onTimeFilterChange={config.key === "closed" ? setClosedTimeFilter : undefined}
             />
@@ -491,7 +499,7 @@ export function TaskList({
                       activelyWorkingTaskIds={activelyWorkingTaskIds}
                       taskIdsWithSessions={taskIdsWithSessions}
                       collapsedState={parentCollapsedState}
-                      onToggleCollapse={toggleParentGroup}
+                      onToggleCollapse={handleToggleParentGroup}
                     />
                   ))
                 : <div className="text-muted-foreground px-3 py-3 text-center text-xs italic">

@@ -11,6 +11,7 @@ import type {
   SerializedInstance,
   Task,
   TaskChatMessage,
+  TaskGroup,
   Theme,
   TokenUsage,
   ContextWindow,
@@ -182,6 +183,10 @@ export interface AppState {
   // Hotkeys dialog visibility
   hotkeysDialogOpen: boolean
 
+  // Task list collapsed states
+  statusCollapsedState: Record<TaskGroup, boolean>
+  parentCollapsedState: Record<string, boolean>
+
   // Task chat events (unified array like EventStream's events[])
   taskChatEvents: ChatEvent[]
 
@@ -297,6 +302,12 @@ export interface AppActions {
   setHotkeysDialogOpen: (open: boolean) => void
   openHotkeysDialog: () => void
   closeHotkeysDialog: () => void
+
+  // Task list collapsed states
+  setStatusCollapsedState: (state: Record<TaskGroup, boolean>) => void
+  toggleStatusGroup: (group: TaskGroup) => void
+  setParentCollapsedState: (state: Record<string, boolean>) => void
+  toggleParentGroup: (parentId: string) => void
 
   // Reconnection state (for auto-resuming when reconnecting mid-session)
   /** Mark that Ralph was running before disconnect (called when connection is lost) */
@@ -564,6 +575,12 @@ const initialState: AppState = {
   hotkeysDialogOpen: false,
   wasRunningBeforeDisconnect: false,
   taskChatEvents: [],
+  statusCollapsedState: {
+    open: false,
+    deferred: true,
+    closed: true,
+  },
+  parentCollapsedState: {},
 }
 
 export const useAppStore = create<AppState & AppActions>()(
@@ -1014,6 +1031,24 @@ export const useAppStore = create<AppState & AppActions>()(
       setHotkeysDialogOpen: open => set({ hotkeysDialogOpen: open }),
       openHotkeysDialog: () => set({ hotkeysDialogOpen: true }),
       closeHotkeysDialog: () => set({ hotkeysDialogOpen: false }),
+
+      // Task list collapsed states
+      setStatusCollapsedState: state => set({ statusCollapsedState: state }),
+      toggleStatusGroup: group =>
+        set(state => ({
+          statusCollapsedState: {
+            ...state.statusCollapsedState,
+            [group]: !state.statusCollapsedState[group],
+          },
+        })),
+      setParentCollapsedState: state => set({ parentCollapsedState: state }),
+      toggleParentGroup: parentId =>
+        set(state => ({
+          parentCollapsedState: {
+            ...state.parentCollapsedState,
+            [parentId]: !state.parentCollapsedState[parentId],
+          },
+        })),
 
       // Reconnection state (for auto-resuming when reconnecting mid-session)
       markRunningBeforeDisconnect: () =>
@@ -1583,6 +1618,8 @@ export const selectSessionTask = (state: AppState) => {
 }
 export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
 export const selectHotkeysDialogOpen = (state: AppState) => state.hotkeysDialogOpen
+export const selectStatusCollapsedState = (state: AppState) => state.statusCollapsedState
+export const selectParentCollapsedState = (state: AppState) => state.parentCollapsedState
 
 export const selectInstanceStatus = (state: AppState, instanceId: string): RalphStatus => {
   const instance = state.instances.get(instanceId)

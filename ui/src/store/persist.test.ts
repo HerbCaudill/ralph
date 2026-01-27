@@ -11,9 +11,11 @@ import {
   storage,
   onRehydrateStorage,
   persistConfig,
+  migrate,
   type SerializedRalphInstance,
   type PersistedState,
 } from "./persist"
+import { TASK_LIST_STATUS_STORAGE_KEY, TASK_LIST_PARENT_STORAGE_KEY } from "@/constants"
 import { DEFAULT_CONTEXT_WINDOW_MAX, DEFAULT_INSTANCE_ID } from "./index"
 
 // Helper to create a mock RalphInstance
@@ -93,6 +95,8 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     hotkeysDialogOpen: false,
     wasRunningBeforeDisconnect: false,
     taskChatEvents: [],
+    statusCollapsedState: { open: false, deferred: true, closed: true },
+    parentCollapsedState: {},
     ...overrides,
   } as AppState & AppActions
 }
@@ -100,7 +104,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
 describe("persist", () => {
   describe("constants", () => {
     it("exports PERSIST_VERSION", () => {
-      expect(PERSIST_VERSION).toBe(1)
+      expect(PERSIST_VERSION).toBe(2)
     })
 
     it("exports PERSIST_NAME", () => {
@@ -387,6 +391,8 @@ describe("persist", () => {
         taskSearchQuery: "search term",
         selectedTaskId: "task-123",
         isSearchVisible: true,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
         workspace: "/path/to/workspace",
         branch: "main",
         issuePrefix: "TEST",
@@ -597,6 +603,8 @@ describe("persist", () => {
           taskSearchQuery: "test",
           selectedTaskId: "selected",
           isSearchVisible: true,
+          statusCollapsedState: { open: false, deferred: true, closed: true },
+          parentCollapsedState: {},
           workspace: "/new/workspace",
           branch: "develop",
           issuePrefix: "DEV",
@@ -852,6 +860,169 @@ describe("persist", () => {
       // Inactive instance should also have empty events
       const inactiveRestored = deserialized.get("inactive")!
       expect(inactiveRestored.events).toEqual([])
+    })
+  })
+
+  describe("migrate", () => {
+    const originalLocalStorage = global.localStorage
+    let mockStore: Record<string, string>
+
+    beforeEach(() => {
+      // Create a mock localStorage
+      mockStore = {}
+      global.localStorage = {
+        getItem: vi.fn((key: string) => mockStore[key] ?? null),
+        setItem: vi.fn((key: string, value: string) => {
+          mockStore[key] = value
+        }),
+        removeItem: vi.fn((key: string) => {
+          delete mockStore[key]
+        }),
+        clear: vi.fn(),
+        length: 0,
+        key: vi.fn(),
+      }
+    })
+
+    afterEach(() => {
+      global.localStorage = originalLocalStorage
+    })
+
+    it("returns state unchanged when version >= 2", () => {
+      const state: PersistedState = {
+        sidebarWidth: 400,
+        taskChatOpen: true,
+        taskChatWidth: 400,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: true, deferred: false, closed: false },
+        parentCollapsedState: { "parent-1": true },
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      }
+
+      const result = migrate(state, 2)
+
+      expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
+      expect(result.parentCollapsedState).toEqual({ "parent-1": true })
+    })
+
+    it("migrates from v1 by loading legacy localStorage keys", () => {
+      // Set up legacy localStorage data
+      mockStore[TASK_LIST_STATUS_STORAGE_KEY] = JSON.stringify({
+        open: true,
+        deferred: false,
+        closed: false,
+      })
+      mockStore[TASK_LIST_PARENT_STORAGE_KEY] = JSON.stringify({
+        "parent-1": true,
+        "parent-2": false,
+      })
+
+      // v1 state without collapsed states
+      const state = {
+        sidebarWidth: 400,
+        taskChatOpen: true,
+        taskChatWidth: 400,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 1)
+
+      expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
+      expect(result.parentCollapsedState).toEqual({ "parent-1": true, "parent-2": false })
+      // Legacy keys should be removed
+      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_STATUS_STORAGE_KEY)
+      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_PARENT_STORAGE_KEY)
+    })
+
+    it("uses defaults when no legacy localStorage data exists", () => {
+      // v1 state without collapsed states, no legacy localStorage data
+      const state = {
+        sidebarWidth: 400,
+        taskChatOpen: true,
+        taskChatWidth: 400,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 1)
+
+      // Should use default values
+      expect(result.statusCollapsedState).toEqual({ open: false, deferred: true, closed: true })
+      expect(result.parentCollapsedState).toEqual({})
+    })
+
+    it("handles malformed legacy localStorage data gracefully", () => {
+      // Set up invalid JSON
+      mockStore[TASK_LIST_STATUS_STORAGE_KEY] = "invalid json"
+      mockStore[TASK_LIST_PARENT_STORAGE_KEY] = "also invalid"
+
+      const state = {
+        sidebarWidth: 400,
+      } as unknown as PersistedState
+
+      const result = migrate(state, 1)
+
+      // Should use defaults when parsing fails
+      expect(result.statusCollapsedState).toEqual({ open: false, deferred: true, closed: true })
+      expect(result.parentCollapsedState).toEqual({})
+    })
+
+    it("fills in missing status keys with defaults", () => {
+      // Partial status collapsed state
+      mockStore[TASK_LIST_STATUS_STORAGE_KEY] = JSON.stringify({
+        open: true,
+        // missing deferred and closed
+      })
+
+      const state = {} as unknown as PersistedState
+
+      const result = migrate(state, 1)
+
+      expect(result.statusCollapsedState).toEqual({
+        open: true,
+        deferred: true, // default
+        closed: true, // default
+      })
     })
   })
 })
