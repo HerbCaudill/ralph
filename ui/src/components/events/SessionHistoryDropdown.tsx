@@ -139,7 +139,9 @@ export function SessionHistoryDropdown({
                         onSelect={() => handleSessionHistorySelect(log.id)}
                         className={cn(
                           "flex items-center gap-2 text-xs",
-                          "hover:bg-muted",
+                          // Override cmdk's default selection color to use muted for hover/keyboard navigation
+                          "data-[selected=true]:bg-muted data-[selected=true]:text-foreground",
+                          // Only use repo-accent for the currently viewed session
                           isCurrentSession && "bg-repo-accent/50",
                         )}
                       >
