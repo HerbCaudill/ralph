@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react"
-import { IconChevronDown, IconHistory, IconClock, IconFile } from "@tabler/icons-react"
+import { IconChevronDown, IconClock, IconFile } from "@tabler/icons-react"
 import {
   Command,
   CommandEmpty,
@@ -128,7 +128,6 @@ export function SessionHistoryDropdown({
                       onSelect={() => handleSessionHistorySelect(log.id)}
                       className="flex items-center gap-2"
                     >
-                      <IconHistory className="text-muted-foreground size-4 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           {log.metadata?.taskId && (
