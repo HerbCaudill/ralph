@@ -232,6 +232,10 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
   // Enrich sessions with task titles from the store
   // Task titles are always looked up on-the-fly from beads, never cached
   const enrichedSessions = useMemo(() => {
+    // Wait until tasks are loaded before enriching sessions
+    // This prevents showing sessions with undefined titles
+    if (!tasks.length) return sessions
+
     return sessions.map(session => {
       // If we have a taskId, look up the title from the current tasks
       if (session.metadata?.taskId) {
