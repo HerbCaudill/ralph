@@ -29,6 +29,9 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {},
   },
+  // Serve static files from .storybook/fixtures at /fixtures
+  // Used by withImportedState decorator to load state files for debugging
+  staticDirs: [{ from: "./fixtures", to: "/fixtures" }],
   viteFinal: config => {
     // Use custom logger to suppress proxy errors during tests
     config.customLogger = logger
