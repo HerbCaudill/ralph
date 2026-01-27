@@ -103,7 +103,7 @@ export function TaskChat({
           <EventList
             events={events}
             loadingIndicator={
-              isLoading && !streamingMessage ?
+              isLoading || streamingMessage ?
                 <div
                   className="flex items-center justify-start px-4 py-4"
                   aria-label="Task chat is loading"
