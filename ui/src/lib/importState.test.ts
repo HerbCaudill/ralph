@@ -6,7 +6,7 @@ import {
   importState,
   clearImportedState,
 } from "./importState"
-import { PERSIST_NAME } from "@/store/persist"
+import { PERSIST_NAME, type PersistedState } from "@/store/persist"
 import type { ExportedState } from "./exportState"
 import { PERSISTENCE_SCHEMA_VERSION, STORE_NAMES } from "./persistence/types"
 
@@ -28,9 +28,12 @@ describe("importState", () => {
       localStorageKey: PERSIST_NAME,
     },
     localStorage: {
-      sidebarWidth: 300,
-      theme: "dark",
-      tasks: [],
+      state: {
+        sidebarWidth: 300,
+        theme: "dark",
+        tasks: [],
+      } as unknown as PersistedState,
+      version: 4,
     },
     indexedDb: {
       sessions: [
@@ -55,7 +58,7 @@ describe("importState", () => {
           sessionId: "session-1",
           timestamp: 1706313600000,
           eventType: "user",
-          event: { type: "user", content: "Hello" },
+          event: { type: "user", content: "Hello", timestamp: 1706313600000 },
         },
       ],
       chat_sessions: [],

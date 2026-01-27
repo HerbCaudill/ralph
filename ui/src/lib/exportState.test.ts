@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { exportState, downloadStateExport, type ExportedState } from "./exportState"
-import { PERSIST_NAME } from "@/store/persist"
+import { PERSIST_NAME, type PersistedState } from "@/store/persist"
 import { PERSISTENCE_SCHEMA_VERSION } from "./persistence/types"
 
 // Mock the eventDatabase module
@@ -267,7 +267,10 @@ describe("exportState", () => {
           indexedDbSchemaVersion: 6,
           localStorageKey: "ralph-ui-store",
         },
-        localStorage: { sidebarWidth: 300 },
+        localStorage: {
+          state: { sidebarWidth: 300 } as unknown as PersistedState,
+          version: 4,
+        },
         indexedDb: {
           sessions: [],
           events: [],

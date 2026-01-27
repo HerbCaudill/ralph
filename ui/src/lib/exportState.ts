@@ -10,8 +10,26 @@
  */
 
 import { eventDatabase } from "./persistence/EventDatabase"
-import { PERSIST_NAME } from "@/store/persist"
-import { STORE_NAMES, PERSISTENCE_SCHEMA_VERSION } from "./persistence/types"
+import { PERSIST_NAME, type PersistedState } from "@/store/persist"
+import {
+  STORE_NAMES,
+  PERSISTENCE_SCHEMA_VERSION,
+  type PersistedSession,
+  type PersistedEvent,
+  type PersistedTaskChatSession,
+  type SyncState,
+} from "./persistence/types"
+
+/**
+ * Shape of the localStorage data in the export.
+ * This is the Zustand persist wrapper format.
+ */
+export interface ExportedLocalStorage {
+  /** The persisted state data */
+  state: PersistedState
+  /** Zustand persist version number */
+  version: number
+}
 
 /**
  * Shape of the exported state JSON file.
@@ -28,14 +46,18 @@ export interface ExportedState {
     /** Name of the localStorage key */
     localStorageKey: string
   }
-  /** Raw localStorage state (as parsed JSON) */
-  localStorage: unknown
+  /** Zustand persisted state from localStorage */
+  localStorage: ExportedLocalStorage | null
   /** All IndexedDB data by store name */
   indexedDb: {
-    sessions: unknown[]
-    events: unknown[]
-    chat_sessions: unknown[]
-    sync_state: unknown[]
+    /** Session metadata (not including events, which are stored separately) */
+    sessions: PersistedSession[]
+    /** All events from all sessions (typically 98% of export file size) */
+    events: PersistedEvent[]
+    /** Task chat sessions including messages */
+    chat_sessions: PersistedTaskChatSession[]
+    /** Key-value sync state settings */
+    sync_state: SyncState[]
   }
 }
 
@@ -51,11 +73,11 @@ export interface ExportedState {
  */
 export async function exportState(): Promise<ExportedState> {
   // Get localStorage state
-  let localStorageState: unknown = null
+  let localStorageState: ExportedLocalStorage | null = null
   try {
     const raw = localStorage.getItem(PERSIST_NAME)
     if (raw) {
-      localStorageState = JSON.parse(raw)
+      localStorageState = JSON.parse(raw) as ExportedLocalStorage
     }
   } catch {
     // localStorage may not be available or contain invalid JSON
@@ -85,10 +107,10 @@ export async function exportState(): Promise<ExportedState> {
     },
     localStorage: localStorageState,
     indexedDb: {
-      sessions: sessions,
-      events: events,
-      chat_sessions: chatSessions,
-      sync_state: syncState,
+      sessions: sessions as PersistedSession[],
+      events: events as PersistedEvent[],
+      chat_sessions: chatSessions as PersistedTaskChatSession[],
+      sync_state: syncState as SyncState[],
     },
   }
 }
