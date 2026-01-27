@@ -22,6 +22,7 @@ export function SessionHistoryDropdown({
   isLoadingSessions,
   issuePrefix,
   isRunning,
+  currentSessionId,
   onSessionHistorySelect,
 }: SessionHistoryDropdownProps) {
   const [open, setOpen] = useState(false)
@@ -90,8 +91,9 @@ export function SessionHistoryDropdown({
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "text-muted-foreground hover:text-foreground flex min-w-0 items-center gap-1.5 text-xs transition-colors",
-            "focus:ring-ring rounded focus:ring-1 focus:outline-none",
+            "text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs transition-colors",
+            "hover:bg-muted rounded px-1.5 py-0.5",
+            "focus:ring-ring focus:ring-1 focus:outline-none",
           )}
           title="View session history"
           aria-label="View session history"
@@ -126,27 +128,41 @@ export function SessionHistoryDropdown({
             : groupedSessions.length > 0 ?
               groupedSessions.map(({ dateLabel, logs }) => (
                 <CommandGroup key={dateLabel} heading={dateLabel}>
-                  {logs.map(log => (
-                    <CommandItem
-                      key={log.id}
-                      value={`${log.metadata?.taskId || ""} ${log.metadata?.title || ""} ${log.id}`}
-                      onSelect={() => handleSessionHistorySelect(log.id)}
-                      className="flex items-center gap-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          {log.metadata?.taskId && (
-                            <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                              {stripTaskPrefix(log.metadata.taskId, issuePrefix)}
+                  {logs.map((log, index) => {
+                    const isCurrentSession = currentSessionId === log.id
+                    // First session in "Today" group is the running session when isRunning
+                    const isRunningSession = isRunning && dateLabel === "Today" && index === 0
+                    return (
+                      <CommandItem
+                        key={log.id}
+                        value={`${log.metadata?.taskId || ""} ${log.metadata?.title || ""} ${log.id}`}
+                        onSelect={() => handleSessionHistorySelect(log.id)}
+                        className={cn(
+                          "flex items-center gap-2",
+                          isCurrentSession && "bg-repo-accent/50",
+                        )}
+                      >
+                        {isRunningSession && (
+                          <IconLoader2
+                            className="text-muted-foreground size-3 shrink-0 animate-spin"
+                            data-testid="session-item-running-spinner"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            {log.metadata?.taskId && (
+                              <span className="text-muted-foreground shrink-0 font-mono text-xs">
+                                {stripTaskPrefix(log.metadata.taskId, issuePrefix)}
+                              </span>
+                            )}
+                            <span className="truncate text-sm">
+                              {log.metadata?.title || (log.metadata?.taskId ? "" : "No task")}
                             </span>
-                          )}
-                          <span className="truncate text-sm">
-                            {log.metadata?.title || (log.metadata?.taskId ? "" : "No task")}
-                          </span>
+                          </div>
                         </div>
-                      </div>
-                    </CommandItem>
-                  ))}
+                      </CommandItem>
+                    )
+                  })}
                 </CommandGroup>
               ))
             : <div className="text-muted-foreground py-4 text-center text-sm">
@@ -171,6 +187,8 @@ export interface SessionHistoryDropdownProps {
   issuePrefix: string | null
   /** Whether Ralph is currently running */
   isRunning: boolean
+  /** ID of the currently viewed/displayed session (for highlighting) */
+  currentSessionId?: string | null
   /** Callback when selecting a past session from history */
   onSessionHistorySelect: (id: string) => void
 }

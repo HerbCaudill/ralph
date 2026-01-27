@@ -37,6 +37,8 @@ export interface EventStreamViewProps {
   isLoadingHistoricalEvents: boolean
   /** Issue prefix for the workspace */
   issuePrefix: string | null
+  /** ID of the currently viewed session (for highlighting in dropdown) */
+  currentSessionId?: string | null
   /** Navigation actions */
   navigation: SessionNavigationActions
 }
@@ -65,6 +67,7 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       isLoadingSessions,
       isLoadingHistoricalEvents,
       issuePrefix,
+      currentSessionId,
       navigation,
     },
     ref,
@@ -127,6 +130,7 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
           issuePrefix={issuePrefix}
           isRunning={isRunning}
           isViewingHistorical={isViewingHistorical}
+          currentSessionId={currentSessionId}
           onSessionHistorySelect={navigation.selectSessionHistory}
           onReturnToLive={navigation.returnToLive}
         />

@@ -22,6 +22,7 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
     isLoadingSessions,
     isLoadingHistoricalEvents,
     issuePrefix,
+    currentSessionId,
     navigation,
     containerRef,
   } = useEventStream({ instanceId, maxEvents })
@@ -41,6 +42,7 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       isLoadingSessions={isLoadingSessions}
       isLoadingHistoricalEvents={isLoadingHistoricalEvents}
       issuePrefix={issuePrefix}
+      currentSessionId={currentSessionId}
       navigation={navigation}
     />
   )

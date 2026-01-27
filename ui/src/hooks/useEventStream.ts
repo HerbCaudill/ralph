@@ -54,6 +54,8 @@ export interface UseEventStreamResult {
   isLoadingHistoricalEvents: boolean
   /** Issue prefix for the workspace */
   issuePrefix: string | null
+  /** ID of the currently viewed session (for highlighting in dropdown) */
+  currentSessionId: string | null
   /** Navigation actions */
   navigation: SessionNavigationActions
   /** Ref for the container element */
@@ -202,6 +204,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     isLoadingSessions,
     isLoadingHistoricalEvents,
     issuePrefix,
+    currentSessionId: selectedSession?.id ?? null,
     navigation,
     containerRef,
   }

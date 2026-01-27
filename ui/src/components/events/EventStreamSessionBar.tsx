@@ -15,6 +15,7 @@ export function EventStreamSessionBar({
   issuePrefix,
   isRunning,
   isViewingHistorical,
+  currentSessionId,
   onSessionHistorySelect,
   onReturnToLive,
 }: Props) {
@@ -57,6 +58,7 @@ export function EventStreamSessionBar({
                 isLoadingSessions={isLoadingSessions}
                 issuePrefix={issuePrefix}
                 isRunning={false}
+                currentSessionId={currentSessionId}
                 onSessionHistorySelect={onSessionHistorySelect}
               />
             </div>
@@ -68,6 +70,7 @@ export function EventStreamSessionBar({
             isLoadingSessions={isLoadingSessions}
             issuePrefix={issuePrefix}
             isRunning={isRunning}
+            currentSessionId={currentSessionId}
             onSessionHistorySelect={onSessionHistorySelect}
           />
         : currentTask ?
@@ -99,6 +102,7 @@ type Props = {
   issuePrefix: string | null
   isRunning: boolean
   isViewingHistorical: boolean
+  currentSessionId?: string | null
   onSessionHistorySelect: (id: string) => void
   onReturnToLive: () => void
 }
