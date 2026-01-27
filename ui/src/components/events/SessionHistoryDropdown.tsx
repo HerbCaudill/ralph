@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react"
-import { IconChevronDown, IconClock, IconFile } from "@tabler/icons-react"
+import { IconChevronDown } from "@tabler/icons-react"
 import {
   Command,
   CommandEmpty,
@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn, stripTaskPrefix } from "@/lib/utils"
-import { formatEventLogTime } from "@/lib/formatEventLogDate"
 import type { SessionSummary } from "@/hooks"
 
 /**
@@ -137,16 +136,6 @@ export function SessionHistoryDropdown({
                           )}
                           <span className="truncate text-sm">
                             {log.metadata?.title || (log.metadata?.taskId ? "" : "No task")}
-                          </span>
-                        </div>
-                        <div className="text-muted-foreground flex items-center gap-2 text-xs">
-                          <span className="flex items-center gap-0.5">
-                            <IconClock className="size-3" />
-                            {formatEventLogTime(log.createdAt)}
-                          </span>
-                          <span className="flex items-center gap-0.5">
-                            <IconFile className="size-3" />
-                            {log.eventCount}
                           </span>
                         </div>
                       </div>
