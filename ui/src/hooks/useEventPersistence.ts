@@ -123,20 +123,38 @@ export function useEventPersistence(
    * Process new events and save them to IndexedDB.
    */
   useEffect(() => {
-    if (!enabled || !sessionId) return
+    console.debug(
+      `[useEventPersistence] Effect running: enabled=${enabled}, sessionId=${sessionId}, events.length=${events.length}, lastSaved=${lastSavedEventCountRef.current}`,
+    )
+
+    if (!enabled || !sessionId) {
+      console.debug(`[useEventPersistence] Skipping: enabled=${enabled}, sessionId=${sessionId}`)
+      return
+    }
 
     // Reset count if session changed
     if (currentSessionIdRef.current !== sessionId) {
+      console.debug(
+        `[useEventPersistence] Session changed: ${currentSessionIdRef.current} -> ${sessionId}, resetting count`,
+      )
       currentSessionIdRef.current = sessionId
       lastSavedEventCountRef.current = 0
     }
 
     // Only process if we have new events
-    if (events.length <= lastSavedEventCountRef.current) return
+    if (events.length <= lastSavedEventCountRef.current) {
+      console.debug(
+        `[useEventPersistence] No new events: events.length=${events.length}, lastSaved=${lastSavedEventCountRef.current}`,
+      )
+      return
+    }
 
     // Get the new events that need to be saved
     const newStartIndex = lastSavedEventCountRef.current
     const newEvents = events.slice(newStartIndex)
+    console.debug(
+      `[useEventPersistence] Saving ${newEvents.length} new events starting at index ${newStartIndex}`,
+    )
 
     // Save new events (async, fire and forget)
     const saveNewEvents = async () => {
@@ -145,6 +163,9 @@ export function useEventPersistence(
         await saveEvent(newEvents[i], eventIndex, sessionId)
       }
       lastSavedEventCountRef.current = events.length
+      console.debug(
+        `[useEventPersistence] Saved ${newEvents.length} events, lastSaved now=${lastSavedEventCountRef.current}`,
+      )
     }
 
     saveNewEvents()

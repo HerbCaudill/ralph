@@ -316,6 +316,9 @@ export class EventDatabase {
    * Save an session (both metadata and full data).
    */
   async saveSession(session: PersistedSession): Promise<void> {
+    console.debug(
+      `[EventDatabase] saveSession: id=${session.id}, instanceId=${session.instanceId}, eventCount=${session.eventCount}`,
+    )
     const db = await this.ensureDb()
 
     // Extract metadata
@@ -469,8 +472,10 @@ export class EventDatabase {
    * Used for append-only event writes during streaming.
    */
   async saveEvent(event: PersistedEvent): Promise<void> {
+    console.debug(`[EventDatabase] saveEvent: id=${event.id}, type=${event.eventType}`)
     const db = await this.ensureDb()
     await db.put(STORE_NAMES.EVENTS, event)
+    console.debug(`[EventDatabase] saveEvent complete: id=${event.id}`)
   }
 
   /**

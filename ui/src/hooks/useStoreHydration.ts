@@ -73,21 +73,31 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
         // Load the most recent active session
         const activeSession = await eventDatabase.getLatestActiveSession(instanceId)
 
-        // In v3+ schema, events are stored separately. For v2 data, events are inline.
-        const sessionEvents = activeSession?.events ?? []
-        if (activeSession && sessionEvents.length > 0) {
-          // Restore events to the store
-          // Use setEventsForInstance for the specific instance
-          setEventsForInstance(instanceId, sessionEvents)
+        if (activeSession) {
+          // In v3+ schema, events are stored separately in the events table.
+          // For v2 data (migration), events may be inline.
+          let sessionEvents = activeSession.events ?? []
 
-          // If this is the active instance, also update the flat events array
-          if (instanceId === activeInstanceId) {
-            setEvents(sessionEvents)
+          // If no inline events (v3 schema), load from the events table
+          if (sessionEvents.length === 0) {
+            const persistedEvents = await eventDatabase.getEventsForSession(activeSession.id)
+            sessionEvents = persistedEvents.map(pe => pe.event)
           }
 
-          console.log(
-            `[useStoreHydration] Restored ${sessionEvents.length} events from active session ${activeSession.id}`,
-          )
+          if (sessionEvents.length > 0) {
+            // Restore events to the store
+            // Use setEventsForInstance for the specific instance
+            setEventsForInstance(instanceId, sessionEvents)
+
+            // If this is the active instance, also update the flat events array
+            if (instanceId === activeInstanceId) {
+              setEvents(sessionEvents)
+            }
+
+            console.log(
+              `[useStoreHydration] Restored ${sessionEvents.length} events from active session ${activeSession.id}`,
+            )
+          }
         }
 
         // Load the task chat session - use stored session ID if available

@@ -200,24 +200,47 @@ export function useSessionPersistence(
    * Process events and detect session boundaries.
    */
   useEffect(() => {
-    if (!enabled) return
+    console.debug(
+      `[useSessionPersistence] Effect running: enabled=${enabled}, events.length=${events.length}, lastProcessed=${lastProcessedEventCountRef.current}`,
+    )
+
+    if (!enabled) {
+      console.debug("[useSessionPersistence] Skipping: disabled")
+      return
+    }
 
     // Only process if we have new events
-    if (events.length <= lastProcessedEventCountRef.current) return
+    if (events.length <= lastProcessedEventCountRef.current) {
+      console.debug(
+        `[useSessionPersistence] No new events: events.length=${events.length}, lastProcessed=${lastProcessedEventCountRef.current}`,
+      )
+      return
+    }
 
     const boundaries = getSessionBoundaries(events)
+    console.debug(
+      `[useSessionPersistence] Found ${boundaries.length} boundaries in ${events.length} events`,
+    )
 
     // Check for new session start
     if (boundaries.length > 0) {
       const latestBoundaryIndex = boundaries.length - 1
       const latestBoundaryEventIndex = boundaries[latestBoundaryIndex]
       const boundaryEvent = events[latestBoundaryEventIndex]
+      console.debug(
+        `[useSessionPersistence] Latest boundary at index ${latestBoundaryEventIndex}, event:`,
+        boundaryEvent.type,
+        (boundaryEvent as any).subtype,
+      )
 
       // New session started if we don't have a current one, or the boundary changed
       if (
         !currentSessionRef.current ||
         currentSessionRef.current.sessionIndex !== latestBoundaryIndex
       ) {
+        console.debug(
+          `[useSessionPersistence] Creating new session: currentRef=${currentSessionRef.current?.id ?? "null"}`,
+        )
         // Save previous session if it exists and wasn't saved
         if (currentSessionRef.current) {
           const prevEvents = getEventsForSessionIndex(
@@ -248,6 +271,7 @@ export function useSessionPersistence(
           eventCount: 0,
           saved: false,
         }
+        console.debug(`[useSessionPersistence] Setting currentSessionId to: ${newId}`)
         setCurrentSessionId(newId)
       }
     }

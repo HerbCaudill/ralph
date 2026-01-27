@@ -220,6 +220,10 @@ function handleMessage(event: MessageEvent): void {
         if (data.event && typeof data.event === "object") {
           const event = data.event as { type: string; timestamp: number; [key: string]: unknown }
 
+          console.debug(
+            `[ralphConnection] ralph:event received: type=${event.type}, subtype=${(event as any).subtype ?? "none"}, isForActiveInstance=${isForActiveInstance}`,
+          )
+
           // Track the event index for reconnection sync
           const eventIndex = data.eventIndex as number | undefined
           if (typeof eventIndex === "number") {
@@ -228,6 +232,7 @@ function handleMessage(event: MessageEvent): void {
 
           // Reset session stats when a new session starts (before adding the event)
           if (isSessionBoundary(event)) {
+            console.debug(`[ralphConnection] Session boundary detected, resetting stats`)
             if (isForActiveInstance) {
               store.resetSessionStats()
             } else {
@@ -238,6 +243,9 @@ function handleMessage(event: MessageEvent): void {
           // Route event to correct instance
           if (isForActiveInstance) {
             store.addEvent(event)
+            console.debug(
+              `[ralphConnection] Event added to store, events.length=${store.events.length}`,
+            )
             // If we're receiving events, Ralph must be running - fix any inconsistent status
             if (store.ralphStatus === "stopped") {
               store.setRalphStatus("running")
