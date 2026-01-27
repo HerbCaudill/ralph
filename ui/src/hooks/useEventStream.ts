@@ -199,7 +199,10 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
       window.removeEventListener("popstate", handleUrlChange)
       window.removeEventListener("hashchange", handleUrlChange)
     }
-  }, [loadSessionEvents, clearSelectedSession, selectedSession])
+    // Note: selectedSession intentionally excluded from deps to avoid infinite loop.
+    // The effect uses selectedSession only for cleanup when URL is cleared.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadSessionEvents, clearSelectedSession])
 
   const handleSessionHistorySelect = useCallback(
     (id: string) => {
