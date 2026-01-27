@@ -41,8 +41,6 @@ function createTestTaskChatSession(
   const now = Date.now()
   return {
     id,
-    taskId: "task-123",
-    taskTitle: "Test Task",
     instanceId: "test-instance",
     createdAt: now,
     updatedAt: now,

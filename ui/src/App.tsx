@@ -26,7 +26,6 @@ import {
   selectSession,
   selectTaskChatMessages,
   selectTaskChatEvents,
-  selectCurrentTask,
   selectWorkspace,
 } from "./store"
 import { TaskChatController } from "./components/chat/TaskChatController"
@@ -97,13 +96,11 @@ export function App() {
   // Subscribe to state for task chat persistence
   const taskChatMessages = useAppStore(selectTaskChatMessages)
   const taskChatEvents = useAppStore(selectTaskChatEvents)
-  const currentTask = useAppStore(selectCurrentTask)
 
   // Persist task chat sessions to IndexedDB (auto-saves on new messages/events)
+  // Session is based solely on instance ID and continues until explicitly cleared
   useTaskChatPersistence({
     instanceId: activeInstanceId,
-    taskId: currentTask?.id ?? null,
-    taskTitle: currentTask?.title ?? null,
     messages: taskChatMessages,
     events: taskChatEvents,
   })

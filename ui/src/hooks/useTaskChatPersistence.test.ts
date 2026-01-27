@@ -52,8 +52,6 @@ describe("useTaskChatPersistence", () => {
 
   const defaultOptions: UseTaskChatPersistenceOptions = {
     instanceId: "default",
-    taskId: "task-123",
-    taskTitle: "Test Task",
     messages: [],
     events: [],
     enabled: true,
@@ -126,10 +124,10 @@ describe("useTaskChatPersistence", () => {
       })
 
       expect(result.current.currentSessionId).not.toBeNull()
-      expect(result.current.currentSessionId).toMatch(/^default-task-task-123-\d+$/)
+      expect(result.current.currentSessionId).toMatch(/^default-taskchat-\d+$/)
     })
 
-    it("generates stable session IDs based on instance, task, and timestamp", async () => {
+    it("generates stable session IDs based on instance and timestamp", async () => {
       vi.setSystemTime(new Date(1706123456789))
 
       const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
@@ -139,7 +137,6 @@ describe("useTaskChatPersistence", () => {
         useTaskChatPersistence({
           ...defaultOptions,
           instanceId: "instance-1",
-          taskId: "task-abc",
           messages,
           events,
         }),
@@ -150,30 +147,7 @@ describe("useTaskChatPersistence", () => {
         await vi.advanceTimersByTimeAsync(10)
       })
 
-      expect(result.current.currentSessionId).toBe("instance-1-task-task-abc-1706123456789")
-    })
-
-    it("uses 'untitled' for null taskId", async () => {
-      vi.setSystemTime(new Date(1706123456789))
-
-      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
-      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
-
-      const { result } = renderHook(() =>
-        useTaskChatPersistence({
-          ...defaultOptions,
-          taskId: null,
-          messages,
-          events,
-        }),
-      )
-
-      // Allow effects to run
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(10)
-      })
-
-      expect(result.current.currentSessionId).toBe("default-task-untitled-1706123456789")
+      expect(result.current.currentSessionId).toBe("instance-1-taskchat-1706123456789")
     })
   })
 
@@ -267,8 +241,6 @@ describe("useTaskChatPersistence", () => {
       expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledWith(
         expect.objectContaining({
           instanceId: "default",
-          taskId: "task-123",
-          taskTitle: "Test Task",
           messages,
         }),
       )
@@ -412,8 +384,8 @@ describe("useTaskChatPersistence", () => {
     })
   })
 
-  describe("task change", () => {
-    it("saves previous session and starts new one when task changes", async () => {
+  describe("session stability", () => {
+    it("maintains same session when instance ID stays the same", async () => {
       const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
       const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
 
@@ -422,7 +394,6 @@ describe("useTaskChatPersistence", () => {
         {
           initialProps: {
             ...defaultOptions,
-            taskId: "task-1",
             messages,
             events,
           },
@@ -437,12 +408,13 @@ describe("useTaskChatPersistence", () => {
       expect(result.current.currentSessionId).not.toBeNull()
       const firstSessionId = result.current.currentSessionId
 
-      // Switch to a different task
+      // Add more messages - session should stay the same
+      const messages2 = [...messages, createAssistantMessage("msg-2", "Response")]
+      const events2 = [...events, createAssistantEvent(Date.now() + 100, "Response")]
       rerender({
         ...defaultOptions,
-        taskId: "task-2",
-        messages,
-        events,
+        messages: messages2,
+        events: events2,
       })
 
       // Allow effects to run
@@ -450,10 +422,8 @@ describe("useTaskChatPersistence", () => {
         await vi.advanceTimersByTimeAsync(10)
       })
 
-      expect(result.current.currentSessionId).not.toBe(firstSessionId)
-
-      // Should have saved the previous session
-      expect(eventDatabase.saveTaskChatSession).toHaveBeenCalled()
+      // Session ID should remain the same
+      expect(result.current.currentSessionId).toBe(firstSessionId)
     })
   })
 
@@ -496,8 +466,6 @@ describe("useTaskChatPersistence", () => {
         useTaskChatPersistence({
           ...defaultOptions,
           instanceId: "test-instance",
-          taskId: "task-abc",
-          taskTitle: "My Task",
           messages,
           events,
         }),
@@ -518,8 +486,6 @@ describe("useTaskChatPersistence", () => {
       expect(eventDatabase.saveTaskChatSession).toHaveBeenCalledWith(
         expect.objectContaining({
           instanceId: "test-instance",
-          taskId: "task-abc",
-          taskTitle: "My Task",
           messageCount: 2,
           eventCount: 2,
           lastEventSequence: 1,

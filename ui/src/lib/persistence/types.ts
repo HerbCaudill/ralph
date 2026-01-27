@@ -101,17 +101,25 @@ export interface PersistedEvent extends EventMetadata {
  * Used for listing/browsing sessions without loading full message/event data.
  */
 export interface TaskChatSessionMetadata {
-  /** Unique identifier for the session (e.g., "task-abc123-1706123456789") */
+  /** Unique identifier for the session (e.g., "default-taskchat-1706123456789") */
   id: string
-
-  /** ID of the task this chat session is associated with */
-  taskId: string
-
-  /** Title of the task (for display without fetching task data) */
-  taskTitle: string | null
 
   /** ID of the Ralph instance this session belongs to */
   instanceId: string
+
+  /**
+   * ID of the task this chat session was associated with.
+   * @deprecated Task chat sessions are no longer tied to specific tasks.
+   * This field exists for backward compatibility with older persisted data.
+   */
+  taskId?: string | null
+
+  /**
+   * Title of the task (for display without fetching task data).
+   * @deprecated Task chat sessions are no longer tied to specific tasks.
+   * This field exists for backward compatibility with older persisted data.
+   */
+  taskTitle?: string | null
 
   /** Timestamp when the session was created */
   createdAt: number

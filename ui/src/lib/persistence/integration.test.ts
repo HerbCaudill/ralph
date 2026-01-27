@@ -313,7 +313,6 @@ describe("Persistence Integration Tests", () => {
 
     it("persists task chat sessions with debouncing", async () => {
       const instanceId = "test-instance"
-      const taskId = "task-123"
       const startTime = Date.now()
 
       const messages: TaskChatMessage[] = [
@@ -331,8 +330,6 @@ describe("Persistence Integration Tests", () => {
         {
           initialProps: {
             instanceId,
-            taskId,
-            taskTitle: "Fix the bug",
             messages,
             events,
             enabled: true,
@@ -359,7 +356,6 @@ describe("Persistence Integration Tests", () => {
 
       const savedSession = await db.getTaskChatSession(savedSessions[0].id)
       expect(savedSession).toBeDefined()
-      expect(savedSession?.taskId).toBe(taskId)
       expect(savedSession?.messages.length).toBe(messages.length)
       // In v7+ schema, events are stored separately in the events table
       expect(savedSession?.eventCount).toBe(events.length)
@@ -367,7 +363,6 @@ describe("Persistence Integration Tests", () => {
 
     it("preserves task chat across simulated page reload", async () => {
       const instanceId = "test-instance"
-      const taskId = "task-456"
       const startTime = Date.now()
 
       const messages: TaskChatMessage[] = [
@@ -386,8 +381,6 @@ describe("Persistence Integration Tests", () => {
         {
           initialProps: {
             instanceId,
-            taskId,
-            taskTitle: "Test Task",
             messages,
             events,
             enabled: true,
@@ -416,7 +409,7 @@ describe("Persistence Integration Tests", () => {
       expect(savedSessions.length).toBe(1)
 
       // Can recover the session
-      const recoveredSession = await db.getLatestTaskChatSession(instanceId, taskId)
+      const recoveredSession = await db.getLatestTaskChatSessionForInstance(instanceId)
       expect(recoveredSession).toBeDefined()
       expect(recoveredSession?.messages.length).toBe(messages.length)
       // In v7+ schema, events are stored separately in the events table
@@ -425,7 +418,6 @@ describe("Persistence Integration Tests", () => {
 
     it("clears task chat session correctly", async () => {
       const instanceId = "test-instance"
-      const taskId = "task-789"
       const startTime = Date.now()
 
       const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello", startTime)]
@@ -437,8 +429,6 @@ describe("Persistence Integration Tests", () => {
         {
           initialProps: {
             instanceId,
-            taskId,
-            taskTitle: "Test Task",
             messages,
             events,
             enabled: true,
@@ -520,7 +510,6 @@ describe("Persistence Integration Tests", () => {
 
     it("can recover task chat from database", async () => {
       const instanceId = "test-instance"
-      const taskId = "task-abc"
       const now = Date.now()
 
       // Manually save a task chat session
@@ -539,9 +528,7 @@ describe("Persistence Integration Tests", () => {
       ] as ChatEvent[]
 
       await db.saveTaskChatSession({
-        id: `${instanceId}-task-${taskId}-${now}`,
-        taskId,
-        taskTitle: "Test Task",
+        id: `${instanceId}-taskchat-${now}`,
         instanceId,
         createdAt: now,
         updatedAt: now + 100,
@@ -557,7 +544,6 @@ describe("Persistence Integration Tests", () => {
       expect(recovered).toBeDefined()
       expect(recovered?.messages.length).toBe(messages.length)
       expect(recovered?.events?.length).toBe(events.length)
-      expect(recovered?.taskId).toBe(taskId)
     })
 
     it("returns latest active session, not completed ones", async () => {
