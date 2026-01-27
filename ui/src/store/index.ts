@@ -137,7 +137,7 @@ export interface AppState {
   // Accent color from peacock settings (null means use default/black)
   accentColor: string | null
 
-  // UI State
+  // UI State - widths are stored as percentages of window width (0-100)
   sidebarWidth: number
 
   // Theme
@@ -150,7 +150,7 @@ export interface AppState {
 
   // Task chat panel state
   taskChatOpen: boolean
-  taskChatWidth: number
+  taskChatWidth: number // Stored as percentage of window width (0-100)
   taskChatMessages: TaskChatMessage[]
   taskChatLoading: boolean
   currentTaskChatSessionId: string | null
@@ -494,8 +494,10 @@ export function getSessionTaskIds(
   })
 }
 
-const defaultSidebarWidth = 320
-const defaultTaskChatWidth = 400
+// Panel widths are stored as percentages of window width (0-100)
+// This ensures consistent layout proportions across different screen sizes
+const defaultSidebarWidthPercent = 20 // ~320px on 1600px screen
+const defaultTaskChatWidthPercent = 25 // ~400px on 1600px screen
 
 // Task chat events batching configuration
 // Events are collected over a short window and then applied in a single state update
@@ -574,13 +576,13 @@ const initialState: AppState = {
   session: { current: 0, total: 0 },
   connectionStatus: "disconnected",
   accentColor: null,
-  sidebarWidth: defaultSidebarWidth,
+  sidebarWidth: defaultSidebarWidthPercent,
   theme: "system",
   vscodeThemeId: null,
   lastDarkThemeId: null,
   lastLightThemeId: null,
   taskChatOpen: true,
-  taskChatWidth: defaultTaskChatWidth,
+  taskChatWidth: defaultTaskChatWidthPercent,
   taskChatMessages: [],
   taskChatLoading: false,
   currentTaskChatSessionId: null,

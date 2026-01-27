@@ -108,7 +108,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
 describe("persist", () => {
   describe("constants", () => {
     it("exports PERSIST_VERSION", () => {
-      expect(PERSIST_VERSION).toBe(5)
+      expect(PERSIST_VERSION).toBe(6)
     })
 
     it("exports PERSIST_NAME", () => {
@@ -874,11 +874,11 @@ describe("persist", () => {
       global.localStorage = originalLocalStorage
     })
 
-    it("returns state unchanged when version >= 4", () => {
+    it("returns state unchanged when version >= 6", () => {
       const state: PersistedState = {
-        sidebarWidth: 400,
+        sidebarWidth: 25, // Now stored as percentage
         taskChatOpen: true,
-        taskChatWidth: 400,
+        taskChatWidth: 30, // Now stored as percentage
         showToolOutput: false,
         theme: "system",
         closedTimeFilter: "past_day",
@@ -904,7 +904,7 @@ describe("persist", () => {
         activeInstanceId: "default",
       }
 
-      const result = migrate(state, 4)
+      const result = migrate(state, 6)
 
       expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
       expect(result.parentCollapsedState).toEqual({ "parent-1": true })
@@ -913,6 +913,9 @@ describe("persist", () => {
       expect(result.vscodeThemeId).toBe("my-theme")
       expect(result.lastDarkThemeId).toBe("dark-theme")
       expect(result.lastLightThemeId).toBe("light-theme")
+      // Widths should remain as percentages (not converted again)
+      expect(result.sidebarWidth).toBe(25)
+      expect(result.taskChatWidth).toBe(30)
     })
 
     it("migrates from v1 by loading legacy localStorage keys", () => {
@@ -1172,6 +1175,90 @@ describe("persist", () => {
       expect(result.vscodeThemeId).toBeNull()
       expect(result.lastDarkThemeId).toBeNull()
       expect(result.lastLightThemeId).toBeNull()
+    })
+
+    it("migrates from v5 to v6 by converting pixel widths to percentages", () => {
+      // Mock window.innerWidth
+      Object.defineProperty(window, "innerWidth", {
+        value: 1600,
+        writable: true,
+        configurable: true,
+      })
+
+      // v5 state with pixel-based widths
+      const state = {
+        sidebarWidth: 320, // pixels
+        taskChatOpen: true,
+        taskChatWidth: 400, // pixels
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        vscodeThemeId: null,
+        lastDarkThemeId: null,
+        lastLightThemeId: null,
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        commentDrafts: {},
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 5)
+
+      // 320px / 1600px * 100 = 20%
+      expect(result.sidebarWidth).toBe(20)
+      // 400px / 1600px * 100 = 25%
+      expect(result.taskChatWidth).toBe(25)
+    })
+
+    it("does not convert widths that are already percentages (< 100)", () => {
+      // v5 state that somehow has percentage-like values
+      const state = {
+        sidebarWidth: 25, // already looks like percentage
+        taskChatOpen: true,
+        taskChatWidth: 30, // already looks like percentage
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        vscodeThemeId: null,
+        lastDarkThemeId: null,
+        lastLightThemeId: null,
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        commentDrafts: {},
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 5)
+
+      // Values < 100 are assumed to already be percentages
+      expect(result.sidebarWidth).toBe(25)
+      expect(result.taskChatWidth).toBe(30)
     })
 
     it("migrates from v1 all the way to v4", () => {

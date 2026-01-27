@@ -84,6 +84,8 @@ describe("MainLayout", () => {
     })
     // Mock matchMedia for theme detection
     window.matchMedia = mockMatchMedia
+    // Mock window.innerWidth for percentage-to-pixel conversions
+    Object.defineProperty(window, "innerWidth", { value: 1024, writable: true, configurable: true })
   })
 
   afterEach(() => {
@@ -195,14 +197,14 @@ describe("MainLayout", () => {
       // Start resize
       fireEvent.mouseDown(resizeHandle)
 
-      // Move mouse to simulate resize
+      // Move mouse to simulate resize (400px on 1024px window = ~39%)
       fireEvent.mouseMove(document, { clientX: 400 })
 
       // Stop resize
       fireEvent.mouseUp(document)
 
-      // Check that the store was updated
-      expect(useAppStore.getState().sidebarWidth).toBe(400)
+      // Check that the store was updated with percentage (400/1024 * 100 ≈ 39.0625%)
+      expect(useAppStore.getState().sidebarWidth).toBeCloseTo(39.0625, 1)
     })
 
     it("respects minimum sidebar width", async () => {
@@ -218,14 +220,14 @@ describe("MainLayout", () => {
       // Start resize
       fireEvent.mouseDown(resizeHandle)
 
-      // Move mouse below minimum
+      // Move mouse below minimum (100px, but min is 200px)
       fireEvent.mouseMove(document, { clientX: 100 })
 
       // Stop resize
       fireEvent.mouseUp(document)
 
-      // Should be clamped to minimum (200)
-      expect(useAppStore.getState().sidebarWidth).toBe(200)
+      // Should be clamped to minimum (200px on 1024px window = ~19.53%)
+      expect(useAppStore.getState().sidebarWidth).toBeCloseTo(19.53, 1)
     })
 
     it("respects maximum sidebar width", async () => {
@@ -241,24 +243,25 @@ describe("MainLayout", () => {
       // Start resize
       fireEvent.mouseDown(resizeHandle)
 
-      // Move mouse above maximum
+      // Move mouse above maximum (800px, but max is 600px)
       fireEvent.mouseMove(document, { clientX: 800 })
 
       // Stop resize
       fireEvent.mouseUp(document)
 
-      // Should be clamped to maximum (600)
-      expect(useAppStore.getState().sidebarWidth).toBe(600)
+      // Should be clamped to maximum (600px on 1024px window = ~58.59%)
+      expect(useAppStore.getState().sidebarWidth).toBeCloseTo(58.59, 1)
     })
 
     it("applies width from store to sidebar", async () => {
-      // Set a custom width
-      useAppStore.getState().setSidebarWidth(350)
+      // Set a custom width as percentage (35% of window width)
+      useAppStore.getState().setSidebarWidth(35)
 
       render(<MainLayout sidebar={<div>Sidebar Content</div>} />)
 
       const sidebar = screen.getByText("Sidebar Content").closest("aside")
-      expect(sidebar).toHaveStyle({ width: "350px" })
+      // 35% of 1024px = 358px (rounded)
+      expect(sidebar).toHaveStyle({ width: "358px" })
 
       // Wait for workspace fetch to complete to avoid act() warning
       await waitFor(() => {
@@ -273,7 +276,7 @@ describe("MainLayout", () => {
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={true}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
         />,
       )
       expect(screen.getByText("Right Panel Content")).toBeInTheDocument()
@@ -288,7 +291,7 @@ describe("MainLayout", () => {
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={false}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
         />,
       )
       expect(screen.queryByText("Right Panel Content")).not.toBeInTheDocument()
@@ -303,7 +306,7 @@ describe("MainLayout", () => {
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={false}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
         />,
       )
 
@@ -320,12 +323,13 @@ describe("MainLayout", () => {
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={true}
-          rightPanelWidth={500}
+          rightPanelWidth={50} // 50% of window width
         />,
       )
 
       const rightPanel = screen.getByTestId("right-panel")
-      expect(rightPanel).toHaveStyle({ width: "500px" })
+      // 50% of 1024px = 512px
+      expect(rightPanel).toHaveStyle({ width: "512px" })
 
       await waitFor(() => {
         expect(screen.getByText("workspace")).toBeInTheDocument()
@@ -338,7 +342,7 @@ describe("MainLayout", () => {
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={true}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
           onRightPanelWidthChange={onWidthChange}
         />,
       )
@@ -354,7 +358,7 @@ describe("MainLayout", () => {
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={true}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
         />,
       )
       expect(
@@ -372,7 +376,7 @@ describe("MainLayout", () => {
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={false}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
           onRightPanelWidthChange={onWidthChange}
         />,
       )
@@ -389,13 +393,17 @@ describe("MainLayout", () => {
       const onWidthChange = vi.fn()
 
       // Mock window.innerWidth
-      Object.defineProperty(window, "innerWidth", { value: 1200, writable: true })
+      Object.defineProperty(window, "innerWidth", {
+        value: 1200,
+        writable: true,
+        configurable: true,
+      })
 
       render(
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={true}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
           onRightPanelWidthChange={onWidthChange}
         />,
       )
@@ -409,27 +417,31 @@ describe("MainLayout", () => {
       // Start resize
       fireEvent.mouseDown(resizeHandle)
 
-      // Move mouse to simulate resize (window width 1200, clientX 700 = panel width 500)
+      // Move mouse to simulate resize (window width 1200, clientX 700 = panel width 500px)
       fireEvent.mouseMove(document, { clientX: 700 })
 
       // Stop resize
       fireEvent.mouseUp(document)
 
-      // Check that the callback was called
-      expect(onWidthChange).toHaveBeenCalledWith(500)
+      // Check that the callback was called with percentage (500/1200 * 100 ≈ 41.67%)
+      expect(onWidthChange).toHaveBeenCalledWith(expect.closeTo(41.67, 1))
     })
 
     it("respects minimum right panel width", async () => {
       const onWidthChange = vi.fn()
 
       // Mock window.innerWidth
-      Object.defineProperty(window, "innerWidth", { value: 1200, writable: true })
+      Object.defineProperty(window, "innerWidth", {
+        value: 1200,
+        writable: true,
+        configurable: true,
+      })
 
       render(
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={true}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
           onRightPanelWidthChange={onWidthChange}
         />,
       )
@@ -443,27 +455,31 @@ describe("MainLayout", () => {
       // Start resize
       fireEvent.mouseDown(resizeHandle)
 
-      // Move mouse to make panel too small (window 1200, clientX 1100 = panel would be 100)
+      // Move mouse to make panel too small (window 1200, clientX 1100 = panel would be 100px)
       fireEvent.mouseMove(document, { clientX: 1100 })
 
       // Stop resize
       fireEvent.mouseUp(document)
 
-      // Should be clamped to minimum (300)
-      expect(onWidthChange).toHaveBeenCalledWith(300)
+      // Should be clamped to minimum (300px on 1200px window = 25%)
+      expect(onWidthChange).toHaveBeenCalledWith(25)
     })
 
     it("respects maximum right panel width", async () => {
       const onWidthChange = vi.fn()
 
       // Mock window.innerWidth
-      Object.defineProperty(window, "innerWidth", { value: 1200, writable: true })
+      Object.defineProperty(window, "innerWidth", {
+        value: 1200,
+        writable: true,
+        configurable: true,
+      })
 
       render(
         <MainLayout
           rightPanel={<div>Right Panel Content</div>}
           rightPanelOpen={true}
-          rightPanelWidth={400}
+          rightPanelWidth={40} // 40% of window width
           onRightPanelWidthChange={onWidthChange}
         />,
       )
@@ -477,18 +493,18 @@ describe("MainLayout", () => {
       // Start resize
       fireEvent.mouseDown(resizeHandle)
 
-      // Move mouse to make panel too large (window 1200, clientX 100 = panel would be 1100)
+      // Move mouse to make panel too large (window 1200, clientX 100 = panel would be 1100px)
       fireEvent.mouseMove(document, { clientX: 100 })
 
       // Stop resize
       fireEvent.mouseUp(document)
 
-      // Should be clamped to maximum (800)
-      expect(onWidthChange).toHaveBeenCalledWith(800)
+      // Should be clamped to maximum (800px on 1200px window = ~66.67%)
+      expect(onWidthChange).toHaveBeenCalledWith(expect.closeTo(66.67, 1))
     })
 
     it("defaults to closed state when rightPanelOpen is not provided", async () => {
-      render(<MainLayout rightPanel={<div>Right Panel Content</div>} rightPanelWidth={400} />)
+      render(<MainLayout rightPanel={<div>Right Panel Content</div>} rightPanelWidth={40} />)
 
       expect(screen.queryByText("Right Panel Content")).not.toBeInTheDocument()
 
@@ -497,11 +513,12 @@ describe("MainLayout", () => {
       })
     })
 
-    it("defaults to 400px width when rightPanelWidth is not provided", async () => {
+    it("defaults to 25% width when rightPanelWidth is not provided", async () => {
       render(<MainLayout rightPanel={<div>Right Panel Content</div>} rightPanelOpen={true} />)
 
       const rightPanel = screen.getByTestId("right-panel")
-      expect(rightPanel).toHaveStyle({ width: "400px" })
+      // Default is 25%, which is 256px on 1024px window
+      expect(rightPanel).toHaveStyle({ width: "256px" })
 
       await waitFor(() => {
         expect(screen.getByText("workspace")).toBeInTheDocument()

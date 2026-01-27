@@ -61,9 +61,9 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
   const defaultInstances = new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
 
   const state: PersistedState = {
-    sidebarWidth: 320,
+    sidebarWidth: 20,
     taskChatOpen: true,
-    taskChatWidth: 400,
+    taskChatWidth: 25,
     showToolOutput: false,
     theme: "system",
     closedTimeFilter: "past_day",
@@ -90,7 +90,7 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
     ...overrides,
   }
 
-  return JSON.stringify({ state, version: 1 })
+  return JSON.stringify({ state, version: 6 })
 }
 
 describe("useAppStore", () => {
@@ -120,9 +120,9 @@ describe("useAppStore", () => {
       expect(state.session).toEqual({ current: 0, total: 0 })
       expect(state.connectionStatus).toBe("disconnected")
       expect(state.accentColor).toBeNull()
-      expect(state.sidebarWidth).toBe(320)
+      expect(state.sidebarWidth).toBe(20)
       expect(state.taskChatOpen).toBe(true)
-      expect(state.taskChatWidth).toBe(400)
+      expect(state.taskChatWidth).toBe(25)
       expect(state.taskChatMessages).toEqual([])
       expect(state.taskChatLoading).toBe(false)
       expect(state.taskChatEvents).toEqual([])
@@ -2637,15 +2637,15 @@ describe("useAppStore", () => {
     })
 
     it("loads sidebar width from localStorage on store creation", async () => {
-      // Set localStorage using persist middleware format
-      localStorage.setItem(PERSIST_NAME, createPersistedState({ sidebarWidth: 400 }))
+      // Set localStorage using persist middleware format (sidebarWidth is now a percentage)
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ sidebarWidth: 35 }))
 
       // Re-import the module to get fresh store instance
       // We need to use dynamic import to force re-evaluation
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
 
-      expect(freshStore.getState().sidebarWidth).toBe(400)
+      expect(freshStore.getState().sidebarWidth).toBe(35)
     })
 
     it("uses default width when localStorage is empty", async () => {
@@ -2654,7 +2654,7 @@ describe("useAppStore", () => {
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
 
-      expect(freshStore.getState().sidebarWidth).toBe(320)
+      expect(freshStore.getState().sidebarWidth).toBe(20)
     })
 
     it("uses default width when localStorage value is invalid", async () => {
@@ -2664,7 +2664,7 @@ describe("useAppStore", () => {
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
 
-      expect(freshStore.getState().sidebarWidth).toBe(320)
+      expect(freshStore.getState().sidebarWidth).toBe(20)
     })
   })
 
@@ -2678,12 +2678,13 @@ describe("useAppStore", () => {
     })
 
     it("loads task chat width from localStorage on store creation", async () => {
-      localStorage.setItem(PERSIST_NAME, createPersistedState({ taskChatWidth: 500 }))
+      // taskChatWidth is now a percentage (0-100)
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ taskChatWidth: 35 }))
 
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
 
-      expect(freshStore.getState().taskChatWidth).toBe(500)
+      expect(freshStore.getState().taskChatWidth).toBe(35)
     })
 
     it("uses default width when localStorage is empty", async () => {
@@ -2692,7 +2693,7 @@ describe("useAppStore", () => {
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
 
-      expect(freshStore.getState().taskChatWidth).toBe(400)
+      expect(freshStore.getState().taskChatWidth).toBe(25)
     })
 
     it("uses default width when localStorage value is invalid", async () => {
@@ -2702,7 +2703,7 @@ describe("useAppStore", () => {
       vi.resetModules()
       const { useAppStore: freshStore } = await import("./index")
 
-      expect(freshStore.getState().taskChatWidth).toBe(400)
+      expect(freshStore.getState().taskChatWidth).toBe(25)
     })
   })
 
@@ -2936,9 +2937,9 @@ describe("useAppStore", () => {
       expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
       expect(state.session).toEqual({ current: 0, total: 0 })
       expect(state.connectionStatus).toBe("disconnected")
-      expect(state.sidebarWidth).toBe(320)
+      expect(state.sidebarWidth).toBe(20)
       expect(state.taskChatOpen).toBe(true)
-      expect(state.taskChatWidth).toBe(400)
+      expect(state.taskChatWidth).toBe(25)
       expect(state.taskChatMessages).toEqual([])
       expect(state.taskChatEvents).toEqual([])
       expect(state.taskChatLoading).toBe(false)

@@ -27,7 +27,7 @@ import {
 } from "@/constants"
 
 /** Current schema version for persistence format */
-export const PERSIST_VERSION = 5
+export const PERSIST_VERSION = 6
 
 /** Storage key for persisted state */
 export const PERSIST_NAME = "ralph-ui-store"
@@ -61,7 +61,7 @@ export interface SerializedRalphInstance {
  * This is what gets serialized to localStorage.
  */
 export interface PersistedState {
-  // UI preferences
+  // UI preferences - widths are stored as percentages of window width (0-100)
   sidebarWidth: number
   taskChatOpen: boolean
   taskChatWidth: number
@@ -337,6 +337,7 @@ const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
  * - v3: Added taskInputDraft and taskChatInputDraft (consolidated from separate localStorage keys)
  * - v4: Added vscodeThemeId, lastDarkThemeId, lastLightThemeId (consolidated from separate localStorage keys)
  * - v5: Added commentDrafts (per-task comment draft persistence)
+ * - v6: Changed sidebarWidth and taskChatWidth from pixels to percentages of window width
  */
 export function migrate(persistedState: unknown, version: number): PersistedState {
   let state = persistedState as PersistedState
@@ -482,6 +483,32 @@ export function migrate(persistedState: unknown, version: number): PersistedStat
     state = {
       ...state,
       commentDrafts: {},
+    }
+  }
+
+  if (version < 6) {
+    // Migrate from v5 to v6: Convert panel widths from pixels to percentages
+    // Use the current window width for conversion, or a reasonable default
+    const windowWidth = typeof window !== "undefined" ? window.innerWidth : 1600
+
+    // Only convert if values look like pixels (> 100, since percentages are 0-100)
+    const sidebarWidth = state.sidebarWidth
+    const taskChatWidth = state.taskChatWidth
+
+    // Default percentages if we can't convert
+    const defaultSidebarPercent = 20
+    const defaultTaskChatPercent = 25
+
+    state = {
+      ...state,
+      sidebarWidth:
+        sidebarWidth > 100 ?
+          Math.round((sidebarWidth / windowWidth) * 100)
+        : (sidebarWidth ?? defaultSidebarPercent),
+      taskChatWidth:
+        taskChatWidth > 100 ?
+          Math.round((taskChatWidth / windowWidth) * 100)
+        : (taskChatWidth ?? defaultTaskChatPercent),
     }
   }
 

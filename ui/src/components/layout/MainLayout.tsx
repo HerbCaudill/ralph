@@ -27,11 +27,11 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
     className,
     leftPanel,
     leftPanelOpen = false,
-    leftPanelWidth = 400,
+    leftPanelWidth = 25, // Default 25% of window width
     onLeftPanelWidthChange,
     rightPanel,
     rightPanelOpen = false,
-    rightPanelWidth = 400,
+    rightPanelWidth = 25, // Default 25% of window width
     onRightPanelWidthChange,
     detailPanel,
     detailPanelOpen = false,
@@ -54,8 +54,29 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   const [isResizingLeftPanel, setIsResizingLeftPanel] = useState(false)
   const [isResizingRightPanel, setIsResizingRightPanel] = useState(false)
   const [mainWidth, setMainWidth] = useState(0)
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1600,
+  )
+
+  // Convert percentage-based widths to pixels for rendering
+  // sidebarWidth from store is a percentage (0-100)
+  const sidebarWidthPx = Math.round((sidebarWidth / 100) * windowWidth)
+  // leftPanelWidth prop is also a percentage (0-100)
+  const leftPanelWidthPx = Math.round((leftPanelWidth / 100) * windowWidth)
+  // rightPanelWidth prop is also a percentage (0-100)
+  const rightPanelWidthPx = Math.round((rightPanelWidth / 100) * windowWidth)
 
   const detailPanelWidth = Math.min(MAX_DETAIL_PANEL_WIDTH, mainWidth - MIN_RIGHT_MARGIN)
+
+  // Track window width for percentage-to-pixel conversions
+  useEffect(() => {
+    const handleWindowResize = () => {
+      setWindowWidth(window.innerWidth)
+    }
+
+    window.addEventListener("resize", handleWindowResize)
+    return () => window.removeEventListener("resize", handleWindowResize)
+  }, [])
 
   useEffect(() => {
     const mainElement = mainRef.current
@@ -78,36 +99,44 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isResizing) return
-      const leftOffset = leftPanelOpen ? leftPanelWidth : 0
-      const newWidth = Math.min(
+      const leftOffset = leftPanelOpen ? leftPanelWidthPx : 0
+      // Calculate new width in pixels, then convert to percentage
+      const newWidthPx = Math.min(
         MAX_SIDEBAR_WIDTH,
         Math.max(MIN_SIDEBAR_WIDTH, e.clientX - leftOffset),
       )
-      setSidebarWidth(newWidth)
+      // Convert to percentage of window width
+      const newWidthPercent = (newWidthPx / windowWidth) * 100
+      setSidebarWidth(newWidthPercent)
     },
-    [isResizing, setSidebarWidth, leftPanelOpen, leftPanelWidth],
+    [isResizing, setSidebarWidth, leftPanelOpen, leftPanelWidthPx, windowWidth],
   )
 
   const handleLeftPanelMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isResizingLeftPanel || !onLeftPanelWidthChange) return
-      const newWidth = Math.min(MAX_LEFT_PANEL_WIDTH, Math.max(MIN_LEFT_PANEL_WIDTH, e.clientX))
-      onLeftPanelWidthChange(newWidth)
+      // Calculate new width in pixels, then convert to percentage
+      const newWidthPx = Math.min(MAX_LEFT_PANEL_WIDTH, Math.max(MIN_LEFT_PANEL_WIDTH, e.clientX))
+      // Convert to percentage of window width
+      const newWidthPercent = (newWidthPx / windowWidth) * 100
+      onLeftPanelWidthChange(newWidthPercent)
     },
-    [isResizingLeftPanel, onLeftPanelWidthChange],
+    [isResizingLeftPanel, onLeftPanelWidthChange, windowWidth],
   )
 
   const handleRightPanelMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isResizingRightPanel || !onRightPanelWidthChange) return
-      const windowWidth = window.innerWidth
-      const newWidth = Math.min(
+      // Calculate new width in pixels, then convert to percentage
+      const newWidthPx = Math.min(
         MAX_RIGHT_PANEL_WIDTH,
         Math.max(MIN_RIGHT_PANEL_WIDTH, windowWidth - e.clientX),
       )
-      onRightPanelWidthChange(newWidth)
+      // Convert to percentage of window width
+      const newWidthPercent = (newWidthPx / windowWidth) * 100
+      onRightPanelWidthChange(newWidthPercent)
     },
-    [isResizingRightPanel, onRightPanelWidthChange],
+    [isResizingRightPanel, onRightPanelWidthChange, windowWidth],
   )
 
   const handleMouseUp = useCallback(() => {
@@ -226,7 +255,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
               "bg-background border-sidebar-border relative flex h-full flex-col overflow-hidden border-r",
               leftPanelOpen ? "visible" : "hidden",
             )}
-            style={{ width: leftPanelOpen ? leftPanelWidth : 0 }}
+            style={{ width: leftPanelOpen ? leftPanelWidthPx : 0 }}
             tabIndex={-1}
             data-testid="left-panel"
           >
@@ -249,7 +278,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
             className={cn(
               "bg-background border-sidebar-border relative flex h-full flex-col overflow-hidden border-r",
             )}
-            style={{ width: sidebarWidth }}
+            style={{ width: sidebarWidthPx }}
             tabIndex={-1}
           >
             {sidebar}
@@ -291,7 +320,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
               "bg-background border-sidebar-border relative flex h-full flex-col overflow-hidden border-l",
               rightPanelOpen ? "visible" : "hidden",
             )}
-            style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
+            style={{ width: rightPanelOpen ? rightPanelWidthPx : 0 }}
             tabIndex={-1}
             data-testid="right-panel"
           >
@@ -345,11 +374,15 @@ export type MainLayoutProps = {
   className?: string
   leftPanel?: React.ReactNode
   leftPanelOpen?: boolean
+  /** Width as percentage of window width (0-100) */
   leftPanelWidth?: number
+  /** Called with new width as percentage of window width (0-100) */
   onLeftPanelWidthChange?: (width: number) => void
   rightPanel?: React.ReactNode
   rightPanelOpen?: boolean
+  /** Width as percentage of window width (0-100) */
   rightPanelWidth?: number
+  /** Called with new width as percentage of window width (0-100) */
   onRightPanelWidthChange?: (width: number) => void
   detailPanel?: React.ReactNode
   detailPanelOpen?: boolean
