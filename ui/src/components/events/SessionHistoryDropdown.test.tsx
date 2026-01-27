@@ -289,11 +289,7 @@ describe("SessionHistoryDropdown", () => {
       ]
 
       render(
-        <SessionHistoryDropdown
-          {...defaultProps}
-          sessions={sessions}
-          currentSessionId={null}
-        />,
+        <SessionHistoryDropdown {...defaultProps} sessions={sessions} currentSessionId={null} />,
       )
 
       // Open the dropdown

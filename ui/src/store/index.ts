@@ -362,25 +362,59 @@ export interface AppActions {
   reset: () => void
 }
 
-/**  Checks if an event is a session boundary (system init or ralph_session_start event). */
+/**
+ * Checks if an event is a primary session boundary (ralph_session_start).
+ * Primary boundaries are emitted by the Ralph CLI at the start of each round.
+ */
+function isPrimarySessionBoundary(event: ChatEvent): boolean {
+  return event.type === "ralph_session_start"
+}
+
+/**
+ * Checks if an event is a fallback session boundary (system/init).
+ * Fallback boundaries are used for legacy data or direct SDK usage.
+ */
+function isFallbackSessionBoundary(event: ChatEvent): boolean {
+  return event.type === "system" && (event as any).subtype === "init"
+}
+
+/**
+ * Checks if an event is a session boundary.
+ * Prefers ralph_session_start (primary) over system/init (fallback).
+ *
+ * Note: This function is kept for backward compatibility but getSessionBoundaries
+ * uses a smarter algorithm that prefers primary boundaries when available.
+ */
 export function isSessionBoundary(event: ChatEvent): boolean {
-  if (event.type === "system" && (event as any).subtype === "init") return true
-  if (event.type === "ralph_session_start") return true
-  return false
+  return isPrimarySessionBoundary(event) || isFallbackSessionBoundary(event)
 }
 
 /**
  * Gets the indices of session boundaries in the events array.
  * Returns an array of indices where each session starts.
+ *
+ * IMPORTANT: Uses smart boundary detection:
+ * - If ANY ralph_session_start events exist, uses ONLY those as boundaries
+ * - Falls back to system/init events only if no ralph_session_start events exist
+ *
+ * This prevents double-counting when both event types are present
+ * (ralph_session_start comes ~1s before system/init in each round).
  */
 export function getSessionBoundaries(events: ChatEvent[]): number[] {
-  const boundaries: number[] = []
+  // First, try to find primary boundaries (ralph_session_start)
+  const primaryBoundaries: number[] = []
+  const fallbackBoundaries: number[] = []
+
   events.forEach((event, index) => {
-    if (isSessionBoundary(event)) {
-      boundaries.push(index)
+    if (isPrimarySessionBoundary(event)) {
+      primaryBoundaries.push(index)
+    } else if (isFallbackSessionBoundary(event)) {
+      fallbackBoundaries.push(index)
     }
   })
-  return boundaries
+
+  // Use primary boundaries if available, otherwise fall back to system/init
+  return primaryBoundaries.length > 0 ? primaryBoundaries : fallbackBoundaries
 }
 
 /**  Counts the total number of sessions in the events array. */

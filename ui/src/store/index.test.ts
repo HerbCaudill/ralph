@@ -1839,7 +1839,9 @@ describe("useAppStore", () => {
         expect(getSessionBoundaries(events)).toEqual([0, 3, 5])
       })
 
-      it("returns indices for ralph_session_start events", () => {
+      it("prefers ralph_session_start events over system/init when both exist", () => {
+        // When ralph_session_start events exist, system/init should be ignored
+        // to avoid double-counting (both occur per round, ~1s apart)
         const events = [
           { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
           { type: "assistant", timestamp: 1001 } as ChatEvent,
@@ -1858,7 +1860,19 @@ describe("useAppStore", () => {
           } as ChatEvent,
           { type: "assistant", timestamp: 3001 } as ChatEvent,
         ]
-        expect(getSessionBoundaries(events)).toEqual([0, 2, 4])
+        // Only ralph_session_start indices should be returned (not system/init at index 0)
+        expect(getSessionBoundaries(events)).toEqual([2, 4])
+      })
+
+      it("falls back to system/init when no ralph_session_start events exist", () => {
+        // For legacy data or direct SDK usage, system/init is the fallback
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          { type: "system", subtype: "init", timestamp: 2000 } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+        ]
+        expect(getSessionBoundaries(events)).toEqual([0, 2])
       })
 
       it("returns empty array when no boundaries exist", () => {
