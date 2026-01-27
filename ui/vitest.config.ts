@@ -34,7 +34,7 @@ export default mergeConfig(
             globals: true,
             setupFiles: ["./src/vitest-setup.ts"],
             exclude: ["node_modules", "e2e", "server/**/*.test.ts"],
-            include: ["src/**/*.test.{ts,tsx}"],
+            include: ["src/**/*.test.{ts,tsx}", ".storybook/*.test.{ts,tsx}"],
             hookTimeout: 60000,
             testTimeout: 60000,
           },

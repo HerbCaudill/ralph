@@ -1,7 +1,8 @@
 import type { Decorator } from "@storybook/react-vite"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useAppStore } from "../src/store"
 import type { RalphInstance, RalphStatus } from "../src/types"
+import { importStateFromUrl, clearImportedState } from "../src/lib/importState"
 
 /** Connection status type for Storybook decorators */
 type ConnectionStatus = "connected" | "connecting" | "disconnected"
@@ -74,3 +75,81 @@ export const fullPageDecorator: Decorator = Story => (
     <Story />
   </div>
 )
+
+/** Loading state for imported state decorator */
+type ImportStatus = "loading" | "ready" | "error"
+
+/**
+ * Decorator that loads state from a compressed JSON file before rendering.
+ *
+ * Fetches the gzipped state file, decompresses it, and restores both
+ * localStorage (Zustand state) and IndexedDB (sessions, events, etc.)
+ * before rendering the story.
+ *
+ * @param stateUrl - URL to the .json.gz state file (relative to Storybook's staticDirs)
+ *
+ * @example
+ * ```tsx
+ * export const ReproduceIssue: Story = {
+ *   decorators: [withImportedState('/fixtures/reproduce-h5j8.json.gz')],
+ * }
+ * ```
+ */
+export function withImportedState(stateUrl: string): Decorator {
+  return Story => {
+    const [status, setStatus] = useState<ImportStatus>("loading")
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+      let mounted = true
+
+      async function loadState() {
+        try {
+          await importStateFromUrl(stateUrl)
+          if (mounted) {
+            setStatus("ready")
+          }
+        } catch (err) {
+          if (mounted) {
+            setStatus("error")
+            setError(err instanceof Error ? err.message : "Failed to load state")
+          }
+        }
+      }
+
+      loadState()
+
+      // Cleanup on unmount
+      return () => {
+        mounted = false
+        clearImportedState().catch(console.error)
+      }
+    }, [])
+
+    if (status === "loading") {
+      return (
+        <div className="bg-background text-foreground flex h-screen w-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4 text-lg font-medium">Loading state...</div>
+            <div className="text-muted-foreground text-sm">
+              Decompressing and importing {stateUrl}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    if (status === "error") {
+      return (
+        <div className="bg-background text-foreground flex h-screen w-screen items-center justify-center">
+          <div className="text-center">
+            <div className="text-destructive mb-4 text-lg font-medium">Failed to load state</div>
+            <div className="text-muted-foreground text-sm">{error}</div>
+          </div>
+        </div>
+      )
+    }
+
+    return <Story />
+  }
+}

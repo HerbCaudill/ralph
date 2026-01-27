@@ -475,6 +475,34 @@ src/components/chat/
 
 **Storybook stories test presentational components directly** - no store mocking needed.
 
+### Storybook Decorators
+
+Storybook decorators are defined in `.storybook/decorators.tsx`:
+
+- **`withStoreState(state)`** - Initialize Zustand store with specific state for stories
+- **`fullPageDecorator`** - Render story in a full-page container
+- **`withImportedState(url)`** - Load state from a compressed `.json.gz` file before rendering
+
+**`withImportedState` Decorator:**
+
+Use this decorator to reproduce issues by loading exported application state:
+
+```tsx
+import { withImportedState } from '../../../.storybook/decorators'
+
+export const ReproduceIssue: Story = {
+  decorators: [withImportedState('/fixtures/reproduce-h5j8.json.gz')],
+}
+```
+
+The decorator:
+- Fetches and decompresses the gzipped state file
+- Restores localStorage (Zustand state) and IndexedDB (sessions, events)
+- Shows loading/error states while importing
+- Cleans up imported state on unmount
+
+State files should be placed in `public/fixtures/` and can be generated using the export functionality.
+
 ### IndexedDB Schema (v7)
 
 Four object stores:
