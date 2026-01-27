@@ -165,6 +165,7 @@ describe("App", () => {
     // Start with disconnected state and stopped status
     useAppStore.getState().setConnectionStatus("disconnected")
     useAppStore.getState().setRalphStatus("stopped")
+    useAppStore.getState().setHasInitialSync(false)
 
     render(<App />)
 
@@ -174,9 +175,11 @@ describe("App", () => {
       expect.objectContaining({ method: "POST" }),
     )
 
-    // Simulate connection being established
+    // Simulate connection being established and initial sync completing
+    // (In production, hasInitialSync is set by hydrateInstances when instances:list message arrives)
     act(() => {
       useAppStore.getState().setConnectionStatus("connected")
+      useAppStore.getState().setHasInitialSync(true)
     })
 
     // Wait for the auto-start to be triggered
@@ -188,10 +191,50 @@ describe("App", () => {
     })
   })
 
+  it("does not auto-start Ralph if already running (prevents 409 error on page reload)", async () => {
+    // This test verifies the fix for the 409 error that occurred when reloading
+    // the page while Ralph was already running. The auto-start effect waits for
+    // hasInitialSync to be true, which is set by hydrateInstances after receiving
+    // the actual Ralph status from the server.
+
+    // Start disconnected
+    useAppStore.getState().setConnectionStatus("disconnected")
+    useAppStore.getState().setRalphStatus("stopped") // Default state before sync
+    useAppStore.getState().setHasInitialSync(false)
+
+    render(<App />)
+
+    // Simulate connection being established
+    act(() => {
+      useAppStore.getState().setConnectionStatus("connected")
+    })
+
+    // At this point, isConnected=true, ralphStatus="stopped", but hasInitialSync=false
+    // So auto-start should NOT be triggered yet
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      "/api/ralph/default/start",
+      expect.objectContaining({ method: "POST" }),
+    )
+
+    // Now simulate the initial sync (instances:list message) showing Ralph is already running
+    act(() => {
+      useAppStore.getState().setRalphStatus("running") // Server says Ralph is running
+      useAppStore.getState().setHasInitialSync(true)
+    })
+
+    // Wait a bit and verify start is NOT called (because Ralph is already running)
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      "/api/ralph/default/start",
+      expect.objectContaining({ method: "POST" }),
+    )
+  })
+
   it("only auto-starts Ralph once (not on reconnection)", async () => {
-    // Start with connected state (simulating an already auto-started session)
+    // Start with connected state and initial sync complete (simulating an already auto-started session)
     useAppStore.getState().setConnectionStatus("connected")
     useAppStore.getState().setRalphStatus("stopped")
+    useAppStore.getState().setHasInitialSync(true)
 
     render(<App />)
 
@@ -207,6 +250,7 @@ describe("App", () => {
     mockFetch.mockClear()
 
     // Simulate disconnection and reconnection
+    // Note: setConnectionStatus("disconnected") resets hasInitialSync to false
     act(() => {
       useAppStore.getState().setConnectionStatus("disconnected")
     })
@@ -215,6 +259,7 @@ describe("App", () => {
     })
     act(() => {
       useAppStore.getState().setConnectionStatus("connected")
+      useAppStore.getState().setHasInitialSync(true)
     })
 
     // Wait a bit and verify start is NOT called again

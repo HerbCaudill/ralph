@@ -13,6 +13,7 @@ import {
   useAppStore,
   selectRalphStatus,
   selectIsConnected,
+  selectHasInitialSync,
   selectTaskChatOpen,
   selectTaskChatWidth,
   selectSelectedTaskId,
@@ -134,6 +135,7 @@ export function App() {
   // Get state for hotkey conditions
   const ralphStatus = useAppStore(selectRalphStatus)
   const isConnected = useAppStore(selectIsConnected)
+  const hasInitialSync = useAppStore(selectHasInitialSync)
   const toggleTaskChat = useAppStore(state => state.toggleTaskChat)
 
   // Session navigation
@@ -370,12 +372,14 @@ export function App() {
   const hasAutoStarted = useRef(false)
 
   // Auto-start Ralph on first connection
+  // Wait for hasInitialSync to ensure we have the actual Ralph status from the server
+  // This prevents the 409 error when reloading a page while Ralph is already running
   useEffect(() => {
-    if (isConnected && ralphStatus === "stopped" && !hasAutoStarted.current) {
+    if (isConnected && hasInitialSync && ralphStatus === "stopped" && !hasAutoStarted.current) {
       hasAutoStarted.current = true
       startRalph()
     }
-  }, [isConnected, ralphStatus])
+  }, [isConnected, hasInitialSync, ralphStatus])
 
   // Auto-focus chat input on mount
   useEffect(() => {

@@ -195,6 +195,10 @@ export interface AppState {
   // Reconnection state (for auto-resuming when reconnecting mid-session)
   /** Whether Ralph was running when the connection was lost */
   wasRunningBeforeDisconnect: boolean
+
+  // Initial sync tracking (to prevent auto-start race conditions on page reload)
+  /** Whether we've received the initial WebSocket sync (instances:list message) */
+  hasInitialSync: boolean
 }
 
 // Store Actions
@@ -316,6 +320,10 @@ export interface AppActions {
   markRunningBeforeDisconnect: () => void
   /** Clear the running-before-disconnect flag */
   clearRunningBeforeDisconnect: () => void
+
+  // Initial sync tracking
+  /** Mark that we've received the initial WebSocket sync */
+  setHasInitialSync: (hasSync: boolean) => void
 
   // Active instance
   setActiveInstanceId: (instanceId: string) => void
@@ -575,6 +583,7 @@ const initialState: AppState = {
   isSearchVisible: false,
   hotkeysDialogOpen: false,
   wasRunningBeforeDisconnect: false,
+  hasInitialSync: false,
   taskChatEvents: [],
   statusCollapsedState: {
     open: false,
@@ -900,7 +909,12 @@ export const useAppStore = create<AppState & AppActions>()(
         }),
 
       // Connection
-      setConnectionStatus: status => set({ connectionStatus: status }),
+      setConnectionStatus: status =>
+        set(state => ({
+          connectionStatus: status,
+          // Reset initial sync flag when disconnected (will be set again on next instances:list message)
+          hasInitialSync: status === "disconnected" ? false : state.hasInitialSync,
+        })),
 
       // UI State
       setSidebarWidth: width => set({ sidebarWidth: width }),
@@ -1049,6 +1063,9 @@ export const useAppStore = create<AppState & AppActions>()(
             state.ralphStatus === "running" || state.ralphStatus === "paused",
         })),
       clearRunningBeforeDisconnect: () => set({ wasRunningBeforeDisconnect: false }),
+
+      // Initial sync tracking
+      setHasInitialSync: hasSync => set({ hasInitialSync: hasSync }),
 
       // Active instance
       setActiveInstanceId: instanceId =>
@@ -1248,6 +1265,8 @@ export const useAppStore = create<AppState & AppActions>()(
           return {
             instances: updatedInstances,
             activeInstanceId,
+            // Mark that we've received the initial sync (prevents auto-start race condition on page reload)
+            hasInitialSync: true,
             // Sync flat fields for backward compatibility if active instance changed
             ...(activeInstance ?
               {
@@ -1560,6 +1579,7 @@ export const selectSession = (state: AppState) => {
 }
 export const selectConnectionStatus = (state: AppState) => state.connectionStatus
 export const selectIsConnected = (state: AppState) => state.connectionStatus === "connected"
+export const selectHasInitialSync = (state: AppState) => state.hasInitialSync
 export const selectIsRalphRunning = (state: AppState) => state.ralphStatus === "running"
 /** Whether Ralph can accept user messages (running, paused, or stopping after current) */
 export const selectCanAcceptMessages = (state: AppState) =>
