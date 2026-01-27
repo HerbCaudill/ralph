@@ -135,6 +135,9 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
    * Load events for a specific session from IndexedDB.
    * Returns the session with its events, or null if not found.
    * Also sets the selected session state for easy access.
+   *
+   * Additionally, derives task info from events and updates the session metadata
+   * if it differs from what's stored, ensuring the dropdown shows consistent info.
    */
   const loadSessionEvents = useCallback(
     async (sessionId: string): Promise<SessionWithEvents | null> => {
@@ -158,8 +161,45 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
         // Convert PersistedEvent to ChatEvent
         const events = persistedEvents.map(pe => pe.event)
 
+        // Derive task info from events (same logic as useEventStream's sessionTask)
+        let derivedTaskId: string | undefined
+        let derivedTaskTitle: string | undefined
+        for (const event of events) {
+          if ((event as { type: string }).type === "ralph_task_started") {
+            derivedTaskId = (event as { taskId?: string }).taskId ?? undefined
+            derivedTaskTitle = (event as { taskTitle?: string }).taskTitle ?? undefined
+            break
+          }
+        }
+
+        // If we derived task info from events that differs from stored metadata, update it
+        const needsUpdate =
+          (derivedTaskId && derivedTaskId !== metadata.taskId) ||
+          (derivedTaskTitle && derivedTaskTitle !== metadata.taskTitle)
+
+        if (needsUpdate) {
+          const updatedMetadata = {
+            ...metadata,
+            taskId: derivedTaskId ?? metadata.taskId,
+            taskTitle: derivedTaskTitle ?? metadata.taskTitle,
+          }
+          await eventDatabase.saveSession(updatedMetadata)
+          // Refresh sessions to update the dropdown
+          refresh()
+        }
+
+        // Use updated metadata for the summary
+        const summaryMetadata =
+          needsUpdate ?
+            {
+              ...metadata,
+              taskId: derivedTaskId ?? metadata.taskId,
+              taskTitle: derivedTaskTitle ?? metadata.taskTitle,
+            }
+          : metadata
+
         // Combine metadata with events
-        const summary = toSessionSummary(metadata)
+        const summary = toSessionSummary(summaryMetadata)
         if (!summary) {
           setEventsError("Invalid session metadata")
           setSelectedSession(null)
@@ -182,7 +222,7 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
         setIsLoadingEvents(false)
       }
     },
-    [],
+    [refresh],
   )
 
   /** Clear the selected session and its events. */
