@@ -127,6 +127,10 @@ export function useTaskDetails({
   // Track last saved values to detect changes
   const lastSavedRef = useRef<TaskFormValues | null>(null)
 
+  // Track the last task ID and open state to only reset form when task changes or dialog opens
+  const lastTaskIdRef = useRef<string | null>(null)
+  const wasOpenRef = useRef(false)
+
   // Debounce timer ref for text field autosave
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -146,9 +150,19 @@ export function useTaskDetails({
     }
   }, [task, open])
 
-  // Reset local state when task changes
+  // Reset local state when task ID changes or dialog opens
+  // This prevents polling updates from overwriting user edits
   useEffect(() => {
-    if (task) {
+    const taskId = task?.id ?? null
+    const isOpening = open && !wasOpenRef.current
+    const isTaskChange = taskId !== lastTaskIdRef.current
+
+    // Update refs for next comparison
+    lastTaskIdRef.current = taskId
+    wasOpenRef.current = open
+
+    // Only reset form state when switching to a different task or when dialog opens
+    if (task && (isTaskChange || isOpening)) {
       const initialValues: TaskFormValues = {
         title: task.title,
         description: task.description ?? "",
@@ -171,7 +185,7 @@ export function useTaskDetails({
       setDeleteError(null)
       lastSavedRef.current = initialValues
     }
-  }, [task])
+  }, [task, open])
 
   // Cleanup autosave timer on unmount
   useEffect(() => {
