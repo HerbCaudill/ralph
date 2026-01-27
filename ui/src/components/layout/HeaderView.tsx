@@ -34,7 +34,7 @@ export function HeaderView({ className, accentColor, instanceCount }: HeaderView
       </div>
 
       <div className="flex items-center gap-2">
-        <ConnectionStatusIndicator />
+        <ConnectionStatusIndicator textColor={textColor} />
         <HelpButton textColor={textColor} />
         <SettingsDropdown textColor={textColor} />
       </div>

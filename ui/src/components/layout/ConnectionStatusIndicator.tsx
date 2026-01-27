@@ -35,7 +35,10 @@ const connectionStatusConfig: Record<
  * Shows connected/connecting/disconnected states with appropriate icons and colors.
  * Only shows the label when not connected to draw attention to connection issues.
  */
-export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicatorProps) {
+export function ConnectionStatusIndicator({
+  className,
+  textColor,
+}: ConnectionStatusIndicatorProps) {
   const connectionStatus = useAppStore(selectConnectionStatus)
   const config = connectionStatusConfig[connectionStatus]
 
@@ -46,6 +49,10 @@ export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicat
   const Icon = config.icon
   const isConnecting = connectionStatus === "connecting"
 
+  // When connected and textColor is provided (e.g., in header), use it for the icon
+  // Otherwise use the config color for visibility during connection issues
+  const useCustomColor = connectionStatus === "connected" && textColor
+
   return (
     <div
       className={cn("flex items-center gap-1.5", className)}
@@ -53,7 +60,8 @@ export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicat
       data-testid="connection-status-indicator"
     >
       <Icon
-        className={cn(config.color, isConnecting && "animate-spin")}
+        className={cn(!useCustomColor && config.color, isConnecting && "animate-spin")}
+        style={useCustomColor ? { color: textColor } : undefined}
         size={14}
         data-testid="connection-status-icon"
       />
@@ -68,4 +76,6 @@ export function ConnectionStatusIndicator({ className }: ConnectionStatusIndicat
 
 export type ConnectionStatusIndicatorProps = {
   className?: string
+  /** Text color to use when connected (for header integration) */
+  textColor?: string
 }
