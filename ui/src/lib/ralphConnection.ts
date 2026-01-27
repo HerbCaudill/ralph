@@ -6,6 +6,7 @@
 import { useAppStore, flushTaskChatEventsBatch } from "../store"
 import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
+import { extractTokenUsageFromEvent } from "./extractTokenUsage"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -259,77 +260,22 @@ function handleMessage(event: MessageEvent): void {
             }
           }
 
-          // Extract token usage from events
-          // Handle stream_event with message_delta.usage (streaming API format)
-          if (event.type === "stream_event") {
-            const streamEvent = (event as any).event
-            if (streamEvent?.type === "message_delta" && streamEvent.usage) {
-              const usage = streamEvent.usage
-              // Calculate total input tokens (including cache tokens which are billed)
-              const inputTokens =
-                (usage.input_tokens || 0) +
-                (usage.cache_creation_input_tokens || 0) +
-                (usage.cache_read_input_tokens || 0)
-              const outputTokens = usage.output_tokens || 0
-              if (inputTokens > 0 || outputTokens > 0) {
-                if (isForActiveInstance) {
-                  store.addTokenUsage({ input: inputTokens, output: outputTokens })
-                  // Update context window usage (total tokens used = input + output)
-                  // Note: addTokenUsage already updated store.tokenUsage, so we just read the new totals
-                  store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
-                } else {
-                  store.addTokenUsageForInstance(targetInstanceId, {
-                    input: inputTokens,
-                    output: outputTokens,
-                  })
-                  // Update context window usage for non-active instance
-                  // Note: addTokenUsageForInstance already updated the instance, so we read the new totals
-                  const targetInstance = store.instances.get(targetInstanceId)
-                  if (targetInstance) {
-                    store.updateContextWindowUsedForInstance(
-                      targetInstanceId,
-                      targetInstance.tokenUsage.input + targetInstance.tokenUsage.output,
-                    )
-                  }
-                }
-              }
-            }
-          }
-
-          // Handle result events with usage (supports both snake_case from SDK and camelCase from adapters)
-          if (event.type === "result" && (event as any).usage) {
-            const usage = (event as any).usage as {
-              // camelCase (from ClaudeAdapter normalized events)
-              inputTokens?: number
-              outputTokens?: number
-              totalTokens?: number
-              // snake_case (from raw SDK events via ralph CLI)
-              input_tokens?: number
-              output_tokens?: number
-            }
-            // Support both snake_case and camelCase
-            const inputTokens = usage.inputTokens || usage.input_tokens || 0
-            const outputTokens = usage.outputTokens || usage.output_tokens || 0
-            if (inputTokens > 0 || outputTokens > 0) {
-              if (isForActiveInstance) {
-                store.addTokenUsage({ input: inputTokens, output: outputTokens })
-                // Update context window usage (total tokens used = input + output)
-                // Note: addTokenUsage already updated store.tokenUsage, so we just read the new totals
-                store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
-              } else {
-                store.addTokenUsageForInstance(targetInstanceId, {
-                  input: inputTokens,
-                  output: outputTokens,
-                })
-                // Update context window usage for non-active instance
-                // Note: addTokenUsageForInstance already updated the instance, so we read the new totals
-                const targetInstance = store.instances.get(targetInstanceId)
-                if (targetInstance) {
-                  store.updateContextWindowUsedForInstance(
-                    targetInstanceId,
-                    targetInstance.tokenUsage.input + targetInstance.tokenUsage.output,
-                  )
-                }
+          // Extract and update token usage from events using pure function
+          const tokenUsage = extractTokenUsageFromEvent(event)
+          if (tokenUsage) {
+            if (isForActiveInstance) {
+              store.addTokenUsage(tokenUsage)
+              // Update context window usage (total tokens used = input + output)
+              store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
+            } else {
+              store.addTokenUsageForInstance(targetInstanceId, tokenUsage)
+              // Update context window usage for non-active instance
+              const targetInstance = store.instances.get(targetInstanceId)
+              if (targetInstance) {
+                store.updateContextWindowUsedForInstance(
+                  targetInstanceId,
+                  targetInstance.tokenUsage.input + targetInstance.tokenUsage.output,
+                )
               }
             }
           }
@@ -448,27 +394,23 @@ function handleMessage(event: MessageEvent): void {
         // Raw SDK event for unified event stream
         if (data.event && typeof data.event === "object") {
           // Ensure the event has required properties
-          const event = data.event as { type?: string; timestamp?: number; [key: string]: unknown }
-          if (typeof event.type === "string" && typeof event.timestamp === "number") {
+          const rawEvent = data.event as {
+            type?: string
+            timestamp?: number
+            [key: string]: unknown
+          }
+          if (typeof rawEvent.type === "string" && typeof rawEvent.timestamp === "number") {
             store.addTaskChatEvent(data.event)
 
-            // Extract token usage from task chat result events
-            if (event.type === "result" && event.usage) {
-              const usage = event.usage as {
-                inputTokens?: number
-                outputTokens?: number
-                input_tokens?: number
-                output_tokens?: number
-              }
-              // Support both snake_case and camelCase
-              const inputTokens = usage.inputTokens || usage.input_tokens || 0
-              const outputTokens = usage.outputTokens || usage.output_tokens || 0
-              if (inputTokens > 0 || outputTokens > 0) {
-                store.addTokenUsage({ input: inputTokens, output: outputTokens })
-                // Update context window usage (total tokens used = input + output)
-                // Note: addTokenUsage already updated store.tokenUsage, so we just read the new totals
-                store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
-              }
+            // Create a properly typed event for token extraction
+            const typedEvent = { ...rawEvent, type: rawEvent.type, timestamp: rawEvent.timestamp }
+
+            // Extract and update token usage from task chat events using pure function
+            const tokenUsage = extractTokenUsageFromEvent(typedEvent)
+            if (tokenUsage) {
+              store.addTokenUsage(tokenUsage)
+              // Update context window usage (total tokens used = input + output)
+              store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
             }
           }
         }
