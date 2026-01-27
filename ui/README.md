@@ -108,11 +108,13 @@ This design allows:
 
 ## Session Event Logs
 
-Ralph UI automatically saves session event logs when tasks complete. These logs capture the full agent conversation including messages, tool uses, and outputs, allowing you to review past work.
+Ralph UI automatically saves session event logs, capturing the full agent conversation including messages, tool uses, and outputs. This allows you to review past work and see active sessions in the history dropdown.
 
 ### How It Works
 
-1. **Automatic Saving**: When a task is closed, the current session's events are saved to the browser's IndexedDB storage
+1. **Automatic Saving**: Session events are saved to the browser's IndexedDB storage at two key points:
+   - **Session Start**: When a new session begins, making it immediately visible in the session history dropdown
+   - **Session Complete**: When a task is closed or session completes, with final metadata
 2. **Comment Link**: A closing comment is added to the task with a link to the saved session (e.g., `#session=default-1706123456789`)
 3. **Persistent Storage**: Session logs are stored locally in your browser and persist across sessions
 

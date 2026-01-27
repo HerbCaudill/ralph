@@ -273,6 +273,19 @@ export function useSessionPersistence(
         }
         console.debug(`[useSessionPersistence] Setting currentSessionId to: ${newId}`)
         setCurrentSessionId(newId)
+
+        // Save the new session immediately so it appears in the session history dropdown
+        // This ensures sessions are visible even before they complete
+        const newSessionEvents = getEventsForSessionIndex(events, latestBoundaryIndex)
+        if (newSessionEvents.length > 0) {
+          const newSessionData = buildSessionData(newId, startedAt, newSessionEvents, false)
+          saveSession(newSessionData)
+          currentSessionRef.current = {
+            ...currentSessionRef.current,
+            saved: true,
+            eventCount: newSessionEvents.length,
+          }
+        }
       }
     }
 

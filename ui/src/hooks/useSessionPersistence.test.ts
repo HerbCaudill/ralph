@@ -112,6 +112,28 @@ describe("useSessionPersistence", () => {
       })
     })
 
+    it("saves session immediately when detected so it appears in history", async () => {
+      const timestamp = Date.now()
+      const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
+
+      renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          events,
+        }),
+      )
+
+      // Session should be saved immediately when detected (not waiting for completion)
+      await waitFor(() => {
+        expect(eventDatabase.saveSession).toHaveBeenCalled()
+      })
+
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.id).toBe(`default-${timestamp}`)
+      expect(savedSession?.completedAt).toBeNull() // Not completed yet
+      expect(savedSession?.eventCount).toBe(1) // Just the init event
+    })
+
     it("uses Date.now() as fallback when boundary event has no timestamp", async () => {
       // Create a system init event without a timestamp (simulates the bug scenario)
       // Use 'unknown' cast to bypass TypeScript's type checking since we're simulating
@@ -230,7 +252,10 @@ describe("useSessionPersistence", () => {
       })
 
       // Check the saved data - v3 schema: metadata only, no events
-      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      // Session is saved twice: once when it starts (completedAt: null) and once when it completes (completedAt: timestamp)
+      // We need to check the LAST call which should have completedAt set
+      const mockCalls = vi.mocked(eventDatabase.saveSession).mock.calls
+      const savedSession = mockCalls[mockCalls.length - 1]?.[0]
       expect(savedSession).toBeDefined()
       expect(savedSession?.instanceId).toBe("default")
       expect(savedSession?.completedAt).not.toBeNull()
@@ -264,7 +289,10 @@ describe("useSessionPersistence", () => {
         expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
 
-      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      // Session is saved twice: once when it starts and once when it completes
+      // Check the LAST call which should have completedAt set
+      const mockCalls = vi.mocked(eventDatabase.saveSession).mock.calls
+      const savedSession = mockCalls[mockCalls.length - 1]?.[0]
       expect(savedSession?.completedAt).not.toBeNull()
     })
   })
@@ -292,7 +320,7 @@ describe("useSessionPersistence", () => {
         await new Promise(resolve => setTimeout(resolve, 10))
       })
 
-      // Second session starts - should save the first
+      // Second session starts - should save the first as complete
       rerender({
         ...defaultOptions,
         events: [
@@ -306,9 +334,17 @@ describe("useSessionPersistence", () => {
         expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
 
-      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
-      expect(savedSession?.id).toBe(`default-${startTime1}`)
-      expect(savedSession?.completedAt).not.toBeNull()
+      // Sessions are saved multiple times:
+      // 1. Session 1 starts (completedAt: null)
+      // 2. Session 1 completes when session 2 starts (completedAt: timestamp)
+      // 3. Session 2 starts (completedAt: null)
+      // Find the save where session 1 is marked as complete
+      const mockCalls = vi.mocked(eventDatabase.saveSession).mock.calls
+      const session1CompletedSave = mockCalls.find(
+        call => call[0]?.id === `default-${startTime1}` && call[0]?.completedAt !== null,
+      )
+      expect(session1CompletedSave).toBeDefined()
+      expect(session1CompletedSave?.[0]?.completedAt).not.toBeNull()
     })
   })
 
@@ -337,7 +373,10 @@ describe("useSessionPersistence", () => {
         expect(eventDatabase.saveSession).toHaveBeenCalled()
       })
 
-      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      // Session is saved multiple times as events arrive. The final save (on completion)
+      // should have the task info extracted from the ralph_task_started event.
+      const mockCalls = vi.mocked(eventDatabase.saveSession).mock.calls
+      const savedSession = mockCalls[mockCalls.length - 1]?.[0]
       expect(savedSession?.taskId).toBe("r-abc123")
       expect(savedSession?.taskTitle).toBe("Fix the bug")
     })
@@ -427,7 +466,7 @@ describe("useSessionPersistence", () => {
   })
 
   describe("no periodic saves (v3 schema)", () => {
-    it("does not save progress periodically - events are persisted by useEventPersistence", async () => {
+    it("saves once when session starts but not periodically as events arrive", async () => {
       const startTime = Date.now()
 
       // Create 15 events (1 init + 14 assistant messages) - no completion event
@@ -456,9 +495,15 @@ describe("useSessionPersistence", () => {
         await new Promise(resolve => setTimeout(resolve, 50))
       })
 
-      // Should NOT have saved - no completion or boundary events, just regular events
-      // Events are now persisted separately by useEventPersistence
-      expect(eventDatabase.saveSession).not.toHaveBeenCalled()
+      // Session should be saved exactly once when it starts (so it appears in history)
+      // After that, events are persisted separately by useEventPersistence
+      // No periodic saves happen during the session
+      expect(eventDatabase.saveSession).toHaveBeenCalledTimes(1)
+
+      // The saved session should have the initial event count (just the init event)
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.completedAt).toBeNull() // Not completed
+      expect(savedSession?.eventCount).toBe(1) // Just the init event at time of first save
     })
   })
 
