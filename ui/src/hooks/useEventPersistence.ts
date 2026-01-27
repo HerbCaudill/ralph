@@ -93,7 +93,11 @@ export function useEventPersistence(
         const persistedEvent = buildPersistedEvent(event, eventIndex, iterId)
         await eventDatabase.saveEvent(persistedEvent)
       } catch (error) {
-        console.error("[useEventPersistence] Failed to save event:", error)
+        console.error("[useEventPersistence] Failed to save event:", error, {
+          eventIndex,
+          sessionId: iterId,
+          eventType: event.type,
+        })
       }
     },
     [buildPersistedEvent],
