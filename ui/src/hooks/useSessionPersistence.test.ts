@@ -9,6 +9,7 @@ vi.mock("@/lib/persistence", () => ({
   eventDatabase: {
     init: vi.fn().mockResolvedValue(undefined),
     saveSession: vi.fn().mockResolvedValue(undefined),
+    deleteSession: vi.fn().mockResolvedValue(undefined),
   },
 }))
 
@@ -264,10 +265,12 @@ describe("useSessionPersistence", () => {
       expect(savedSession?.events).toBeUndefined()
     })
 
-    it("saves session on COMPLETE promise signal", async () => {
+    it("saves session on COMPLETE promise signal when session has a task", async () => {
       const startTime = Date.now()
+      // Include a task so this session is NOT filtered out
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
+        createRalphTaskStartedEvent(startTime + 50, "task-1", "Test Task"),
         createAssistantEvent(startTime + 100, "Working on it..."),
         createAssistantEvent(startTime + 200, "Done! <promise>COMPLETE</promise>"),
       ]
@@ -307,11 +310,12 @@ describe("useSessionPersistence", () => {
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
       )
 
-      // First session
+      // First session - must have a task and >= 3 events to not be filtered
       rerender({
         ...defaultOptions,
         events: [
           createSystemInitEvent(startTime1),
+          createRalphTaskStartedEvent(startTime1 + 50, "task-1", "First Task"),
           createAssistantEvent(startTime1 + 100, "First session"),
         ] as ChatEvent[],
       })
@@ -325,6 +329,7 @@ describe("useSessionPersistence", () => {
         ...defaultOptions,
         events: [
           createSystemInitEvent(startTime1),
+          createRalphTaskStartedEvent(startTime1 + 50, "task-1", "First Task"),
           createAssistantEvent(startTime1 + 100, "First session"),
           createSystemInitEvent(startTime2),
         ] as ChatEvent[],
@@ -572,6 +577,180 @@ describe("useSessionPersistence", () => {
 
       const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
       expect(savedSession?.workspaceId).toBeNull()
+    })
+  })
+
+  describe("empty session filtering", () => {
+    it("filters sessions that end with COMPLETE signal and have no task", async () => {
+      const startTime = Date.now()
+      // This session has no task - just startup and COMPLETE signal
+      const events: ChatEvent[] = [
+        createSystemInitEvent(startTime),
+        createAssistantEvent(startTime + 100, "Checking for work..."),
+        createAssistantEvent(startTime + 200, "No work found. <promise>COMPLETE</promise>"),
+      ]
+
+      const { rerender } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
+      )
+
+      // Add events progressively
+      for (let i = 1; i <= events.length; i++) {
+        rerender({ ...defaultOptions, events: events.slice(0, i) as ChatEvent[] })
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+        })
+      }
+
+      // Wait for the session to be processed
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      // The session should be deleted (filtered out) since it ended with COMPLETE and has no task
+      expect(eventDatabase.deleteSession).toHaveBeenCalledWith(`default-${startTime}`)
+    })
+
+    it("does not filter sessions that end with ralph_task_completed", async () => {
+      const startTime = Date.now()
+      const events: ChatEvent[] = [
+        createSystemInitEvent(startTime),
+        createRalphTaskStartedEvent(startTime + 100, "task-1", "Test Task"),
+        createAssistantEvent(startTime + 200, "Working on the task..."),
+        createRalphTaskCompletedEvent(startTime + 300),
+      ]
+
+      const { rerender } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
+      )
+
+      // Add events progressively
+      for (let i = 1; i <= events.length; i++) {
+        rerender({ ...defaultOptions, events: events.slice(0, i) as ChatEvent[] })
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+        })
+      }
+
+      // Wait for the session to be processed
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      // The session should be saved (not filtered) because it has a task
+      expect(eventDatabase.deleteSession).not.toHaveBeenCalled()
+      expect(eventDatabase.saveSession).toHaveBeenCalled()
+
+      // Verify the final save has the task info
+      const mockCalls = vi.mocked(eventDatabase.saveSession).mock.calls
+      const finalSave = mockCalls[mockCalls.length - 1]?.[0]
+      expect(finalSave?.taskId).toBe("task-1")
+      expect(finalSave?.taskTitle).toBe("Test Task")
+    })
+
+    it("filters sessions with very few events (< 3)", async () => {
+      const startTime1 = Date.now()
+      const startTime2 = startTime1 + 1000
+
+      const { rerender } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
+      )
+
+      // First session with only 2 events (should be filtered)
+      rerender({
+        ...defaultOptions,
+        events: [createSystemInitEvent(startTime1), createAssistantEvent(startTime1 + 50, "Hi")],
+      })
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10))
+      })
+
+      // Start second session - should trigger save/filter of first
+      rerender({
+        ...defaultOptions,
+        events: [
+          createSystemInitEvent(startTime1),
+          createAssistantEvent(startTime1 + 50, "Hi"),
+          createSystemInitEvent(startTime2),
+        ],
+      })
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      // First session should be deleted because it has < 3 events
+      expect(eventDatabase.deleteSession).toHaveBeenCalledWith(`default-${startTime1}`)
+    })
+
+    it("filters empty session when new session starts", async () => {
+      const startTime1 = Date.now()
+      const startTime2 = startTime1 + 1000
+
+      const { rerender } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
+      )
+
+      // First session - empty (no task, ends with COMPLETE)
+      const firstSessionEvents: ChatEvent[] = [
+        createSystemInitEvent(startTime1),
+        createAssistantEvent(startTime1 + 100, "Checking for work..."),
+        createAssistantEvent(startTime1 + 200, "No tasks. <promise>COMPLETE</promise>"),
+      ]
+
+      rerender({ ...defaultOptions, events: firstSessionEvents })
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10))
+      })
+
+      // Start second session
+      rerender({
+        ...defaultOptions,
+        events: [...firstSessionEvents, createSystemInitEvent(startTime2)],
+      })
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      // First session should be deleted
+      expect(eventDatabase.deleteSession).toHaveBeenCalledWith(`default-${startTime1}`)
+    })
+
+    it("does not filter sessions with a task even if they end with COMPLETE", async () => {
+      const startTime = Date.now()
+      // This session has a task started event, even though it also has COMPLETE signal
+      const events: ChatEvent[] = [
+        createSystemInitEvent(startTime),
+        createRalphTaskStartedEvent(startTime + 100, "task-1", "Fix bug"),
+        createAssistantEvent(startTime + 200, "Done. <promise>COMPLETE</promise>"),
+      ]
+
+      const { rerender } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
+      )
+
+      // Add events progressively
+      for (let i = 1; i <= events.length; i++) {
+        rerender({ ...defaultOptions, events: events.slice(0, i) as ChatEvent[] })
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+        })
+      }
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      // The session should NOT be deleted because it has a task
+      expect(eventDatabase.deleteSession).not.toHaveBeenCalled()
     })
   })
 })

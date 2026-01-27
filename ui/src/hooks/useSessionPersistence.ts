@@ -54,6 +54,56 @@ function isSessionEndEvent(event: ChatEvent): boolean {
   return false
 }
 
+/**
+ * Checks if a session ended with the COMPLETE signal (no work available).
+ * This is distinct from ralph_task_completed which means work was done.
+ */
+function sessionEndedWithComplete(events: ChatEvent[]): boolean {
+  // Look for COMPLETE promise signal in the last few events
+  // (checking last 3 events should be sufficient)
+  const lastEvents = events.slice(-3)
+  for (const event of lastEvents) {
+    if (event.type === "assistant") {
+      const content = (event as any).message?.content
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (
+            block.type === "text" &&
+            typeof block.text === "string" &&
+            block.text.includes("<promise>COMPLETE</promise>")
+          ) {
+            return true
+          }
+        }
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * Determines if a session should be filtered out (not persisted).
+ * Sessions are filtered if they:
+ * 1. End with COMPLETE signal (no work available) AND have no task, OR
+ * 2. Have very few events (< 3) - likely startup/shutdown cycles
+ */
+function shouldFilterSession(events: ChatEvent[]): boolean {
+  // Filter sessions with very few events (startup/shutdown cycles)
+  if (events.length < 3) {
+    return true
+  }
+
+  // Filter sessions that ended with COMPLETE signal and have no task
+  const taskInfo = getTaskFromSessionEvents(events)
+  const hasTask = taskInfo !== null && (taskInfo.id !== null || taskInfo.title !== null)
+
+  if (sessionEndedWithComplete(events) && !hasTask) {
+    return true
+  }
+
+  return false
+}
+
 /**  Extracts the events for a specific session from the full events array. */
 function getEventsForSessionIndex(events: ChatEvent[], sessionIndex: number): ChatEvent[] {
   const boundaries = getSessionBoundaries(events)
@@ -241,20 +291,31 @@ export function useSessionPersistence(
         console.debug(
           `[useSessionPersistence] Creating new session: currentRef=${currentSessionRef.current?.id ?? "null"}`,
         )
-        // Save previous session if it exists and wasn't saved
+        // Handle previous session if it exists
         if (currentSessionRef.current) {
           const prevEvents = getEventsForSessionIndex(
             events,
             currentSessionRef.current.sessionIndex,
           )
           if (prevEvents.length > 0) {
-            const prevData = buildSessionData(
-              currentSessionRef.current.id,
-              currentSessionRef.current.startedAt,
-              prevEvents,
-              true, // Mark as complete since a new session started
-            )
-            saveSession(prevData)
+            // Check if the previous session should be filtered (empty/no-task sessions)
+            if (shouldFilterSession(prevEvents)) {
+              // Delete the empty session instead of saving it
+              console.debug(
+                `[useSessionPersistence] Filtering empty session: ${currentSessionRef.current.id}`,
+              )
+              eventDatabase.deleteSession(currentSessionRef.current.id).catch(error => {
+                console.error("[useSessionPersistence] Failed to delete empty session:", error)
+              })
+            } else {
+              const prevData = buildSessionData(
+                currentSessionRef.current.id,
+                currentSessionRef.current.startedAt,
+                prevEvents,
+                true, // Mark as complete since a new session started
+              )
+              saveSession(prevData)
+            }
           }
         }
 
@@ -297,8 +358,17 @@ export function useSessionPersistence(
         const sessionEvents = getEventsForSessionIndex(events, current.sessionIndex)
 
         if (sessionEvents.length > 0) {
-          const sessionData = buildSessionData(current.id, current.startedAt, sessionEvents, true)
-          saveSession(sessionData)
+          // Check if this session should be filtered (empty/no-task sessions)
+          if (shouldFilterSession(sessionEvents)) {
+            // Delete the empty session instead of saving it
+            console.debug(`[useSessionPersistence] Filtering empty session on end: ${current.id}`)
+            eventDatabase.deleteSession(current.id).catch(error => {
+              console.error("[useSessionPersistence] Failed to delete empty session:", error)
+            })
+          } else {
+            const sessionData = buildSessionData(current.id, current.startedAt, sessionEvents, true)
+            saveSession(sessionData)
+          }
           currentSessionRef.current = {
             ...current,
             saved: true,
