@@ -36,7 +36,7 @@ export function EventStreamSessionBar({
     >
       <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
         {isViewingHistorical ?
-          // When viewing historical session, show return button and history icon
+          // When viewing historical session, show return button and session dropdown
           <div className="flex min-w-0 items-center gap-2">
             <button
               onClick={onReturnToLive}
@@ -51,22 +51,14 @@ export function EventStreamSessionBar({
             <span className="text-muted-foreground/50">|</span>
             <div className="flex min-w-0 items-center gap-1.5">
               <IconHistory className="text-muted-foreground size-3 shrink-0" />
-              {currentTask ?
-                <>
-                  {currentTask.id ?
-                    <a
-                      href={buildTaskIdPath(currentTask.id)}
-                      className="text-muted-foreground hover:text-foreground shrink-0 font-mono text-xs opacity-70 transition-opacity hover:underline hover:opacity-100"
-                      aria-label={`View task ${currentTask.id}`}
-                    >
-                      {currentTask.id}
-                    </a>
-                  : null}
-                  <span className="text-muted-foreground truncate text-xs">
-                    {currentTask.title}
-                  </span>
-                </>
-              : <span className="text-muted-foreground text-xs">Past session</span>}
+              <SessionHistoryDropdown
+                currentTask={currentTask}
+                sessions={sessions}
+                isLoadingSessions={isLoadingSessions}
+                issuePrefix={issuePrefix}
+                isRunning={false}
+                onSessionHistorySelect={onSessionHistorySelect}
+              />
             </div>
           </div>
         : showDropdown ?

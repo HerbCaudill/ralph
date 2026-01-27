@@ -254,7 +254,7 @@ describe("EventStreamSessionBar", () => {
       expect(onReturnToLive).toHaveBeenCalled()
     })
 
-    it("shows task info with history icon when viewing historical session", () => {
+    it("shows session dropdown with history icon when viewing historical session", () => {
       render(
         <EventStreamSessionBar
           {...defaultProps}
@@ -263,20 +263,25 @@ describe("EventStreamSessionBar", () => {
         />,
       )
 
-      // Should show task ID and title
-      expect(screen.getByText("Historical task")).toBeInTheDocument()
-      expect(screen.getByRole("link", { name: "View task r-hist" })).toBeInTheDocument()
+      // Should show the dropdown for selecting other sessions
+      expect(screen.getByTestId("session-history-dropdown")).toBeInTheDocument()
+      // Should show task info in the dropdown
+      expect(screen.getByTestId("dropdown-task-id")).toHaveTextContent("r-hist")
+      expect(screen.getByTestId("dropdown-task-title")).toHaveTextContent("Historical task")
     })
 
-    it("shows 'Past session' when viewing historical with no task", () => {
+    it("shows dropdown with placeholder when viewing historical with no task", () => {
       render(
         <EventStreamSessionBar {...defaultProps} isViewingHistorical={true} currentTask={null} />,
       )
 
-      expect(screen.getByText("Past session")).toBeInTheDocument()
+      // Should show the dropdown
+      expect(screen.getByTestId("session-history-dropdown")).toBeInTheDocument()
+      // With placeholder for no task (not running)
+      expect(screen.getByTestId("dropdown-placeholder")).toHaveTextContent("No active task")
     })
 
-    it("hides dropdown when viewing historical session", () => {
+    it("shows dropdown alongside return button when viewing historical session", () => {
       render(
         <EventStreamSessionBar
           {...defaultProps}
@@ -286,9 +291,8 @@ describe("EventStreamSessionBar", () => {
         />,
       )
 
-      // Should NOT show the dropdown even when sessions exist
-      expect(screen.queryByTestId("session-history-dropdown")).not.toBeInTheDocument()
-      // Should show return button instead
+      // Should show both the dropdown and return button
+      expect(screen.getByTestId("session-history-dropdown")).toBeInTheDocument()
       expect(screen.getByTestId("return-to-live-button")).toBeInTheDocument()
     })
   })
