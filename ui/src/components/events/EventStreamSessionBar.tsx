@@ -1,3 +1,4 @@
+import { IconArrowLeft, IconHistory } from "@tabler/icons-react"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 import { SessionHistoryDropdown } from "./SessionHistoryDropdown"
 import type { SessionSummary } from "@/hooks"
@@ -5,6 +6,7 @@ import type { SessionSummary } from "@/hooks"
 /**
  * Navigation bar showing current task and providing access to session history.
  * Features a dropdown to browse past sessions from event logs.
+ * When viewing a historical session, shows a "Return to Live" button.
  */
 export function EventStreamSessionBar({
   currentTask,
@@ -12,7 +14,9 @@ export function EventStreamSessionBar({
   isLoadingSessions,
   issuePrefix,
   isRunning,
+  isViewingHistorical,
   onSessionHistorySelect,
+  onReturnToLive,
 }: Props) {
   const hasSessions = sessions.length > 0
 
@@ -31,7 +35,41 @@ export function EventStreamSessionBar({
       data-testid="session-bar"
     >
       <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
-        {showDropdown ?
+        {isViewingHistorical ?
+          // When viewing historical session, show return button and history icon
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              onClick={onReturnToLive}
+              className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-xs transition-colors"
+              title="Return to live session"
+              aria-label="Return to live session"
+              data-testid="return-to-live-button"
+            >
+              <IconArrowLeft className="size-3" />
+              <span>Live</span>
+            </button>
+            <span className="text-muted-foreground/50">|</span>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <IconHistory className="text-muted-foreground size-3 shrink-0" />
+              {currentTask ?
+                <>
+                  {currentTask.id ?
+                    <a
+                      href={buildTaskIdPath(currentTask.id)}
+                      className="text-muted-foreground hover:text-foreground shrink-0 font-mono text-xs opacity-70 transition-opacity hover:underline hover:opacity-100"
+                      aria-label={`View task ${currentTask.id}`}
+                    >
+                      {currentTask.id}
+                    </a>
+                  : null}
+                  <span className="text-muted-foreground truncate text-xs">
+                    {currentTask.title}
+                  </span>
+                </>
+              : <span className="text-muted-foreground text-xs">Past session</span>}
+            </div>
+          </div>
+        : showDropdown ?
           <SessionHistoryDropdown
             currentTask={currentTask}
             sessions={sessions}
@@ -68,5 +106,7 @@ type Props = {
   isLoadingSessions: boolean
   issuePrefix: string | null
   isRunning: boolean
+  isViewingHistorical: boolean
   onSessionHistorySelect: (id: string) => void
+  onReturnToLive: () => void
 }

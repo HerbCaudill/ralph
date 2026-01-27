@@ -4,6 +4,10 @@ import { useEventStream } from "./useEventStream"
 import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
 
 // Mock useSessions
+const mockLoadSessionEvents = vi.fn()
+const mockClearSelectedSession = vi.fn()
+let mockSelectedSession: { events: Array<{ type: string; timestamp: number; message?: string }> } | null = null
+
 vi.mock("@/hooks", async importOriginal => {
   const actual = await importOriginal<typeof import("@/hooks")>()
   return {
@@ -13,11 +17,11 @@ vi.mock("@/hooks", async importOriginal => {
       isLoading: false,
       error: null,
       refresh: vi.fn(),
-      loadSessionEvents: vi.fn(),
-      selectedSession: null,
+      loadSessionEvents: mockLoadSessionEvents,
+      selectedSession: mockSelectedSession,
       isLoadingEvents: false,
       eventsError: null,
-      clearSelectedSession: vi.fn(),
+      clearSelectedSession: mockClearSelectedSession,
     })),
     useEventLogRouter: vi.fn(() => ({
       navigateToEventLog: vi.fn(),
@@ -31,6 +35,10 @@ describe("useEventStream", () => {
   beforeEach(() => {
     // Reset store state before each test
     useAppStore.getState().reset()
+    // Reset mock functions and state
+    mockLoadSessionEvents.mockClear()
+    mockClearSelectedSession.mockClear()
+    mockSelectedSession = null
   })
 
   describe("basic functionality", () => {
@@ -231,6 +239,88 @@ describe("useEventStream", () => {
       // The navigation object should have selectSessionHistory
       expect(result.current.navigation.selectSessionHistory).toBeDefined()
       expect(typeof result.current.navigation.selectSessionHistory).toBe("function")
+    })
+
+    it("provides returnToLive action", () => {
+      const { result } = renderHook(() => useEventStream())
+
+      // The navigation object should have returnToLive
+      expect(result.current.navigation.returnToLive).toBeDefined()
+      expect(typeof result.current.navigation.returnToLive).toBe("function")
+    })
+
+    it("selectSessionHistory calls loadSessionEvents with the correct session ID", () => {
+      const { result } = renderHook(() => useEventStream())
+
+      result.current.navigation.selectSessionHistory("session-123")
+
+      expect(mockLoadSessionEvents).toHaveBeenCalledTimes(1)
+      expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-123")
+    })
+
+    it("returnToLive calls clearSelectedSession", () => {
+      const { result } = renderHook(() => useEventStream())
+
+      result.current.navigation.returnToLive()
+
+      expect(mockClearSelectedSession).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("historical session viewing", () => {
+    it("returns isViewingHistorical as false when no session selected", () => {
+      const { result } = renderHook(() => useEventStream())
+
+      expect(result.current.isViewingHistorical).toBe(false)
+    })
+
+    it("returns isLoadingHistoricalEvents from useSessions", () => {
+      const { result } = renderHook(() => useEventStream())
+
+      // Should be false by default (from mock)
+      expect(result.current.isLoadingHistoricalEvents).toBe(false)
+    })
+
+    it("returns isViewingHistorical as true when selectedSession is not null", () => {
+      mockSelectedSession = {
+        events: [
+          { type: "user_message", timestamp: 1705600000000, message: "Historical message" },
+        ],
+      }
+
+      const { result } = renderHook(() => useEventStream())
+
+      expect(result.current.isViewingHistorical).toBe(true)
+    })
+
+    it("uses historical events when selectedSession is set", () => {
+      // Add a live event to the store
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600001000,
+        message: "Live message",
+      })
+
+      // Set up a historical session with different events
+      mockSelectedSession = {
+        events: [
+          { type: "user_message", timestamp: 1705600000000, message: "Historical message 1" },
+          { type: "user_message", timestamp: 1705600000500, message: "Historical message 2" },
+        ],
+      }
+
+      const { result } = renderHook(() => useEventStream())
+
+      // Should return historical events, not live events
+      expect(result.current.sessionEvents).toHaveLength(2)
+      expect(result.current.sessionEvents[0]).toMatchObject({
+        type: "user_message",
+        message: "Historical message 1",
+      })
+      expect(result.current.sessionEvents[1]).toMatchObject({
+        type: "user_message",
+        message: "Historical message 2",
+      })
     })
   })
 

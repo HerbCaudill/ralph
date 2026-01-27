@@ -15,10 +15,12 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
     sessionEvents,
     ralphStatus,
     isViewingLatest,
+    isViewingHistorical,
     isRunning,
     sessionTask,
     sessions,
     isLoadingSessions,
+    isLoadingHistoricalEvents,
     issuePrefix,
     navigation,
     containerRef,
@@ -32,10 +34,12 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       sessionEvents={sessionEvents}
       ralphStatus={ralphStatus}
       isViewingLatest={isViewingLatest}
+      isViewingHistorical={isViewingHistorical}
       isRunning={isRunning}
       sessionTask={sessionTask}
       sessions={sessions}
       isLoadingSessions={isLoadingSessions}
+      isLoadingHistoricalEvents={isLoadingHistoricalEvents}
       issuePrefix={issuePrefix}
       navigation={navigation}
     />

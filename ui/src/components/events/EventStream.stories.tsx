@@ -22,13 +22,16 @@ type Story = StoryObj<typeof meta>
 const defaultProps: Partial<EventStreamViewProps> = {
   ralphStatus: "stopped",
   isViewingLatest: true,
+  isViewingHistorical: false,
   isRunning: false,
   sessionTask: null,
   sessions: [],
   isLoadingSessions: false,
+  isLoadingHistoricalEvents: false,
   issuePrefix: "r-",
   navigation: {
     selectSessionHistory: () => {},
+    returnToLive: () => {},
   },
 }
 
@@ -629,5 +632,47 @@ export const ViewingPastSession: Story = {
       id: "r-xyz2",
       title: "Fix authentication bug",
     },
+  },
+}
+
+export const ViewingHistoricalSession: Story = {
+  args: {
+    ...defaultProps,
+    sessionEvents: [
+      {
+        type: "user_message",
+        timestamp: Date.now() - 86400000, // 1 day ago
+        message: "Working on a historical session task",
+      },
+      {
+        type: "assistant",
+        timestamp: Date.now() - 86400000 + 5000,
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "I'll help you with that historical task.",
+            },
+          ],
+        },
+      },
+    ],
+    isViewingLatest: false,
+    isViewingHistorical: true,
+    sessionTask: {
+      id: "r-hist1",
+      title: "Historical task from yesterday",
+    },
+  },
+}
+
+export const LoadingHistoricalSession: Story = {
+  args: {
+    ...defaultProps,
+    sessionEvents: [],
+    isViewingLatest: false,
+    isViewingHistorical: true,
+    isLoadingHistoricalEvents: true,
+    sessionTask: null,
   },
 }

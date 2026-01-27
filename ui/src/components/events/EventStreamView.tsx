@@ -23,6 +23,8 @@ export interface EventStreamViewProps {
   ralphStatus: RalphStatus
   /** Whether viewing the latest session */
   isViewingLatest: boolean
+  /** Whether viewing a historical session from IndexedDB */
+  isViewingHistorical: boolean
   /** Whether Ralph is currently running */
   isRunning: boolean
   /** Current task for the session */
@@ -31,6 +33,8 @@ export interface EventStreamViewProps {
   sessions: SessionSummary[]
   /** Whether sessions are loading */
   isLoadingSessions: boolean
+  /** Whether historical session events are loading */
+  isLoadingHistoricalEvents: boolean
   /** Issue prefix for the workspace */
   issuePrefix: string | null
   /** Navigation actions */
@@ -54,10 +58,12 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       // ralphStatus is passed for potential future use but currently derived values (isRunning) are used
       ralphStatus: _ralphStatus,
       isViewingLatest,
+      isViewingHistorical,
       isRunning,
       sessionTask,
       sessions,
       isLoadingSessions,
+      isLoadingHistoricalEvents,
       issuePrefix,
       navigation,
     },
@@ -67,7 +73,11 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
     const { hasContent } = useEventListState(sessionEvents, maxEvents)
 
     // Show active spinner when running, stopped spinner when idle with content
+    // Don't show spinners when viewing historical sessions
     const bottomIndicator = useMemo(() => {
+      if (isViewingHistorical) {
+        return null
+      }
       if (isRunning && isViewingLatest) {
         return (
           <div
@@ -91,11 +101,20 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
         )
       }
       return null
-    }, [isRunning, isViewingLatest, hasContent])
+    }, [isRunning, isViewingLatest, isViewingHistorical, hasContent])
 
     const emptyState = (
       <div className="flex h-full items-center justify-start px-4 py-4">
         <TopologySpinner />
+      </div>
+    )
+
+    const loadingHistoricalState = (
+      <div className="text-muted-foreground flex h-full items-center justify-center">
+        <div className="flex items-center gap-2">
+          <div className="bg-muted-foreground/30 h-2 w-2 animate-pulse rounded-full" />
+          <span className="text-sm">Loading session...</span>
+        </div>
       </div>
     )
 
@@ -107,24 +126,29 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
           isLoadingSessions={isLoadingSessions}
           issuePrefix={issuePrefix}
           isRunning={isRunning}
+          isViewingHistorical={isViewingHistorical}
           onSessionHistorySelect={navigation.selectSessionHistory}
+          onReturnToLive={navigation.returnToLive}
         />
 
-        <ContentStreamContainer
-          className="flex-1"
-          ariaLabel="Event stream"
-          dependencies={[sessionEvents]}
-          emptyState={emptyState}
-          autoScrollEnabled={isViewingLatest}
-        >
-          {hasContent ?
-            <EventList
-              events={sessionEvents}
-              maxEvents={maxEvents}
-              loadingIndicator={bottomIndicator}
-            />
-          : null}
-        </ContentStreamContainer>
+        {isLoadingHistoricalEvents ?
+          <div className="flex-1">{loadingHistoricalState}</div>
+        : <ContentStreamContainer
+            className="flex-1"
+            ariaLabel="Event stream"
+            dependencies={[sessionEvents]}
+            emptyState={emptyState}
+            autoScrollEnabled={isViewingLatest && !isViewingHistorical}
+          >
+            {hasContent ?
+              <EventList
+                events={sessionEvents}
+                maxEvents={maxEvents}
+                loadingIndicator={bottomIndicator}
+              />
+            : null}
+          </ContentStreamContainer>
+        }
       </div>
     )
   },

@@ -46,7 +46,9 @@ describe("EventStreamSessionBar", () => {
     isLoadingSessions: false,
     issuePrefix: null,
     isRunning: false,
+    isViewingHistorical: false,
     onSessionHistorySelect: vi.fn(),
+    onReturnToLive: vi.fn(),
   }
 
   describe("showDropdown condition", () => {
@@ -217,6 +219,77 @@ describe("EventStreamSessionBar", () => {
       render(<EventStreamSessionBar {...defaultProps} />)
 
       expect(screen.getByTestId("session-bar")).toBeInTheDocument()
+    })
+  })
+
+  describe("viewing historical session", () => {
+    it("shows return to live button when viewing historical session", () => {
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          isViewingHistorical={true}
+          currentTask={{ id: "task-123", title: "Historical task" }}
+        />,
+      )
+
+      expect(screen.getByTestId("return-to-live-button")).toBeInTheDocument()
+      expect(screen.getByText("Live")).toBeInTheDocument()
+    })
+
+    it("calls onReturnToLive when clicking return button", async () => {
+      const onReturnToLive = vi.fn()
+      const userEvent = await import("@testing-library/user-event")
+      const user = userEvent.default.setup()
+
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          isViewingHistorical={true}
+          currentTask={{ id: "task-123", title: "Historical task" }}
+          onReturnToLive={onReturnToLive}
+        />,
+      )
+
+      await user.click(screen.getByTestId("return-to-live-button"))
+      expect(onReturnToLive).toHaveBeenCalled()
+    })
+
+    it("shows task info with history icon when viewing historical session", () => {
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          isViewingHistorical={true}
+          currentTask={{ id: "r-hist", title: "Historical task" }}
+        />,
+      )
+
+      // Should show task ID and title
+      expect(screen.getByText("Historical task")).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: "View task r-hist" })).toBeInTheDocument()
+    })
+
+    it("shows 'Past session' when viewing historical with no task", () => {
+      render(
+        <EventStreamSessionBar {...defaultProps} isViewingHistorical={true} currentTask={null} />,
+      )
+
+      expect(screen.getByText("Past session")).toBeInTheDocument()
+    })
+
+    it("hides dropdown when viewing historical session", () => {
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          isViewingHistorical={true}
+          sessions={[createMockSession("abc123", new Date().toISOString())]}
+          currentTask={{ id: "task-1", title: "Test" }}
+        />,
+      )
+
+      // Should NOT show the dropdown even when sessions exist
+      expect(screen.queryByTestId("session-history-dropdown")).not.toBeInTheDocument()
+      // Should show return button instead
+      expect(screen.getByTestId("return-to-live-button")).toBeInTheDocument()
     })
   })
 })

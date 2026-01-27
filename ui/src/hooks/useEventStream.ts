@@ -12,7 +12,7 @@ import {
   selectIssuePrefix,
   getEventsForSession,
 } from "@/store"
-import { useSessions, useEventLogRouter } from "@/hooks"
+import { useSessions } from "@/hooks"
 import type { SessionSummary } from "@/hooks"
 import type { ChatEvent, Task, RalphStatus } from "@/types"
 
@@ -23,6 +23,7 @@ export interface SessionTask {
 
 export interface SessionNavigationActions {
   selectSessionHistory: (id: string) => void
+  returnToLive: () => void
 }
 
 export interface UseEventStreamOptions {
@@ -39,6 +40,8 @@ export interface UseEventStreamResult {
   ralphStatus: RalphStatus
   /** Whether viewing the latest session */
   isViewingLatest: boolean
+  /** Whether viewing a historical session from IndexedDB */
+  isViewingHistorical: boolean
   /** Whether Ralph is currently running */
   isRunning: boolean
   /** Current task for the session */
@@ -47,6 +50,8 @@ export interface UseEventStreamResult {
   sessions: SessionSummary[]
   /** Whether sessions are loading */
   isLoadingSessions: boolean
+  /** Whether historical session events are loading */
+  isLoadingHistoricalEvents: boolean
   /** Issue prefix for the workspace */
   issuePrefix: string | null
   /** Navigation actions */
@@ -86,17 +91,39 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const isViewingLatest = viewingSessionIndex === null
 
   // Fetch sessions for the history dropdown
-  const { sessions, isLoading: isLoadingSessions } = useSessions()
-  const { navigateToEventLog } = useEventLogRouter()
+  const {
+    sessions,
+    isLoading: isLoadingSessions,
+    loadSessionEvents,
+    selectedSession,
+    isLoadingEvents: isLoadingHistoricalEvents,
+    clearSelectedSession,
+  } = useSessions()
 
-  // Session data - all events when viewing latest
-  const sessionEvents = useMemo(
-    () => getEventsForSession(allEvents, viewingSessionIndex),
-    [allEvents, viewingSessionIndex],
-  )
+  // Whether viewing a historical session from IndexedDB
+  const isViewingHistorical = selectedSession !== null
+
+  // Session data - use historical session events or live events
+  const sessionEvents = useMemo(() => {
+    if (selectedSession) {
+      return selectedSession.events
+    }
+    return getEventsForSession(allEvents, viewingSessionIndex)
+  }, [allEvents, viewingSessionIndex, selectedSession])
 
   // Determine the current task for the session
   const sessionTask = useMemo((): SessionTask | null => {
+    // If viewing a historical session, use its metadata
+    if (selectedSession?.metadata) {
+      const { taskId, title } = selectedSession.metadata
+      if (taskId || title) {
+        return {
+          id: taskId ?? null,
+          title: title ?? taskId ?? "Unknown task",
+        }
+      }
+    }
+
     // First, try to find task from ralph_task_started event in session events
     for (const event of sessionEvents) {
       if ((event as { type: string }).type === "ralph_task_started") {
@@ -130,7 +157,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     }
 
     return null
-  }, [sessionEvents, tasks, instance])
+  }, [sessionEvents, tasks, instance, selectedSession])
 
   // Container ref for scrolling
   const containerRef = useRef<HTMLDivElement>(null)
@@ -147,26 +174,33 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
 
   const handleSessionHistorySelect = useCallback(
     (id: string) => {
-      navigateToEventLog(id)
+      loadSessionEvents(id)
     },
-    [navigateToEventLog],
+    [loadSessionEvents],
   )
+
+  const handleReturnToLive = useCallback(() => {
+    clearSelectedSession()
+  }, [clearSelectedSession])
 
   const navigation: SessionNavigationActions = useMemo(
     () => ({
       selectSessionHistory: handleSessionHistorySelect,
+      returnToLive: handleReturnToLive,
     }),
-    [handleSessionHistorySelect],
+    [handleSessionHistorySelect, handleReturnToLive],
   )
 
   return {
     sessionEvents,
     ralphStatus,
-    isViewingLatest,
+    isViewingLatest: isViewingLatest && !isViewingHistorical,
+    isViewingHistorical,
     isRunning,
     sessionTask,
     sessions,
     isLoadingSessions,
+    isLoadingHistoricalEvents,
     issuePrefix,
     navigation,
     containerRef,
