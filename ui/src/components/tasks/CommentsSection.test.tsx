@@ -1,6 +1,7 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { CommentsSection } from "./CommentsSection"
+import { useAppStore } from "@/store"
 import type { Comment } from "@/types"
 
 // Mock fetch
@@ -51,6 +52,8 @@ const sampleComments: Comment[] = [
 describe("CommentsSection", () => {
   beforeEach(() => {
     mockFetch.mockReset()
+    // Reset store to clear any persisted comment drafts between tests
+    useAppStore.getState().reset()
   })
 
   afterEach(() => {

@@ -79,6 +79,7 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
     parentCollapsedState: {},
     taskInputDraft: "",
     taskChatInputDraft: "",
+    commentDrafts: {},
     workspace: null,
     branch: null,
     issuePrefix: null,

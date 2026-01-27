@@ -109,7 +109,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
 describe("persist", () => {
   describe("constants", () => {
     it("exports PERSIST_VERSION", () => {
-      expect(PERSIST_VERSION).toBe(4)
+      expect(PERSIST_VERSION).toBe(5)
     })
 
     it("exports PERSIST_NAME", () => {
@@ -607,6 +607,7 @@ describe("persist", () => {
           parentCollapsedState: {},
           taskInputDraft: "",
           taskChatInputDraft: "",
+          commentDrafts: {},
           workspace: "/new/workspace",
           branch: "develop",
           issuePrefix: "DEV",
@@ -910,6 +911,7 @@ describe("persist", () => {
         parentCollapsedState: { "parent-1": true },
         taskInputDraft: "my draft",
         taskChatInputDraft: "chat draft",
+        commentDrafts: {},
         workspace: null,
         branch: null,
         issuePrefix: null,

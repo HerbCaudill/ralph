@@ -4,15 +4,26 @@ import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { InputGroup, InputGroupAddon, InputGroupButton } from "@/components/ui/input-group"
 import { CommentItem } from "./CommentItem"
+import { useAppStore, selectCommentDraft } from "@/store"
 import type { Comment } from "@/types"
 
 export function CommentsSection({ taskId, readOnly = false, className }: CommentsSectionProps) {
   const [comments, setComments] = useState<Comment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Use store for draft persistence per task
+  const newComment = useAppStore(state => selectCommentDraft(state, taskId))
+  const setCommentDraft = useAppStore(state => state.setCommentDraft)
+
+  const setNewComment = useCallback(
+    (value: string) => {
+      setCommentDraft(taskId, value)
+    },
+    [setCommentDraft, taskId],
+  )
 
   const fetchComments = useCallback(async () => {
     try {
@@ -73,7 +84,7 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
     } finally {
       setIsSubmitting(false)
     }
-  }, [taskId, newComment, isSubmitting, fetchComments])
+  }, [taskId, newComment, isSubmitting, fetchComments, setNewComment])
 
   const handleSubmit = useCallback(() => {
     if (newComment.trim() && !isSubmitting) {

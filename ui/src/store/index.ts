@@ -189,6 +189,9 @@ export interface AppState {
   taskInputDraft: string
   taskChatInputDraft: string
 
+  // Comment drafts per task (taskId -> draft text)
+  commentDrafts: Record<string, string>
+
   // Task chat events (unified array like EventStream's events[])
   taskChatEvents: ChatEvent[]
 
@@ -314,6 +317,10 @@ export interface AppActions {
   // Input draft states
   setTaskInputDraft: (draft: string) => void
   setTaskChatInputDraft: (draft: string) => void
+
+  // Comment drafts per task
+  setCommentDraft: (taskId: string, draft: string) => void
+  clearCommentDraft: (taskId: string) => void
 
   // Reconnection state (for auto-resuming when reconnecting mid-session)
   /** Mark that Ralph was running before disconnect (called when connection is lost) */
@@ -447,76 +454,45 @@ export function getEventsForSession(events: ChatEvent[], sessionIndex: number | 
 }
 
 /**
- * Extracts task information from session events.
- * First looks for ralph_task_started events (emitted by newer CLI versions).
- * Falls back to parsing <start_task> tags from assistant messages.
- * Returns task info if found, with title falling back to taskId if not provided.
+ * Extracts task ID from session events.
+ * Looks for ralph_task_started events emitted by the CLI.
+ * Returns the task ID if found, null otherwise.
+ *
+ * Note: Task titles should be looked up from beads, not cached in events.
  */
 export function getTaskFromSessionEvents(
+  /** Events from a session */
   events: ChatEvent[],
-): { id: string | null; title: string } | null {
-  // First, check for explicit ralph_task_started events (newer CLI)
+): string | null {
   for (const event of events) {
     if (event.type === "ralph_task_started") {
-      const taskId = (event as any).taskId as string | undefined
-      const taskTitle = (event as any).taskTitle as string | undefined
-      // Accept tasks with taskTitle or taskId (title can fall back to ID)
-      if (taskTitle) {
-        return { id: taskId ?? null, title: taskTitle }
-      }
+      const taskId = (event as { taskId?: string }).taskId
       if (taskId) {
-        return { id: taskId, title: taskId } // Use ID as fallback title
+        return taskId
       }
     }
   }
-
-  // Fallback: Parse task lifecycle from assistant message text
-  // This handles older CLI versions that don't emit ralph_task_started events
-  for (const event of events) {
-    if (event.type === "assistant") {
-      const content = (event as any).message?.content
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === "text" && typeof block.text === "string") {
-            const taskInfo = parseTaskLifecycleEvent(block.text, event.timestamp ?? Date.now())
-            if (taskInfo && taskInfo.action === "starting" && taskInfo.taskId) {
-              return {
-                id: taskInfo.taskId,
-                title: taskInfo.taskTitle ?? taskInfo.taskId,
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   return null
 }
 
-/** Task info for a single session */
-export interface SessionTaskInfo {
-  id: string | null
-  title: string | null
-}
-
 /**
- * Gets task information for all sessions.
- * Returns an array where each element corresponds to an session index.
- * Each element contains the task id and title for that session (or null values if no task).
+ * Gets task IDs for all sessions.
+ * Returns an array where each element corresponds to a session index.
+ * Each element contains the task ID for that session (or null if no task).
+ *
+ * Note: Task titles should be looked up from beads using the task ID.
  */
-export function getSessionTaskInfos(events: ChatEvent[]): SessionTaskInfo[] {
+export function getSessionTaskIds(
+  /** Events from all sessions */
+  events: ChatEvent[],
+): (string | null)[] {
   const boundaries = getSessionBoundaries(events)
   if (boundaries.length === 0) return []
 
   return boundaries.map((startIndex, i) => {
     const endIndex = boundaries[i + 1] ?? events.length
     const sessionEvents = events.slice(startIndex, endIndex)
-    const taskInfo = getTaskFromSessionEvents(sessionEvents)
-    return {
-      id: taskInfo?.id ?? null,
-      title: taskInfo?.title ?? null,
-    }
+    return getTaskFromSessionEvents(sessionEvents)
   })
 }
 
@@ -629,6 +605,7 @@ const initialState: AppState = {
   parentCollapsedState: {},
   taskInputDraft: "",
   taskChatInputDraft: "",
+  commentDrafts: {},
 }
 
 export const useAppStore = create<AppState & AppActions>()(
@@ -1091,6 +1068,27 @@ export const useAppStore = create<AppState & AppActions>()(
       // Input draft states
       setTaskInputDraft: draft => set({ taskInputDraft: draft }),
       setTaskChatInputDraft: draft => set({ taskChatInputDraft: draft }),
+
+      // Comment drafts per task
+      setCommentDraft: (taskId, draft) =>
+        set(state => {
+          if (!draft) {
+            // Remove the draft if empty
+            const { [taskId]: _, ...rest } = state.commentDrafts
+            return { commentDrafts: rest }
+          }
+          return {
+            commentDrafts: {
+              ...state.commentDrafts,
+              [taskId]: draft,
+            },
+          }
+        }),
+      clearCommentDraft: taskId =>
+        set(state => {
+          const { [taskId]: _, ...rest } = state.commentDrafts
+          return { commentDrafts: rest }
+        }),
 
       // Reconnection state (for auto-resuming when reconnecting mid-session)
       markRunningBeforeDisconnect: () =>
@@ -1645,23 +1643,22 @@ export const selectTaskSearchQuery = (state: AppState) => state.taskSearchQuery
 export const selectSelectedTaskId = (state: AppState) => state.selectedTaskId
 export const selectVisibleTaskIds = (state: AppState) => state.visibleTaskIds
 export const selectClosedTimeFilter = (state: AppState) => state.closedTimeFilter
-export const selectSessionTask = (state: AppState) => {
+/**
+ * Get the task ID for the current session.
+ * Returns the task ID if found from ralph_task_started events, or falls back to the instance's currentTaskId.
+ * Task titles should be looked up from beads using the returned ID.
+ */
+export const selectSessionTask = (state: AppState): string | null => {
   const sessionEvents = getEventsForSession(state.events, state.viewingSessionIndex)
-  const taskFromEvents = getTaskFromSessionEvents(sessionEvents)
-  if (taskFromEvents) {
-    return taskFromEvents
+  const taskId = getTaskFromSessionEvents(sessionEvents)
+  if (taskId) {
+    return taskId
   }
-  // Fallback: use the instance's currentTaskId/currentTaskTitle if available
+  // Fallback: use the instance's currentTaskId if available
   // This handles page reload scenarios where the server restores the task info
   // but the ralph_task_started event may not be in the restored events
   const activeInstance = state.instances.get(state.activeInstanceId)
-  if (activeInstance?.currentTaskId || activeInstance?.currentTaskTitle) {
-    return {
-      id: activeInstance.currentTaskId ?? null,
-      title: activeInstance.currentTaskTitle ?? activeInstance.currentTaskId ?? "Unknown task",
-    }
-  }
-  return null
+  return activeInstance?.currentTaskId ?? null
 }
 export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
 export const selectHotkeysDialogOpen = (state: AppState) => state.hotkeysDialogOpen
@@ -1669,6 +1666,9 @@ export const selectStatusCollapsedState = (state: AppState) => state.statusColla
 export const selectParentCollapsedState = (state: AppState) => state.parentCollapsedState
 export const selectTaskInputDraft = (state: AppState) => state.taskInputDraft
 export const selectTaskChatInputDraft = (state: AppState) => state.taskChatInputDraft
+export const selectCommentDraft = (state: AppState, taskId: string) =>
+  state.commentDrafts[taskId] ?? ""
+export const selectCommentDrafts = (state: AppState) => state.commentDrafts
 
 export const selectInstanceStatus = (state: AppState, instanceId: string): RalphStatus => {
   const instance = state.instances.get(instanceId)

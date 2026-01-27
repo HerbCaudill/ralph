@@ -27,7 +27,7 @@ import {
 } from "@/constants"
 
 /** Current schema version for persistence format */
-export const PERSIST_VERSION = 4
+export const PERSIST_VERSION = 5
 
 /** Storage key for persisted state */
 export const PERSIST_NAME = "ralph-ui-store"
@@ -91,6 +91,9 @@ export interface PersistedState {
   // Input draft states
   taskInputDraft: string
   taskChatInputDraft: string
+
+  // Comment drafts per task (taskId -> draft text)
+  commentDrafts: Record<string, string>
 
   // Workspace metadata
   workspace: string | null
@@ -235,6 +238,9 @@ export function partialize(state: AppState): PersistedState {
     taskInputDraft: state.taskInputDraft,
     taskChatInputDraft: state.taskChatInputDraft,
 
+    // Comment drafts per task
+    commentDrafts: state.commentDrafts,
+
     // Workspace metadata
     workspace: state.workspace,
     branch: state.branch,
@@ -333,6 +339,7 @@ const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
  * - v2: Added statusCollapsedState and parentCollapsedState (consolidated from separate localStorage keys)
  * - v3: Added taskInputDraft and taskChatInputDraft (consolidated from separate localStorage keys)
  * - v4: Added vscodeThemeId, lastDarkThemeId, lastLightThemeId (consolidated from separate localStorage keys)
+ * - v5: Added commentDrafts (per-task comment draft persistence)
  */
 export function migrate(persistedState: unknown, version: number): PersistedState {
   let state = persistedState as PersistedState
@@ -470,6 +477,14 @@ export function migrate(persistedState: unknown, version: number): PersistedStat
       vscodeThemeId,
       lastDarkThemeId,
       lastLightThemeId,
+    }
+  }
+
+  if (version < 5) {
+    // Migrate from v4 to v5: Add commentDrafts (empty by default)
+    state = {
+      ...state,
+      commentDrafts: {},
     }
   }
 
