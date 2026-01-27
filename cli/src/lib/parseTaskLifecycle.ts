@@ -35,5 +35,4 @@ export function parseTaskLifecycleEvent(
 export interface TaskLifecycleInfo {
   action: "starting" | "completed"
   taskId?: string
-  taskTitle?: string
 }

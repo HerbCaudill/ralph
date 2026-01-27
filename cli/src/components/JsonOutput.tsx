@@ -43,7 +43,6 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const stdinCleanupRef = useRef<(() => void) | null>(null)
   const currentTaskIdRef = useRef<string | null>(null)
-  const currentTaskTitleRef = useRef<string | null>(null)
 
   // Keep stopAfterCurrent ref in sync with state
   useEffect(() => {
@@ -137,7 +136,6 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
       totalSessions,
       repo: repoName,
       taskId: currentTaskIdRef.current,
-      taskTitle: currentTaskTitleRef.current,
     })
 
     // Create a message queue for this session
@@ -183,26 +181,19 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
                   if (taskInfo) {
                     if (taskInfo.action === "starting") {
                       currentTaskIdRef.current = taskInfo.taskId ?? null
-                      currentTaskTitleRef.current = taskInfo.taskTitle ?? null
-                      log(
-                        `Task started: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,
-                      )
+                      log(`Task started: ${taskInfo.taskId}`)
                       // Emit ralph_task_started event
                       outputEvent({
                         type: "ralph_task_started",
                         taskId: taskInfo.taskId,
-                        taskTitle: taskInfo.taskTitle,
                         session: currentSession,
                       })
                     } else if (taskInfo.action === "completed") {
-                      log(
-                        `Task completed: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,
-                      )
+                      log(`Task completed: ${taskInfo.taskId}`)
                       // Emit ralph_task_completed event
                       outputEvent({
                         type: "ralph_task_completed",
                         taskId: taskInfo.taskId,
-                        taskTitle: taskInfo.taskTitle,
                         session: currentSession,
                       })
                     }
@@ -237,7 +228,6 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
           type: "ralph_session_end",
           session: currentSession,
           taskId: currentTaskIdRef.current,
-          taskTitle: currentTaskTitleRef.current,
         })
 
         // Check for stop-after-current request

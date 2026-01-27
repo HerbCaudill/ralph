@@ -10,7 +10,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "starting",
         taskId: "r-abc1",
-        taskTitle: undefined,
       })
     })
 
@@ -21,7 +20,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "starting",
         taskId: "r-abc1.2",
-        taskTitle: undefined,
       })
     })
 
@@ -32,7 +30,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "starting",
         taskId: "rui-4rt.5.a2",
-        taskTitle: undefined,
       })
     })
 
@@ -43,7 +40,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "starting",
         taskId: "r-xyz9",
-        taskTitle: undefined,
       })
     })
 
@@ -54,7 +50,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "starting",
         taskId: "r-abc1",
-        taskTitle: undefined,
       })
     })
   })
@@ -67,7 +62,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "completed",
         taskId: "r-abc1",
-        taskTitle: undefined,
       })
     })
 
@@ -78,7 +72,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "completed",
         taskId: "r-abc1.2",
-        taskTitle: undefined,
       })
     })
 
@@ -89,7 +82,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "completed",
         taskId: "r-xyz9",
-        taskTitle: undefined,
       })
     })
   })
@@ -102,7 +94,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "starting",
         taskId: "r-def3",
-        taskTitle: undefined,
       })
     })
 
@@ -113,7 +104,6 @@ describe("parseTaskLifecycleEvent", () => {
       expect(result).toEqual({
         action: "completed",
         taskId: "r-abc1",
-        taskTitle: undefined,
       })
     })
   })

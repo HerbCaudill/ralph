@@ -82,7 +82,6 @@ export const SessionRunner = ({
   const [isPaused, setIsPaused] = useState(false) // Pause after current session completes
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
-  const [currentTaskTitle, setCurrentTaskTitle] = useState<string | null>(null)
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -418,27 +417,20 @@ export const SessionRunner = ({
                   if (taskInfo) {
                     if (taskInfo.action === "starting") {
                       setCurrentTaskId(taskInfo.taskId ?? null)
-                      setCurrentTaskTitle(taskInfo.taskTitle ?? null)
-                      log(
-                        `Task started: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,
-                      )
+                      log(`Task started: ${taskInfo.taskId}`)
                       // Emit ralph_task_started event to log file
                       const taskStartedEvent = {
                         type: "ralph_task_started",
                         taskId: taskInfo.taskId,
-                        taskTitle: taskInfo.taskTitle,
                         session: currentSession,
                       }
                       appendFileSync(logFile, JSON.stringify(taskStartedEvent) + "\n")
                     } else if (taskInfo.action === "completed") {
-                      log(
-                        `Task completed: ${taskInfo.taskId}${taskInfo.taskTitle ? ` - ${taskInfo.taskTitle}` : ""}`,
-                      )
+                      log(`Task completed: ${taskInfo.taskId}`)
                       // Emit ralph_task_completed event to log file
                       const taskCompletedEvent = {
                         type: "ralph_task_completed",
                         taskId: taskInfo.taskId,
-                        taskTitle: taskInfo.taskTitle,
                         session: currentSession,
                       }
                       appendFileSync(logFile, JSON.stringify(taskCompletedEvent) + "\n")
