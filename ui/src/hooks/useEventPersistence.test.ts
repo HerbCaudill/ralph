@@ -431,6 +431,11 @@ describe("useEventPersistence", () => {
         expect(consoleSpy).toHaveBeenCalledWith(
           "[useEventPersistence] Failed to save event:",
           expect.any(Error),
+          expect.objectContaining({
+            eventIndex: expect.any(Number),
+            sessionId: expect.any(String),
+            eventType: expect.any(String),
+          }),
         )
       })
 
