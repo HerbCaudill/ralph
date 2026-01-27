@@ -133,22 +133,6 @@ export function ThemePickerView({
               ))}
             </div>
           )}
-
-          {!(error && themes.length > 0) && (
-            <div className="border-border border-t p-1">
-              <button
-                onClick={onRefresh}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
-                  "hover:bg-muted",
-                )}
-                data-testid="theme-picker-refresh"
-              >
-                <IconRefresh className="text-muted-foreground size-3.5" />
-                <span>Refresh</span>
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>

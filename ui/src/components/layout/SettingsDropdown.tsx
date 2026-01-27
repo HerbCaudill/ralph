@@ -193,16 +193,6 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
           {!error && (
             <div className="border-border border-t p-1">
               <button
-                onClick={fetchThemes}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
-                  "hover:bg-muted",
-                )}
-              >
-                <IconRefresh className="text-muted-foreground size-3.5" />
-                <span>Refresh themes</span>
-              </button>
-              <button
                 onClick={handleExportState}
                 disabled={isExporting}
                 className={cn(

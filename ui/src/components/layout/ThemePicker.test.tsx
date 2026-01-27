@@ -156,16 +156,6 @@ describe("ThemePickerView", () => {
   })
 
   describe("dropdown content", () => {
-    it("has refresh button in dropdown", () => {
-      render(<ThemePickerView {...createDefaultProps()} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Should show Refresh button
-      expect(screen.getByText("Refresh")).toBeInTheDocument()
-    })
-
     it("shows checkmark on currently active theme", () => {
       render(<ThemePickerView {...createDefaultProps({ activeThemeId: "dracula" })} />)
 
@@ -211,22 +201,6 @@ describe("ThemePickerView", () => {
       await waitFor(() => {
         expect(screen.queryByTestId("theme-picker-dropdown")).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe("refresh functionality", () => {
-    it("calls onRefresh when clicking refresh", () => {
-      const props = createDefaultProps()
-      render(<ThemePickerView {...props} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Click Refresh
-      fireEvent.click(screen.getByText("Refresh"))
-
-      // onRefresh should be called
-      expect(props.onRefresh).toHaveBeenCalled()
     })
   })
 
@@ -305,17 +279,6 @@ describe("ThemePickerView", () => {
       // Should show "No themes found" instead of the error
       expect(screen.getByText("No themes found")).toBeInTheDocument()
       expect(screen.queryByText("Theme not found")).not.toBeInTheDocument()
-    })
-
-    it("shows refresh button when there is an error but no themes", () => {
-      render(<ThemePickerView {...createDefaultProps({ themes: [], error: "Theme not found" })} />)
-
-      // Open dropdown
-      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
-
-      // Should show "No themes found" and the refresh button
-      expect(screen.getByText("No themes found")).toBeInTheDocument()
-      expect(screen.getByTestId("theme-picker-refresh")).toBeInTheDocument()
     })
   })
 

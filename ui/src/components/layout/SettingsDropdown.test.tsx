@@ -253,17 +253,6 @@ describe("SettingsDropdown", () => {
     })
   })
 
-  describe("refresh functionality", () => {
-    it("calls fetchThemes when clicking refresh", () => {
-      render(<SettingsDropdown />)
-      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
-
-      fireEvent.click(screen.getByText("Refresh themes"))
-
-      expect(mockFetchThemes).toHaveBeenCalled()
-    })
-  })
-
   describe("loading states", () => {
     it("trigger button remains clickable when loading", () => {
       mockIsLoadingList = true

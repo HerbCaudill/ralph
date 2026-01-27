@@ -200,31 +200,6 @@ export const SelectingThemeCallsHandler: Story = {
 }
 
 /**
- * Verifies clicking Refresh calls onRefresh.
- */
-export const RefreshCallsHandler: Story = {
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement.ownerDocument.body)
-
-    // Open dropdown
-    const trigger = await canvas.findByTestId("theme-picker-trigger")
-    await userEvent.click(trigger)
-
-    // Wait for dropdown
-    await waitFor(async () => {
-      await expect(await canvas.findByTestId("theme-picker-dropdown")).toBeVisible()
-    })
-
-    // Click Refresh
-    const refreshButton = await canvas.findByTestId("theme-picker-refresh")
-    await userEvent.click(refreshButton)
-
-    // onRefresh should be called
-    await expect(args.onRefresh).toHaveBeenCalled()
-  },
-}
-
-/**
  * Verifies Escape closes the dropdown.
  */
 export const EscapeClosesDropdown: Story = {
