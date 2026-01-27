@@ -1,11 +1,15 @@
 import type { ReactNode, MouseEvent } from "react"
+import { buildSessionPath } from "@/hooks/useEventLogRouter"
 
 /**
  * Regex pattern that matches session references.
- * Matches patterns like: #session=default-1706123456789 (alphanumeric with dashes)
- * For backward compatibility, also matches legacy #eventlog=abcdef12 format.
+ * Matches patterns like: /session/default-1706123456789 (alphanumeric with dashes)
+ * For backward compatibility, also matches legacy hash formats:
+ * - #session=default-1706123456789
+ * - #eventlog=abcdef12
  */
-const SESSION_PATTERN = /#session=([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/gi
+const SESSION_PATH_PATTERN = /\/session\/([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/gi
+const SESSION_HASH_PATTERN = /#session=([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/gi
 const LEGACY_EVENTLOG_PATTERN = /#eventlog=([a-f0-9]{8})(?![a-f0-9])/gi
 
 // Types
@@ -24,16 +28,28 @@ interface SessionMatch {
 }
 
 /**
- * Find all session reference matches in text, supporting both new #session= format
- * and legacy #eventlog= format.
+ * Find all session reference matches in text, supporting:
+ * - New /session/{id} path format
+ * - Legacy #session={id} hash format
+ * - Legacy #eventlog={id} hash format
  */
 function findSessionMatches(text: string): SessionMatch[] {
   const matches: SessionMatch[] = []
-
-  // Find new #session= format matches
-  SESSION_PATTERN.lastIndex = 0
   let match: RegExpExecArray | null
-  while ((match = SESSION_PATTERN.exec(text)) !== null) {
+
+  // Find new /session/{id} path format matches
+  SESSION_PATH_PATTERN.lastIndex = 0
+  while ((match = SESSION_PATH_PATTERN.exec(text)) !== null) {
+    matches.push({
+      id: match[1],
+      fullMatch: match[0],
+      startIndex: match.index,
+    })
+  }
+
+  // Find #session= format matches (legacy)
+  SESSION_HASH_PATTERN.lastIndex = 0
+  while ((match = SESSION_HASH_PATTERN.exec(text)) !== null) {
     matches.push({
       id: match[1],
       fullMatch: match[0],
@@ -82,8 +98,10 @@ export function EventLogLink({ children, className }: EventLogLinkProps) {
     const handleClick = (e: MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
-      // Navigate using new session= hash format
-      window.location.hash = `session=${id}`
+      // Navigate using new /session/{id} path format
+      window.history.pushState({ sessionId: id }, "", buildSessionPath(id))
+      // Dispatch a popstate event so the router picks up the change
+      window.dispatchEvent(new PopStateEvent("popstate"))
     }
 
     parts.push(
@@ -119,13 +137,18 @@ export function EventLogLink({ children, className }: EventLogLinkProps) {
 
 /**
  * Utility function to check if a string contains any session references.
- * Checks for both new #session= format and legacy #eventlog= format.
+ * Checks for new /session/{id} format and legacy hash formats.
  *
  * @param text - The text to check
  * @returns true if the text contains session references
  */
 export function containsEventLogRef(text: string): boolean {
-  SESSION_PATTERN.lastIndex = 0
+  SESSION_PATH_PATTERN.lastIndex = 0
+  SESSION_HASH_PATTERN.lastIndex = 0
   LEGACY_EVENTLOG_PATTERN.lastIndex = 0
-  return SESSION_PATTERN.test(text) || LEGACY_EVENTLOG_PATTERN.test(text)
+  return (
+    SESSION_PATH_PATTERN.test(text) ||
+    SESSION_HASH_PATTERN.test(text) ||
+    LEGACY_EVENTLOG_PATTERN.test(text)
+  )
 }

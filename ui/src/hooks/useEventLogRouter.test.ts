@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
-import { useEventLogRouter, parseEventLogHash, buildEventLogHash } from "./useEventLogRouter"
+import {
+  useEventLogRouter,
+  parseSessionIdFromUrl,
+  buildSessionPath,
+  parseEventLogHash,
+  buildEventLogHash,
+} from "./useEventLogRouter"
 import { useAppStore } from "../store"
 import { eventDatabase, type PersistedSession, type PersistedEvent } from "@/lib/persistence"
 
@@ -23,73 +29,96 @@ const mockEventDatabase = eventDatabase as unknown as {
   getEventsForSession: ReturnType<typeof vi.fn>
 }
 
-describe("parseEventLogHash", () => {
+describe("parseSessionIdFromUrl", () => {
+  it("returns null for root path without session", () => {
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "" })).toBeNull()
+  })
+
+  it("returns null for unrelated paths", () => {
+    expect(parseSessionIdFromUrl({ pathname: "/issue/r-abc123", hash: "" })).toBeNull()
+    expect(parseSessionIdFromUrl({ pathname: "/something", hash: "" })).toBeNull()
+  })
+
+  it("returns ID for valid /session/{id} path format", () => {
+    expect(parseSessionIdFromUrl({ pathname: "/session/default-1706123456789", hash: "" })).toBe(
+      "default-1706123456789",
+    )
+    expect(parseSessionIdFromUrl({ pathname: "/session/abc123", hash: "" })).toBe("abc123")
+    expect(parseSessionIdFromUrl({ pathname: "/session/session-42", hash: "" })).toBe("session-42")
+    expect(parseSessionIdFromUrl({ pathname: "/session/MySession2025", hash: "" })).toBe(
+      "MySession2025",
+    )
+  })
+
+  it("returns ID for legacy #session= hash format (backward compatibility)", () => {
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "#session=default-123" })).toBe(
+      "default-123",
+    )
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "#session=abc123" })).toBe("abc123")
+  })
+
+  it("returns ID for legacy #eventlog= hash format (backward compatibility)", () => {
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "#eventlog=abcdef12" })).toBe("abcdef12")
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "#eventlog=12345678" })).toBe("12345678")
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "#eventlog=ABCDEF00" })).toBe("ABCDEF00")
+  })
+
+  it("returns null for invalid legacy eventlog ID format", () => {
+    // Too short
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "#eventlog=abc" })).toBeNull()
+    // Too long
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "#eventlog=abcdef123" })).toBeNull()
+    // Invalid characters
+    expect(parseSessionIdFromUrl({ pathname: "/", hash: "#eventlog=ghijklmn" })).toBeNull()
+  })
+
+  it("prefers path over hash if both present", () => {
+    expect(
+      parseSessionIdFromUrl({ pathname: "/session/from-path", hash: "#session=from-hash" }),
+    ).toBe("from-path")
+  })
+})
+
+describe("buildSessionPath", () => {
+  it("builds a valid path with /session/{id} format", () => {
+    expect(buildSessionPath("default-1706123456789")).toBe("/session/default-1706123456789")
+    expect(buildSessionPath("abcdef12")).toBe("/session/abcdef12")
+  })
+})
+
+// Legacy exports for backward compatibility
+describe("parseEventLogHash (legacy)", () => {
   it("returns null for empty hash", () => {
     expect(parseEventLogHash("")).toBeNull()
     expect(parseEventLogHash("#")).toBeNull()
   })
 
-  it("returns null for hash without session or eventlog prefix", () => {
-    expect(parseEventLogHash("#something")).toBeNull()
-    expect(parseEventLogHash("#task=123")).toBeNull()
+  it("returns ID for valid session hash", () => {
+    expect(parseEventLogHash("#session=default-123")).toBe("default-123")
   })
 
-  it("returns null for invalid session ID format", () => {
-    // Empty ID
-    expect(parseEventLogHash("#session=")).toBeNull()
-    // Invalid characters (spaces, special chars)
-    expect(parseEventLogHash("#session=abc def")).toBeNull()
-    expect(parseEventLogHash("#session=abc@def")).toBeNull()
-  })
-
-  it("returns ID for valid session hash (new format)", () => {
-    expect(parseEventLogHash("#session=default-1706123456789")).toBe("default-1706123456789")
-    expect(parseEventLogHash("#session=abc123")).toBe("abc123")
-    expect(parseEventLogHash("#session=session-42")).toBe("session-42")
-    expect(parseEventLogHash("#session=MySession2025")).toBe("MySession2025")
-  })
-
-  it("returns ID for valid legacy eventlog hash (backward compatibility)", () => {
+  it("returns ID for valid legacy eventlog hash", () => {
     expect(parseEventLogHash("#eventlog=abcdef12")).toBe("abcdef12")
-    expect(parseEventLogHash("#eventlog=12345678")).toBe("12345678")
-    expect(parseEventLogHash("#eventlog=ABCDEF00")).toBe("ABCDEF00")
-  })
-
-  it("returns null for invalid legacy eventlog ID format", () => {
-    // Too short
-    expect(parseEventLogHash("#eventlog=abc")).toBeNull()
-    // Too long
-    expect(parseEventLogHash("#eventlog=abcdef123")).toBeNull()
-    // Invalid characters
-    expect(parseEventLogHash("#eventlog=ghijklmn")).toBeNull()
-    // Empty ID
-    expect(parseEventLogHash("#eventlog=")).toBeNull()
-  })
-
-  it("handles hash with leading # already removed", () => {
-    expect(parseEventLogHash("session=default-123")).toBe("default-123")
-    expect(parseEventLogHash("eventlog=abcdef12")).toBe("abcdef12")
   })
 })
 
-describe("buildEventLogHash", () => {
-  it("builds a valid hash string with new session= format", () => {
+describe("buildEventLogHash (legacy)", () => {
+  it("builds a valid hash string with session= format", () => {
     expect(buildEventLogHash("default-1706123456789")).toBe("#session=default-1706123456789")
     expect(buildEventLogHash("abcdef12")).toBe("#session=abcdef12")
   })
 })
 
 describe("useEventLogRouter", () => {
-  // Store the original window.location.hash
-  let originalHash: string
-  let originalPushState: typeof window.history.pushState
+  // Store the original pushState for direct URL manipulation in tests
+  const originalPushState = window.history.pushState.bind(window.history)
+  let pushStateSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    originalHash = window.location.hash
-    originalPushState = window.history.pushState
+    pushStateSpy = vi.spyOn(window.history, "pushState")
 
-    // Clear the hash first
-    window.history.pushState(null, "", window.location.pathname + window.location.search)
+    // Navigate to root first
+    originalPushState(null, "", "/")
 
     // Reset the store before each test
     useAppStore.getState().clearEventLogViewer()
@@ -103,13 +132,9 @@ describe("useEventLogRouter", () => {
   })
 
   afterEach(() => {
-    // Restore window.location.hash
-    window.history.pushState(
-      null,
-      "",
-      window.location.pathname + window.location.search + originalHash,
-    )
-    window.history.pushState = originalPushState
+    vi.restoreAllMocks()
+    // Navigate back to root
+    originalPushState(null, "", "/")
   })
 
   it("returns navigateToEventLog and closeEventLogViewer functions", () => {
@@ -120,19 +145,39 @@ describe("useEventLogRouter", () => {
     expect(result.current.eventLogId).toBeNull()
   })
 
-  it("navigateToEventLog updates the URL hash with new session= format", () => {
+  it("navigateToEventLog updates the URL to /session/{id} path format", async () => {
+    mockEventDatabase.getSession.mockResolvedValue({
+      id: "default-1706123456789",
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: 1704067200000,
+      completedAt: null,
+      taskId: null,
+      taskTitle: null,
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 100000 },
+      session: { current: 0, total: 1 },
+      eventCount: 0,
+      lastEventSequence: 0,
+    })
+
     const { result } = renderHook(() => useEventLogRouter())
 
     act(() => {
       result.current.navigateToEventLog("default-1706123456789")
     })
 
-    expect(window.location.hash).toBe("#session=default-1706123456789")
+    expect(pushStateSpy).toHaveBeenCalledWith(
+      { sessionId: "default-1706123456789" },
+      "",
+      "/session/default-1706123456789",
+    )
   })
 
-  it("closeEventLogViewer clears the URL hash", () => {
-    window.location.hash = "#session=default-123"
-    window.history.pushState = vi.fn()
+  it("closeEventLogViewer clears the URL and navigates to root", () => {
+    // Navigate to a session URL first
+    originalPushState(null, "", "/session/default-123")
+    pushStateSpy.mockClear()
 
     const { result } = renderHook(() => useEventLogRouter())
 
@@ -140,11 +185,11 @@ describe("useEventLogRouter", () => {
       result.current.closeEventLogViewer()
     })
 
-    expect(window.history.pushState).toHaveBeenCalled()
+    expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/")
     expect(useAppStore.getState().viewingEventLogId).toBeNull()
   })
 
-  it("parses session ID from URL on mount and fetches data from IndexedDB", async () => {
+  it("parses session ID from /session/{id} path on mount and fetches data from IndexedDB", async () => {
     const mockSession: PersistedSession = {
       id: "default-123",
       instanceId: "test-instance",
@@ -173,7 +218,8 @@ describe("useEventLogRouter", () => {
     mockEventDatabase.getSession.mockResolvedValue(mockSession)
     mockEventDatabase.getEventsForSession.mockResolvedValue(mockEvents)
 
-    window.location.hash = "#session=default-123"
+    // Navigate to /session/{id} URL
+    originalPushState(null, "", "/session/default-123")
 
     renderHook(() => useEventLogRouter())
 
@@ -197,7 +243,40 @@ describe("useEventLogRouter", () => {
     })
   })
 
-  it("parses legacy eventlog ID from URL for backward compatibility", async () => {
+  it("parses legacy #session= hash for backward compatibility", async () => {
+    const mockSession: PersistedSession = {
+      id: "default-456",
+      instanceId: "test-instance",
+      workspaceId: null,
+      startedAt: 1704067200000,
+      completedAt: null,
+      taskId: "task-456",
+      taskTitle: null,
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: 100000 },
+      session: { current: 0, total: 1 },
+      eventCount: 0,
+      lastEventSequence: 0,
+    }
+
+    mockEventDatabase.getSession.mockResolvedValue(mockSession)
+    mockEventDatabase.getEventsForSession.mockResolvedValue([])
+
+    // Use legacy hash format
+    originalPushState(null, "", "/#session=default-456")
+
+    renderHook(() => useEventLogRouter())
+
+    await waitFor(() => {
+      expect(mockEventDatabase.getSession).toHaveBeenCalledWith("default-456")
+    })
+
+    await waitFor(() => {
+      expect(useAppStore.getState().viewingEventLogId).toBe("default-456")
+    })
+  })
+
+  it("parses legacy #eventlog= hash for backward compatibility", async () => {
     const mockSession: PersistedSession = {
       id: "abcdef12",
       instanceId: "test-instance",
@@ -216,7 +295,8 @@ describe("useEventLogRouter", () => {
     mockEventDatabase.getSession.mockResolvedValue(mockSession)
     mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
-    window.location.hash = "#eventlog=abcdef12"
+    // Use legacy eventlog hash format
+    originalPushState(null, "", "/#eventlog=abcdef12")
 
     renderHook(() => useEventLogRouter())
 
@@ -232,7 +312,7 @@ describe("useEventLogRouter", () => {
   it("sets error state when session not found in IndexedDB", async () => {
     mockEventDatabase.getSession.mockResolvedValue(undefined)
 
-    window.location.hash = "#session=nonexistent-123"
+    originalPushState(null, "", "/session/nonexistent-123")
 
     renderHook(() => useEventLogRouter())
 
@@ -250,7 +330,7 @@ describe("useEventLogRouter", () => {
   it("sets error state when IndexedDB operation throws", async () => {
     mockEventDatabase.getSession.mockRejectedValue(new Error("Database error"))
 
-    window.location.hash = "#session=default-123"
+    originalPushState(null, "", "/session/default-123")
 
     renderHook(() => useEventLogRouter())
 
@@ -259,7 +339,7 @@ describe("useEventLogRouter", () => {
     })
   })
 
-  it("clears event log when hash is removed", async () => {
+  it("clears event log when URL path is cleared", async () => {
     const mockSession: PersistedSession = {
       id: "default-123",
       instanceId: "test-instance",
@@ -278,7 +358,7 @@ describe("useEventLogRouter", () => {
     mockEventDatabase.getSession.mockResolvedValue(mockSession)
     mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
-    window.location.hash = "#session=default-123"
+    originalPushState(null, "", "/session/default-123")
 
     renderHook(() => useEventLogRouter())
 
@@ -287,10 +367,10 @@ describe("useEventLogRouter", () => {
       expect(useAppStore.getState().viewingEventLogId).toBe("default-123")
     })
 
-    // Clear the hash
+    // Navigate back to root
     act(() => {
-      window.history.pushState(null, "", window.location.pathname + window.location.search)
-      window.dispatchEvent(new HashChangeEvent("hashchange"))
+      originalPushState(null, "", "/")
+      window.dispatchEvent(new PopStateEvent("popstate"))
     })
 
     await waitFor(() => {
@@ -299,7 +379,7 @@ describe("useEventLogRouter", () => {
     })
   })
 
-  it("responds to hashchange events", async () => {
+  it("responds to popstate events for browser navigation", async () => {
     const mockSession1: PersistedSession = {
       id: "session-1",
       instanceId: "test-instance",
@@ -334,7 +414,7 @@ describe("useEventLogRouter", () => {
       .mockResolvedValueOnce(mockSession2)
     mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
-    window.location.hash = "#session=session-1"
+    originalPushState(null, "", "/session/session-1")
 
     renderHook(() => useEventLogRouter())
 
@@ -342,10 +422,10 @@ describe("useEventLogRouter", () => {
       expect(useAppStore.getState().viewingEventLogId).toBe("session-1")
     })
 
-    // Change hash
+    // Simulate browser navigation to a different session
     act(() => {
-      window.location.hash = "#session=session-2"
-      window.dispatchEvent(new HashChangeEvent("hashchange"))
+      originalPushState(null, "", "/session/session-2")
+      window.dispatchEvent(new PopStateEvent("popstate"))
     })
 
     await waitFor(() => {
@@ -363,7 +443,7 @@ describe("useEventLogRouter", () => {
     mockEventDatabase.getSession.mockReturnValue(dbPromise)
     mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
-    window.location.hash = "#session=default-123"
+    originalPushState(null, "", "/session/default-123")
 
     renderHook(() => useEventLogRouter())
 
@@ -415,7 +495,7 @@ describe("useEventLogRouter", () => {
     mockEventDatabase.getSession.mockResolvedValue(mockSession)
     mockEventDatabase.getEventsForSession.mockResolvedValue([])
 
-    window.location.hash = "#session=default-123"
+    originalPushState(null, "", "/session/default-123")
 
     const { result } = renderHook(() => useEventLogRouter())
 

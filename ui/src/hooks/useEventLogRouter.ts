@@ -1,44 +1,63 @@
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useRef } from "react"
 import { useAppStore } from "../store"
 import { eventDatabase, type PersistedSession, type PersistedEvent } from "@/lib/persistence"
 import type { EventLog } from "@/types"
 
 /**
- * Parse the URL hash to extract session ID.
- * Supports format: #session={id}
+ * Parse the URL to extract session ID.
+ * Supports format: /session/{id}
  *
  * Session IDs are alphanumeric with dashes (e.g., "default-1706123456789").
- * For backward compatibility, also supports the legacy #eventlog={8-char-hex} format.
+ * For backward compatibility, also supports legacy hash formats:
+ * - #session={id}
+ * - #eventlog={8-char-hex}
  */
-export function parseEventLogHash(hash: string): string | null {
-  if (!hash || hash === "#") return null
-
-  // Remove leading #
-  const hashContent = hash.startsWith("#") ? hash.slice(1) : hash
-
-  // Check for session= prefix (new format)
-  if (hashContent.startsWith("session=")) {
-    const id = hashContent.slice("session=".length)
-    // Validate: IDs are alphanumeric with dashes, at least 1 char
-    if (id && /^[a-zA-Z0-9-]+$/.test(id)) {
+export function parseSessionIdFromUrl(url: { pathname: string; hash: string }): string | null {
+  // Check path-based format first: /session/{id}
+  const pathMatch = url.pathname.match(/^\/session\/([a-zA-Z0-9-]+)$/)
+  if (pathMatch) {
+    const id = pathMatch[1]
+    if (id) {
       return id
     }
   }
 
-  // Backward compatibility: support legacy eventlog= format
-  if (hashContent.startsWith("eventlog=")) {
-    const id = hashContent.slice("eventlog=".length)
-    // Validate: legacy IDs are 8 character hex strings
-    if (id && /^[a-f0-9]{8}$/i.test(id)) {
-      return id
+  // Backward compatibility: support legacy hash formats
+  const hash = url.hash
+  if (hash && hash !== "#") {
+    const hashContent = hash.startsWith("#") ? hash.slice(1) : hash
+
+    // Check for session= prefix
+    if (hashContent.startsWith("session=")) {
+      const id = hashContent.slice("session=".length)
+      if (id && /^[a-zA-Z0-9-]+$/.test(id)) {
+        return id
+      }
+    }
+
+    // Check for legacy eventlog= prefix
+    if (hashContent.startsWith("eventlog=")) {
+      const id = hashContent.slice("eventlog=".length)
+      if (id && /^[a-f0-9]{8}$/i.test(id)) {
+        return id
+      }
     }
   }
 
   return null
 }
 
-/**  Build a URL hash for a session ID. */
-export function buildEventLogHash(id: string): string {
+/**  Build a URL path for a session ID. */
+export function buildSessionPath(id: string): string {
+  return `/session/${id}`
+}
+
+// Legacy exports for backwards compatibility with tests
+export const parseEventLogHash = (hash: string): string | null => {
+  return parseSessionIdFromUrl({ pathname: "/", hash })
+}
+
+export const buildEventLogHash = (id: string): string => {
   return `#session=${id}`
 }
 
@@ -65,20 +84,20 @@ function toEventLog(session: PersistedSession, events: PersistedEvent[]): EventL
 export interface UseEventLogRouterReturn {
   /** Navigate to view an event log by ID */
   navigateToEventLog: (id: string) => void
-  /** Close the event log viewer and clear the URL hash */
+  /** Close the event log viewer and clear the URL path */
   closeEventLogViewer: () => void
   /** Current event log ID from URL (if any) */
   eventLogId: string | null
 }
 
 /**
- * Hook for URL hash routing for event log viewing.
+ * Hook for URL routing for event log viewing.
  *
  * Handles:
- * - Parsing #eventlog={id} from URL on mount
- * - Listening to hashchange events
+ * - Parsing /session/{id} from URL on mount (also supports legacy hash formats)
+ * - Listening to popstate events for browser back/forward
  * - Fetching event log data when ID changes
- * - Updating URL hash when navigating
+ * - Updating URL path when navigating
  */
 export function useEventLogRouter(): UseEventLogRouterReturn {
   const viewingEventLogId = useAppStore(state => state.viewingEventLogId)
@@ -88,75 +107,101 @@ export function useEventLogRouter(): UseEventLogRouterReturn {
   const setEventLogError = useAppStore(state => state.setEventLogError)
   const clearEventLogViewer = useAppStore(state => state.clearEventLogViewer)
 
+  // Track if we're programmatically changing the URL (to avoid loops)
+  const isProgrammaticChange = useRef(false)
+  // Track current session ID from URL
+  const sessionIdFromUrlRef = useRef<string | null>(null)
+
   // Navigate to view an event log
   const navigateToEventLog = useCallback((id: string) => {
-    // Update URL hash
-    window.location.hash = buildEventLogHash(id)
-    // Store will be updated by hashchange listener
+    isProgrammaticChange.current = true
+    // Update URL to path-based format
+    window.history.pushState({ sessionId: id }, "", buildSessionPath(id))
+    sessionIdFromUrlRef.current = id
+    // Reset flag after the change propagates
+    setTimeout(() => {
+      isProgrammaticChange.current = false
+    }, 0)
+    // Trigger fetch directly since we're using pushState
+    fetchSessionById(id)
   }, [])
 
   // Close the event log viewer
   const closeEventLogViewer = useCallback(() => {
-    // Clear URL hash
-    // Use pushState to avoid a page jump to top
-    window.history.pushState(null, "", window.location.pathname + window.location.search)
+    isProgrammaticChange.current = true
+    // Navigate back to root
+    window.history.pushState(null, "", "/")
+    sessionIdFromUrlRef.current = null
     // Clear store
     clearEventLogViewer()
+    // Reset flag after the change propagates
+    setTimeout(() => {
+      isProgrammaticChange.current = false
+    }, 0)
   }, [clearEventLogViewer])
 
-  // Handle hash changes and fetch event log data from IndexedDB
+  // Helper to fetch session data by ID
+  const fetchSessionById = useCallback(
+    async (id: string) => {
+      setViewingEventLogId(id)
+      setEventLogLoading(true)
+      setEventLogError(null)
+
+      try {
+        await eventDatabase.init()
+        const session = await eventDatabase.getSession(id)
+
+        if (session) {
+          const events = await eventDatabase.getEventsForSession(id)
+          setViewingEventLog(toEventLog(session, events))
+          setEventLogError(null)
+        } else {
+          setViewingEventLog(null)
+          setEventLogError("Session not found")
+        }
+      } catch (err) {
+        setViewingEventLog(null)
+        setEventLogError(err instanceof Error ? err.message : "Failed to fetch session")
+      } finally {
+        setEventLogLoading(false)
+      }
+    },
+    [setViewingEventLogId, setViewingEventLog, setEventLogLoading, setEventLogError],
+  )
+
+  // Handle URL changes and fetch event log data from IndexedDB
   useEffect(() => {
-    async function handleHashChange() {
-      const id = parseEventLogHash(window.location.hash)
+    async function handleUrlChange() {
+      // Skip if this is a programmatic change we initiated
+      if (isProgrammaticChange.current) {
+        return
+      }
+
+      const id = parseSessionIdFromUrl(window.location)
+      const previousId = sessionIdFromUrlRef.current
+      sessionIdFromUrlRef.current = id
 
       if (id) {
-        // Set the ID and start loading
-        setViewingEventLogId(id)
-        setEventLogLoading(true)
-        setEventLogError(null)
-
-        try {
-          // Initialize database and fetch session from IndexedDB
-          await eventDatabase.init()
-          const session = await eventDatabase.getSession(id)
-
-          if (session) {
-            // Fetch events separately (v3+ stores events in separate table)
-            const events = await eventDatabase.getEventsForSession(id)
-            setViewingEventLog(toEventLog(session, events))
-            setEventLogError(null)
-          } else {
-            setViewingEventLog(null)
-            setEventLogError("Session not found")
-          }
-        } catch (err) {
-          setViewingEventLog(null)
-          setEventLogError(err instanceof Error ? err.message : "Failed to fetch session")
-        } finally {
-          setEventLogLoading(false)
-        }
-      } else {
-        // No event log ID in hash, clear viewer
+        await fetchSessionById(id)
+      } else if (previousId) {
+        // URL was cleared (had an ID before, now doesn't) - clear viewer
         clearEventLogViewer()
       }
     }
 
-    // Check hash on mount
-    handleHashChange()
+    // Check URL on mount
+    handleUrlChange()
 
-    // Listen for hash changes
-    window.addEventListener("hashchange", handleHashChange)
+    // Listen for popstate events (back/forward navigation)
+    window.addEventListener("popstate", handleUrlChange)
+    // Also listen for hashchange for legacy URL support
+    window.addEventListener("hashchange", handleUrlChange)
 
     return () => {
-      window.removeEventListener("hashchange", handleHashChange)
+      window.removeEventListener("popstate", handleUrlChange)
+      window.removeEventListener("hashchange", handleUrlChange)
     }
-  }, [
-    setViewingEventLogId,
-    setViewingEventLog,
-    setEventLogLoading,
-    setEventLogError,
-    clearEventLogViewer,
-  ])
+  }, [fetchSessionById, clearEventLogViewer])
 
   return {
     navigateToEventLog,

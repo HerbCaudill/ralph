@@ -2,13 +2,17 @@ import type { ReactNode, MouseEvent } from "react"
 import { useAppStore, selectIssuePrefix } from "@/store"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
+import { buildSessionPath } from "@/hooks/useEventLogRouter"
 
 /**
  * Regex pattern that matches session references.
- * Matches patterns like: #session=default-1706123456789 (alphanumeric with dashes)
- * For backward compatibility, also matches legacy #eventlog=abcdef12 format.
+ * Matches patterns like: /session/default-1706123456789 (alphanumeric with dashes)
+ * For backward compatibility, also matches legacy hash formats:
+ * - #session=default-1706123456789
+ * - #eventlog=abcdef12
  */
-const SESSION_PATTERN = /#session=([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/gi
+const SESSION_PATH_PATTERN = /\/session\/([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/gi
+const SESSION_HASH_PATTERN = /#session=([a-zA-Z0-9-]+)(?![a-zA-Z0-9-])/gi
 const LEGACY_EVENTLOG_PATTERN = /#eventlog=([a-f0-9]{8})(?![a-f0-9])/gi
 
 /**
@@ -35,7 +39,7 @@ interface TextSegment {
 /**
  * Parse text and extract task ID and session references.
  * Returns segments in order of appearance.
- * Supports both new #session= format and legacy #eventlog= format.
+ * Supports /session/{id} path format and legacy hash formats.
  */
 function parseTextSegments(text: string, taskIdPrefix: string | null): TextSegment[] {
   const segments: TextSegment[] = []
@@ -51,15 +55,23 @@ function parseTextSegments(text: string, taskIdPrefix: string | null): TextSegme
     }
   }
 
-  // Find all session matches (new format)
-  SESSION_PATTERN.lastIndex = 0
+  // Find all session matches
   const sessionMatches: { match: RegExpExecArray; type: "session" }[] = []
   let match: RegExpExecArray | null
-  while ((match = SESSION_PATTERN.exec(text)) !== null) {
+
+  // Find new /session/{id} path format matches
+  SESSION_PATH_PATTERN.lastIndex = 0
+  while ((match = SESSION_PATH_PATTERN.exec(text)) !== null) {
     sessionMatches.push({ match, type: "session" })
   }
 
-  // Find all legacy event log matches
+  // Find legacy #session= hash format matches
+  SESSION_HASH_PATTERN.lastIndex = 0
+  while ((match = SESSION_HASH_PATTERN.exec(text)) !== null) {
+    sessionMatches.push({ match, type: "session" })
+  }
+
+  // Find legacy #eventlog= format matches
   LEGACY_EVENTLOG_PATTERN.lastIndex = 0
   while ((match = LEGACY_EVENTLOG_PATTERN.exec(text)) !== null) {
     sessionMatches.push({ match, type: "session" })
@@ -181,8 +193,9 @@ export function TextWithLinks({ children, className }: TextWithLinksProps) {
     const handleClick = (e: MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
-      // Navigate using new session= hash format
-      window.location.hash = `session=${sessionId}`
+      // Navigate using new /session/{id} path format
+      window.history.pushState({ sessionId }, "", buildSessionPath(sessionId))
+      window.dispatchEvent(new PopStateEvent("popstate"))
     }
 
     return (

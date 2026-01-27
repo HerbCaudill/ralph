@@ -18,7 +18,7 @@ export async function linkSessionToTask(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        comment: `Closed. Session log: #session=${sessionId}`,
+        comment: `Closed. Session log: /session/${sessionId}`,
         author: "Ralph",
       }),
     })

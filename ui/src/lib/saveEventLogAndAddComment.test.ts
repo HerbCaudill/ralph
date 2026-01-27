@@ -28,7 +28,7 @@ describe("linkSessionToTask", () => {
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: expect.stringContaining("#session=session-123"),
+          body: expect.stringContaining("/session/session-123"),
         }),
       )
     })
@@ -95,7 +95,7 @@ describe("saveEventLogAndAddComment (deprecated)", () => {
     expect(fetch).toHaveBeenCalledWith(
       "/api/tasks/task-123/comments",
       expect.objectContaining({
-        body: expect.stringContaining("#session=session-xyz"),
+        body: expect.stringContaining("/session/session-xyz"),
       }),
     )
   })

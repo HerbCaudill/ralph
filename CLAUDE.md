@@ -482,9 +482,9 @@ Four object stores:
 Standalone snapshots saved when sessions complete:
 
 1. Task closes → `saveEventLogAndAddComment()` saves events to IndexedDB
-2. Closing comment added: `Closed. Event log: #eventlog=abcd1234`
+2. Closing comment added: `Closed. Event log: /session/abcd1234`
 3. `EventLogLink` renders these as clickable links
-4. `useEventLogRouter` handles navigation via URL hash
+4. `useEventLogRouter` handles navigation via URL path (legacy `#session=...` and `#eventlog=...` hash-based links are also supported for backward compatibility)
 
 ### WebSocket Events
 

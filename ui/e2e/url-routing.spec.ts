@@ -5,8 +5,8 @@ import { test, expect } from "./fixtures"
  *
  * These tests verify that:
  * - Task dialog routing works with /issue/{taskId} URLs
- * - Session routing works with #session={id} URLs
- * - Legacy #eventlog={id} URLs are still supported for backward compatibility
+ * - Session routing works with /session/{id} URLs
+ * - Legacy #session={id} and #eventlog={id} URLs are still supported for backward compatibility
  * - Browser back/forward navigation updates the UI correctly
  * - URL updates when dialogs/panels open/close via UI interactions
  *
@@ -135,7 +135,7 @@ test.describe("URL Routing", () => {
   })
 
   test.describe("session routing", () => {
-    test("clicking session link updates URL with #session={id}", async ({ app }) => {
+    test("clicking session link updates URL with /session/{id}", async ({ app }) => {
       // Create a task
       const taskName = `Session URL Test ${Date.now()}`
       await app.taskList.createTask(taskName)
@@ -154,11 +154,11 @@ test.describe("URL Routing", () => {
       // Click the first session link
       await app.taskDetails.clickSessionLink(0)
 
-      // URL should have session hash (new format uses #session=)
-      await expect.poll(() => app.page.url()).toMatch(/#session=[a-zA-Z0-9-]+/)
+      // URL should have session path (new format uses /session/{id})
+      await expect.poll(() => app.page.url()).toMatch(/\/session\/[a-zA-Z0-9-]+/)
     })
 
-    test("clearing session hash closes the right panel", async ({ app }) => {
+    test("clearing session path closes the right panel", async ({ app }) => {
       // Create a task and check for sessions
       const taskName = `Clear Session Test ${Date.now()}`
       await app.taskList.createTask(taskName)
@@ -175,17 +175,17 @@ test.describe("URL Routing", () => {
 
       // Click session link to open right panel
       await app.taskDetails.clickSessionLink(0)
-      await expect.poll(() => app.page.url()).toMatch(/#session=[a-zA-Z0-9-]+/)
+      await expect.poll(() => app.page.url()).toMatch(/\/session\/[a-zA-Z0-9-]+/)
 
       const rightPanel = app.page.getByTestId("right-panel")
       await expect
         .poll(() => rightPanel.evaluate(el => el.getBoundingClientRect().width), { timeout: 5000 })
         .toBeGreaterThan(0)
 
-      // Clear the hash by navigating to pathname only
+      // Clear the path by navigating to root
       await app.page.evaluate(() => {
-        window.history.pushState(null, "", window.location.pathname)
-        window.dispatchEvent(new HashChangeEvent("hashchange"))
+        window.history.pushState(null, "", "/")
+        window.dispatchEvent(new PopStateEvent("popstate"))
       })
 
       // Give a moment for the state to update
@@ -218,9 +218,9 @@ test.describe("URL Routing", () => {
       // Click session link
       await app.taskDetails.clickSessionLink(0)
 
-      // URL should have both: path for task and hash for session
-      await expect.poll(() => app.page.url()).toContain(`/issue/${taskId}`)
-      await expect.poll(() => app.page.url()).toMatch(/#session=[a-zA-Z0-9-]+/)
+      // URL should have session path (task dialog uses /issue/{id}, session uses /session/{id})
+      // Note: When both are open, the session path takes precedence since it's the last navigation
+      await expect.poll(() => app.page.url()).toMatch(/\/session\/[a-zA-Z0-9-]+/)
 
       // Both dialog and right panel should be visible
       await expect(app.taskDetails.dialog).toBeVisible()

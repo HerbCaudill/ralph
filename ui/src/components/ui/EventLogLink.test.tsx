@@ -3,14 +3,16 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { EventLogLink, containsEventLogRef } from "./EventLogLink"
 
 describe("EventLogLink", () => {
-  const originalHash = window.location.hash
+  let pushStateSpy: ReturnType<typeof vi.spyOn>
+  let dispatchEventSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    window.location.hash = ""
+    pushStateSpy = vi.spyOn(window.history, "pushState").mockImplementation(() => {})
+    dispatchEventSpy = vi.spyOn(window, "dispatchEvent").mockImplementation(() => true)
   })
 
   afterEach(() => {
-    window.location.hash = originalHash
+    vi.restoreAllMocks()
   })
 
   describe("rendering", () => {
@@ -24,7 +26,15 @@ describe("EventLogLink", () => {
       expect(container.textContent).toBe("")
     })
 
-    it("converts session reference to clickable link (new format)", () => {
+    it("converts session path reference to clickable link (new format)", () => {
+      render(<EventLogLink>Session: /session/default-1706123456789</EventLogLink>)
+
+      const link = screen.getByRole("button", { name: "View session default-1706123456789" })
+      expect(link).toBeInTheDocument()
+      expect(link).toHaveTextContent("/session/default-1706123456789")
+    })
+
+    it("converts legacy #session= reference to clickable link (backward compatibility)", () => {
       render(<EventLogLink>Session: #session=default-1706123456789</EventLogLink>)
 
       const link = screen.getByRole("button", { name: "View session default-1706123456789" })
@@ -123,23 +133,44 @@ describe("EventLogLink", () => {
   })
 
   describe("click handling", () => {
-    it("navigates to session hash when clicking new format", () => {
+    it("navigates to session path when clicking new format", () => {
+      render(<EventLogLink>Click /session/default-123 here</EventLogLink>)
+
+      const link = screen.getByRole("button", { name: "View session default-123" })
+      fireEvent.click(link)
+
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { sessionId: "default-123" },
+        "",
+        "/session/default-123",
+      )
+      expect(dispatchEventSpy).toHaveBeenCalled()
+    })
+
+    it("navigates to session path when clicking legacy #session= format", () => {
       render(<EventLogLink>Click #session=default-123 here</EventLogLink>)
 
       const link = screen.getByRole("button", { name: "View session default-123" })
       fireEvent.click(link)
 
-      expect(window.location.hash).toBe("#session=default-123")
+      // Should use new /session/{id} path format when navigating
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { sessionId: "default-123" },
+        "",
+        "/session/default-123",
+      )
+      expect(dispatchEventSpy).toHaveBeenCalled()
     })
 
-    it("navigates to session hash when clicking legacy format", () => {
+    it("navigates to session path when clicking legacy #eventlog= format", () => {
       render(<EventLogLink>Click #eventlog=abcdef12 here</EventLogLink>)
 
       const link = screen.getByRole("button", { name: "View session abcdef12" })
       fireEvent.click(link)
 
-      // Should use new session= format when navigating
-      expect(window.location.hash).toBe("#session=abcdef12")
+      // Should use new /session/{id} path format when navigating
+      expect(pushStateSpy).toHaveBeenCalledWith({ sessionId: "abcdef12" }, "", "/session/abcdef12")
+      expect(dispatchEventSpy).toHaveBeenCalled()
     })
 
     it("stops event propagation when clicking session link", () => {
@@ -147,7 +178,7 @@ describe("EventLogLink", () => {
 
       render(
         <div onClick={parentClick}>
-          <EventLogLink>Click #session=default-123 here</EventLogLink>
+          <EventLogLink>Click /session/default-123 here</EventLogLink>
         </div>,
       )
 
@@ -160,13 +191,19 @@ describe("EventLogLink", () => {
 })
 
 describe("containsEventLogRef", () => {
-  it("returns true for text containing a valid session reference (new format)", () => {
+  it("returns true for text containing a valid session path reference (new format)", () => {
+    expect(containsEventLogRef("Session: /session/default-123")).toBe(true)
+    expect(containsEventLogRef("/session/abc123")).toBe(true)
+    expect(containsEventLogRef("See /session/MySession-2025 for details")).toBe(true)
+  })
+
+  it("returns true for text containing a valid legacy #session= reference", () => {
     expect(containsEventLogRef("Session: #session=default-123")).toBe(true)
     expect(containsEventLogRef("#session=abc123")).toBe(true)
     expect(containsEventLogRef("See #session=MySession-2025 for details")).toBe(true)
   })
 
-  it("returns true for text containing a valid legacy eventlog reference", () => {
+  it("returns true for text containing a valid legacy #eventlog= reference", () => {
     expect(containsEventLogRef("Event log: #eventlog=abcdef12")).toBe(true)
     expect(containsEventLogRef("#eventlog=12345678")).toBe(true)
     expect(containsEventLogRef("See #eventlog=ABCDEF00 for details")).toBe(true)
@@ -183,5 +220,6 @@ describe("containsEventLogRef", () => {
   it("returns false for partial matches", () => {
     expect(containsEventLogRef("#session=")).toBe(false)
     expect(containsEventLogRef("session=default-123")).toBe(false) // missing #
+    expect(containsEventLogRef("session/default-123")).toBe(false) // missing leading /
   })
 })

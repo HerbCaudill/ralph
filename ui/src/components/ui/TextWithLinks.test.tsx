@@ -4,18 +4,21 @@ import { TextWithLinks } from "./TextWithLinks"
 import { useAppStore } from "@/store"
 
 describe("TextWithLinks", () => {
-  const originalHash = window.location.hash
+  let pushStateSpy: ReturnType<typeof vi.spyOn>
+  let dispatchEventSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     // Reset store before each test
     useAppStore.getState().reset()
     // Set a default issue prefix for tests
     useAppStore.getState().setIssuePrefix("rui")
-    window.location.hash = ""
+    // Spy on pushState and dispatchEvent
+    pushStateSpy = vi.spyOn(window.history, "pushState").mockImplementation(() => {})
+    dispatchEventSpy = vi.spyOn(window, "dispatchEvent").mockImplementation(() => true)
   })
 
   afterEach(() => {
-    window.location.hash = originalHash
+    vi.restoreAllMocks()
   })
 
   describe("basic rendering", () => {
@@ -51,7 +54,15 @@ describe("TextWithLinks", () => {
   })
 
   describe("session linking", () => {
-    it("converts session reference to clickable link (new format)", () => {
+    it("converts session path reference to clickable link (new format)", () => {
+      render(<TextWithLinks>Session: /session/default-1706123456789</TextWithLinks>)
+
+      const link = screen.getByRole("button", { name: "View session default-1706123456789" })
+      expect(link).toBeInTheDocument()
+      expect(link).toHaveTextContent("/session/default-1706123456789")
+    })
+
+    it("converts legacy #session= reference to clickable link", () => {
       render(<TextWithLinks>Session: #session=default-1706123456789</TextWithLinks>)
 
       const link = screen.getByRole("button", { name: "View session default-1706123456789" })
@@ -59,7 +70,7 @@ describe("TextWithLinks", () => {
       expect(link).toHaveTextContent("#session=default-1706123456789")
     })
 
-    it("converts legacy eventlog reference to clickable link", () => {
+    it("converts legacy #eventlog= reference to clickable link", () => {
       render(<TextWithLinks>Event log: #eventlog=abcdef12</TextWithLinks>)
 
       const link = screen.getByRole("button", { name: "View session abcdef12" })
@@ -67,23 +78,44 @@ describe("TextWithLinks", () => {
       expect(link).toHaveTextContent("#eventlog=abcdef12")
     })
 
-    it("navigates to session hash when clicked (new format)", () => {
+    it("navigates to session path when clicked (new format)", () => {
+      render(<TextWithLinks>Click /session/default-123 here</TextWithLinks>)
+
+      const link = screen.getByRole("button", { name: "View session default-123" })
+      fireEvent.click(link)
+
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { sessionId: "default-123" },
+        "",
+        "/session/default-123",
+      )
+      expect(dispatchEventSpy).toHaveBeenCalled()
+    })
+
+    it("navigates to session path when clicking legacy #session= format", () => {
       render(<TextWithLinks>Click #session=default-123 here</TextWithLinks>)
 
       const link = screen.getByRole("button", { name: "View session default-123" })
       fireEvent.click(link)
 
-      expect(window.location.hash).toBe("#session=default-123")
+      // Should use new /session/{id} path format when navigating
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { sessionId: "default-123" },
+        "",
+        "/session/default-123",
+      )
+      expect(dispatchEventSpy).toHaveBeenCalled()
     })
 
-    it("navigates to session hash when clicking legacy format", () => {
+    it("navigates to session path when clicking legacy #eventlog= format", () => {
       render(<TextWithLinks>Click #eventlog=abcdef12 here</TextWithLinks>)
 
       const link = screen.getByRole("button", { name: "View session abcdef12" })
       fireEvent.click(link)
 
-      // Should use new session= format when navigating
-      expect(window.location.hash).toBe("#session=abcdef12")
+      // Should use new /session/{id} path format when navigating
+      expect(pushStateSpy).toHaveBeenCalledWith({ sessionId: "abcdef12" }, "", "/session/abcdef12")
+      expect(dispatchEventSpy).toHaveBeenCalled()
     })
 
     it("handles uppercase hex characters in legacy format", () => {
@@ -96,7 +128,7 @@ describe("TextWithLinks", () => {
 
   describe("mixed content", () => {
     it("handles both task IDs and session references in same text", () => {
-      render(<TextWithLinks>Task rui-48s has session #session=default-123</TextWithLinks>)
+      render(<TextWithLinks>Task rui-48s has session /session/default-123</TextWithLinks>)
 
       const taskLink = screen.getByRole("link", { name: "View task rui-48s" })
       const sessionLink = screen.getByRole("button", { name: "View session default-123" })
@@ -107,7 +139,11 @@ describe("TextWithLinks", () => {
 
       // Click session link
       fireEvent.click(sessionLink)
-      expect(window.location.hash).toBe("#session=default-123")
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { sessionId: "default-123" },
+        "",
+        "/session/default-123",
+      )
     })
 
     it("handles task IDs with legacy eventlog references", () => {
@@ -122,17 +158,17 @@ describe("TextWithLinks", () => {
 
     it("preserves text between links", () => {
       const { container } = render(
-        <TextWithLinks>Start rui-1 middle #session=session-1 end</TextWithLinks>,
+        <TextWithLinks>Start rui-1 middle /session/session-1 end</TextWithLinks>,
       )
 
       // Task ID displayed without prefix
-      expect(container.textContent).toBe("Start 1 middle #session=session-1 end")
+      expect(container.textContent).toBe("Start 1 middle /session/session-1 end")
     })
 
     it("handles multiple of each type", () => {
       render(
         <TextWithLinks>
-          Tasks rui-1 and rui-2 with sessions #session=session-1 and #session=session-2
+          Tasks rui-1 and rui-2 with sessions /session/session-1 and /session/session-2
         </TextWithLinks>,
       )
 
@@ -163,7 +199,7 @@ describe("TextWithLinks", () => {
   describe("edge cases", () => {
     it("does not linkify task IDs when no prefix is configured", () => {
       useAppStore.getState().setIssuePrefix(null)
-      render(<TextWithLinks>Check rui-48s and #session=default-123</TextWithLinks>)
+      render(<TextWithLinks>Check rui-48s and /session/default-123</TextWithLinks>)
 
       // Task link should not exist (no prefix)
       expect(screen.queryByRole("link", { name: "View task rui-48s" })).not.toBeInTheDocument()
@@ -179,24 +215,42 @@ describe("TextWithLinks", () => {
       expect(buttons).toHaveLength(0)
     })
 
-    it("handles closing comment format with new session format", () => {
+    it("handles closing comment format with new session path format", () => {
+      render(<TextWithLinks>Closed. Session log: /session/default-123</TextWithLinks>)
+
+      const link = screen.getByRole("button", { name: "View session default-123" })
+      expect(link).toBeInTheDocument()
+
+      fireEvent.click(link)
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { sessionId: "default-123" },
+        "",
+        "/session/default-123",
+      )
+    })
+
+    it("handles closing comment format with legacy #session= format", () => {
       render(<TextWithLinks>Closed. Session: #session=default-123</TextWithLinks>)
 
       const link = screen.getByRole("button", { name: "View session default-123" })
       expect(link).toBeInTheDocument()
 
       fireEvent.click(link)
-      expect(window.location.hash).toBe("#session=default-123")
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { sessionId: "default-123" },
+        "",
+        "/session/default-123",
+      )
     })
 
-    it("handles closing comment format with legacy eventlog format", () => {
+    it("handles closing comment format with legacy #eventlog= format", () => {
       render(<TextWithLinks>Closed. Event log: #eventlog=abcdef12</TextWithLinks>)
 
       const link = screen.getByRole("button", { name: "View session abcdef12" })
       expect(link).toBeInTheDocument()
 
       fireEvent.click(link)
-      expect(window.location.hash).toBe("#session=abcdef12")
+      expect(pushStateSpy).toHaveBeenCalledWith({ sessionId: "abcdef12" }, "", "/session/abcdef12")
     })
   })
 })
