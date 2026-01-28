@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk"
-import { ClaudeAdapter, type QueryFn } from "./ClaudeAdapter"
+import { ClaudeAdapter, buildCwdContext, type QueryFn } from "./ClaudeAdapter"
 import type {
   AgentEvent,
   AgentMessageEvent,
@@ -683,7 +683,7 @@ describe("ClaudeAdapter", () => {
         expect.objectContaining({
           options: expect.objectContaining({
             systemPrompt: expect.stringMatching(
-              /## Environment\n\nWorking directory: \/custom\/path\n\nYou are a helpful assistant\./,
+              /## Environment\n\nWorking directory: \/custom\/path\n\nIMPORTANT:[\s\S]*You are a helpful assistant\./,
             ),
           }),
         }),
@@ -698,13 +698,23 @@ describe("ClaudeAdapter", () => {
       adapter.send({ type: "user_message", content: "Hello" })
       await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
 
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          options: expect.objectContaining({
-            systemPrompt: "## Environment\n\nWorking directory: /some/path",
-          }),
-        }),
-      )
+      const calledOptions = mockQuery.mock.calls[0]?.[0]?.options
+      expect(calledOptions?.systemPrompt).toContain("Working directory: /some/path")
+      expect(calledOptions?.systemPrompt).toContain("IMPORTANT: All file paths MUST be relative")
+      expect(calledOptions?.systemPrompt).toContain("/some/path/")
+      expect(calledOptions?.systemPrompt).not.toMatch(/You are a/)
+    })
+
+    describe("buildCwdContext", () => {
+      it("contains the Environment header, cwd, and path instructions", () => {
+        const result = buildCwdContext("/foo/bar")
+
+        expect(result).toContain("## Environment")
+        expect(result).toContain("/foo/bar")
+        expect(result).toContain("IMPORTANT")
+        expect(result).toContain("/foo/bar/")
+        expect(result).toMatch(/\n$/)
+      })
     })
 
     it("does not add working directory context when cwd is not provided", async () => {

@@ -3,6 +3,7 @@ import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { loadTaskChatSkill } from "./systemPrompt.js"
 import type { BdProxy } from "./BdProxy.js"
 import { findClaudeExecutable } from "./findClaudeExecutable.js"
+import { buildCwdContext } from "./ClaudeAdapter.js"
 
 /**
  * Manages task chat conversations with Claude Agent SDK.
@@ -292,7 +293,7 @@ export class TaskChatManager extends EventEmitter {
     }
 
     // Add working directory context at the beginning of the prompt
-    const cwdContext = `## Environment\n\nWorking directory: ${this.options.cwd}\n\n`
+    const cwdContext = buildCwdContext(this.options.cwd)
     basePrompt = cwdContext + basePrompt
 
     // Add current task context if BdProxy is available

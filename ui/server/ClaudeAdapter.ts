@@ -38,6 +38,23 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 /** Default thinking budget in tokens when extended thinking is enabled */
 const DEFAULT_MAX_THINKING_TOKENS = 10000
 
+/**
+ * Build the working directory context string for system prompts.
+ * Provides explicit instructions to prevent Claude from constructing incorrect absolute paths.
+ */
+export function buildCwdContext(cwd: string): string {
+  return [
+    `## Environment`,
+    ``,
+    `Working directory: ${cwd}`,
+    ``,
+    `IMPORTANT: All file paths MUST be relative to the working directory above, or absolute paths starting with exactly \`${cwd}/\`.`,
+    `Never construct absolute paths by guessing usernames, directory structures, or paths from code snippets.`,
+    `If a file path fails, retry using a path relative to the working directory.`,
+    ``,
+  ].join("\n")
+}
+
 export interface ClaudeAdapterOptions {
   /** Override the SDK query function (for testing) */
   queryFn?: QueryFn
@@ -342,7 +359,7 @@ export class ClaudeAdapter extends AgentAdapter {
     // Build system prompt with working directory context
     let systemPrompt = options.systemPrompt
     if (options.cwd) {
-      const cwdContext = `## Environment\n\nWorking directory: ${options.cwd}\n\n`
+      const cwdContext = buildCwdContext(options.cwd)
       systemPrompt = systemPrompt ? cwdContext + systemPrompt : cwdContext.trim()
     }
 
