@@ -14,6 +14,7 @@ vi.mock("@/lib/persistence", () => ({
     listSessionsByWorkspace: vi.fn().mockResolvedValue([]),
     getSessionsForTaskInWorkspace: vi.fn().mockResolvedValue([]),
     getSessionMetadata: vi.fn().mockResolvedValue(undefined),
+    getSession: vi.fn().mockResolvedValue(undefined),
     getEventsForSession: vi.fn().mockResolvedValue([]),
     saveSession: vi.fn().mockResolvedValue(undefined),
   },
@@ -412,7 +413,7 @@ describe("useSessions", () => {
       const timestamp = Date.now()
       const metadata = createValidMetadata("session-1", timestamp, "task-1")
 
-      mockDatabase.getSessionMetadata.mockResolvedValue(metadata)
+      mockDatabase.getSession.mockResolvedValue(metadata)
       mockDatabase.getEventsForSession.mockResolvedValue([
         {
           id: "event-1",
@@ -459,8 +460,41 @@ describe("useSessions", () => {
       expect(result.current.eventsError).toBeNull()
     })
 
+    it("falls back to embedded events when events table is empty", async () => {
+      const timestamp = Date.now()
+      const embeddedEvents = [
+        { type: "user", message: { content: "Hello" }, timestamp: timestamp + 100 },
+        {
+          type: "assistant",
+          message: { content: [{ type: "text", text: "Hi!" }] },
+          timestamp: timestamp + 200,
+        },
+      ]
+      const sessionWithEmbeddedEvents = {
+        ...createValidMetadata("session-1", timestamp, "task-1"),
+        events: embeddedEvents,
+      }
+
+      mockDatabase.getSession.mockResolvedValue(sessionWithEmbeddedEvents)
+      // Events table returns empty — simulates pre-v3 or missing events
+      mockDatabase.getEventsForSession.mockResolvedValue([])
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      const sessionWithEvents = await result.current.loadSessionEvents("session-1")
+
+      expect(sessionWithEvents).not.toBeNull()
+      expect(sessionWithEvents?.events).toHaveLength(2)
+      expect(sessionWithEvents?.events[0].type).toBe("user")
+      expect(sessionWithEvents?.events[1].type).toBe("assistant")
+    })
+
     it("returns null and sets error when session not found", async () => {
-      mockDatabase.getSessionMetadata.mockResolvedValue(undefined)
+      mockDatabase.getSession.mockResolvedValue(undefined)
 
       const { result } = renderHook(() => useSessions())
 
@@ -478,7 +512,7 @@ describe("useSessions", () => {
     })
 
     it("handles database errors gracefully", async () => {
-      mockDatabase.getSessionMetadata.mockRejectedValue(new Error("Database error"))
+      mockDatabase.getSession.mockRejectedValue(new Error("Database error"))
 
       const { result } = renderHook(() => useSessions())
 
@@ -505,7 +539,7 @@ describe("useSessions", () => {
         resolveMetadata = resolve
       })
 
-      mockDatabase.getSessionMetadata.mockReturnValue(metadataPromise)
+      mockDatabase.getSession.mockReturnValue(metadataPromise)
       mockDatabase.getEventsForSession.mockResolvedValue([])
 
       const { result } = renderHook(() => useSessions())
@@ -540,7 +574,7 @@ describe("useSessions", () => {
       const timestamp = Date.now()
       const metadata = createValidMetadata("session-1", timestamp, "task-1")
 
-      mockDatabase.getSessionMetadata.mockResolvedValue(metadata)
+      mockDatabase.getSession.mockResolvedValue(metadata)
       mockDatabase.getEventsForSession.mockResolvedValue([])
 
       const { result } = renderHook(() => useSessions())

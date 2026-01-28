@@ -163,19 +163,38 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
       try {
         await eventDatabase.init()
 
-        // Get session metadata
-        const metadata = await eventDatabase.getSessionMetadata(sessionId)
-        if (!metadata) {
+        // Get full session record (includes optional embedded events for backward compat)
+        const fullSession = await eventDatabase.getSession(sessionId)
+        if (!fullSession) {
+          console.warn(`[useSessions] loadSessionEvents: session not found for ${sessionId}`)
           setEventsError("Session not found")
           setSelectedSession(null)
           return null
         }
 
-        // Get events for this session from the events table
+        // Use the full record as metadata (strip events for summary later)
+        const metadata = fullSession
+
+        // Get events for this session from the events table (v3+ normalized storage)
         const persistedEvents = await eventDatabase.getEventsForSession(sessionId)
 
-        // Convert PersistedEvent to ChatEvent
-        const events = persistedEvents.map(pe => pe.event)
+        let events: ChatEvent[]
+        if (persistedEvents.length > 0) {
+          // Events found in the events table (v3+ schema)
+          events = persistedEvents.map(pe => pe.event)
+        } else if (fullSession.events && fullSession.events.length > 0) {
+          // Fallback: events embedded in the session record (pre-v3 schema or legacy data)
+          console.debug(
+            `[useSessions] loadSessionEvents: using ${fullSession.events.length} embedded events for session ${sessionId} (no events in events table)`,
+          )
+          events = fullSession.events
+        } else {
+          // No events found anywhere
+          console.warn(
+            `[useSessions] loadSessionEvents: session ${sessionId} has eventCount=${metadata.eventCount} in metadata but no events found in events table or session record.`,
+          )
+          events = []
+        }
 
         // Derive task ID from events
         let derivedTaskId: string | undefined

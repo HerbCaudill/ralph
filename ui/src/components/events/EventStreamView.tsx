@@ -111,9 +111,18 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       return null
     }, [isRunning, isViewingLatest, isViewingHistorical, hasContent])
 
-    // Show "Ralph is not running" with Start button when stopped and connected
-    // Show spinner when starting or when not connected (waiting for connection)
+    // Show appropriate empty state based on context:
+    // - Historical session with no events: show "no events" message
+    // - Live session, stopped and connected: show Start button
+    // - Otherwise: show spinner (loading/connecting)
     const emptyState = useMemo(() => {
+      if (isViewingHistorical) {
+        return (
+          <div className="text-muted-foreground flex h-full items-center justify-center">
+            <span className="text-sm">No events found for this session</span>
+          </div>
+        )
+      }
       if (ralphStatus === "stopped" && isConnected) {
         return (
           <div className="flex h-full flex-col items-center justify-center gap-4">
@@ -135,7 +144,7 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
           <TopologySpinner />
         </div>
       )
-    }, [ralphStatus, isConnected])
+    }, [ralphStatus, isConnected, isViewingHistorical])
 
     const loadingHistoricalState = (
       <div className="text-muted-foreground flex h-full items-center justify-center">
