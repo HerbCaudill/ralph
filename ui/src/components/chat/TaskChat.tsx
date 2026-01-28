@@ -90,6 +90,7 @@ export function TaskChat({
           className="h-full overflow-hidden pb-[72px]"
           ariaLabel="Task chat messages"
           dependencies={[events]}
+          scrollButtonClassName="bottom-[76px]"
           emptyState={
             <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
               <IconMessageChatbot className="size-8 opacity-50" />

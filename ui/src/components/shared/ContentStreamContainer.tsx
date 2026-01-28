@@ -26,6 +26,7 @@ export function ContentStreamContainer({
   dependencies = [],
   emptyState,
   autoScrollEnabled = true,
+  scrollButtonClassName,
 }: ContentStreamContainerProps) {
   const { containerRef, isAtBottom, handleScroll, handleUserScroll, scrollToBottom } =
     useAutoScroll({
@@ -55,6 +56,7 @@ export function ContentStreamContainer({
         isVisible={!isAtBottom}
         onClick={scrollToBottom}
         ariaLabel={`Scroll to latest ${ariaLabel.toLowerCase()}`}
+        className={scrollButtonClassName}
       />
     </div>
   )
@@ -77,4 +79,6 @@ export type ContentStreamContainerProps = {
    * @default true
    */
   autoScrollEnabled?: boolean
+  /** Additional class names for the scroll-to-bottom button */
+  scrollButtonClassName?: string
 }
