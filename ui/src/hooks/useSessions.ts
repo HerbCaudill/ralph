@@ -31,6 +31,8 @@ export interface UseSessionsOptions {
   taskId?: string
   /** Optional workspace ID to filter sessions by (recommended for cross-workspace isolation) */
   workspaceId?: string
+  /** Include sessions without tasks (default: false) */
+  includeTaskless?: boolean
 }
 
 export interface UseSessionsResult {
@@ -101,7 +103,7 @@ function toSessionSummary(metadata: PersistedSession): SessionSummary | null {
  * (e.g., when viewing a historical session).
  */
 export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult {
-  const { taskId, workspaceId } = options
+  const { taskId, workspaceId, includeTaskless = false } = options
 
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -249,7 +251,11 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
     // This prevents showing sessions with undefined titles
     if (!tasks.length) return sessions
 
-    return sessions.map(session => {
+    // Filter out sessions without tasks unless includeTaskless is true
+    const filteredSessions =
+      includeTaskless ? sessions : sessions.filter(session => session.metadata?.taskId)
+
+    return filteredSessions.map(session => {
       // If we have a taskId, look up the title from the current tasks
       if (session.metadata?.taskId) {
         const task = tasks.find((t: Task) => t.id === session.metadata?.taskId)
@@ -265,7 +271,7 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
       }
       return session
     })
-  }, [sessions, tasks])
+  }, [sessions, tasks, includeTaskless])
 
   return {
     sessions: enrichedSessions,

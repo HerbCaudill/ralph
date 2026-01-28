@@ -42,10 +42,14 @@ describe("useSessions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset store state to ensure test isolation
+    useAppStore.setState({ tasks: [] })
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    // Clean up store state
+    useAppStore.setState({ tasks: [] })
   })
 
   describe("initialization", () => {
@@ -647,7 +651,7 @@ describe("useSessions", () => {
       expect(result.current.sessions[0].metadata?.title).toBe("Task From Store")
     })
 
-    it("does not modify sessions without taskId", async () => {
+    it("filters out sessions without taskId by default", async () => {
       const timestamp = Date.now()
       // Session has no taskId
       mockDatabase.listAllSessions.mockResolvedValue([createValidMetadata("session-1", timestamp)])
@@ -662,7 +666,27 @@ describe("useSessions", () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      // Session without metadata should remain unchanged
+      // Session without taskId should be filtered out
+      expect(result.current.sessions).toHaveLength(0)
+    })
+
+    it("includes sessions without taskId when includeTaskless is true", async () => {
+      const timestamp = Date.now()
+      // Session has no taskId
+      mockDatabase.listAllSessions.mockResolvedValue([createValidMetadata("session-1", timestamp)])
+
+      useAppStore.setState({
+        tasks: [createTask("task-123", "Some Task")],
+      })
+
+      const { result } = renderHook(() => useSessions({ includeTaskless: true }))
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Session without taskId should be included
+      expect(result.current.sessions).toHaveLength(1)
       expect(result.current.sessions[0].metadata).toBeUndefined()
     })
 
@@ -741,6 +765,30 @@ describe("useSessions", () => {
       // Session without matching task should have undefined title
       expect(result.current.sessions[3].metadata?.taskId).toBe("task-unknown")
       expect(result.current.sessions[3].metadata?.title).toBeUndefined()
+    })
+
+    it("filters out sessions without taskId while keeping sessions with taskId", async () => {
+      const timestamp = Date.now()
+      mockDatabase.listAllSessions.mockResolvedValue([
+        createValidMetadata("session-with-task", timestamp, "task-1"),
+        createValidMetadata("session-without-task", timestamp + 1000),
+        createValidMetadata("session-with-task-2", timestamp + 2000, "task-2"),
+      ])
+
+      useAppStore.setState({
+        tasks: [createTask("task-1", "First Task"), createTask("task-2", "Second Task")],
+      })
+
+      const { result } = renderHook(() => useSessions())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // Only sessions with taskId should be returned
+      expect(result.current.sessions).toHaveLength(2)
+      expect(result.current.sessions[0].id).toBe("session-with-task")
+      expect(result.current.sessions[1].id).toBe("session-with-task-2")
     })
   })
 })
