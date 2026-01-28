@@ -1245,7 +1245,7 @@ export const useAppStore = create<AppState & AppActions>()(
       setTaskInputDraft: draft => set({ taskInputDraft: draft }),
       setTaskChatInputDraft: draft => set({ taskChatInputDraft: draft }),
 
-      // Comment drafts per task
+      // Comment drafts per task (capped at 50 entries to prevent unbounded growth)
       setCommentDraft: (taskId, draft) =>
         set(state => {
           if (!draft) {
@@ -1253,12 +1253,20 @@ export const useAppStore = create<AppState & AppActions>()(
             const { [taskId]: _, ...rest } = state.commentDrafts
             return { commentDrafts: rest }
           }
-          return {
-            commentDrafts: {
-              ...state.commentDrafts,
-              [taskId]: draft,
-            },
+          const updated = {
+            ...state.commentDrafts,
+            [taskId]: draft,
           }
+          // Evict oldest entries (by insertion order) if over the cap
+          const MAX_COMMENT_DRAFTS = 50
+          const keys = Object.keys(updated)
+          if (keys.length > MAX_COMMENT_DRAFTS) {
+            const excess = keys.length - MAX_COMMENT_DRAFTS
+            for (let i = 0; i < excess; i++) {
+              delete updated[keys[i]]
+            }
+          }
+          return { commentDrafts: updated }
         }),
       clearCommentDraft: taskId =>
         set(state => {
