@@ -27,11 +27,37 @@ function generateSessionId(instanceId: string, startedAt: number): string {
 }
 
 /**
- * Generates a unique event ID based on session ID and event index.
- * Format: "{sessionId}-event-{index}"
+ * Simple hash function for generating a short content fingerprint.
+ * Uses djb2 algorithm - fast and produces reasonable distribution.
  */
-function generateEventId(sessionId: string, eventIndex: number): string {
-  return `${sessionId}-event-${eventIndex}`
+function hashString(str: string): string {
+  let hash = 5381
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 33) ^ str.charCodeAt(i)
+  }
+  // Convert to positive number and to base36 for shorter strings
+  return (hash >>> 0).toString(36)
+}
+
+/**
+ * Generates a stable event ID from an event.
+ *
+ * Uses the event's built-in `id` field if present (server-assigned UUID),
+ * otherwise falls back to a content-based ID using session ID, timestamp, type,
+ * and a hash of the event content. This ensures uniqueness even when two events
+ * have the same timestamp and type (e.g., multiple tool_use events in the same ms).
+ *
+ * This is more robust than index-based IDs which break if events are reordered/removed.
+ */
+function getEventId(event: ChatEvent, sessionId: string): string {
+  // Prefer server-assigned ID if available
+  if (event.id) {
+    return event.id
+  }
+  // Fallback: generate stable ID from content
+  // Include a content hash to distinguish events with same timestamp+type
+  const contentHash = hashString(JSON.stringify(event))
+  return `${sessionId}-${event.timestamp}-${event.type ?? "unknown"}-${contentHash}`
 }
 
 /**
@@ -88,7 +114,7 @@ export function useTaskChatPersistence(
   const currentSessionRef = useRef<{
     id: string
     createdAt: number
-    lastSavedEventCount: number
+    savedEventIds: Set<string>
     lastSavedMessageCount: number
   } | null>(null)
 
@@ -108,18 +134,15 @@ export function useTaskChatPersistence(
   /**
    * Build a PersistedEvent from a ChatEvent.
    */
-  const buildPersistedEvent = useCallback(
-    (event: ChatEvent, eventIndex: number, sessionId: string): PersistedEvent => {
-      return {
-        id: generateEventId(sessionId, eventIndex),
-        sessionId,
-        timestamp: event.timestamp ?? Date.now(),
-        eventType: getEventType(event),
-        event,
-      }
-    },
-    [],
-  )
+  const buildPersistedEvent = useCallback((event: ChatEvent, sessionId: string): PersistedEvent => {
+    return {
+      id: getEventId(event, sessionId),
+      sessionId,
+      timestamp: event.timestamp ?? Date.now(),
+      eventType: getEventType(event),
+      event,
+    }
+  }, [])
 
   /**
    * Build a PersistedTaskChatSession from the current state.
@@ -147,18 +170,21 @@ export function useTaskChatPersistence(
 
   /**
    * Save a single event to IndexedDB.
+   * Returns the event ID if saved successfully, null otherwise.
    */
   const saveEvent = useCallback(
-    async (event: ChatEvent, eventIndex: number, sessionId: string): Promise<void> => {
+    async (event: ChatEvent, sessionId: string): Promise<string | null> => {
       try {
-        const persistedEvent = buildPersistedEvent(event, eventIndex, sessionId)
+        const persistedEvent = buildPersistedEvent(event, sessionId)
         await eventDatabase.saveEvent(persistedEvent)
+        return persistedEvent.id
       } catch (error) {
         console.error("[useTaskChatPersistence] Failed to save event:", error, {
-          eventIndex,
+          eventId: getEventId(event, sessionId),
           sessionId,
           eventType: event.type,
         })
+        return null
       }
     },
     [buildPersistedEvent],
@@ -262,11 +288,14 @@ export function useTaskChatPersistence(
       const timestampStr = parts[parts.length - 1]
       const createdAt = parseInt(timestampStr, 10) || Date.now()
 
+      // Mark all existing events as already saved (using their stable IDs)
+      const savedEventIds = new Set(events.map(e => getEventId(e, currentStoreSessionId)))
+
       currentSessionRef.current = {
         id: currentStoreSessionId,
         createdAt,
         // Treat existing data as already saved to avoid immediate re-save
-        lastSavedEventCount: events.length,
+        savedEventIds,
         lastSavedMessageCount: messages.length,
       }
       setCurrentSessionId(currentStoreSessionId)
@@ -280,7 +309,7 @@ export function useTaskChatPersistence(
     currentSessionRef.current = {
       id: newId,
       createdAt,
-      lastSavedEventCount: 0,
+      savedEventIds: new Set<string>(),
       lastSavedMessageCount: 0,
     }
     setCurrentSessionId(newId)
@@ -291,31 +320,32 @@ export function useTaskChatPersistence(
   /**
    * Auto-save new events to the events store (immediately, no debounce).
    * Events are persisted individually for efficient append-only writes.
+   *
+   * Uses stable event IDs (from server or content-based) instead of array indices
+   * to correctly handle:
+   * - Events with server-assigned UUIDs
+   * - Array reorders/mutations
+   * - Session switches with stale event arrays
+   * - HMR/duplicate processing
    */
   useEffect(() => {
     if (!enabled) return
     if (!currentSessionRef.current) return
 
     const session = currentSessionRef.current
-    const hasNewEvents = events.length > session.lastSavedEventCount
 
-    if (!hasNewEvents) return
+    // Find events that haven't been saved yet (by their stable ID)
+    const unsavedEvents = events.filter(e => !session.savedEventIds.has(getEventId(e, session.id)))
+
+    if (unsavedEvents.length === 0) return
 
     // Save new events (async, fire and forget)
     const saveNewEvents = async () => {
-      const newStartIndex = session.lastSavedEventCount
-      const newEvents = events.slice(newStartIndex)
-
-      for (let i = 0; i < newEvents.length; i++) {
-        const eventIndex = newStartIndex + i
-        await saveEvent(newEvents[i], eventIndex, session.id)
-      }
-
-      // Update tracking state
-      if (currentSessionRef.current) {
-        currentSessionRef.current = {
-          ...currentSessionRef.current,
-          lastSavedEventCount: events.length,
+      for (const event of unsavedEvents) {
+        const savedId = await saveEvent(event, session.id)
+        // Track saved event by its ID
+        if (savedId && currentSessionRef.current) {
+          currentSessionRef.current.savedEventIds.add(savedId)
         }
       }
     }

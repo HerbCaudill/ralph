@@ -515,4 +515,156 @@ describe("useTaskChatPersistence", () => {
       )
     })
   })
+
+  describe("event deduplication (ID-based tracking)", () => {
+    it("does not re-save events that have already been saved", async () => {
+      const events1: ChatEvent[] = [createUserEvent(1706123456789, "Hello")]
+
+      const { rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        { initialProps: { ...defaultOptions, messages: [], events: events1 } },
+      )
+
+      // Allow session to be created and first event to be saved
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(eventDatabase.saveEvent).toHaveBeenCalledTimes(1)
+
+      // Re-render with the same events (simulating React re-render or HMR)
+      rerender({ ...defaultOptions, messages: [], events: events1 })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // Should still be only 1 call - the event was already saved
+      expect(eventDatabase.saveEvent).toHaveBeenCalledTimes(1)
+    })
+
+    it("uses server-assigned event IDs when available", async () => {
+      const serverAssignedId = "server-uuid-12345"
+      const eventWithId: ChatEvent = {
+        id: serverAssignedId,
+        type: "user",
+        timestamp: 1706123456789,
+        message: { role: "user", content: "Hello" },
+      }
+
+      renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          messages: [],
+          events: [eventWithId],
+        }),
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // Should use the server-assigned ID
+      expect(eventDatabase.saveEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: serverAssignedId,
+        }),
+      )
+    })
+
+    it("generates stable fallback IDs based on content (not array index)", async () => {
+      const timestamp = 1706123456789
+      const events: ChatEvent[] = [createUserEvent(timestamp, "Hello")]
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          messages: [],
+          events,
+        }),
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      const sessionId = result.current.currentSessionId
+      // Fallback ID format: "{sessionId}-{timestamp}-{type}-{contentHash}"
+      // Content hash ensures uniqueness even for same timestamp+type
+      expect(eventDatabase.saveEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: expect.stringMatching(new RegExp(`^${sessionId}-${timestamp}-user-[a-z0-9]+$`)),
+        }),
+      )
+    })
+
+    it("generates different IDs for events with same timestamp and type but different content", async () => {
+      // Clear mocks for this specific test
+      vi.mocked(eventDatabase.saveEvent).mockClear()
+
+      // Two events at the same timestamp with same type but different content
+      const timestamp = 1706123456789
+      const event1: ChatEvent = {
+        type: "tool_use",
+        timestamp,
+        tool: "Read",
+        input: { file: "foo.txt" },
+      }
+      const event2: ChatEvent = {
+        type: "tool_use",
+        timestamp,
+        tool: "Write",
+        input: { file: "bar.txt" },
+      }
+
+      renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          messages: [],
+          events: [event1, event2],
+        }),
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // Collect all unique IDs that were saved
+      const calls = vi.mocked(eventDatabase.saveEvent).mock.calls
+      const savedIds = new Set(calls.map(call => call[0].id))
+
+      // Should have exactly 2 unique IDs (events have different content hashes)
+      expect(savedIds.size).toBe(2)
+
+      // Both IDs should be distinct (content-based hashing distinguishes them)
+      const idsArray = Array.from(savedIds)
+      expect(idsArray[0]).not.toBe(idsArray[1])
+    })
+
+    it("correctly saves new events added to the array", async () => {
+      const events1: ChatEvent[] = [createUserEvent(1706123456789, "Hello")]
+
+      const { rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        { initialProps: { ...defaultOptions, messages: [], events: events1 } },
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      expect(eventDatabase.saveEvent).toHaveBeenCalledTimes(1)
+
+      // Add a new event
+      const events2 = [...events1, createAssistantEvent(1706123456790, "Hi there")]
+      rerender({ ...defaultOptions, messages: [], events: events2 })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // Should have saved 2 events total (1 original + 1 new)
+      expect(eventDatabase.saveEvent).toHaveBeenCalledTimes(2)
+    })
+  })
 })
