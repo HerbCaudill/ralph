@@ -1,0 +1,219 @@
+/**
+ * Generic test runner that executes suites sequentially, parses output,
+ * bails on first failure, and prints a concise summary.
+ *
+ * Each suite defines a command to run and a parser type for extracting
+ * test counts from the output.
+ */
+import { spawn } from "node:child_process"
+
+/** ANSI style helpers */
+const style = {
+  bold: s => `\x1b[1m${s}\x1b[0m`,
+  dim: s => `\x1b[2m${s}\x1b[0m`,
+  green: s => `\x1b[32m${s}\x1b[0m`,
+  red: s => `\x1b[31m${s}\x1b[0m`,
+  yellow: s => `\x1b[33m${s}\x1b[0m`,
+}
+
+/** Strip ANSI escape codes from a string. */
+function stripAnsi(str) {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*m/g, "")
+}
+
+/**
+ * Parse vitest JSON output to extract test counts.
+ * With --reporter=json, vitest outputs a JSON object to stdout.
+ */
+function parseVitestOutput(output) {
+  const counts = { passed: 0, failed: 0, skipped: 0 }
+
+  const jsonMatch = output.match(/\{[\s\S]*"numPassedTests"[\s\S]*\}/)
+  if (jsonMatch) {
+    try {
+      const json = JSON.parse(jsonMatch[0])
+      counts.passed = json.numPassedTests || 0
+      counts.failed = json.numFailedTests || 0
+      counts.skipped = json.numPendingTests || 0
+      return counts
+    } catch {
+      // Fall through to text parsing
+    }
+  }
+
+  const clean = stripAnsi(output)
+  const testsMatch = clean.match(/Tests\s+(?:(\d+)\s+failed\s*\|\s*)?(\d+)\s+passed/i)
+  if (testsMatch) {
+    counts.failed = parseInt(testsMatch[1] || "0", 10)
+    counts.passed = parseInt(testsMatch[2] || "0", 10)
+  }
+  const skippedMatch = clean.match(/(\d+)\s+skipped/i)
+  if (skippedMatch) {
+    counts.skipped = parseInt(skippedMatch[1], 10)
+  }
+
+  return counts
+}
+
+/**
+ * Parse playwright output to extract test counts.
+ * Playwright outputs: "  6 passed (30.2s)" or "  1 failed"
+ */
+function parsePlaywrightOutput(output) {
+  const counts = { passed: 0, failed: 0, skipped: 0 }
+  const clean = stripAnsi(output)
+
+  const passedMatch = clean.match(/(\d+)\s+passed/i)
+  const failedMatch = clean.match(/(\d+)\s+failed/i)
+  const skippedMatch = clean.match(/(\d+)\s+skipped/i)
+
+  if (passedMatch) counts.passed = parseInt(passedMatch[1], 10)
+  if (failedMatch) counts.failed = parseInt(failedMatch[1], 10)
+  if (skippedMatch) counts.skipped = parseInt(skippedMatch[1], 10)
+
+  return counts
+}
+
+/** Built-in output parsers, keyed by name. */
+const parsers = {
+  vitest: parseVitestOutput,
+  playwright: parsePlaywrightOutput,
+}
+
+/**
+ * Run a single command and capture its output.
+ *
+ * Returns { exitCode, duration, output, passed, failed, skipped }.
+ */
+function runCommand(
+  /** The command and arguments to run, e.g. ["pnpm", "vitest", "run"] */
+  args,
+  /** Options: cwd, env overrides */
+  { cwd, env } = {},
+) {
+  const startTime = Date.now()
+  return new Promise(resolve => {
+    const child = spawn(args[0], args.slice(1), {
+      cwd,
+      stdio: ["inherit", "pipe", "pipe"],
+      env: { ...process.env, NO_COLOR: "1", ...env },
+    })
+
+    let stdout = ""
+    let stderr = ""
+
+    child.stdout?.on("data", data => {
+      stdout += data.toString()
+    })
+    child.stderr?.on("data", data => {
+      stderr += data.toString()
+    })
+
+    child.on("close", code => {
+      resolve({
+        exitCode: code,
+        duration: Date.now() - startTime,
+        output: stdout + stderr,
+      })
+    })
+  })
+}
+
+/** Format milliseconds as a human-readable duration. */
+function formatDuration(ms) {
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  const minutes = Math.floor(ms / 60000)
+  const seconds = ((ms % 60000) / 1000).toFixed(0)
+  return `${minutes}m ${seconds}s`
+}
+
+/** Print a single result line. */
+function printResultLine(result) {
+  const status = result.exitCode === 0 ? style.green("✓") : style.red("✗")
+  const name = style.bold(result.name)
+  const durationStr = style.yellow(`(${formatDuration(result.duration)})`)
+
+  if (result.parser == null) {
+    // No parser means no test counts (e.g. typecheck) — just pass/fail
+    console.log(`  ${status} ${name} ${durationStr}`)
+  } else {
+    const passedStr = style.green(`${result.passed} passed`)
+    const failedStr =
+      result.failed > 0 ? style.red(`${result.failed} failed`) : style.dim(`${result.failed} failed`)
+    console.log(`  ${status} ${name} ${passedStr}, ${failedStr} ${durationStr}`)
+  }
+}
+
+/** Print summary totals and return exit code (0 = all passed). */
+function printSummary(suiteResults, totalDuration) {
+  const totalPassed = suiteResults.reduce((sum, s) => sum + s.passed, 0)
+  const totalFailed = suiteResults.reduce((sum, s) => sum + s.failed, 0)
+  const allPassed = suiteResults.every(s => s.exitCode === 0)
+
+  const passedStr = style.green(`${totalPassed} passed`)
+  const failedStr =
+    totalFailed > 0 ? style.red(`${totalFailed} failed`) : style.dim(`${totalFailed} failed`)
+  const durationStr = style.yellow(`(${formatDuration(totalDuration)})`)
+
+  console.log(`\n  ${style.bold("Total")} ${passedStr}, ${failedStr} ${durationStr}`)
+
+  return allPassed ? 0 : 1
+}
+
+/**
+ * Run test suites sequentially, bail on first failure, print concise summary.
+ *
+ * Each suite in the array should have:
+ * - name: display name
+ * - command: array of strings, e.g. ["pnpm", "vitest", "run"]
+ * - parser: "vitest" | "playwright" | null (no test count parsing)
+ * - cwd: working directory (optional)
+ *
+ * Options:
+ * - title: header text (default: "Running all tests")
+ * - clear: clear the terminal before running (default: true)
+ */
+export async function testAll(
+  /** Array of suite definitions */
+  suites,
+  /** Options */
+  { title = "Running all tests", clear = true } = {},
+) {
+  if (clear) console.clear()
+  const startTime = Date.now()
+  console.log(style.bold(`\n${title}\n`))
+
+  const completed = []
+
+  for (const suite of suites) {
+    process.stdout.write(`  ◌ ${suite.name}...`)
+
+    const result = await runCommand(suite.command, { cwd: suite.cwd })
+    const parse = suite.parser ? parsers[suite.parser] ?? suite.parser : null
+    const counts = parse ? parse(result.output) : { passed: 0, failed: 0, skipped: 0 }
+
+    const suiteResult = {
+      name: suite.name,
+      parser: suite.parser,
+      ...result,
+      ...counts,
+    }
+
+    completed.push(suiteResult)
+
+    // Clear spinner line and print result
+    process.stdout.write("\r\x1b[K")
+    printResultLine(suiteResult)
+
+    if (result.exitCode !== 0) {
+      console.log(`\n⚠ ${suite.name} failed. Output:\n`)
+      console.log(result.output)
+      break
+    }
+  }
+
+  const totalDuration = Date.now() - startTime
+  const exitCode = printSummary(completed, totalDuration)
+  process.exit(exitCode)
+}
