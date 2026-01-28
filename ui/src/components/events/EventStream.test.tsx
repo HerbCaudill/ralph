@@ -1115,7 +1115,7 @@ describe("EventStream", () => {
       useAppStore.getState().setRalphStatus("running")
 
       // Navigate to the first (completed) session
-      useAppStore.getState().setViewingSessionIndex(0)
+      useAppStore.getState().setViewingSessionId("session-1705600000000")
 
       renderEventStream()
 
@@ -1155,7 +1155,7 @@ describe("EventStream", () => {
       useAppStore.getState().setRalphStatus("running")
 
       // Keep viewing the latest session (default)
-      // viewingSessionIndex should be null (latest)
+      // viewingSessionId should be null (latest)
 
       renderEventStream()
 

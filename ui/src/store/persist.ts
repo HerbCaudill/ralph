@@ -78,7 +78,7 @@ export interface PersistedState {
   currentTaskChatSessionId: string | null
 
   // View state
-  viewingSessionIndex: number | null
+  viewingSessionId: string | null
   taskSearchQuery: string
   selectedTaskId: string | null
   isSearchVisible: boolean
@@ -222,7 +222,7 @@ export function partialize(state: AppState): PersistedState {
     currentTaskChatSessionId: state.currentTaskChatSessionId,
 
     // View state
-    viewingSessionIndex: state.viewingSessionIndex,
+    viewingSessionId: state.viewingSessionId,
     taskSearchQuery: state.taskSearchQuery,
     selectedTaskId: state.selectedTaskId,
     isSearchVisible: state.isSearchVisible,
