@@ -229,12 +229,12 @@ async function testAll(
 // ---- CLI entry point ----
 
 const configPath = path.join(process.cwd(), "test-all.config.js")
-const flags = process.argv.slice(2)
+const changed = process.argv.includes("--changed")
 
 let config
 try {
   const mod = await import(pathToFileURL(configPath).href)
-  config = typeof mod.default === "function" ? mod.default(flags) : mod.default
+  config = mod.default
 } catch (err) {
   if (err.code === "ERR_MODULE_NOT_FOUND") {
     console.error(`No test-all.config.js found in ${process.cwd()}`)
@@ -243,4 +243,18 @@ try {
   throw err
 }
 
-await testAll(config.suites, config.options)
+const suites = config.suites.map(suite => {
+  if (!changed || suite.type !== "vitest") return suite
+  const cmd =
+    typeof suite.command === "string" ?
+      `${suite.command} --changed`
+    : [...suite.command, "--changed"]
+  return { ...suite, command: cmd }
+})
+
+const title =
+  changed ?
+    `${config.options?.title ?? "Running all tests"} (vitest: --changed)`
+  : config.options?.title
+
+await testAll(suites, { ...config.options, title })
