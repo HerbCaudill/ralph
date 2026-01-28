@@ -276,7 +276,9 @@ describe("useTaskChatSessions", () => {
     const { result, rerender } = renderHook(
       ({ instanceId, workspaceId }: { instanceId: string; workspaceId?: string }) =>
         useTaskChatSessions({ instanceId, workspaceId }),
-      { initialProps: { instanceId: "default", workspaceId: "workspace-1" } },
+      {
+        initialProps: { instanceId: "default", workspaceId: "workspace-1" as string | undefined },
+      },
     )
 
     await waitFor(() => {
