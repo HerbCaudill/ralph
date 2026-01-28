@@ -11,6 +11,8 @@ import { eventDatabase, type TaskChatSessionMetadata } from "@/lib/persistence"
 export interface UseTaskChatSessionsOptions {
   /** ID of the Ralph instance to fetch sessions for */
   instanceId: string
+  /** Optional workspace ID to scope sessions to a specific workspace */
+  workspaceId?: string
   /** Whether to enable the hook (default: true) */
   enabled?: boolean
 }
@@ -33,7 +35,7 @@ export interface UseTaskChatSessionsResult {
 export function useTaskChatSessions(
   options: UseTaskChatSessionsOptions,
 ): UseTaskChatSessionsResult {
-  const { instanceId, enabled = true } = options
+  const { instanceId, workspaceId, enabled = true } = options
 
   const [sessions, setSessions] = useState<TaskChatSessionMetadata[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -47,7 +49,12 @@ export function useTaskChatSessions(
 
     try {
       await eventDatabase.init()
-      const sessionList = await eventDatabase.listTaskChatSessions(instanceId)
+      // Use workspace-scoped query when workspaceId is provided
+      // to ensure only sessions from the current workspace are shown
+      const sessionList =
+        workspaceId ?
+          await eventDatabase.listTaskChatSessionsByWorkspace(workspaceId)
+        : await eventDatabase.listTaskChatSessions(instanceId)
       setSessions(sessionList)
       setError(null)
     } catch (err) {
@@ -55,7 +62,7 @@ export function useTaskChatSessions(
     } finally {
       setIsLoading(false)
     }
-  }, [instanceId, enabled])
+  }, [instanceId, workspaceId, enabled])
 
   // Initial fetch
   useEffect(() => {

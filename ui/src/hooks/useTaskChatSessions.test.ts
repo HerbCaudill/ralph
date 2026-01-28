@@ -8,6 +8,7 @@ vi.mock("@/lib/persistence", () => ({
   eventDatabase: {
     init: vi.fn(),
     listTaskChatSessions: vi.fn(),
+    listTaskChatSessionsByWorkspace: vi.fn(),
   },
 }))
 
@@ -38,6 +39,21 @@ const mockSessions: TaskChatSessionMetadata[] = [
     messageCount: 8,
     eventCount: 20,
     lastEventSequence: 19,
+  },
+]
+
+const mockWorkspaceSessions: TaskChatSessionMetadata[] = [
+  {
+    id: "session-ws-1",
+    taskId: "task-ws-1",
+    taskTitle: "Workspace Task 1",
+    instanceId: "default",
+    workspaceId: "workspace-1",
+    createdAt: Date.now() - 3600000,
+    updatedAt: Date.now() - 1800000,
+    messageCount: 3,
+    eventCount: 8,
+    lastEventSequence: 7,
   },
 ]
 
@@ -196,6 +212,87 @@ describe("useTaskChatSessions", () => {
     })
 
     expect(result.current.error).toBeNull()
+    expect(result.current.sessions).toEqual(mockSessions)
+  })
+
+  it("uses listTaskChatSessionsByWorkspace when workspaceId is provided", async () => {
+    mockEventDatabase.listTaskChatSessionsByWorkspace.mockResolvedValue(mockWorkspaceSessions)
+
+    const { result } = renderHook(() =>
+      useTaskChatSessions({ instanceId: "default", workspaceId: "workspace-1" }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockEventDatabase.listTaskChatSessionsByWorkspace).toHaveBeenCalledWith("workspace-1")
+    expect(mockEventDatabase.listTaskChatSessions).not.toHaveBeenCalled()
+    expect(result.current.sessions).toEqual(mockWorkspaceSessions)
+    expect(result.current.error).toBeNull()
+  })
+
+  it("uses listTaskChatSessions when workspaceId is not provided", async () => {
+    mockEventDatabase.listTaskChatSessions.mockResolvedValue(mockSessions)
+
+    const { result } = renderHook(() => useTaskChatSessions({ instanceId: "default" }))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockEventDatabase.listTaskChatSessions).toHaveBeenCalledWith("default")
+    expect(mockEventDatabase.listTaskChatSessionsByWorkspace).not.toHaveBeenCalled()
+    expect(result.current.sessions).toEqual(mockSessions)
+  })
+
+  it("re-fetches when workspaceId changes", async () => {
+    mockEventDatabase.listTaskChatSessionsByWorkspace.mockResolvedValue(mockWorkspaceSessions)
+
+    const { result, rerender } = renderHook(
+      ({ instanceId, workspaceId }) => useTaskChatSessions({ instanceId, workspaceId }),
+      { initialProps: { instanceId: "default", workspaceId: "workspace-1" } },
+    )
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockEventDatabase.listTaskChatSessionsByWorkspace).toHaveBeenCalledWith("workspace-1")
+
+    mockEventDatabase.listTaskChatSessionsByWorkspace.mockClear()
+
+    rerender({ instanceId: "default", workspaceId: "workspace-2" })
+
+    await waitFor(() => {
+      expect(mockEventDatabase.listTaskChatSessionsByWorkspace).toHaveBeenCalledWith("workspace-2")
+    })
+  })
+
+  it("switches from workspace-scoped to instance-scoped when workspaceId is removed", async () => {
+    mockEventDatabase.listTaskChatSessionsByWorkspace.mockResolvedValue(mockWorkspaceSessions)
+    mockEventDatabase.listTaskChatSessions.mockResolvedValue(mockSessions)
+
+    const { result, rerender } = renderHook(
+      ({ instanceId, workspaceId }: { instanceId: string; workspaceId?: string }) =>
+        useTaskChatSessions({ instanceId, workspaceId }),
+      { initialProps: { instanceId: "default", workspaceId: "workspace-1" } },
+    )
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockEventDatabase.listTaskChatSessionsByWorkspace).toHaveBeenCalledWith("workspace-1")
+    expect(result.current.sessions).toEqual(mockWorkspaceSessions)
+
+    // Remove workspaceId - should fall back to instance-scoped query
+    rerender({ instanceId: "default", workspaceId: undefined })
+
+    await waitFor(() => {
+      expect(mockEventDatabase.listTaskChatSessions).toHaveBeenCalledWith("default")
+    })
+
     expect(result.current.sessions).toEqual(mockSessions)
   })
 })

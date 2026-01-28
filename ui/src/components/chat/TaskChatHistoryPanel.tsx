@@ -9,7 +9,7 @@ import {
 } from "@tabler/icons-react"
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { useTaskChatSessions, type UseTaskChatSessionsResult } from "@/hooks/useTaskChatSessions"
-import { useAppStore, selectActiveInstanceId, selectIssuePrefix } from "@/store"
+import { useAppStore, selectActiveInstanceId, selectIssuePrefix, selectWorkspace } from "@/store"
 import type { TaskChatSessionMetadata } from "@/lib/persistence"
 
 /**  Groups task chat sessions by date (Today, Yesterday, or specific date). */
@@ -85,8 +85,12 @@ function formatSessionTime(timestamp: number): string {
  */
 export function TaskChatHistoryPanel({ className, onSelectSession }: TaskChatHistoryPanelProps) {
   const instanceId = useAppStore(selectActiveInstanceId)
+  const workspaceId = useAppStore(selectWorkspace)
   const issuePrefix = useAppStore(selectIssuePrefix)
-  const { sessions, isLoading, error, refresh } = useTaskChatSessions({ instanceId })
+  const { sessions, isLoading, error, refresh } = useTaskChatSessions({
+    instanceId,
+    workspaceId: workspaceId ?? undefined,
+  })
   const [searchQuery, setSearchQuery] = useState("")
 
   const filteredSessions = useMemo(
