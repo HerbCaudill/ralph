@@ -49,6 +49,8 @@ import {
   flushTaskChatEventsBatch,
   selectCanAcceptMessages,
   mergeEventsById,
+  getSessionId,
+  getSessionIndexById,
 } from "./index"
 import type { ChatEvent, Task, TaskChatMessage } from "@/types"
 import { PERSIST_NAME, type PersistedState, serializeInstances } from "./persist"
@@ -1958,6 +1960,154 @@ describe("useAppStore", () => {
       it("counts session boundaries", () => {
         const events = createEventsWithSessions()
         expect(countSessions(events)).toBe(3)
+      })
+    })
+
+    describe("getSessionId", () => {
+      it("returns null for empty events", () => {
+        expect(getSessionId([], 0)).toBeNull()
+      })
+
+      it("returns null for negative index", () => {
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+        ]
+        expect(getSessionId(events, -1)).toBeNull()
+      })
+
+      it("returns null for index beyond session count", () => {
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+        ]
+        expect(getSessionId(events, 5)).toBeNull()
+      })
+
+      it("returns sessionId from ralph_session_start event when available", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 1,
+            timestamp: 1000,
+            sessionId: "server-generated-abc",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionId(events, 0)).toBe("server-generated-abc")
+      })
+
+      it("falls back to session-{timestamp} for legacy system/init events without sessionId", () => {
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionId(events, 0)).toBe("session-1000")
+      })
+
+      it("returns correct ID when multiple sessions exist", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 3,
+            timestamp: 1000,
+            sessionId: "session-aaa",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 2,
+            totalSessions: 3,
+            timestamp: 2000,
+            sessionId: "session-bbb",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 3,
+            totalSessions: 3,
+            timestamp: 3000,
+            sessionId: "session-ccc",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 3001 } as ChatEvent,
+        ]
+        expect(getSessionId(events, 0)).toBe("session-aaa")
+        expect(getSessionId(events, 1)).toBe("session-bbb")
+        expect(getSessionId(events, 2)).toBe("session-ccc")
+      })
+    })
+
+    describe("getSessionIndexById", () => {
+      it("returns null for empty events", () => {
+        expect(getSessionIndexById([], "some-id")).toBeNull()
+      })
+
+      it("returns null for non-existent session ID", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 1,
+            timestamp: 1000,
+            sessionId: "session-aaa",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionIndexById(events, "does-not-exist")).toBeNull()
+      })
+
+      it("finds session by server-generated sessionId", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 1,
+            timestamp: 1000,
+            sessionId: "server-id-xyz",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionIndexById(events, "server-id-xyz")).toBe(0)
+      })
+
+      it("finds session by fallback ID (session-{timestamp})", () => {
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionIndexById(events, "session-1000")).toBe(0)
+      })
+
+      it("returns correct index with multiple sessions", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 3,
+            timestamp: 1000,
+            sessionId: "session-aaa",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 2,
+            totalSessions: 3,
+            timestamp: 2000,
+            sessionId: "session-bbb",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 3,
+            totalSessions: 3,
+            timestamp: 3000,
+            sessionId: "session-ccc",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 3001 } as ChatEvent,
+        ]
+        expect(getSessionIndexById(events, "session-aaa")).toBe(0)
+        expect(getSessionIndexById(events, "session-bbb")).toBe(1)
+        expect(getSessionIndexById(events, "session-ccc")).toBe(2)
       })
     })
 

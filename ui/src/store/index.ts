@@ -415,6 +415,50 @@ export function getSessionBoundaries(events: ChatEvent[]): number[] {
   return primaryBoundaries.length > 0 ? primaryBoundaries : fallbackBoundaries
 }
 
+/**
+ * Gets a stable session ID for the session at the given index.
+ * Uses the `sessionId` property from `ralph_session_start` events when available.
+ * Falls back to a deterministic ID based on the event's timestamp for legacy
+ * `system/init` events that don't carry a sessionId.
+ *
+ * Returns null if the index is out of bounds or no sessions exist.
+ */
+export function getSessionId(events: ChatEvent[], sessionIndex: number): string | null {
+  const boundaries = getSessionBoundaries(events)
+  if (boundaries.length === 0 || sessionIndex < 0 || sessionIndex >= boundaries.length) {
+    return null
+  }
+  const boundaryEvent = events[boundaries[sessionIndex]]
+  // Prefer server-generated sessionId (from ralph_session_start events)
+  const sessionId = boundaryEvent.sessionId
+  if (typeof sessionId === "string" && sessionId.length > 0) {
+    return sessionId
+  }
+  // Fallback: deterministic ID from event type + timestamp
+  return `session-${boundaryEvent.timestamp}`
+}
+
+/**
+ * Maps a stable session ID back to its index in the session boundaries array.
+ * Returns null if the session ID is not found.
+ */
+export function getSessionIndexById(events: ChatEvent[], sessionId: string): number | null {
+  const boundaries = getSessionBoundaries(events)
+  for (let i = 0; i < boundaries.length; i++) {
+    const boundaryEvent = events[boundaries[i]]
+    // Check server-generated sessionId first
+    const eventSessionId = boundaryEvent.sessionId
+    if (typeof eventSessionId === "string" && eventSessionId === sessionId) {
+      return i
+    }
+    // Check fallback ID
+    if (sessionId === `session-${boundaryEvent.timestamp}`) {
+      return i
+    }
+  }
+  return null
+}
+
 /**  Counts the total number of sessions in the events array. */
 export function countSessions(events: ChatEvent[]): number {
   return getSessionBoundaries(events).length

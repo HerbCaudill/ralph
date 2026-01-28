@@ -648,6 +648,15 @@ const state = {
 }
 ```
 
+**Session ID Helpers:**
+
+The store exports two helper functions that bridge the index-based session boundary system with stable session IDs:
+
+- `getSessionId(events, sessionIndex)` - Converts a session index to a stable session ID. Prefers the server-generated `sessionId` from `ralph_session_start` events; falls back to a deterministic `session-{timestamp}` format for legacy events. Returns `null` if the index is out of bounds.
+- `getSessionIndexById(events, sessionId)` - Reverse lookup: maps a stable session ID back to its index in the session boundaries array. Returns `null` if not found.
+
+Both functions use `getSessionBoundaries()` internally to locate session boundary events.
+
 ### Event Logs
 
 Standalone snapshots saved when sessions complete:
