@@ -6,6 +6,7 @@
  * test counts from the output.
  */
 import { spawn } from "node:child_process"
+import path from "node:path"
 
 /** ANSI style helpers */
 const style = {
@@ -94,6 +95,7 @@ function runCommand(
 ) {
   const startTime = Date.now()
   return new Promise(resolve => {
+    if (typeof args === "string") args = args.split(/\s+/)
     const child = spawn(args[0], args.slice(1), {
       cwd,
       stdio: ["inherit", "pipe", "pipe"],
@@ -140,7 +142,9 @@ function printResultLine(result) {
   } else {
     const passedStr = style.green(`${result.passed} passed`)
     const failedStr =
-      result.failed > 0 ? style.red(`${result.failed} failed`) : style.dim(`${result.failed} failed`)
+      result.failed > 0 ?
+        style.red(`${result.failed} failed`)
+      : style.dim(`${result.failed} failed`)
     console.log(`  ${status} ${name} ${passedStr}, ${failedStr} ${durationStr}`)
   }
 }
@@ -166,11 +170,12 @@ function printSummary(suiteResults, totalDuration) {
  *
  * Each suite in the array should have:
  * - name: display name
- * - command: array of strings, e.g. ["pnpm", "vitest", "run"]
+ * - command: string or array, e.g. "pnpm vitest run" or ["pnpm", "vitest", "run"]
  * - parser: "vitest" | "playwright" | null (no test count parsing)
- * - cwd: working directory (optional)
+ * - dir: subdirectory to run in, resolved relative to options.cwd (optional)
  *
  * Options:
+ * - cwd: root working directory; suite `dir` values are resolved relative to this
  * - title: header text (default: "Running all tests")
  * - clear: clear the terminal before running (default: true)
  */
@@ -178,7 +183,7 @@ export async function testAll(
   /** Array of suite definitions */
   suites,
   /** Options */
-  { title = "Running all tests", clear = true } = {},
+  { cwd = process.cwd(), title = "Running all tests", clear = true } = {},
 ) {
   if (clear) console.clear()
   const startTime = Date.now()
@@ -189,8 +194,9 @@ export async function testAll(
   for (const suite of suites) {
     process.stdout.write(`  ◌ ${suite.name}...`)
 
-    const result = await runCommand(suite.command, { cwd: suite.cwd })
-    const parse = suite.parser ? parsers[suite.parser] ?? suite.parser : null
+    const suiteCwd = suite.dir ? path.join(cwd, suite.dir) : cwd
+    const result = await runCommand(suite.command, { cwd: suiteCwd })
+    const parse = suite.parser ? (parsers[suite.parser] ?? suite.parser) : null
     const counts = parse ? parse(result.output) : { passed: 0, failed: 0, skipped: 0 }
 
     const suiteResult = {
