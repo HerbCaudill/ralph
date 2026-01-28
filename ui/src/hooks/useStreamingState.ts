@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import type { ChatEvent, StreamingMessage } from "@/types"
+import type { ChatEvent, StreamingContentBlock, StreamingMessage } from "@/types"
 
 /**
  * Maximum time (in ms) between a message_stop timestamp and an assistant event timestamp
@@ -28,9 +28,59 @@ const COMPLETED_MESSAGE_DEDUP_THRESHOLD_MS = 1000
  */
 const IN_PROGRESS_MESSAGE_TIMEOUT_MS = 30000
 
+/**
+ * Tracks accumulated text for each content block during streaming.
+ * Uses string arrays instead of concatenation for efficient accumulation,
+ * and produces final strings only when needed (at block/message completion).
+ */
+interface BlockAccumulator {
+  type: "text" | "thinking" | "tool_use"
+  /** For text blocks: accumulated text fragments */
+  textFragments?: string[]
+  /** For thinking blocks: accumulated thinking fragments */
+  thinkingFragments?: string[]
+  /** For tool_use blocks: accumulated JSON fragments */
+  inputFragments?: string[]
+  /** For tool_use blocks: stable ID and name */
+  id?: string
+  name?: string
+  /** Initial text from content_block_start (may be non-empty) */
+  initialText?: string
+  initialThinking?: string
+}
+
 interface StreamState {
-  currentMessage: StreamingMessage | null
+  currentMessage: {
+    timestamp: number
+    accumulators: BlockAccumulator[]
+  } | null
   currentBlockIndex: number
+}
+
+/**
+ * Resolves a BlockAccumulator into a finalized StreamingContentBlock.
+ * Joins accumulated fragments into final strings.
+ */
+function resolveAccumulator(acc: BlockAccumulator): StreamingContentBlock {
+  switch (acc.type) {
+    case "text":
+      return {
+        type: "text",
+        text: (acc.initialText || "") + (acc.textFragments?.join("") || ""),
+      }
+    case "thinking":
+      return {
+        type: "thinking",
+        thinking: (acc.initialThinking || "") + (acc.thinkingFragments?.join("") || ""),
+      }
+    case "tool_use":
+      return {
+        type: "tool_use",
+        id: acc.id!,
+        name: acc.name!,
+        input: acc.inputFragments?.join("") || "",
+      }
+  }
 }
 
 /**
@@ -226,10 +276,10 @@ export function useStreamingState(events: ChatEvent[]): {
 
       switch (streamEvent.type) {
         case "message_start":
-          // Start a new streaming message
+          // Start a new streaming message with fresh accumulators
           state.currentMessage = {
             timestamp: event.timestamp,
-            contentBlocks: [],
+            accumulators: [],
           }
           state.currentBlockIndex = -1
           break
@@ -238,38 +288,41 @@ export function useStreamingState(events: ChatEvent[]): {
           if (state.currentMessage && streamEvent.content_block) {
             const block = streamEvent.content_block
             if (block.type === "text") {
-              state.currentMessage.contentBlocks.push({
+              state.currentMessage.accumulators.push({
                 type: "text",
-                text: block.text || "",
+                initialText: block.text || "",
+                textFragments: [],
               })
             } else if (block.type === "thinking") {
-              state.currentMessage.contentBlocks.push({
+              state.currentMessage.accumulators.push({
                 type: "thinking",
-                thinking: block.thinking || "",
+                initialThinking: block.thinking || "",
+                thinkingFragments: [],
               })
             } else if (block.type === "tool_use") {
-              state.currentMessage.contentBlocks.push({
+              state.currentMessage.accumulators.push({
                 type: "tool_use",
                 id: block.id,
                 name: block.name,
-                input: "",
+                inputFragments: [],
               })
             }
-            state.currentBlockIndex = state.currentMessage.contentBlocks.length - 1
+            state.currentBlockIndex = state.currentMessage.accumulators.length - 1
           }
           break
 
         case "content_block_delta":
+          // Append delta fragments to the accumulator (push to array, no mutation of existing strings)
           if (state.currentMessage && state.currentBlockIndex >= 0) {
-            const block = state.currentMessage.contentBlocks[state.currentBlockIndex]
+            const acc = state.currentMessage.accumulators[state.currentBlockIndex]
             const delta = streamEvent.delta
 
-            if (delta?.type === "text_delta" && block.type === "text") {
-              block.text += delta.text || ""
-            } else if (delta?.type === "thinking_delta" && block.type === "thinking") {
-              block.thinking += delta.thinking || ""
-            } else if (delta?.type === "input_json_delta" && block.type === "tool_use") {
-              block.input += delta.partial_json || ""
+            if (delta?.type === "text_delta" && acc.type === "text") {
+              acc.textFragments!.push(delta.text || "")
+            } else if (delta?.type === "thinking_delta" && acc.type === "thinking") {
+              acc.thinkingFragments!.push(delta.thinking || "")
+            } else if (delta?.type === "input_json_delta" && acc.type === "tool_use") {
+              acc.inputFragments!.push(delta.partial_json || "")
             }
           }
           break
@@ -279,25 +332,26 @@ export function useStreamingState(events: ChatEvent[]): {
           break
 
         case "message_stop":
-          // Message is complete - convert to a regular assistant event
-          if (state.currentMessage && state.currentMessage.contentBlocks.length > 0) {
-            const content = state.currentMessage.contentBlocks.map(block => {
-              if (block.type === "text") {
-                return { type: "text" as const, text: block.text }
-              } else if (block.type === "thinking") {
-                return { type: "thinking" as const, thinking: block.thinking }
+          // Message is complete - resolve accumulators and convert to a regular assistant event
+          if (state.currentMessage && state.currentMessage.accumulators.length > 0) {
+            const content = state.currentMessage.accumulators.map(acc => {
+              const resolved = resolveAccumulator(acc)
+              if (resolved.type === "text") {
+                return { type: "text" as const, text: resolved.text }
+              } else if (resolved.type === "thinking") {
+                return { type: "thinking" as const, thinking: resolved.thinking }
               } else {
                 // tool_use block - parse the accumulated JSON input
                 let input = {}
                 try {
-                  input = JSON.parse(block.input)
+                  input = JSON.parse(resolved.input)
                 } catch {
                   // Partial JSON, keep empty
                 }
                 return {
                   type: "tool_use" as const,
-                  id: block.id,
-                  name: block.name,
+                  id: resolved.id,
+                  name: resolved.name,
                   input,
                 }
               }
@@ -319,9 +373,18 @@ export function useStreamingState(events: ChatEvent[]): {
       }
     }
 
+    // Resolve accumulators into content blocks for any in-progress streaming message
+    const streamingMessage: StreamingMessage | null =
+      state.currentMessage ?
+        {
+          timestamp: state.currentMessage.timestamp,
+          contentBlocks: state.currentMessage.accumulators.map(resolveAccumulator),
+        }
+      : null
+
     return {
       completedEvents,
-      streamingMessage: state.currentMessage,
+      streamingMessage,
     }
   }, [events])
 }

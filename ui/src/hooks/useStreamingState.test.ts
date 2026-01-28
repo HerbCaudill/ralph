@@ -543,4 +543,504 @@ describe("useStreamingState", () => {
       expect(assistantEvents).toHaveLength(2)
     })
   })
+
+  describe("immutable accumulation", () => {
+    it("accumulates multiple text deltas into correct final text", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 210,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: ", " },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 220,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "world" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 230,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "!" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(1)
+      const content = (assistantEvents[0] as any).message.content
+      expect(content).toHaveLength(1)
+      expect(content[0]).toEqual({ type: "text", text: "Hello, world!" })
+    })
+
+    it("accumulates multiple thinking deltas correctly", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "thinking", thinking: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "thinking_delta", thinking: "Let me " },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 210,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "thinking_delta", thinking: "think about " },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 220,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "thinking_delta", thinking: "this carefully." },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(1)
+      const content = (assistantEvents[0] as any).message.content
+      expect(content).toHaveLength(1)
+      expect(content[0]).toEqual({
+        type: "thinking",
+        thinking: "Let me think about this carefully.",
+      })
+    })
+
+    it("accumulates tool_use input_json_delta fragments into valid JSON", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "tool_use", id: "tool_1", name: "search" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "input_json_delta", partial_json: '{"query"' },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 210,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "input_json_delta", partial_json: ': "hello' },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 220,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "input_json_delta", partial_json: ' world"' },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 230,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "input_json_delta", partial_json: ', "limit": 10}' },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(1)
+      const content = (assistantEvents[0] as any).message.content
+      expect(content).toHaveLength(1)
+      expect(content[0]).toEqual({
+        type: "tool_use",
+        id: "tool_1",
+        name: "search",
+        input: { query: "hello world", limit: 10 },
+      })
+    })
+
+    it("accumulates mixed content blocks (text, thinking, tool_use) correctly", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { role: "assistant" } },
+        },
+        // Thinking block
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "thinking", thinking: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 160,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "thinking_delta", thinking: "I need to " },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 170,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "thinking_delta", thinking: "search for this." },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 180,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        // Text block
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_start",
+            index: 1,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 210,
+          event: {
+            type: "content_block_delta",
+            index: 1,
+            delta: { type: "text_delta", text: "Let me " },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 220,
+          event: {
+            type: "content_block_delta",
+            index: 1,
+            delta: { type: "text_delta", text: "search that." },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 230,
+          event: { type: "content_block_stop", index: 1 },
+        },
+        // Tool use block
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: {
+            type: "content_block_start",
+            index: 2,
+            content_block: { type: "tool_use", id: "tool_abc", name: "web_search" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 260,
+          event: {
+            type: "content_block_delta",
+            index: 2,
+            delta: { type: "input_json_delta", partial_json: '{"q":' },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 270,
+          event: {
+            type: "content_block_delta",
+            index: 2,
+            delta: { type: "input_json_delta", partial_json: '"test"}' },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 280,
+          event: { type: "content_block_stop", index: 2 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(1)
+      const content = (assistantEvents[0] as any).message.content
+      expect(content).toHaveLength(3)
+      expect(content[0]).toEqual({
+        type: "thinking",
+        thinking: "I need to search for this.",
+      })
+      expect(content[1]).toEqual({
+        type: "text",
+        text: "Let me search that.",
+      })
+      expect(content[2]).toEqual({
+        type: "tool_use",
+        id: "tool_abc",
+        name: "web_search",
+        input: { q: "test" },
+      })
+    })
+
+    it("provides correctly accumulated content blocks in streamingMessage before message_stop", () => {
+      // Simulate in-progress streaming: no message_stop yet
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "Streaming " },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 210,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "in " },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 220,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "progress" },
+          },
+        },
+        // No content_block_stop or message_stop
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      // No completed assistant events
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(0)
+
+      // streamingMessage should have the accumulated content
+      expect(result.current.streamingMessage).not.toBeNull()
+      expect(result.current.streamingMessage!.timestamp).toBe(100)
+      expect(result.current.streamingMessage!.contentBlocks).toHaveLength(1)
+      expect(result.current.streamingMessage!.contentBlocks[0]).toEqual({
+        type: "text",
+        text: "Streaming in progress",
+      })
+    })
+
+    it("does not corrupt accumulation when deltas contain empty strings", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 210,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 220,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 230,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 240,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: " World" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(1)
+      const content = (assistantEvents[0] as any).message.content
+      expect(content).toHaveLength(1)
+      expect(content[0]).toEqual({ type: "text", text: "Hello World" })
+    })
+  })
 })
