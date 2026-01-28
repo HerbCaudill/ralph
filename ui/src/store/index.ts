@@ -614,14 +614,26 @@ function flushTaskChatEventsBatch(): void {
 }
 
 /**
+ * Maximum number of events kept in-memory per event array.
+ * This is higher than the UI display limit (1000) to provide a buffer,
+ * but prevents unbounded memory growth during long sessions.
+ */
+export const MAX_STORE_EVENTS = 2000
+
+/**
  * Merge incoming events with existing events, deduplicating by event ID.
  * Events with `id` are deduped; events without `id` are always appended.
  * Maintains chronological order by timestamp.
+ * The result is capped to `maxEvents` most recent entries to bound memory usage.
  *
  * This prevents race conditions between `connected` (setEvents) and
  * `pending_events` (addEvent) messages during WebSocket reconnection.
  */
-function mergeEventsById(existingEvents: ChatEvent[], incomingEvents: ChatEvent[]): ChatEvent[] {
+function mergeEventsById(
+  existingEvents: ChatEvent[],
+  incomingEvents: ChatEvent[],
+  maxEvents: number = MAX_STORE_EVENTS,
+): ChatEvent[] {
   // Build a map of existing events by ID for fast lookup
   const seenIds = new Set<string>()
   for (const event of existingEvents) {
@@ -646,6 +658,11 @@ function mergeEventsById(existingEvents: ChatEvent[], incomingEvents: ChatEvent[
   // Merge and sort by timestamp to maintain chronological order
   const merged = [...existingEvents, ...newEvents]
   merged.sort((a, b) => a.timestamp - b.timestamp)
+
+  // Cap to maxEvents most recent entries to bound memory usage
+  if (merged.length > maxEvents) {
+    return merged.slice(-maxEvents)
+  }
   return merged
 }
 

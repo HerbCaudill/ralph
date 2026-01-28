@@ -626,6 +626,8 @@ The UI state is managed by a Zustand store (`ui/src/store/index.ts`). The store 
 
 Each instance contains: `status`, `events`, `tokenUsage`, `contextWindow`, `session`, `runStartedAt`, `currentTaskId`, `mergeConflict`, etc.
 
+**In-Memory Event Cap:** The `events` array in each instance is bounded to `MAX_STORE_EVENTS` (2000) entries. The `mergeEventsById()` helper accepts an optional `maxEvents` parameter (defaulting to `MAX_STORE_EVENTS`) and retains only the N most recent events after merging. This prevents unbounded memory growth in long-running sessions.
+
 **Legacy Flat Fields (Deprecated):**
 
 The store contains legacy flat fields (`ralphStatus`, `events`, `tokenUsage`, etc.) that duplicate data from the active instance. These are deprecated and should not be accessed directly. Instead, use the provided selectors which read from the instances Map.

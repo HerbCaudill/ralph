@@ -51,6 +51,7 @@ import {
   flushTaskChatEventsBatch,
   selectCanAcceptMessages,
   mergeEventsById,
+  MAX_STORE_EVENTS,
   getSessionId,
   getSessionIndexById,
 } from "./index"
@@ -3831,6 +3832,79 @@ describe("useAppStore", () => {
       // Two tool events (one deduped), two output events (not deduped), one system event
       const ids = result.filter(e => e.id).map(e => e.id)
       expect(ids).toEqual(["event-1", "event-2"])
+    })
+
+    it("truncates to maxEvents most recent entries when merged result exceeds limit", () => {
+      const existing: ChatEvent[] = Array.from({ length: 5 }, (_, i) => ({
+        id: `existing-${i}`,
+        type: "tool_use" as const,
+        timestamp: i * 1000,
+      }))
+      const incoming: ChatEvent[] = Array.from({ length: 5 }, (_, i) => ({
+        id: `incoming-${i}`,
+        type: "tool_result" as const,
+        timestamp: (i + 5) * 1000,
+      }))
+
+      const result = mergeEventsById(existing, incoming, 7)
+
+      expect(result).toHaveLength(7)
+      // Should keep the 7 most recent (timestamps 3000..9000)
+      expect(result[0].timestamp).toBe(3000)
+      expect(result[result.length - 1].timestamp).toBe(9000)
+    })
+
+    it("does not truncate when merged events are under the default limit", () => {
+      const existing: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+      ]
+      const incoming: ChatEvent[] = [
+        { id: "event-3", type: "system", timestamp: 3000 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(3)
+      expect(result.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+    })
+
+    it("uses MAX_STORE_EVENTS as default cap", () => {
+      // Create events that exceed MAX_STORE_EVENTS
+      const existing: ChatEvent[] = Array.from({ length: MAX_STORE_EVENTS }, (_, i) => ({
+        id: `existing-${i}`,
+        type: "tool_use" as const,
+        timestamp: i,
+      }))
+      const incoming: ChatEvent[] = [
+        { id: "overflow", type: "system", timestamp: MAX_STORE_EVENTS + 1 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(MAX_STORE_EVENTS)
+      // The oldest event should have been dropped, and the new one should be last
+      expect(result[result.length - 1].id).toBe("overflow")
+      expect(result[0].id).toBe("existing-1")
+    })
+
+    it("custom maxEvents parameter caps the result", () => {
+      const existing: ChatEvent[] = Array.from({ length: 3 }, (_, i) => ({
+        id: `event-${i}`,
+        type: "tool_use" as const,
+        timestamp: i * 1000,
+      }))
+      const incoming: ChatEvent[] = Array.from({ length: 3 }, (_, i) => ({
+        id: `event-${i + 3}`,
+        type: "tool_result" as const,
+        timestamp: (i + 3) * 1000,
+      }))
+
+      const result = mergeEventsById(existing, incoming, 4)
+
+      expect(result).toHaveLength(4)
+      // Should keep the 4 most recent (timestamps 2000, 3000, 4000, 5000)
+      expect(result.map(e => e.id)).toEqual(["event-2", "event-3", "event-4", "event-5"])
     })
   })
 
