@@ -91,8 +91,8 @@ describe("useEventStream", () => {
       expect(result.current.isViewingLatest).toBe(true)
     })
 
-    it("returns isViewingLatest as false when viewing historical session even if viewingSessionIndex is null", () => {
-      // viewingSessionIndex remains null (would normally mean viewing latest)
+    it("returns isViewingLatest as false when viewing historical session even if viewingSessionId is null", () => {
+      // viewingSessionId remains null (would normally mean viewing latest)
       // but selectedSession is set (viewing historical via dropdown)
       mockSelectedSession = {
         id: "session-123",
