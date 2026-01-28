@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { formatEventLogDate } from "@/lib/formatEventLogDate"
 import { useSessions, type SessionSummary } from "@/hooks/useSessions"
+import { useAppStore, selectWorkspace } from "@/store"
 
 interface SessionLinksProps {
   /** The task ID to show session links for */
@@ -17,7 +18,11 @@ interface SessionLinksProps {
  * Fetches sessions from IndexedDB filtered by task ID.
  */
 export function SessionLinks({ taskId, className }: SessionLinksProps) {
-  const { sessions, isLoading, error } = useSessions({ taskId })
+  const workspaceId = useAppStore(selectWorkspace)
+  const { sessions, isLoading, error } = useSessions({
+    taskId,
+    workspaceId: workspaceId ?? undefined,
+  })
 
   // Sort by date, most recent first
   const sessionLogs = useMemo(() => {

@@ -237,6 +237,36 @@ export class EventDatabase {
   }
 
   /**
+   * List all session metadata for a workspace, sorted by startedAt descending.
+   * Uses the by-workspace-and-started-at index for efficient retrieval.
+   */
+  async listSessionsByWorkspace(workspaceId: string): Promise<PersistedSession[]> {
+    const db = await this.ensureDb()
+    // Use IDBKeyRange to get all sessions with the given workspaceId
+    // The compound index is [workspaceId, startedAt], so we query by workspaceId prefix
+    const range = IDBKeyRange.bound([workspaceId, 0], [workspaceId, Number.MAX_SAFE_INTEGER])
+    const all = await db.getAllFromIndex(STORE_NAMES.SESSIONS, "by-workspace-and-started-at", range)
+    // Sort by startedAt descending (most recent first)
+    return all.sort((a, b) => b.startedAt - a.startedAt)
+  }
+
+  /**
+   * Get sessions for a specific task within a workspace, sorted by startedAt descending.
+   * Filters by both taskId and workspaceId to ensure cross-workspace isolation.
+   */
+  async getSessionsForTaskInWorkspace(
+    taskId: string,
+    workspaceId: string,
+  ): Promise<PersistedSession[]> {
+    const db = await this.ensureDb()
+    const all = await db.getAllFromIndex(STORE_NAMES.SESSIONS, "by-task", taskId)
+    // Filter by workspaceId and sort by startedAt descending
+    return all
+      .filter(session => session.workspaceId === workspaceId)
+      .sort((a, b) => b.startedAt - a.startedAt)
+  }
+
+  /**
    * Derive and update the taskId for a session by scanning its events.
    * Used as a fallback when a session doesn't have a taskId set (e.g., from
    * before the immediate update feature was implemented).

@@ -1692,6 +1692,202 @@ describe("EventDatabase", () => {
   })
 
   describe("workspaceId association", () => {
+    describe("listSessionsByWorkspace", () => {
+      it("returns sessions for the specified workspace only", async () => {
+        const now = Date.now()
+
+        // Create sessions in different workspaces
+        await db.saveSession(
+          createTestSession({
+            id: "workspace-a-1",
+            workspaceId: "/Users/test/project-a",
+            startedAt: now - 1000,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "workspace-a-2",
+            workspaceId: "/Users/test/project-a",
+            startedAt: now,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "workspace-b-1",
+            workspaceId: "/Users/test/project-b",
+            startedAt: now - 500,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "null-workspace",
+            workspaceId: null,
+            startedAt: now - 200,
+          }),
+        )
+
+        // Query by workspace A
+        const workspaceASessions = await db.listSessionsByWorkspace("/Users/test/project-a")
+        expect(workspaceASessions.length).toBe(2)
+        expect(workspaceASessions.map(s => s.id)).toEqual(
+          expect.arrayContaining(["workspace-a-1", "workspace-a-2"]),
+        )
+        expect(workspaceASessions.map(s => s.id)).not.toContain("workspace-b-1")
+        expect(workspaceASessions.map(s => s.id)).not.toContain("null-workspace")
+
+        // Query by workspace B
+        const workspaceBSessions = await db.listSessionsByWorkspace("/Users/test/project-b")
+        expect(workspaceBSessions.length).toBe(1)
+        expect(workspaceBSessions[0].id).toBe("workspace-b-1")
+      })
+
+      it("returns sessions sorted by startedAt descending", async () => {
+        const now = Date.now()
+        const workspace = "/Users/test/sorted-workspace"
+
+        await db.saveSession(
+          createTestSession({
+            id: "old",
+            workspaceId: workspace,
+            startedAt: now - 2000,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "newest",
+            workspaceId: workspace,
+            startedAt: now + 1000,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "middle",
+            workspaceId: workspace,
+            startedAt: now,
+          }),
+        )
+
+        const sessions = await db.listSessionsByWorkspace(workspace)
+        expect(sessions.map(s => s.id)).toEqual(["newest", "middle", "old"])
+      })
+
+      it("returns empty array for unknown workspace", async () => {
+        const sessions = await db.listSessionsByWorkspace("/Users/unknown/workspace")
+        expect(sessions).toEqual([])
+      })
+
+      it("does not return sessions with null workspaceId", async () => {
+        await db.saveSession(
+          createTestSession({
+            id: "null-ws",
+            workspaceId: null,
+          }),
+        )
+
+        // Querying with any workspace should not return null workspace sessions
+        const sessions = await db.listSessionsByWorkspace("/any/workspace")
+        expect(sessions.map(s => s.id)).not.toContain("null-ws")
+      })
+    })
+
+    describe("getSessionsForTaskInWorkspace", () => {
+      it("returns sessions filtered by both taskId and workspaceId", async () => {
+        const now = Date.now()
+
+        // Create sessions with different task/workspace combinations
+        await db.saveSession(
+          createTestSession({
+            id: "task-a-ws-a",
+            taskId: "task-a",
+            workspaceId: "/workspace-a",
+            startedAt: now,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "task-a-ws-b",
+            taskId: "task-a",
+            workspaceId: "/workspace-b",
+            startedAt: now - 100,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "task-b-ws-a",
+            taskId: "task-b",
+            workspaceId: "/workspace-a",
+            startedAt: now - 200,
+          }),
+        )
+
+        // Query for task-a in workspace-a
+        const sessions = await db.getSessionsForTaskInWorkspace("task-a", "/workspace-a")
+        expect(sessions.length).toBe(1)
+        expect(sessions[0].id).toBe("task-a-ws-a")
+      })
+
+      it("returns sessions sorted by startedAt descending", async () => {
+        const now = Date.now()
+        const workspace = "/Users/test/workspace"
+
+        await db.saveSession(
+          createTestSession({
+            id: "old",
+            taskId: "task-1",
+            workspaceId: workspace,
+            startedAt: now - 2000,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "newest",
+            taskId: "task-1",
+            workspaceId: workspace,
+            startedAt: now + 1000,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "middle",
+            taskId: "task-1",
+            workspaceId: workspace,
+            startedAt: now,
+          }),
+        )
+
+        const sessions = await db.getSessionsForTaskInWorkspace("task-1", workspace)
+        expect(sessions.map(s => s.id)).toEqual(["newest", "middle", "old"])
+      })
+
+      it("returns empty array when no sessions match", async () => {
+        await db.saveSession(
+          createTestSession({
+            id: "session-1",
+            taskId: "task-a",
+            workspaceId: "/workspace-a",
+          }),
+        )
+
+        // Query for different task
+        const sessions = await db.getSessionsForTaskInWorkspace("task-b", "/workspace-a")
+        expect(sessions).toEqual([])
+      })
+
+      it("does not return sessions from other workspaces", async () => {
+        await db.saveSession(
+          createTestSession({
+            id: "session-1",
+            taskId: "task-a",
+            workspaceId: "/workspace-a",
+          }),
+        )
+
+        // Query for same task but different workspace
+        const sessions = await db.getSessionsForTaskInWorkspace("task-a", "/workspace-b")
+        expect(sessions).toEqual([])
+      })
+    })
+
     it("queries sessions by workspace", async () => {
       const now = Date.now()
 

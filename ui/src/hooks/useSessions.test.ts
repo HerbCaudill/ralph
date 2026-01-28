@@ -11,8 +11,11 @@ vi.mock("@/lib/persistence", () => ({
     init: vi.fn().mockResolvedValue(undefined),
     listAllSessions: vi.fn().mockResolvedValue([]),
     getSessionsForTask: vi.fn().mockResolvedValue([]),
+    listSessionsByWorkspace: vi.fn().mockResolvedValue([]),
+    getSessionsForTaskInWorkspace: vi.fn().mockResolvedValue([]),
     getSessionMetadata: vi.fn().mockResolvedValue(undefined),
     getEventsForSession: vi.fn().mockResolvedValue([]),
+    saveSession: vi.fn().mockResolvedValue(undefined),
   },
 }))
 
@@ -259,6 +262,88 @@ describe("useSessions", () => {
       expect(result.current.sessions[0].metadata).toEqual({
         taskId: "task-1",
         title: undefined,
+      })
+    })
+  })
+
+  describe("workspace-scoped loading", () => {
+    it("loads sessions filtered by workspaceId when provided", async () => {
+      const timestamp = Date.now()
+      mockDatabase.listSessionsByWorkspace.mockResolvedValue([
+        createValidMetadata("iter-1", timestamp, "task-1"),
+      ])
+
+      const { result } = renderHook(() => useSessions({ workspaceId: "/my/workspace" }))
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      expect(mockDatabase.listSessionsByWorkspace).toHaveBeenCalledWith("/my/workspace")
+      expect(mockDatabase.listAllSessions).not.toHaveBeenCalled()
+      expect(mockDatabase.getSessionsForTask).not.toHaveBeenCalled()
+    })
+
+    it("loads sessions filtered by both taskId and workspaceId when both provided", async () => {
+      const timestamp = Date.now()
+      mockDatabase.getSessionsForTaskInWorkspace.mockResolvedValue([
+        createValidMetadata("iter-1", timestamp, "task-1"),
+      ])
+
+      const { result } = renderHook(() =>
+        useSessions({ taskId: "task-1", workspaceId: "/my/workspace" }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      expect(mockDatabase.getSessionsForTaskInWorkspace).toHaveBeenCalledWith(
+        "task-1",
+        "/my/workspace",
+      )
+      expect(mockDatabase.listAllSessions).not.toHaveBeenCalled()
+      expect(mockDatabase.getSessionsForTask).not.toHaveBeenCalled()
+      expect(mockDatabase.listSessionsByWorkspace).not.toHaveBeenCalled()
+    })
+
+    it("falls back to taskId-only filtering when workspaceId is not provided", async () => {
+      const timestamp = Date.now()
+      mockDatabase.getSessionsForTask.mockResolvedValue([
+        createValidMetadata("iter-1", timestamp, "task-1"),
+      ])
+
+      const { result } = renderHook(() => useSessions({ taskId: "task-1" }))
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      expect(mockDatabase.getSessionsForTask).toHaveBeenCalledWith("task-1")
+      expect(mockDatabase.getSessionsForTaskInWorkspace).not.toHaveBeenCalled()
+    })
+
+    it("refetches when workspaceId changes", async () => {
+      const timestamp = Date.now()
+      mockDatabase.listSessionsByWorkspace.mockResolvedValue([
+        createValidMetadata("iter-1", timestamp),
+      ])
+
+      const { result, rerender } = renderHook(({ workspaceId }) => useSessions({ workspaceId }), {
+        initialProps: { workspaceId: "/workspace-a" },
+      })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      expect(mockDatabase.listSessionsByWorkspace).toHaveBeenCalledWith("/workspace-a")
+
+      // Change workspace
+      rerender({ workspaceId: "/workspace-b" })
+
+      await waitFor(() => {
+        expect(mockDatabase.listSessionsByWorkspace).toHaveBeenCalledWith("/workspace-b")
       })
     })
   })

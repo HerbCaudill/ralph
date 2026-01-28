@@ -10,7 +10,7 @@ import {
 import { cn, stripTaskPrefix } from "@/lib/utils"
 import { useSessions, buildSessionPath, type SessionSummary } from "@/hooks"
 import { formatEventLogDate, formatEventLogTime } from "@/lib/formatEventLogDate"
-import { useAppStore, selectIssuePrefix } from "@/store"
+import { useAppStore, selectIssuePrefix, selectWorkspace } from "@/store"
 
 /** Groups sessions by date (Today, Yesterday, or specific date). */
 function groupSessionsByDate(
@@ -70,7 +70,10 @@ function filterSessions(sessions: SessionSummary[], query: string): SessionSumma
  * This is a thin wrapper that fetches data and delegates to SessionHistoryPanelView.
  */
 export function SessionHistoryPanel({ className }: SessionHistoryPanelProps) {
-  const { sessions, isLoading, error, refresh, loadSessionEvents } = useSessions()
+  const workspaceId = useAppStore(selectWorkspace)
+  const { sessions, isLoading, error, refresh, loadSessionEvents } = useSessions({
+    workspaceId: workspaceId ?? undefined,
+  })
   const issuePrefix = useAppStore(selectIssuePrefix)
 
   const handleSessionClick = useCallback(

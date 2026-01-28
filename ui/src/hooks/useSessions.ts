@@ -29,6 +29,8 @@ export interface SessionWithEvents extends SessionSummary {
 export interface UseSessionsOptions {
   /** Optional task ID to filter sessions by */
   taskId?: string
+  /** Optional workspace ID to filter sessions by (recommended for cross-workspace isolation) */
+  workspaceId?: string
 }
 
 export interface UseSessionsResult {
@@ -99,7 +101,7 @@ function toSessionSummary(metadata: PersistedSession): SessionSummary | null {
  * (e.g., when viewing a historical session).
  */
 export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult {
-  const { taskId } = options
+  const { taskId, workspaceId } = options
 
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -114,10 +116,21 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
     try {
       await eventDatabase.init()
 
-      const metadata =
-        taskId ?
-          await eventDatabase.getSessionsForTask(taskId)
-        : await eventDatabase.listAllSessions()
+      // Determine which query method to use based on filters
+      let metadata
+      if (taskId && workspaceId) {
+        // Filter by both task and workspace
+        metadata = await eventDatabase.getSessionsForTaskInWorkspace(taskId, workspaceId)
+      } else if (taskId) {
+        // Filter by task only (legacy behavior for backwards compatibility)
+        metadata = await eventDatabase.getSessionsForTask(taskId)
+      } else if (workspaceId) {
+        // Filter by workspace only
+        metadata = await eventDatabase.listSessionsByWorkspace(workspaceId)
+      } else {
+        // No filters - return all sessions (legacy behavior)
+        metadata = await eventDatabase.listAllSessions()
+      }
 
       // Filter out sessions with invalid timestamps
       const summaries = metadata
@@ -130,7 +143,7 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
     } finally {
       setIsLoading(false)
     }
-  }, [taskId])
+  }, [taskId, workspaceId])
 
   /**
    * Load events for a specific session from IndexedDB.
