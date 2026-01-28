@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { TaskProgressBar } from "./TaskProgressBar"
-import { useAppStore } from "@/store"
-import type { Task, RalphStatus, ClosedTasksTimeFilter } from "@/types"
+import { useAppStore, DEFAULT_INSTANCE_ID, DEFAULT_CONTEXT_WINDOW_MAX } from "@/store"
+import type { Task, RalphStatus, ClosedTasksTimeFilter, RalphInstance } from "@/types"
 
 // Mock the store
 vi.mock("@/store", async () => {
@@ -23,12 +23,32 @@ function setupMock(config: {
   closedTimeFilter?: ClosedTasksTimeFilter
 }) {
   mockUseAppStore.mockImplementation(selector => {
+    // Create a mock instance with the required status
+    const mockInstance: RalphInstance = {
+      id: DEFAULT_INSTANCE_ID,
+      name: "Main",
+      agentName: "Ralph",
+      status: config.ralphStatus,
+      events: [],
+      tokenUsage: { input: 0, output: 0 },
+      contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+      session: { current: 0, total: 0 },
+      worktreePath: null,
+      branch: null,
+      currentTaskId: null,
+      createdAt: Date.now(),
+      runStartedAt: null,
+      mergeConflict: null,
+    }
     const state = {
       tasks: config.tasks,
       initialTaskCount: config.initialTaskCount,
       ralphStatus: config.ralphStatus,
       accentColor: config.accentColor ?? null,
       closedTimeFilter: config.closedTimeFilter ?? "all_time",
+      // Include the instances Map for selectors
+      instances: new Map([[DEFAULT_INSTANCE_ID, mockInstance]]),
+      activeInstanceId: DEFAULT_INSTANCE_ID,
     }
     return selector(state as any)
   })

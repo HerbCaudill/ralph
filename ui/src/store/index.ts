@@ -92,20 +92,38 @@ export interface AppState {
   /** ID of the currently active/displayed instance */
   activeInstanceId: string
 
-  // === Legacy flat fields (for backward compatibility) ===
-  // These fields delegate to the active instance. They will be deprecated
-  // once all consumers are updated to use the instances Map directly.
+  // === Legacy flat fields (DEPRECATED - for backward compatibility) ===
+  // These fields duplicate data from the active instance. They are deprecated
+  // and will be removed in a future release. All consumers should use the
+  // instances Map via selectors (selectRalphStatus, selectEvents, etc.).
+  //
+  // Migration status:
+  // - Phase 1: Selectors read from instances Map (no fallback) ✓
+  // - Phase 2: Actions only update instances Map (pending)
+  // - Phase 3: Remove these fields from AppState (pending)
 
-  // Ralph process status
+  /**
+   * @deprecated Use selectRalphStatus(state) instead, which reads from instances Map.
+   * This flat field will be removed in a future release.
+   */
   ralphStatus: RalphStatus
 
-  // Timestamp when Ralph started running (null if not running)
+  /**
+   * @deprecated Use selectRunStartedAt(state) instead, which reads from instances Map.
+   * This flat field will be removed in a future release.
+   */
   runStartedAt: number | null
 
-  // Initial task count when Ralph started (for progress tracking)
+  /**
+   * @deprecated This field is not replicated in instances Map. Consider deriving from tasks.
+   * This flat field will be removed in a future release.
+   */
   initialTaskCount: number | null
 
-  // Event stream from ralph
+  /**
+   * @deprecated Use selectEvents(state) instead, which reads from instances Map.
+   * This flat field will be removed in a future release.
+   */
   events: ChatEvent[]
 
   // === Workspace state (shared across all instances) ===
@@ -122,13 +140,22 @@ export interface AppState {
   // Issue prefix for this workspace (e.g., "rui")
   issuePrefix: string | null
 
-  // Token usage
+  /**
+   * @deprecated Use selectTokenUsage(state) instead, which reads from instances Map.
+   * This flat field will be removed in a future release.
+   */
   tokenUsage: TokenUsage
 
-  // Context window usage
+  /**
+   * @deprecated Use selectContextWindow(state) instead, which reads from instances Map.
+   * This flat field will be removed in a future release.
+   */
   contextWindow: ContextWindow
 
-  // Session progress
+  /**
+   * @deprecated Use selectSession(state) instead, which reads from instances Map.
+   * This flat field will be removed in a future release.
+   */
   session: SessionInfo
 
   // WebSocket connection status
@@ -1065,7 +1092,10 @@ export const useAppStore = create<AppState & AppActions>()(
       setViewingSessionIndex: index => set({ viewingSessionIndex: index }),
       goToPreviousSession: () =>
         set(state => {
-          const totalSessions = countSessions(state.events)
+          // Read events from active instance (single source of truth)
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const events = activeInstance?.events ?? []
+          const totalSessions = countSessions(events)
           if (totalSessions === 0) return state
 
           // If viewing latest (null), go to second-to-last session
@@ -1081,7 +1111,10 @@ export const useAppStore = create<AppState & AppActions>()(
         }),
       goToNextSession: () =>
         set(state => {
-          const totalSessions = countSessions(state.events)
+          // Read events from active instance (single source of truth)
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const events = activeInstance?.events ?? []
+          const totalSessions = countSessions(events)
           if (totalSessions === 0) return state
 
           // If already viewing latest, stay there
@@ -1684,45 +1717,76 @@ export const selectActiveInstanceName = (state: AppState) =>
   state.instances.get(state.activeInstanceId)?.name ?? DEFAULT_INSTANCE_NAME
 export const selectActiveInstanceAgentName = (state: AppState) =>
   state.instances.get(state.activeInstanceId)?.agentName ?? DEFAULT_AGENT_NAME
-export const selectRalphStatus = (state: AppState) => {
-  const activeInstance = state.instances?.get(state.activeInstanceId)
-  return activeInstance?.status ?? state.ralphStatus
+/**
+ * Get the Ralph status for the active instance.
+ * Reads directly from the instances Map (single source of truth).
+ */
+export const selectRalphStatus = (state: AppState): RalphStatus => {
+  const activeInstance = state.instances.get(state.activeInstanceId)
+  return activeInstance?.status ?? "stopped"
 }
-export const selectRunStartedAt = (state: AppState) => {
-  const activeInstance = state.instances?.get(state.activeInstanceId)
-  return activeInstance?.runStartedAt ?? state.runStartedAt
+
+/**
+ * Get the run started timestamp for the active instance.
+ * Reads directly from the instances Map (single source of truth).
+ */
+export const selectRunStartedAt = (state: AppState): number | null => {
+  const activeInstance = state.instances.get(state.activeInstanceId)
+  return activeInstance?.runStartedAt ?? null
 }
+
 export const selectInitialTaskCount = (state: AppState) => state.initialTaskCount
-export const selectEvents = (state: AppState) => {
-  const activeInstance = state.instances?.get(state.activeInstanceId)
-  return activeInstance?.events ?? state.events
+
+/**
+ * Get the events for the active instance.
+ * Reads directly from the instances Map (single source of truth).
+ */
+export const selectEvents = (state: AppState): ChatEvent[] => {
+  const activeInstance = state.instances.get(state.activeInstanceId)
+  return activeInstance?.events ?? []
 }
+
 export const selectTasks = (state: AppState) => state.tasks
 export const selectWorkspace = (state: AppState) => state.workspace
 export const selectBranch = (state: AppState) => state.branch
 export const selectIssuePrefix = (state: AppState) => state.issuePrefix
-export const selectTokenUsage = (state: AppState) => {
-  const activeInstance = state.instances?.get(state.activeInstanceId)
-  return activeInstance?.tokenUsage ?? state.tokenUsage
+
+/**
+ * Get the token usage for the active instance.
+ * Reads directly from the instances Map (single source of truth).
+ */
+export const selectTokenUsage = (state: AppState): TokenUsage => {
+  const activeInstance = state.instances.get(state.activeInstanceId)
+  return activeInstance?.tokenUsage ?? { input: 0, output: 0 }
 }
-export const selectContextWindow = (state: AppState) => {
-  const activeInstance = state.instances?.get(state.activeInstanceId)
-  return activeInstance?.contextWindow ?? state.contextWindow
+
+/**
+ * Get the context window for the active instance.
+ * Reads directly from the instances Map (single source of truth).
+ */
+export const selectContextWindow = (state: AppState): ContextWindow => {
+  const activeInstance = state.instances.get(state.activeInstanceId)
+  return activeInstance?.contextWindow ?? { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX }
 }
-export const selectSession = (state: AppState) => {
-  const activeInstance = state.instances?.get(state.activeInstanceId)
-  return activeInstance?.session ?? state.session
+
+/**
+ * Get the session info for the active instance.
+ * Reads directly from the instances Map (single source of truth).
+ */
+export const selectSession = (state: AppState): SessionInfo => {
+  const activeInstance = state.instances.get(state.activeInstanceId)
+  return activeInstance?.session ?? { current: 0, total: 0 }
 }
 export const selectConnectionStatus = (state: AppState) => state.connectionStatus
 export const selectIsConnected = (state: AppState) => state.connectionStatus === "connected"
 export const selectHasInitialSync = (state: AppState) => state.hasInitialSync
 export const selectPersistenceError = (state: AppState) => state.persistenceError
-export const selectIsRalphRunning = (state: AppState) => state.ralphStatus === "running"
+export const selectIsRalphRunning = (state: AppState) => selectRalphStatus(state) === "running"
 /** Whether Ralph can accept user messages (running, paused, or stopping after current) */
-export const selectCanAcceptMessages = (state: AppState) =>
-  state.ralphStatus === "running" ||
-  state.ralphStatus === "paused" ||
-  state.ralphStatus === "stopping_after_current"
+export const selectCanAcceptMessages = (state: AppState) => {
+  const status = selectRalphStatus(state)
+  return status === "running" || status === "paused" || status === "stopping_after_current"
+}
 export const selectAccentColor = (state: AppState) => state.accentColor
 export const selectSidebarWidth = (state: AppState) => state.sidebarWidth
 export const selectTheme = (state: AppState) => state.theme
@@ -1738,9 +1802,9 @@ export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
 export const selectCurrentTaskChatSessionId = (state: AppState) => state.currentTaskChatSessionId
 export const selectTaskChatEvents = (state: AppState) => state.taskChatEvents
 export const selectViewingSessionIndex = (state: AppState) => state.viewingSessionIndex
-export const selectSessionCount = (state: AppState) => countSessions(state.events)
+export const selectSessionCount = (state: AppState) => countSessions(selectEvents(state))
 export const selectCurrentSessionEvents = (state: AppState) =>
-  getEventsForSession(state.events, state.viewingSessionIndex)
+  getEventsForSession(selectEvents(state), state.viewingSessionIndex)
 export const selectIsViewingLatestSession = (state: AppState) => state.viewingSessionIndex === null
 export const selectTaskSearchQuery = (state: AppState) => state.taskSearchQuery
 export const selectSelectedTaskId = (state: AppState) => state.selectedTaskId
@@ -1752,7 +1816,7 @@ export const selectClosedTimeFilter = (state: AppState) => state.closedTimeFilte
  * Task titles should be looked up from beads using the returned ID.
  */
 export const selectSessionTask = (state: AppState): string | null => {
-  const sessionEvents = getEventsForSession(state.events, state.viewingSessionIndex)
+  const sessionEvents = getEventsForSession(selectEvents(state), state.viewingSessionIndex)
   const taskId = getTaskFromSessionEvents(sessionEvents)
   if (taskId) {
     return taskId

@@ -600,6 +600,50 @@ Server-generated session IDs are preferred because they ensure consistency betwe
 
 `ralphConnection.ts` does NOT generate session IDs internally. It relies entirely on `useSessionPersistence` to set session IDs via the `setCurrentSessionId` export. This prevents dual session ID tracking bugs where events could be persisted with mismatched session IDs.
 
+### Zustand Store Architecture
+
+The UI state is managed by a Zustand store (`ui/src/store/index.ts`). The store supports **multi-instance state management** where each Ralph instance has its own isolated state.
+
+**Key Architecture:**
+
+- `instances: Map<string, RalphInstance>` - Single source of truth for per-instance state
+- `activeInstanceId: string` - Currently active/displayed instance
+- Selectors read from the instances Map (e.g., `selectRalphStatus`, `selectEvents`)
+
+**Per-Instance State (RalphInstance):**
+
+Each instance contains: `status`, `events`, `tokenUsage`, `contextWindow`, `session`, `runStartedAt`, `currentTaskId`, `mergeConflict`, etc.
+
+**Legacy Flat Fields (Deprecated):**
+
+The store contains legacy flat fields (`ralphStatus`, `events`, `tokenUsage`, etc.) that duplicate data from the active instance. These are deprecated and should not be accessed directly. Instead, use the provided selectors which read from the instances Map.
+
+**Migration Strategy:**
+
+The codebase is undergoing a phased migration to remove the legacy flat fields:
+
+1. **Phase 1 (Complete):** Selectors read from instances Map without fallback
+2. **Phase 2:** Actions only update instances Map (remove flat field updates)
+3. **Phase 3:** Remove legacy flat fields from AppState interface
+
+**Testing Store State:**
+
+When mocking the store in tests, include the `instances` Map with the required instance state:
+
+```typescript
+const mockInstance: RalphInstance = {
+  id: DEFAULT_INSTANCE_ID,
+  status: "running",
+  events: [],
+  // ... other fields
+}
+const state = {
+  instances: new Map([[DEFAULT_INSTANCE_ID, mockInstance]]),
+  activeInstanceId: DEFAULT_INSTANCE_ID,
+  // ... other fields
+}
+```
+
 ### Event Logs
 
 Standalone snapshots saved when sessions complete:
