@@ -3,7 +3,7 @@ import {
   useAppStore,
   selectEvents,
   selectRalphStatus,
-  selectViewingSessionIndex,
+  selectViewingSessionId,
   selectTasks,
   selectInstanceEvents,
   selectInstanceStatus,
@@ -11,7 +11,7 @@ import {
   selectInstance,
   selectIssuePrefix,
   selectIsConnected,
-  getEventsForSession,
+  getEventsForSessionId,
 } from "@/store"
 import { useSessions, buildSessionPath, parseSessionIdFromUrl } from "@/hooks"
 import type { SessionSummary } from "@/hooks"
@@ -79,7 +79,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const ralphStatus = useAppStore(state =>
     instanceId ? selectInstanceStatus(state, instanceId) : selectRalphStatus(state),
   )
-  const viewingSessionIndex = useAppStore(selectViewingSessionIndex)
+  const viewingSessionId = useAppStore(selectViewingSessionId)
   const tasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const isConnected = useAppStore(selectIsConnected)
@@ -94,7 +94,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     ralphStatus === "running" ||
     ralphStatus === "starting" ||
     ralphStatus === "stopping_after_current"
-  const isViewingLatest = viewingSessionIndex === null
+  const isViewingLatest = viewingSessionId === null
 
   // Fetch sessions for the history dropdown and manage selected session
   const {
@@ -114,8 +114,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     if (selectedSession) {
       return selectedSession.events
     }
-    return getEventsForSession(allEvents, viewingSessionIndex)
-  }, [allEvents, viewingSessionIndex, selectedSession])
+    return getEventsForSessionId(allEvents, viewingSessionId)
+  }, [allEvents, viewingSessionId, selectedSession])
 
   // Determine the current task for the session
   // Task ID comes from ralph_task_started events, title is looked up from beads
@@ -170,7 +170,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
         scrollContainer.scrollTop = scrollContainer.scrollHeight
       }
     }
-  }, [viewingSessionIndex, isViewingLatest])
+  }, [viewingSessionId, isViewingLatest])
 
   // Handle URL-based session loading on mount and browser back/forward
   useEffect(() => {
