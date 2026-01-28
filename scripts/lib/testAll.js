@@ -136,7 +136,7 @@ function printResultLine(result) {
   const name = style.bold(result.name)
   const durationStr = style.yellow(`(${formatDuration(result.duration)})`)
 
-  if (result.parser == null) {
+  if (result.type == null) {
     // No parser means no test counts (e.g. typecheck) — just pass/fail
     console.log(`  ${status} ${name} ${durationStr}`)
   } else {
@@ -171,7 +171,7 @@ function printSummary(suiteResults, totalDuration) {
  * Each suite in the array should have:
  * - name: display name
  * - command: string or array, e.g. "pnpm vitest run" or ["pnpm", "vitest", "run"]
- * - parser: "vitest" | "playwright" | null (no test count parsing)
+ * - type: "vitest" | "playwright" | null (determines output parser; null = no test counts)
  * - dir: subdirectory to run in, resolved relative to options.cwd (optional)
  *
  * Options:
@@ -196,12 +196,12 @@ export async function testAll(
 
     const suiteCwd = suite.dir ? path.join(cwd, suite.dir) : cwd
     const result = await runCommand(suite.command, { cwd: suiteCwd })
-    const parse = suite.parser ? (parsers[suite.parser] ?? suite.parser) : null
+    const parse = suite.type ? (parsers[suite.type] ?? suite.type) : null
     const counts = parse ? parse(result.output) : { passed: 0, failed: 0, skipped: 0 }
 
     const suiteResult = {
       name: suite.name,
-      parser: suite.parser,
+      type: suite.type,
       ...result,
       ...counts,
     }

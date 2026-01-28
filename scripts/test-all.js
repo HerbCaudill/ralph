@@ -17,10 +17,10 @@ const vitestCmd = `pnpm vitest run --reporter=json${changedMode ? " --changed" :
 await testAll(
   [
     { name: "typecheck", command: "pnpm -r --parallel typecheck" },
-    { name: "shared", command: vitestCmd, parser: "vitest", dir: "shared" },
-    { name: "cli", command: vitestCmd, parser: "vitest", dir: "cli" },
-    { name: "ui-vitest", command: vitestCmd, parser: "vitest", dir: "ui" },
-    { name: "ui-playwright", command: "node scripts/playwright.js", parser: "playwright" },
+    { name: "shared", command: vitestCmd, type: "vitest", dir: "shared" },
+    { name: "cli", command: vitestCmd, type: "vitest", dir: "cli" },
+    { name: "ui-vitest", command: vitestCmd, type: "vitest", dir: "ui" },
+    { name: "ui-playwright", command: "node scripts/playwright.js", type: "playwright" },
   ],
   {
     cwd: repoRoot,
