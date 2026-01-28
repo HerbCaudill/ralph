@@ -8,6 +8,7 @@ import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 import { extractTokenUsageFromEvent } from "./extractTokenUsage"
 import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
+import { BoundedMap } from "./BoundedMap"
 import type { ChatEvent } from "@/types"
 
 // Connection status constants and type guard
@@ -48,11 +49,13 @@ let currentReconnectDelay = INITIAL_RECONNECT_DELAY
 
 // Event timestamp tracking for reconnection sync
 // Maps instanceId to the last known event timestamp for that instance
-const lastEventTimestamps: Map<string, number> = new Map()
+// Bounded to prevent unbounded memory growth in long-running sessions (fixes r-ac882)
+const MAX_TRACKED_INSTANCES = 500
+const lastEventTimestamps = new BoundedMap<string, number>(MAX_TRACKED_INSTANCES)
 
 // Task chat event timestamp tracking for reconnection sync
 // Maps instanceId to the last known task chat event timestamp for that instance
-const lastTaskChatEventTimestamps: Map<string, number> = new Map()
+const lastTaskChatEventTimestamps = new BoundedMap<string, number>(MAX_TRACKED_INSTANCES)
 
 // Session tracking for IndexedDB persistence
 // Maps instanceId to the current session info (ID and start time) for that instance
@@ -62,7 +65,7 @@ interface SessionInfo {
   id: string
   startedAt: number
 }
-const currentSessions: Map<string, SessionInfo> = new Map()
+const currentSessions = new BoundedMap<string, SessionInfo>(MAX_TRACKED_INSTANCES)
 
 /**
  * Extracts the session ID from a session boundary event.
