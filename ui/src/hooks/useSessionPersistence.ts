@@ -19,6 +19,8 @@ import type { PersistedSession } from "@/lib/persistence"
 import type { ChatEvent, TokenUsage, ContextWindow, SessionInfo } from "@/types"
 import { getSessionBoundaries, getTaskFromSessionEvents } from "@/store"
 import { getCurrentSession } from "@/lib/ralphConnection"
+import { isAssistantMessage } from "@/lib/isAssistantMessage"
+import { isSystemEvent } from "@/lib/isSystemEvent"
 
 /**
  * Checks if an event signals session completion.
@@ -31,8 +33,8 @@ function isSessionEndEvent(event: ChatEvent): boolean {
   }
 
   // COMPLETE promise signal in assistant text
-  if (event.type === "assistant") {
-    const content = (event as any).message?.content
+  if (isAssistantMessage(event)) {
+    const content = event.message?.content
     if (Array.isArray(content)) {
       for (const block of content) {
         if (
@@ -58,8 +60,8 @@ function sessionEndedWithComplete(events: ChatEvent[]): boolean {
   // (checking last 3 events should be sufficient)
   const lastEvents = events.slice(-3)
   for (const event of lastEvents) {
-    if (event.type === "assistant") {
-      const content = (event as any).message?.content
+    if (isAssistantMessage(event)) {
+      const content = event.message?.content
       if (Array.isArray(content)) {
         for (const block of content) {
           if (
@@ -273,7 +275,7 @@ export function useSessionPersistence(
       console.debug(
         `[useSessionPersistence] Latest boundary at index ${latestBoundaryEventIndex}, event:`,
         boundaryEvent.type,
-        (boundaryEvent as any).subtype,
+        isSystemEvent(boundaryEvent) ? boundaryEvent.subtype : undefined,
       )
 
       // New session started if we don't have a current one, or the boundary changed

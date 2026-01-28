@@ -1,5 +1,11 @@
 import { useMemo } from "react"
-import type { ChatEvent, StreamingContentBlock, StreamingMessage } from "@/types"
+import type {
+  AssistantChatEvent,
+  ChatEvent,
+  StreamingContentBlock,
+  StreamingMessage,
+} from "@/types"
+import { isStreamEvent } from "@/lib/isStreamEvent"
 
 /**
  * Maximum time (in ms) between a message_stop timestamp and an assistant event timestamp
@@ -104,8 +110,8 @@ function findStreamingMessageRanges(events: ChatEvent[]): {
   let currentMessageId: string | null = null
 
   for (const event of events) {
-    if (event.type !== "stream_event") continue
-    const streamEvent = (event as { event?: { type?: string; message?: { id?: string } } }).event
+    if (!isStreamEvent(event)) continue
+    const streamEvent = event.event
     if (!streamEvent) continue
 
     if (streamEvent.type === "message_start") {
@@ -168,7 +174,7 @@ function shouldDeduplicateAssistant(
   synthesizedMessageIds: Set<string>,
 ): boolean {
   // Extract message ID from the assistant event if available
-  const messageId = (assistantEvent as { message?: { id?: string } }).message?.id
+  const messageId = (assistantEvent as AssistantChatEvent).message?.id
 
   // Priority 1: Check by message ID (most reliable)
   // This covers completed streaming messages where we extracted the ID from message_start
@@ -249,7 +255,7 @@ export function useStreamingState(events: ChatEvent[]): {
     }
 
     for (const event of events) {
-      if (event.type !== "stream_event") {
+      if (!isStreamEvent(event)) {
         // Non-stream events pass through directly, but skip assistant events that
         // were already synthesized from streaming (to avoid duplicates).
         // Deduplication uses message IDs (when available) or timestamp proximity as fallback.
@@ -271,7 +277,7 @@ export function useStreamingState(events: ChatEvent[]): {
         continue
       }
 
-      const streamEvent = (event as any).event
+      const streamEvent = event.event
       if (!streamEvent) continue
 
       switch (streamEvent.type) {

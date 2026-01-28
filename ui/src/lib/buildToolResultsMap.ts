@@ -24,7 +24,7 @@ export function buildToolResultsMap(events: ChatEvent[]): ToolResultsInfo {
 
   for (const event of events) {
     if (isToolResultEvent(event)) {
-      const content = (event as any).message?.content
+      const content = event.message?.content
       if (Array.isArray(content)) {
         for (const item of content) {
           if (item.type === "tool_result" && item.tool_use_id) {

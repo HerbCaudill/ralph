@@ -88,7 +88,29 @@ export interface AssistantChatEvent extends ChatEvent {
 /** A raw streaming event from the Claude SDK. */
 export interface StreamChatEvent extends ChatEvent {
   type: "stream_event"
-  event?: { type?: string; [key: string]: unknown }
+  event?: StreamEventPayload
+}
+
+/** Payload of a streaming event from the Claude SDK. */
+export interface StreamEventPayload {
+  type?: string
+  message?: { id?: string; [key: string]: unknown }
+  content_block?: {
+    type?: string
+    text?: string
+    thinking?: string
+    id?: string
+    name?: string
+    [key: string]: unknown
+  }
+  delta?: {
+    type?: string
+    text?: string
+    thinking?: string
+    partial_json?: string
+    [key: string]: unknown
+  }
+  [key: string]: unknown
 }
 
 /** A result event with token usage information. */
