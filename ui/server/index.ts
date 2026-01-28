@@ -1324,13 +1324,6 @@ function createApp(
 export interface WsClient {
   ws: WebSocket
   isAlive: boolean
-  /**
-   * Index of the last event delivered to this client (per instance).
-   * Used for tracking live event delivery during a connected session.
-   * Note: Reconnection sync now uses timestamps, not indices.
-   * Key is instanceId, value is the index of the last delivered event.
-   */
-  lastDeliveredEventIndex: Map<string, number>
 }
 
 const clients = new Set<WsClient>()
@@ -1356,26 +1349,6 @@ export function getClientByWebSocket(ws: WebSocket): WsClient | undefined {
     }
   }
   return undefined
-}
-
-/**
- * Update the last delivered event index for a client.
- * Call this after successfully delivering events to a client.
- */
-export function updateClientEventIndex(
-  client: WsClient,
-  instanceId: string,
-  eventIndex: number,
-): void {
-  client.lastDeliveredEventIndex.set(instanceId, eventIndex)
-}
-
-/**
- * Get the last delivered event index for a client.
- * Returns -1 if no events have been delivered for this instance.
- */
-export function getClientEventIndex(client: WsClient, instanceId: string): number {
-  return client.lastDeliveredEventIndex.get(instanceId) ?? -1
 }
 
 /**  Attach a WebSocket server to an HTTP server with heartbeat and message handling. */
@@ -1406,7 +1379,7 @@ function attachWsServer(
   wss.on("connection", (ws: WebSocket) => {
     console.log("[ws] client connected")
 
-    const client: WsClient = { ws, isAlive: true, lastDeliveredEventIndex: new Map() }
+    const client: WsClient = { ws, isAlive: true }
     clients.add(client)
 
     ws.on("pong", () => {
@@ -1466,11 +1439,6 @@ function attachWsServer(
           events,
         }),
       )
-
-      // Track that we've delivered these events to this client
-      if (events.length > 0) {
-        client.lastDeliveredEventIndex.set("default", events.length - 1)
-      }
 
       // Send full instance list so client can hydrate its store
       const allInstances = registry.getAll().map(serializeInstanceState)
@@ -1605,11 +1573,6 @@ function handleWsMessage(
           }),
         )
 
-        // Update client's last delivered event index (still used for live event tracking)
-        if (eventHistory.length > 0) {
-          updateClientEventIndex(client, instanceId, eventHistory.length - 1)
-        }
-
         console.log(
           `[ws] reconnect sync for instance ${instanceId}: sent ${pendingEvents.length} pending events (after timestamp ${lastEventTimestamp ?? "none"})`,
         )
@@ -1736,8 +1699,6 @@ function wireRegistryEvents(
         for (const client of clients) {
           if (client.ws.readyState === client.ws.OPEN) {
             client.ws.send(payload)
-            // Update tracking for this client
-            client.lastDeliveredEventIndex.set(instanceId, eventIndex)
           }
         }
         break

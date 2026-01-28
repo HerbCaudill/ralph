@@ -488,46 +488,6 @@ describe("WebSocket event broadcast", () => {
   })
 })
 
-describe("Per-client event tracking", () => {
-  it("WsClient interface includes lastDeliveredEventIndex", async () => {
-    // Import the type to ensure it exists and has the correct shape
-    const client = {
-      ws: {} as typeof WebSocket.prototype,
-      isAlive: true,
-      lastDeliveredEventIndex: new Map<string, number>(),
-    }
-
-    // Verify the Map works correctly
-    client.lastDeliveredEventIndex.set("default", 5)
-    expect(client.lastDeliveredEventIndex.get("default")).toBe(5)
-    expect(client.lastDeliveredEventIndex.get("other")).toBeUndefined()
-
-    // Verify default behavior (no events delivered returns -1 or undefined)
-    expect(client.lastDeliveredEventIndex.get("nonexistent") ?? -1).toBe(-1)
-  })
-
-  it("tracks event indices per instance", async () => {
-    const client = {
-      ws: {} as typeof WebSocket.prototype,
-      isAlive: true,
-      lastDeliveredEventIndex: new Map<string, number>(),
-    }
-
-    // Track events for different instances
-    client.lastDeliveredEventIndex.set("instance1", 10)
-    client.lastDeliveredEventIndex.set("instance2", 5)
-    client.lastDeliveredEventIndex.set("default", 0)
-
-    expect(client.lastDeliveredEventIndex.get("instance1")).toBe(10)
-    expect(client.lastDeliveredEventIndex.get("instance2")).toBe(5)
-    expect(client.lastDeliveredEventIndex.get("default")).toBe(0)
-
-    // Update an instance's index
-    client.lastDeliveredEventIndex.set("instance1", 15)
-    expect(client.lastDeliveredEventIndex.get("instance1")).toBe(15)
-  })
-})
-
 describe("Reconnection sync protocol", () => {
   /**
    * Creates a test server that properly handles reconnect messages
@@ -542,7 +502,6 @@ describe("Reconnection sync protocol", () => {
     interface TestWsClient {
       ws: typeof WebSocket.prototype
       isAlive: boolean
-      lastDeliveredEventIndex: Map<string, number>
     }
 
     const clients = new Set<TestWsClient>()
@@ -580,7 +539,6 @@ describe("Reconnection sync protocol", () => {
       const client: TestWsClient = {
         ws,
         isAlive: true,
-        lastDeliveredEventIndex: new Map(),
       }
       clients.add(client)
 
@@ -618,11 +576,6 @@ describe("Reconnection sync protocol", () => {
                 timestamp: Date.now(),
               }),
             )
-
-            // Update client's last delivered event index
-            if (events.length > 0) {
-              client.lastDeliveredEventIndex.set(instanceId, events.length - 1)
-            }
           }
         } catch {
           // Ignore parse errors
@@ -1330,7 +1283,11 @@ describe("Task chat reconnection sync protocol", () => {
       timestamp: 2000,
       content: "Instance2-A",
     })
-    testServer.addEvent("instance-2", { type: "assistant", timestamp: 3000, content: "Instance2-B" })
+    testServer.addEvent("instance-2", {
+      type: "assistant",
+      timestamp: 3000,
+      content: "Instance2-B",
+    })
     testServer.setStatus("instance-2", "processing")
 
     const ws = new WebSocket(`ws://localhost:${port}/ws`)
