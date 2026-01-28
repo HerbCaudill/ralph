@@ -2637,8 +2637,8 @@ describe("useAppStore", () => {
       // Events should NOT be in state yet
       expect(useAppStore.getState().taskChatEvents).toHaveLength(0)
 
-      // Advance timers past the batch interval (100ms)
-      await vi.advanceTimersByTimeAsync(150)
+      // Advance timers past the batch interval (16ms)
+      await vi.advanceTimersByTimeAsync(20)
 
       // Now the event should be in state
       expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
