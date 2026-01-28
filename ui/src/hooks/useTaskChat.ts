@@ -150,7 +150,9 @@ export function useTaskChat(): UseTaskChatResult {
         loadingTimeoutRef.current = null
       }, 60_000)
 
-      const result = await sendTaskChatMessage(message)
+      // Send message with conversation history (client is authoritative for message history)
+      // Use userMessages as they are TaskChatMessage[] with proper types
+      const result = await sendTaskChatMessage(message, userMessages)
 
       if (!result.ok) {
         const errorMessage = result.error ?? "Failed to send message"
