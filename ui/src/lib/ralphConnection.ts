@@ -177,6 +177,7 @@ function handleMessage(event: MessageEvent): void {
       "task-chat:tool_use",
       "task-chat:tool_update",
       "task-chat:tool_result",
+      "task-chat:cleared",
     ]
 
     // Skip task chat messages for non-active instances
@@ -603,6 +604,12 @@ function handleMessage(event: MessageEvent): void {
             timestamp: Date.now(),
           })
         }
+        break
+
+      case "task-chat:cleared":
+        // Task chat history was cleared (by this or another client)
+        // Clear local state to sync across all connected clients
+        store.clearTaskChatMessages()
         break
 
       // Deprecated legacy handlers - these message types are still emitted by server

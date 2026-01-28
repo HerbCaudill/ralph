@@ -261,6 +261,37 @@ describe("useTaskChat", () => {
 
       expect(result.current.events).toHaveLength(0)
     })
+
+    it("does not clear messages from store when server returns failure (bug r-tufi7.46)", async () => {
+      // This test verifies fix for bug r-tufi7.46:
+      // "Race window: Client clears local state before server confirms, then server might fail"
+      // The fix ensures client clearing is contingent on server success.
+      useAppStore.getState().addTaskChatMessage({
+        id: "user-1",
+        role: "user",
+        content: "Hello",
+        timestamp: 1000,
+      })
+
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: false, error: "Server error" }),
+      })
+
+      const { result } = renderHook(() => useTaskChat())
+
+      expect(result.current.events).toHaveLength(1)
+
+      await act(async () => {
+        await result.current.clearHistory()
+      })
+
+      // Messages should NOT be cleared when server fails
+      expect(result.current.events).toHaveLength(1)
+      expect(result.current.events[0]).toMatchObject({
+        type: "user_message",
+        message: "Hello",
+      })
+    })
   })
 
   describe("loadingJustCompleted", () => {

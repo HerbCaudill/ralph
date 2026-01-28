@@ -375,6 +375,11 @@ export class WorkspaceContext extends EventEmitter {
       // Also log for replay testing
       this.logTaskChatEvent(event)
     })
+
+    // Emit historyCleared event for cross-client sync
+    this._taskChatManager.on("historyCleared", () => {
+      this.emit("task-chat:cleared")
+    })
   }
 
   /**

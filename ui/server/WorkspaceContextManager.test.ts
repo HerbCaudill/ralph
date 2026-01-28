@@ -414,6 +414,16 @@ describe("WorkspaceContextManager", () => {
       expect(eventHandler).toHaveBeenCalledWith("/path/to/workspace", "task-chat:event", sdkEvent)
     })
 
+    it("forwards task-chat:cleared (history cleared for cross-client sync)", () => {
+      const eventHandler = vi.fn()
+      manager.on("context:event", eventHandler)
+
+      const context = manager.setActiveContext("/path/to/workspace")
+      context.emit("task-chat:cleared")
+
+      expect(eventHandler).toHaveBeenCalledWith("/path/to/workspace", "task-chat:cleared")
+    })
+
     it("forwards mutation:event (beads daemon mutation events)", () => {
       const eventHandler = vi.fn()
       manager.on("context:event", eventHandler)

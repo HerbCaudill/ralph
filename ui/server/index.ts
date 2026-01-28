@@ -1188,6 +1188,17 @@ function createApp(
     }
   })
 
+  /**
+   * Clear task chat history.
+   *
+   * This triggers a multi-system clear sequence:
+   * 1. TaskChatManager.clearHistory() emits "historyCleared" event
+   * 2. WorkspaceContext forwards this as "task-chat:cleared" event
+   * 3. Server broadcasts "task-chat:cleared" to all connected WebSocket clients
+   * 4. Each client receives the broadcast and clears local state
+   *
+   * This ensures all connected clients stay in sync when history is cleared.
+   */
   app.post("/api/task-chat/clear", (_req: Request, res: Response) => {
     try {
       const taskChatManager = getTaskChatManager()
@@ -1991,6 +2002,16 @@ function wireContextManagerEvents(
           instanceId,
           workspaceId,
           event,
+          timestamp: Date.now(),
+        })
+        break
+      }
+      case "task-chat:cleared": {
+        // Task chat history was cleared - broadcast for cross-client sync
+        broadcast({
+          type: "task-chat:cleared",
+          instanceId,
+          workspaceId,
           timestamp: Date.now(),
         })
         break

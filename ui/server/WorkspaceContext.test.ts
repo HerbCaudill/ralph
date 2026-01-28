@@ -445,6 +445,15 @@ describe("WorkspaceContext", () => {
 
       expect(handler).toHaveBeenCalledWith(event)
     })
+
+    it("forwards task-chat:cleared (history cleared for cross-client sync)", () => {
+      const handler = vi.fn()
+      context.on("task-chat:cleared", handler)
+
+      context.taskChatManager.emit("historyCleared")
+
+      expect(handler).toHaveBeenCalled()
+    })
   })
 
   describe("disposal", () => {

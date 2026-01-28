@@ -26,6 +26,7 @@ let mockStoreState: {
   clearRunningBeforeDisconnect: ReturnType<typeof vi.fn>
   resetSessionStats: ReturnType<typeof vi.fn>
   resetSessionStatsForInstance: ReturnType<typeof vi.fn>
+  clearTaskChatMessages: ReturnType<typeof vi.fn>
 }
 
 // Initialize mock store state
@@ -47,6 +48,7 @@ function createMockStoreState() {
     clearRunningBeforeDisconnect: vi.fn(),
     resetSessionStats: vi.fn(),
     resetSessionStatsForInstance: vi.fn(),
+    clearTaskChatMessages: vi.fn(),
   }
 }
 
@@ -1299,6 +1301,105 @@ describe("ralphConnection event timestamp tracking", () => {
       const sessionInfo = getCurrentSession("test-instance")
       expect(sessionInfo?.id).toBe(`test-instance-${timestamp2}`)
       expect(sessionInfo?.startedAt).toBe(timestamp2)
+    })
+  })
+
+  describe("task-chat:cleared message handling (bug r-tufi7.46 fix)", () => {
+    // These tests verify the client-side handler for task-chat:cleared WebSocket messages.
+    // This is part of the multi-system clear sequence:
+    // 1. Client calls POST /api/task-chat/clear
+    // 2. Server's TaskChatManager emits "historyCleared" event
+    // 3. WorkspaceContext forwards this as "task-chat:cleared" event
+    // 4. Server broadcasts "task-chat:cleared" to all connected WebSocket clients
+    // 5. Each client (including the initiator) receives the broadcast and clears local state
+
+    beforeEach(() => {
+      // Install mock WebSocket
+      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
+      MockWebSocket.instances = []
+      mockStoreState = createMockStoreState()
+    })
+
+    afterEach(() => {
+      // Restore original WebSocket
+      globalThis.WebSocket = originalWebSocket
+      ralphConnection.reset()
+    })
+
+    it("clears task chat messages when task-chat:cleared message is received", async () => {
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "running",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Simulate receiving task-chat:cleared message
+      ws.simulateMessage({
+        type: "task-chat:cleared",
+        instanceId: "test-instance",
+        timestamp: Date.now(),
+      })
+
+      // Verify that clearTaskChatMessages was called
+      expect(mockStoreState.clearTaskChatMessages).toHaveBeenCalled()
+    })
+
+    it("clears task chat messages even without explicit instanceId (defaults to active)", async () => {
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "running",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Simulate receiving task-chat:cleared message without instanceId
+      ws.simulateMessage({
+        type: "task-chat:cleared",
+        timestamp: Date.now(),
+      })
+
+      // Verify that clearTaskChatMessages was called
+      expect(mockStoreState.clearTaskChatMessages).toHaveBeenCalled()
+    })
+
+    it("ignores task-chat:cleared for non-active instances", async () => {
+      // Set up active instance as "test-instance" (the default)
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "running",
+      })
+
+      // Set up a non-active instance
+      mockStoreState.instances.set("other-instance", {
+        events: [],
+        status: "running",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Simulate receiving task-chat:cleared for a non-active instance
+      ws.simulateMessage({
+        type: "task-chat:cleared",
+        instanceId: "other-instance",
+        timestamp: Date.now(),
+      })
+
+      // Verify that clearTaskChatMessages was NOT called
+      // (task-chat:cleared is in activeOnlyTypes so it's skipped for non-active instances)
+      expect(mockStoreState.clearTaskChatMessages).not.toHaveBeenCalled()
     })
   })
 })

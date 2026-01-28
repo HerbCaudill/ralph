@@ -181,6 +181,18 @@ export function useTaskChat(): UseTaskChatResult {
 
   /**
    * Clear chat history.
+   *
+   * Multi-system clear sequence:
+   * 1. Client calls POST /api/task-chat/clear
+   * 2. Server's TaskChatManager emits "historyCleared" event
+   * 3. WorkspaceContext forwards this as "task-chat:cleared" event
+   * 4. Server broadcasts "task-chat:cleared" to all connected WebSocket clients
+   * 5. Each client (including the initiator) receives the broadcast and clears local state
+   *
+   * This ensures:
+   * - Client clearing is contingent on server success
+   * - All connected clients stay in sync (cross-client coordination)
+   * - The initiating client also gets the broadcast, so we clear locally here too
    */
   const clearHistory = useCallback(async () => {
     setLoading(true)
@@ -189,6 +201,9 @@ export function useTaskChat(): UseTaskChatResult {
     const result = await clearTaskChatHistory()
 
     if (result.ok) {
+      // Clear local state immediately for responsive UX
+      // Note: We'll also receive the task-chat:cleared broadcast which calls clearMessages again,
+      // but that's idempotent and ensures consistency across all clients
       clearMessages()
     }
     setLoading(false)
