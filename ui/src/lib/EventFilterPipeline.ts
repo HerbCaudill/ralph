@@ -9,7 +9,24 @@
  * - Make all filtering decisions explicit and documented
  * - Provide a single source of truth for what events are visible
  * - Enable easier debugging of why events aren't showing
- * - Support future debug mode to show filtered events
+ * - Support debug mode to show filtered events
+ *
+ * ## Debug Mode
+ *
+ * Enable debug logging in the browser console:
+ * ```js
+ * localStorage.setItem('ralph-filter-debug', 'true')
+ * // Reload the page to see filter decisions logged
+ *
+ * // Disable with:
+ * localStorage.removeItem('ralph-filter-debug')
+ * ```
+ *
+ * When enabled, each filter decision is logged with:
+ * - Layer (L3 for event types, L4 for content blocks)
+ * - Decision (RENDER or FILTER)
+ * - Event/block type
+ * - Reason (for filtered items)
  *
  * ## Usage
  * ```ts
@@ -23,6 +40,61 @@
  */
 
 import type { ChatEvent, AssistantContentBlock } from "@/types"
+
+// =============================================================================
+// Debug Mode
+// =============================================================================
+
+const FILTER_DEBUG_KEY = "ralph-filter-debug"
+
+/**
+ * Check if filter debug mode is enabled via localStorage.
+ * Enable with: localStorage.setItem('ralph-filter-debug', 'true')
+ * Disable with: localStorage.removeItem('ralph-filter-debug')
+ */
+export function isFilterDebugEnabled(): boolean {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") {
+    return false
+  }
+  try {
+    return localStorage.getItem(FILTER_DEBUG_KEY) === "true"
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Log a Layer 3 filter decision (event type filtering).
+ * Only logs when debug mode is enabled.
+ */
+export function logEventFilterDecision(event: ChatEvent, result: FilterResult): void {
+  if (!isFilterDebugEnabled()) return
+
+  const { type, timestamp } = event
+  if (result.shouldRender) {
+    console.log(`[L3] ✓ RENDER: ${type} @ ${timestamp}`)
+  } else {
+    console.log(`[L3] ✗ FILTER: ${type} @ ${timestamp} - ${result.reason}`)
+  }
+}
+
+/**
+ * Log a Layer 4 filter decision (content block filtering).
+ * Only logs when debug mode is enabled.
+ */
+export function logContentBlockFilterDecision(
+  block: AssistantContentBlock,
+  result: FilterResult,
+  index: number,
+): void {
+  if (!isFilterDebugEnabled()) return
+
+  if (result.shouldRender) {
+    console.log(`[L4] ✓ RENDER: block[${index}] type=${block.type}`)
+  } else {
+    console.log(`[L4] ✗ FILTER: block[${index}] type=${block.type} - ${result.reason}`)
+  }
+}
 
 /**
  * Reasons why an event might be filtered out.
@@ -87,7 +159,10 @@ export function shouldFilterEventByType(event: ChatEvent): FilterResult {
 
   // Tool result events (type="user" with tool_use_result) are filtered
   // because results are shown inline in the tool_use card
-  if (type === "user" && typeof (event as Record<string, unknown>).tool_use_result !== "undefined") {
+  if (
+    type === "user" &&
+    typeof (event as Record<string, unknown>).tool_use_result !== "undefined"
+  ) {
     return { shouldRender: false, reason: "tool_result_rendered_inline" }
   }
 

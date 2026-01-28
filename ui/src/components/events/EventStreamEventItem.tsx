@@ -2,7 +2,11 @@ import { UserMessage } from "./UserMessage"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { ErrorEvent } from "./ErrorEvent"
 import { renderEventContentBlock } from "@/lib/renderEventContentBlock"
-import { shouldFilterEventByType, type FilterReason } from "@/lib/EventFilterPipeline"
+import {
+  shouldFilterEventByType,
+  logEventFilterDecision,
+  type FilterReason,
+} from "@/lib/EventFilterPipeline"
 import { isAssistantMessage } from "@/lib/isAssistantMessage"
 import { isErrorEvent } from "@/lib/isErrorEvent"
 import { isRalphTaskCompletedEvent } from "@/lib/isRalphTaskCompletedEvent"
@@ -32,10 +36,11 @@ export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycl
   // Use centralized filter logic to check if event should be rendered
   const filterResult = shouldFilterEventByType(event)
 
-  // If filtered, optionally track the reason for debugging
+  // Log filter decision when debug mode is enabled
+  // Enable with: localStorage.setItem('ralph-filter-debug', 'true')
+  logEventFilterDecision(event, filterResult)
+
   if (!filterResult.shouldRender) {
-    // Note: filterResult.reason contains why (e.g., "tool_result_rendered_inline")
-    // This can be used with debug mode in the future
     return null
   }
 

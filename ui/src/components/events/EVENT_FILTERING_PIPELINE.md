@@ -118,17 +118,17 @@ This layer also builds two maps from the displayed events:
 
 ### Event Type Routing
 
-| Event Type | Action | Renderer |
-|------------|--------|----------|
-| User message | Render | `<UserMessage />` |
-| Ralph task started | Render | `<TaskLifecycleEvent />` |
-| Ralph task completed | Render | `<TaskLifecycleEvent />` |
-| Assistant message | Render | Content blocks via `renderEventContentBlock()` |
-| Error/server_error | Render | `<ErrorEvent />` |
-| **Tool result** | **Filtered** | `return null` |
-| **stream_event** | **Filtered** | `return null` |
-| **system** | **Filtered** | `return null` |
-| Unknown types | **Filtered** | `return null` |
+| Event Type           | Action       | Renderer                                       |
+| -------------------- | ------------ | ---------------------------------------------- |
+| User message         | Render       | `<UserMessage />`                              |
+| Ralph task started   | Render       | `<TaskLifecycleEvent />`                       |
+| Ralph task completed | Render       | `<TaskLifecycleEvent />`                       |
+| Assistant message    | Render       | Content blocks via `renderEventContentBlock()` |
+| Error/server_error   | Render       | `<ErrorEvent />`                               |
+| **Tool result**      | **Filtered** | `return null`                                  |
+| **stream_event**     | **Filtered** | `return null`                                  |
+| **system**           | **Filtered** | `return null`                                  |
+| Unknown types        | **Filtered** | `return null`                                  |
 
 ### Why These Are Filtered
 
@@ -158,13 +158,13 @@ return null // Default for unrecognized types
 
 ### Content Block Routing
 
-| Block Type | Action | Renderer |
-|------------|--------|----------|
-| thinking | Render | `<ThinkingBlock />` |
-| text | Render | `<AssistantText />` (or `<TaskLifecycleEvent />` if it parses as lifecycle) |
-| tool_use | Render | `<ToolUseCard />` |
-| **Lifecycle text (when structured exists)** | **Filtered** | `return null` |
-| Unknown types | **Filtered** | `return null` |
+| Block Type                                  | Action       | Renderer                                                                    |
+| ------------------------------------------- | ------------ | --------------------------------------------------------------------------- |
+| thinking                                    | Render       | `<ThinkingBlock />`                                                         |
+| text                                        | Render       | `<AssistantText />` (or `<TaskLifecycleEvent />` if it parses as lifecycle) |
+| tool_use                                    | Render       | `<ToolUseCard />`                                                           |
+| **Lifecycle text (when structured exists)** | **Filtered** | `return null`                                                               |
+| Unknown types                               | **Filtered** | `return null`                                                               |
 
 ### Lifecycle Event Deduplication
 
@@ -193,18 +193,61 @@ if (block.type === "text") {
 
 ## Summary of Filtered Events
 
-| Layer | What's Filtered | Why |
-|-------|-----------------|-----|
-| useStreamingState | Duplicate assistant events | Already synthesized from stream_events |
-| EventDisplay | Events beyond maxEvents window | Performance (keeps last 1000) |
-| EventStreamEventItem | tool_result, stream_event, system, unknown | Rendered elsewhere or internal |
-| renderEventContentBlock | Duplicate lifecycle text, unknown block types | Avoid duplication, unsupported |
+| Layer                   | What's Filtered                               | Why                                    |
+| ----------------------- | --------------------------------------------- | -------------------------------------- |
+| useStreamingState       | Duplicate assistant events                    | Already synthesized from stream_events |
+| EventDisplay            | Events beyond maxEvents window                | Performance (keeps last 1000)          |
+| EventStreamEventItem    | tool_result, stream_event, system, unknown    | Rendered elsewhere or internal         |
+| renderEventContentBlock | Duplicate lifecycle text, unknown block types | Avoid duplication, unsupported         |
 
 ---
 
 ## Debugging Event Filtering
 
-To debug why an event isn't showing:
+### Debug Mode
+
+The fastest way to debug event filtering is to enable the built-in debug mode:
+
+```javascript
+// In browser console:
+localStorage.setItem("ralph-filter-debug", "true")
+// Reload the page
+
+// To disable:
+localStorage.removeItem("ralph-filter-debug")
+```
+
+When enabled, every filter decision is logged to the console:
+
+```
+[L3] ✓ RENDER: assistant @ 1706500000000
+[L3] ✗ FILTER: stream_event @ 1706500000001 - stream_event_processed_by_streaming
+[L4] ✓ RENDER: block[0] type=text
+[L4] ✗ FILTER: block[1] type=text - lifecycle_text_has_structured_event
+```
+
+### Programmatic Debugging
+
+Import debugging utilities from EventFilterPipeline:
+
+```typescript
+import {
+  debugFilterPipeline,
+  getFilterStats,
+  isFilterDebugEnabled,
+} from "@/lib/EventFilterPipeline"
+
+// Log all filter decisions for an array of events
+debugFilterPipeline(events)
+
+// Get statistics about what was filtered
+const stats = getFilterStats(events)
+// { rendered: 45, tool_result_rendered_inline: 12, stream_event_processed_by_streaming: 100 }
+```
+
+### Manual Investigation Steps
+
+To debug why a specific event isn't showing:
 
 1. **Check the raw events**: Are they present in the WebSocket stream?
 2. **Check useStreamingState output**: Is the event in `completedEvents`?
@@ -212,22 +255,22 @@ To debug why an event isn't showing:
 4. **Check EventStreamEventItem**: Does the event type return `null`?
 5. **Check renderEventContentBlock**: For assistant messages, do all content blocks render?
 
-### Adding Console Logging
+### Adding Custom Logging
 
-Add temporary logging at each layer:
+For more specific debugging, add logging at each layer:
 
 ```typescript
 // In useStreamingState
-console.log('[L1] Input:', events.length, 'Output:', completedEvents.length)
+console.log("[L1] Input:", events.length, "Output:", completedEvents.length)
 
 // In EventDisplay
-console.log('[L2] After slice:', displayedEvents.length)
+console.log("[L2] After slice:", displayedEvents.length)
 
 // In EventStreamEventItem
-console.log('[L3] Event type:', event.type, 'Rendering:', result !== null)
+console.log("[L3] Event type:", event.type, "Rendering:", result !== null)
 
 // In renderEventContentBlock
-console.log('[L4] Block type:', block.type, 'Rendering:', result !== null)
+console.log("[L4] Block type:", block.type, "Rendering:", result !== null)
 ```
 
 ---
@@ -248,6 +291,4 @@ console.log('[L4] Block type:', block.type, 'Rendering:', result !== null)
 
 See related issues for planned improvements:
 
-- **r-tufi7.49.2**: Consolidate filtering logic into EventFilterPipeline module
-- **r-tufi7.49.3**: Add debug mode for event filtering visibility
 - **r-tufi7.49.4**: Replace implicit null returns with explicit filter predicates

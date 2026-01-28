@@ -3,7 +3,7 @@ import { ThinkingBlock } from "@/components/events/ThinkingBlock"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
 import { TaskLifecycleEvent } from "@/components/events/TaskLifecycleEvent"
 import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
-import { shouldFilterContentBlock } from "@/lib/EventFilterPipeline"
+import { shouldFilterContentBlock, logContentBlockFilterDecision } from "@/lib/EventFilterPipeline"
 import type { AssistantContentBlock, AssistantTextEvent, ToolUseEvent } from "@/types"
 
 /**
@@ -38,9 +38,11 @@ export function renderEventContentBlock(
     hasStructuredLifecycleEvents: options?.hasStructuredLifecycleEvents,
   })
 
+  // Log filter decision when debug mode is enabled
+  // Enable with: localStorage.setItem('ralph-filter-debug', 'true')
+  logContentBlockFilterDecision(block, filterResult, index)
+
   if (!filterResult.shouldRender) {
-    // Note: filterResult.reason contains why (e.g., "lifecycle_text_has_structured_event")
-    // This can be used with debug mode in the future
     return null
   }
 

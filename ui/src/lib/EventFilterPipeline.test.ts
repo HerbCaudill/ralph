@@ -1,9 +1,12 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   shouldFilterEventByType,
   shouldFilterContentBlock,
   hasRenderableContent,
   getFilterStats,
+  isFilterDebugEnabled,
+  logEventFilterDecision,
+  logContentBlockFilterDecision,
   type FilterContext,
 } from "./EventFilterPipeline"
 import type { ChatEvent, AssistantContentBlock } from "@/types"
@@ -342,9 +345,7 @@ describe("EventFilterPipeline", () => {
     })
 
     it("returns true when lifecycle text exists but no structured events", () => {
-      const content: AssistantContentBlock[] = [
-        { type: "text", text: "[TASK_START:task-123]" },
-      ]
+      const content: AssistantContentBlock[] = [{ type: "text", text: "[TASK_START:task-123]" }]
       const context: FilterContext = { hasStructuredLifecycleEvents: false }
 
       const result = hasRenderableContent(content, context, mockParseLifecycle)
@@ -419,9 +420,7 @@ describe("EventFilterPipeline", () => {
     })
 
     it("correctly counts system event filtered events", () => {
-      const events: ChatEvent[] = [
-        { type: "system", timestamp: 1000, message: "internal" },
-      ]
+      const events: ChatEvent[] = [{ type: "system", timestamp: 1000, message: "internal" }]
 
       const stats = getFilterStats(events)
 
@@ -551,6 +550,134 @@ describe("EventFilterPipeline", () => {
       expect(shouldFilterContentBlock(textBlock, false, context).shouldRender).toBe(true)
       expect(shouldFilterContentBlock(thinkingBlock, false, context).shouldRender).toBe(true)
       expect(shouldFilterContentBlock(toolUseBlock, false, context).shouldRender).toBe(true)
+    })
+  })
+
+  // ==========================================================================
+  // Debug Mode Functions
+  // ==========================================================================
+  describe("debug mode", () => {
+    const originalLocalStorage = globalThis.localStorage
+
+    beforeEach(() => {
+      // Mock localStorage
+      const store: Record<string, string> = {}
+      globalThis.localStorage = {
+        getItem: (key: string) => store[key] ?? null,
+        setItem: (key: string, value: string) => {
+          store[key] = value
+        },
+        removeItem: (key: string) => {
+          delete store[key]
+        },
+        clear: () => {
+          Object.keys(store).forEach(key => delete store[key])
+        },
+        length: 0,
+        key: () => null,
+      }
+    })
+
+    afterEach(() => {
+      globalThis.localStorage = originalLocalStorage
+    })
+
+    describe("isFilterDebugEnabled", () => {
+      it("returns false when localStorage key is not set", () => {
+        expect(isFilterDebugEnabled()).toBe(false)
+      })
+
+      it("returns true when localStorage key is set to 'true'", () => {
+        localStorage.setItem("ralph-filter-debug", "true")
+        expect(isFilterDebugEnabled()).toBe(true)
+      })
+
+      it("returns false when localStorage key is set to something other than 'true'", () => {
+        localStorage.setItem("ralph-filter-debug", "false")
+        expect(isFilterDebugEnabled()).toBe(false)
+
+        localStorage.setItem("ralph-filter-debug", "1")
+        expect(isFilterDebugEnabled()).toBe(false)
+      })
+    })
+
+    describe("logEventFilterDecision", () => {
+      it("does not log when debug mode is disabled", () => {
+        const consoleSpy = vi.spyOn(console, "log")
+        const event: ChatEvent = { type: "assistant", timestamp: 1000 }
+
+        logEventFilterDecision(event, { shouldRender: true })
+
+        expect(consoleSpy).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+      })
+
+      it("logs render decision when debug mode is enabled", () => {
+        localStorage.setItem("ralph-filter-debug", "true")
+        const consoleSpy = vi.spyOn(console, "log")
+        const event: ChatEvent = { type: "assistant", timestamp: 1000 }
+
+        logEventFilterDecision(event, { shouldRender: true })
+
+        expect(consoleSpy).toHaveBeenCalledWith("[L3] ✓ RENDER: assistant @ 1000")
+        consoleSpy.mockRestore()
+      })
+
+      it("logs filter decision with reason when debug mode is enabled", () => {
+        localStorage.setItem("ralph-filter-debug", "true")
+        const consoleSpy = vi.spyOn(console, "log")
+        const event: ChatEvent = { type: "stream_event", timestamp: 2000 }
+
+        logEventFilterDecision(event, {
+          shouldRender: false,
+          reason: "stream_event_processed_by_streaming",
+        })
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+          "[L3] ✗ FILTER: stream_event @ 2000 - stream_event_processed_by_streaming",
+        )
+        consoleSpy.mockRestore()
+      })
+    })
+
+    describe("logContentBlockFilterDecision", () => {
+      it("does not log when debug mode is disabled", () => {
+        const consoleSpy = vi.spyOn(console, "log")
+        const block: AssistantContentBlock = { type: "text", text: "Hello" }
+
+        logContentBlockFilterDecision(block, { shouldRender: true }, 0)
+
+        expect(consoleSpy).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+      })
+
+      it("logs render decision when debug mode is enabled", () => {
+        localStorage.setItem("ralph-filter-debug", "true")
+        const consoleSpy = vi.spyOn(console, "log")
+        const block: AssistantContentBlock = { type: "text", text: "Hello" }
+
+        logContentBlockFilterDecision(block, { shouldRender: true }, 0)
+
+        expect(consoleSpy).toHaveBeenCalledWith("[L4] ✓ RENDER: block[0] type=text")
+        consoleSpy.mockRestore()
+      })
+
+      it("logs filter decision with reason when debug mode is enabled", () => {
+        localStorage.setItem("ralph-filter-debug", "true")
+        const consoleSpy = vi.spyOn(console, "log")
+        const block: AssistantContentBlock = { type: "text", text: "[TASK_START:123]" }
+
+        logContentBlockFilterDecision(
+          block,
+          { shouldRender: false, reason: "lifecycle_text_has_structured_event" },
+          1,
+        )
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+          "[L4] ✗ FILTER: block[1] type=text - lifecycle_text_has_structured_event",
+        )
+        consoleSpy.mockRestore()
+      })
     })
   })
 })
