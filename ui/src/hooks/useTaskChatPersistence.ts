@@ -77,6 +77,12 @@ export interface UseTaskChatPersistenceOptions {
   events: ChatEvent[]
   /** Whether persistence is enabled (default: true) */
   enabled?: boolean
+  /**
+   * Whether store hydration has completed (default: false).
+   * Session initialization is blocked until this is true to prevent race conditions
+   * between useStoreHydration (which loads session ID from IndexedDB) and session creation.
+   */
+  isHydrated?: boolean
 }
 
 export interface UseTaskChatPersistenceResult {
@@ -100,7 +106,7 @@ export interface UseTaskChatPersistenceResult {
 export function useTaskChatPersistence(
   options: UseTaskChatPersistenceOptions,
 ): UseTaskChatPersistenceResult {
-  const { instanceId, messages, events, enabled = true } = options
+  const { instanceId, messages, events, enabled = true, isHydrated = false } = options
 
   // Get setter for syncing session ID to store
   const setStoreSessionId = useAppStore(state => state.setCurrentTaskChatSessionId)
@@ -256,16 +262,23 @@ export function useTaskChatPersistence(
     setStoreSessionId(null)
   }, [enabled, cancelDebouncedSave, setStoreSessionId])
 
-  // Track whether we've initialized from the store (to avoid re-triggering on store changes)
-  const hasInitializedFromStoreRef = useRef(false)
-
   /**
    * Start session tracking when messages/events are added.
    * If there's a session ID in the store (from hydration), restore that session on first init.
    * Session continues until explicitly cleared - not tied to current task.
+   *
+   * IMPORTANT: Session initialization is blocked until isHydrated is true to prevent
+   * race conditions between useStoreHydration (which loads session ID from IndexedDB)
+   * and session creation. Without this, a new session could be created before hydration
+   * completes, causing the restored session ID to be ignored.
    */
   useEffect(() => {
     if (!enabled) return
+
+    // Wait for hydration to complete before initializing session.
+    // This prevents race conditions where we create a new session before
+    // useStoreHydration has loaded the existing session ID from IndexedDB.
+    if (!isHydrated) return
 
     // If we have no messages or events, don't create a session yet
     if (messages.length === 0 && events.length === 0) {
@@ -277,11 +290,10 @@ export function useTaskChatPersistence(
       return
     }
 
-    // Check if there's a session ID in the store (from hydration) on first init only
+    // Check if there's a session ID in the store (from hydration)
     // Use getState() to read the store value without adding it to deps
     const currentStoreSessionId = useAppStore.getState().currentTaskChatSessionId
-    if (currentStoreSessionId && !hasInitializedFromStoreRef.current) {
-      hasInitializedFromStoreRef.current = true
+    if (currentStoreSessionId) {
       // Parse the session ID to extract the createdAt timestamp
       // Format is: "{instanceId}-taskchat-{timestamp}"
       const parts = currentStoreSessionId.split("-")
@@ -315,7 +327,7 @@ export function useTaskChatPersistence(
     setCurrentSessionId(newId)
     // Sync the new session ID to the store for persistence
     setStoreSessionId(newId)
-  }, [enabled, instanceId, messages.length, events.length, setStoreSessionId])
+  }, [enabled, isHydrated, instanceId, messages.length, events.length, setStoreSessionId])
 
   /**
    * Auto-save new events to the events store (immediately, no debounce).

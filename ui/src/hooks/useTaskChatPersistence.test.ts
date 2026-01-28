@@ -55,6 +55,7 @@ describe("useTaskChatPersistence", () => {
     messages: [],
     events: [],
     enabled: true,
+    isHydrated: true, // Most tests assume hydration is complete
   }
 
   beforeEach(() => {
@@ -446,6 +447,124 @@ describe("useTaskChatPersistence", () => {
       })
 
       expect(eventDatabase.saveTaskChatSession).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("hydration coordination", () => {
+    it("blocks session creation until isHydrated is true", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+
+      // Start with isHydrated: false
+      const { result, rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        {
+          initialProps: {
+            ...defaultOptions,
+            messages,
+            events,
+            isHydrated: false,
+          },
+        },
+      )
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // Session should NOT be created yet
+      expect(result.current.currentSessionId).toBeNull()
+      expect(eventDatabase.saveEvent).not.toHaveBeenCalled()
+
+      // Now simulate hydration completing
+      rerender({
+        ...defaultOptions,
+        messages,
+        events,
+        isHydrated: true,
+      })
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // Session should now be created
+      expect(result.current.currentSessionId).not.toBeNull()
+      expect(result.current.currentSessionId).toMatch(/^default-taskchat-\d+$/)
+    })
+
+    it("uses session ID from store when available after hydration", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+      const storedSessionId = "default-taskchat-1700000000000"
+
+      // Simulate useStoreHydration setting the session ID
+      useAppStore.setState({ currentTaskChatSessionId: storedSessionId })
+
+      const { result } = renderHook(() =>
+        useTaskChatPersistence({
+          ...defaultOptions,
+          messages,
+          events,
+          isHydrated: true, // Hydration complete, session ID already in store
+        }),
+      )
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // Should use the stored session ID, not create a new one
+      expect(result.current.currentSessionId).toBe(storedSessionId)
+    })
+
+    it("prevents race condition by waiting for hydration before checking store", async () => {
+      const messages: TaskChatMessage[] = [createUserMessage("msg-1", "Hello")]
+      const events: ChatEvent[] = [createUserEvent(Date.now(), "Hello")]
+      const storedSessionId = "default-taskchat-1700000000000"
+
+      // Start with isHydrated: false, no session ID in store yet
+      const { result, rerender } = renderHook(
+        (props: UseTaskChatPersistenceOptions) => useTaskChatPersistence(props),
+        {
+          initialProps: {
+            ...defaultOptions,
+            messages,
+            events,
+            isHydrated: false,
+          },
+        },
+      )
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // No session created yet
+      expect(result.current.currentSessionId).toBeNull()
+
+      // Simulate useStoreHydration completing and setting session ID
+      useAppStore.setState({ currentTaskChatSessionId: storedSessionId })
+
+      // Now mark hydration as complete
+      rerender({
+        ...defaultOptions,
+        messages,
+        events,
+        isHydrated: true,
+      })
+
+      // Allow effects to run
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+
+      // Should use the hydrated session ID
+      expect(result.current.currentSessionId).toBe(storedSessionId)
     })
   })
 

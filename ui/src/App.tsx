@@ -66,7 +66,7 @@ export function App() {
   const activeInstanceId = useAppStore(selectActiveInstanceId)
 
   // Hydrate store from IndexedDB on startup (restores events and task chat from last session)
-  useStoreHydration({ instanceId: activeInstanceId })
+  const { isHydrated } = useStoreHydration({ instanceId: activeInstanceId })
 
   // Subscribe to state for session persistence
   const events = useAppStore(selectEvents)
@@ -92,10 +92,12 @@ export function App() {
 
   // Persist task chat sessions to IndexedDB (auto-saves on new messages/events)
   // Session is based solely on instance ID and continues until explicitly cleared
+  // Pass isHydrated to prevent race conditions between hydration and session creation
   useTaskChatPersistence({
     instanceId: activeInstanceId,
     messages: taskChatMessages,
     events: taskChatEvents,
+    isHydrated,
   })
 
   // Task list refresh

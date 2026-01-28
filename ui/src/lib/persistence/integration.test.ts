@@ -327,6 +327,7 @@ describe("Persistence Integration Tests", () => {
             messages,
             events,
             enabled: true,
+            isHydrated: true, // Simulate hydration complete
           },
         },
       )
@@ -378,6 +379,7 @@ describe("Persistence Integration Tests", () => {
             messages,
             events,
             enabled: true,
+            isHydrated: true, // Simulate hydration complete
           },
         },
       )
@@ -426,6 +428,7 @@ describe("Persistence Integration Tests", () => {
             messages,
             events,
             enabled: true,
+            isHydrated: true, // Simulate hydration complete
           },
         },
       )
