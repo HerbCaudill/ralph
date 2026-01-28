@@ -128,6 +128,12 @@ export class EventDatabase {
         console.warn("[EventDatabase] This tab is blocking a database upgrade")
       },
     })
+
+    // Run orphaned session cleanup in the background after database is ready.
+    // This is fire-and-forget - cleanup failures should not block initialization.
+    this.cleanupOrphanedSessions().catch(error => {
+      console.error("[EventDatabase] Orphaned session cleanup failed:", error)
+    })
   }
 
   /**
@@ -656,6 +662,69 @@ export class EventDatabase {
   async deleteSyncState(key: string): Promise<void> {
     const db = await this.ensureDb()
     await db.delete(STORE_NAMES.SYNC_STATE, key)
+  }
+
+  // Cleanup Methods
+
+  /**
+   * Remove orphaned sessions from the database.
+   *
+   * Orphaned sessions are those that were saved but never received meaningful
+   * content. This can happen when:
+   * - A session starts but the user disconnects before events arrive
+   * - A session is saved immediately on creation but never completed
+   * - Async deletion of empty sessions fails silently
+   *
+   * Criteria for cleanup:
+   * 1. Sessions with 0 events (completely empty)
+   * 2. Sessions with fewer than 3 events that are older than `maxAge` and incomplete
+   *    (no completedAt) - likely abandoned startup/shutdown cycles
+   *
+   * @param maxAge - Maximum age in milliseconds for incomplete sessions with few events.
+   *   Defaults to 1 hour. Sessions older than this that are incomplete and have < 3 events
+   *   are removed.
+   * @returns The number of orphaned sessions that were removed.
+   */
+  async cleanupOrphanedSessions(maxAge: number = 60 * 60 * 1000): Promise<number> {
+    const db = await this.ensureDb()
+    const allSessions = await db.getAll(STORE_NAMES.SESSIONS)
+    const now = Date.now()
+    let removedCount = 0
+
+    for (const session of allSessions) {
+      const eventCount = await this.countEventsForSession(session.id)
+
+      // Case 1: Sessions with 0 events are always orphaned
+      const isEmpty = eventCount === 0
+
+      // Case 2: Sessions with < 3 events that are old and incomplete
+      const isStaleIncomplete =
+        eventCount < 3 && session.completedAt === null && now - session.startedAt > maxAge
+
+      if (isEmpty || isStaleIncomplete) {
+        try {
+          await this.deleteSession(session.id)
+          removedCount++
+          console.debug(
+            `[EventDatabase] cleanupOrphanedSessions: removed session ${session.id} ` +
+              `(events=${eventCount}, age=${Math.round((now - session.startedAt) / 1000)}s)`,
+          )
+        } catch (error) {
+          console.error(
+            `[EventDatabase] cleanupOrphanedSessions: failed to delete session ${session.id}:`,
+            error,
+          )
+        }
+      }
+    }
+
+    if (removedCount > 0) {
+      console.debug(
+        `[EventDatabase] cleanupOrphanedSessions: removed ${removedCount} orphaned sessions`,
+      )
+    }
+
+    return removedCount
   }
 
   // Utility Methods

@@ -1128,6 +1128,221 @@ describe("EventDatabase", () => {
     })
   })
 
+  describe("cleanupOrphanedSessions", () => {
+    it("removes sessions with 0 events", async () => {
+      // Save a session with no events in the events store
+      await db.saveSession(
+        createTestSession({
+          id: "orphaned-empty",
+          eventCount: 0,
+          events: undefined,
+        }),
+      )
+
+      const removed = await db.cleanupOrphanedSessions()
+
+      expect(removed).toBe(1)
+      expect(await db.getSession("orphaned-empty")).toBeUndefined()
+    })
+
+    it("removes stale incomplete sessions with < 3 events", async () => {
+      const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
+
+      // Save an old, incomplete session with < 3 events
+      await db.saveSession(
+        createTestSession({
+          id: "stale-incomplete",
+          startedAt: twoHoursAgo,
+          completedAt: null,
+          eventCount: 2,
+          events: undefined,
+        }),
+      )
+
+      // Add 2 events for it
+      await db.saveEvents([
+        createTestEvent({ id: "stale-event-0", sessionId: "stale-incomplete" }),
+        createTestEvent({ id: "stale-event-1", sessionId: "stale-incomplete" }),
+      ])
+
+      const removed = await db.cleanupOrphanedSessions()
+
+      expect(removed).toBe(1)
+      expect(await db.getSession("stale-incomplete")).toBeUndefined()
+      // Events should also be cleaned up (deleteSession cascades)
+      expect(await db.countEventsForSession("stale-incomplete")).toBe(0)
+    })
+
+    it("preserves sessions with >= 3 events", async () => {
+      const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
+
+      await db.saveSession(
+        createTestSession({
+          id: "healthy-session",
+          startedAt: twoHoursAgo,
+          completedAt: null,
+          eventCount: 5,
+          events: undefined,
+        }),
+      )
+
+      // Add 5 events
+      await db.saveEvents(
+        Array.from({ length: 5 }, (_, i) =>
+          createTestEvent({ id: `healthy-event-${i}`, sessionId: "healthy-session" }),
+        ),
+      )
+
+      const removed = await db.cleanupOrphanedSessions()
+
+      expect(removed).toBe(0)
+      expect(await db.getSession("healthy-session")).toBeDefined()
+    })
+
+    it("preserves completed sessions even with few events", async () => {
+      const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
+
+      await db.saveSession(
+        createTestSession({
+          id: "completed-few-events",
+          startedAt: twoHoursAgo,
+          completedAt: twoHoursAgo + 1000,
+          eventCount: 1,
+          events: undefined,
+        }),
+      )
+
+      // Add 1 event
+      await db.saveEvents([
+        createTestEvent({ id: "completed-event-0", sessionId: "completed-few-events" }),
+      ])
+
+      const removed = await db.cleanupOrphanedSessions()
+
+      expect(removed).toBe(0)
+      expect(await db.getSession("completed-few-events")).toBeDefined()
+    })
+
+    it("preserves recent incomplete sessions with few events", async () => {
+      // Session started just now - should not be cleaned up even with 1 event
+      await db.saveSession(
+        createTestSession({
+          id: "recent-incomplete",
+          startedAt: Date.now(),
+          completedAt: null,
+          eventCount: 1,
+          events: undefined,
+        }),
+      )
+
+      await db.saveEvents([
+        createTestEvent({ id: "recent-event-0", sessionId: "recent-incomplete" }),
+      ])
+
+      const removed = await db.cleanupOrphanedSessions()
+
+      expect(removed).toBe(0)
+      expect(await db.getSession("recent-incomplete")).toBeDefined()
+    })
+
+    it("respects custom maxAge parameter", async () => {
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
+
+      await db.saveSession(
+        createTestSession({
+          id: "custom-age-session",
+          startedAt: fiveMinutesAgo,
+          completedAt: null,
+          eventCount: 1,
+          events: undefined,
+        }),
+      )
+
+      await db.saveEvents([
+        createTestEvent({ id: "custom-event-0", sessionId: "custom-age-session" }),
+      ])
+
+      // With default 1 hour maxAge, should not be removed
+      const removedDefault = await db.cleanupOrphanedSessions()
+      expect(removedDefault).toBe(0)
+
+      // With 1 minute maxAge, should be removed
+      const removedShort = await db.cleanupOrphanedSessions(60 * 1000)
+      expect(removedShort).toBe(1)
+      expect(await db.getSession("custom-age-session")).toBeUndefined()
+    })
+
+    it("handles mixed orphaned and healthy sessions", async () => {
+      const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
+
+      // Orphaned: 0 events
+      await db.saveSession(
+        createTestSession({
+          id: "orphan-1",
+          eventCount: 0,
+          events: undefined,
+        }),
+      )
+
+      // Orphaned: stale incomplete with 1 event
+      await db.saveSession(
+        createTestSession({
+          id: "orphan-2",
+          startedAt: twoHoursAgo,
+          completedAt: null,
+          eventCount: 1,
+          events: undefined,
+        }),
+      )
+      await db.saveEvents([createTestEvent({ id: "orphan-2-event", sessionId: "orphan-2" })])
+
+      // Healthy: has 5 events
+      await db.saveSession(
+        createTestSession({
+          id: "healthy",
+          eventCount: 5,
+          events: undefined,
+        }),
+      )
+      await db.saveEvents(
+        Array.from({ length: 5 }, (_, i) =>
+          createTestEvent({ id: `healthy-event-${i}`, sessionId: "healthy" }),
+        ),
+      )
+
+      const removed = await db.cleanupOrphanedSessions()
+
+      expect(removed).toBe(2)
+      expect(await db.getSession("orphan-1")).toBeUndefined()
+      expect(await db.getSession("orphan-2")).toBeUndefined()
+      expect(await db.getSession("healthy")).toBeDefined()
+    })
+
+    it("returns 0 when no sessions exist", async () => {
+      const removed = await db.cleanupOrphanedSessions()
+      expect(removed).toBe(0)
+    })
+
+    it("returns 0 when all sessions are healthy", async () => {
+      await db.saveSession(
+        createTestSession({
+          id: "healthy-1",
+          completedAt: Date.now(),
+          eventCount: 10,
+          events: undefined,
+        }),
+      )
+      await db.saveEvents(
+        Array.from({ length: 10 }, (_, i) =>
+          createTestEvent({ id: `h1-event-${i}`, sessionId: "healthy-1" }),
+        ),
+      )
+
+      const removed = await db.cleanupOrphanedSessions()
+      expect(removed).toBe(0)
+    })
+  })
+
   describe("utility methods", () => {
     describe("clearAll", () => {
       it("clears all data from all stores", async () => {
