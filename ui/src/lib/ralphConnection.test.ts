@@ -2683,4 +2683,676 @@ describe("ralphConnection event timestamp tracking", () => {
       expect(MockWebSocket.instances).toHaveLength(1)
     })
   })
+
+  describe("agent:event unified handler", () => {
+    // These tests verify the unified agent:event WebSocket handler that routes
+    // both Ralph and Task Chat events through a single AgentEventEnvelope.
+    // The envelope shape: { type: "agent:event", source, instanceId, workspaceId, event, timestamp, eventIndex? }
+
+    // Additional mock functions needed for agent:event handler
+    let mockAddTokenUsageForInstance: ReturnType<typeof vi.fn>
+    let mockUpdateContextWindowUsedForInstance: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      // Install mock WebSocket
+      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
+      MockWebSocket.instances = []
+      mockEnqueue.mockClear()
+      mockUpdateSessionTaskId.mockClear()
+      mockStoreState = createMockStoreState()
+
+      // Add extra mock functions needed by the agent:event handler for non-active instances
+      mockAddTokenUsageForInstance = vi.fn()
+      mockUpdateContextWindowUsedForInstance = vi.fn()
+      ;(mockStoreState as Record<string, unknown>).addTokenUsageForInstance =
+        mockAddTokenUsageForInstance
+      ;(mockStoreState as Record<string, unknown>).updateContextWindowUsedForInstance =
+        mockUpdateContextWindowUsedForInstance
+
+      // Reset session boundary mock to default (no boundaries)
+      mockIsSessionBoundary = () => false
+    })
+
+    afterEach(() => {
+      // Restore original WebSocket
+      globalThis.WebSocket = originalWebSocket
+      ralphConnection.reset()
+    })
+
+    /** Helper to connect and get the mock WebSocket */
+    async function connectAndOpen() {
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+      const ws = MockWebSocket.instances[MockWebSocket.instances.length - 1]
+      ws.simulateOpen()
+      return ws
+    }
+
+    /** Helper to create an agent:event envelope */
+    function makeEnvelope(
+      source: "ralph" | "task-chat",
+      event: Record<string, unknown>,
+      instanceId = "test-instance",
+    ) {
+      return {
+        type: "agent:event",
+        source,
+        instanceId,
+        workspaceId: null,
+        event,
+        timestamp: (event.timestamp as number) ?? Date.now(),
+      }
+    }
+
+    describe("source: ralph — active instance routing", () => {
+      it("routes ralph events to store.addEvent for the active instance", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "stopped",
+        })
+
+        const ws = await connectAndOpen()
+
+        const event = { type: "assistant", timestamp: 1706123456789, content: "Hello" }
+        ws.simulateMessage(makeEnvelope("ralph", event))
+
+        expect(mockStoreState.addEvent).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "assistant", timestamp: 1706123456789 }),
+        )
+        expect(mockStoreState.addEventForInstance).not.toHaveBeenCalled()
+      })
+
+      it("sets ralph status to running when active instance is stopped", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "stopped",
+        })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("ralph", { type: "assistant", timestamp: Date.now(), content: "Hi" }),
+        )
+
+        expect(mockStoreState.setRalphStatus).toHaveBeenCalledWith("running")
+      })
+    })
+
+    describe("source: ralph — non-active instance routing", () => {
+      it("routes ralph events to store.addEventForInstance for non-active instances", async () => {
+        const otherInstanceId = "other-instance"
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+        mockStoreState.instances.set(otherInstanceId, {
+          events: [],
+          status: "stopped",
+        })
+
+        const ws = await connectAndOpen()
+
+        const event = { type: "assistant", timestamp: 1706123456789, content: "Hello" }
+        ws.simulateMessage(makeEnvelope("ralph", event, otherInstanceId))
+
+        expect(mockStoreState.addEventForInstance).toHaveBeenCalledWith(
+          otherInstanceId,
+          expect.objectContaining({ type: "assistant", timestamp: 1706123456789 }),
+        )
+        expect(mockStoreState.addEvent).not.toHaveBeenCalled()
+      })
+
+      it("sets status to running for non-active instance when stopped", async () => {
+        const otherInstanceId = "other-instance"
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+        mockStoreState.instances.set(otherInstanceId, {
+          events: [],
+          status: "stopped",
+        })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope(
+            "ralph",
+            { type: "assistant", timestamp: Date.now(), content: "Hi" },
+            otherInstanceId,
+          ),
+        )
+
+        expect(mockStoreState.setStatusForInstance).toHaveBeenCalledWith(otherInstanceId, "running")
+      })
+    })
+
+    describe("source: task-chat — active instance routing", () => {
+      it("routes task-chat events to store.addTaskChatEvent for active instance", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        const event = {
+          type: "message",
+          timestamp: 1706123456789,
+          content: "Task chat response",
+        }
+        ws.simulateMessage(makeEnvelope("task-chat", event))
+
+        expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "message", timestamp: 1706123456789 }),
+        )
+      })
+
+      it("does NOT call addEvent or addEventForInstance for task-chat events", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("task-chat", {
+            type: "message",
+            timestamp: Date.now(),
+            content: "Hello",
+          }),
+        )
+
+        expect(mockStoreState.addEvent).not.toHaveBeenCalled()
+        expect(mockStoreState.addEventForInstance).not.toHaveBeenCalled()
+      })
+    })
+
+    describe("source: task-chat — non-active instance is ignored", () => {
+      it("ignores task-chat events for non-active instances", async () => {
+        const otherInstanceId = "other-instance"
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+        mockStoreState.instances.set(otherInstanceId, {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope(
+            "task-chat",
+            { type: "message", timestamp: Date.now(), content: "Hello" },
+            otherInstanceId,
+          ),
+        )
+
+        // No store mutations should occur for task-chat on non-active instance
+        expect(mockStoreState.addTaskChatEvent).not.toHaveBeenCalled()
+        expect(mockStoreState.addEvent).not.toHaveBeenCalled()
+        expect(mockStoreState.addEventForInstance).not.toHaveBeenCalled()
+      })
+    })
+
+    describe("unified timestamp tracking", () => {
+      it("updates ralph timestamp via getLastEventTimestamp for ralph events", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        const timestamp = 1706123456789
+        ws.simulateMessage(makeEnvelope("ralph", { type: "assistant", timestamp, content: "Hi" }))
+
+        expect(getLastEventTimestamp("test-instance", "ralph")).toBe(timestamp)
+      })
+
+      it("updates task-chat timestamp via getLastTaskChatEventTimestamp for task-chat events", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        const timestamp = 1706123456789
+        ws.simulateMessage(
+          makeEnvelope("task-chat", { type: "message", timestamp, content: "Hello" }),
+        )
+
+        expect(getLastTaskChatEventTimestamp("test-instance")).toBe(timestamp)
+      })
+
+      it("tracks ralph and task-chat timestamps independently for the same instance", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        const ralphTimestamp = 1706123456000
+        const taskChatTimestamp = 1706123456789
+
+        ws.simulateMessage(
+          makeEnvelope("ralph", { type: "assistant", timestamp: ralphTimestamp, content: "R" }),
+        )
+        ws.simulateMessage(
+          makeEnvelope("task-chat", {
+            type: "message",
+            timestamp: taskChatTimestamp,
+            content: "TC",
+          }),
+        )
+
+        expect(getLastEventTimestamp("test-instance", "ralph")).toBe(ralphTimestamp)
+        expect(getLastTaskChatEventTimestamp("test-instance")).toBe(taskChatTimestamp)
+      })
+
+      it("updates timestamps even for non-active instance task-chat events (before ignoring them)", async () => {
+        const otherInstanceId = "other-instance"
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+        mockStoreState.instances.set(otherInstanceId, {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        const timestamp = 1706123456789
+        ws.simulateMessage(
+          makeEnvelope(
+            "task-chat",
+            { type: "message", timestamp, content: "Hello" },
+            otherInstanceId,
+          ),
+        )
+
+        // Timestamp should be tracked even though the event is ignored for store purposes
+        expect(getLastTaskChatEventTimestamp(otherInstanceId)).toBe(timestamp)
+      })
+
+      it("updates timestamps for non-active ralph events", async () => {
+        const otherInstanceId = "other-instance"
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+        mockStoreState.instances.set(otherInstanceId, {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        const timestamp = 1706123456789
+        ws.simulateMessage(
+          makeEnvelope("ralph", { type: "assistant", timestamp, content: "Hi" }, otherInstanceId),
+        )
+
+        expect(getLastEventTimestamp(otherInstanceId, "ralph")).toBe(timestamp)
+      })
+    })
+
+    describe("session boundary detection for ralph events", () => {
+      it("resets session stats and generates session ID on session boundary", async () => {
+        mockIsSessionBoundary = (event: unknown) => {
+          const e = event as { type?: string; subtype?: string }
+          return e.type === "system" && e.subtype === "init"
+        }
+
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "stopped",
+        })
+
+        const ws = await connectAndOpen()
+
+        const timestamp = 1706123456789
+        ws.simulateMessage(makeEnvelope("ralph", { type: "system", subtype: "init", timestamp }))
+
+        // Session stats should be reset for active instance
+        expect(mockStoreState.resetSessionStats).toHaveBeenCalled()
+
+        // Session ID should be generated synchronously
+        const sessionId = getCurrentSessionId("test-instance")
+        expect(sessionId).toBe(`test-instance-${timestamp}`)
+
+        const sessionInfo = getCurrentSession("test-instance")
+        expect(sessionInfo?.id).toBe(`test-instance-${timestamp}`)
+        expect(sessionInfo?.startedAt).toBe(timestamp)
+      })
+
+      it("resets session stats for non-active instance on session boundary", async () => {
+        const otherInstanceId = "other-instance"
+        mockIsSessionBoundary = (event: unknown) => {
+          const e = event as { type?: string; subtype?: string }
+          return e.type === "system" && e.subtype === "init"
+        }
+
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+        mockStoreState.instances.set(otherInstanceId, {
+          events: [],
+          status: "stopped",
+        })
+
+        const ws = await connectAndOpen()
+
+        const timestamp = 1706123456789
+        ws.simulateMessage(
+          makeEnvelope("ralph", { type: "system", subtype: "init", timestamp }, otherInstanceId),
+        )
+
+        expect(mockStoreState.resetSessionStatsForInstance).toHaveBeenCalledWith(otherInstanceId)
+        expect(mockStoreState.resetSessionStats).not.toHaveBeenCalled()
+
+        expect(getCurrentSessionId(otherInstanceId)).toBe(`${otherInstanceId}-${timestamp}`)
+      })
+
+      it("uses server-generated sessionId from ralph_session_start events", async () => {
+        mockIsSessionBoundary = (event: unknown) => {
+          const e = event as { type?: string }
+          return e.type === "ralph_session_start"
+        }
+
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "stopped",
+        })
+
+        const ws = await connectAndOpen()
+
+        const serverSessionId = "550e8400-e29b-41d4-a716-446655440000"
+        const timestamp = 1706123456789
+
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "ralph_session_start",
+            timestamp,
+            sessionId: serverSessionId,
+            session: 1,
+            totalSessions: 5,
+          }),
+        )
+
+        expect(getCurrentSessionId("test-instance")).toBe(serverSessionId)
+      })
+
+      it("does NOT detect session boundaries for task-chat events", async () => {
+        // Session boundary detection only applies to ralph source
+        mockIsSessionBoundary = () => true // Would match everything
+
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("task-chat", {
+            type: "message",
+            timestamp: Date.now(),
+            content: "Hello",
+          }),
+        )
+
+        // No session stats reset for task-chat events
+        expect(mockStoreState.resetSessionStats).not.toHaveBeenCalled()
+      })
+    })
+
+    describe("token usage extraction", () => {
+      it("extracts and adds token usage from ralph result events for active instance", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "result",
+            timestamp: Date.now(),
+            content: "Done",
+            usage: { inputTokens: 100, outputTokens: 50 },
+          }),
+        )
+
+        expect(mockStoreState.addTokenUsage).toHaveBeenCalledWith({
+          input: 100,
+          output: 50,
+        })
+        expect(mockStoreState.updateContextWindowUsed).toHaveBeenCalled()
+      })
+
+      it("extracts and adds token usage from ralph result events for non-active instance", async () => {
+        const otherInstanceId = "other-instance"
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+        mockStoreState.instances.set(otherInstanceId, {
+          events: [],
+          status: "running",
+          tokenUsage: { input: 0, output: 0 },
+        } as unknown as { events: unknown[]; status: string })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope(
+            "ralph",
+            {
+              type: "result",
+              timestamp: Date.now(),
+              content: "Done",
+              usage: { inputTokens: 200, outputTokens: 75 },
+            },
+            otherInstanceId,
+          ),
+        )
+
+        expect(mockAddTokenUsageForInstance).toHaveBeenCalledWith(otherInstanceId, {
+          input: 200,
+          output: 75,
+        })
+        expect(mockUpdateContextWindowUsedForInstance).toHaveBeenCalled()
+      })
+
+      it("extracts and adds token usage from task-chat result events for active instance", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("task-chat", {
+            type: "result",
+            timestamp: Date.now(),
+            content: "Task done",
+            usage: { inputTokens: 300, outputTokens: 120 },
+          }),
+        )
+
+        expect(mockStoreState.addTokenUsage).toHaveBeenCalledWith({
+          input: 300,
+          output: 120,
+        })
+        expect(mockStoreState.updateContextWindowUsed).toHaveBeenCalled()
+      })
+
+      it("does not add token usage when event has no usage data", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "assistant",
+            timestamp: Date.now(),
+            content: "Hello",
+          }),
+        )
+
+        expect(mockStoreState.addTokenUsage).not.toHaveBeenCalled()
+        expect(mockStoreState.updateContextWindowUsed).not.toHaveBeenCalled()
+      })
+    })
+
+    describe("IndexedDB persistence for ralph events", () => {
+      it("persists ralph events to IndexedDB when session ID exists", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        setCurrentSessionId("test-instance", "session-abc")
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "assistant",
+            timestamp: 1706123456789,
+            id: "evt-123",
+            content: "Hello",
+          }),
+        )
+
+        expect(mockEnqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "evt-123",
+            sessionId: "session-abc",
+            eventType: "assistant",
+          }),
+          "session-abc",
+        )
+      })
+
+      it("does not persist task-chat events to IndexedDB", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        setCurrentSessionId("test-instance", "session-abc")
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("task-chat", {
+            type: "message",
+            timestamp: Date.now(),
+            content: "Hi",
+          }),
+        )
+
+        expect(mockEnqueue).not.toHaveBeenCalled()
+      })
+
+      it("calls updateSessionTaskId when ralph_task_started event arrives via agent:event", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        setCurrentSessionId("test-instance", "session-def")
+
+        const ws = await connectAndOpen()
+
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "ralph_task_started",
+            timestamp: Date.now(),
+            taskId: "task-789",
+            id: "evt-task",
+          }),
+        )
+
+        // Verify updateSessionTaskId was called
+        await new Promise(resolve => setTimeout(resolve, 10))
+        expect(mockUpdateSessionTaskId).toHaveBeenCalledWith("session-def", "task-789")
+      })
+    })
+
+    describe("envelope validation via isAgentEventEnvelope", () => {
+      it("ignores messages missing required envelope fields", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        // Missing source field
+        ws.simulateMessage({
+          type: "agent:event",
+          instanceId: "test-instance",
+          event: { type: "assistant", timestamp: Date.now(), content: "Hi" },
+          timestamp: Date.now(),
+        })
+
+        // Missing event field
+        ws.simulateMessage({
+          type: "agent:event",
+          source: "ralph",
+          instanceId: "test-instance",
+          timestamp: Date.now(),
+        })
+
+        // Missing instanceId field
+        ws.simulateMessage({
+          type: "agent:event",
+          source: "ralph",
+          event: { type: "assistant", timestamp: Date.now(), content: "Hi" },
+          timestamp: Date.now(),
+        })
+
+        // None should trigger any store mutations
+        expect(mockStoreState.addEvent).not.toHaveBeenCalled()
+        expect(mockStoreState.addEventForInstance).not.toHaveBeenCalled()
+        expect(mockStoreState.addTaskChatEvent).not.toHaveBeenCalled()
+      })
+
+      it("processes valid agent:event envelopes successfully", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        // Valid envelope with all required fields
+        ws.simulateMessage({
+          type: "agent:event",
+          source: "ralph",
+          instanceId: "test-instance",
+          workspaceId: null,
+          event: { type: "assistant", timestamp: 1706123456789, content: "Hello" },
+          timestamp: 1706123456789,
+        })
+
+        expect(mockStoreState.addEvent).toHaveBeenCalledTimes(1)
+      })
+    })
+  })
 })

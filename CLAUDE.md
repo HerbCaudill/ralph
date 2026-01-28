@@ -686,6 +686,10 @@ All broadcast messages include `instanceId`, `workspaceId`, and `timestamp`. The
 
 In addition to legacy wire types (`ralph:event`, `ralph:status`, `ralph:output`, `ralph:error`, `ralph:exit`, `task-chat:event`), the server broadcasts a unified `agent:event` envelope (`AgentEventEnvelope`) for all agent events. The envelope includes a `source` field discriminating between `"ralph"` and `"task-chat"` origins. Legacy wire types are preserved for backward compatibility.
 
+**Client-Side Unified Handler (`ralphConnection.ts`):**
+
+The `handleMessage()` function in `ralphConnection.ts` processes `agent:event` envelopes through a single code path, dispatching on the `source` field (`"ralph"` | `"task-chat"`) of the `AgentEventEnvelope` from `@herbcaudill/ralph-shared`. Event timestamp tracking for reconnection sync uses a single `BoundedMap` with composite keys `"{source}:{instanceId}"` (e.g. `"ralph:default"`, `"task-chat:default"`), replacing the previous separate maps. Legacy `ralph:event` and `task-chat:event` handlers remain for backward compatibility (tracked in r-tufi7.51.5 for removal).
+
 ## Environment Variables
 
 - `ANTHROPIC_API_KEY` - Required for Claude agent

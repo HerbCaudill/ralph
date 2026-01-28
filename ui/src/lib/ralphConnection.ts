@@ -10,6 +10,8 @@ import { extractTokenUsageFromEvent } from "./extractTokenUsage"
 import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
 import { BoundedMap } from "./BoundedMap"
 import type { ChatEvent } from "@/types"
+import { isAgentEventEnvelope } from "@herbcaudill/ralph-shared"
+import type { AgentEventSource } from "@herbcaudill/ralph-shared"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -47,15 +49,27 @@ const JITTER_FACTOR = 0.3 // +/- 30% jitter
 let reconnectAttempts = 0
 let currentReconnectDelay = INITIAL_RECONNECT_DELAY
 
-// Event timestamp tracking for reconnection sync
-// Maps instanceId to the last known event timestamp for that instance
+// Unified event timestamp tracking for reconnection sync
+// Maps "{source}:{instanceId}" to the last known event timestamp
+// Replaces the previous separate lastEventTimestamps and lastTaskChatEventTimestamps maps
 // Bounded to prevent unbounded memory growth in long-running sessions (fixes r-ac882)
 const MAX_TRACKED_INSTANCES = 500
 const lastEventTimestamps = new BoundedMap<string, number>(MAX_TRACKED_INSTANCES)
 
-// Task chat event timestamp tracking for reconnection sync
-// Maps instanceId to the last known task chat event timestamp for that instance
-const lastTaskChatEventTimestamps = new BoundedMap<string, number>(MAX_TRACKED_INSTANCES)
+/** Build the unified timestamp map key for a given source and instance. */
+function timestampKey(source: AgentEventSource, instanceId: string): string {
+  return `${source}:${instanceId}`
+}
+
+/** Get the last event timestamp for a source/instance pair. */
+function getTimestamp(source: AgentEventSource, instanceId: string): number | undefined {
+  return lastEventTimestamps.get(timestampKey(source, instanceId))
+}
+
+/** Set the last event timestamp for a source/instance pair. */
+function setTimestamp(source: AgentEventSource, instanceId: string, ts: number): void {
+  lastEventTimestamps.set(timestampKey(source, instanceId), ts)
+}
 
 // Session tracking for IndexedDB persistence
 // Maps instanceId to the current session info (ID and start time) for that instance
@@ -271,7 +285,7 @@ function handleMessage(event: MessageEvent): void {
           if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
             const lastEvent = pendingEvents[pendingEvents.length - 1]
             if (typeof lastEvent.timestamp === "number") {
-              lastEventTimestamps.set(pendingInstanceId, lastEvent.timestamp)
+              setTimestamp("ralph", pendingInstanceId, lastEvent.timestamp)
             }
           }
 
@@ -340,7 +354,7 @@ function handleMessage(event: MessageEvent): void {
           if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
             const lastEvent = pendingEvents[pendingEvents.length - 1]
             if (typeof lastEvent.timestamp === "number") {
-              lastTaskChatEventTimestamps.set(pendingInstanceId, lastEvent.timestamp)
+              setTimestamp("task-chat", pendingInstanceId, lastEvent.timestamp)
             }
           }
 
@@ -389,6 +403,131 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      // --- Unified agent:event handler (r-tufi7.51.3) ---
+      // Handles both Ralph and Task Chat events through a single code path.
+      // The server broadcasts agent:event envelopes alongside legacy wire types
+      // for backward compatibility. Once all clients migrate, legacy handlers
+      // below can be removed (tracked in r-tufi7.51.5).
+      case "agent:event": {
+        if (!isAgentEventEnvelope(data)) break
+
+        const { source, event: agentEvent, instanceId: envelopeInstanceId } = data
+        const resolvedInstanceId = envelopeInstanceId || store.activeInstanceId
+        const isActive = resolvedInstanceId === store.activeInstanceId
+
+        // Track event timestamp for reconnection sync (unified map)
+        if (typeof agentEvent.timestamp === "number") {
+          setTimestamp(source, resolvedInstanceId, agentEvent.timestamp)
+        }
+
+        // Cast to loosely-typed record for interfacing with existing store/persistence
+        // functions that expect ChatEvent / { [key: string]: unknown } shapes.
+        // The server wraps raw events as AgentEvent via `as unknown as AgentEvent`,
+        // so the runtime payload matches the original shape.
+        const eventRecord = agentEvent as unknown as Record<string, unknown> & {
+          type: string
+          timestamp: number
+          id?: string
+        }
+
+        if (source === "ralph") {
+          // --- Ralph event processing ---
+          console.debug(
+            `[ralphConnection] agent:event (ralph): type=${agentEvent.type}, isActive=${isActive}`,
+          )
+
+          // Reset session stats and generate session ID when a new session starts
+          if (isSessionBoundary(eventRecord as ChatEvent)) {
+            console.debug(`[ralphConnection] Session boundary detected, resetting stats`)
+            if (isActive) {
+              store.resetSessionStats()
+            } else {
+              store.resetSessionStatsForInstance(resolvedInstanceId)
+            }
+
+            const { sessionId: newSessionId, startedAt } = getSessionIdFromEvent(
+              eventRecord as ChatEvent,
+              resolvedInstanceId,
+            )
+            currentSessions.set(resolvedInstanceId, { id: newSessionId, startedAt })
+            console.debug(
+              `[ralphConnection] Session ID generated: ${newSessionId} for instance ${resolvedInstanceId}`,
+            )
+          }
+
+          // Persist event to IndexedDB
+          const sessionId = currentSessions.get(resolvedInstanceId)?.id
+          if (sessionId) {
+            persistEventToIndexedDB(eventRecord, sessionId)
+
+            // When ralph_task_started event arrives, update the session's taskId
+            // The raw event type is preserved in the envelope (cast to AgentEvent on the server)
+            if (eventRecord.type === "ralph_task_started") {
+              const taskId = eventRecord.taskId as string | undefined
+              if (taskId) {
+                console.debug(
+                  `[ralphConnection] ralph_task_started via agent:event, updating session taskId: sessionId=${sessionId}, taskId=${taskId}`,
+                )
+                eventDatabase.updateSessionTaskId(sessionId, taskId).catch(error => {
+                  console.error("[ralphConnection] Failed to update session taskId:", error)
+                })
+              }
+            }
+          }
+
+          // Route event to correct instance
+          if (isActive) {
+            store.addEvent(eventRecord)
+            if (selectRalphStatus(store) === "stopped") {
+              store.setRalphStatus("running")
+            }
+          } else {
+            store.addEventForInstance(resolvedInstanceId, eventRecord)
+            const targetInstance = store.instances.get(resolvedInstanceId)
+            if (targetInstance?.status === "stopped") {
+              store.setStatusForInstance(resolvedInstanceId, "running")
+            }
+          }
+
+          // Extract and update token usage
+          const tokenUsage = extractTokenUsageFromEvent(eventRecord)
+          if (tokenUsage) {
+            if (isActive) {
+              store.addTokenUsage(tokenUsage)
+              store.updateContextWindowUsed(
+                selectTokenUsage(store).input + selectTokenUsage(store).output,
+              )
+            } else {
+              store.addTokenUsageForInstance(resolvedInstanceId, tokenUsage)
+              const targetInstance = store.instances.get(resolvedInstanceId)
+              if (targetInstance) {
+                store.updateContextWindowUsedForInstance(
+                  resolvedInstanceId,
+                  targetInstance.tokenUsage.input + targetInstance.tokenUsage.output,
+                )
+              }
+            }
+          }
+        } else if (source === "task-chat") {
+          // --- Task Chat event processing ---
+          // Only process for active instance (task chat state is not per-instance yet)
+          if (!isActive) break
+
+          store.addTaskChatEvent(eventRecord)
+
+          // Extract and update token usage from task chat events
+          const tokenUsage = extractTokenUsageFromEvent(eventRecord)
+          if (tokenUsage) {
+            store.addTokenUsage(tokenUsage)
+            store.updateContextWindowUsed(
+              selectTokenUsage(store).input + selectTokenUsage(store).output,
+            )
+          }
+        }
+        break
+      }
+
+      // --- Legacy handlers (backward compat — TODO(r-tufi7.51.5): remove once migration complete) ---
       case "ralph:event":
         if (data.event && typeof data.event === "object") {
           const event = data.event as { type: string; timestamp: number; [key: string]: unknown }
@@ -399,7 +538,7 @@ function handleMessage(event: MessageEvent): void {
 
           // Track the event timestamp for reconnection sync
           if (typeof event.timestamp === "number") {
-            lastEventTimestamps.set(targetInstanceId, event.timestamp)
+            setTimestamp("ralph", targetInstanceId, event.timestamp)
           }
 
           // Reset session stats and generate session ID when a new session starts
@@ -616,7 +755,7 @@ function handleMessage(event: MessageEvent): void {
             // Track last event timestamp for reconnection sync
             const taskChatInstanceId =
               typeof data.instanceId === "string" ? data.instanceId : store.activeInstanceId
-            lastTaskChatEventTimestamps.set(taskChatInstanceId, rawEvent.timestamp)
+            setTimestamp("task-chat", taskChatInstanceId, rawEvent.timestamp)
 
             // Create a properly typed event for token extraction
             const typedEvent = { ...rawEvent, type: rawEvent.type, timestamp: rawEvent.timestamp }
@@ -666,7 +805,7 @@ function handleMessage(event: MessageEvent): void {
         // Clear timestamp tracking since there's no history to reconnect to
         const clearedInstanceId =
           typeof data.instanceId === "string" ? data.instanceId : store.activeInstanceId
-        lastTaskChatEventTimestamps.delete(clearedInstanceId)
+        lastEventTimestamps.delete(timestampKey("task-chat", clearedInstanceId))
         break
       }
 
@@ -736,21 +875,21 @@ function connect(): void {
 
     // Send reconnect message if we have a previous event timestamp
     // This allows the server to send us any events we missed while disconnected
-    const lastEventTimestamp = lastEventTimestamps.get(instanceId)
-    if (typeof lastEventTimestamp === "number") {
+    const lastRalphTimestamp = getTimestamp("ralph", instanceId)
+    if (typeof lastRalphTimestamp === "number") {
       console.log(
-        `[ralphConnection] Reconnecting with lastEventTimestamp: ${lastEventTimestamp} for instance: ${instanceId}`,
+        `[ralphConnection] Reconnecting with lastEventTimestamp: ${lastRalphTimestamp} for instance: ${instanceId}`,
       )
       send({
         type: "reconnect",
         instanceId,
-        lastEventTimestamp,
+        lastEventTimestamp: lastRalphTimestamp,
       })
     }
 
     // Send task chat reconnect message if we have a previous task chat event timestamp
     // This allows the server to send us any task chat events we missed while disconnected
-    const lastTaskChatTimestamp = lastTaskChatEventTimestamps.get(instanceId)
+    const lastTaskChatTimestamp = getTimestamp("task-chat", instanceId)
     if (typeof lastTaskChatTimestamp === "number") {
       console.log(
         `[ralphConnection] Task chat reconnecting with lastEventTimestamp: ${lastTaskChatTimestamp} for instance: ${instanceId}`,
@@ -899,7 +1038,6 @@ function reset(): void {
   intentionalClose = false
   resetReconnectState()
   lastEventTimestamps.clear()
-  lastTaskChatEventTimestamps.clear()
   currentSessions.clear()
 }
 
@@ -913,20 +1051,23 @@ function reconnect(): void {
 }
 
 /**
- * Get the last known event timestamp for an instance.
+ * Get the last known event timestamp for a source/instance pair.
+ * Defaults to "ralph" source for backward compatibility.
  * Used for testing and debugging.
  */
-export function getLastEventTimestamp(instanceId: string): number | undefined {
-  return lastEventTimestamps.get(instanceId)
+export function getLastEventTimestamp(
+  instanceId: string,
+  source: AgentEventSource = "ralph",
+): number | undefined {
+  return getTimestamp(source, instanceId)
 }
 
 /**
- * Clear event timestamps for all instances.
+ * Clear event timestamps for all instances and sources.
  * Called when switching workspaces to start fresh.
  */
 export function clearEventTimestamps(): void {
   lastEventTimestamps.clear()
-  lastTaskChatEventTimestamps.clear()
   currentSessions.clear()
 }
 
@@ -935,7 +1076,7 @@ export function clearEventTimestamps(): void {
  * Used for reconnection sync to request missed events.
  */
 export function getLastTaskChatEventTimestamp(instanceId: string): number | undefined {
-  return lastTaskChatEventTimestamps.get(instanceId)
+  return getTimestamp("task-chat", instanceId)
 }
 
 /**
@@ -943,7 +1084,11 @@ export function getLastTaskChatEventTimestamp(instanceId: string): number | unde
  * Called when task chat history is cleared.
  */
 export function clearTaskChatEventTimestamps(): void {
-  lastTaskChatEventTimestamps.clear()
+  // Clear only task-chat entries from the unified map
+  const taskChatKeys = [...lastEventTimestamps.keys()].filter(k => k.startsWith("task-chat:"))
+  for (const key of taskChatKeys) {
+    lastEventTimestamps.delete(key)
+  }
 }
 
 /**
@@ -1041,15 +1186,16 @@ if (import.meta.hot) {
       ws.onmessage = handleMessage
     }
 
-    // Restore timestamp tracking maps
+    // Restore timestamp tracking map (unified: replaces separate ralph + task-chat maps)
     if (prevData.lastEventTimestamps instanceof Map) {
       for (const [k, v] of prevData.lastEventTimestamps) {
         lastEventTimestamps.set(k, v)
       }
     }
+    // Backward compat: migrate legacy lastTaskChatEventTimestamps from previous module version
     if (prevData.lastTaskChatEventTimestamps instanceof Map) {
       for (const [k, v] of prevData.lastTaskChatEventTimestamps) {
-        lastTaskChatEventTimestamps.set(k, v)
+        lastEventTimestamps.set(timestampKey("task-chat", k), v)
       }
     }
     if (prevData.currentSessions instanceof Map) {
@@ -1070,7 +1216,6 @@ if (import.meta.hot) {
     data.currentReconnectDelay = currentReconnectDelay
     data.intentionalClose = intentionalClose
     data.lastEventTimestamps = new Map(lastEventTimestamps)
-    data.lastTaskChatEventTimestamps = new Map(lastTaskChatEventTimestamps)
     data.currentSessions = new Map(currentSessions)
   })
 }
