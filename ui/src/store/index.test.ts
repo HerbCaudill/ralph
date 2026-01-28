@@ -524,12 +524,12 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().activeInstanceId).toBe("second-instance")
     })
 
-    it("syncs flat fields when switching instance", () => {
+    it("selectors return data from newly active instance after switch", () => {
       // Create a second instance with distinct state
       const state = useAppStore.getState()
       const newInstance = createRalphInstance("second-instance", "Second", "Agent2")
       newInstance.status = "running"
-      newInstance.events = [{ type: "test-event", timestamp: 123 }]
+      newInstance.events = [{ type: "test-event", timestamp: 123 } as any]
       newInstance.tokenUsage = { input: 500, output: 250 }
       newInstance.contextWindow = { used: 10000, max: 200000 }
       newInstance.session = { current: 2, total: 5 }
@@ -543,14 +543,14 @@ describe("useAppStore", () => {
       // Switch to the new instance
       useAppStore.getState().setActiveInstanceId("second-instance")
 
-      // Verify flat fields are synced from the new active instance
+      // Verify selectors return data from the new active instance
       const updatedState = useAppStore.getState()
-      expect(updatedState.ralphStatus).toBe("running")
-      expect(updatedState.events).toEqual([{ type: "test-event", timestamp: 123 }])
-      expect(updatedState.tokenUsage).toEqual({ input: 500, output: 250 })
-      expect(updatedState.contextWindow).toEqual({ used: 10000, max: 200000 })
-      expect(updatedState.session).toEqual({ current: 2, total: 5 })
-      expect(updatedState.runStartedAt).toBe(12345)
+      expect(selectRalphStatus(updatedState)).toBe("running")
+      expect(selectEvents(updatedState)).toEqual([{ type: "test-event", timestamp: 123 }])
+      expect(selectTokenUsage(updatedState)).toEqual({ input: 500, output: 250 })
+      expect(selectContextWindow(updatedState)).toEqual({ used: 10000, max: 200000 })
+      expect(selectSession(updatedState)).toEqual({ current: 2, total: 5 })
+      expect(selectRunStartedAt(updatedState)).toBe(12345)
     })
 
     it("resets viewingSessionIndex when switching instance", () => {
@@ -856,10 +856,10 @@ describe("useAppStore", () => {
       warnSpy.mockRestore()
     })
 
-    it("updates flat fields when cleaning up the active instance", () => {
+    it("selectors return reset values when cleaning up the active instance", () => {
       // Set up state on the active instance (instance-1)
       useAppStore.getState().setRalphStatus("running")
-      useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 } as any)
       useAppStore.getState().setTokenUsage({ input: 500, output: 250 })
       useAppStore.getState().setContextWindow({ used: 25000, max: 200000 })
       useAppStore.getState().setSession({ current: 2, total: 4 })
@@ -867,22 +867,22 @@ describe("useAppStore", () => {
       // Cleanup the active instance
       useAppStore.getState().cleanupInstance("instance-1")
 
-      // Verify flat fields were also reset
+      // Verify selectors return reset values
       const state = useAppStore.getState()
-      expect(state.ralphStatus).toBe("stopped")
-      expect(state.events).toEqual([])
-      expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
-      expect(state.contextWindow.used).toBe(0)
-      expect(state.session).toEqual({ current: 0, total: 0 })
-      expect(state.runStartedAt).toBeNull()
+      expect(selectRalphStatus(state)).toBe("stopped")
+      expect(selectEvents(state)).toEqual([])
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectContextWindow(state).used).toBe(0)
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
+      expect(selectRunStartedAt(state)).toBeNull()
       expect(state.initialTaskCount).toBeNull()
       expect(state.viewingSessionIndex).toBeNull()
     })
 
-    it("does not affect flat fields when cleaning up a non-active instance", () => {
+    it("does not affect active instance when cleaning up a non-active instance", () => {
       // Set up state on the active instance (instance-1)
       useAppStore.getState().setRalphStatus("running")
-      useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 } as any)
 
       // Set up state on instance-2
       const state = useAppStore.getState()
@@ -890,7 +890,7 @@ describe("useAppStore", () => {
       const updatedInstance2 = {
         ...instance2,
         status: "running" as const,
-        events: [{ type: "test2", timestamp: 456 }],
+        events: [{ type: "test2", timestamp: 456 } as any],
       }
       const updatedInstances = new Map(state.instances)
       updatedInstances.set("instance-2", updatedInstance2)
@@ -899,10 +899,10 @@ describe("useAppStore", () => {
       // Cleanup instance-2 (non-active)
       useAppStore.getState().cleanupInstance("instance-2")
 
-      // Verify flat fields were NOT affected
+      // Verify active instance was NOT affected (use selectors to read from instances Map)
       const newState = useAppStore.getState()
-      expect(newState.ralphStatus).toBe("running")
-      expect(newState.events).toHaveLength(1)
+      expect(selectRalphStatus(newState)).toBe("running")
+      expect(selectEvents(newState)).toHaveLength(1)
     })
 
     it("does not affect other instances when cleaning up one", () => {
@@ -1119,7 +1119,7 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().instances.size).toBe(initialCount)
     })
 
-    it("syncs flat fields when active instance is updated", () => {
+    it("updates active instance status via selectors when hydrated", () => {
       useAppStore.getState().createInstance("active", "Active Instance")
       useAppStore.getState().setActiveInstanceId("active")
 
@@ -1138,8 +1138,8 @@ describe("useAppStore", () => {
       ])
 
       const state = useAppStore.getState()
-      // Flat fields should be synced from the updated active instance
-      expect(state.ralphStatus).toBe("running")
+      // Selectors should return data from the updated active instance
+      expect(selectRalphStatus(state)).toBe("running")
     })
   })
 
@@ -1255,20 +1255,20 @@ describe("useAppStore", () => {
       useAppStore.getState().setContextWindow({ used: 100000, max: 200000 })
       useAppStore.getState().setSession({ current: 7, total: 15 })
 
-      // Verify state was set
+      // Verify state was set (use selectors to read from instances Map)
       let state = useAppStore.getState()
-      expect(state.tokenUsage).toEqual({ input: 5000, output: 2500 })
-      expect(state.contextWindow).toEqual({ used: 100000, max: 200000 })
-      expect(state.session).toEqual({ current: 7, total: 15 })
+      expect(selectTokenUsage(state)).toEqual({ input: 5000, output: 2500 })
+      expect(selectContextWindow(state)).toEqual({ used: 100000, max: 200000 })
+      expect(selectSession(state)).toEqual({ current: 7, total: 15 })
 
       // Reset session stats
       useAppStore.getState().resetSessionStats()
 
-      // Verify all session stats were reset
+      // Verify all session stats were reset (use selectors)
       state = useAppStore.getState()
-      expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
-      expect(state.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
-      expect(state.session).toEqual({ current: 0, total: 0 })
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectContextWindow(state)).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
     })
 
     it("resetSessionStats updates active instance in the instances Map", () => {
@@ -1375,23 +1375,23 @@ describe("useAppStore", () => {
   describe("ralph status", () => {
     it("sets ralph status", () => {
       useAppStore.getState().setRalphStatus("running")
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
     })
 
     it("updates through all status transitions", () => {
       const { setRalphStatus } = useAppStore.getState()
 
       setRalphStatus("starting")
-      expect(useAppStore.getState().ralphStatus).toBe("starting")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("starting")
 
       setRalphStatus("running")
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
 
       setRalphStatus("stopping")
-      expect(useAppStore.getState().ralphStatus).toBe("stopping")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopping")
 
       setRalphStatus("stopped")
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
     })
 
     it("sets initialTaskCount when transitioning to running", () => {
@@ -1500,7 +1500,7 @@ describe("useAppStore", () => {
       const event: ChatEvent = { type: "test", timestamp: 1234567890 }
       useAppStore.getState().addEvent(event)
 
-      const events = useAppStore.getState().events
+      const events = selectEvents(useAppStore.getState())
       expect(events).toHaveLength(1)
       expect(events[0]).toEqual(event)
     })
@@ -1508,11 +1508,11 @@ describe("useAppStore", () => {
     it("preserves event order", () => {
       const { addEvent } = useAppStore.getState()
 
-      addEvent({ type: "first", timestamp: 1 })
-      addEvent({ type: "second", timestamp: 2 })
-      addEvent({ type: "third", timestamp: 3 })
+      addEvent({ type: "first", timestamp: 1 } as ChatEvent)
+      addEvent({ type: "second", timestamp: 2 } as ChatEvent)
+      addEvent({ type: "third", timestamp: 3 } as ChatEvent)
 
-      const events = useAppStore.getState().events
+      const events = selectEvents(useAppStore.getState())
       expect(events).toHaveLength(3)
       expect(events[0].type).toBe("first")
       expect(events[1].type).toBe("second")
@@ -1522,12 +1522,12 @@ describe("useAppStore", () => {
     it("clears all events", () => {
       const { addEvent, clearEvents } = useAppStore.getState()
 
-      addEvent({ type: "test", timestamp: 1 })
-      addEvent({ type: "test", timestamp: 2 })
-      expect(useAppStore.getState().events).toHaveLength(2)
+      addEvent({ type: "test", timestamp: 1 } as ChatEvent)
+      addEvent({ type: "test", timestamp: 2 } as ChatEvent)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(2)
 
       clearEvents()
-      expect(useAppStore.getState().events).toEqual([])
+      expect(selectEvents(useAppStore.getState())).toEqual([])
     })
 
     it("sets events array directly (for restoring from server)", () => {
@@ -1539,15 +1539,15 @@ describe("useAppStore", () => {
 
       useAppStore.getState().setEvents(events)
 
-      const storedEvents = useAppStore.getState().events
+      const storedEvents = selectEvents(useAppStore.getState())
       expect(storedEvents).toHaveLength(3)
       expect(storedEvents).toEqual(events)
     })
 
     it("setEvents merges with existing events without duplicates", () => {
       // Add initial events
-      useAppStore.getState().addEvent({ type: "old", timestamp: 1 })
-      expect(useAppStore.getState().events).toHaveLength(1)
+      useAppStore.getState().addEvent({ type: "old", timestamp: 1 } as ChatEvent)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
 
       // Set new events (should merge, not replace)
       const newEvents: ChatEvent[] = [
@@ -1557,7 +1557,7 @@ describe("useAppStore", () => {
       useAppStore.getState().setEvents(newEvents)
 
       // All events should be present, sorted by timestamp
-      const storedEvents = useAppStore.getState().events
+      const storedEvents = selectEvents(useAppStore.getState())
       expect(storedEvents).toHaveLength(3)
       expect(storedEvents[0].type).toBe("old")
       expect(storedEvents[1].type).toBe("new1")
@@ -1566,8 +1566,8 @@ describe("useAppStore", () => {
 
     it("replaceEvents replaces existing events", () => {
       // Add initial events
-      useAppStore.getState().addEvent({ type: "old", timestamp: 1 })
-      expect(useAppStore.getState().events).toHaveLength(1)
+      useAppStore.getState().addEvent({ type: "old", timestamp: 1 } as ChatEvent)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
 
       // Replace events (should fully replace, not merge)
       const newEvents: ChatEvent[] = [
@@ -1576,7 +1576,7 @@ describe("useAppStore", () => {
       ]
       useAppStore.getState().replaceEvents(newEvents)
 
-      const storedEvents = useAppStore.getState().events
+      const storedEvents = selectEvents(useAppStore.getState())
       expect(storedEvents).toHaveLength(2)
       expect(storedEvents[0].type).toBe("new1")
       expect(storedEvents[1].type).toBe("new2")
@@ -1701,11 +1701,11 @@ describe("useAppStore", () => {
       flushTaskChatEventsBatch() // Flush batch to apply events immediately
       useAppStore.getState().setViewingSessionIndex(1)
 
-      // Verify state was set
-      expect(useAppStore.getState().events).toHaveLength(1)
+      // Verify state was set (use selectors for instance-level data)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
       expect(useAppStore.getState().tasks).toHaveLength(1)
-      expect(useAppStore.getState().tokenUsage.input).toBe(100)
-      expect(useAppStore.getState().session.current).toBe(2)
+      expect(selectTokenUsage(useAppStore.getState()).input).toBe(100)
+      expect(selectSession(useAppStore.getState()).current).toBe(2)
       expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
       expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
       expect(useAppStore.getState().viewingSessionIndex).toBe(1)
@@ -1713,11 +1713,11 @@ describe("useAppStore", () => {
       // Clear workspace data
       useAppStore.getState().clearWorkspaceData()
 
-      // Verify all workspace-specific state was cleared
-      expect(useAppStore.getState().events).toEqual([])
+      // Verify all workspace-specific state was cleared (use selectors for instance-level data)
+      expect(selectEvents(useAppStore.getState())).toEqual([])
       expect(useAppStore.getState().tasks).toEqual([])
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
-      expect(useAppStore.getState().session).toEqual({ current: 0, total: 0 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
+      expect(selectSession(useAppStore.getState())).toEqual({ current: 0, total: 0 })
       expect(useAppStore.getState().taskChatMessages).toEqual([])
       expect(useAppStore.getState().taskChatEvents).toEqual([])
       expect(useAppStore.getState().viewingSessionIndex).toBeNull()
@@ -1753,55 +1753,55 @@ describe("useAppStore", () => {
   describe("token usage", () => {
     it("sets token usage", () => {
       useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 1000, output: 500 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
     })
 
     it("adds to token usage", () => {
       useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
       useAppStore.getState().addTokenUsage({ input: 200, output: 100 })
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 1200, output: 600 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1200, output: 600 })
     })
 
     it("accumulates multiple token additions", () => {
       useAppStore.getState().addTokenUsage({ input: 100, output: 50 })
       useAppStore.getState().addTokenUsage({ input: 200, output: 100 })
       useAppStore.getState().addTokenUsage({ input: 300, output: 150 })
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 600, output: 300 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 600, output: 300 })
     })
   })
 
   describe("context window", () => {
     it("has default max context window of 200k", () => {
-      expect(useAppStore.getState().contextWindow).toEqual({ used: 0, max: 200_000 })
+      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 0, max: 200_000 })
     })
 
     it("sets context window", () => {
       useAppStore.getState().setContextWindow({ used: 50000, max: 200000 })
-      expect(useAppStore.getState().contextWindow).toEqual({ used: 50000, max: 200000 })
+      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 50000, max: 200000 })
     })
 
     it("updates context window used", () => {
       useAppStore.getState().updateContextWindowUsed(75000)
-      expect(useAppStore.getState().contextWindow).toEqual({ used: 75000, max: 200_000 })
+      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 75000, max: 200_000 })
     })
 
     it("preserves max when updating used", () => {
       useAppStore.getState().setContextWindow({ used: 0, max: 150000 })
       useAppStore.getState().updateContextWindowUsed(50000)
-      expect(useAppStore.getState().contextWindow).toEqual({ used: 50000, max: 150000 })
+      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 50000, max: 150000 })
     })
   })
 
   describe("session", () => {
     it("sets session info", () => {
       useAppStore.getState().setSession({ current: 3, total: 10 })
-      expect(useAppStore.getState().session).toEqual({ current: 3, total: 10 })
+      expect(selectSession(useAppStore.getState())).toEqual({ current: 3, total: 10 })
     })
 
     it("updates session progress", () => {
       useAppStore.getState().setSession({ current: 1, total: 5 })
       useAppStore.getState().setSession({ current: 2, total: 5 })
-      expect(useAppStore.getState().session).toEqual({ current: 2, total: 5 })
+      expect(selectSession(useAppStore.getState())).toEqual({ current: 2, total: 5 })
     })
   })
 
@@ -2964,16 +2964,16 @@ describe("useAppStore", () => {
       flushTaskChatEventsBatch() // Flush batch to apply events immediately
       setTaskChatLoading(true)
 
-      // Verify state is modified
+      // Verify state is modified (use selectors for instance-level data)
       let state = useAppStore.getState()
-      expect(state.ralphStatus).toBe("running")
-      expect(state.events).toHaveLength(1)
+      expect(selectRalphStatus(state)).toBe("running")
+      expect(selectEvents(state)).toHaveLength(1)
       expect(state.tasks).toHaveLength(1)
       expect(state.workspace).toBe("/path")
       expect(state.accentColor).toBe("#4d9697")
       expect(state.branch).toBe("feature/test")
-      expect(state.tokenUsage).toEqual({ input: 1000, output: 500 })
-      expect(state.session).toEqual({ current: 5, total: 10 })
+      expect(selectTokenUsage(state)).toEqual({ input: 1000, output: 500 })
+      expect(selectSession(state)).toEqual({ current: 5, total: 10 })
       expect(state.connectionStatus).toBe("connected")
       expect(state.sidebarWidth).toBe(400)
       expect(state.taskChatOpen).toBe(true)
@@ -2985,16 +2985,16 @@ describe("useAppStore", () => {
       // Reset
       useAppStore.getState().reset()
 
-      // Verify reset
+      // Verify reset (use selectors for instance-level data)
       state = useAppStore.getState()
-      expect(state.ralphStatus).toBe("stopped")
-      expect(state.events).toEqual([])
+      expect(selectRalphStatus(state)).toBe("stopped")
+      expect(selectEvents(state)).toEqual([])
       expect(state.tasks).toEqual([])
       expect(state.workspace).toBeNull()
       expect(state.accentColor).toBeNull()
       expect(state.branch).toBeNull()
-      expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
-      expect(state.session).toEqual({ current: 0, total: 0 })
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
       expect(state.connectionStatus).toBe("disconnected")
       expect(state.sidebarWidth).toBe(20)
       expect(state.taskChatOpen).toBe(true)
@@ -3073,20 +3073,20 @@ describe("useAppStore", () => {
         expect(instance1?.events).not.toContainEqual(event)
       })
 
-      it("updates flat fields when adding to active instance", () => {
+      it("selector returns events from active instance", () => {
         const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
 
         useAppStore.getState().addEventForInstance("instance-1", event)
 
-        expect(useAppStore.getState().events).toContainEqual(event)
+        expect(selectEvents(useAppStore.getState())).toContainEqual(event)
       })
 
-      it("does not update flat fields when adding to non-active instance", () => {
+      it("selector does not return events from non-active instance", () => {
         const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
 
         useAppStore.getState().addEventForInstance("instance-2", event)
 
-        expect(useAppStore.getState().events).not.toContainEqual(event)
+        expect(selectEvents(useAppStore.getState())).not.toContainEqual(event)
       })
 
       it("warns when adding to non-existent instance", () => {
@@ -3130,13 +3130,13 @@ describe("useAppStore", () => {
         expect(instance2?.events?.[1].type).toBe("new")
       })
 
-      it("updates flat fields when setting for active instance", () => {
+      it("selector returns events from active instance after setEventsForInstance", () => {
         const events: ChatEvent[] = [{ type: "tool_use", timestamp: 1234 }]
 
         useAppStore.getState().setEventsForInstance("instance-1", events)
 
         // Events are merged with existing (empty) events
-        expect(useAppStore.getState().events).toEqual(events)
+        expect(selectEvents(useAppStore.getState())).toEqual(events)
       })
     })
 
@@ -3153,15 +3153,17 @@ describe("useAppStore", () => {
         expect(instance2?.events).toEqual(newEvents)
       })
 
-      it("updates flat fields when replacing for active instance", () => {
+      it("selector returns events from active instance after replaceEventsForInstance", () => {
         // Add initial event to active instance
-        useAppStore.getState().addEventForInstance("instance-1", { type: "old", timestamp: 1000 })
+        useAppStore
+          .getState()
+          .addEventForInstance("instance-1", { type: "old", timestamp: 1000 } as ChatEvent)
 
         // Replace with new events
         const newEvents: ChatEvent[] = [{ type: "new", timestamp: 2000 }]
         useAppStore.getState().replaceEventsForInstance("instance-1", newEvents)
 
-        expect(useAppStore.getState().events).toEqual(newEvents)
+        expect(selectEvents(useAppStore.getState())).toEqual(newEvents)
       })
     })
 
@@ -3190,17 +3192,18 @@ describe("useAppStore", () => {
         expect(useAppStore.getState().instances.get("instance-2")?.runStartedAt).toBeNull()
       })
 
-      it("updates flat fields when setting for active instance", () => {
+      it("selectors return data from active instance", () => {
         useAppStore.getState().setStatusForInstance("instance-1", "running")
 
-        expect(useAppStore.getState().ralphStatus).toBe("running")
-        expect(useAppStore.getState().runStartedAt).not.toBeNull()
+        expect(selectRalphStatus(useAppStore.getState())).toBe("running")
+        expect(selectRunStartedAt(useAppStore.getState())).not.toBeNull()
       })
 
-      it("does not update flat fields when setting for non-active instance", () => {
+      it("selectors still return active instance data when non-active instance is updated", () => {
         useAppStore.getState().setStatusForInstance("instance-2", "running")
 
-        expect(useAppStore.getState().ralphStatus).toBe("stopped")
+        // Active instance is still instance-1 with stopped status
+        expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
       })
     })
 
@@ -3220,10 +3223,10 @@ describe("useAppStore", () => {
         expect(instance2?.tokenUsage).toEqual({ input: 300, output: 150 })
       })
 
-      it("updates flat fields when adding to active instance", () => {
+      it("selector returns token usage from active instance", () => {
         useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 100, output: 50 })
 
-        expect(useAppStore.getState().tokenUsage).toEqual({ input: 100, output: 50 })
+        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 100, output: 50 })
       })
     })
 
@@ -3235,10 +3238,10 @@ describe("useAppStore", () => {
         expect(instance2?.contextWindow.used).toBe(50000)
       })
 
-      it("updates flat fields when updating active instance", () => {
+      it("selector returns context window from active instance", () => {
         useAppStore.getState().updateContextWindowUsedForInstance("instance-1", 75000)
 
-        expect(useAppStore.getState().contextWindow.used).toBe(75000)
+        expect(selectContextWindow(useAppStore.getState()).used).toBe(75000)
       })
     })
 
@@ -3250,10 +3253,10 @@ describe("useAppStore", () => {
         expect(instance2?.session).toEqual({ current: 3, total: 5 })
       })
 
-      it("updates flat fields when setting for active instance", () => {
+      it("selector returns session from active instance", () => {
         useAppStore.getState().setSessionForInstance("instance-1", { current: 2, total: 4 })
 
-        expect(useAppStore.getState().session).toEqual({ current: 2, total: 4 })
+        expect(selectSession(useAppStore.getState())).toEqual({ current: 2, total: 4 })
       })
     })
 
@@ -3280,42 +3283,42 @@ describe("useAppStore", () => {
         expect(instance2?.session).toEqual({ current: 0, total: 0 })
       })
 
-      it("updates flat fields when resetting for active instance", () => {
+      it("selectors return reset values when resetting for active instance", () => {
         // Set up state on the active instance (instance-1)
         useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 4000, output: 2000 })
         useAppStore.getState().updateContextWindowUsedForInstance("instance-1", 120000)
         useAppStore.getState().setSessionForInstance("instance-1", { current: 8, total: 12 })
 
-        // Verify flat fields were set
-        expect(useAppStore.getState().tokenUsage).toEqual({ input: 4000, output: 2000 })
-        expect(useAppStore.getState().contextWindow.used).toBe(120000)
-        expect(useAppStore.getState().session).toEqual({ current: 8, total: 12 })
+        // Verify selectors return set values
+        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 4000, output: 2000 })
+        expect(selectContextWindow(useAppStore.getState()).used).toBe(120000)
+        expect(selectSession(useAppStore.getState())).toEqual({ current: 8, total: 12 })
 
         // Reset session stats for the active instance
         useAppStore.getState().resetSessionStatsForInstance("instance-1")
 
-        // Verify flat fields were also reset
-        expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
-        expect(useAppStore.getState().contextWindow).toEqual({
+        // Verify selectors return reset values
+        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
+        expect(selectContextWindow(useAppStore.getState())).toEqual({
           used: 0,
           max: DEFAULT_CONTEXT_WINDOW_MAX,
         })
-        expect(useAppStore.getState().session).toEqual({ current: 0, total: 0 })
+        expect(selectSession(useAppStore.getState())).toEqual({ current: 0, total: 0 })
       })
 
-      it("does not update flat fields when resetting non-active instance", () => {
+      it("selectors return active instance data when resetting non-active instance", () => {
         // Set up state on both instances
         useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 1000, output: 500 })
         useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 3000, output: 1500 })
 
-        // Verify flat fields match active instance (instance-1)
-        expect(useAppStore.getState().tokenUsage).toEqual({ input: 1000, output: 500 })
+        // Verify selectors return active instance data (instance-1)
+        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
 
         // Reset session stats for non-active instance (instance-2)
         useAppStore.getState().resetSessionStatsForInstance("instance-2")
 
-        // Verify flat fields were NOT affected (still match instance-1)
-        expect(useAppStore.getState().tokenUsage).toEqual({ input: 1000, output: 500 })
+        // Verify selector still returns active instance data (instance-1, not affected)
+        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
 
         // But instance-2 should be reset
         const instance2 = useAppStore.getState().instances.get("instance-2")
@@ -3549,7 +3552,7 @@ describe("useAppStore", () => {
       useAppStore.getState().addEvent(event2)
       useAppStore.getState().addEvent(event1) // duplicate
 
-      const events = useAppStore.getState().events
+      const events = selectEvents(useAppStore.getState())
       expect(events).toHaveLength(2)
       expect(events.map(e => e.id)).toEqual(["event-1", "event-2"])
     })
@@ -3567,7 +3570,7 @@ describe("useAppStore", () => {
       ]
       useAppStore.getState().setEvents(serverEvents)
 
-      const events = useAppStore.getState().events
+      const events = selectEvents(useAppStore.getState())
       expect(events).toHaveLength(3)
       expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
     })
@@ -3629,7 +3632,7 @@ describe("useAppStore", () => {
       useAppStore.getState().setEvents(serverHistory)
 
       // Verify: all events present, no duplicates, chronologically ordered
-      const events = useAppStore.getState().events
+      const events = selectEvents(useAppStore.getState())
       expect(events).toHaveLength(4)
       expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3", "event-4"])
       expect(events.map(e => e.timestamp)).toEqual([1000, 2000, 3000, 4000])
@@ -3653,7 +3656,7 @@ describe("useAppStore", () => {
       pendingEvents.forEach(e => useAppStore.getState().addEvent(e))
 
       // Verify: all events present, no duplicates, chronologically ordered
-      const events = useAppStore.getState().events
+      const events = selectEvents(useAppStore.getState())
       expect(events).toHaveLength(3)
       expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
       expect(events.map(e => e.timestamp)).toEqual([1000, 2000, 3000])

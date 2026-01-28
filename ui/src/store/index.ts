@@ -99,7 +99,7 @@ export interface AppState {
   //
   // Migration status:
   // - Phase 1: Selectors read from instances Map (no fallback) ✓
-  // - Phase 2: Actions only update instances Map (pending)
+  // - Phase 2: Actions only update instances Map ✓
   // - Phase 3: Remove these fields from AppState (pending)
 
   /**
@@ -694,36 +694,38 @@ export const useAppStore = create<AppState & AppActions>()(
       // Ralph status
       setRalphStatus: status =>
         set(state => {
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          if (!activeInstance) {
+            console.warn(`[store] Cannot set status for non-existent active instance`)
+            return state
+          }
+
           const now = Date.now()
-          const isTransitioningToRunning = status === "running" && state.ralphStatus !== "running"
+          const isTransitioningToRunning =
+            status === "running" && activeInstance.status !== "running"
           const isStopping = status === "stopped"
 
           // Calculate new runStartedAt
           const newRunStartedAt =
             isTransitioningToRunning ? now
             : isStopping ? null
-            : state.runStartedAt
+            : activeInstance.runStartedAt
 
-          // Calculate new initialTaskCount
+          // Calculate new initialTaskCount (workspace-level state, kept in flat field for now)
           const newInitialTaskCount =
             isTransitioningToRunning ? state.tasks.length
             : isStopping ? null
             : state.initialTaskCount
 
-          // Update active instance in the instances Map
-          const activeInstance = state.instances.get(state.activeInstanceId)
+          // Update active instance in the instances Map only
           const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              status,
-              runStartedAt: newRunStartedAt,
-            })
-          }
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
+            status,
+            runStartedAt: newRunStartedAt,
+          })
 
           return {
-            ralphStatus: status,
-            runStartedAt: newRunStartedAt,
             initialTaskCount: newInitialTaskCount,
             instances: updatedInstances,
           }
@@ -732,76 +734,90 @@ export const useAppStore = create<AppState & AppActions>()(
       // Events
       addEvent: event =>
         set(state => {
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          if (!activeInstance) {
+            console.warn(`[store] Cannot add event to non-existent active instance`)
+            return state
+          }
+
           // Deduplicate by event ID to prevent race conditions between
           // connected and pending_events messages during reconnection
-          const newEvents = mergeEventsById(state.events, [event])
-          // Update active instance in the instances Map
-          const activeInstance = state.instances.get(state.activeInstanceId)
+          const newEvents = mergeEventsById(activeInstance.events, [event])
+
+          // Update active instance in the instances Map only
           const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              events: newEvents,
-            })
-          }
-          return {
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             events: newEvents,
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
 
       setEvents: events =>
         set(state => {
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          if (!activeInstance) {
+            console.warn(`[store] Cannot set events for non-existent active instance`)
+            return state
+          }
+
           // Merge incoming events with existing, deduplicating by ID.
           // This handles the race condition where pending_events may have arrived
           // before the connected message, or vice versa.
-          const mergedEvents = mergeEventsById(state.events, events)
-          // Update active instance in the instances Map
-          const activeInstance = state.instances.get(state.activeInstanceId)
+          const mergedEvents = mergeEventsById(activeInstance.events, events)
+
+          // Update active instance in the instances Map only
           const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              events: mergedEvents,
-            })
-          }
-          return {
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             events: mergedEvents,
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
 
       replaceEvents: events =>
         set(state => {
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          if (!activeInstance) {
+            console.warn(`[store] Cannot replace events for non-existent active instance`)
+            return state
+          }
+
           // Replace all events (no merge). Used for workspace switching where
           // we want to completely replace events from the previous workspace.
-          const activeInstance = state.instances.get(state.activeInstanceId)
           const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              events,
-            })
-          }
-          return {
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             events,
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
 
       clearEvents: () =>
         set(state => {
-          // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
-          const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              events: [],
-            })
+          if (!activeInstance) {
+            console.warn(`[store] Cannot clear events for non-existent active instance`)
+            return state
           }
-          return {
+
+          // Update active instance in the instances Map only
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             events: [],
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
@@ -864,34 +880,38 @@ export const useAppStore = create<AppState & AppActions>()(
           taskRefreshDebounceTimeout = null
         }
         set(state => {
-          // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
-          const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              events: [],
-              tokenUsage: { input: 0, output: 0 },
-              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-              session: { current: 0, total: 0 },
-              runStartedAt: null,
-              status: "stopped",
-            })
+          if (!activeInstance) {
+            // Still clear workspace-level state even if no active instance
+            return {
+              tasks: [],
+              viewingSessionIndex: null,
+              initialTaskCount: null,
+              taskChatMessages: [],
+              taskChatLoading: false,
+              taskChatEvents: [],
+            }
           }
-          return {
-            // Clear tasks immediately to avoid showing stale data
-            tasks: [],
-            // Clear events and session state
+
+          // Update active instance in the instances Map only
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             events: [],
-            viewingSessionIndex: null,
-            // Reset token and context window usage
             tokenUsage: { input: 0, output: 0 },
             contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
             session: { current: 0, total: 0 },
-            // Reset run state
             runStartedAt: null,
+            status: "stopped",
+          })
+
+          return {
+            // Clear tasks immediately to avoid showing stale data
+            tasks: [],
+            // Clear session view state
+            viewingSessionIndex: null,
+            // Reset workspace-level state
             initialTaskCount: null,
-            ralphStatus: "stopped" as const,
             // Clear task chat messages and events
             taskChatMessages: [],
             taskChatLoading: false,
@@ -914,37 +934,44 @@ export const useAppStore = create<AppState & AppActions>()(
       // Token usage
       setTokenUsage: usage =>
         set(state => {
-          // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
-          const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              tokenUsage: usage,
-            })
+          if (!activeInstance) {
+            console.warn(`[store] Cannot set token usage for non-existent active instance`)
+            return state
           }
-          return {
+
+          // Update active instance in the instances Map only
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             tokenUsage: usage,
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
       addTokenUsage: usage =>
         set(state => {
-          const newTokenUsage = {
-            input: state.tokenUsage.input + usage.input,
-            output: state.tokenUsage.output + usage.output,
-          }
-          // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
-          const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              tokenUsage: newTokenUsage,
-            })
+          if (!activeInstance) {
+            console.warn(`[store] Cannot add token usage to non-existent active instance`)
+            return state
           }
-          return {
+
+          const newTokenUsage = {
+            input: activeInstance.tokenUsage.input + usage.input,
+            output: activeInstance.tokenUsage.output + usage.output,
+          }
+
+          // Update active instance in the instances Map only
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             tokenUsage: newTokenUsage,
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
@@ -952,34 +979,41 @@ export const useAppStore = create<AppState & AppActions>()(
       // Context window
       setContextWindow: contextWindow =>
         set(state => {
-          // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
-          const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              contextWindow,
-            })
+          if (!activeInstance) {
+            console.warn(`[store] Cannot set context window for non-existent active instance`)
+            return state
           }
-          return {
+
+          // Update active instance in the instances Map only
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             contextWindow,
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
       updateContextWindowUsed: used =>
         set(state => {
-          const newContextWindow = { ...state.contextWindow, used }
-          // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
-          const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              contextWindow: newContextWindow,
-            })
+          if (!activeInstance) {
+            console.warn(`[store] Cannot update context window for non-existent active instance`)
+            return state
           }
-          return {
+
+          const newContextWindow = { ...activeInstance.contextWindow, used }
+
+          // Update active instance in the instances Map only
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             contextWindow: newContextWindow,
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
@@ -987,38 +1021,42 @@ export const useAppStore = create<AppState & AppActions>()(
       // Session
       setSession: session =>
         set(state => {
-          // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
-          const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              session,
-            })
+          if (!activeInstance) {
+            console.warn(`[store] Cannot set session for non-existent active instance`)
+            return state
           }
-          return {
+
+          // Update active instance in the instances Map only
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             session,
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
 
       resetSessionStats: () =>
         set(state => {
-          // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
-          const updatedInstances = new Map(state.instances)
-          if (activeInstance) {
-            updatedInstances.set(state.activeInstanceId, {
-              ...activeInstance,
-              tokenUsage: { input: 0, output: 0 },
-              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-              session: { current: 0, total: 0 },
-            })
+          if (!activeInstance) {
+            console.warn(`[store] Cannot reset session stats for non-existent active instance`)
+            return state
           }
-          return {
+
+          // Update active instance in the instances Map only
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(state.activeInstanceId, {
+            ...activeInstance,
             tokenUsage: { input: 0, output: 0 },
             contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
             session: { current: 0, total: 0 },
+          })
+
+          return {
             instances: updatedInstances,
           }
         }),
@@ -1200,10 +1238,13 @@ export const useAppStore = create<AppState & AppActions>()(
 
       // Reconnection state (for auto-resuming when reconnecting mid-session)
       markRunningBeforeDisconnect: () =>
-        set(state => ({
-          wasRunningBeforeDisconnect:
-            state.ralphStatus === "running" || state.ralphStatus === "paused",
-        })),
+        set(state => {
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const currentStatus = activeInstance?.status ?? "stopped"
+          return {
+            wasRunningBeforeDisconnect: currentStatus === "running" || currentStatus === "paused",
+          }
+        }),
       clearRunningBeforeDisconnect: () => set({ wasRunningBeforeDisconnect: false }),
 
       // Initial sync tracking
@@ -1227,18 +1268,8 @@ export const useAppStore = create<AppState & AppActions>()(
             return state
           }
 
-          // Get the new active instance to sync flat fields
-          const instance = state.instances.get(instanceId)!
-
           return {
             activeInstanceId: instanceId,
-            // Sync flat fields from the new active instance for backward compatibility
-            ralphStatus: instance.status,
-            runStartedAt: instance.runStartedAt,
-            events: instance.events,
-            tokenUsage: instance.tokenUsage,
-            contextWindow: instance.contextWindow,
-            session: instance.session,
             // Reset session view when switching instances
             viewingSessionIndex: null,
           }
@@ -1265,13 +1296,6 @@ export const useAppStore = create<AppState & AppActions>()(
           return {
             instances: updatedInstances,
             activeInstanceId: id,
-            // Sync flat fields from the new instance for backward compatibility
-            ralphStatus: newInstance.status,
-            runStartedAt: newInstance.runStartedAt,
-            events: newInstance.events,
-            tokenUsage: newInstance.tokenUsage,
-            contextWindow: newInstance.contextWindow,
-            session: newInstance.session,
             // Reset session view when switching instances
             viewingSessionIndex: null,
           }
@@ -1329,16 +1353,10 @@ export const useAppStore = create<AppState & AppActions>()(
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, cleanedInstance)
 
-          // If cleaning up the active instance, also update flat fields for backward compatibility
+          // If cleaning up the active instance, also reset workspace-level state
           if (state.activeInstanceId === instanceId) {
             return {
               instances: updatedInstances,
-              ralphStatus: "stopped" as const,
-              events: [],
-              tokenUsage: { input: 0, output: 0 },
-              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-              session: { current: 0, total: 0 },
-              runStartedAt: null,
               initialTaskCount: null,
               viewingSessionIndex: null,
             }
@@ -1402,25 +1420,11 @@ export const useAppStore = create<AppState & AppActions>()(
               state.activeInstanceId
             : (serverInstances[0]?.id ?? state.activeInstanceId)
 
-          // Get the (possibly updated) active instance for syncing flat fields
-          const activeInstance = updatedInstances.get(activeInstanceId)
-
           return {
             instances: updatedInstances,
             activeInstanceId,
             // Mark that we've received the initial sync (prevents auto-start race condition on page reload)
             hasInitialSync: true,
-            // Sync flat fields for backward compatibility if active instance changed
-            ...(activeInstance ?
-              {
-                ralphStatus: activeInstance.status,
-                events: activeInstance.events,
-                tokenUsage: activeInstance.tokenUsage,
-                contextWindow: activeInstance.contextWindow,
-                session: activeInstance.session,
-                runStartedAt: activeInstance.runStartedAt,
-              }
-            : {}),
           }
         }),
 
@@ -1438,14 +1442,6 @@ export const useAppStore = create<AppState & AppActions>()(
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, { ...instance, events: newEvents })
 
-          // If this is the active instance, also update flat fields for backward compatibility
-          if (state.activeInstanceId === instanceId) {
-            return {
-              instances: updatedInstances,
-              events: newEvents,
-            }
-          }
-
           return { instances: updatedInstances }
         }),
 
@@ -1462,14 +1458,6 @@ export const useAppStore = create<AppState & AppActions>()(
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, { ...instance, events: mergedEvents })
 
-          // If this is the active instance, also update flat fields for backward compatibility
-          if (state.activeInstanceId === instanceId) {
-            return {
-              instances: updatedInstances,
-              events: mergedEvents,
-            }
-          }
-
           return { instances: updatedInstances }
         }),
 
@@ -1484,14 +1472,6 @@ export const useAppStore = create<AppState & AppActions>()(
           // Replace all events (no merge). Used for workspace switching.
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, { ...instance, events })
-
-          // If this is the active instance, also update flat fields for backward compatibility
-          if (state.activeInstanceId === instanceId) {
-            return {
-              instances: updatedInstances,
-              events,
-            }
-          }
 
           return { instances: updatedInstances }
         }),
@@ -1521,7 +1501,7 @@ export const useAppStore = create<AppState & AppActions>()(
             runStartedAt: newRunStartedAt,
           })
 
-          // If this is the active instance, also update flat fields for backward compatibility
+          // If this is the active instance, also update workspace-level state
           if (state.activeInstanceId === instanceId) {
             const newInitialTaskCount =
               isTransitioningToRunning ? state.tasks.length
@@ -1530,8 +1510,6 @@ export const useAppStore = create<AppState & AppActions>()(
 
             return {
               instances: updatedInstances,
-              ralphStatus: status,
-              runStartedAt: newRunStartedAt,
               initialTaskCount: newInitialTaskCount,
             }
           }
@@ -1554,14 +1532,6 @@ export const useAppStore = create<AppState & AppActions>()(
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, { ...instance, tokenUsage: newTokenUsage })
 
-          // If this is the active instance, also update flat fields for backward compatibility
-          if (state.activeInstanceId === instanceId) {
-            return {
-              instances: updatedInstances,
-              tokenUsage: newTokenUsage,
-            }
-          }
-
           return { instances: updatedInstances }
         }),
 
@@ -1579,14 +1549,6 @@ export const useAppStore = create<AppState & AppActions>()(
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, { ...instance, contextWindow: newContextWindow })
 
-          // If this is the active instance, also update flat fields for backward compatibility
-          if (state.activeInstanceId === instanceId) {
-            return {
-              instances: updatedInstances,
-              contextWindow: newContextWindow,
-            }
-          }
-
           return { instances: updatedInstances }
         }),
 
@@ -1600,14 +1562,6 @@ export const useAppStore = create<AppState & AppActions>()(
 
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, { ...instance, session })
-
-          // If this is the active instance, also update flat fields for backward compatibility
-          if (state.activeInstanceId === instanceId) {
-            return {
-              instances: updatedInstances,
-              session,
-            }
-          }
 
           return { instances: updatedInstances }
         }),
@@ -1629,16 +1583,6 @@ export const useAppStore = create<AppState & AppActions>()(
             contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
             session: { current: 0, total: 0 },
           })
-
-          // If this is the active instance, also update flat fields for backward compatibility
-          if (state.activeInstanceId === instanceId) {
-            return {
-              instances: updatedInstances,
-              tokenUsage: { input: 0, output: 0 },
-              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-              session: { current: 0, total: 0 },
-            }
-          }
 
           return { instances: updatedInstances }
         }),

@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { useStoreHydration } from "./useStoreHydration"
 import { eventDatabase } from "@/lib/persistence"
-import { useAppStore } from "@/store"
+import { useAppStore, selectEvents } from "@/store"
 import type { PersistedSession, PersistedTaskChatSession } from "@/lib/persistence"
 import type { ChatEvent, TaskChatMessage } from "@/types"
 
@@ -84,8 +84,8 @@ describe("useStoreHydration", () => {
       expect(result.current.isHydrated).toBe(true)
     })
 
-    // Check that events were restored
-    expect(useAppStore.getState().events).toEqual(mockEvents)
+    // Check that events were restored (read from instances Map via selector)
+    expect(selectEvents(useAppStore.getState())).toEqual(mockEvents)
   })
 
   it("should restore task chat messages from latest session", async () => {
@@ -183,8 +183,8 @@ describe("useStoreHydration", () => {
       expect(result.current.isHydrated).toBe(true)
     })
 
-    // Events should remain empty
-    expect(useAppStore.getState().events).toEqual([])
+    // Events should remain empty (read from instances Map via selector)
+    expect(selectEvents(useAppStore.getState())).toEqual([])
   })
 
   it("should load task chat events from events store (v7+ schema)", async () => {

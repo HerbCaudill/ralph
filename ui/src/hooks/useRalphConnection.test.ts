@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { useRalphConnection } from "./useRalphConnection"
-import { useAppStore } from "../store"
+import { useAppStore, selectEvents, selectRalphStatus, selectTokenUsage } from "../store"
 import { ralphConnection } from "../lib/ralphConnection"
 
 // Mock WebSocket
@@ -182,7 +182,7 @@ describe("useRalphConnection", () => {
         getWs()?.simulateMessage({ type: "ralph:event", event })
       })
 
-      expect(useAppStore.getState().events).toContainEqual(event)
+      expect(selectEvents(useAppStore.getState())).toContainEqual(event)
     })
 
     it("handles ralph:status messages", () => {
@@ -196,7 +196,7 @@ describe("useRalphConnection", () => {
         getWs()?.simulateMessage({ type: "ralph:status", status: "running" })
       })
 
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
     })
 
     it("handles connected message with ralph status", () => {
@@ -210,7 +210,7 @@ describe("useRalphConnection", () => {
         getWs()?.simulateMessage({ type: "connected", ralphStatus: "running", timestamp: 1234 })
       })
 
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
     })
 
     it("handles workspace_switched message with ralph status and events", () => {
@@ -224,7 +224,7 @@ describe("useRalphConnection", () => {
       act(() => {
         useAppStore.getState().addEvent({ type: "tool_use", timestamp: 1000, tool: "read" })
       })
-      expect(useAppStore.getState().events).toHaveLength(1)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
 
       // Simulate workspace switch with new events from a different workspace
       const newEvents = [
@@ -243,8 +243,8 @@ describe("useRalphConnection", () => {
       })
 
       // Events should be replaced with new workspace's events
-      expect(useAppStore.getState().events).toEqual(newEvents)
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectEvents(useAppStore.getState())).toEqual(newEvents)
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
     })
 
     it("handles workspace_switched message with empty events", () => {
@@ -258,7 +258,7 @@ describe("useRalphConnection", () => {
       act(() => {
         useAppStore.getState().addEvent({ type: "tool_use", timestamp: 1000, tool: "read" })
       })
-      expect(useAppStore.getState().events).toHaveLength(1)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
 
       // Simulate workspace switch to workspace with no events
       act(() => {
@@ -272,8 +272,8 @@ describe("useRalphConnection", () => {
       })
 
       // Events should be empty (replaced with new workspace's empty events)
-      expect(useAppStore.getState().events).toEqual([])
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectEvents(useAppStore.getState())).toEqual([])
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
     })
 
     it("handles ralph:output messages", () => {
@@ -291,7 +291,7 @@ describe("useRalphConnection", () => {
         })
       })
 
-      expect(useAppStore.getState().events).toContainEqual(
+      expect(selectEvents(useAppStore.getState())).toContainEqual(
         expect.objectContaining({ type: "output", line: "Some output" }),
       )
     })
@@ -311,7 +311,7 @@ describe("useRalphConnection", () => {
         })
       })
 
-      expect(useAppStore.getState().events).toContainEqual(
+      expect(selectEvents(useAppStore.getState())).toContainEqual(
         expect.objectContaining({ type: "error", error: "Something went wrong" }),
       )
     })
@@ -332,7 +332,7 @@ describe("useRalphConnection", () => {
         })
       })
 
-      expect(useAppStore.getState().events).toContainEqual(
+      expect(selectEvents(useAppStore.getState())).toContainEqual(
         expect.objectContaining({ type: "exit", code: 0, signal: null }),
       )
     })
@@ -352,7 +352,7 @@ describe("useRalphConnection", () => {
         })
       })
 
-      expect(useAppStore.getState().events).toContainEqual(
+      expect(selectEvents(useAppStore.getState())).toContainEqual(
         expect.objectContaining({ type: "user_message", message: "Hello!" }),
       )
     })
@@ -372,7 +372,7 @@ describe("useRalphConnection", () => {
         })
       })
 
-      expect(useAppStore.getState().events).toContainEqual(
+      expect(selectEvents(useAppStore.getState())).toContainEqual(
         expect.objectContaining({ type: "server_error", error: "Ralph is not running" }),
       )
     })
@@ -385,7 +385,7 @@ describe("useRalphConnection", () => {
       })
 
       // Ensure status is stopped initially
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
 
       const event = { type: "tool_use", timestamp: 1234, tool: "read" }
 
@@ -394,7 +394,7 @@ describe("useRalphConnection", () => {
       })
 
       // Status should be updated to running since we received an event
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
     })
 
     it("updates status to running when ralph:output is received while stopped", () => {
@@ -405,7 +405,7 @@ describe("useRalphConnection", () => {
       })
 
       // Ensure status is stopped initially
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
 
       act(() => {
         getWs()?.simulateMessage({
@@ -416,7 +416,7 @@ describe("useRalphConnection", () => {
       })
 
       // Status should be updated to running since we received output
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
     })
 
     it("does not change status when ralph:event is received while already running", () => {
@@ -434,7 +434,7 @@ describe("useRalphConnection", () => {
       })
 
       // Status should remain running
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
     })
 
     it("does not change status when ralph:event is received while starting", () => {
@@ -452,7 +452,7 @@ describe("useRalphConnection", () => {
       })
 
       // Status should remain starting (don't override transitional states)
-      expect(useAppStore.getState().ralphStatus).toBe("starting")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("starting")
     })
 
     it("extracts token usage from stream_event message_delta events", () => {
@@ -463,7 +463,7 @@ describe("useRalphConnection", () => {
       })
 
       // Initial token usage should be zero
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
 
       // Simulate a message_delta event with token usage (like from Claude API)
       const streamEvent = {
@@ -486,7 +486,7 @@ describe("useRalphConnection", () => {
       })
 
       // Should add up all input tokens (100 + 500 + 200 = 800)
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 800, output: 50 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 800, output: 50 })
     })
 
     it("accumulates token usage across multiple message_delta events", () => {
@@ -527,7 +527,7 @@ describe("useRalphConnection", () => {
       })
 
       // Should accumulate: 100+200 = 300 input, 50+100 = 150 output
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 300, output: 150 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 300, output: 150 })
     })
 
     it("ignores stream events without usage data", () => {
@@ -553,7 +553,7 @@ describe("useRalphConnection", () => {
       })
 
       // Token usage should remain zero
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
     })
 
     it("extracts token usage from result events", () => {
@@ -564,7 +564,7 @@ describe("useRalphConnection", () => {
       })
 
       // Initial token usage should be zero
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
 
       // Simulate a result event with token usage (normalized format from server)
       const resultEvent = {
@@ -583,7 +583,7 @@ describe("useRalphConnection", () => {
       })
 
       // Should extract tokens from result event
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 1000, output: 500 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
     })
 
     it("accumulates token usage across multiple result events", () => {
@@ -620,7 +620,7 @@ describe("useRalphConnection", () => {
       })
 
       // Should accumulate: 100+200 = 300 input, 50+100 = 150 output
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 300, output: 150 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 300, output: 150 })
     })
 
     it("ignores result events without usage data", () => {
@@ -643,7 +643,7 @@ describe("useRalphConnection", () => {
       })
 
       // Token usage should remain zero
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
     })
   })
 
@@ -824,7 +824,7 @@ describe("useRalphConnection", () => {
       })
 
       // Should have emitted a connection_error event
-      const events = useAppStore.getState().events
+      const events = selectEvents(useAppStore.getState())
       const errorEvent = events.find(e => e.type === "connection_error")
       expect(errorEvent).toBeDefined()
       expect(errorEvent?.permanent).toBe(true)
@@ -874,7 +874,7 @@ describe("useRalphConnection", () => {
         getWs()?.simulateMessage({ type: "ralph:event", instanceId: "default", event })
       })
 
-      expect(useAppStore.getState().events).toContainEqual(event)
+      expect(selectEvents(useAppStore.getState())).toContainEqual(event)
     })
 
     it("ignores messages with instanceId not matching active instance", () => {
@@ -891,7 +891,7 @@ describe("useRalphConnection", () => {
       })
 
       // Event should NOT be added because instanceId doesn't match
-      expect(useAppStore.getState().events).not.toContainEqual(event)
+      expect(selectEvents(useAppStore.getState())).not.toContainEqual(event)
     })
 
     it("processes messages without instanceId (backward compatibility)", () => {
@@ -908,7 +908,7 @@ describe("useRalphConnection", () => {
         getWs()?.simulateMessage({ type: "ralph:event", event })
       })
 
-      expect(useAppStore.getState().events).toContainEqual(event)
+      expect(selectEvents(useAppStore.getState())).toContainEqual(event)
     })
 
     it("ignores ralph:status messages for other instances", () => {
@@ -919,7 +919,7 @@ describe("useRalphConnection", () => {
       })
 
       // Ensure initial status is stopped
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
 
       act(() => {
         getWs()?.simulateMessage({
@@ -930,7 +930,7 @@ describe("useRalphConnection", () => {
       })
 
       // Status should NOT change because instanceId doesn't match
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
     })
 
     it("processes ralph:status messages for active instance", () => {
@@ -944,7 +944,7 @@ describe("useRalphConnection", () => {
         getWs()?.simulateMessage({ type: "ralph:status", instanceId: "default", status: "running" })
       })
 
-      expect(useAppStore.getState().ralphStatus).toBe("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
     })
 
     it("processes connected message with instanceId", () => {
@@ -964,8 +964,8 @@ describe("useRalphConnection", () => {
         })
       })
 
-      expect(useAppStore.getState().ralphStatus).toBe("running")
-      expect(useAppStore.getState().events).toHaveLength(1)
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
     })
 
     it("ignores connected message for other instances", () => {
@@ -976,7 +976,7 @@ describe("useRalphConnection", () => {
       })
 
       // Ensure initial status is stopped
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
 
       act(() => {
         getWs()?.simulateMessage({
@@ -989,8 +989,8 @@ describe("useRalphConnection", () => {
       })
 
       // Status and events should NOT change because instanceId doesn't match
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
-      expect(useAppStore.getState().events).toHaveLength(0)
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
+      expect(selectEvents(useAppStore.getState())).toHaveLength(0)
     })
 
     it("processes global messages without instanceId (pong, task updates)", () => {
@@ -1032,7 +1032,7 @@ describe("useRalphConnection", () => {
       })
 
       // Event should NOT be in active instance events (flat field)
-      expect(useAppStore.getState().events).not.toContainEqual(event)
+      expect(selectEvents(useAppStore.getState())).not.toContainEqual(event)
 
       // Event SHOULD be in instance-2's events
       const instance2 = useAppStore.getState().instances.get("instance-2")
@@ -1050,7 +1050,7 @@ describe("useRalphConnection", () => {
       })
 
       // Ensure initial statuses
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
       expect(useAppStore.getState().instances.get("instance-2")?.status).toBe("stopped")
 
       act(() => {
@@ -1062,7 +1062,7 @@ describe("useRalphConnection", () => {
       })
 
       // Active instance status should NOT change
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
 
       // instance-2 status SHOULD change
       expect(useAppStore.getState().instances.get("instance-2")?.status).toBe("running")
@@ -1079,7 +1079,7 @@ describe("useRalphConnection", () => {
       })
 
       // Ensure initial token usage is zero for both
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
       expect(useAppStore.getState().instances.get("instance-2")?.tokenUsage).toEqual({
         input: 0,
         output: 0,
@@ -1107,7 +1107,7 @@ describe("useRalphConnection", () => {
       })
 
       // Active instance token usage should NOT change
-      expect(useAppStore.getState().tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
 
       // instance-2 token usage SHOULD update
       expect(useAppStore.getState().instances.get("instance-2")?.tokenUsage).toEqual({
@@ -1131,7 +1131,7 @@ describe("useRalphConnection", () => {
       })
 
       // Both flat fields and instance should have the event
-      expect(useAppStore.getState().events).toContainEqual(event)
+      expect(selectEvents(useAppStore.getState())).toContainEqual(event)
       expect(useAppStore.getState().instances.get("default")?.events).toContainEqual(event)
     })
 
@@ -1157,8 +1157,8 @@ describe("useRalphConnection", () => {
       })
 
       // Active instance should NOT be affected
-      expect(useAppStore.getState().ralphStatus).toBe("stopped")
-      expect(useAppStore.getState().events).toHaveLength(0)
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
+      expect(selectEvents(useAppStore.getState())).toHaveLength(0)
 
       // instance-2 SHOULD be updated
       const instance2 = useAppStore.getState().instances.get("instance-2")
@@ -1186,7 +1186,7 @@ describe("useRalphConnection", () => {
       })
 
       // Active instance events should be empty
-      expect(useAppStore.getState().events).toHaveLength(0)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(0)
 
       // instance-2 should have the output event
       const instance2 = useAppStore.getState().instances.get("instance-2")

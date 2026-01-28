@@ -55,6 +55,19 @@ vi.mock("../store", () => {
     isRalphStatus: (s: unknown) =>
       typeof s === "string" && ["stopped", "starting", "running"].includes(s),
     isSessionBoundary: () => false,
+    // Selector functions that read from the mock store state
+    selectRalphStatus: (state: {
+      instances: Map<string, { status: string }>
+      activeInstanceId: string
+    }) => state.instances.get(state.activeInstanceId)?.status ?? "stopped",
+    selectEvents: (state: {
+      instances: Map<string, { events: unknown[] }>
+      activeInstanceId: string
+    }) => state.instances.get(state.activeInstanceId)?.events ?? [],
+    selectTokenUsage: (state: {
+      instances: Map<string, { tokenUsage?: { input: number; output: number } }>
+      activeInstanceId: string
+    }) => state.instances.get(state.activeInstanceId)?.tokenUsage ?? { input: 0, output: 0 },
   }
 })
 
@@ -410,11 +423,15 @@ describe("ralphConnection event timestamp tracking", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
 
-      // Set up store to have some events (simulating loaded from IndexedDB)
-      mockStoreState.events = [
+      // Set up store to have some events in the active instance (simulating loaded from IndexedDB)
+      const testInstanceEvents = [
         { type: "user_message", timestamp: 1000, message: "Hello" },
         { type: "assistant_message", timestamp: 2000, message: "Hi" },
       ]
+      mockStoreState.instances.set("test-instance", {
+        events: testInstanceEvents,
+        status: "stopped",
+      })
 
       // Set up session ID for persistence
       setCurrentSessionId("test-instance", "test-session-123")
@@ -462,8 +479,11 @@ describe("ralphConnection event timestamp tracking", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {})
       vi.spyOn(console, "log").mockImplementation(() => {})
 
-      // Set up store with 1 event (loaded from IndexedDB)
-      mockStoreState.events = [{ type: "user_message", timestamp: 1000, message: "Hello" }]
+      // Set up store with 1 event in the active instance (loaded from IndexedDB)
+      mockStoreState.instances.set("test-instance", {
+        events: [{ type: "user_message", timestamp: 1000, message: "Hello" }],
+        status: "stopped",
+      })
 
       // Set up session ID for persistence
       setCurrentSessionId("test-instance", "test-session-456")
@@ -523,12 +543,15 @@ describe("ralphConnection event timestamp tracking", () => {
     it("does not log warning or persist when event counts match", async () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
 
-      // Set up store with 3 events
-      mockStoreState.events = [
-        { type: "user_message", timestamp: 1000 },
-        { type: "assistant_message", timestamp: 2000 },
-        { type: "user_message", timestamp: 3000 },
-      ]
+      // Set up store with 3 events in the active instance
+      mockStoreState.instances.set("test-instance", {
+        events: [
+          { type: "user_message", timestamp: 1000 },
+          { type: "assistant_message", timestamp: 2000 },
+          { type: "user_message", timestamp: 3000 },
+        ],
+        status: "stopped",
+      })
 
       setCurrentSessionId("test-instance", "test-session-789")
 
@@ -562,8 +585,11 @@ describe("ralphConnection event timestamp tracking", () => {
     it("does not log warning when IndexedDB has zero events (fresh load)", async () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
 
-      // Store has no events (fresh page load, nothing loaded from IndexedDB)
-      mockStoreState.events = []
+      // Store has no events in the active instance (fresh page load, nothing loaded from IndexedDB)
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
 
       setCurrentSessionId("test-instance", "test-session-fresh")
 
@@ -595,8 +621,11 @@ describe("ralphConnection event timestamp tracking", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
 
-      // Set up store with events but NO session ID set
-      mockStoreState.events = [{ type: "user_message", timestamp: 1000 }]
+      // Set up store with events in the active instance but NO session ID set
+      mockStoreState.instances.set("test-instance", {
+        events: [{ type: "user_message", timestamp: 1000 }],
+        status: "stopped",
+      })
 
       // Don't set session ID - simulates case before useSessionPersistence runs
 
@@ -680,13 +709,16 @@ describe("ralphConnection event timestamp tracking", () => {
     it("does not log warning when IndexedDB has more events than server", async () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
 
-      // IndexedDB has more events than server (unusual but possible)
-      mockStoreState.events = [
-        { type: "user_message", timestamp: 1000 },
-        { type: "assistant_message", timestamp: 2000 },
-        { type: "user_message", timestamp: 3000 },
-        { type: "assistant_message", timestamp: 4000 },
-      ]
+      // IndexedDB has more events than server in the active instance (unusual but possible)
+      mockStoreState.instances.set("test-instance", {
+        events: [
+          { type: "user_message", timestamp: 1000 },
+          { type: "assistant_message", timestamp: 2000 },
+          { type: "user_message", timestamp: 3000 },
+          { type: "assistant_message", timestamp: 4000 },
+        ],
+        status: "stopped",
+      })
 
       setCurrentSessionId("test-instance", "test-session")
 
@@ -715,7 +747,10 @@ describe("ralphConnection event timestamp tracking", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {})
       vi.spyOn(console, "log").mockImplementation(() => {})
 
-      mockStoreState.events = [{ type: "user_message", timestamp: 1000 }]
+      mockStoreState.instances.set("test-instance", {
+        events: [{ type: "user_message", timestamp: 1000 }],
+        status: "stopped",
+      })
       setCurrentSessionId("test-instance", "test-session")
 
       ralphConnection.connect()
@@ -748,7 +783,10 @@ describe("ralphConnection event timestamp tracking", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {})
       vi.spyOn(console, "log").mockImplementation(() => {})
 
-      mockStoreState.events = [{ type: "user_message", timestamp: 1000 }]
+      mockStoreState.instances.set("test-instance", {
+        events: [{ type: "user_message", timestamp: 1000 }],
+        status: "stopped",
+      })
       setCurrentSessionId("test-instance", "test-session")
 
       ralphConnection.connect()

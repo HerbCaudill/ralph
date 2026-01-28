@@ -3,7 +3,7 @@
  * Lives outside React to survive HMR and StrictMode remounts.
  */
 
-import { useAppStore } from "../store"
+import { useAppStore, selectRalphStatus, selectEvents, selectTokenUsage } from "../store"
 import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 import { extractTokenUsageFromEvent } from "./extractTokenUsage"
@@ -173,7 +173,7 @@ function handleMessage(event: MessageEvent): void {
           // If there's a mismatch, the server has more events (IndexedDB writes may have failed)
           const zustandEventCount =
             isForActiveInstance ?
-              store.events.length
+              selectEvents(store).length
             : (store.instances.get(targetInstanceId)?.events.length ?? 0)
           const serverEventCount = data.events.length
 
@@ -359,10 +359,10 @@ function handleMessage(event: MessageEvent): void {
           if (isForActiveInstance) {
             store.addEvent(event)
             console.debug(
-              `[ralphConnection] Event added to store, events.length=${store.events.length}`,
+              `[ralphConnection] Event added to store, events.length=${selectEvents(store).length}`,
             )
             // If we're receiving events, Ralph must be running - fix any inconsistent status
-            if (store.ralphStatus === "stopped") {
+            if (selectRalphStatus(store) === "stopped") {
               store.setRalphStatus("running")
             }
           } else {
@@ -380,7 +380,9 @@ function handleMessage(event: MessageEvent): void {
             if (isForActiveInstance) {
               store.addTokenUsage(tokenUsage)
               // Update context window usage (total tokens used = input + output)
-              store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
+              store.updateContextWindowUsed(
+                selectTokenUsage(store).input + selectTokenUsage(store).output,
+              )
             } else {
               store.addTokenUsageForInstance(targetInstanceId, tokenUsage)
               // Update context window usage for non-active instance
@@ -416,7 +418,7 @@ function handleMessage(event: MessageEvent): void {
           if (isForActiveInstance) {
             store.addEvent(outputEvent)
             // If we're receiving output, Ralph must be running - fix any inconsistent status
-            if (store.ralphStatus === "stopped") {
+            if (selectRalphStatus(store) === "stopped") {
               store.setRalphStatus("running")
             }
           } else {
@@ -524,7 +526,9 @@ function handleMessage(event: MessageEvent): void {
             if (tokenUsage) {
               store.addTokenUsage(tokenUsage)
               // Update context window usage (total tokens used = input + output)
-              store.updateContextWindowUsed(store.tokenUsage.input + store.tokenUsage.output)
+              store.updateContextWindowUsed(
+                selectTokenUsage(store).input + selectTokenUsage(store).output,
+              )
             }
           }
         }
