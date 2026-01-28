@@ -48,20 +48,13 @@ export interface SessionMetadata {
 
 /**
  * Full persisted session data.
- *
- * Schema v2: Events stored inline in the `events` array.
- * Schema v3+: Events stored separately in the events table, fetched via join.
- *
- * The `events` field is optional during migration:
- * - When reading v2 data, events will be present
- * - When reading v3 data, events are fetched separately
- * - New writes in v3+ should not include events (use the events table instead)
+ * Events are stored separately in the events table and fetched via join.
  */
 export interface PersistedSession extends SessionMetadata {
   /**
    * Events for this session.
-   * @deprecated In v3+, events are stored in the separate events table.
-   * This field exists for backward compatibility with v2 data.
+   * Note: Events are stored separately in the events table.
+   * This field is optional and only used for backward compatibility with test data.
    */
   events?: ChatEvent[]
 }
@@ -137,12 +130,7 @@ export interface TaskChatSessionMetadata {
 /**
  * Full persisted task chat session data including all messages.
  * Stored in IndexedDB for offline access and reconnection.
- *
- * Schema v7+: Events are stored separately in the events table (same as regular sessions).
- * The `events` field is optional during migration:
- * - When reading v6 data, events will be present
- * - When reading v7 data, events are fetched separately from the events store
- * - New writes in v7+ should not include events (use the events table instead)
+ * Events are stored separately in the events table and fetched via join.
  */
 export interface PersistedTaskChatSession extends TaskChatSessionMetadata {
   /** All messages in this task chat session */
@@ -150,24 +138,27 @@ export interface PersistedTaskChatSession extends TaskChatSessionMetadata {
 
   /**
    * Events for this task chat session.
-   * @deprecated In v7+, events are stored in the separate events table.
-   * This field exists for backward compatibility with v6 data.
+   * Note: Events are stored separately in the events table.
+   * This field is optional and only used for backward compatibility with test data.
    */
   events?: ChatEvent[]
 }
 
-/**  Database schema version for migrations. */
+/**
+ * Database schema version.
+ * When this changes, users must clear IndexedDB (no migration support).
+ */
 export const PERSISTENCE_SCHEMA_VERSION = 7
 
 /**  IndexedDB store names. */
 export const STORE_NAMES = {
-  /** Store for session data (metadata + optional events for backward compat) */
+  /** Store for session data */
   SESSIONS: "sessions",
 
-  /** Store for individual events (v3+, normalized from sessions) */
+  /** Store for individual events (normalized from sessions) */
   EVENTS: "events",
 
-  /** Store for task chat session data including messages and events (v6+, unified store) */
+  /** Store for task chat session data including messages */
   CHAT_SESSIONS: "chat_sessions",
 
   /** Store for key-value settings and sync state */

@@ -64,8 +64,9 @@ const DB_NAME = "ralph-persistence"
  * Features:
  * - Separate stores for metadata (fast listing) and full data (lazy loading)
  * - Compound indexes for efficient queries
- * - Version migration support
  * - Transactional updates
+ *
+ * Note: No migration support - if the schema version changes, users clear IndexedDB.
  */
 export class EventDatabase {
   private db: IDBPDatabase<RalphDBSchema> | null = null
@@ -73,7 +74,7 @@ export class EventDatabase {
 
   /**
    * Initialize the database connection.
-   * Creates object stores and indexes on first run or version upgrade.
+   * Creates object stores and indexes on first run.
    */
   async init(): Promise<void> {
     if (this.db) return
@@ -84,143 +85,41 @@ export class EventDatabase {
   }
 
   private async openDatabase(): Promise<void> {
-    let needsV3Migration = false
-    let needsV6Migration = false
-    let needsV7Migration = false
-
     this.db = await openDB<RalphDBSchema>(DB_NAME, PERSISTENCE_SCHEMA_VERSION, {
-      upgrade(db, oldVersion, _newVersion, transaction) {
-        // Version 1: Initial schema
-        if (oldVersion < 1) {
-          // Sessions store with all indexes (v5+ unified store)
-          const sessionsStore = db.createObjectStore(STORE_NAMES.SESSIONS, {
-            keyPath: "id",
-          })
-          sessionsStore.createIndex("by-instance", "instanceId")
-          sessionsStore.createIndex("by-started-at", "startedAt")
-          sessionsStore.createIndex("by-instance-and-started-at", ["instanceId", "startedAt"])
-          sessionsStore.createIndex("by-task", "taskId")
-          sessionsStore.createIndex("by-workspace-and-started-at", ["workspaceId", "startedAt"])
+      upgrade(db) {
+        // Create all object stores and indexes for the current schema.
+        // No migration support - if the schema version changes, users clear IndexedDB.
 
-          // Chat sessions store with all indexes (v6+ unified store)
-          const chatSessionsStore = db.createObjectStore(STORE_NAMES.CHAT_SESSIONS, {
-            keyPath: "id",
-          })
-          chatSessionsStore.createIndex("by-instance", "instanceId")
-          chatSessionsStore.createIndex("by-task", "taskId")
-          chatSessionsStore.createIndex("by-updated-at", "updatedAt")
-          chatSessionsStore.createIndex("by-instance-and-task", ["instanceId", "taskId"])
+        // Sessions store with all indexes
+        const sessionsStore = db.createObjectStore(STORE_NAMES.SESSIONS, {
+          keyPath: "id",
+        })
+        sessionsStore.createIndex("by-instance", "instanceId")
+        sessionsStore.createIndex("by-started-at", "startedAt")
+        sessionsStore.createIndex("by-instance-and-started-at", ["instanceId", "startedAt"])
+        sessionsStore.createIndex("by-task", "taskId")
+        sessionsStore.createIndex("by-workspace-and-started-at", ["workspaceId", "startedAt"])
 
-          // Sync state key-value store
-          db.createObjectStore(STORE_NAMES.SYNC_STATE, {
-            keyPath: "key",
-          })
+        // Chat sessions store with all indexes
+        const chatSessionsStore = db.createObjectStore(STORE_NAMES.CHAT_SESSIONS, {
+          keyPath: "id",
+        })
+        chatSessionsStore.createIndex("by-instance", "instanceId")
+        chatSessionsStore.createIndex("by-task", "taskId")
+        chatSessionsStore.createIndex("by-updated-at", "updatedAt")
+        chatSessionsStore.createIndex("by-instance-and-task", ["instanceId", "taskId"])
 
-          // Events store for append-only event writes (added in v3, now part of initial schema)
-          const eventsStore = db.createObjectStore(STORE_NAMES.EVENTS, {
-            keyPath: "id",
-          })
-          eventsStore.createIndex("by-session", "sessionId")
-          eventsStore.createIndex("by-timestamp", "timestamp")
-        }
+        // Sync state key-value store
+        db.createObjectStore(STORE_NAMES.SYNC_STATE, {
+          keyPath: "key",
+        })
 
-        // Version 2: Event log stores were added in v2 but are now removed in v4
-        // (No action needed for fresh installs - stores don't exist)
-
-        // Version 3: Add events store for normalized event storage and workspace index
-        if (oldVersion >= 1 && oldVersion < 3) {
-          // Events store for append-only event writes
-          db.createObjectStore(STORE_NAMES.EVENTS, {
-            keyPath: "id",
-          }).createIndex("by-session", "sessionId")
-          // Need to get the store again to add the second index
-          transaction.objectStore(STORE_NAMES.EVENTS).createIndex("by-timestamp", "timestamp")
-
-          // Add workspace index to session metadata for cross-workspace queries
-          // Access the existing store through the upgrade transaction
-          // Note: session_metadata still exists in v3, will be removed in v5
-          const rawDb = db as unknown as IDBDatabase
-          if (rawDb.objectStoreNames.contains("session_metadata")) {
-            const sessionMetaStore = transaction.objectStore("session_metadata" as never)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ;(sessionMetaStore as any).createIndex("by-workspace-and-started-at", [
-              "workspaceId",
-              "startedAt",
-            ])
-          }
-
-          // Flag that we need to run the data migration after the upgrade completes
-          needsV3Migration = true
-        }
-
-        // Version 4: Remove event_log stores (superseded by sessions table)
-        if (oldVersion >= 1 && oldVersion < 4) {
-          // Delete the event_logs stores if they exist (created in v2)
-          // Note: We cast to `unknown` because these stores are no longer in the schema
-          // but may exist in databases created with v2/v3
-          const rawDb = db as unknown as IDBDatabase
-          if (rawDb.objectStoreNames.contains("event_log_metadata")) {
-            rawDb.deleteObjectStore("event_log_metadata")
-          }
-          if (rawDb.objectStoreNames.contains("event_logs")) {
-            rawDb.deleteObjectStore("event_logs")
-          }
-        }
-
-        // Version 5: Remove session_metadata store (merged into sessions)
-        if (oldVersion >= 1 && oldVersion < 5) {
-          const rawDb = db as unknown as IDBDatabase
-
-          // Add missing indexes to sessions store if upgrading from older version
-          const sessionsStore = transaction.objectStore(STORE_NAMES.SESSIONS)
-          const existingIndexes = Array.from(sessionsStore.indexNames)
-
-          if (!existingIndexes.includes("by-started-at")) {
-            sessionsStore.createIndex("by-started-at", "startedAt")
-          }
-          if (!existingIndexes.includes("by-instance-and-started-at")) {
-            sessionsStore.createIndex("by-instance-and-started-at", ["instanceId", "startedAt"])
-          }
-          if (!existingIndexes.includes("by-task")) {
-            sessionsStore.createIndex("by-task", "taskId")
-          }
-          if (!existingIndexes.includes("by-workspace-and-started-at")) {
-            sessionsStore.createIndex("by-workspace-and-started-at", ["workspaceId", "startedAt"])
-          }
-
-          // Delete the session_metadata store if it exists
-          if (rawDb.objectStoreNames.contains("session_metadata")) {
-            rawDb.deleteObjectStore("session_metadata")
-          }
-        }
-
-        // Version 6: Merge task_chat_metadata + task_chat_sessions into chat_sessions
-        if (oldVersion >= 1 && oldVersion < 6) {
-          const rawDb = db as unknown as IDBDatabase
-
-          // Create the new chat_sessions store if it doesn't exist
-          if (!rawDb.objectStoreNames.contains(STORE_NAMES.CHAT_SESSIONS)) {
-            const chatSessionsStore = db.createObjectStore(STORE_NAMES.CHAT_SESSIONS, {
-              keyPath: "id",
-            })
-            chatSessionsStore.createIndex("by-instance", "instanceId")
-            chatSessionsStore.createIndex("by-task", "taskId")
-            chatSessionsStore.createIndex("by-updated-at", "updatedAt")
-            chatSessionsStore.createIndex("by-instance-and-task", ["instanceId", "taskId"])
-          }
-
-          // Flag for post-upgrade data migration (copy data before delete)
-          if (rawDb.objectStoreNames.contains("task_chat_sessions")) {
-            needsV6Migration = true
-          }
-        }
-
-        // Version 7: Extract task chat events to the events store (unified event storage)
-        if (oldVersion >= 6 && oldVersion < 7) {
-          // No schema changes needed - the events store already exists
-          // We just need to migrate data (extract events from chat_sessions to events store)
-          needsV7Migration = true
-        }
+        // Events store for append-only event writes
+        const eventsStore = db.createObjectStore(STORE_NAMES.EVENTS, {
+          keyPath: "id",
+        })
+        eventsStore.createIndex("by-session", "sessionId")
+        eventsStore.createIndex("by-timestamp", "timestamp")
       },
       blocked() {
         console.warn("[EventDatabase] Database upgrade blocked by other tabs")
@@ -229,242 +128,6 @@ export class EventDatabase {
         console.warn("[EventDatabase] This tab is blocking a database upgrade")
       },
     })
-
-    // Run data migrations after the schema upgrade completes
-    if (needsV3Migration) {
-      await this.migrateV2ToV3()
-    }
-    if (needsV6Migration) {
-      await this.migrateV5ToV6()
-    }
-    if (needsV7Migration) {
-      await this.migrateV6ToV7()
-    }
-  }
-
-  /**
-   * Migrate v2 data to v3 format.
-   *
-   * This migration:
-   * 1. Extracts events from the sessions store (where they were embedded in v2)
-   * 2. Creates individual PersistedEvent records in the events store
-   * 3. Updates sessions to remove the events array
-   * 4. Ensures all sessions have workspaceId (set to null for legacy data)
-   *
-   * This is idempotent - sessions that have already been migrated (no events array)
-   * will be skipped.
-   */
-  private async migrateV2ToV3(): Promise<void> {
-    if (!this.db) return
-
-    console.log("[EventDatabase] Starting v2→v3 data migration...")
-
-    const tx = this.db.transaction([STORE_NAMES.SESSIONS, STORE_NAMES.EVENTS], "readwrite")
-
-    const sessionsStore = tx.objectStore(STORE_NAMES.SESSIONS)
-    const eventsStore = tx.objectStore(STORE_NAMES.EVENTS)
-
-    // Get all sessions
-    const sessions = await sessionsStore.getAll()
-    let migratedCount = 0
-    let eventCount = 0
-
-    for (const session of sessions) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sessionAny = session as any
-      const sessionId = sessionAny.id as string
-
-      // Skip if already migrated (no events array)
-      if (!sessionAny.events || !Array.isArray(sessionAny.events)) {
-        // Still ensure workspaceId is set
-        if (!("workspaceId" in sessionAny)) {
-          sessionAny.workspaceId = null
-          await sessionsStore.put(sessionAny)
-        }
-        continue
-      }
-
-      const events = sessionAny.events as Array<{
-        type?: string
-        timestamp?: number
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        [key: string]: any
-      }>
-
-      // Create individual PersistedEvent records
-      for (let index = 0; index < events.length; index++) {
-        const event = events[index]
-        const eventId = `${sessionId}-event-${index}`
-        const persistedEvent: PersistedEvent = {
-          id: eventId,
-          sessionId,
-          timestamp: event.timestamp ?? Date.now(),
-          eventType: event.type ?? "unknown",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          event: event as any,
-        }
-        await eventsStore.put(persistedEvent)
-        eventCount++
-      }
-
-      // Update session to remove events array
-      const updatedSession = { ...sessionAny }
-      delete updatedSession.events
-      // Ensure workspaceId is set (null for legacy data)
-      if (!("workspaceId" in updatedSession)) {
-        updatedSession.workspaceId = null
-      }
-      await sessionsStore.put(updatedSession)
-
-      migratedCount++
-    }
-
-    await tx.done
-
-    console.log(
-      `[EventDatabase] v2→v3 migration complete: migrated ${migratedCount} sessions, created ${eventCount} events`,
-    )
-  }
-
-  /**
-   * Migrate v5 data to v6 format.
-   *
-   * This migration:
-   * 1. Copies all data from task_chat_sessions to the new chat_sessions store
-   * 2. Deletes the old task_chat_metadata and task_chat_sessions stores
-   *
-   * The new chat_sessions store is a unified store with all indexes.
-   */
-  private async migrateV5ToV6(): Promise<void> {
-    if (!this.db) return
-
-    console.log("[EventDatabase] Starting v5→v6 data migration...")
-
-    // We need to work with the raw database since the old stores are not in our schema
-    const rawDb = this.db as unknown as IDBDatabase
-
-    // Check if old stores exist
-    const hasOldSessionsStore = rawDb.objectStoreNames.contains("task_chat_sessions")
-    const hasOldMetadataStore = rawDb.objectStoreNames.contains("task_chat_metadata")
-
-    if (!hasOldSessionsStore) {
-      console.log(
-        "[EventDatabase] v5→v6 migration: No old task_chat_sessions store found, skipping",
-      )
-      return
-    }
-
-    // Copy data from old task_chat_sessions to new chat_sessions
-    // We need to use raw IndexedDB API since the old store isn't in our typed schema
-    const oldData = await new Promise<PersistedTaskChatSession[]>((resolve, reject) => {
-      const tx = rawDb.transaction("task_chat_sessions", "readonly")
-      const store = tx.objectStore("task_chat_sessions")
-      const request = store.getAll()
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve(request.result ?? [])
-    })
-
-    // Write to new chat_sessions store
-    if (oldData.length > 0) {
-      const tx = this.db.transaction(STORE_NAMES.CHAT_SESSIONS, "readwrite")
-      const store = tx.objectStore(STORE_NAMES.CHAT_SESSIONS)
-      for (const session of oldData) {
-        await store.put(session)
-      }
-      await tx.done
-    }
-
-    console.log(
-      `[EventDatabase] v5→v6 migration complete: migrated ${oldData.length} task chat sessions`,
-    )
-
-    // Note: We cannot delete the old stores here because we're outside the upgrade transaction.
-    // The old stores will remain but won't be used. They'll be cleaned up when the user
-    // clears their data or on a future schema version that does cleanup.
-    if (hasOldMetadataStore) {
-      console.log(
-        "[EventDatabase] Note: Old task_chat_metadata store exists but cannot be deleted outside upgrade",
-      )
-    }
-    if (hasOldSessionsStore) {
-      console.log(
-        "[EventDatabase] Note: Old task_chat_sessions store exists but cannot be deleted outside upgrade",
-      )
-    }
-  }
-
-  /**
-   * Migrate v6 data to v7 format.
-   *
-   * This migration:
-   * 1. Extracts events from chat_sessions store (where they were embedded in v6)
-   * 2. Creates individual PersistedEvent records in the events store
-   * 3. Updates chat sessions to remove the events array
-   *
-   * This is idempotent - sessions that have already been migrated (no events array)
-   * will be skipped.
-   */
-  private async migrateV6ToV7(): Promise<void> {
-    if (!this.db) return
-
-    console.log("[EventDatabase] Starting v6→v7 data migration...")
-
-    const tx = this.db.transaction([STORE_NAMES.CHAT_SESSIONS, STORE_NAMES.EVENTS], "readwrite")
-
-    const chatSessionsStore = tx.objectStore(STORE_NAMES.CHAT_SESSIONS)
-    const eventsStore = tx.objectStore(STORE_NAMES.EVENTS)
-
-    // Get all chat sessions
-    const sessions = await chatSessionsStore.getAll()
-    let migratedCount = 0
-    let eventCount = 0
-
-    for (const session of sessions) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sessionAny = session as any
-      const sessionId = sessionAny.id as string
-
-      // Skip if already migrated (no events array)
-      if (!sessionAny.events || !Array.isArray(sessionAny.events)) {
-        continue
-      }
-
-      const events = sessionAny.events as Array<{
-        type?: string
-        timestamp?: number
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        [key: string]: any
-      }>
-
-      // Create individual PersistedEvent records
-      for (let index = 0; index < events.length; index++) {
-        const event = events[index]
-        const eventId = `${sessionId}-event-${index}`
-        const persistedEvent: PersistedEvent = {
-          id: eventId,
-          sessionId,
-          timestamp: event.timestamp ?? Date.now(),
-          eventType: event.type ?? "unknown",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          event: event as any,
-        }
-        await eventsStore.put(persistedEvent)
-        eventCount++
-      }
-
-      // Update chat session to remove events array
-      const updatedSession = { ...sessionAny }
-      delete updatedSession.events
-      await chatSessionsStore.put(updatedSession)
-
-      migratedCount++
-    }
-
-    await tx.done
-
-    console.log(
-      `[EventDatabase] v6→v7 migration complete: migrated ${migratedCount} chat sessions, created ${eventCount} events`,
-    )
   }
 
   /**
@@ -478,9 +141,7 @@ export class EventDatabase {
     return this.db
   }
 
-  // ============================================================================
   // Session Methods
-  // ============================================================================
 
   /**
    * Save a session.
@@ -607,9 +268,7 @@ export class EventDatabase {
     await tx.done
   }
 
-  // ============================================================================
   // Event Methods (for normalized event storage in v3+)
-  // ============================================================================
 
   /**
    * Save a single event to the events store.
@@ -690,9 +349,7 @@ export class EventDatabase {
     return index.count(sessionId)
   }
 
-  // ============================================================================
   // Task Chat Session Methods
-  // ============================================================================
 
   /**
    * Save a task chat session.
@@ -845,9 +502,7 @@ export class EventDatabase {
     return taskIds
   }
 
-  // ============================================================================
   // Sync State Methods
-  // ============================================================================
 
   /**
    * Get a sync state value.
@@ -874,9 +529,7 @@ export class EventDatabase {
     await db.delete(STORE_NAMES.SYNC_STATE, key)
   }
 
-  // ============================================================================
   // Utility Methods
-  // ============================================================================
 
   /**
    * Clear all data from the database.

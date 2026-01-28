@@ -30,8 +30,8 @@ function createTestSession(overrides: Partial<PersistedSession> = {}): Persisted
 
 /**
  * Create a test task chat session with sensible defaults.
- * Note: In v7+ schema, events are stored separately. The events property here
- * is for testing backward compatibility with v6 data.
+ * Note: Events are stored separately in the events store. The events property
+ * is optional and only used for testing backward compatibility.
  */
 function createTestTaskChatSession(
   overrides: Partial<PersistedTaskChatSession> = {},
@@ -50,8 +50,7 @@ function createTestTaskChatSession(
       { id: "msg-1", role: "user", content: "How do I fix this?", timestamp: now },
       { id: "msg-2", role: "assistant", content: "Let me help.", timestamp: now + 1 },
     ],
-    // Events are optional in v7+ schema (stored in events table)
-    // Include for backward compatibility testing
+    // Events are optional (stored separately in events table)
     events: [
       { type: "user_message", timestamp: now, message: "How do I fix this?" },
       { type: "assistant_text", timestamp: now + 1, content: "Let me help." },
@@ -892,30 +891,15 @@ describe("EventDatabase", () => {
     })
   })
 
-  describe("v2→v3 migration", () => {
+  describe("session event storage patterns", () => {
     /**
-     * Test the v2→v3 migration by simulating v2 data format (sessions with embedded events).
-     *
-     * Note: The migration happens automatically when opening a v2 database with v3 code.
-     * Since fake-indexeddb starts fresh for each test, we test by:
-     * 1. Saving sessions with embedded events array (v2 format)
-     * 2. Verifying the events can be retrieved from the events store
-     * 3. Verifying the session no longer has embedded events
-     *
-     * In a real v2→v3 upgrade:
-     * - The upgrade handler extracts events from sessions
-     * - Creates PersistedEvent records in the events store
-     * - Removes the events array from sessions
-     *
-     * Migration characteristics tested:
-     * - Idempotency: Running migration multiple times is safe
-     * - Event extraction: Events are moved from sessions to separate store
-     * - workspaceId: Added to all sessions (null for legacy data)
-     * - Edge cases: Empty events, missing timestamps/types
+     * Tests for different event storage patterns.
+     * The API supports both embedded events (optional field on sessions) and
+     * normalized events (separate events store). These tests verify both patterns work.
      */
 
-    it("preserves session data after migration when session is saved with events", async () => {
-      // Simulate v2-style session with embedded events
+    it("preserves session data when saved with embedded events", async () => {
+      // Save session with embedded events
       const now = Date.now()
       const sessionWithEvents = createTestSession({
         id: "v2-session",
@@ -930,7 +914,6 @@ describe("EventDatabase", () => {
         ],
       })
 
-      // Save using current API (simulates upgrade path)
       await db.saveSession(sessionWithEvents)
 
       // Verify session metadata is preserved
@@ -945,7 +928,6 @@ describe("EventDatabase", () => {
       const session = await db.getSession("v2-session")
       expect(session).toBeDefined()
       expect(session?.id).toBe("v2-session")
-      // Events array should still be in the session store (for backward compat)
       expect(session?.events?.length).toBe(3)
     })
 
@@ -963,8 +945,7 @@ describe("EventDatabase", () => {
       expect(session?.events).toEqual([])
     })
 
-    it("handles sessions with undefined events (pure metadata)", async () => {
-      // Simulate v3-style session without events
+    it("handles sessions with undefined events (metadata only)", async () => {
       const metadataOnlySession = {
         id: "metadata-only",
         instanceId: "test-instance",
@@ -977,7 +958,7 @@ describe("EventDatabase", () => {
         session: { current: 0, total: 0 },
         eventCount: 0,
         lastEventSequence: 0,
-        // No events property - this is the v3 pattern
+        // No events property
       } as PersistedSession
 
       await db.saveSession(metadataOnlySession)
@@ -987,16 +968,15 @@ describe("EventDatabase", () => {
       expect(session?.events).toBeUndefined()
     })
 
-    it("sets workspaceId to null for legacy sessions without workspaceId", async () => {
-      // The migration should ensure all sessions have workspaceId property
-      const legacySession = createTestSession({
-        id: "legacy-session",
-        workspaceId: null, // Explicit null (migration ensures this exists)
+    it("handles sessions with null workspaceId", async () => {
+      const sessionWithNullWorkspace = createTestSession({
+        id: "null-workspace-session",
+        workspaceId: null,
       })
 
-      await db.saveSession(legacySession)
+      await db.saveSession(sessionWithNullWorkspace)
 
-      const metadata = await db.getSessionMetadata("legacy-session")
+      const metadata = await db.getSessionMetadata("null-workspace-session")
       expect(metadata).toBeDefined()
       expect(metadata).toHaveProperty("workspaceId")
       expect(metadata?.workspaceId).toBeNull()
@@ -1056,7 +1036,7 @@ describe("EventDatabase", () => {
     })
 
     it("events can be stored and retrieved separately from sessions", async () => {
-      // This tests the normalized storage pattern for v3+
+      // Test the normalized storage pattern where events are in a separate store
       const sessionId = "separate-storage"
 
       // Save session metadata only
@@ -1146,9 +1126,9 @@ describe("EventDatabase", () => {
       expect(noEvents?.events?.length).toBe(0)
     })
 
-    it("migration is idempotent - reprocessing migrated data is safe", async () => {
-      // First, save a v3-style session (no embedded events)
-      const sessionId = "already-migrated"
+    it("re-saving session preserves separately stored events", async () => {
+      // Save session without embedded events
+      const sessionId = "session-with-separate-events"
       await db.saveSession(
         createTestSession({
           id: sessionId,
@@ -1158,18 +1138,18 @@ describe("EventDatabase", () => {
         }),
       )
 
-      // Save events separately (v3 pattern)
+      // Save events separately
       const now = Date.now()
       await db.saveEvents([
         createTestEvent({ id: `${sessionId}-event-0`, sessionId, timestamp: now }),
         createTestEvent({ id: `${sessionId}-event-1`, sessionId, timestamp: now + 100 }),
       ])
 
-      // Re-save the session (simulates re-running migration or updating)
+      // Re-save the session (e.g., updating metadata)
       await db.saveSession(
         createTestSession({
           id: sessionId,
-          events: undefined, // Still no embedded events
+          events: undefined,
           eventCount: 2,
           workspaceId: "/Users/test/project",
         }),
@@ -1703,16 +1683,16 @@ describe("EventDatabase", () => {
     })
   })
 
-  describe("task chat sessions with unified event storage (v7+ schema)", () => {
+  describe("task chat sessions with unified event storage", () => {
     it("stores task chat events separately in the events store", async () => {
-      const sessionId = "chat-session-v7"
+      const sessionId = "chat-session-separate-events"
       const now = Date.now()
 
-      // Save chat session metadata (v7 pattern - no embedded events)
+      // Save chat session metadata (no embedded events)
       await db.saveTaskChatSession(
         createTestTaskChatSession({
           id: sessionId,
-          events: undefined, // No embedded events in v7+
+          events: undefined,
           eventCount: 3,
         }),
       )
@@ -1755,7 +1735,7 @@ describe("EventDatabase", () => {
       const sessionId = "chat-parallel-load"
       const now = Date.now()
 
-      // Save chat session metadata (v7 pattern)
+      // Save chat session metadata
       await db.saveTaskChatSession(
         createTestTaskChatSession({
           id: sessionId,
@@ -1823,12 +1803,12 @@ describe("EventDatabase", () => {
       expect(stats.eventCount).toBe(3)
     })
 
-    it("supports backward compatibility with v6 data (embedded events)", async () => {
-      const sessionId = "v6-chat-session"
+    it("supports embedded events for backward compatibility", async () => {
+      const sessionId = "chat-embedded-events"
       const now = Date.now()
 
-      // Save v6-style chat session with embedded events
-      const v6Session = createTestTaskChatSession({
+      // Save chat session with embedded events (optional pattern)
+      const sessionWithEvents = createTestTaskChatSession({
         id: sessionId,
         events: [
           { type: "user_message", timestamp: now, message: "Hello" },
@@ -1837,9 +1817,9 @@ describe("EventDatabase", () => {
         eventCount: 2,
       })
 
-      await db.saveTaskChatSession(v6Session)
+      await db.saveTaskChatSession(sessionWithEvents)
 
-      // Verify events are still accessible via the session (backward compat)
+      // Verify embedded events are accessible via the session
       const session = await db.getTaskChatSession(sessionId)
       expect(session?.events?.length).toBe(2)
     })
