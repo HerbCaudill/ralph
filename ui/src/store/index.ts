@@ -514,7 +514,9 @@ const defaultTaskChatWidthPercent = 25 // ~400px on 1600px screen
 
 // Task chat events batching configuration
 // Events are collected over a short window and then applied in a single state update
-const TASK_CHAT_EVENTS_BATCH_INTERVAL_MS = 100
+// Using 16ms (~one animation frame) to reduce perceived streaming latency while still
+// batching rapid-fire SDK events to prevent excessive re-renders
+const TASK_CHAT_EVENTS_BATCH_INTERVAL_MS = 16
 
 // Batching state (module-level for singleton behavior)
 let taskChatEventsBatch: ChatEvent[] = []
