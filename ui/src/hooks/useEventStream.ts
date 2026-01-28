@@ -11,8 +11,6 @@ import {
   selectInstance,
   selectIssuePrefix,
   selectIsConnected,
-  selectHasPreviousSession,
-  selectHasNextSession,
   getEventsForSessionId,
 } from "@/store"
 import { useSessions, buildSessionPath, parseSessionIdFromUrl } from "@/hooks"
@@ -89,10 +87,6 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const tasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const isConnected = useAppStore(selectIsConnected)
-  const hasPrevious = useAppStore(selectHasPreviousSession)
-  const hasNext = useAppStore(selectHasNextSession)
-  const goToPreviousSession = useAppStore(state => state.goToPreviousSession)
-  const goToNextSession = useAppStore(state => state.goToNextSession)
 
   // Get instance for currentTaskId fallback
   const instance = useAppStore(state =>
@@ -234,20 +228,63 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     clearSelectedSession()
   }, [clearSelectedSession])
 
+  // Derive hasPrevious/hasNext from the sessions list (IndexedDB-backed).
+  // Sessions are sorted newest-first. "Previous" = older, "Next" = newer/live.
+  const currentSessionIndex = useMemo(() => {
+    if (!selectedSession) return -1
+    return sessions.findIndex(s => s.id === selectedSession.id)
+  }, [sessions, selectedSession])
+
+  const hasPrevious =
+    selectedSession ? currentSessionIndex < sessions.length - 1 : sessions.length > 0
+  const hasNext = selectedSession !== null
+
+  const handleGoToPrevious = useCallback(() => {
+    if (!selectedSession) {
+      // Currently viewing live — go to most recent historical session
+      if (sessions.length > 0) {
+        handleSessionHistorySelect(sessions[0].id)
+      }
+    } else {
+      // Currently viewing a historical session — go to the next older one
+      const nextIndex = currentSessionIndex + 1
+      if (nextIndex < sessions.length) {
+        handleSessionHistorySelect(sessions[nextIndex].id)
+      }
+    }
+  }, [selectedSession, sessions, currentSessionIndex, handleSessionHistorySelect])
+
+  const handleGoToNext = useCallback(() => {
+    if (!selectedSession) return
+    if (currentSessionIndex <= 0) {
+      // At the most recent historical session — go to live
+      handleReturnToLive()
+    } else {
+      // Go to the next newer historical session
+      handleSessionHistorySelect(sessions[currentSessionIndex - 1].id)
+    }
+  }, [
+    selectedSession,
+    sessions,
+    currentSessionIndex,
+    handleSessionHistorySelect,
+    handleReturnToLive,
+  ])
+
   const navigation: SessionNavigationActions = useMemo(
     () => ({
       selectSessionHistory: handleSessionHistorySelect,
       returnToLive: handleReturnToLive,
-      goToPrevious: goToPreviousSession,
-      goToNext: goToNextSession,
+      goToPrevious: handleGoToPrevious,
+      goToNext: handleGoToNext,
       hasPrevious,
       hasNext,
     }),
     [
       handleSessionHistorySelect,
       handleReturnToLive,
-      goToPreviousSession,
-      goToNextSession,
+      handleGoToPrevious,
+      handleGoToNext,
       hasPrevious,
       hasNext,
     ],

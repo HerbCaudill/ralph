@@ -19,13 +19,19 @@ let mockSelectedSession: {
   metadata?: { taskId?: string; title?: string }
 } | null = null
 let mockIsLoadingEvents = false
+let mockSessions: Array<{
+  id: string
+  createdAt: string
+  eventCount: number
+  metadata?: { taskId?: string; title?: string }
+}> = []
 
 vi.mock("@/hooks", async importOriginal => {
   const actual = await importOriginal<typeof import("@/hooks")>()
   return {
     ...actual,
     useSessions: vi.fn(() => ({
-      sessions: [],
+      sessions: mockSessions,
       isLoading: false,
       error: null,
       refresh: vi.fn(),
@@ -47,6 +53,9 @@ describe("useEventStream", () => {
     mockClearSelectedSession.mockClear()
     mockSelectedSession = null
     mockIsLoadingEvents = false
+    mockSessions = []
+    // Reset URL to root so the URL-based useEffect doesn't pick up session IDs from previous tests
+    window.history.replaceState(null, "", "/")
   })
 
   describe("basic functionality", () => {
@@ -393,6 +402,210 @@ describe("useEventStream", () => {
       result.current.navigation.returnToLive()
 
       expect(mockClearSelectedSession).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("previous/next navigation", () => {
+    // Sessions are sorted newest-first: [newest, ..., oldest]
+    const threeSessions = [
+      { id: "session-c", createdAt: "2024-01-20T00:00:00Z", eventCount: 1 },
+      { id: "session-b", createdAt: "2024-01-19T00:00:00Z", eventCount: 1 },
+      { id: "session-a", createdAt: "2024-01-18T00:00:00Z", eventCount: 1 },
+    ]
+
+    describe("hasPrevious", () => {
+      it("is true when viewing live and sessions exist", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = null
+
+        const { result } = renderHook(() => useEventStream())
+
+        expect(result.current.navigation.hasPrevious).toBe(true)
+      })
+
+      it("is false when viewing live and no sessions exist", () => {
+        mockSessions = []
+        mockSelectedSession = null
+
+        const { result } = renderHook(() => useEventStream())
+
+        expect(result.current.navigation.hasPrevious).toBe(false)
+      })
+
+      it("is true when viewing a historical session that is not the oldest", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = {
+          id: "session-b",
+          createdAt: "2024-01-19T00:00:00Z",
+          eventCount: 1,
+          events: [],
+        }
+
+        const { result } = renderHook(() => useEventStream())
+
+        // session-b is at index 1, sessions.length - 1 is 2, so 1 < 2 => true
+        expect(result.current.navigation.hasPrevious).toBe(true)
+      })
+
+      it("is false when viewing the oldest historical session", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = {
+          id: "session-a",
+          createdAt: "2024-01-18T00:00:00Z",
+          eventCount: 1,
+          events: [],
+        }
+
+        const { result } = renderHook(() => useEventStream())
+
+        // session-a is at index 2, sessions.length - 1 is 2, so 2 < 2 => false
+        expect(result.current.navigation.hasPrevious).toBe(false)
+      })
+    })
+
+    describe("hasNext", () => {
+      it("is true when viewing any historical session", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = {
+          id: "session-a",
+          createdAt: "2024-01-18T00:00:00Z",
+          eventCount: 1,
+          events: [],
+        }
+
+        const { result } = renderHook(() => useEventStream())
+
+        expect(result.current.navigation.hasNext).toBe(true)
+      })
+
+      it("is false when viewing live", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = null
+
+        const { result } = renderHook(() => useEventStream())
+
+        expect(result.current.navigation.hasNext).toBe(false)
+      })
+    })
+
+    describe("goToPrevious", () => {
+      it("from live, navigates to the most recent historical session", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = null
+
+        const { result } = renderHook(() => useEventStream())
+        result.current.navigation.goToPrevious()
+
+        expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-c")
+      })
+
+      it("from a historical session, navigates to the next older session", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = {
+          id: "session-c",
+          createdAt: "2024-01-20T00:00:00Z",
+          eventCount: 1,
+          events: [],
+        }
+
+        const { result } = renderHook(() => useEventStream())
+        result.current.navigation.goToPrevious()
+
+        // session-c is index 0, next older is index 1 => session-b
+        expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-b")
+      })
+
+      it("does nothing when viewing the oldest session", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = {
+          id: "session-a",
+          createdAt: "2024-01-18T00:00:00Z",
+          eventCount: 1,
+          events: [],
+        }
+
+        const { result } = renderHook(() => useEventStream())
+        result.current.navigation.goToPrevious()
+
+        // session-a is index 2, next would be index 3 which is >= sessions.length
+        expect(mockLoadSessionEvents).not.toHaveBeenCalled()
+      })
+
+      it("does nothing when viewing live and no sessions exist", () => {
+        mockSessions = []
+        mockSelectedSession = null
+
+        const { result } = renderHook(() => useEventStream())
+        result.current.navigation.goToPrevious()
+
+        expect(mockLoadSessionEvents).not.toHaveBeenCalled()
+      })
+    })
+
+    describe("goToNext", () => {
+      it("from the most recent historical session, returns to live", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = {
+          id: "session-c",
+          createdAt: "2024-01-20T00:00:00Z",
+          eventCount: 1,
+          events: [],
+        }
+
+        const { result } = renderHook(() => useEventStream())
+        // Clear any calls from mount effects before testing navigation action
+        mockClearSelectedSession.mockClear()
+        mockLoadSessionEvents.mockClear()
+
+        result.current.navigation.goToNext()
+
+        // session-c is index 0, which is <= 0, so it should return to live
+        expect(mockClearSelectedSession).toHaveBeenCalledTimes(1)
+        expect(mockLoadSessionEvents).not.toHaveBeenCalled()
+      })
+
+      it("from an older historical session, navigates to the next newer session", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = {
+          id: "session-a",
+          createdAt: "2024-01-18T00:00:00Z",
+          eventCount: 1,
+          events: [],
+        }
+
+        const { result } = renderHook(() => useEventStream())
+        result.current.navigation.goToNext()
+
+        // session-a is index 2, next newer is index 1 => session-b
+        expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-b")
+      })
+
+      it("from the middle session, navigates to the newest historical session", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = {
+          id: "session-b",
+          createdAt: "2024-01-19T00:00:00Z",
+          eventCount: 1,
+          events: [],
+        }
+
+        const { result } = renderHook(() => useEventStream())
+        result.current.navigation.goToNext()
+
+        // session-b is index 1, next newer is index 0 => session-c
+        expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-c")
+      })
+
+      it("does nothing when viewing live", () => {
+        mockSessions = threeSessions
+        mockSelectedSession = null
+
+        const { result } = renderHook(() => useEventStream())
+        result.current.navigation.goToNext()
+
+        expect(mockLoadSessionEvents).not.toHaveBeenCalled()
+        expect(mockClearSelectedSession).not.toHaveBeenCalled()
+      })
     })
   })
 
