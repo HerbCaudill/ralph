@@ -7,28 +7,54 @@ import {
   setCurrentSessionId,
 } from "./ralphConnection"
 
+// Mock store state that can be modified per test
+let mockStoreState: {
+  activeInstanceId: string
+  events: unknown[]
+  instances: Map<string, { events: unknown[]; status: string }>
+  ralphStatus: string
+  addEvent: ReturnType<typeof vi.fn>
+  addEventForInstance: ReturnType<typeof vi.fn>
+  setRalphStatus: ReturnType<typeof vi.fn>
+  setStatusForInstance: ReturnType<typeof vi.fn>
+  setEvents: ReturnType<typeof vi.fn>
+  setEventsForInstance: ReturnType<typeof vi.fn>
+  setConnectionStatus: ReturnType<typeof vi.fn>
+  wasRunningBeforeDisconnect: boolean
+  markRunningBeforeDisconnect: ReturnType<typeof vi.fn>
+  clearRunningBeforeDisconnect: ReturnType<typeof vi.fn>
+}
+
+// Initialize mock store state
+function createMockStoreState() {
+  return {
+    activeInstanceId: "test-instance",
+    events: [],
+    instances: new Map<string, { events: unknown[]; status: string }>(),
+    ralphStatus: "stopped",
+    addEvent: vi.fn(),
+    addEventForInstance: vi.fn(),
+    setRalphStatus: vi.fn(),
+    setStatusForInstance: vi.fn(),
+    setEvents: vi.fn(),
+    setEventsForInstance: vi.fn(),
+    setConnectionStatus: vi.fn(),
+    wasRunningBeforeDisconnect: false,
+    markRunningBeforeDisconnect: vi.fn(),
+    clearRunningBeforeDisconnect: vi.fn(),
+  }
+}
+
 // Mock dependencies
 vi.mock("../store", () => {
-  const addEvent = vi.fn()
-  const addEventForInstance = vi.fn()
-  const setRalphStatus = vi.fn()
-  const setStatusForInstance = vi.fn()
-
   return {
     useAppStore: {
-      getState: () => ({
-        activeInstanceId: "test-instance",
-        addEvent,
-        addEventForInstance,
-        setRalphStatus,
-        setStatusForInstance,
-        instances: new Map(),
-        ralphStatus: "stopped",
-      }),
+      getState: () => mockStoreState,
     },
     flushTaskChatEventsBatch: vi.fn(),
     isRalphStatus: (s: unknown) =>
       typeof s === "string" && ["stopped", "starting", "running"].includes(s),
+    isSessionBoundary: () => false,
   }
 })
 
@@ -37,21 +63,80 @@ vi.mock("./sessionStateApi", () => ({
   restoreSessionState: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
-// Create tracked mocks for eventDatabase methods
+// Create tracked mocks for eventDatabase and writeQueue methods
 const mockSaveEvent = vi.fn().mockResolvedValue(undefined)
 const mockUpdateSessionTaskId = vi.fn().mockResolvedValue(true)
+const mockEnqueue = vi.fn()
 vi.mock("./persistence", () => ({
   eventDatabase: {
     saveEvent: (...args: unknown[]) => mockSaveEvent(...args),
     updateSessionTaskId: (...args: unknown[]) => mockUpdateSessionTaskId(...args),
   },
+  writeQueue: {
+    enqueue: (...args: unknown[]) => mockEnqueue(...args),
+    setFailureCallback: vi.fn(),
+  },
 }))
+
+// Mock WebSocket for integration testing
+class MockWebSocket {
+  static CONNECTING = 0
+  static OPEN = 1
+  static CLOSING = 2
+  static CLOSED = 3
+
+  readyState = MockWebSocket.CONNECTING
+  url: string
+
+  onopen: ((event: Event) => void) | null = null
+  onclose: ((event: CloseEvent) => void) | null = null
+  onmessage: ((event: MessageEvent) => void) | null = null
+  onerror: ((event: Event) => void) | null = null
+
+  static instances: MockWebSocket[] = []
+  sentMessages: string[] = []
+
+  constructor(url: string) {
+    this.url = url
+    MockWebSocket.instances.push(this)
+  }
+
+  send(data: string): void {
+    this.sentMessages.push(data)
+  }
+
+  close(): void {
+    this.readyState = MockWebSocket.CLOSED
+    if (this.onclose) {
+      this.onclose(new CloseEvent("close"))
+    }
+  }
+
+  simulateOpen(): void {
+    this.readyState = MockWebSocket.OPEN
+    if (this.onopen) {
+      this.onopen(new Event("open"))
+    }
+  }
+
+  simulateMessage(data: unknown): void {
+    if (this.onmessage) {
+      this.onmessage(new MessageEvent("message", { data: JSON.stringify(data) }))
+    }
+  }
+}
+
+const originalWebSocket = globalThis.WebSocket
 
 describe("ralphConnection event timestamp tracking", () => {
   beforeEach(() => {
+    // Reset mock store state
+    mockStoreState = createMockStoreState()
     // Reset all state before each test
     ralphConnection.reset()
     mockSaveEvent.mockClear()
+    mockEnqueue.mockClear()
+    MockWebSocket.instances = []
   })
 
   afterEach(() => {
@@ -299,6 +384,391 @@ describe("ralphConnection event timestamp tracking", () => {
       expect(getCurrentSessionId("instance-1")).toBe("instance-1-session-100")
       expect(getCurrentSessionId("instance-2")).toBe("instance-2-session-201")
       expect(getCurrentSessionId("instance-3")).toBe("instance-3-session-300")
+    })
+  })
+
+  describe("reconciliation logic in connected message handler", () => {
+    // These tests verify the reconciliation behavior when processing "connected" messages.
+    // The reconciliation detects when IndexedDB (loaded into Zustand) has fewer events
+    // than the server, logs a warning, and repairs IndexedDB by persisting server events.
+
+    beforeEach(() => {
+      // Install mock WebSocket
+      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
+      MockWebSocket.instances = []
+      mockEnqueue.mockClear()
+      mockStoreState = createMockStoreState()
+    })
+
+    afterEach(() => {
+      // Restore original WebSocket
+      globalThis.WebSocket = originalWebSocket
+      ralphConnection.reset()
+    })
+
+    it("logs warning when IndexedDB has fewer events than server (data loss detected)", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+      // Set up store to have some events (simulating loaded from IndexedDB)
+      mockStoreState.events = [
+        { type: "user_message", timestamp: 1000, message: "Hello" },
+        { type: "assistant_message", timestamp: 2000, message: "Hi" },
+      ]
+
+      // Set up session ID for persistence
+      setCurrentSessionId("test-instance", "test-session-123")
+
+      // Connect and simulate "connected" message with more events from server
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server sends 5 events (more than the 2 in IndexedDB/Zustand)
+      const serverEvents = [
+        { type: "user_message", timestamp: 1000, message: "Hello", id: "evt-1" },
+        { type: "assistant_message", timestamp: 2000, message: "Hi", id: "evt-2" },
+        { type: "user_message", timestamp: 3000, message: "How are you?", id: "evt-3" },
+        { type: "assistant_message", timestamp: 4000, message: "Good!", id: "evt-4" },
+        { type: "user_message", timestamp: 5000, message: "Great", id: "evt-5" },
+      ]
+
+      ws.simulateMessage({
+        type: "connected",
+        ralphStatus: "running",
+        events: serverEvents,
+      })
+
+      // Verify warning was logged
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Reconciliation detected event mismatch"),
+      )
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("IndexedDB had 2 events"))
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("server has 5"))
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("3 event(s) were missing"))
+
+      // Verify repair log
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Repaired IndexedDB by persisting 5 events"),
+      )
+
+      warnSpy.mockRestore()
+      logSpy.mockRestore()
+    })
+
+    it("persists all server events to IndexedDB when mismatch detected and session ID exists", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      // Set up store with 1 event (loaded from IndexedDB)
+      mockStoreState.events = [{ type: "user_message", timestamp: 1000, message: "Hello" }]
+
+      // Set up session ID for persistence
+      setCurrentSessionId("test-instance", "test-session-456")
+
+      // Connect
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server sends 3 events
+      const serverEvents = [
+        { type: "user_message", timestamp: 1000, message: "Hello", id: "evt-1" },
+        { type: "assistant_message", timestamp: 2000, message: "Hi", id: "evt-2" },
+        { type: "user_message", timestamp: 3000, message: "Thanks", id: "evt-3" },
+      ]
+
+      ws.simulateMessage({
+        type: "connected",
+        events: serverEvents,
+      })
+
+      // Verify all server events were enqueued for persistence
+      expect(mockEnqueue).toHaveBeenCalledTimes(3)
+
+      // Verify each event was enqueued with correct session ID
+      expect(mockEnqueue).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          id: "evt-1",
+          sessionId: "test-session-456",
+          eventType: "user_message",
+        }),
+        "test-session-456",
+      )
+      expect(mockEnqueue).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          id: "evt-2",
+          sessionId: "test-session-456",
+          eventType: "assistant_message",
+        }),
+        "test-session-456",
+      )
+      expect(mockEnqueue).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          id: "evt-3",
+          sessionId: "test-session-456",
+          eventType: "user_message",
+        }),
+        "test-session-456",
+      )
+    })
+
+    it("does not log warning or persist when event counts match", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+      // Set up store with 3 events
+      mockStoreState.events = [
+        { type: "user_message", timestamp: 1000 },
+        { type: "assistant_message", timestamp: 2000 },
+        { type: "user_message", timestamp: 3000 },
+      ]
+
+      setCurrentSessionId("test-instance", "test-session-789")
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server sends same number of events
+      const serverEvents = [
+        { type: "user_message", timestamp: 1000, id: "evt-1" },
+        { type: "assistant_message", timestamp: 2000, id: "evt-2" },
+        { type: "user_message", timestamp: 3000, id: "evt-3" },
+      ]
+
+      ws.simulateMessage({
+        type: "connected",
+        events: serverEvents,
+      })
+
+      // No warning should be logged when counts match
+      expect(warnSpy).not.toHaveBeenCalled()
+
+      // No events should be persisted for repair
+      expect(mockEnqueue).not.toHaveBeenCalled()
+
+      warnSpy.mockRestore()
+    })
+
+    it("does not log warning when IndexedDB has zero events (fresh load)", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+      // Store has no events (fresh page load, nothing loaded from IndexedDB)
+      mockStoreState.events = []
+
+      setCurrentSessionId("test-instance", "test-session-fresh")
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server sends events
+      ws.simulateMessage({
+        type: "connected",
+        events: [
+          { type: "user_message", timestamp: 1000, id: "evt-1" },
+          { type: "assistant_message", timestamp: 2000, id: "evt-2" },
+        ],
+      })
+
+      // No warning - this is expected on fresh page load
+      expect(warnSpy).not.toHaveBeenCalled()
+
+      // No repair needed
+      expect(mockEnqueue).not.toHaveBeenCalled()
+
+      warnSpy.mockRestore()
+    })
+
+    it("skips persistence when no session ID is set", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+      // Set up store with events but NO session ID set
+      mockStoreState.events = [{ type: "user_message", timestamp: 1000 }]
+
+      // Don't set session ID - simulates case before useSessionPersistence runs
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      ws.simulateMessage({
+        type: "connected",
+        events: [
+          { type: "user_message", timestamp: 1000, id: "evt-1" },
+          { type: "assistant_message", timestamp: 2000, id: "evt-2" },
+          { type: "user_message", timestamp: 3000, id: "evt-3" },
+        ],
+      })
+
+      // Warning should still be logged (mismatch detected)
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Reconciliation detected event mismatch"),
+      )
+
+      // But no persistence should happen (no session ID)
+      expect(mockEnqueue).not.toHaveBeenCalled()
+
+      // No repair log since persistence was skipped
+      expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining("Repaired IndexedDB"))
+
+      warnSpy.mockRestore()
+      logSpy.mockRestore()
+    })
+
+    it("handles non-active instance reconciliation", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+      // Set up a non-active instance with events
+      const otherInstanceId = "other-instance"
+      mockStoreState.instances.set(otherInstanceId, {
+        events: [{ type: "user_message", timestamp: 1000 }],
+        status: "stopped",
+      })
+
+      // Set session ID for the other instance
+      setCurrentSessionId(otherInstanceId, "other-session-123")
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server sends message for non-active instance with more events
+      ws.simulateMessage({
+        type: "connected",
+        instanceId: otherInstanceId,
+        events: [
+          { type: "user_message", timestamp: 1000, id: "evt-1" },
+          { type: "assistant_message", timestamp: 2000, id: "evt-2" },
+          { type: "user_message", timestamp: 3000, id: "evt-3" },
+        ],
+      })
+
+      // Warning should be logged for the non-active instance
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Reconciliation detected event mismatch"),
+      )
+
+      // Events should be persisted for the non-active instance
+      expect(mockEnqueue).toHaveBeenCalledTimes(3)
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: "other-session-123" }),
+        "other-session-123",
+      )
+
+      warnSpy.mockRestore()
+      logSpy.mockRestore()
+    })
+
+    it("does not log warning when IndexedDB has more events than server", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+      // IndexedDB has more events than server (unusual but possible)
+      mockStoreState.events = [
+        { type: "user_message", timestamp: 1000 },
+        { type: "assistant_message", timestamp: 2000 },
+        { type: "user_message", timestamp: 3000 },
+        { type: "assistant_message", timestamp: 4000 },
+      ]
+
+      setCurrentSessionId("test-instance", "test-session")
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server sends fewer events
+      ws.simulateMessage({
+        type: "connected",
+        events: [
+          { type: "user_message", timestamp: 1000, id: "evt-1" },
+          { type: "assistant_message", timestamp: 2000, id: "evt-2" },
+        ],
+      })
+
+      // No warning - condition is zustandEventCount < serverEventCount
+      expect(warnSpy).not.toHaveBeenCalled()
+
+      warnSpy.mockRestore()
+    })
+
+    it("uses server-assigned event IDs for deduplication", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.events = [{ type: "user_message", timestamp: 1000 }]
+      setCurrentSessionId("test-instance", "test-session")
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server events have UUIDs
+      ws.simulateMessage({
+        type: "connected",
+        events: [
+          { type: "user_message", timestamp: 1000, id: "uuid-abc-123" },
+          { type: "assistant_message", timestamp: 2000, id: "uuid-def-456" },
+        ],
+      })
+
+      // Verify the server UUIDs are used as event IDs
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "uuid-abc-123" }),
+        "test-session",
+      )
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "uuid-def-456" }),
+        "test-session",
+      )
+    })
+
+    it("still updates store events even when mismatch detected", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.events = [{ type: "user_message", timestamp: 1000 }]
+      setCurrentSessionId("test-instance", "test-session")
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const serverEvents = [
+        { type: "user_message", timestamp: 1000, id: "evt-1" },
+        { type: "assistant_message", timestamp: 2000, id: "evt-2" },
+      ]
+
+      ws.simulateMessage({
+        type: "connected",
+        events: serverEvents,
+      })
+
+      // Store should be updated with server events
+      expect(mockStoreState.setEvents).toHaveBeenCalledWith(serverEvents)
     })
   })
 })

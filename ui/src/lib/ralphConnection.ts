@@ -167,7 +167,44 @@ function handleMessage(event: MessageEvent): void {
           }
         }
         // Restore event history from server (for page reloads)
+        // Server is the authoritative source - its events take priority over IndexedDB
         if (Array.isArray(data.events) && data.events.length > 0) {
+          // Reconciliation: Compare server events with what was loaded from IndexedDB (now in Zustand)
+          // If there's a mismatch, the server has more events (IndexedDB writes may have failed)
+          const zustandEventCount =
+            isForActiveInstance ?
+              store.events.length
+            : (store.instances.get(targetInstanceId)?.events.length ?? 0)
+          const serverEventCount = data.events.length
+
+          if (zustandEventCount > 0 && zustandEventCount < serverEventCount) {
+            // IndexedDB had fewer events than server - some writes failed and data was lost
+            // Server events will restore the correct state
+            console.warn(
+              `[ralphConnection] Reconciliation detected event mismatch: IndexedDB had ${zustandEventCount} events, server has ${serverEventCount}. ` +
+                `${serverEventCount - zustandEventCount} event(s) were missing from IndexedDB. Server events will be used to restore state.`,
+            )
+
+            // Persist the missing events to IndexedDB to repair the cache
+            // This runs in the background so it doesn't block the UI update
+            const sessionId = currentSessionIds.get(targetInstanceId)
+            if (sessionId) {
+              const serverEvents = data.events as Array<{
+                type: string
+                timestamp: number
+                id?: string
+                [key: string]: unknown
+              }>
+              // Persist all server events - duplicates will be handled by IndexedDB's put (upsert)
+              for (const event of serverEvents) {
+                persistEventToIndexedDB(event, sessionId)
+              }
+              console.log(
+                `[ralphConnection] Repaired IndexedDB by persisting ${serverEventCount} events from server`,
+              )
+            }
+          }
+
           if (isForActiveInstance) {
             store.setEvents(data.events)
           } else {
