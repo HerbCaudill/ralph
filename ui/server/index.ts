@@ -1616,6 +1616,62 @@ function handleWsMessage(
         break
       }
 
+      case "task-chat:reconnect": {
+        // Handle task chat reconnection sync - client sends lastEventTimestamp to get missed events
+        const tcInstanceId = (message.instanceId as string) || "default"
+        const tcLastEventTimestamp = message.lastEventTimestamp as number | undefined
+
+        // Handle async operations in a self-executing async function
+        ;(async () => {
+          try {
+            // Get the task chat event persister from the active context
+            const context = getActiveContext()
+            const persister = context.taskChatEventPersister
+
+            // Read events since the client's last known timestamp
+            let pendingEvents: TaskChatEvent[]
+            if (typeof tcLastEventTimestamp === "number" && tcLastEventTimestamp > 0) {
+              pendingEvents = await persister.readEventsSince(tcInstanceId, tcLastEventTimestamp)
+            } else {
+              // Client has no events, send all
+              pendingEvents = await persister.readEvents(tcInstanceId)
+            }
+
+            // Get total count for diagnostics
+            const totalEvents = await persister.getEventCount(tcInstanceId)
+
+            // Get current task chat status
+            const taskChatStatus = context.taskChatManager.status
+
+            // Send pending task chat events response
+            ws.send(
+              JSON.stringify({
+                type: "task-chat:pending_events",
+                instanceId: tcInstanceId,
+                events: pendingEvents,
+                totalEvents,
+                status: taskChatStatus,
+                timestamp: Date.now(),
+              }),
+            )
+
+            console.log(
+              `[ws] task-chat:reconnect sync for instance ${tcInstanceId}: sent ${pendingEvents.length} pending events (after timestamp ${tcLastEventTimestamp ?? "none"})`,
+            )
+          } catch (err) {
+            console.error("[ws] task-chat:reconnect failed:", err)
+            ws.send(
+              JSON.stringify({
+                type: "task-chat:error",
+                error: `Failed to sync task chat events: ${err instanceof Error ? err.message : "Unknown error"}`,
+                timestamp: Date.now(),
+              }),
+            )
+          }
+        })()
+        break
+      }
+
       default:
         console.log("[ws] unknown message type:", message.type)
     }

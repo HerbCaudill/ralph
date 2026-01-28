@@ -883,3 +883,543 @@ describe("Reconnection sync protocol", () => {
     ws.close()
   })
 })
+
+describe("Task chat reconnection sync protocol", () => {
+  /**
+   * Creates a test server that handles task-chat:reconnect messages
+   * similar to the production handleWsMessage function.
+   */
+  function createTaskChatReconnectTestServer(port: number) {
+    const app = express()
+    const server = createServer(app)
+    const wss = new WebSocketServer({ server, path: "/ws" })
+
+    interface TaskChatEvent {
+      type: string
+      timestamp: number
+      [key: string]: unknown
+    }
+
+    type TaskChatStatus = "idle" | "processing" | "error"
+
+    // Mock persister for task chat events
+    const eventStorage = new Map<string, TaskChatEvent[]>()
+    const statusStorage = new Map<string, TaskChatStatus>()
+
+    // Initialize default instance
+    statusStorage.set("default", "idle")
+
+    /**
+     * Mock persister methods that mirror TaskChatEventPersister behavior.
+     */
+    const mockPersister = {
+      async readEvents(instanceId: string): Promise<TaskChatEvent[]> {
+        return eventStorage.get(instanceId) ?? []
+      },
+      async readEventsSince(instanceId: string, timestamp: number): Promise<TaskChatEvent[]> {
+        const events = eventStorage.get(instanceId) ?? []
+        return events.filter(e => e.timestamp > timestamp)
+      },
+      async getEventCount(instanceId: string): Promise<number> {
+        return (eventStorage.get(instanceId) ?? []).length
+      },
+    }
+
+    /**
+     * Add an event to the event storage for an instance.
+     */
+    const addEvent = (instanceId: string, event: TaskChatEvent) => {
+      const events = eventStorage.get(instanceId) ?? []
+      events.push(event)
+      eventStorage.set(instanceId, events)
+    }
+
+    /**
+     * Set status for an instance.
+     */
+    const setStatus = (instanceId: string, status: TaskChatStatus) => {
+      statusStorage.set(instanceId, status)
+    }
+
+    wss.on("connection", (ws: typeof WebSocket.prototype) => {
+      ws.on("message", async data => {
+        try {
+          const message = JSON.parse(data.toString())
+
+          if (message.type === "task-chat:reconnect") {
+            const instanceId = (message.instanceId as string) || "default"
+            const lastEventTimestamp = message.lastEventTimestamp as number | undefined
+
+            try {
+              // Read events since the client's last known timestamp
+              let pendingEvents: TaskChatEvent[]
+              if (typeof lastEventTimestamp === "number" && lastEventTimestamp > 0) {
+                pendingEvents = await mockPersister.readEventsSince(instanceId, lastEventTimestamp)
+              } else {
+                // Client has no events, send all
+                pendingEvents = await mockPersister.readEvents(instanceId)
+              }
+
+              // Get total count for diagnostics
+              const totalEvents = await mockPersister.getEventCount(instanceId)
+
+              // Get current task chat status
+              const taskChatStatus = statusStorage.get(instanceId) ?? "idle"
+
+              // Send pending task chat events response
+              ws.send(
+                JSON.stringify({
+                  type: "task-chat:pending_events",
+                  instanceId,
+                  events: pendingEvents,
+                  totalEvents,
+                  status: taskChatStatus,
+                  timestamp: Date.now(),
+                }),
+              )
+            } catch (err) {
+              ws.send(
+                JSON.stringify({
+                  type: "task-chat:error",
+                  error: `Failed to sync task chat events: ${err instanceof Error ? err.message : "Unknown error"}`,
+                  timestamp: Date.now(),
+                }),
+              )
+            }
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      })
+
+      // Send welcome message
+      ws.send(JSON.stringify({ type: "connected", timestamp: Date.now() }))
+    })
+
+    return {
+      server,
+      wss,
+      addEvent,
+      setStatus,
+      getClientCount: () => wss.clients.size,
+      start: () =>
+        new Promise<void>(resolve => {
+          server.listen(port, "localhost", () => resolve())
+        }),
+      close: async () => {
+        for (const client of wss.clients) {
+          client.terminate()
+        }
+        wss.close()
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("Server close timeout")), 5000)
+          server.close(err => {
+            clearTimeout(timeout)
+            if (err) reject(err)
+            else resolve()
+          })
+        })
+      },
+    }
+  }
+
+  const port = 3100 // Different port from other tests
+  let testServer: ReturnType<typeof createTaskChatReconnectTestServer>
+
+  beforeEach(async () => {
+    testServer = createTaskChatReconnectTestServer(port)
+    await testServer.start()
+  })
+
+  afterEach(async () => {
+    await testServer.close()
+  })
+
+  it("sends pending events when client has a lastEventTimestamp", async () => {
+    // Add events with distinct timestamps
+    testServer.addEvent("default", { type: "user_message", timestamp: 1000, content: "Hello" })
+    testServer.addEvent("default", { type: "assistant", timestamp: 2000, content: "Hi there!" })
+    testServer.addEvent("default", { type: "tool_use", timestamp: 3000, tool: "Read" })
+    testServer.addEvent("default", { type: "tool_result", timestamp: 4000, tool: "Read" })
+    testServer.setStatus("default", "processing")
+
+    // Connect a client
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome message
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout waiting for welcome")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    // Set up listener for pending_events response
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send task-chat:reconnect with lastEventTimestamp of 2000
+    // Should return events after timestamp 2000 (i.e., events at 3000 and 4000)
+    ws.send(
+      JSON.stringify({
+        type: "task-chat:reconnect",
+        instanceId: "default",
+        lastEventTimestamp: 2000,
+      }),
+    )
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      instanceId: string
+      events: Array<{ type: string; timestamp: number; [key: string]: unknown }>
+      totalEvents: number
+      status: string
+      timestamp: number
+    }
+
+    expect(response.type).toBe("task-chat:pending_events")
+    expect(response.instanceId).toBe("default")
+    expect(response.events).toHaveLength(2) // Events with timestamp > 2000
+    expect(response.totalEvents).toBe(4)
+    expect(response.status).toBe("processing")
+    expect(response.events[0]).toMatchObject({ type: "tool_use", timestamp: 3000 })
+    expect(response.events[1]).toMatchObject({ type: "tool_result", timestamp: 4000 })
+    expect(response.timestamp).toBeGreaterThan(0)
+
+    ws.close()
+  })
+
+  it("sends all events when client has no lastEventTimestamp", async () => {
+    // Add some events
+    testServer.addEvent("default", { type: "user_message", timestamp: 1000, content: "First" })
+    testServer.addEvent("default", { type: "assistant", timestamp: 2000, content: "Response" })
+    testServer.setStatus("default", "idle")
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send reconnect without lastEventTimestamp
+    ws.send(
+      JSON.stringify({
+        type: "task-chat:reconnect",
+        instanceId: "default",
+      }),
+    )
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      events: Array<{ type: string; timestamp: number }>
+      totalEvents: number
+      status: string
+    }
+
+    expect(response.type).toBe("task-chat:pending_events")
+    expect(response.events).toHaveLength(2) // All events
+    expect(response.totalEvents).toBe(2)
+    expect(response.status).toBe("idle")
+
+    ws.close()
+  })
+
+  it("sends all events when lastEventTimestamp is 0", async () => {
+    // Add some events
+    testServer.addEvent("default", { type: "user_message", timestamp: 1000, content: "Message" })
+    testServer.addEvent("default", { type: "assistant", timestamp: 2000, content: "Reply" })
+    testServer.setStatus("default", "idle")
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send reconnect with lastEventTimestamp of 0
+    ws.send(
+      JSON.stringify({
+        type: "task-chat:reconnect",
+        instanceId: "default",
+        lastEventTimestamp: 0,
+      }),
+    )
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      events: Array<{ type: string; timestamp: number }>
+      totalEvents: number
+    }
+
+    expect(response.type).toBe("task-chat:pending_events")
+    expect(response.events).toHaveLength(2) // All events (timestamp 0 means send all)
+    expect(response.totalEvents).toBe(2)
+
+    ws.close()
+  })
+
+  it("sends empty events array when there are no persisted events", async () => {
+    // Do not add any events - storage is empty
+    testServer.setStatus("default", "idle")
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send reconnect
+    ws.send(
+      JSON.stringify({
+        type: "task-chat:reconnect",
+        instanceId: "default",
+      }),
+    )
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      instanceId: string
+      events: unknown[]
+      totalEvents: number
+      status: string
+    }
+
+    expect(response.type).toBe("task-chat:pending_events")
+    expect(response.instanceId).toBe("default")
+    expect(response.events).toEqual([])
+    expect(response.totalEvents).toBe(0)
+    expect(response.status).toBe("idle")
+
+    ws.close()
+  })
+
+  it("sends empty events array when client is fully up to date", async () => {
+    // Add events
+    testServer.addEvent("default", { type: "user_message", timestamp: 1000, content: "Hello" })
+    testServer.addEvent("default", { type: "assistant", timestamp: 2000, content: "World" })
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send reconnect with lastEventTimestamp equal to the latest event
+    ws.send(
+      JSON.stringify({
+        type: "task-chat:reconnect",
+        instanceId: "default",
+        lastEventTimestamp: 2000,
+      }),
+    )
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      events: unknown[]
+      totalEvents: number
+    }
+
+    expect(response.type).toBe("task-chat:pending_events")
+    expect(response.events).toEqual([]) // No events after timestamp 2000
+    expect(response.totalEvents).toBe(2)
+
+    ws.close()
+  })
+
+  it("defaults to 'default' instanceId when not provided", async () => {
+    testServer.addEvent("default", { type: "user_message", timestamp: 1000, content: "Test" })
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Send reconnect without instanceId
+    ws.send(JSON.stringify({ type: "task-chat:reconnect" }))
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      instanceId: string
+      events: unknown[]
+    }
+
+    expect(response.type).toBe("task-chat:pending_events")
+    expect(response.instanceId).toBe("default")
+    expect(response.events).toHaveLength(1)
+
+    ws.close()
+  })
+
+  it("works with different instanceIds", async () => {
+    // Add events to different instances
+    testServer.addEvent("default", { type: "user_message", timestamp: 1000, content: "Default" })
+    testServer.addEvent("instance-2", {
+      type: "user_message",
+      timestamp: 2000,
+      content: "Instance2-A",
+    })
+    testServer.addEvent("instance-2", { type: "assistant", timestamp: 3000, content: "Instance2-B" })
+    testServer.setStatus("instance-2", "processing")
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Request events from instance-2 after timestamp 2000
+    ws.send(
+      JSON.stringify({
+        type: "task-chat:reconnect",
+        instanceId: "instance-2",
+        lastEventTimestamp: 2000,
+      }),
+    )
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      instanceId: string
+      events: Array<{ type: string; content?: string }>
+      status: string
+    }
+
+    expect(response.type).toBe("task-chat:pending_events")
+    expect(response.instanceId).toBe("instance-2")
+    expect(response.events).toHaveLength(1) // Only event with timestamp > 2000
+    expect(response.events[0]).toMatchObject({ type: "assistant", content: "Instance2-B" })
+    expect(response.status).toBe("processing")
+
+    ws.close()
+  })
+
+  it("returns empty for non-existent instanceId", async () => {
+    // Add events only to default
+    testServer.addEvent("default", { type: "user_message", timestamp: 1000, content: "Hello" })
+
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+
+    // Wait for welcome
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+
+    const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Request events from non-existent instance
+    ws.send(
+      JSON.stringify({
+        type: "task-chat:reconnect",
+        instanceId: "non-existent",
+      }),
+    )
+
+    const response = (await pendingEventsPromise) as {
+      type: string
+      instanceId: string
+      events: unknown[]
+      totalEvents: number
+    }
+
+    expect(response.type).toBe("task-chat:pending_events")
+    expect(response.instanceId).toBe("non-existent")
+    expect(response.events).toEqual([])
+    expect(response.totalEvents).toBe(0)
+
+    ws.close()
+  })
+})
