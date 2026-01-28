@@ -824,30 +824,20 @@ export const useAppStore = create<AppState & AppActions>()(
           taskRefreshDebounceTimeout = null
         }
         set(state => {
-          const activeInstance = state.instances.get(state.activeInstanceId)
-          if (!activeInstance) {
-            // Still clear workspace-level state even if no active instance
-            return {
-              tasks: [],
-              viewingSessionIndex: null,
-              initialTaskCount: null,
-              taskChatMessages: [],
-              taskChatLoading: false,
-              taskChatEvents: [],
-            }
+          // Clear events and runtime state from ALL instances, not just the active one.
+          // This prevents stale events from old workspaces remaining in non-active instances.
+          const updatedInstances = new Map<string, RalphInstance>()
+          for (const [id, instance] of state.instances) {
+            updatedInstances.set(id, {
+              ...instance,
+              events: [],
+              tokenUsage: { input: 0, output: 0 },
+              contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
+              session: { current: 0, total: 0 },
+              runStartedAt: null,
+              status: "stopped",
+            })
           }
-
-          // Update active instance in the instances Map only
-          const updatedInstances = new Map(state.instances)
-          updatedInstances.set(state.activeInstanceId, {
-            ...activeInstance,
-            events: [],
-            tokenUsage: { input: 0, output: 0 },
-            contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-            session: { current: 0, total: 0 },
-            runStartedAt: null,
-            status: "stopped",
-          })
 
           return {
             // Clear tasks immediately to avoid showing stale data
@@ -860,7 +850,7 @@ export const useAppStore = create<AppState & AppActions>()(
             taskChatMessages: [],
             taskChatLoading: false,
             taskChatEvents: [],
-            // Updated instances Map
+            // Updated instances Map with ALL instances cleared
             instances: updatedInstances,
           }
         })

@@ -1317,6 +1317,53 @@ describe("useAppStore", () => {
       expect(instance?.session).toEqual({ current: 0, total: 0 })
       expect(instance?.runStartedAt).toBeNull()
     })
+
+    it("clearWorkspaceData clears ALL instances, not just active", () => {
+      // Create a second instance
+      useAppStore.getState().createInstance("second-instance", "Second", "Ralph-2")
+
+      // Add events and state to the second instance
+      useAppStore.getState().addEventForInstance("second-instance", { type: "test", timestamp: 1 })
+      useAppStore
+        .getState()
+        .addTokenUsageForInstance("second-instance", { input: 500, output: 250 })
+      useAppStore.getState().setSessionForInstance("second-instance", { current: 3, total: 6 })
+      useAppStore.getState().setStatusForInstance("second-instance", "running")
+
+      // Switch back to default instance
+      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
+
+      // Add events and state to the default (active) instance
+      useAppStore.getState().addEvent({ type: "active-event", timestamp: 2 })
+      useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
+      useAppStore.getState().setRalphStatus("running")
+
+      // Verify both instances have data
+      let state = useAppStore.getState()
+      expect(state.instances.get(DEFAULT_INSTANCE_ID)?.events).toHaveLength(1)
+      expect(state.instances.get("second-instance")?.events).toHaveLength(1)
+      expect(state.instances.get("second-instance")?.tokenUsage.input).toBe(500)
+
+      // Clear workspace data
+      useAppStore.getState().clearWorkspaceData()
+
+      // Verify BOTH instances were cleared
+      state = useAppStore.getState()
+
+      // Active instance should be cleared
+      const activeInstance = state.instances.get(DEFAULT_INSTANCE_ID)
+      expect(activeInstance?.events).toEqual([])
+      expect(activeInstance?.status).toBe("stopped")
+      expect(activeInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+
+      // Non-active instance should ALSO be cleared (this is the bug fix)
+      const secondInstance = state.instances.get("second-instance")
+      expect(secondInstance?.events).toEqual([])
+      expect(secondInstance?.status).toBe("stopped")
+      expect(secondInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(secondInstance?.contextWindow).toEqual({ used: 0, max: 200_000 })
+      expect(secondInstance?.session).toEqual({ current: 0, total: 0 })
+    })
   })
 
   describe("delegating selectors read from active instance", () => {

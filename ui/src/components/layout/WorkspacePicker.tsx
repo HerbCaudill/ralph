@@ -8,6 +8,7 @@ import {
   selectBranch,
   selectIssuePrefix,
 } from "@/store"
+import { clearEventTimestamps } from "@/lib/ralphConnection"
 import type { WorkspaceInfo, WorkspaceListEntry } from "@/types"
 
 /**
@@ -142,6 +143,8 @@ export function WorkspacePicker({
         if (data.ok && data.workspace) {
           // Clear all workspace-specific data (events, tasks, token usage, etc.)
           clearWorkspaceData()
+          // Clear event tracking state in ralphConnection to start fresh
+          clearEventTimestamps()
           setWorkspaceInfo(data.workspace)
           setWorkspace(data.workspace.path)
           setAccentColor(data.workspace.accentColor ?? null)

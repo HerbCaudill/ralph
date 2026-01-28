@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useAppStore, selectWorkspace } from "@/store"
+import { clearEventTimestamps } from "@/lib/ralphConnection"
 import type { WorkspaceListEntry } from "@/types"
 
 /**
@@ -64,6 +65,8 @@ export function useWorkspaces(): UseWorkspacesReturn {
         const data = await response.json()
         if (data.ok && data.workspace) {
           clearWorkspaceData()
+          // Clear event tracking state in ralphConnection to start fresh
+          clearEventTimestamps()
           setWorkspace(data.workspace.path)
           setAccentColor(data.workspace.accentColor ?? null)
           setBranch(data.workspace.branch ?? null)
