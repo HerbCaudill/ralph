@@ -3,6 +3,7 @@ import {
   getLastEventTimestamp,
   clearEventTimestamps,
   ralphConnection,
+  initRalphConnection,
   getCurrentSessionId,
   getCurrentSession,
   setCurrentSessionId,
@@ -2526,6 +2527,160 @@ describe("ralphConnection event timestamp tracking", () => {
 
       // clearRunningBeforeDisconnect should NOT be called when flag is already false
       expect(mockStoreState.clearRunningBeforeDisconnect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("initRalphConnection guard prevents double initialization", () => {
+    // The initRalphConnection() function uses a module-level `initialized` flag
+    // to ensure that connect() is only called once, even if initRalphConnection()
+    // is called multiple times (e.g., from React effects, HMR re-evaluation, etc.)
+
+    beforeEach(() => {
+      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
+      MockWebSocket.instances = []
+      mockStoreState = createMockStoreState()
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+    })
+
+    afterEach(() => {
+      globalThis.WebSocket = originalWebSocket
+      ralphConnection.reset()
+    })
+
+    it("creates a WebSocket connection on first call", () => {
+      expect(MockWebSocket.instances).toHaveLength(0)
+
+      initRalphConnection()
+
+      // A WebSocket should have been created
+      expect(MockWebSocket.instances).toHaveLength(1)
+    })
+
+    it("does not create a second WebSocket on subsequent calls", () => {
+      initRalphConnection()
+      expect(MockWebSocket.instances).toHaveLength(1)
+
+      // Call again - should be a no-op
+      initRalphConnection()
+      expect(MockWebSocket.instances).toHaveLength(1)
+
+      // Call a third time for good measure
+      initRalphConnection()
+      expect(MockWebSocket.instances).toHaveLength(1)
+    })
+
+    it("allows re-initialization after reset()", () => {
+      initRalphConnection()
+      expect(MockWebSocket.instances).toHaveLength(1)
+
+      // Reset clears the initialized flag
+      ralphConnection.reset()
+
+      // Now initRalphConnection should create a new connection
+      initRalphConnection()
+      // reset() closes the first WS, and initRalphConnection creates a second
+      expect(MockWebSocket.instances).toHaveLength(2)
+    })
+  })
+
+  describe("singleton pattern prevents multiple WebSocket connections", () => {
+    // The connect() function checks if a WebSocket is already CONNECTING or OPEN
+    // and returns early if so, preventing duplicate connections.
+
+    beforeEach(() => {
+      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
+      MockWebSocket.instances = []
+      mockStoreState = createMockStoreState()
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+    })
+
+    afterEach(() => {
+      globalThis.WebSocket = originalWebSocket
+      ralphConnection.reset()
+    })
+
+    it("does not create a second WebSocket when one is already connecting", () => {
+      ralphConnection.connect()
+      expect(MockWebSocket.instances).toHaveLength(1)
+
+      // The WebSocket is in CONNECTING state by default
+      expect(MockWebSocket.instances[0].readyState).toBe(MockWebSocket.CONNECTING)
+
+      // Calling connect() again should be a no-op
+      ralphConnection.connect()
+      expect(MockWebSocket.instances).toHaveLength(1)
+    })
+
+    it("does not create a second WebSocket when one is already open", () => {
+      ralphConnection.connect()
+      expect(MockWebSocket.instances).toHaveLength(1)
+
+      // Simulate the WebSocket opening
+      MockWebSocket.instances[0].simulateOpen()
+      expect(MockWebSocket.instances[0].readyState).toBe(MockWebSocket.OPEN)
+
+      // Calling connect() again should be a no-op
+      ralphConnection.connect()
+      expect(MockWebSocket.instances).toHaveLength(1)
+    })
+
+    it("allows a new connection after the previous one is closed", async () => {
+      ralphConnection.connect()
+      expect(MockWebSocket.instances).toHaveLength(1)
+
+      const ws1 = MockWebSocket.instances[0]
+      ws1.simulateOpen()
+
+      // Intentionally disconnect
+      ralphConnection.disconnect()
+      expect(ws1.readyState).toBe(MockWebSocket.CLOSED)
+
+      // Now connect() should create a new WebSocket
+      ralphConnection.connect()
+      expect(MockWebSocket.instances).toHaveLength(2)
+    })
+
+    it("only one WebSocket exists even with rapid connect() calls", () => {
+      // Simulate rapid calls that might happen during component remounts
+      ralphConnection.connect()
+      ralphConnection.connect()
+      ralphConnection.connect()
+      ralphConnection.connect()
+      ralphConnection.connect()
+
+      // Only one WebSocket should have been created
+      expect(MockWebSocket.instances).toHaveLength(1)
+    })
+
+    it("all messages are sent through the single WebSocket instance", () => {
+      ralphConnection.connect()
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Send multiple messages
+      ralphConnection.send({ type: "ping" })
+      ralphConnection.send({ type: "reconnect", instanceId: "test" })
+      ralphConnection.send({ type: "ping" })
+
+      // All messages should go through the single WebSocket
+      expect(ws.sentMessages).toHaveLength(3)
+      expect(MockWebSocket.instances).toHaveLength(1)
+    })
+
+    it("initRalphConnection combined with connect does not create duplicates", () => {
+      // initRalphConnection calls connect internally
+      initRalphConnection()
+      expect(MockWebSocket.instances).toHaveLength(1)
+
+      // Explicit connect() should also be a no-op
+      ralphConnection.connect()
+      expect(MockWebSocket.instances).toHaveLength(1)
     })
   })
 })

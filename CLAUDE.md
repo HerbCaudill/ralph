@@ -600,6 +600,10 @@ Server-generated session IDs are preferred because they ensure consistency betwe
 
 `ralphConnection.ts` does NOT generate session IDs internally. It relies entirely on `useSessionPersistence` to set session IDs via the `setCurrentSessionId` export. This prevents dual session ID tracking bugs where events could be persisted with mismatched session IDs.
 
+**HMR State Preservation:**
+
+`ralphConnection.ts` uses `import.meta.hot.data` to preserve its singleton WebSocket connection state across Vite hot module reloads. Without this, HMR would reset the module-level variables (WebSocket instance, initialized flag, etc.), creating orphaned connections that produce duplicate events in the UI. The app also does not use React's `<StrictMode>` wrapper, since StrictMode's double-invocation of effects in development can interfere with the singleton WebSocket connection that lives outside React's lifecycle.
+
 **Session ID Restoration on Hydration:**
 
 On page reload, `useStoreHydration` restores the `currentSessions` Map in `ralphConnection.ts` by calling `setCurrentSessionId(instanceId, sessionId, startedAt)` for each active session loaded from IndexedDB. This ensures that events arriving immediately after hydration can be persisted to the correct session without waiting for a new `ralph_session_start` boundary event. The optional `startedAt` parameter on `setCurrentSessionId` allows the hydration flow to restore the original session start time.

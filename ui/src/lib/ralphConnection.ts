@@ -1015,13 +1015,59 @@ export function initRalphConnection(): void {
   connect()
 }
 
-// For HMR: preserve connection across hot reloads
+// For HMR: preserve connection across hot reloads.
+// When this module is hot-reloaded, Vite re-evaluates it, resetting all module-level
+// variables (ws, initialized, etc.) to their initial values. Without preservation,
+// the old WebSocket stays open (orphaned) while a new one is created, causing
+// duplicate event processing since both connections receive the same server broadcasts.
 if (import.meta.hot) {
-  // Preserve the WebSocket connection during HMR
-  import.meta.hot.accept()
+  const hot = import.meta.hot
 
-  // Don't dispose - we want to keep the connection alive
-  import.meta.hot.dispose(() => {
-    // Do nothing - preserve connection
+  // Restore state from previous module version (if available)
+  const prevData = hot.data
+  if (prevData?.ws) {
+    ws = prevData.ws as WebSocket
+    status = prevData.status as ConnectionStatus
+    initialized = prevData.initialized as boolean
+    reconnectAttempts = prevData.reconnectAttempts as number
+    currentReconnectDelay = prevData.currentReconnectDelay as number
+    intentionalClose = prevData.intentionalClose as boolean
+
+    // Re-attach message handler to use the new module's handleMessage function
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.onmessage = handleMessage
+    }
+
+    // Restore timestamp tracking maps
+    if (prevData.lastEventTimestamps instanceof Map) {
+      for (const [k, v] of prevData.lastEventTimestamps) {
+        lastEventTimestamps.set(k, v)
+      }
+    }
+    if (prevData.lastTaskChatEventTimestamps instanceof Map) {
+      for (const [k, v] of prevData.lastTaskChatEventTimestamps) {
+        lastTaskChatEventTimestamps.set(k, v)
+      }
+    }
+    if (prevData.currentSessions instanceof Map) {
+      for (const [k, v] of prevData.currentSessions) {
+        currentSessions.set(k, v)
+      }
+    }
+  }
+
+  hot.accept()
+
+  // Save state for the next module version
+  hot.dispose(data => {
+    data.ws = ws
+    data.status = status
+    data.initialized = initialized
+    data.reconnectAttempts = reconnectAttempts
+    data.currentReconnectDelay = currentReconnectDelay
+    data.intentionalClose = intentionalClose
+    data.lastEventTimestamps = new Map(lastEventTimestamps)
+    data.lastTaskChatEventTimestamps = new Map(lastTaskChatEventTimestamps)
+    data.currentSessions = new Map(currentSessions)
   })
 }
