@@ -607,9 +607,9 @@ function flushTaskChatEventsBatch(): void {
   const eventsToAdd = taskChatEventsBatch
   taskChatEventsBatch = []
 
-  // Apply all batched events in a single state update
+  // Apply all batched events in a single state update, deduplicating by event ID
   useAppStore.setState(state => ({
-    taskChatEvents: [...state.taskChatEvents, ...eventsToAdd],
+    taskChatEvents: mergeEventsById(state.taskChatEvents, eventsToAdd),
   }))
 }
 

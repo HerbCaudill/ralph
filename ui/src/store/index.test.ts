@@ -3952,5 +3952,57 @@ describe("useAppStore", () => {
       expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
       expect(events.map(e => e.timestamp)).toEqual([1000, 2000, 3000])
     })
+
+    it("addTaskChatEvent deduplicates by id", () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      const event1: ChatEvent = { id: "tc-1", type: "stream_event", timestamp: 1000, event: {} }
+      const event2: ChatEvent = { id: "tc-2", type: "stream_event", timestamp: 2000, event: {} }
+
+      addTaskChatEvent(event1)
+      addTaskChatEvent(event2)
+      addTaskChatEvent(event1) // duplicate
+      flushTaskChatEventsBatch()
+
+      const taskChatEvents = useAppStore.getState().taskChatEvents
+      expect(taskChatEvents).toHaveLength(2)
+      expect(taskChatEvents.map(e => e.id)).toEqual(["tc-1", "tc-2"])
+    })
+
+    it("addTaskChatEvent deduplicates across batches", () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      // First batch
+      const event1: ChatEvent = { id: "tc-1", type: "stream_event", timestamp: 1000, event: {} }
+      const event2: ChatEvent = { id: "tc-2", type: "stream_event", timestamp: 2000, event: {} }
+      addTaskChatEvent(event1)
+      addTaskChatEvent(event2)
+      flushTaskChatEventsBatch()
+
+      // Second batch with a duplicate from the first batch and a new event
+      const event3: ChatEvent = { id: "tc-3", type: "stream_event", timestamp: 3000, event: {} }
+      addTaskChatEvent(event1) // duplicate of event already in state
+      addTaskChatEvent(event3)
+      flushTaskChatEventsBatch()
+
+      const taskChatEvents = useAppStore.getState().taskChatEvents
+      expect(taskChatEvents).toHaveLength(3)
+      expect(taskChatEvents.map(e => e.id)).toEqual(["tc-1", "tc-2", "tc-3"])
+    })
+
+    it("addTaskChatEvent preserves events without id (no deduplication for id-less events)", () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      // Events without id should always be appended
+      const event1: ChatEvent = { type: "stream_event", timestamp: 1000, event: {} }
+      const event2: ChatEvent = { type: "stream_event", timestamp: 2000, event: {} }
+      addTaskChatEvent(event1)
+      addTaskChatEvent(event2)
+      addTaskChatEvent({ type: "stream_event", timestamp: 3000, event: {} })
+      flushTaskChatEventsBatch()
+
+      const taskChatEvents = useAppStore.getState().taskChatEvents
+      expect(taskChatEvents).toHaveLength(3)
+    })
   })
 })
