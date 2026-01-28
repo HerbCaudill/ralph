@@ -340,4 +340,140 @@ describe("useStoreHydration", () => {
       expect(eventDatabase.getLatestActiveSessionForWorkspace).not.toHaveBeenCalled()
     })
   })
+
+  describe("server events coordination", () => {
+    it("should skip IndexedDB event restoration when server has already provided events", async () => {
+      // Simulate server events already being in the store (from WebSocket connection)
+      const serverEvents: ChatEvent[] = [
+        { type: "system", timestamp: 1000, subtype: "init", id: "server-event-1" } as any,
+        {
+          type: "assistant",
+          timestamp: 2000,
+          message: { content: [{ type: "text", text: "Hello" }] },
+          id: "server-event-2",
+        } as any,
+      ]
+
+      // Set up state as if server already synced
+      useAppStore.getState().setEventsForInstance("default", serverEvents)
+      useAppStore.getState().setHasInitialSync(true)
+
+      // Mock IndexedDB session with different events
+      const indexedDbEvents: ChatEvent[] = [
+        { type: "system", timestamp: 500, subtype: "init", id: "idb-event-1" } as any, // older event
+      ]
+
+      const mockSession: PersistedSession = {
+        id: "default-1000",
+        instanceId: "default",
+        workspaceId: null,
+        startedAt: 500,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 50, output: 25 },
+        contextWindow: { used: 75, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: indexedDbEvents,
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Events should still be the server events, not overwritten by IndexedDB events
+      expect(selectEvents(useAppStore.getState())).toEqual(serverEvents)
+
+      // Console log should indicate skipping
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping event restoration from IndexedDB"),
+      )
+    })
+
+    it("should restore from IndexedDB when server has not provided events yet", async () => {
+      // No server sync yet
+      useAppStore.getState().setHasInitialSync(false)
+
+      const indexedDbEvents: ChatEvent[] = [
+        { type: "system", timestamp: 500, subtype: "init", id: "idb-event-1" } as any,
+      ]
+
+      const mockSession: PersistedSession = {
+        id: "default-1000",
+        instanceId: "default",
+        workspaceId: null,
+        startedAt: 500,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 50, output: 25 },
+        contextWindow: { used: 75, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: indexedDbEvents,
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Events should be restored from IndexedDB
+      expect(selectEvents(useAppStore.getState())).toEqual(indexedDbEvents)
+
+      // Console log should indicate restoration
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining("Restored 1 events from active session"),
+      )
+    })
+
+    it("should restore from IndexedDB when server synced but has no events", async () => {
+      // Server synced but with empty events (fresh start)
+      useAppStore.getState().setHasInitialSync(true)
+      // Instance exists but has no events (default state)
+
+      const indexedDbEvents: ChatEvent[] = [
+        { type: "system", timestamp: 500, subtype: "init", id: "idb-event-1" } as any,
+      ]
+
+      const mockSession: PersistedSession = {
+        id: "default-1000",
+        instanceId: "default",
+        workspaceId: null,
+        startedAt: 500,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 50, output: 25 },
+        contextWindow: { used: 75, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: indexedDbEvents,
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Events should be restored from IndexedDB (server had no events)
+      expect(selectEvents(useAppStore.getState())).toEqual(indexedDbEvents)
+
+      // Console log should indicate restoration
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining("Restored 1 events from active session"),
+      )
+    })
+  })
 })

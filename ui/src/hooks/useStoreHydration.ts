@@ -70,6 +70,21 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
         // Initialize the database
         await eventDatabase.init()
 
+        // Check if server has already provided events via WebSocket.
+        // If so, server data is authoritative - skip IndexedDB event restoration to avoid
+        // overwriting server events with potentially stale IndexedDB cache.
+        // This handles the race condition where WebSocket 'connected' message arrives
+        // before IndexedDB hydration completes.
+        const serverHasProvidedEvents = useAppStore.getState().hasInitialSync
+        const currentEvents = useAppStore.getState().instances.get(instanceId)?.events ?? []
+        const shouldSkipEventRestoration = serverHasProvidedEvents && currentEvents.length > 0
+
+        if (shouldSkipEventRestoration) {
+          console.log(
+            `[useStoreHydration] Skipping event restoration from IndexedDB - server already provided ${currentEvents.length} events`,
+          )
+        }
+
         // Load the most recent active session
         // If workspaceId is provided, only restore sessions from the current workspace
         const activeSession =
@@ -77,7 +92,7 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
             await eventDatabase.getLatestActiveSessionForWorkspace(instanceId, workspaceId)
           : await eventDatabase.getLatestActiveSession(instanceId)
 
-        if (activeSession) {
+        if (activeSession && !shouldSkipEventRestoration) {
           // In v3+ schema, events are stored separately in the events table.
           // For v2 data (migration), events may be inline.
           let sessionEvents = activeSession.events ?? []
