@@ -84,57 +84,60 @@ export function TaskChat({
         </div>
       </div>
 
-      {/* Messages container */}
-      <ContentStreamContainer
-        className="flex-1 overflow-hidden"
-        ariaLabel="Task chat messages"
-        dependencies={[events]}
-        emptyState={
-          <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
-            <IconMessageChatbot className="size-8 opacity-50" />
-            <p>Manage your tasks</p>
-            <p className="text-xs opacity-70">
-              Get help researching issues and creating and working with tasks
-            </p>
-          </div>
-        }
-      >
-        {hasContent ?
-          <EventList
-            events={events}
-            loadingIndicator={
-              isLoading || streamingMessage ?
-                <div
-                  className="flex items-center justify-start px-4 pt-4 pb-[20em]"
-                  aria-label="Task chat is loading"
-                  data-testid="task-chat-loading-spinner"
-                >
-                  <TopologySpinner />
-                </div>
-              : hasContent ?
-                <div
-                  className="flex items-center justify-start px-4 pt-4 pb-[20em]"
-                  aria-label="Task chat is idle"
-                  data-testid="task-chat-idle-spinner"
-                >
-                  <TopologySpinner stopped />
-                </div>
-              : null
-            }
-          />
-        : null}
-      </ContentStreamContainer>
+      {/* Messages container with floating input */}
+      <div className="relative min-h-0 flex-1">
+        <ContentStreamContainer
+          className="h-full overflow-hidden pb-[72px]"
+          ariaLabel="Task chat messages"
+          dependencies={[events]}
+          emptyState={
+            <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
+              <IconMessageChatbot className="size-8 opacity-50" />
+              <p>Manage your tasks</p>
+              <p className="text-xs opacity-70">
+                Get help researching issues and creating and working with tasks
+              </p>
+            </div>
+          }
+        >
+          {hasContent ?
+            <EventList
+              events={events}
+              loadingIndicator={
+                isLoading || streamingMessage ?
+                  <div
+                    className="flex items-center justify-start px-4 pt-4 pb-[20em]"
+                    aria-label="Task chat is loading"
+                    data-testid="task-chat-loading-spinner"
+                  >
+                    <TopologySpinner />
+                  </div>
+                : hasContent ?
+                  <div
+                    className="flex items-center justify-start px-4 pt-4 pb-[20em]"
+                    aria-label="Task chat is idle"
+                    data-testid="task-chat-idle-spinner"
+                  >
+                    <TopologySpinner stopped />
+                  </div>
+                : null
+              }
+            />
+          : null}
+        </ContentStreamContainer>
 
-      <div className="p-3">
-        {error && <div className="text-status-error pb-2 text-xs">Error: {error}</div>}
-        <ChatInput
-          ref={chatInputRef}
-          onSubmit={handleSendMessage}
-          disabled={isDisabled}
-          placeholder={placeholder}
-          aria-label="Task chat input"
-          storageKey={storageKey}
-        />
+        {/* Floating input */}
+        <div className="bg-background/95 absolute inset-x-0 bottom-0 z-10 p-3 backdrop-blur-sm">
+          {error && <div className="text-status-error pb-2 text-xs">Error: {error}</div>}
+          <ChatInput
+            ref={chatInputRef}
+            onSubmit={handleSendMessage}
+            disabled={isDisabled}
+            placeholder={placeholder}
+            aria-label="Task chat input"
+            storageKey={storageKey}
+          />
+        </div>
       </div>
     </div>
   )

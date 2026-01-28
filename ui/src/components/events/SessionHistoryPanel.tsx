@@ -186,88 +186,92 @@ export function SessionHistoryPanelView({
         </span>
       </div>
 
-      {/* Search input */}
-      {sessions.length > 0 && (
-        <div className="border-border border-b px-4 py-2">
-          <div className="relative">
-            <div className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2">
-              <IconSearch className="h-4 w-4" />
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              placeholder="Search by task ID or title..."
-              aria-label="Search sessions"
-              data-testid="search-input"
-              className={cn(
-                "border-border bg-background text-foreground h-8 w-full rounded-md border pr-8 pl-9 text-sm",
-                "placeholder:text-muted-foreground",
-                "focus:ring-ring focus:ring-2 focus:outline-none",
-              )}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
-                aria-label="Clear search"
-                data-testid="clear-search-button"
-              >
-                <IconX className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto">
-        {sessions.length === 0 ?
-          <div
-            className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
-            data-testid="empty-state"
-          >
-            No session history yet.
-            <br />
-            Completed sessions will appear here.
-          </div>
-        : filteredLogs.length === 0 ?
-          <div
-            className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
-            data-testid="no-results"
-          >
-            No matching sessions found.
-          </div>
-        : <div role="list" aria-label="Session history" data-testid="session-list">
-            {groupedLogs.map(({ dateLabel, logs }) => (
-              <div
-                key={dateLabel}
-                role="group"
-                aria-label={`Sessions from ${dateLabel}`}
-                data-testid="date-group"
-              >
-                <div className="bg-muted/30 border-border sticky top-0 border-b px-4 py-2">
-                  <span
-                    className="text-muted-foreground text-xs font-medium tracking-wide uppercase"
-                    data-testid="date-label"
-                  >
-                    {dateLabel}
-                  </span>
-                </div>
-                <ul className="divide-border divide-y">
-                  {logs.map(log => (
-                    <SessionHistoryItem
-                      key={log.id}
-                      log={log}
-                      issuePrefix={issuePrefix}
-                      onClick={handleItemClick}
-                    />
-                  ))}
-                </ul>
+      {/* Main content area with floating search input */}
+      <div className="relative min-h-0 flex-1">
+        {/* Floating search input */}
+        {sessions.length > 0 && (
+          <div className="bg-background/95 absolute inset-x-0 top-0 z-10 px-4 py-2 backdrop-blur-sm">
+            <div className="relative">
+              <div className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2">
+                <IconSearch className="h-4 w-4" />
               </div>
-            ))}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                placeholder="Search by task ID or title..."
+                aria-label="Search sessions"
+                data-testid="search-input"
+                className={cn(
+                  "border-border bg-background text-foreground h-8 w-full rounded-md border pr-8 pl-9 text-sm",
+                  "placeholder:text-muted-foreground",
+                  "focus:ring-ring focus:ring-2 focus:outline-none",
+                )}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
+                  aria-label="Clear search"
+                  data-testid="clear-search-button"
+                >
+                  <IconX className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
-        }
+        )}
+
+        {/* Session list with top padding to account for floating search */}
+        <div className={cn("h-full overflow-y-auto", sessions.length > 0 && "pt-[48px]")}>
+          {sessions.length === 0 ?
+            <div
+              className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
+              data-testid="empty-state"
+            >
+              No session history yet.
+              <br />
+              Completed sessions will appear here.
+            </div>
+          : filteredLogs.length === 0 ?
+            <div
+              className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"
+              data-testid="no-results"
+            >
+              No matching sessions found.
+            </div>
+          : <div role="list" aria-label="Session history" data-testid="session-list">
+              {groupedLogs.map(({ dateLabel, logs }) => (
+                <div
+                  key={dateLabel}
+                  role="group"
+                  aria-label={`Sessions from ${dateLabel}`}
+                  data-testid="date-group"
+                >
+                  <div className="bg-muted/30 border-border sticky top-0 border-b px-4 py-2">
+                    <span
+                      className="text-muted-foreground text-xs font-medium tracking-wide uppercase"
+                      data-testid="date-label"
+                    >
+                      {dateLabel}
+                    </span>
+                  </div>
+                  <ul className="divide-border divide-y">
+                    {logs.map(log => (
+                      <SessionHistoryItem
+                        key={log.id}
+                        log={log}
+                        issuePrefix={issuePrefix}
+                        onClick={handleItemClick}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          }
+        </div>
       </div>
     </div>
   )

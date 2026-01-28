@@ -28,10 +28,9 @@ describe("TaskSidebar", () => {
     })
 
     it("does not render quickInput area when not provided but search is always present", () => {
-      const { container } = render(<TaskSidebar />)
-      // One border-b element should exist for the always-visible search bar
-      const borderBElements = container.querySelectorAll(".border-b")
-      expect(borderBElements).toHaveLength(1)
+      render(<TaskSidebar />)
+      // Search input should always be present even without quickInput
+      expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
     })
 
     it("renders taskList when provided", () => {
@@ -72,10 +71,12 @@ describe("TaskSidebar", () => {
 
     it("task list area is flexible container", () => {
       render(<TaskSidebar taskList={<div data-testid="task-list-content">My tasks</div>} />)
-      // The task list container should be a flexible container
-      // (scrolling is handled by TaskList sections internally)
-      const taskListContainer = screen.getByTestId("task-list-content").parentElement
-      expect(taskListContainer).toHaveClass("min-h-0", "flex-1")
+      // The task list is inside a scrollable container which is inside a flexible container
+      // The flexible container (min-h-0 flex-1) wraps the floating search + scrollable task list
+      const taskListContent = screen.getByTestId("task-list-content")
+      const scrollableContainer = taskListContent.parentElement
+      const flexContainer = scrollableContainer?.parentElement
+      expect(flexContainer).toHaveClass("min-h-0", "flex-1")
     })
   })
 
