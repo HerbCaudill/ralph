@@ -1835,8 +1835,9 @@ describe("useAppStore", () => {
       })
 
       it("prefers ralph_session_start events over system/init when both exist", () => {
-        // When ralph_session_start events exist, system/init should be ignored
-        // to avoid double-counting (both occur per round, ~1s apart)
+        // When ralph_session_start events exist, system/init should be ignored.
+        // This handles backward compatibility with legacy persisted data that may
+        // contain both event types.
         const events = [
           { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
           { type: "assistant", timestamp: 1001 } as ChatEvent,
@@ -1860,7 +1861,7 @@ describe("useAppStore", () => {
       })
 
       it("falls back to system/init when no ralph_session_start events exist", () => {
-        // For legacy data or direct SDK usage, system/init is the fallback
+        // For backward compatibility with older persisted events that only have system/init
         const events = [
           { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
           { type: "assistant", timestamp: 1001 } as ChatEvent,

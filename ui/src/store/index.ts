@@ -381,57 +381,51 @@ export interface AppActions {
 }
 
 /**
- * Checks if an event is a primary session boundary (ralph_session_start).
- * Primary boundaries are emitted by the Ralph CLI at the start of each round.
- */
-function isPrimarySessionBoundary(event: ChatEvent): boolean {
-  return event.type === "ralph_session_start"
-}
-
-/**
- * Checks if an event is a fallback session boundary (system/init).
- * Fallback boundaries are used for legacy data or direct SDK usage.
- */
-function isFallbackSessionBoundary(event: ChatEvent): boolean {
-  return event.type === "system" && (event as any).subtype === "init"
-}
-
-/**
- * Checks if an event is a session boundary.
- * Prefers ralph_session_start (primary) over system/init (fallback).
+ * Checks if an event is a session boundary (ralph_session_start).
+ * Session boundaries are emitted by the Ralph CLI at the start of each round.
  *
- * Note: This function is kept for backward compatibility but getSessionBoundaries
- * uses a smarter algorithm that prefers primary boundaries when available.
+ * This is the single authoritative source for session boundaries. Events include
+ * rich metadata: sessionId (UUID), session number, taskId, and repo name.
+ *
+ * Legacy note: For backward compatibility with older persisted events, we also
+ * check for system/init events as a fallback. New sessions only emit ralph_session_start.
  */
 export function isSessionBoundary(event: ChatEvent): boolean {
-  return isPrimarySessionBoundary(event) || isFallbackSessionBoundary(event)
+  // Primary: ralph_session_start from CLI
+  if (event.type === "ralph_session_start") {
+    return true
+  }
+  // Legacy fallback: system/init (for backward compatibility with older persisted events)
+  if (event.type === "system" && (event as any).subtype === "init") {
+    return true
+  }
+  return false
 }
 
 /**
  * Gets the indices of session boundaries in the events array.
  * Returns an array of indices where each session starts.
  *
- * IMPORTANT: Uses smart boundary detection:
- * - If ANY ralph_session_start events exist, uses ONLY those as boundaries
- * - Falls back to system/init events only if no ralph_session_start events exist
+ * Session boundaries are ralph_session_start events emitted by the CLI.
+ * For backward compatibility with older persisted events, falls back to
+ * system/init events if no ralph_session_start events exist.
  *
- * This prevents double-counting when both event types are present
- * (ralph_session_start comes ~1s before system/init in each round).
+ * Note: When both types exist, only ralph_session_start is used to prevent
+ * double-counting (legacy system/init events may co-exist in older data).
  */
 export function getSessionBoundaries(events: ChatEvent[]): number[] {
-  // First, try to find primary boundaries (ralph_session_start)
   const primaryBoundaries: number[] = []
   const fallbackBoundaries: number[] = []
 
   events.forEach((event, index) => {
-    if (isPrimarySessionBoundary(event)) {
+    if (event.type === "ralph_session_start") {
       primaryBoundaries.push(index)
-    } else if (isFallbackSessionBoundary(event)) {
+    } else if (event.type === "system" && (event as any).subtype === "init") {
       fallbackBoundaries.push(index)
     }
   })
 
-  // Use primary boundaries if available, otherwise fall back to system/init
+  // Use primary boundaries if available, otherwise fall back to system/init for legacy data
   return primaryBoundaries.length > 0 ? primaryBoundaries : fallbackBoundaries
 }
 

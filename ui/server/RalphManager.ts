@@ -110,12 +110,9 @@ export class RalphManager extends EventEmitter {
 
         this.process.on("spawn", () => {
           this.setStatus("running")
-          // Emit system init event to mark session boundary for persistence
-          this.emit("event", {
-            type: "system",
-            subtype: "init",
-            timestamp: Date.now(),
-          })
+          // Note: Session boundaries are now exclusively marked by ralph_session_start
+          // events from the CLI, which include richer metadata (sessionId, taskId, repo).
+          // Previously, we emitted a system/init event here as a fallback boundary marker.
           resolve()
         })
 

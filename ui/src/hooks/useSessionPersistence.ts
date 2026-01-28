@@ -2,13 +2,14 @@
  * Hook for persisting session metadata to IndexedDB.
  *
  * Auto-saves session metadata at:
- * - Session boundary (system init event) - saves previous session as complete
+ * - Session boundary (ralph_session_start event) - saves previous session as complete
  * - Session end (ralph_task_completed or COMPLETE signal)
  *
  * Note: This hook only persists session metadata (v3+ schema). Events are
  * persisted separately in ralphConnection.ts as they arrive.
  *
- * Generates a stable GUID per session for reliable storage and retrieval.
+ * Session IDs are preferably extracted from the server-generated sessionId in
+ * ralph_session_start events, ensuring stable UUIDs for reliable storage.
  */
 
 import { useEffect, useRef, useCallback, useState } from "react"

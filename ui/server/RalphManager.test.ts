@@ -207,7 +207,7 @@ describe("RalphManager", () => {
       await expect(manager.start()).rejects.toThrow("Ralph is already running")
     })
 
-    it("emits system init event on spawn for session persistence", async () => {
+    it("does not emit system init event on spawn (boundaries come from CLI)", async () => {
       const events: RalphEvent[] = []
       manager.on("event", evt => events.push(evt))
 
@@ -215,14 +215,9 @@ describe("RalphManager", () => {
       mockProcess.emit("spawn")
       await startPromise
 
-      // Should emit a system init event to mark session boundary
-      expect(events).toHaveLength(1)
-      expect(events[0].type).toBe("system")
-      expect(events[0].subtype).toBe("init")
-      expect(typeof events[0].timestamp).toBe("number")
-      // Timestamp should be recent (within last second)
-      expect(events[0].timestamp).toBeGreaterThan(Date.now() - 1000)
-      expect(events[0].timestamp).toBeLessThanOrEqual(Date.now())
+      // Session boundaries are now exclusively marked by ralph_session_start
+      // events from the CLI, which include richer metadata (sessionId, taskId, repo).
+      expect(events).toHaveLength(0)
     })
 
     it("emits error and rejects on spawn error", async () => {
@@ -336,7 +331,7 @@ describe("RalphManager", () => {
       mockProcess.emit("spawn")
       await startPromise
 
-      // Start collecting events AFTER spawn to ignore the system init event
+      // Start collecting events after spawn
       const events: RalphEvent[] = []
       manager.on("event", evt => events.push(evt))
 
@@ -350,7 +345,7 @@ describe("RalphManager", () => {
       mockProcess.emit("spawn")
       await startPromise
 
-      // Start collecting events AFTER spawn to ignore the system init event
+      // Start collecting events after spawn
       const events: RalphEvent[] = []
       manager.on("event", evt => events.push(evt))
 
@@ -369,7 +364,7 @@ describe("RalphManager", () => {
       mockProcess.emit("spawn")
       await startPromise
 
-      // Start collecting events AFTER spawn to ignore the system init event
+      // Start collecting events after spawn
       const events: RalphEvent[] = []
       manager.on("event", evt => events.push(evt))
 
@@ -397,16 +392,15 @@ describe("RalphManager", () => {
       mockProcess.emit("spawn")
       await startPromise
 
-      // Start collecting events AFTER spawn to ignore the system init event
+      // Start collecting events after spawn
       const events: RalphEvent[] = []
       manager.on("event", evt => events.push(evt))
 
       // SDK events sometimes don't include timestamps
-      mockProcess.stdout.emit("data", Buffer.from('{"type":"system","subtype":"init"}\n'))
+      mockProcess.stdout.emit("data", Buffer.from('{"type":"assistant"}\n'))
 
       expect(events).toHaveLength(1)
-      expect(events[0].type).toBe("system")
-      expect(events[0].subtype).toBe("init")
+      expect(events[0].type).toBe("assistant")
       expect(typeof events[0].timestamp).toBe("number")
       // Timestamp should be recent (within last second)
       expect(events[0].timestamp).toBeGreaterThan(Date.now() - 1000)
@@ -418,7 +412,7 @@ describe("RalphManager", () => {
       mockProcess.emit("spawn")
       await startPromise
 
-      // Start collecting events AFTER spawn to ignore the system init event
+      // Start collecting events after spawn
       const events: RalphEvent[] = []
       manager.on("event", evt => events.push(evt))
 

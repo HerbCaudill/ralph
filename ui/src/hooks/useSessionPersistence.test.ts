@@ -113,7 +113,7 @@ describe("useSessionPersistence", () => {
   })
 
   describe("session detection", () => {
-    it("detects a new session on system init event", async () => {
+    it("detects a new session on system init event (legacy fallback)", async () => {
       const timestamp = Date.now()
       const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
 
@@ -151,8 +151,8 @@ describe("useSessionPersistence", () => {
       expect(savedSession?.eventCount).toBe(1) // Just the init event
     })
 
-    it("uses Date.now() as fallback when boundary event has no timestamp", async () => {
-      // Create a system init event without a timestamp (simulates the bug scenario)
+    it("uses Date.now() as fallback when boundary event has no timestamp (legacy)", async () => {
+      // Create a system init event without a timestamp (legacy fallback scenario)
       // Use 'unknown' cast to bypass TypeScript's type checking since we're simulating
       // the runtime scenario where SDK events don't include timestamps
       const eventWithoutTimestamp = {
@@ -183,8 +183,8 @@ describe("useSessionPersistence", () => {
       })
     })
 
-    it("uses Date.now() as fallback when boundary event has timestamp of 0", async () => {
-      // Create a system init event with timestamp=0 (falsy but not nullish)
+    it("uses Date.now() as fallback when boundary event has timestamp of 0 (legacy)", async () => {
+      // Create a system init event with timestamp=0 (legacy fallback scenario)
       const eventWithZeroTimestamp = {
         type: "system",
         subtype: "init",
