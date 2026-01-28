@@ -27,7 +27,7 @@ import {
 } from "@/constants"
 
 /** Current schema version for persistence format */
-export const PERSIST_VERSION = 6
+export const PERSIST_VERSION = 7
 
 /** Storage key for persisted state */
 export const PERSIST_NAME = "ralph-ui-store"
@@ -338,6 +338,7 @@ const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
  * - v4: Added vscodeThemeId, lastDarkThemeId, lastLightThemeId (consolidated from separate localStorage keys)
  * - v5: Added commentDrafts (per-task comment draft persistence)
  * - v6: Changed sidebarWidth and taskChatWidth from pixels to percentages of window width
+ * - v7: Replaced viewingSessionIndex (number) with viewingSessionId (string) for stable session tracking
  */
 export function migrate(persistedState: unknown, version: number): PersistedState {
   let state = persistedState as PersistedState
@@ -510,6 +511,19 @@ export function migrate(persistedState: unknown, version: number): PersistedStat
           Math.round((taskChatWidth / windowWidth) * 100)
         : (taskChatWidth ?? defaultTaskChatPercent),
     }
+  }
+
+  if (version < 7) {
+    // Migrate from v6 to v7: Replace viewingSessionIndex with viewingSessionId
+    // The old field was a numeric index; we can't reliably convert it to a session ID
+    // without the events array (which is stored in IndexedDB, not localStorage).
+    // Reset to null (latest session) for a clean migration.
+    const oldState = state as PersistedState & { viewingSessionIndex?: number | null }
+    const { viewingSessionIndex: _, ...rest } = oldState
+    state = {
+      ...rest,
+      viewingSessionId: null,
+    } as PersistedState
   }
 
   return state

@@ -111,7 +111,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
 describe("persist", () => {
   describe("constants", () => {
     it("exports PERSIST_VERSION", () => {
-      expect(PERSIST_VERSION).toBe(6)
+      expect(PERSIST_VERSION).toBe(7)
     })
 
     it("exports PERSIST_NAME", () => {
@@ -586,7 +586,7 @@ describe("persist", () => {
     })
 
     it("has correct version", () => {
-      expect(persistConfig.version).toBe(PERSIST_VERSION)
+      expect(persistConfig.version).toBe(7)
     })
 
     it("has storage adapter", () => {
@@ -901,7 +901,7 @@ describe("persist", () => {
       global.localStorage = originalLocalStorage
     })
 
-    it("returns state unchanged when version >= 6", () => {
+    it("returns state unchanged when version >= 7", () => {
       const state: PersistedState = {
         sidebarWidth: 25, // Now stored as percentage
         taskChatOpen: true,
@@ -931,7 +931,7 @@ describe("persist", () => {
         activeInstanceId: "default",
       }
 
-      const result = migrate(state, 6)
+      const result = migrate(state, 7)
 
       expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
       expect(result.parentCollapsedState).toEqual({ "parent-1": true })
@@ -943,6 +943,7 @@ describe("persist", () => {
       // Widths should remain as percentages (not converted again)
       expect(result.sidebarWidth).toBe(25)
       expect(result.taskChatWidth).toBe(30)
+      expect(result.viewingSessionId).toBeNull()
     })
 
     it("migrates from v1 by loading legacy localStorage keys", () => {
@@ -1288,7 +1289,126 @@ describe("persist", () => {
       expect(result.taskChatWidth).toBe(30)
     })
 
-    it("migrates from v1 all the way to v4", () => {
+    it("migrates from v6 to v7 by replacing viewingSessionIndex with viewingSessionId", () => {
+      // v6 state with old viewingSessionIndex field
+      const state = {
+        sidebarWidth: 25,
+        taskChatOpen: true,
+        taskChatWidth: 30,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        vscodeThemeId: null,
+        lastDarkThemeId: null,
+        lastLightThemeId: null,
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: 2, // Old index-based field
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        commentDrafts: {},
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 6)
+
+      // Should have viewingSessionId set to null (latest session)
+      expect(result.viewingSessionId).toBeNull()
+      // Old field should be removed
+      expect(result).not.toHaveProperty("viewingSessionIndex")
+    })
+
+    it("migrates from v6 to v7 when viewingSessionIndex is null", () => {
+      const state = {
+        sidebarWidth: 25,
+        taskChatOpen: true,
+        taskChatWidth: 30,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        vscodeThemeId: null,
+        lastDarkThemeId: null,
+        lastLightThemeId: null,
+        currentTaskChatSessionId: null,
+        viewingSessionIndex: null, // Already null (viewing latest)
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        commentDrafts: {},
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 6)
+
+      expect(result.viewingSessionId).toBeNull()
+      expect(result).not.toHaveProperty("viewingSessionIndex")
+    })
+
+    it("migrates from v6 to v7 when state already has viewingSessionId", () => {
+      // Edge case: state somehow already has viewingSessionId (e.g., partial migration)
+      const state = {
+        sidebarWidth: 25,
+        taskChatOpen: true,
+        taskChatWidth: 30,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        vscodeThemeId: null,
+        lastDarkThemeId: null,
+        lastLightThemeId: null,
+        currentTaskChatSessionId: null,
+        viewingSessionId: "existing-session-id",
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        commentDrafts: {},
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 6)
+
+      // Should reset to null since we can't validate old session IDs
+      expect(result.viewingSessionId).toBeNull()
+    })
+
+    it("migrates from v1 all the way to v7", () => {
+      // Mock window.innerWidth for v6 migration
+      Object.defineProperty(window, "innerWidth", {
+        value: 1600,
+        writable: true,
+        configurable: true,
+      })
+
       // Set up legacy localStorage data for all migrations
       mockStore[TASK_LIST_STATUS_STORAGE_KEY] = JSON.stringify({
         open: true,
@@ -1305,9 +1425,11 @@ describe("persist", () => {
       mockStore[LAST_DARK_THEME_STORAGE_KEY] = "full-dark-theme"
       mockStore[LAST_LIGHT_THEME_STORAGE_KEY] = "full-light-theme"
 
-      // v1 state (no collapsed states, no drafts, no theme IDs)
+      // v1 state (no collapsed states, no drafts, no theme IDs, old viewingSessionIndex)
       const state = {
         sidebarWidth: 400,
+        taskChatWidth: 400,
+        viewingSessionIndex: 3,
       } as unknown as PersistedState
 
       const result = migrate(state, 1)
@@ -1323,6 +1445,12 @@ describe("persist", () => {
       expect(result.vscodeThemeId).toBe("full-migration-theme")
       expect(result.lastDarkThemeId).toBe("full-dark-theme")
       expect(result.lastLightThemeId).toBe("full-light-theme")
+      // v5->v6 migration results (pixel to percentage conversion)
+      expect(result.sidebarWidth).toBe(25) // 400/1600*100
+      expect(result.taskChatWidth).toBe(25) // 400/1600*100
+      // v6->v7 migration results
+      expect(result.viewingSessionId).toBeNull()
+      expect(result).not.toHaveProperty("viewingSessionIndex")
       // All legacy keys should be removed
       expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_STATUS_STORAGE_KEY)
       expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_PARENT_STORAGE_KEY)
