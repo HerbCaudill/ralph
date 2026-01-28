@@ -759,36 +759,61 @@ function connect(): void {
       })
     }
 
-    // Auto-resume session if Ralph was running before disconnect or has saved state
-    // This happens in two cases:
-    // 1. We reconnect after losing connection while Ralph was running (in-memory state)
-    // 2. We have saved session state on the server (survives page reloads)
-    if (store.wasRunningBeforeDisconnect) {
-      // In-memory state says Ralph was running - auto-resume immediately
-      console.log("[ralphConnection] Auto-resuming: Ralph was running before disconnect")
-      restoreSessionState(store.activeInstanceId).then(result => {
-        if (!result.ok) {
-          console.warn("[ralphConnection] Failed to restore session state:", result.error)
-        }
-        // Clear the flag regardless of success
-        store.clearRunningBeforeDisconnect()
-      })
-    } else {
-      // Check server for saved session state (handles page reload case)
+    // Auto-resume session if Ralph was running before disconnect or has saved state.
+    // Always verify with the server before restoring — the in-memory flag alone is
+    // not authoritative because Ralph may have stopped while we were disconnected.
+    const wasRunning = store.wasRunningBeforeDisconnect
+    const disconnectedAt = store.disconnectedAt
+
+    // Clear the in-memory flag immediately to prevent duplicate resume attempts
+    if (wasRunning) {
+      store.clearRunningBeforeDisconnect()
+    }
+
+    // Skip auto-resume if the disconnect was too long ago (> 5 minutes)
+    const MAX_DISCONNECT_AGE_MS = 5 * 60 * 1000
+    if (wasRunning && disconnectedAt && Date.now() - disconnectedAt > MAX_DISCONNECT_AGE_MS) {
+      console.log(
+        "[ralphConnection] Skipping auto-resume: disconnect was too long ago " +
+          `(${Math.round((Date.now() - disconnectedAt) / 1000)}s)`,
+      )
+      // Fall through to the server check below (which has its own age check)
+    } else if (wasRunning) {
+      // Recent disconnect while running — verify with server before restoring
+      console.log("[ralphConnection] Checking server state before auto-resume...")
       checkForSavedSessionState().then(savedState => {
-        if (savedState) {
-          // Found recent saved state on server - auto-resume
-          console.log(
-            `[ralphConnection] Auto-resuming: found saved state from ${new Date(savedState.savedAt).toLocaleTimeString()}`,
-          )
+        if (savedState && (savedState.status === "running" || savedState.status === "paused")) {
+          console.log("[ralphConnection] Server confirms Ralph was running — auto-resuming")
           restoreSessionState(useAppStore.getState().activeInstanceId).then(result => {
             if (!result.ok) {
               console.warn("[ralphConnection] Failed to restore session state:", result.error)
             }
           })
+        } else if (savedState) {
+          console.log(
+            `[ralphConnection] Server reports Ralph status '${savedState.status}' — skipping auto-resume`,
+          )
+        } else {
+          console.log("[ralphConnection] No saved state on server — skipping auto-resume")
         }
       })
+      return
     }
+
+    // No in-memory flag (e.g. page reload) — check server for saved session state
+    checkForSavedSessionState().then(savedState => {
+      if (savedState) {
+        // Found recent saved state on server - auto-resume
+        console.log(
+          `[ralphConnection] Auto-resuming: found saved state from ${new Date(savedState.savedAt).toLocaleTimeString()}`,
+        )
+        restoreSessionState(useAppStore.getState().activeInstanceId).then(result => {
+          if (!result.ok) {
+            console.warn("[ralphConnection] Failed to restore session state:", result.error)
+          }
+        })
+      }
+    })
   }
 
   ws.onmessage = handleMessage

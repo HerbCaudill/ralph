@@ -429,6 +429,7 @@ describe("persist", () => {
         visibleTaskIds: ["task-1", "task-2"],
         initialTaskCount: 5,
         wasRunningBeforeDisconnect: true,
+        disconnectedAt: Date.now(),
         hasInitialSync: true,
         persistenceError: { message: "test error", failedCount: 3 },
       })
@@ -444,6 +445,7 @@ describe("persist", () => {
       expect(result).not.toHaveProperty("visibleTaskIds")
       expect(result).not.toHaveProperty("initialTaskCount")
       expect(result).not.toHaveProperty("wasRunningBeforeDisconnect")
+      expect(result).not.toHaveProperty("disconnectedAt")
       expect(result).not.toHaveProperty("hasInitialSync")
       expect(result).not.toHaveProperty("persistenceError")
 

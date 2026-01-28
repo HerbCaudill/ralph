@@ -175,6 +175,8 @@ export interface AppState {
   // Reconnection state (for auto-resuming when reconnecting mid-session)
   /** Whether Ralph was running when the connection was lost */
   wasRunningBeforeDisconnect: boolean
+  /** Timestamp when disconnect occurred (for staleness check) */
+  disconnectedAt: number | null
 
   // Initial sync tracking (to prevent auto-start race conditions on page reload)
   /** Whether we've received the initial WebSocket sync (instances:list message) */
@@ -616,6 +618,7 @@ const initialState: AppState = {
   isSearchVisible: false,
   hotkeysDialogOpen: false,
   wasRunningBeforeDisconnect: false,
+  disconnectedAt: null,
   hasInitialSync: false,
   persistenceError: null,
   taskChatEvents: [],
@@ -1175,11 +1178,14 @@ export const useAppStore = create<AppState & AppActions>()(
         set(state => {
           const activeInstance = state.instances.get(state.activeInstanceId)
           const currentStatus = activeInstance?.status ?? "stopped"
+          const wasRunning = currentStatus === "running" || currentStatus === "paused"
           return {
-            wasRunningBeforeDisconnect: currentStatus === "running" || currentStatus === "paused",
+            wasRunningBeforeDisconnect: wasRunning,
+            disconnectedAt: wasRunning ? Date.now() : state.disconnectedAt,
           }
         }),
-      clearRunningBeforeDisconnect: () => set({ wasRunningBeforeDisconnect: false }),
+      clearRunningBeforeDisconnect: () =>
+        set({ wasRunningBeforeDisconnect: false, disconnectedAt: null }),
 
       // Initial sync tracking
       setHasInitialSync: hasSync => set({ hasInitialSync: hasSync }),

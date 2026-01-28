@@ -24,6 +24,7 @@ let mockStoreState: {
   setEventsForInstance: ReturnType<typeof vi.fn>
   setConnectionStatus: ReturnType<typeof vi.fn>
   wasRunningBeforeDisconnect: boolean
+  disconnectedAt: number | null
   markRunningBeforeDisconnect: ReturnType<typeof vi.fn>
   clearRunningBeforeDisconnect: ReturnType<typeof vi.fn>
   resetSessionStats: ReturnType<typeof vi.fn>
@@ -49,6 +50,7 @@ function createMockStoreState() {
     setEventsForInstance: vi.fn(),
     setConnectionStatus: vi.fn(),
     wasRunningBeforeDisconnect: false,
+    disconnectedAt: null,
     markRunningBeforeDisconnect: vi.fn(),
     clearRunningBeforeDisconnect: vi.fn(),
     resetSessionStats: vi.fn(),
@@ -2254,6 +2256,278 @@ describe("ralphConnection event timestamp tracking", () => {
 
       // Timestamp should be tracked under "default"
       expect(getLastTaskChatEventTimestamp("default")).toBe(timestamp)
+    })
+  })
+
+  describe("auto-resume on reconnection (wasRunningBeforeDisconnect)", () => {
+    // These tests verify the auto-resume logic in ws.onopen:
+    // 1. The flag is cleared immediately to prevent duplicate resume attempts
+    // 2. Disconnects older than 5 minutes skip auto-resume
+    // 3. Server verification via checkForSavedSessionState before restoring
+    // 4. Only resumes when server confirms "running" or "paused" status
+
+    let mockCheckForSavedSessionState: ReturnType<typeof vi.fn>
+    let mockRestoreSessionState: ReturnType<typeof vi.fn>
+
+    beforeEach(async () => {
+      // Install mock WebSocket
+      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
+      MockWebSocket.instances = []
+      mockStoreState = createMockStoreState()
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "running",
+      })
+
+      // Get references to the mocked session state API functions
+      const sessionStateApi = await import("./sessionStateApi")
+      mockCheckForSavedSessionState =
+        sessionStateApi.checkForSavedSessionState as ReturnType<typeof vi.fn>
+      mockRestoreSessionState =
+        sessionStateApi.restoreSessionState as ReturnType<typeof vi.fn>
+
+      // Reset mocks
+      mockCheckForSavedSessionState.mockReset()
+      mockRestoreSessionState.mockReset().mockResolvedValue({ ok: true })
+    })
+
+    afterEach(() => {
+      globalThis.WebSocket = originalWebSocket
+      ralphConnection.reset()
+    })
+
+    it("clears the wasRunningBeforeDisconnect flag immediately on reconnection", async () => {
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      // Set up: Ralph was running before disconnect (recent)
+      mockStoreState.wasRunningBeforeDisconnect = true
+      mockStoreState.disconnectedAt = Date.now() - 1000 // 1 second ago
+
+      // Server will confirm running status
+      mockCheckForSavedSessionState.mockResolvedValue({
+        status: "running",
+        savedAt: Date.now(),
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // The flag should be cleared immediately (before the async server check)
+      expect(mockStoreState.clearRunningBeforeDisconnect).toHaveBeenCalled()
+    })
+
+    it("skips auto-resume when disconnect was more than 5 minutes ago", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+      // Set up: Ralph was running, but disconnected > 5 minutes ago
+      mockStoreState.wasRunningBeforeDisconnect = true
+      mockStoreState.disconnectedAt = Date.now() - 6 * 60 * 1000 // 6 minutes ago
+
+      // Server check for fallback path returns null (no saved state)
+      mockCheckForSavedSessionState.mockResolvedValue(null)
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Wait for the async check to complete
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Should log the staleness skip message
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping auto-resume: disconnect was too long ago"),
+      )
+
+      // restoreSessionState should NOT be called (stale disconnect falls through
+      // to the server check fallback, which returns null)
+      expect(mockRestoreSessionState).not.toHaveBeenCalled()
+
+      logSpy.mockRestore()
+    })
+
+    it("verifies with server before auto-resuming on recent disconnect", async () => {
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      // Set up: Ralph was running, recent disconnect
+      mockStoreState.wasRunningBeforeDisconnect = true
+      mockStoreState.disconnectedAt = Date.now() - 2000 // 2 seconds ago
+
+      // Server confirms running
+      mockCheckForSavedSessionState.mockResolvedValue({
+        status: "running",
+        savedAt: Date.now(),
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Should have checked with server
+      expect(mockCheckForSavedSessionState).toHaveBeenCalled()
+
+      // Should have restored since server confirmed running
+      expect(mockRestoreSessionState).toHaveBeenCalledWith("test-instance")
+    })
+
+    it("auto-resumes when server reports 'paused' status", async () => {
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.wasRunningBeforeDisconnect = true
+      mockStoreState.disconnectedAt = Date.now() - 2000
+
+      mockCheckForSavedSessionState.mockResolvedValue({
+        status: "paused",
+        savedAt: Date.now(),
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Should restore for "paused" status too
+      expect(mockRestoreSessionState).toHaveBeenCalledWith("test-instance")
+    })
+
+    it("does NOT auto-resume when server reports 'stopped' status", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.wasRunningBeforeDisconnect = true
+      mockStoreState.disconnectedAt = Date.now() - 2000
+
+      // Server says Ralph is stopped
+      mockCheckForSavedSessionState.mockResolvedValue({
+        status: "stopped",
+        savedAt: Date.now(),
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Should NOT restore
+      expect(mockRestoreSessionState).not.toHaveBeenCalled()
+
+      // Should log the skip reason
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Server reports Ralph status 'stopped'"),
+      )
+
+      logSpy.mockRestore()
+    })
+
+    it("does NOT auto-resume when server returns no saved state", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.wasRunningBeforeDisconnect = true
+      mockStoreState.disconnectedAt = Date.now() - 2000
+
+      // Server has no saved state
+      mockCheckForSavedSessionState.mockResolvedValue(null)
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Should NOT restore
+      expect(mockRestoreSessionState).not.toHaveBeenCalled()
+
+      // Should log the skip reason
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("No saved state on server"),
+      )
+
+      logSpy.mockRestore()
+    })
+
+    it("checks server for saved state on page reload (no wasRunningBeforeDisconnect flag)", async () => {
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      // No in-memory flag (simulates page reload)
+      mockStoreState.wasRunningBeforeDisconnect = false
+      mockStoreState.disconnectedAt = null
+
+      // Server has saved state
+      mockCheckForSavedSessionState.mockResolvedValue({
+        status: "running",
+        savedAt: Date.now(),
+        instanceId: "test-instance",
+        currentTaskId: null,
+        conversationContext: { messages: [] },
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Should check server even without in-memory flag
+      expect(mockCheckForSavedSessionState).toHaveBeenCalled()
+
+      // Should restore since server has saved state
+      expect(mockRestoreSessionState).toHaveBeenCalledWith("test-instance")
+    })
+
+    it("does not restore on page reload when server has no saved state", async () => {
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.wasRunningBeforeDisconnect = false
+      mockStoreState.disconnectedAt = null
+
+      // Server has no saved state
+      mockCheckForSavedSessionState.mockResolvedValue(null)
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      expect(mockRestoreSessionState).not.toHaveBeenCalled()
+    })
+
+    it("does not clear flag when wasRunningBeforeDisconnect is already false", async () => {
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.wasRunningBeforeDisconnect = false
+      mockStoreState.disconnectedAt = null
+
+      mockCheckForSavedSessionState.mockResolvedValue(null)
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // clearRunningBeforeDisconnect should NOT be called when flag is already false
+      expect(mockStoreState.clearRunningBeforeDisconnect).not.toHaveBeenCalled()
     })
   })
 })

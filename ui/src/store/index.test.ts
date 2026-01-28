@@ -3495,14 +3495,31 @@ describe("useAppStore", () => {
         useAppStore.getState().markRunningBeforeDisconnect()
         expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
       })
+
+      it("records disconnectedAt timestamp when ralph was running", () => {
+        const before = Date.now()
+        useAppStore.getState().setRalphStatus("running")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        const after = Date.now()
+        const disconnectedAt = useAppStore.getState().disconnectedAt
+        expect(disconnectedAt).toBeGreaterThanOrEqual(before)
+        expect(disconnectedAt).toBeLessThanOrEqual(after)
+      })
+
+      it("does not update disconnectedAt when ralph was not running", () => {
+        useAppStore.getState().setRalphStatus("stopped")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().disconnectedAt).toBeNull()
+      })
     })
 
     describe("clearRunningBeforeDisconnect action", () => {
-      it("clears wasRunningBeforeDisconnect", () => {
+      it("clears wasRunningBeforeDisconnect and disconnectedAt", () => {
         useAppStore.getState().setRalphStatus("running")
         useAppStore.getState().markRunningBeforeDisconnect()
         useAppStore.getState().clearRunningBeforeDisconnect()
         expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+        expect(useAppStore.getState().disconnectedAt).toBeNull()
       })
     })
   })
