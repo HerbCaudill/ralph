@@ -1,9 +1,4 @@
-import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconHistory,
-  IconPlayerTrackNext,
-} from "@tabler/icons-react"
+import { IconChevronLeft, IconChevronRight, IconPlayerTrackNext } from "@tabler/icons-react"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 import { SessionHistoryDropdown } from "./SessionHistoryDropdown"
 import type { SessionSummary } from "@/hooks"
@@ -44,7 +39,7 @@ export function EventStreamSessionBar({
       className="bg-muted/50 border-border flex items-center justify-center border-b px-3 py-1.5"
       data-testid="session-bar"
     >
-      <div className="flex w-full max-w-[36rem] min-w-0 items-center justify-center gap-2">
+      <div className="flex w-full max-w-[36rem] min-w-0 items-center justify-center gap-1">
         {/* Previous session button */}
         <button
           onClick={onPreviousSession}
@@ -59,28 +54,13 @@ export function EventStreamSessionBar({
 
         {/* Center content: dropdown or task info */}
         <div className="flex min-w-0 flex-1 items-center justify-center">
-          {isViewingHistorical ?
-            <div className="flex w-full min-w-0 items-center gap-2">
-              <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                <IconHistory className="text-muted-foreground size-3 shrink-0" />
-                <SessionHistoryDropdown
-                  currentTask={currentTask}
-                  sessions={sessions}
-                  isLoadingSessions={isLoadingSessions}
-                  issuePrefix={issuePrefix}
-                  isRunning={false}
-                  currentSessionId={currentSessionId}
-                  onSessionHistorySelect={onSessionHistorySelect}
-                />
-              </div>
-            </div>
-          : showDropdown ?
+          {showDropdown || isViewingHistorical ?
             <SessionHistoryDropdown
               currentTask={currentTask}
               sessions={sessions}
               isLoadingSessions={isLoadingSessions}
               issuePrefix={issuePrefix}
-              isRunning={isRunning}
+              isRunning={isViewingHistorical ? false : isRunning}
               currentSessionId={currentSessionId}
               onSessionHistorySelect={onSessionHistorySelect}
             />
@@ -125,6 +105,7 @@ export function EventStreamSessionBar({
           data-testid="current-session-button"
         >
           <IconPlayerTrackNext className="size-3.5" />
+          <span>Current</span>
         </button>
       </div>
     </div>

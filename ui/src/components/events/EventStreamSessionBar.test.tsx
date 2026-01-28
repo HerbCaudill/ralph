@@ -227,7 +227,7 @@ describe("EventStreamSessionBar", () => {
   })
 
   describe("viewing historical session", () => {
-    it("shows session dropdown with history icon when viewing historical session", () => {
+    it("shows session dropdown when viewing historical session", () => {
       render(
         <EventStreamSessionBar
           {...defaultProps}
@@ -351,6 +351,13 @@ describe("EventStreamSessionBar", () => {
       render(<EventStreamSessionBar {...defaultProps} />)
 
       expect(screen.getByTestId("current-session-button")).toBeInTheDocument()
+    })
+
+    it("displays 'Current' text label in the button", () => {
+      render(<EventStreamSessionBar {...defaultProps} />)
+
+      const button = screen.getByTestId("current-session-button")
+      expect(button).toHaveTextContent("Current")
     })
 
     it("disables the button when isViewingHistorical is false", () => {
