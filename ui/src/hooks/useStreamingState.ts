@@ -1,6 +1,33 @@
 import { useMemo } from "react"
 import type { ChatEvent, StreamingMessage } from "@/types"
 
+/**
+ * Maximum time (in ms) between a message_stop timestamp and an assistant event timestamp
+ * for them to be considered duplicates when message IDs are not available.
+ *
+ * This handles the case where an assistant event arrives shortly after message_stop
+ * for the same message. 1 second is generous for network jitter while unlikely to
+ * cause false positives with separate messages.
+ *
+ * Why this exists: Legacy streaming data and some SDK versions may not include message
+ * IDs in stream events. This timestamp-based fallback ensures backwards compatibility
+ * and handles edge cases where IDs are missing.
+ */
+const COMPLETED_MESSAGE_DEDUP_THRESHOLD_MS = 1000
+
+/**
+ * Maximum time (in ms) for an in-progress streaming message before it's considered
+ * stale for deduplication purposes.
+ *
+ * If an assistant event arrives more than 30 seconds after message_start without
+ * a corresponding message_stop, we assume the streaming message was interrupted
+ * and the assistant event is a new message, not a duplicate.
+ *
+ * This timeout is intentionally long to handle slow responses with extended thinking,
+ * tool use chains, or network interruptions that delay message_stop.
+ */
+const IN_PROGRESS_MESSAGE_TIMEOUT_MS = 30000
+
 interface StreamState {
   currentMessage: StreamingMessage | null
   currentBlockIndex: number
@@ -62,13 +89,26 @@ function findStreamingMessageRanges(events: ChatEvent[]): {
  * Check if an assistant event should be deduplicated because it corresponds to
  * a streamed message.
  *
- * An assistant event is a duplicate if:
- * 1. Its message ID matches a message that was synthesized from streaming, OR
- * 2. There's a completed streaming message (message_start -> message_stop) where
- *    the assistant event is within 1000ms of the message_stop, OR
- * 3. There's an in-progress streaming message (message_start but no message_stop yet)
- *    that started before this assistant timestamp (handles the case where the SDK
- *    assistant event arrives before message_stop)
+ * Deduplication strategy (in priority order):
+ *
+ * 1. **Message ID matching (most reliable)**: If the assistant event's message.id
+ *    matches a message ID we've seen in streaming (either completed or in-progress),
+ *    it's definitely a duplicate.
+ *
+ * 2. **Timestamp proximity fallback (for legacy data)**: When message IDs aren't
+ *    available (legacy SDK versions, missing data), we fall back to timestamp matching:
+ *    - For completed streams: assistant event within COMPLETED_MESSAGE_DEDUP_THRESHOLD_MS
+ *      of message_stop is considered a duplicate
+ *    - For in-progress streams: assistant event that arrives after message_start but
+ *      before message_stop (or within IN_PROGRESS_MESSAGE_TIMEOUT_MS) is a duplicate
+ *
+ * The timestamp fallback is imperfect but necessary for backwards compatibility.
+ * It may have false positives (deduplicating unrelated messages that happen to be
+ * close in time) or false negatives (failing to deduplicate if network delays push
+ * timestamps beyond thresholds). The ID-based approach is always preferred.
+ *
+ * @see https://github.com/anthropics/claude-code/issues/XXXX for context on why
+ * streaming generates both stream events and assistant events
  */
 function shouldDeduplicateAssistant(
   assistantEvent: ChatEvent,
@@ -81,32 +121,52 @@ function shouldDeduplicateAssistant(
   const messageId = (assistantEvent as { message?: { id?: string } }).message?.id
 
   // Priority 1: Check by message ID (most reliable)
+  // This covers completed streaming messages where we extracted the ID from message_start
   if (messageId && synthesizedMessageIds.has(messageId)) {
     return true
   }
 
   // Priority 2: Check if this assistant's message ID matches an in-progress stream
+  // This handles the case where assistant event arrives before message_stop
   if (messageId && inProgressMessageId && messageId === inProgressMessageId) {
     return true
   }
 
-  // Fallback: Check timestamp proximity for messages without IDs
+  // Priority 3: Check by message ID against completed ranges (handles out-of-order events)
+  // An assistant event might arrive with a message ID that matches a completed range's ID
+  if (messageId) {
+    for (const range of completedMessageRanges) {
+      if (range.id && range.id === messageId) {
+        return true
+      }
+    }
+  }
+
+  // Fallback: Timestamp-based deduplication for messages without IDs
+  // This is less reliable but necessary for backwards compatibility with legacy data
+  // that doesn't include message IDs in stream events.
   const assistantTimestamp = assistantEvent.timestamp
 
-  // Check if this assistant is within 1000ms of any completed streaming message's stop
+  // Check if this assistant is within threshold of any completed streaming message's stop
   for (const range of completedMessageRanges) {
+    // Only use timestamp fallback if the range doesn't have an ID (legacy data)
+    // If it has an ID and we didn't match above, they're different messages
+    if (range.id) {
+      continue
+    }
     const diff = Math.abs(assistantTimestamp - range.stop)
-    if (diff < 1000) {
+    if (diff < COMPLETED_MESSAGE_DEDUP_THRESHOLD_MS) {
       return true
     }
   }
 
-  // Check if there's an in-progress streaming message that started before this assistant.
-  // This handles the case where the SDK assistant event arrives before message_stop.
+  // Check if there's an in-progress streaming message (without ID) that started before
+  // this assistant. Only use timestamp fallback if we don't have an ID to match.
   if (
     inProgressStartTimestamp !== null &&
+    inProgressMessageId === null && // Only fallback if no ID available
     inProgressStartTimestamp <= assistantTimestamp &&
-    assistantTimestamp - inProgressStartTimestamp < 30000
+    assistantTimestamp - inProgressStartTimestamp < IN_PROGRESS_MESSAGE_TIMEOUT_MS
   ) {
     return true
   }

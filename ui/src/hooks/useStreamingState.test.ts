@@ -378,5 +378,169 @@ describe("useStreamingState", () => {
       const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
       expect(assistantEvents).toHaveLength(2)
     })
+
+    it("does NOT deduplicate assistant events with different message IDs even if timestamps are close", () => {
+      // This tests that ID-based matching takes priority: if both stream and assistant
+      // have IDs but they differ, we should NOT deduplicate even if timestamps are close
+      const streamMessageId = "msg_stream_001"
+      const assistantMessageId = "msg_assistant_002" // Different ID!
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { id: streamMessageId, role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "First" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+        // Assistant with DIFFERENT ID but close timestamp - should NOT be deduplicated
+        {
+          type: "assistant",
+          timestamp: 350, // Within 1000ms of message_stop
+          message: {
+            id: assistantMessageId,
+            content: [{ type: "text", text: "Different message" }],
+          },
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      // Should have 2 assistant events because the IDs are different
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(2)
+    })
+
+    it("uses timestamp fallback only when message IDs are not available", () => {
+      // Streaming without ID, assistant without ID, but close timestamps
+      // This tests the timestamp fallback for legacy data
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { role: "assistant" } }, // No ID
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+        // Assistant without ID, close timestamp - should be deduplicated via fallback
+        {
+          type: "assistant",
+          timestamp: 350, // Within 1000ms
+          message: { content: [{ type: "text", text: "Hello" }] }, // No ID
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      // Should have 1 assistant event (deduplicated via timestamp fallback)
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(1)
+    })
+
+    it("does not use timestamp fallback when streaming has ID but assistant does not", () => {
+      // If streaming has ID, we should only deduplicate by ID match
+      // An assistant without ID should be treated as a different message
+      const streamMessageId = "msg_stream_001"
+      const events: ChatEvent[] = [
+        {
+          type: "stream_event",
+          timestamp: 100,
+          event: { type: "message_start", message: { id: streamMessageId, role: "assistant" } },
+        },
+        {
+          type: "stream_event",
+          timestamp: 150,
+          event: {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 200,
+          event: {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        {
+          type: "stream_event",
+          timestamp: 250,
+          event: { type: "content_block_stop", index: 0 },
+        },
+        {
+          type: "stream_event",
+          timestamp: 300,
+          event: { type: "message_stop" },
+        },
+        // Assistant WITHOUT ID, close timestamp
+        // Since streaming has ID, we skip timestamp fallback for this range
+        {
+          type: "assistant",
+          timestamp: 350,
+          message: { content: [{ type: "text", text: "Hello" }] }, // No ID
+        },
+      ]
+
+      const { result } = renderHook(() => useStreamingState(events))
+
+      // Should have 2 assistant events - the one without ID is not deduplicated
+      // because the streaming range has an ID (so we expect ID-based matching)
+      const assistantEvents = result.current.completedEvents.filter(e => e.type === "assistant")
+      expect(assistantEvents).toHaveLength(2)
+    })
   })
 })
