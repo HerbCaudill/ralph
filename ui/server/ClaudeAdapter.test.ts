@@ -4,6 +4,7 @@ import { ClaudeAdapter, buildCwdContext, type QueryFn } from "./ClaudeAdapter"
 import type {
   AgentEvent,
   AgentMessageEvent,
+  AgentThinkingEvent,
   AgentToolUseEvent,
   AgentToolResultEvent,
   AgentResultEvent,
@@ -161,6 +162,101 @@ describe("ClaudeAdapter", () => {
       expect(messageEvents[0].isPartial).toBe(true)
       expect(messageEvents[1].content).toBe("lo!")
       expect(messageEvents[1].isPartial).toBe(true)
+    })
+
+    it("translates thinking block from assistant message", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "assistant",
+            message: {
+              content: [{ type: "thinking", thinking: "Let me think about this..." }],
+            },
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const thinkingEvents = events.filter(e => e.type === "thinking") as AgentThinkingEvent[]
+      expect(thinkingEvents).toHaveLength(1)
+      expect(thinkingEvents[0].content).toBe("Let me think about this...")
+      expect(thinkingEvents[0].isPartial).toBe(false)
+    })
+
+    it("translates streaming thinking deltas", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "stream_event",
+            event: {
+              type: "content_block_delta",
+              delta: { type: "thinking_delta", thinking: "Let me " },
+            },
+          } as SDKMessage,
+          {
+            type: "stream_event",
+            event: {
+              type: "content_block_delta",
+              delta: { type: "thinking_delta", thinking: "think..." },
+            },
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const thinkingEvents = events.filter(e => e.type === "thinking") as AgentThinkingEvent[]
+      expect(thinkingEvents).toHaveLength(2)
+      expect(thinkingEvents[0].content).toBe("Let me ")
+      expect(thinkingEvents[0].isPartial).toBe(true)
+      expect(thinkingEvents[1].content).toBe("think...")
+      expect(thinkingEvents[1].isPartial).toBe(true)
+    })
+
+    it("translates mixed thinking and text blocks in order", async () => {
+      const events: AgentEvent[] = []
+      adapter.on("event", e => events.push(e))
+
+      mockQuery.mockReturnValueOnce(
+        createMessageStream([
+          {
+            type: "assistant",
+            message: {
+              content: [
+                { type: "thinking", thinking: "I should greet the user." },
+                { type: "text", text: "Hello!" },
+              ],
+            },
+          } as SDKMessage,
+        ]),
+      )
+
+      adapter.send({ type: "user_message", content: "Hi" })
+      await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
+
+      const relevantEvents = events.filter(
+        e => e.type === "thinking" || e.type === "message",
+      ) as (AgentThinkingEvent | AgentMessageEvent)[]
+      expect(relevantEvents).toHaveLength(2)
+
+      // Thinking comes first
+      expect(relevantEvents[0].type).toBe("thinking")
+      expect((relevantEvents[0] as AgentThinkingEvent).content).toBe("I should greet the user.")
+      expect((relevantEvents[0] as AgentThinkingEvent).isPartial).toBe(false)
+
+      // Text comes second
+      expect(relevantEvents[1].type).toBe("message")
+      expect((relevantEvents[1] as AgentMessageEvent).content).toBe("Hello!")
+      expect((relevantEvents[1] as AgentMessageEvent).isPartial).toBe(false)
     })
 
     it("translates tool_use from assistant message", async () => {

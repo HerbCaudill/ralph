@@ -1,6 +1,7 @@
 import type {
   AgentEvent,
   AgentMessageEvent,
+  AgentThinkingEvent,
   AgentToolUseEvent,
   AgentToolResultEvent,
   AgentResultEvent,
@@ -11,6 +12,11 @@ import type {
 /**  Check if an event is a message event. */
 export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
   return event.type === "message"
+}
+
+/**  Check if an event is a thinking event. */
+export function isAgentThinkingEvent(event: AgentEvent): event is AgentThinkingEvent {
+  return event.type === "thinking"
 }
 
 /**  Check if an event is a tool use event. */

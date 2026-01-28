@@ -65,6 +65,15 @@ export interface AgentErrorEvent extends AgentEventBase {
   fatal: boolean
 }
 
+/**  A thinking block from the assistant (extended thinking). */
+export interface AgentThinkingEvent extends AgentEventBase {
+  type: "thinking"
+  /** The thinking content */
+  content: string
+  /** Whether this is a partial/streaming thinking block */
+  isPartial?: boolean
+}
+
 /**  Agent status changed. */
 export interface AgentStatusEvent extends AgentEventBase {
   type: "status"
@@ -75,6 +84,7 @@ export interface AgentStatusEvent extends AgentEventBase {
 /**  Union type for all normalized agent events. */
 export type AgentEvent =
   | AgentMessageEvent
+  | AgentThinkingEvent
   | AgentToolUseEvent
   | AgentToolResultEvent
   | AgentResultEvent

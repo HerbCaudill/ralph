@@ -4,6 +4,7 @@ import { EventEmitter } from "node:events"
 export type {
   AgentEvent,
   AgentMessageEvent,
+  AgentThinkingEvent,
   AgentToolUseEvent,
   AgentToolResultEvent,
   AgentResultEvent,
@@ -15,6 +16,7 @@ export type {
 // Re-export type guards from shared package
 export {
   isAgentMessageEvent,
+  isAgentThinkingEvent,
   isAgentToolUseEvent,
   isAgentToolResultEvent,
   isAgentResultEvent,

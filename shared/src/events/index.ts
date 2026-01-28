@@ -2,6 +2,7 @@ export type {
   AgentEvent,
   AgentEventBase,
   AgentMessageEvent,
+  AgentThinkingEvent,
   AgentToolUseEvent,
   AgentToolResultEvent,
   AgentResultEvent,
@@ -12,6 +13,7 @@ export type {
 
 export {
   isAgentMessageEvent,
+  isAgentThinkingEvent,
   isAgentToolUseEvent,
   isAgentToolResultEvent,
   isAgentResultEvent,

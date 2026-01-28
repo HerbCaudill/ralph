@@ -5,6 +5,7 @@ import {
   type AgentMessage,
   type AgentStartOptions,
   type AgentMessageEvent,
+  type AgentThinkingEvent,
   type AgentToolUseEvent,
   type AgentToolResultEvent,
   type AgentResultEvent,
@@ -546,6 +547,7 @@ export class ClaudeAdapter extends AgentAdapter {
           content?: Array<{
             type: string
             text?: string
+            thinking?: string
             id?: string
             name?: string
             input?: unknown
@@ -553,7 +555,15 @@ export class ClaudeAdapter extends AgentAdapter {
         }
         if (message?.content) {
           for (const block of message.content) {
-            if (block.type === "text" && block.text) {
+            if (block.type === "thinking" && block.thinking) {
+              const event: AgentThinkingEvent = {
+                type: "thinking",
+                timestamp,
+                content: block.thinking,
+                isPartial: false,
+              }
+              this.emit("event", event)
+            } else if (block.type === "text" && block.text) {
               this.currentMessageContent = block.text
               // Track in conversation context
               if (this.currentAssistantMessage) {
@@ -608,9 +618,22 @@ export class ClaudeAdapter extends AgentAdapter {
 
       case "content_block_delta": {
         // Streaming delta for a content block
-        const delta = nativeEvent.delta as { type?: string; text?: string; partial_json?: string }
+        const delta = nativeEvent.delta as {
+          type?: string
+          text?: string
+          thinking?: string
+          partial_json?: string
+        }
 
-        if (delta?.type === "text_delta" && delta.text) {
+        if (delta?.type === "thinking_delta" && delta.thinking) {
+          const event: AgentThinkingEvent = {
+            type: "thinking",
+            timestamp,
+            content: delta.thinking,
+            isPartial: true,
+          }
+          this.emit("event", event)
+        } else if (delta?.type === "text_delta" && delta.text) {
           this.currentMessageContent += delta.text
           // Track in conversation context (accumulate streaming text)
           if (this.currentAssistantMessage) {

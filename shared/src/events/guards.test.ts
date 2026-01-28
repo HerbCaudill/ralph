@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   isAgentMessageEvent,
+  isAgentThinkingEvent,
   isAgentToolUseEvent,
   isAgentToolResultEvent,
   isAgentResultEvent,
@@ -10,6 +11,7 @@ import {
 import type {
   AgentEvent,
   AgentMessageEvent,
+  AgentThinkingEvent,
   AgentToolUseEvent,
   AgentToolResultEvent,
   AgentResultEvent,
@@ -59,6 +61,13 @@ describe("Agent Event Type Guards", () => {
     fatal: true,
   }
 
+  const thinkingEvent: AgentThinkingEvent = {
+    type: "thinking",
+    timestamp,
+    content: "Let me think about this...",
+    isPartial: false,
+  }
+
   const statusEvent: AgentStatusEvent = {
     type: "status",
     timestamp,
@@ -67,6 +76,7 @@ describe("Agent Event Type Guards", () => {
 
   const allEvents: AgentEvent[] = [
     messageEvent,
+    thinkingEvent,
     toolUseEvent,
     toolResultEvent,
     resultEvent,
@@ -91,6 +101,39 @@ describe("Agent Event Type Guards", () => {
         // TypeScript should know event.content exists
         expect(event.content).toBe("Hello, world!")
         expect(event.isPartial).toBe(false)
+      }
+    })
+  })
+
+  describe("isAgentThinkingEvent", () => {
+    it("returns true for thinking events", () => {
+      expect(isAgentThinkingEvent(thinkingEvent)).toBe(true)
+    })
+
+    it("returns false for other event types", () => {
+      for (const event of allEvents.filter(e => e.type !== "thinking")) {
+        expect(isAgentThinkingEvent(event)).toBe(false)
+      }
+    })
+
+    it("narrows type correctly", () => {
+      const event: AgentEvent = thinkingEvent
+      if (isAgentThinkingEvent(event)) {
+        expect(event.content).toBe("Let me think about this...")
+        expect(event.isPartial).toBe(false)
+      }
+    })
+
+    it("handles partial thinking events", () => {
+      const partialThinking: AgentThinkingEvent = {
+        type: "thinking",
+        timestamp,
+        content: "Partial thought...",
+        isPartial: true,
+      }
+      expect(isAgentThinkingEvent(partialThinking)).toBe(true)
+      if (isAgentThinkingEvent(partialThinking)) {
+        expect(partialThinking.isPartial).toBe(true)
       }
     })
   })
@@ -243,6 +286,9 @@ describe("Agent Event Type Guards", () => {
         if (isAgentMessageEvent(event)) {
           return `message: ${event.content}`
         }
+        if (isAgentThinkingEvent(event)) {
+          return `thinking: ${event.content}`
+        }
         if (isAgentToolUseEvent(event)) {
           return `tool: ${event.tool}`
         }
@@ -262,6 +308,7 @@ describe("Agent Event Type Guards", () => {
       }
 
       expect(processEvent(messageEvent)).toBe("message: Hello, world!")
+      expect(processEvent(thinkingEvent)).toBe("thinking: Let me think about this...")
       expect(processEvent(toolUseEvent)).toBe("tool: Bash")
       expect(processEvent(toolResultEvent)).toBe("result: success")
       expect(processEvent(resultEvent)).toBe("completed: Task completed")
