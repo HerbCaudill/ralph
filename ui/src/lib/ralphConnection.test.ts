@@ -4,6 +4,7 @@ import {
   clearEventTimestamps,
   ralphConnection,
   getCurrentSessionId,
+  getCurrentSession,
   setCurrentSessionId,
 } from "./ralphConnection"
 
@@ -45,6 +46,9 @@ function createMockStoreState() {
   }
 }
 
+// Mock session boundary detection - can be controlled per test
+let mockIsSessionBoundary: (event: unknown) => boolean = () => false
+
 // Mock dependencies
 vi.mock("../store", () => {
   return {
@@ -54,7 +58,7 @@ vi.mock("../store", () => {
     flushTaskChatEventsBatch: vi.fn(),
     isRalphStatus: (s: unknown) =>
       typeof s === "string" && ["stopped", "starting", "running"].includes(s),
-    isSessionBoundary: () => false,
+    isSessionBoundary: (event: unknown) => mockIsSessionBoundary(event),
     // Selector functions that read from the mock store state
     selectRalphStatus: (state: {
       instances: Map<string, { status: string }>
@@ -150,6 +154,8 @@ describe("ralphConnection event timestamp tracking", () => {
     mockSaveEvent.mockClear()
     mockEnqueue.mockClear()
     MockWebSocket.instances = []
+    // Reset session boundary mock to default (no boundaries)
+    mockIsSessionBoundary = () => false
   })
 
   afterEach(() => {
@@ -197,6 +203,71 @@ describe("ralphConnection event timestamp tracking", () => {
   describe("getCurrentSessionId", () => {
     it("returns undefined for unknown instances", () => {
       expect(getCurrentSessionId("unknown-instance")).toBeUndefined()
+    })
+  })
+
+  describe("getCurrentSession", () => {
+    it("returns undefined for unknown instances", () => {
+      expect(getCurrentSession("unknown-instance")).toBeUndefined()
+    })
+
+    it("returns full SessionInfo object with id and startedAt", () => {
+      const instanceId = "test-instance-session-info"
+      const sessionId = "session-xyz-789"
+
+      setCurrentSessionId(instanceId, sessionId)
+
+      const sessionInfo = getCurrentSession(instanceId)
+      expect(sessionInfo).toBeDefined()
+      expect(sessionInfo?.id).toBe(sessionId)
+      // startedAt should be a number (timestamp)
+      expect(typeof sessionInfo?.startedAt).toBe("number")
+      expect(sessionInfo?.startedAt).toBeGreaterThan(0)
+    })
+
+    it("returns consistent SessionInfo for multiple calls", () => {
+      const instanceId = "consistent-test-instance"
+      const sessionId = "consistent-session-123"
+
+      setCurrentSessionId(instanceId, sessionId)
+
+      const session1 = getCurrentSession(instanceId)
+      const session2 = getCurrentSession(instanceId)
+
+      expect(session1).toEqual(session2)
+      expect(session1?.id).toBe(sessionId)
+      expect(session1?.startedAt).toBe(session2?.startedAt)
+    })
+
+    it("preserves startedAt when session ID is updated", () => {
+      const instanceId = "preserve-startedat-instance"
+      const firstSessionId = "first-session"
+      const secondSessionId = "second-session"
+
+      // Set initial session
+      setCurrentSessionId(instanceId, firstSessionId)
+      const firstSession = getCurrentSession(instanceId)
+      const originalStartedAt = firstSession?.startedAt
+
+      // Update session ID - should preserve startedAt
+      setCurrentSessionId(instanceId, secondSessionId)
+      const updatedSession = getCurrentSession(instanceId)
+
+      expect(updatedSession?.id).toBe(secondSessionId)
+      expect(updatedSession?.startedAt).toBe(originalStartedAt)
+    })
+
+    it("returns different SessionInfo for different instances", () => {
+      setCurrentSessionId("instance-a", "session-a")
+      setCurrentSessionId("instance-b", "session-b")
+
+      const sessionA = getCurrentSession("instance-a")
+      const sessionB = getCurrentSession("instance-b")
+
+      expect(sessionA?.id).toBe("session-a")
+      expect(sessionB?.id).toBe("session-b")
+      // IDs should be different
+      expect(sessionA?.id).not.toBe(sessionB?.id)
     })
   })
 
@@ -807,6 +878,426 @@ describe("ralphConnection event timestamp tracking", () => {
 
       // Store should be updated with server events
       expect(mockStoreState.setEvents).toHaveBeenCalledWith(serverEvents)
+    })
+  })
+
+  describe("synchronous session ID generation on session boundaries (bug r-tufi7.36 fix)", () => {
+    // These tests verify the core fix for bug r-tufi7.36:
+    // Session IDs are now generated synchronously in ralphConnection.ts when session
+    // boundary events arrive, eliminating the race condition where events could be
+    // persisted before useSessionPersistence React effect ran to generate the session ID.
+
+    beforeEach(() => {
+      // Install mock WebSocket
+      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
+      MockWebSocket.instances = []
+      mockEnqueue.mockClear()
+      mockStoreState = createMockStoreState()
+      // Add resetSessionStats to mock store
+      mockStoreState.resetSessionStats = vi.fn()
+      mockStoreState.resetSessionStatsForInstance = vi.fn()
+    })
+
+    afterEach(() => {
+      // Restore original WebSocket
+      globalThis.WebSocket = originalWebSocket
+      ralphConnection.reset()
+    })
+
+    it("generates session ID synchronously when ralph:event with session boundary arrives", async () => {
+      const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+
+      // Configure mock to detect session boundaries for system init events
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string; subtype?: string }
+        return e.type === "system" && e.subtype === "init"
+      }
+
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      // Initially no session ID
+      expect(getCurrentSessionId("test-instance")).toBeUndefined()
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const timestamp = 1706123456789
+
+      // Simulate a ralph:event with a session boundary event
+      ws.simulateMessage({
+        type: "ralph:event",
+        event: {
+          type: "system",
+          subtype: "init",
+          timestamp,
+        },
+      })
+
+      // Session ID should be generated synchronously (before useSessionPersistence effect runs)
+      const sessionId = getCurrentSessionId("test-instance")
+      expect(sessionId).toBeDefined()
+      // Session ID format should be instanceId-timestamp
+      expect(sessionId).toBe(`test-instance-${timestamp}`)
+
+      // Full session info should also be available
+      const sessionInfo = getCurrentSession("test-instance")
+      expect(sessionInfo?.id).toBe(`test-instance-${timestamp}`)
+      expect(sessionInfo?.startedAt).toBe(timestamp)
+
+      // Verify debug log was called
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Session ID generated synchronously"),
+      )
+
+      debugSpy.mockRestore()
+    })
+
+    it("uses server-generated sessionId from ralph_session_start events", async () => {
+      // Configure mock to detect ralph_session_start as session boundary
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string }
+        return e.type === "ralph_session_start"
+      }
+
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const serverSessionId = "550e8400-e29b-41d4-a716-446655440000"
+      const timestamp = 1706123456789
+
+      // Simulate a ralph:event with server-generated sessionId
+      ws.simulateMessage({
+        type: "ralph:event",
+        event: {
+          type: "ralph_session_start",
+          timestamp,
+          sessionId: serverSessionId, // Server-generated UUID
+          session: 1,
+          totalSessions: 5,
+        },
+      })
+
+      // Session ID should be the server-generated UUID
+      expect(getCurrentSessionId("test-instance")).toBe(serverSessionId)
+
+      const sessionInfo = getCurrentSession("test-instance")
+      expect(sessionInfo?.id).toBe(serverSessionId)
+      expect(sessionInfo?.startedAt).toBe(timestamp)
+    })
+
+    it("falls back to generated ID when sessionId missing from ralph_session_start", async () => {
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string }
+        return e.type === "ralph_session_start"
+      }
+
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const timestamp = 1706123456789
+
+      // Event without sessionId field (backward compatibility)
+      ws.simulateMessage({
+        type: "ralph:event",
+        event: {
+          type: "ralph_session_start",
+          timestamp,
+          session: 1,
+          totalSessions: 5,
+          // No sessionId field
+        },
+      })
+
+      // Should fall back to generated format
+      expect(getCurrentSessionId("test-instance")).toBe(`test-instance-${timestamp}`)
+    })
+
+    it("uses Date.now() as fallback when event has no timestamp", async () => {
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string; subtype?: string }
+        return e.type === "system" && e.subtype === "init"
+      }
+
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const beforeTime = Date.now()
+
+      // Event without timestamp
+      ws.simulateMessage({
+        type: "ralph:event",
+        event: {
+          type: "system",
+          subtype: "init",
+          // No timestamp
+        },
+      })
+
+      const afterTime = Date.now()
+
+      const sessionId = getCurrentSessionId("test-instance")
+      expect(sessionId).toBeDefined()
+
+      // Extract timestamp from session ID
+      const idTimestamp = parseInt(sessionId!.split("-").slice(-1)[0], 10)
+      expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime)
+      expect(idTimestamp).toBeLessThanOrEqual(afterTime)
+    })
+
+    it("persists events with session ID immediately available", async () => {
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string; subtype?: string }
+        return e.type === "system" && e.subtype === "init"
+      }
+
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const timestamp = 1706123456789
+      const expectedSessionId = `test-instance-${timestamp}`
+
+      // Simulate session boundary event
+      ws.simulateMessage({
+        type: "ralph:event",
+        event: {
+          type: "system",
+          subtype: "init",
+          timestamp,
+          id: "evt-init-1",
+        },
+      })
+
+      // Event should be persisted with the session ID
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "evt-init-1",
+          sessionId: expectedSessionId,
+        }),
+        expectedSessionId,
+      )
+    })
+
+    it("resets session stats when session boundary detected", async () => {
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string; subtype?: string }
+        return e.type === "system" && e.subtype === "init"
+      }
+
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      ws.simulateMessage({
+        type: "ralph:event",
+        event: {
+          type: "system",
+          subtype: "init",
+          timestamp: Date.now(),
+        },
+      })
+
+      // Session stats should be reset
+      expect(mockStoreState.resetSessionStats).toHaveBeenCalled()
+    })
+
+    it("handles session boundary in pending_events message", async () => {
+      const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string; subtype?: string }
+        return e.type === "system" && e.subtype === "init"
+      }
+
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const timestamp = 1706123456789
+
+      // Simulate pending_events with a session boundary event
+      ws.simulateMessage({
+        type: "pending_events",
+        instanceId: "test-instance",
+        events: [
+          {
+            type: "system",
+            subtype: "init",
+            timestamp,
+            id: "pending-evt-1",
+          },
+          {
+            type: "assistant",
+            timestamp: timestamp + 100,
+            id: "pending-evt-2",
+          },
+        ],
+      })
+
+      // Session ID should be generated from the boundary event
+      expect(getCurrentSessionId("test-instance")).toBe(`test-instance-${timestamp}`)
+
+      // Debug log should indicate session boundary in pending events
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Session boundary detected in pending events"),
+      )
+
+      // All events should be persisted with the session ID
+      expect(mockEnqueue).toHaveBeenCalledTimes(2)
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionId: `test-instance-${timestamp}` }),
+        `test-instance-${timestamp}`,
+      )
+
+      debugSpy.mockRestore()
+    })
+
+    it("routes session boundary to correct instance when instanceId specified", async () => {
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string; subtype?: string }
+        return e.type === "system" && e.subtype === "init"
+      }
+
+      // Set up non-active instance
+      const otherInstanceId = "other-instance"
+      mockStoreState.instances.set(otherInstanceId, {
+        events: [],
+        status: "stopped",
+      })
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const timestamp = 1706123456789
+
+      // Session boundary event for non-active instance
+      ws.simulateMessage({
+        type: "ralph:event",
+        instanceId: otherInstanceId,
+        event: {
+          type: "system",
+          subtype: "init",
+          timestamp,
+        },
+      })
+
+      // Session ID should be set for the correct instance
+      expect(getCurrentSessionId(otherInstanceId)).toBe(`${otherInstanceId}-${timestamp}`)
+      // Active instance should not have a session ID
+      expect(getCurrentSessionId("test-instance")).toBeUndefined()
+
+      // Stats should be reset for the non-active instance
+      expect(mockStoreState.resetSessionStatsForInstance).toHaveBeenCalledWith(otherInstanceId)
+    })
+
+    it("overwrites previous session ID when new session boundary arrives", async () => {
+      mockIsSessionBoundary = (event: unknown) => {
+        const e = event as { type?: string; subtype?: string }
+        return e.type === "system" && e.subtype === "init"
+      }
+
+      mockStoreState.instances.set("test-instance", {
+        events: [],
+        status: "stopped",
+      })
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      const timestamp1 = 1706123456789
+      const timestamp2 = 1706123457890
+
+      // First session boundary
+      ws.simulateMessage({
+        type: "ralph:event",
+        event: {
+          type: "system",
+          subtype: "init",
+          timestamp: timestamp1,
+        },
+      })
+
+      expect(getCurrentSessionId("test-instance")).toBe(`test-instance-${timestamp1}`)
+
+      // Second session boundary (new session starts)
+      ws.simulateMessage({
+        type: "ralph:event",
+        event: {
+          type: "system",
+          subtype: "init",
+          timestamp: timestamp2,
+        },
+      })
+
+      // Session ID should be updated to the new session
+      expect(getCurrentSessionId("test-instance")).toBe(`test-instance-${timestamp2}`)
+
+      // Session info should reflect the new session
+      const sessionInfo = getCurrentSession("test-instance")
+      expect(sessionInfo?.id).toBe(`test-instance-${timestamp2}`)
+      expect(sessionInfo?.startedAt).toBe(timestamp2)
     })
   })
 })

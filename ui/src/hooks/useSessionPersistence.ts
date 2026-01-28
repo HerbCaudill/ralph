@@ -8,8 +8,9 @@
  * Note: This hook only persists session metadata (v3+ schema). Events are
  * persisted separately in ralphConnection.ts as they arrive.
  *
- * Session IDs are preferably extracted from the server-generated sessionId in
- * ralph_session_start events, ensuring stable UUIDs for reliable storage.
+ * Session IDs are now generated synchronously in ralphConnection.ts when session
+ * boundary events arrive. This hook reads the session ID from there to ensure
+ * consistency and avoid race conditions (fixes r-tufi7.36).
  */
 
 import { useEffect, useRef, useCallback, useState } from "react"
@@ -17,31 +18,7 @@ import { eventDatabase } from "@/lib/persistence"
 import type { PersistedSession } from "@/lib/persistence"
 import type { ChatEvent, TokenUsage, ContextWindow, SessionInfo } from "@/types"
 import { getSessionBoundaries, getTaskFromSessionEvents } from "@/store"
-import { setCurrentSessionId as setRalphConnectionSessionId } from "@/lib/ralphConnection"
-
-/**
- * Extracts the session ID from a session boundary event.
- *
- * Prefers the server-generated sessionId field (added in ralph_session_start events).
- * Falls back to generating a deterministic ID from instanceId + timestamp for
- * backward compatibility with events that don't have a sessionId.
- */
-function getSessionIdFromEvent(
-  event: ChatEvent,
-  instanceId: string,
-): { sessionId: string; startedAt: number } {
-  const startedAt = event.timestamp || Date.now()
-
-  // Prefer server-generated sessionId if available (from ralph_session_start events)
-  const serverSessionId = (event as { sessionId?: string }).sessionId
-  if (serverSessionId && typeof serverSessionId === "string") {
-    return { sessionId: serverSessionId, startedAt }
-  }
-
-  // Fall back to generating a deterministic ID for backward compatibility
-  // Format: "{instanceId}-{timestamp}"
-  return { sessionId: `${instanceId}-${startedAt}`, startedAt }
-}
+import { getCurrentSession } from "@/lib/ralphConnection"
 
 /**
  * Checks if an event signals session completion.
@@ -336,8 +313,19 @@ export function useSessionPersistence(
         }
 
         // Start tracking new session
-        // Extract session ID from the boundary event (prefers server-generated ID)
-        const { sessionId: newId, startedAt } = getSessionIdFromEvent(boundaryEvent, instanceId)
+        // Get session ID from ralphConnection.ts (generated synchronously when the event arrived)
+        // This fixes the race condition where events could be persisted before the session ID was set (r-tufi7.36)
+        const sessionInfo = getCurrentSession(instanceId)
+        if (!sessionInfo) {
+          console.warn(
+            `[useSessionPersistence] No session ID found in ralphConnection for instance ${instanceId}. ` +
+              `This is unexpected - session ID should be set synchronously when the boundary event arrives.`,
+          )
+          lastProcessedEventCountRef.current = events.length
+          return
+        }
+
+        const { id: newId, startedAt } = sessionInfo
 
         currentSessionRef.current = {
           id: newId,
@@ -346,12 +334,8 @@ export function useSessionPersistence(
           eventCount: 0,
           saved: false,
         }
-        console.debug(`[useSessionPersistence] Setting currentSessionId to: ${newId}`)
+        console.debug(`[useSessionPersistence] Using session ID from ralphConnection: ${newId}`)
         setCurrentSessionId(newId)
-
-        // Sync session ID to ralphConnection singleton so it uses the same ID for IndexedDB persistence
-        // This ensures both systems (hook and singleton) use the same session ID, avoiding event/session mismatches
-        setRalphConnectionSessionId(instanceId, newId)
 
         // Save the new session immediately so it appears in the session history dropdown
         // This ensures sessions are visible even before they complete

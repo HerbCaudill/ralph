@@ -13,11 +13,11 @@ vi.mock("@/lib/persistence", () => ({
   },
 }))
 
-// Mock the ralphConnection module to verify session ID sync
-const mockSetRalphConnectionSessionId = vi.fn()
+// Mock the ralphConnection module
+// getCurrentSession is called by the hook to get the session ID (generated synchronously when events arrive)
+const mockGetCurrentSession = vi.fn()
 vi.mock("@/lib/ralphConnection", () => ({
-  setCurrentSessionId: (instanceId: string, sessionId: string) =>
-    mockSetRalphConnectionSessionId(instanceId, sessionId),
+  getCurrentSession: (instanceId: string) => mockGetCurrentSession(instanceId),
 }))
 
 describe("useSessionPersistence", () => {
@@ -74,7 +74,13 @@ describe("useSessionPersistence", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSetRalphConnectionSessionId.mockClear()
+    mockGetCurrentSession.mockClear()
+    // Default mock implementation: generate session ID from instanceId and timestamp
+    // This mimics the behavior of ralphConnection.ts
+    mockGetCurrentSession.mockImplementation((_instanceId: string) => {
+      // Return undefined by default - tests need to set up the mock appropriately
+      return undefined
+    })
   })
 
   afterEach(() => {
@@ -117,6 +123,10 @@ describe("useSessionPersistence", () => {
       const timestamp = Date.now()
       const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
 
+      // Mock getCurrentSession to return the expected session info
+      // (simulating what ralphConnection.ts would have set when the event arrived)
+      mockGetCurrentSession.mockReturnValue({ id: `default-${timestamp}`, startedAt: timestamp })
+
       const { result } = renderHook(() =>
         useSessionPersistence({
           ...defaultOptions,
@@ -132,6 +142,9 @@ describe("useSessionPersistence", () => {
     it("saves session immediately when detected so it appears in history", async () => {
       const timestamp = Date.now()
       const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
+
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${timestamp}`, startedAt: timestamp })
 
       renderHook(() =>
         useSessionPersistence({
@@ -162,6 +175,14 @@ describe("useSessionPersistence", () => {
 
       const beforeTime = Date.now()
 
+      // Mock getCurrentSession to simulate what ralphConnection.ts would return
+      // when it generates an ID using Date.now() as fallback
+      // Use beforeTime directly to avoid timing flakiness
+      mockGetCurrentSession.mockReturnValue({
+        id: `default-${beforeTime}`,
+        startedAt: beforeTime,
+      })
+
       const { result } = renderHook(() =>
         useSessionPersistence({
           ...defaultOptions,
@@ -169,17 +190,15 @@ describe("useSessionPersistence", () => {
         }),
       )
 
-      const afterTime = Date.now()
-
       await waitFor(() => {
         expect(result.current.currentSessionId).not.toBeNull()
         // The ID should be generated with a fallback timestamp
         expect(result.current.currentSessionId).toMatch(/^default-\d+$/)
         // Extract the timestamp from the ID
         const idTimestamp = parseInt(result.current.currentSessionId!.split("-")[1], 10)
-        // The fallback timestamp should be between beforeTime and afterTime
-        expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime)
-        expect(idTimestamp).toBeLessThanOrEqual(afterTime)
+        // The fallback timestamp should be a recent timestamp (within last second)
+        expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime - 1000)
+        expect(idTimestamp).toBeLessThanOrEqual(beforeTime + 1000)
       })
     })
 
@@ -193,6 +212,14 @@ describe("useSessionPersistence", () => {
 
       const beforeTime = Date.now()
 
+      // Mock getCurrentSession to simulate what ralphConnection.ts would return
+      // when it generates an ID using Date.now() as fallback for timestamp 0
+      // Use beforeTime directly to avoid timing flakiness
+      mockGetCurrentSession.mockReturnValue({
+        id: `default-${beforeTime}`,
+        startedAt: beforeTime,
+      })
+
       const { result } = renderHook(() =>
         useSessionPersistence({
           ...defaultOptions,
@@ -200,23 +227,27 @@ describe("useSessionPersistence", () => {
         }),
       )
 
-      const afterTime = Date.now()
-
       await waitFor(() => {
         expect(result.current.currentSessionId).not.toBeNull()
         // The ID should be generated with a fallback timestamp (not 0)
         expect(result.current.currentSessionId).toMatch(/^default-\d+$/)
         // Extract the timestamp from the ID
         const idTimestamp = parseInt(result.current.currentSessionId!.split("-")[1], 10)
-        // The fallback timestamp should be between beforeTime and afterTime (not 0)
-        expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime)
-        expect(idTimestamp).toBeLessThanOrEqual(afterTime)
+        // The fallback timestamp should be a recent timestamp (within last second, not 0)
+        expect(idTimestamp).toBeGreaterThanOrEqual(beforeTime - 1000)
+        expect(idTimestamp).toBeLessThanOrEqual(beforeTime + 1000)
         expect(idTimestamp).not.toBe(0)
       })
     })
 
     it("generates stable session IDs based on instance and timestamp", async () => {
       const timestamp = 1706123456789
+
+      // Mock getCurrentSession to return session IDs based on instanceId
+      mockGetCurrentSession.mockImplementation((instanceId: string) => ({
+        id: `${instanceId}-${timestamp}`,
+        startedAt: timestamp,
+      }))
 
       const { result: result1 } = renderHook(() =>
         useSessionPersistence({
@@ -247,6 +278,9 @@ describe("useSessionPersistence", () => {
       const serverSessionId = "550e8400-e29b-41d4-a716-446655440000"
       const events: ChatEvent[] = [createRalphSessionStartEvent(timestamp, serverSessionId)]
 
+      // Mock getCurrentSession to return the server-generated session ID
+      mockGetCurrentSession.mockReturnValue({ id: serverSessionId, startedAt: timestamp })
+
       const { result } = renderHook(() =>
         useSessionPersistence({
           ...defaultOptions,
@@ -259,31 +293,13 @@ describe("useSessionPersistence", () => {
       })
     })
 
-    it("syncs server-generated sessionId to ralphConnection", async () => {
-      const timestamp = Date.now()
-      const serverSessionId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-      const events: ChatEvent[] = [createRalphSessionStartEvent(timestamp, serverSessionId)]
-
-      renderHook(() =>
-        useSessionPersistence({
-          ...defaultOptions,
-          instanceId: "test-instance",
-          events,
-        }),
-      )
-
-      await waitFor(() => {
-        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith(
-          "test-instance",
-          serverSessionId,
-        )
-      })
-    })
-
     it("saves session with server-generated sessionId", async () => {
       const timestamp = Date.now()
       const serverSessionId = "server-uuid-12345"
       const events: ChatEvent[] = [createRalphSessionStartEvent(timestamp, serverSessionId)]
+
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: serverSessionId, startedAt: timestamp })
 
       renderHook(() =>
         useSessionPersistence({
@@ -310,6 +326,12 @@ describe("useSessionPersistence", () => {
         totalSessions: 5,
       } as ChatEvent
 
+      // Mock getCurrentSession to return a generated ID (as ralphConnection.ts would)
+      mockGetCurrentSession.mockReturnValue({
+        id: `fallback-test-${timestamp}`,
+        startedAt: timestamp,
+      })
+
       const { result } = renderHook(() =>
         useSessionPersistence({
           ...defaultOptions,
@@ -330,12 +352,16 @@ describe("useSessionPersistence", () => {
       const sessionId1 = "session-uuid-1"
       const sessionId2 = "session-uuid-2"
 
+      // Start with no session
+      mockGetCurrentSession.mockReturnValue(undefined)
+
       const { rerender, result } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
       )
 
       // First session with server sessionId
+      mockGetCurrentSession.mockReturnValue({ id: sessionId1, startedAt: startTime1 })
       rerender({
         ...defaultOptions,
         events: [
@@ -350,6 +376,7 @@ describe("useSessionPersistence", () => {
       })
 
       // Second session starts with a different server sessionId
+      mockGetCurrentSession.mockReturnValue({ id: sessionId2, startedAt: startTime2 })
       rerender({
         ...defaultOptions,
         events: [
@@ -363,15 +390,14 @@ describe("useSessionPersistence", () => {
       await waitFor(() => {
         expect(result.current.currentSessionId).toBe(sessionId2)
       })
-
-      // Both session IDs should have been synced to ralphConnection
-      expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith("default", sessionId1)
-      expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith("default", sessionId2)
     })
 
     it("prefers server sessionId over timestamp-based ID in same event", async () => {
       const timestamp = Date.now()
       const serverSessionId = "explicit-server-id"
+
+      // Mock getCurrentSession to return the server session ID
+      mockGetCurrentSession.mockReturnValue({ id: serverSessionId, startedAt: timestamp })
 
       // ralph_session_start events have both timestamp and sessionId
       // The server-generated sessionId should take precedence
@@ -399,6 +425,9 @@ describe("useSessionPersistence", () => {
         createAssistantEvent(startTime + 200, "Working on the task..."),
         createRalphTaskCompletedEvent(startTime + 300),
       ]
+
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
 
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
@@ -440,6 +469,9 @@ describe("useSessionPersistence", () => {
         createAssistantEvent(startTime + 200, "Done! <promise>COMPLETE</promise>"),
       ]
 
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
+
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
@@ -470,6 +502,9 @@ describe("useSessionPersistence", () => {
       const startTime1 = Date.now()
       const startTime2 = startTime1 + 1000
 
+      // Start with first session
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime1}`, startedAt: startTime1 })
+
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
@@ -488,6 +523,9 @@ describe("useSessionPersistence", () => {
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 10))
       })
+
+      // Second session starts - update mock to return new session ID
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime2}`, startedAt: startTime2 })
 
       // Second session starts - should save the first as complete
       rerender({
@@ -527,6 +565,9 @@ describe("useSessionPersistence", () => {
         createRalphTaskCompletedEvent(startTime + 200),
       ]
 
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
+
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
@@ -558,6 +599,9 @@ describe("useSessionPersistence", () => {
         createSystemInitEvent(startTime),
         createAssistantEvent(startTime + 100, "Working..."),
       ]
+
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
 
       const { result } = renderHook(() =>
         useSessionPersistence({
@@ -646,6 +690,9 @@ describe("useSessionPersistence", () => {
         ),
       ]
 
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
+
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
@@ -683,6 +730,9 @@ describe("useSessionPersistence", () => {
         createSystemInitEvent(startTime),
         createRalphTaskCompletedEvent(startTime + 100),
       ]
+
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
 
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
@@ -722,6 +772,9 @@ describe("useSessionPersistence", () => {
         createRalphTaskCompletedEvent(startTime + 100),
       ]
 
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
+
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
@@ -744,12 +797,16 @@ describe("useSessionPersistence", () => {
     })
   })
 
-  describe("ralphConnection session ID sync (bug r-tufi7.1)", () => {
-    it("syncs session ID to ralphConnection when a new session is detected", async () => {
+  describe("ralphConnection session ID coordination (bug r-tufi7.36)", () => {
+    it("reads session ID from ralphConnection (generated synchronously)", async () => {
       const timestamp = Date.now()
+      const sessionId = `test-instance-${timestamp}`
       const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
 
-      renderHook(() =>
+      // Mock getCurrentSession to return the session ID that ralphConnection would have set
+      mockGetCurrentSession.mockReturnValue({ id: sessionId, startedAt: timestamp })
+
+      const { result } = renderHook(() =>
         useSessionPersistence({
           ...defaultOptions,
           instanceId: "test-instance",
@@ -758,18 +815,52 @@ describe("useSessionPersistence", () => {
       )
 
       await waitFor(() => {
-        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith(
-          "test-instance",
-          `test-instance-${timestamp}`,
-        )
+        expect(result.current.currentSessionId).toBe(sessionId)
       })
+
+      // Verify getCurrentSession was called with the correct instanceId
+      expect(mockGetCurrentSession).toHaveBeenCalledWith("test-instance")
     })
 
-    it("syncs session ID for each new session boundary", async () => {
+    it("handles missing session ID gracefully (logs warning)", async () => {
+      const timestamp = Date.now()
+      const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
+
+      // Mock getCurrentSession to return undefined (no session ID yet)
+      mockGetCurrentSession.mockReturnValue(undefined)
+
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+      const { result } = renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          events,
+        }),
+      )
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      // Session ID should remain null if not found in ralphConnection
+      expect(result.current.currentSessionId).toBeNull()
+      // Warning should be logged
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("No session ID found"))
+
+      consoleSpy.mockRestore()
+    })
+
+    it("updates to new session ID when session boundary changes", async () => {
       const startTime1 = Date.now()
       const startTime2 = startTime1 + 1000
 
-      const { rerender } = renderHook(
+      // Start with first session
+      mockGetCurrentSession.mockReturnValue({
+        id: `instance-x-${startTime1}`,
+        startedAt: startTime1,
+      })
+
+      const { rerender, result } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         {
           initialProps: { ...defaultOptions, instanceId: "instance-x", events: [] as ChatEvent[] },
@@ -788,15 +879,16 @@ describe("useSessionPersistence", () => {
       })
 
       await waitFor(() => {
-        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith(
-          "instance-x",
-          `instance-x-${startTime1}`,
-        )
+        expect(result.current.currentSessionId).toBe(`instance-x-${startTime1}`)
       })
 
-      mockSetRalphConnectionSessionId.mockClear()
+      // Update mock for second session
+      mockGetCurrentSession.mockReturnValue({
+        id: `instance-x-${startTime2}`,
+        startedAt: startTime2,
+      })
 
-      // Second session starts - should sync the new session ID
+      // Second session starts
       rerender({
         ...defaultOptions,
         instanceId: "instance-x",
@@ -809,29 +901,7 @@ describe("useSessionPersistence", () => {
       })
 
       await waitFor(() => {
-        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith(
-          "instance-x",
-          `instance-x-${startTime2}`,
-        )
-      })
-    })
-
-    it("uses the same instanceId when syncing to ralphConnection", async () => {
-      const timestamp = 1706123456789
-
-      renderHook(() =>
-        useSessionPersistence({
-          ...defaultOptions,
-          instanceId: "my-specific-instance",
-          events: [createSystemInitEvent(timestamp)],
-        }),
-      )
-
-      await waitFor(() => {
-        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledTimes(1)
-        const [instanceId, sessionId] = mockSetRalphConnectionSessionId.mock.calls[0]
-        expect(instanceId).toBe("my-specific-instance")
-        expect(sessionId).toBe("my-specific-instance-1706123456789")
+        expect(result.current.currentSessionId).toBe(`instance-x-${startTime2}`)
       })
     })
   })
@@ -845,6 +915,9 @@ describe("useSessionPersistence", () => {
         createAssistantEvent(startTime + 100, "Checking for work..."),
         createAssistantEvent(startTime + 200, "No work found. <promise>COMPLETE</promise>"),
       ]
+
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
 
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
@@ -876,6 +949,9 @@ describe("useSessionPersistence", () => {
         createAssistantEvent(startTime + 200, "Working on the task..."),
         createRalphTaskCompletedEvent(startTime + 300),
       ]
+
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
 
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
@@ -909,6 +985,9 @@ describe("useSessionPersistence", () => {
       const startTime1 = Date.now()
       const startTime2 = startTime1 + 1000
 
+      // Start with first session
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime1}`, startedAt: startTime1 })
+
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
@@ -923,6 +1002,9 @@ describe("useSessionPersistence", () => {
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 10))
       })
+
+      // Update mock for second session
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime2}`, startedAt: startTime2 })
 
       // Start second session - should trigger save/filter of first
       rerender({
@@ -946,6 +1028,9 @@ describe("useSessionPersistence", () => {
       const startTime1 = Date.now()
       const startTime2 = startTime1 + 1000
 
+      // Start with first session
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime1}`, startedAt: startTime1 })
+
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
         { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
@@ -963,6 +1048,9 @@ describe("useSessionPersistence", () => {
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 10))
       })
+
+      // Update mock for second session
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime2}`, startedAt: startTime2 })
 
       // Start second session
       rerender({
@@ -986,6 +1074,9 @@ describe("useSessionPersistence", () => {
         createRalphTaskStartedEvent(startTime + 100, "task-1"),
         createAssistantEvent(startTime + 200, "Done. <promise>COMPLETE</promise>"),
       ]
+
+      // Mock getCurrentSession
+      mockGetCurrentSession.mockReturnValue({ id: `default-${startTime}`, startedAt: startTime })
 
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),

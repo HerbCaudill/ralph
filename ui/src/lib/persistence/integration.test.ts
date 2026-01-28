@@ -9,7 +9,7 @@
  * EventDatabase with fake-indexeddb to verify the actual persistence behavior.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import "fake-indexeddb/auto"
 import { EventDatabase } from "./EventDatabase"
@@ -22,6 +22,14 @@ import {
   type UseTaskChatPersistenceOptions,
 } from "@/hooks/useTaskChatPersistence"
 import type { ChatEvent, TaskChatMessage, TokenUsage, ContextWindow, SessionInfo } from "@/types"
+
+// Mock getCurrentSession from ralphConnection
+// This is needed because useSessionPersistence now reads session IDs from ralphConnection
+// instead of generating them itself (fixes r-tufi7.36)
+const mockGetCurrentSession = vi.fn()
+vi.mock("@/lib/ralphConnection", () => ({
+  getCurrentSession: (instanceId: string) => mockGetCurrentSession(instanceId),
+}))
 
 /**
  * Create a fresh EventDatabase instance for each test.
@@ -37,6 +45,7 @@ describe("Persistence Integration Tests", () => {
   beforeEach(async () => {
     db = createTestDatabase()
     await db.init()
+    mockGetCurrentSession.mockReset()
   })
 
   afterEach(async () => {
@@ -81,6 +90,12 @@ describe("Persistence Integration Tests", () => {
     it("saves session on completion and can be recovered", async () => {
       const instanceId = "test-instance"
       const startTime = Date.now()
+
+      // Mock getCurrentSession to return session info
+      mockGetCurrentSession.mockReturnValue({
+        id: `${instanceId}-${startTime}`,
+        startedAt: startTime,
+      })
 
       // Build a complete session sequence
       const events: ChatEvent[] = [
@@ -148,6 +163,12 @@ describe("Persistence Integration Tests", () => {
       const instanceId = "test-instance"
       const startTime = Date.now()
 
+      // Mock getCurrentSession to return session info
+      mockGetCurrentSession.mockReturnValue({
+        id: `${instanceId}-${startTime}`,
+        startedAt: startTime,
+      })
+
       // Build an in-progress session (not completed)
       const events: ChatEvent[] = [
         createSystemInitEvent(startTime),
@@ -200,6 +221,12 @@ describe("Persistence Integration Tests", () => {
       const instanceId = "test-instance"
       const startTime = Date.now()
 
+      // Start with first session
+      mockGetCurrentSession.mockReturnValue({
+        id: `${instanceId}-${startTime}`,
+        startedAt: startTime,
+      })
+
       // First session
       const events1: ChatEvent[] = [
         createSystemInitEvent(startTime),
@@ -232,9 +259,19 @@ describe("Persistence Integration Tests", () => {
 
       // Add events progressively
       for (let i = 0; i < allEvents.length; i++) {
+        const currentEvents = allEvents.slice(0, i + 1)
+
+        // Update mock when second session boundary is reached
+        if (currentEvents.length > events1.length) {
+          mockGetCurrentSession.mockReturnValue({
+            id: `${instanceId}-${startTime + 1000}`,
+            startedAt: startTime + 1000,
+          })
+        }
+
         rerender({
           instanceId,
-          events: allEvents.slice(0, i + 1),
+          events: currentEvents,
           tokenUsage: mockTokenUsage,
           contextWindow: mockContextWindow,
           session: mockSessionInfo,

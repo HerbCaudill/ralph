@@ -8,6 +8,7 @@ import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 import { extractTokenUsageFromEvent } from "./extractTokenUsage"
 import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
+import type { ChatEvent } from "@/types"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -50,9 +51,37 @@ let currentReconnectDelay = INITIAL_RECONNECT_DELAY
 const lastEventTimestamps: Map<string, number> = new Map()
 
 // Session tracking for IndexedDB persistence
-// Maps instanceId to the current session ID for that instance
-// Session IDs are set by useSessionPersistence via setCurrentSessionId (single source of truth)
-const currentSessionIds: Map<string, string> = new Map()
+// Maps instanceId to the current session info (ID and start time) for that instance
+// Session IDs are now generated synchronously when session boundary events arrive,
+// eliminating race conditions with React effect timing (fixes r-tufi7.36)
+interface SessionInfo {
+  id: string
+  startedAt: number
+}
+const currentSessions: Map<string, SessionInfo> = new Map()
+
+/**
+ * Extracts the session ID from a session boundary event.
+ * Prefers the server-generated sessionId field (added in ralph_session_start events).
+ * Falls back to generating a deterministic ID from instanceId + timestamp for
+ * backward compatibility with events that don't have a sessionId.
+ */
+function getSessionIdFromEvent(
+  event: ChatEvent,
+  instanceId: string,
+): { sessionId: string; startedAt: number } {
+  const startedAt = event.timestamp || Date.now()
+
+  // Prefer server-generated sessionId if available (from ralph_session_start events)
+  const serverSessionId = (event as { sessionId?: string }).sessionId
+  if (serverSessionId && typeof serverSessionId === "string") {
+    return { sessionId: serverSessionId, startedAt }
+  }
+
+  // Fall back to generating a deterministic ID for backward compatibility
+  // Format: "{instanceId}-{timestamp}"
+  return { sessionId: `${instanceId}-${startedAt}`, startedAt }
+}
 
 /**
  * Persist an event to IndexedDB via the write queue.
@@ -187,7 +216,7 @@ function handleMessage(event: MessageEvent): void {
 
             // Persist the missing events to IndexedDB to repair the cache
             // This runs in the background so it doesn't block the UI update
-            const sessionId = currentSessionIds.get(targetInstanceId)
+            const sessionId = currentSessions.get(targetInstanceId)?.id
             if (sessionId) {
               const serverEvents = data.events as Array<{
                 type: string
@@ -254,27 +283,35 @@ function handleMessage(event: MessageEvent): void {
               `[ralphConnection] Processing ${pendingEvents.length} pending events for instance: ${pendingInstanceId}`,
             )
             const isPendingActive = pendingInstanceId === store.activeInstanceId
-            for (const event of pendingEvents) {
-              // Note: Session boundaries in pending events are detected by useSessionPersistence
-              // which will set the session ID via setCurrentSessionId. We don't generate IDs here
-              // to avoid dual session ID tracking (bug r-tufi7.1).
+            for (const pendingEvent of pendingEvents) {
+              // Detect session boundaries synchronously (fixes r-tufi7.36)
+              // This ensures session ID is set before we try to persist the event
+              if (isSessionBoundary(pendingEvent as ChatEvent)) {
+                const { sessionId, startedAt } = getSessionIdFromEvent(
+                  pendingEvent as ChatEvent,
+                  pendingInstanceId,
+                )
+                currentSessions.set(pendingInstanceId, { id: sessionId, startedAt })
+                console.debug(
+                  `[ralphConnection] Session boundary detected in pending events, new session: ${sessionId}`,
+                )
+              }
 
               // Persist to IndexedDB (deduplication handled by server UUID)
-              // Only persist if we have a session ID (set by useSessionPersistence)
-              const sessionId = currentSessionIds.get(pendingInstanceId)
+              const sessionId = currentSessions.get(pendingInstanceId)?.id
               if (sessionId) {
-                persistEventToIndexedDB(event, sessionId)
+                persistEventToIndexedDB(pendingEvent, sessionId)
               } else {
                 console.debug(
-                  `[ralphConnection] Skipping IndexedDB persistence for pending event (no session ID yet): type=${event.type}`,
+                  `[ralphConnection] Skipping IndexedDB persistence for pending event (no session ID yet): type=${pendingEvent.type}`,
                 )
               }
 
               // Update Zustand for UI
               if (isPendingActive) {
-                store.addEvent(event)
+                store.addEvent(pendingEvent)
               } else {
-                store.addEventForInstance(pendingInstanceId, event)
+                store.addEventForInstance(pendingInstanceId, pendingEvent)
               }
             }
           }
@@ -317,20 +354,30 @@ function handleMessage(event: MessageEvent): void {
             lastEventTimestamps.set(targetInstanceId, event.timestamp)
           }
 
-          // Reset session stats when a new session starts (before adding the event)
-          if (isSessionBoundary(event)) {
+          // Reset session stats and generate session ID when a new session starts
+          // Session ID is generated synchronously to fix race condition (r-tufi7.36)
+          if (isSessionBoundary(event as ChatEvent)) {
             console.debug(`[ralphConnection] Session boundary detected, resetting stats`)
             if (isForActiveInstance) {
               store.resetSessionStats()
             } else {
               store.resetSessionStatsForInstance(targetInstanceId)
             }
-            // Note: Session ID is set by useSessionPersistence via setCurrentSessionId
-            // We don't generate IDs here to avoid dual session ID tracking (bug r-tufi7.1)
+
+            // Generate and store session ID synchronously - this ensures the ID is available
+            // for persistence before the event is processed, fixing the race condition
+            const { sessionId: newSessionId, startedAt } = getSessionIdFromEvent(
+              event as ChatEvent,
+              targetInstanceId,
+            )
+            currentSessions.set(targetInstanceId, { id: newSessionId, startedAt })
+            console.debug(
+              `[ralphConnection] Session ID generated synchronously: ${newSessionId} for instance ${targetInstanceId}`,
+            )
           }
 
           // Persist event to IndexedDB (before updating Zustand for UI)
-          const sessionId = currentSessionIds.get(targetInstanceId)
+          const sessionId = currentSessions.get(targetInstanceId)?.id
           if (sessionId) {
             // Fire and forget - don't block on IndexedDB write
             persistEventToIndexedDB(event, sessionId)
@@ -748,7 +795,7 @@ function reset(): void {
   intentionalClose = false
   resetReconnectState()
   lastEventTimestamps.clear()
-  currentSessionIds.clear()
+  currentSessions.clear()
 }
 
 /**
@@ -774,7 +821,7 @@ export function getLastEventTimestamp(instanceId: string): number | undefined {
  */
 export function clearEventTimestamps(): void {
   lastEventTimestamps.clear()
-  currentSessionIds.clear()
+  currentSessions.clear()
 }
 
 /**
@@ -782,15 +829,29 @@ export function clearEventTimestamps(): void {
  * Used for coordination with persistence hooks and testing.
  */
 export function getCurrentSessionId(instanceId: string): string | undefined {
-  return currentSessionIds.get(instanceId)
+  return currentSessions.get(instanceId)?.id
+}
+
+/**
+ * Get the full session info (ID and startedAt) for an instance.
+ * Used for session metadata persistence.
+ */
+export function getCurrentSession(instanceId: string): SessionInfo | undefined {
+  return currentSessions.get(instanceId)
 }
 
 /**
  * Set the current session ID for an instance.
  * Used when restoring session state on reconnection/reload.
+ * Also used by useSessionPersistence for backward compatibility during transition.
  */
 export function setCurrentSessionId(instanceId: string, sessionId: string): void {
-  currentSessionIds.set(instanceId, sessionId)
+  // Preserve startedAt if session already exists, otherwise use current time
+  const existing = currentSessions.get(instanceId)
+  currentSessions.set(instanceId, {
+    id: sessionId,
+    startedAt: existing?.startedAt ?? Date.now(),
+  })
 }
 
 // Export singleton manager
