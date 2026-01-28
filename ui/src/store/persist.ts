@@ -6,7 +6,7 @@
  *
  * Key design decisions:
  * - Only UI preferences, view state, and workspace metadata are persisted
- * - Events are NOT persisted to localStorage (they are persisted to IndexedDB by useEventPersistence)
+ * - Events are NOT persisted to localStorage (they are persisted to IndexedDB in ralphConnection.ts)
  * - Map/Set are serialized to arrays for JSON compatibility
  * - Schema versioning supports migrations for future changes
  */

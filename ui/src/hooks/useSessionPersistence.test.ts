@@ -264,7 +264,7 @@ describe("useSessionPersistence", () => {
       expect(savedSession?.instanceId).toBe("default")
       expect(savedSession?.completedAt).not.toBeNull()
       expect(savedSession?.eventCount).toBe(events.length)
-      // Events are not included in v3 schema - they're persisted separately by useEventPersistence
+      // Events are not included in v3 schema - they're persisted separately in ralphConnection.ts
       expect(savedSession?.events).toBeUndefined()
     })
 
@@ -503,7 +503,7 @@ describe("useSessionPersistence", () => {
       })
 
       // Session should be saved exactly once when it starts (so it appears in history)
-      // After that, events are persisted separately by useEventPersistence
+      // After that, events are persisted separately in ralphConnection.ts
       // No periodic saves happen during the session
       expect(eventDatabase.saveSession).toHaveBeenCalledTimes(1)
 
@@ -609,7 +609,9 @@ describe("useSessionPersistence", () => {
 
       const { rerender } = renderHook(
         (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
-        { initialProps: { ...defaultOptions, instanceId: "instance-x", events: [] as ChatEvent[] } },
+        {
+          initialProps: { ...defaultOptions, instanceId: "instance-x", events: [] as ChatEvent[] },
+        },
       )
 
       // First session

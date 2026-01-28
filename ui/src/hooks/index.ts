@@ -79,12 +79,6 @@ export {
 } from "./useSessionPersistence"
 
 export {
-  useEventPersistence,
-  type UseEventPersistenceOptions,
-  type UseEventPersistenceResult,
-} from "./useEventPersistence"
-
-export {
   useTaskChatPersistence,
   type UseTaskChatPersistenceOptions,
   type UseTaskChatPersistenceResult,

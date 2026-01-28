@@ -137,7 +137,7 @@ describe("Persistence Integration Tests", () => {
       const savedSession = await db.getSession(savedSessions[0].id)
       expect(savedSession).toBeDefined()
       expect(savedSession?.instanceId).toBe(instanceId)
-      // Events are persisted separately by useEventPersistence in v3 schema
+      // Events are persisted separately in ralphConnection.ts in v3 schema
       expect(savedSession?.eventCount).toBe(events.length)
       expect(savedSession?.events).toBeUndefined()
       expect(savedSession?.taskId).toBe("r-abc123")

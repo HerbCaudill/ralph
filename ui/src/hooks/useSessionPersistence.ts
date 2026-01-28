@@ -6,7 +6,7 @@
  * - Session end (ralph_task_completed or COMPLETE signal)
  *
  * Note: This hook only persists session metadata (v3+ schema). Events are
- * persisted separately by useEventPersistence as they arrive.
+ * persisted separately in ralphConnection.ts as they arrive.
  *
  * Generates a stable GUID per session for reliable storage and retrieval.
  */
@@ -179,7 +179,7 @@ export function useSessionPersistence(
 
   /**
    * Build a PersistedSession from the current state.
-   * Note: Events are persisted separately by useEventPersistence in v3+ schema.
+   * Note: Events are persisted separately in ralphConnection.ts in v3+ schema.
    */
   const buildSessionData = useCallback(
     (
@@ -383,7 +383,7 @@ export function useSessionPersistence(
     }
 
     // Note: Periodic saves removed in v3 schema - events are now persisted separately
-    // by useEventPersistence as they arrive. Session metadata is only saved on
+    // in ralphConnection.ts as they arrive. Session metadata is only saved on
     // session boundaries and completion.
 
     lastProcessedEventCountRef.current = events.length
