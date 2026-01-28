@@ -2,6 +2,7 @@ import { AssistantText } from "@/components/events/AssistantText"
 import { ThinkingBlock } from "@/components/events/ThinkingBlock"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
 import { TaskLifecycleEvent } from "@/components/events/TaskLifecycleEvent"
+import type { ToolResult } from "@/lib/buildToolResultsMap"
 import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
 import { shouldFilterContentBlock, logContentBlockFilterDecision } from "@/lib/EventFilterPipeline"
 import type { AssistantContentBlock, AssistantTextEvent, ToolUseEvent } from "@/types"
@@ -25,7 +26,7 @@ export function renderEventContentBlock(
   block: AssistantContentBlock,
   index: number,
   timestamp: number,
-  toolResults: Map<string, { output?: string; error?: string }>,
+  toolResults: Map<string, ToolResult>,
   options?: { hasStructuredLifecycleEvents?: boolean },
 ) {
   // For text blocks, check if it's a lifecycle marker

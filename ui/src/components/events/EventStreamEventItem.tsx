@@ -1,6 +1,7 @@
 import { UserMessage } from "./UserMessage"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { ErrorEvent } from "./ErrorEvent"
+import type { ToolResult } from "@/lib/buildToolResultsMap"
 import { renderEventContentBlock } from "@/lib/renderEventContentBlock"
 import {
   shouldFilterEventByType,
@@ -109,6 +110,6 @@ export type { FilterReason }
 
 type Props = {
   event: ChatEvent
-  toolResults: Map<string, { output?: string; error?: string }>
+  toolResults: Map<string, ToolResult>
   hasStructuredLifecycleEvents: boolean
 }

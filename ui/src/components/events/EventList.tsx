@@ -1,8 +1,6 @@
 import { useMemo } from "react"
 import { useStreamingState } from "@/hooks/useStreamingState"
-import { isRalphTaskCompletedEvent } from "@/lib/isRalphTaskCompletedEvent"
-import { isRalphTaskStartedEvent } from "@/lib/isRalphTaskStartedEvent"
-import { isToolResultEvent } from "@/lib/isToolResultEvent"
+import { buildToolResultsMap, type ToolResult } from "@/lib/buildToolResultsMap"
 import type { ChatEvent, StreamingMessage } from "@/types"
 import { EventStreamEventItem } from "./EventStreamEventItem"
 import { StreamingContentRenderer } from "./StreamingContentRenderer"
@@ -32,37 +30,10 @@ export function EventList({ events, maxEvents = 1000, loadingIndicator }: EventL
 
   const displayedEvents = completedEvents.slice(-maxEvents)
 
-  // Build tool results map from user/tool_result events
-  const { toolResults, hasStructuredLifecycleEvents } = useMemo(() => {
-    const results = new Map<string, { output?: string; error?: string }>()
-    let hasLifecycleEvents = false
-
-    for (const event of displayedEvents) {
-      if (isToolResultEvent(event)) {
-        const content = (event as any).message?.content
-        if (Array.isArray(content)) {
-          for (const item of content) {
-            if (item.type === "tool_result" && item.tool_use_id) {
-              results.set(item.tool_use_id, {
-                output: typeof item.content === "string" ? item.content : undefined,
-                error:
-                  item.is_error ?
-                    typeof item.content === "string" ?
-                      item.content
-                    : "Error"
-                  : undefined,
-              })
-            }
-          }
-        }
-      }
-      if (isRalphTaskStartedEvent(event) || isRalphTaskCompletedEvent(event)) {
-        hasLifecycleEvents = true
-      }
-    }
-
-    return { toolResults: results, hasStructuredLifecycleEvents: hasLifecycleEvents }
-  }, [displayedEvents])
+  const { toolResults, hasStructuredLifecycleEvents } = useMemo(
+    () => buildToolResultsMap(displayedEvents),
+    [displayedEvents],
+  )
 
   const hasContent = displayedEvents.length > 0 || streamingMessage !== null
 
@@ -102,37 +73,10 @@ export function useEventListState(events: ChatEvent[], maxEvents: number = 1000)
 
   const displayedEvents = completedEvents.slice(-maxEvents)
 
-  // Build tool results map from user/tool_result events
-  const { toolResults, hasStructuredLifecycleEvents } = useMemo(() => {
-    const results = new Map<string, { output?: string; error?: string }>()
-    let hasLifecycleEvents = false
-
-    for (const event of displayedEvents) {
-      if (isToolResultEvent(event)) {
-        const content = (event as any).message?.content
-        if (Array.isArray(content)) {
-          for (const item of content) {
-            if (item.type === "tool_result" && item.tool_use_id) {
-              results.set(item.tool_use_id, {
-                output: typeof item.content === "string" ? item.content : undefined,
-                error:
-                  item.is_error ?
-                    typeof item.content === "string" ?
-                      item.content
-                    : "Error"
-                  : undefined,
-              })
-            }
-          }
-        }
-      }
-      if (isRalphTaskStartedEvent(event) || isRalphTaskCompletedEvent(event)) {
-        hasLifecycleEvents = true
-      }
-    }
-
-    return { toolResults: results, hasStructuredLifecycleEvents: hasLifecycleEvents }
-  }, [displayedEvents])
+  const { toolResults, hasStructuredLifecycleEvents } = useMemo(
+    () => buildToolResultsMap(displayedEvents),
+    [displayedEvents],
+  )
 
   const hasContent = displayedEvents.length > 0 || streamingMessage !== null
 
@@ -159,7 +103,7 @@ export type EventListState = {
   displayedEvents: ChatEvent[]
   completedEvents: ChatEvent[]
   streamingMessage: StreamingMessage | null
-  toolResults: Map<string, { output?: string; error?: string }>
+  toolResults: Map<string, ToolResult>
   hasStructuredLifecycleEvents: boolean
   hasContent: boolean
 }
