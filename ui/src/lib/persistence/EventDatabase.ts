@@ -237,6 +237,55 @@ export class EventDatabase {
   }
 
   /**
+   * Derive and update the taskId for a session by scanning its events.
+   * Used as a fallback when a session doesn't have a taskId set (e.g., from
+   * before the immediate update feature was implemented).
+   *
+   * Returns the taskId if found and updated, null otherwise.
+   */
+  async deriveSessionTaskId(sessionId: string): Promise<string | null> {
+    const db = await this.ensureDb()
+    const session = await db.get(STORE_NAMES.SESSIONS, sessionId)
+
+    if (!session) {
+      console.debug(`[EventDatabase] deriveSessionTaskId: session not found: id=${sessionId}`)
+      return null
+    }
+
+    // Skip if taskId is already set
+    if (session.taskId) {
+      console.debug(
+        `[EventDatabase] deriveSessionTaskId: taskId already set: id=${sessionId}, taskId=${session.taskId}`,
+      )
+      return session.taskId
+    }
+
+    // Get events for this session
+    const events = await this.getEventsForSession(sessionId)
+
+    // Find ralph_task_started event and extract taskId
+    for (const persistedEvent of events) {
+      if (persistedEvent.eventType === "ralph_task_started") {
+        const taskId = (persistedEvent.event as { taskId?: string }).taskId
+        if (taskId) {
+          // Update the session with the derived taskId
+          session.taskId = taskId
+          await db.put(STORE_NAMES.SESSIONS, session)
+          console.debug(
+            `[EventDatabase] deriveSessionTaskId: derived and updated: id=${sessionId}, taskId=${taskId}`,
+          )
+          return taskId
+        }
+      }
+    }
+
+    console.debug(
+      `[EventDatabase] deriveSessionTaskId: no ralph_task_started event found: id=${sessionId}`,
+    )
+    return null
+  }
+
+  /**
    * Get the most recent active (incomplete) session for an instance.
    * Returns the most recently started session where completedAt is null.
    */

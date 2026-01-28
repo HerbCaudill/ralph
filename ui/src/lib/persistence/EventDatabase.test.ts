@@ -203,6 +203,235 @@ describe("EventDatabase", () => {
       })
     })
 
+    describe("deriveSessionTaskId", () => {
+      it("derives taskId from ralph_task_started event and updates session", async () => {
+        const sessionId = "session-to-derive"
+        const now = Date.now()
+
+        // Save session without taskId
+        await db.saveSession(
+          createTestSession({
+            id: sessionId,
+            taskId: null,
+            events: undefined,
+            eventCount: 3,
+          }),
+        )
+
+        // Save events including ralph_task_started
+        await db.saveEvents([
+          createTestEvent({
+            id: `${sessionId}-event-0`,
+            sessionId,
+            timestamp: now,
+            eventType: "user_message",
+            event: { type: "user_message", timestamp: now, message: "Start work" },
+          }),
+          createTestEvent({
+            id: `${sessionId}-event-1`,
+            sessionId,
+            timestamp: now + 100,
+            eventType: "ralph_task_started",
+            event: { type: "ralph_task_started", timestamp: now + 100, taskId: "task-123" },
+          }),
+          createTestEvent({
+            id: `${sessionId}-event-2`,
+            sessionId,
+            timestamp: now + 200,
+            eventType: "assistant_text",
+            event: { type: "assistant_text", timestamp: now + 200, content: "Working..." },
+          }),
+        ])
+
+        // Derive taskId
+        const taskId = await db.deriveSessionTaskId(sessionId)
+
+        expect(taskId).toBe("task-123")
+
+        // Verify session was updated
+        const session = await db.getSession(sessionId)
+        expect(session?.taskId).toBe("task-123")
+      })
+
+      it("returns existing taskId without scanning events if already set", async () => {
+        const sessionId = "session-with-taskid"
+        const now = Date.now()
+
+        // Save session with taskId already set
+        await db.saveSession(
+          createTestSession({
+            id: sessionId,
+            taskId: "existing-task",
+            events: undefined,
+            eventCount: 1,
+          }),
+        )
+
+        // Save a ralph_task_started event with different taskId
+        await db.saveEvents([
+          createTestEvent({
+            id: `${sessionId}-event-0`,
+            sessionId,
+            timestamp: now,
+            eventType: "ralph_task_started",
+            event: { type: "ralph_task_started", timestamp: now, taskId: "different-task" },
+          }),
+        ])
+
+        // Should return existing taskId without updating
+        const taskId = await db.deriveSessionTaskId(sessionId)
+
+        expect(taskId).toBe("existing-task")
+
+        // Session should not have been modified
+        const session = await db.getSession(sessionId)
+        expect(session?.taskId).toBe("existing-task")
+      })
+
+      it("returns null for non-existent session", async () => {
+        const taskId = await db.deriveSessionTaskId("non-existent-session")
+        expect(taskId).toBeNull()
+      })
+
+      it("returns null when no ralph_task_started event found", async () => {
+        const sessionId = "session-no-task-event"
+        const now = Date.now()
+
+        // Save session without taskId
+        await db.saveSession(
+          createTestSession({
+            id: sessionId,
+            taskId: null,
+            events: undefined,
+            eventCount: 2,
+          }),
+        )
+
+        // Save events without ralph_task_started
+        await db.saveEvents([
+          createTestEvent({
+            id: `${sessionId}-event-0`,
+            sessionId,
+            timestamp: now,
+            eventType: "user_message",
+            event: { type: "user_message", timestamp: now, message: "Hello" },
+          }),
+          createTestEvent({
+            id: `${sessionId}-event-1`,
+            sessionId,
+            timestamp: now + 100,
+            eventType: "assistant_text",
+            event: { type: "assistant_text", timestamp: now + 100, content: "Hi" },
+          }),
+        ])
+
+        const taskId = await db.deriveSessionTaskId(sessionId)
+
+        expect(taskId).toBeNull()
+
+        // Session should still have null taskId
+        const session = await db.getSession(sessionId)
+        expect(session?.taskId).toBeNull()
+      })
+
+      it("returns null when ralph_task_started event has no taskId field", async () => {
+        const sessionId = "session-malformed-event"
+        const now = Date.now()
+
+        // Save session without taskId
+        await db.saveSession(
+          createTestSession({
+            id: sessionId,
+            taskId: null,
+            events: undefined,
+            eventCount: 1,
+          }),
+        )
+
+        // Save ralph_task_started event without taskId field
+        await db.saveEvents([
+          createTestEvent({
+            id: `${sessionId}-event-0`,
+            sessionId,
+            timestamp: now,
+            eventType: "ralph_task_started",
+            event: { type: "ralph_task_started", timestamp: now },
+          }),
+        ])
+
+        const taskId = await db.deriveSessionTaskId(sessionId)
+
+        expect(taskId).toBeNull()
+
+        // Session should still have null taskId
+        const session = await db.getSession(sessionId)
+        expect(session?.taskId).toBeNull()
+      })
+
+      it("handles session with empty events array", async () => {
+        const sessionId = "session-empty-events"
+
+        // Save session without taskId and no events
+        await db.saveSession(
+          createTestSession({
+            id: sessionId,
+            taskId: null,
+            events: undefined,
+            eventCount: 0,
+          }),
+        )
+
+        const taskId = await db.deriveSessionTaskId(sessionId)
+
+        expect(taskId).toBeNull()
+      })
+
+      it("uses first ralph_task_started event when multiple exist", async () => {
+        const sessionId = "session-multiple-starts"
+        const now = Date.now()
+
+        // Save session without taskId
+        await db.saveSession(
+          createTestSession({
+            id: sessionId,
+            taskId: null,
+            events: undefined,
+            eventCount: 3,
+          }),
+        )
+
+        // Save multiple ralph_task_started events
+        await db.saveEvents([
+          createTestEvent({
+            id: `${sessionId}-event-0`,
+            sessionId,
+            timestamp: now,
+            eventType: "ralph_task_started",
+            event: { type: "ralph_task_started", timestamp: now, taskId: "first-task" },
+          }),
+          createTestEvent({
+            id: `${sessionId}-event-1`,
+            sessionId,
+            timestamp: now + 100,
+            eventType: "ralph_task_started",
+            event: { type: "ralph_task_started", timestamp: now + 100, taskId: "second-task" },
+          }),
+          createTestEvent({
+            id: `${sessionId}-event-2`,
+            sessionId,
+            timestamp: now + 200,
+            eventType: "ralph_task_started",
+            event: { type: "ralph_task_started", timestamp: now + 200, taskId: "third-task" },
+          }),
+        ])
+
+        const taskId = await db.deriveSessionTaskId(sessionId)
+
+        // Should use the first one (earliest timestamp, as events are sorted chronologically)
+        expect(taskId).toBe("first-task")
+      })
+    })
+
     describe("getLatestActiveSession", () => {
       it("returns the most recent active (incomplete) session", async () => {
         const now = Date.now()
