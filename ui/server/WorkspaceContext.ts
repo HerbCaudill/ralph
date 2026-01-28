@@ -9,6 +9,7 @@ import {
   type TaskChatToolUse,
 } from "./TaskChatManager.js"
 import { TaskChatEventLog } from "./TaskChatEventLog.js"
+import { TaskChatEventPersister } from "./TaskChatEventPersister.js"
 import { watchMutations } from "./BeadsClient.js"
 import type { MutationEvent } from "@herbcaudill/ralph-shared"
 
@@ -75,8 +76,11 @@ export class WorkspaceContext extends EventEmitter {
   /** TaskChatManager instance for this workspace */
   private _taskChatManager: TaskChatManager
 
-  /** TaskChatEventLog for persisting chat events */
+  /** TaskChatEventLog for persisting chat events (for replay testing) */
   private _taskChatEventLog: TaskChatEventLog | null = null
+
+  /** TaskChatEventPersister for storing events for reconnection sync */
+  private _taskChatEventPersister: TaskChatEventPersister
 
   /** Event history buffer */
   private _eventHistory: RalphEvent[] = []
@@ -126,6 +130,9 @@ export class WorkspaceContext extends EventEmitter {
         workspacePath: options.workspacePath,
       })
     }
+
+    // Create TaskChatEventPersister for reconnection sync (always enabled)
+    this._taskChatEventPersister = new TaskChatEventPersister(options.workspacePath)
 
     // Start mutation polling if enabled
     if (options.enableMutationPolling) {
@@ -204,6 +211,14 @@ export class WorkspaceContext extends EventEmitter {
    */
   get taskChatEventLog(): TaskChatEventLog | null {
     return this._taskChatEventLog
+  }
+
+  /**
+   * Get the TaskChatEventPersister for this workspace.
+   * Used for reconnection sync to retrieve missed events.
+   */
+  get taskChatEventPersister(): TaskChatEventPersister {
+    return this._taskChatEventPersister
   }
 
   /**
@@ -372,6 +387,8 @@ export class WorkspaceContext extends EventEmitter {
     // Emit raw SDK events for unified event model
     this._taskChatManager.on("event", (event: TaskChatEvent) => {
       this.emit("task-chat:event", event)
+      // Persist for reconnection sync
+      this.persistTaskChatEvent(event)
       // Also log for replay testing
       this.logTaskChatEvent(event)
     })
@@ -379,6 +396,8 @@ export class WorkspaceContext extends EventEmitter {
     // Emit historyCleared event for cross-client sync
     this._taskChatManager.on("historyCleared", () => {
       this.emit("task-chat:cleared")
+      // Clear persisted events
+      this.clearPersistedTaskChatEvents()
     })
   }
 
@@ -408,6 +427,25 @@ export class WorkspaceContext extends EventEmitter {
 
     this._taskChatEventLog.log(event).catch(err => {
       console.error("[task-chat-log] Failed to log event:", err)
+    })
+  }
+
+  /**
+   * Persist a task chat event for reconnection sync.
+   * Uses "default" as the instance ID since task chat is workspace-scoped.
+   */
+  private persistTaskChatEvent(event: TaskChatEvent): void {
+    this._taskChatEventPersister.appendEvent("default", event).catch(err => {
+      console.error("[task-chat-persist] Failed to persist event:", err)
+    })
+  }
+
+  /**
+   * Clear persisted task chat events (called when history is cleared).
+   */
+  private clearPersistedTaskChatEvents(): void {
+    this._taskChatEventPersister.clear("default").catch(err => {
+      console.error("[task-chat-persist] Failed to clear events:", err)
     })
   }
 
