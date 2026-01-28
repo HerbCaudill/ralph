@@ -1309,7 +1309,8 @@ export interface WsClient {
   isAlive: boolean
   /**
    * Index of the last event delivered to this client (per instance).
-   * Used for reconnection sync to avoid sending duplicate events.
+   * Used for tracking live event delivery during a connected session.
+   * Note: Reconnection sync now uses timestamps, not indices.
    * Key is instanceId, value is the index of the last delivered event.
    */
   lastDeliveredEventIndex: Map<string, number>
@@ -1539,9 +1540,9 @@ function handleWsMessage(
       }
 
       case "reconnect": {
-        // Handle reconnection sync - client sends lastEventIndex to get missed events
+        // Handle reconnection sync - client sends lastEventTimestamp to get missed events
         const instanceId = (message.instanceId as string) || "default"
-        const lastEventIndex = message.lastEventIndex as number | undefined
+        const lastEventTimestamp = message.lastEventTimestamp as number | undefined
 
         // Get the client for this WebSocket
         const client = getClientByWebSocket(ws)
@@ -1560,16 +1561,12 @@ function handleWsMessage(
         const registry = getRalphRegistry()
         const eventHistory = registry.getEventHistory(instanceId)
 
-        // Determine which events to send
+        // Determine which events to send by filtering by timestamp
         let pendingEvents: RalphEvent[] = []
-        let startIndex = 0
 
-        if (typeof lastEventIndex === "number" && lastEventIndex >= 0) {
-          // Client has events up to lastEventIndex, send everything after
-          startIndex = lastEventIndex + 1
-          if (startIndex < eventHistory.length) {
-            pendingEvents = eventHistory.slice(startIndex)
-          }
+        if (typeof lastEventTimestamp === "number" && lastEventTimestamp > 0) {
+          // Client has events up to lastEventTimestamp, send everything after
+          pendingEvents = eventHistory.filter(event => event.timestamp > lastEventTimestamp)
         } else {
           // Client has no events, send all
           pendingEvents = eventHistory
@@ -1585,20 +1582,19 @@ function handleWsMessage(
             type: "pending_events",
             instanceId,
             events: pendingEvents,
-            startIndex,
             totalEvents: eventHistory.length,
             ralphStatus: status,
             timestamp: Date.now(),
           }),
         )
 
-        // Update client's last delivered event index
+        // Update client's last delivered event index (still used for live event tracking)
         if (eventHistory.length > 0) {
           updateClientEventIndex(client, instanceId, eventHistory.length - 1)
         }
 
         console.log(
-          `[ws] reconnect sync for instance ${instanceId}: sent ${pendingEvents.length} pending events (from index ${startIndex})`,
+          `[ws] reconnect sync for instance ${instanceId}: sent ${pendingEvents.length} pending events (after timestamp ${lastEventTimestamp ?? "none"})`,
         )
         break
       }

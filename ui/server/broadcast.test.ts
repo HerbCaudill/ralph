@@ -532,6 +532,7 @@ describe("Reconnection sync protocol", () => {
   /**
    * Creates a test server that properly handles reconnect messages
    * similar to the production handleWsMessage function.
+   * Uses timestamp-based filtering for reconnection sync.
    */
   function createReconnectTestServer(port: number) {
     const app = express()
@@ -593,17 +594,14 @@ describe("Reconnection sync protocol", () => {
 
           if (message.type === "reconnect") {
             const instanceId = (message.instanceId as string) || "default"
-            const lastEventIndex = message.lastEventIndex as number | undefined
+            const lastEventTimestamp = message.lastEventTimestamp as number | undefined
 
             const events = getEventHistory(instanceId)
             let pendingEvents: RalphEvent[] = []
-            let startIndex = 0
 
-            if (typeof lastEventIndex === "number" && lastEventIndex >= 0) {
-              startIndex = lastEventIndex + 1
-              if (startIndex < events.length) {
-                pendingEvents = events.slice(startIndex)
-              }
+            if (typeof lastEventTimestamp === "number" && lastEventTimestamp > 0) {
+              // Filter events by timestamp
+              pendingEvents = events.filter(event => event.timestamp > lastEventTimestamp)
             } else {
               pendingEvents = events
             }
@@ -615,7 +613,6 @@ describe("Reconnection sync protocol", () => {
                 type: "pending_events",
                 instanceId,
                 events: pendingEvents,
-                startIndex,
                 totalEvents: events.length,
                 ralphStatus: status,
                 timestamp: Date.now(),
@@ -677,7 +674,7 @@ describe("Reconnection sync protocol", () => {
   })
 
   it("responds with pending_events when client sends reconnect message", async () => {
-    // Add some events to the server
+    // Add some events to the server with distinct timestamps
     testServer.addEvent("default", { type: "tool_use", timestamp: 1000, tool: "bash" })
     testServer.addEvent("default", { type: "text", timestamp: 2000, content: "Hello" })
     testServer.addEvent("default", { type: "tool_result", timestamp: 3000, tool: "bash" })
@@ -695,7 +692,7 @@ describe("Reconnection sync protocol", () => {
       })
     })
 
-    // Send reconnect message asking for events after index 0
+    // Send reconnect message asking for events after timestamp 1000
     const pendingEventsPromise = new Promise<unknown>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error("pending_events timeout")), 5000)
       ws.once("message", data => {
@@ -704,21 +701,19 @@ describe("Reconnection sync protocol", () => {
       })
     })
 
-    ws.send(JSON.stringify({ type: "reconnect", instanceId: "default", lastEventIndex: 0 }))
+    ws.send(JSON.stringify({ type: "reconnect", instanceId: "default", lastEventTimestamp: 1000 }))
 
     const response = (await pendingEventsPromise) as {
       type: string
       instanceId: string
       events: RalphEvent[]
-      startIndex: number
       totalEvents: number
       ralphStatus: RalphStatus
     }
 
     expect(response.type).toBe("pending_events")
     expect(response.instanceId).toBe("default")
-    expect(response.events).toHaveLength(2) // Events at index 1 and 2
-    expect(response.startIndex).toBe(1)
+    expect(response.events).toHaveLength(2) // Events with timestamp > 1000
     expect(response.totalEvents).toBe(3)
     expect(response.ralphStatus).toBe("running")
     expect(response.events[0]).toMatchObject({ type: "text", content: "Hello" })
@@ -727,7 +722,7 @@ describe("Reconnection sync protocol", () => {
     ws.close()
   })
 
-  it("returns all events when lastEventIndex is not provided", async () => {
+  it("returns all events when lastEventTimestamp is not provided", async () => {
     // Add some events
     testServer.addEvent("default", { type: "tool_use", timestamp: 1000, tool: "read" })
     testServer.addEvent("default", { type: "text", timestamp: 2000, content: "Content" })
@@ -750,19 +745,17 @@ describe("Reconnection sync protocol", () => {
       })
     })
 
-    // Send reconnect without lastEventIndex
+    // Send reconnect without lastEventTimestamp
     ws.send(JSON.stringify({ type: "reconnect", instanceId: "default" }))
 
     const response = (await pendingEventsPromise) as {
       type: string
       events: RalphEvent[]
-      startIndex: number
       totalEvents: number
     }
 
     expect(response.type).toBe("pending_events")
     expect(response.events).toHaveLength(2) // All events
-    expect(response.startIndex).toBe(0)
     expect(response.totalEvents).toBe(2)
 
     ws.close()
@@ -791,19 +784,17 @@ describe("Reconnection sync protocol", () => {
       })
     })
 
-    // Send reconnect with lastEventIndex pointing to the last event
-    ws.send(JSON.stringify({ type: "reconnect", instanceId: "default", lastEventIndex: 1 }))
+    // Send reconnect with lastEventTimestamp pointing to the last event's timestamp
+    ws.send(JSON.stringify({ type: "reconnect", instanceId: "default", lastEventTimestamp: 2000 }))
 
     const response = (await pendingEventsPromise) as {
       type: string
       events: RalphEvent[]
-      startIndex: number
       totalEvents: number
     }
 
     expect(response.type).toBe("pending_events")
-    expect(response.events).toHaveLength(0) // No new events
-    expect(response.startIndex).toBe(2) // Would start at index 2 if there were more events
+    expect(response.events).toHaveLength(0) // No new events (none have timestamp > 2000)
     expect(response.totalEvents).toBe(2)
 
     ws.close()
@@ -871,8 +862,10 @@ describe("Reconnection sync protocol", () => {
       })
     })
 
-    // Request events from instance2
-    ws.send(JSON.stringify({ type: "reconnect", instanceId: "instance2", lastEventIndex: 0 }))
+    // Request events from instance2 after timestamp 2000
+    ws.send(
+      JSON.stringify({ type: "reconnect", instanceId: "instance2", lastEventTimestamp: 2000 }),
+    )
 
     const response = (await pendingEventsPromise) as {
       type: string
@@ -883,7 +876,7 @@ describe("Reconnection sync protocol", () => {
 
     expect(response.type).toBe("pending_events")
     expect(response.instanceId).toBe("instance2")
-    expect(response.events).toHaveLength(1) // Only event after index 0
+    expect(response.events).toHaveLength(1) // Only event with timestamp > 2000
     expect(response.events[0]).toMatchObject({ content: "Instance2-B" })
     expect(response.ralphStatus).toBe("paused")
 

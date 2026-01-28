@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
-  getLastEventIndex,
-  clearEventIndices,
+  getLastEventTimestamp,
+  clearEventTimestamps,
   ralphConnection,
   getCurrentSessionId,
   setCurrentSessionId,
@@ -45,7 +45,7 @@ vi.mock("./persistence", () => ({
   },
 }))
 
-describe("ralphConnection event index tracking", () => {
+describe("ralphConnection event timestamp tracking", () => {
   beforeEach(() => {
     // Reset all state before each test
     ralphConnection.reset()
@@ -56,27 +56,27 @@ describe("ralphConnection event index tracking", () => {
     vi.restoreAllMocks()
   })
 
-  describe("getLastEventIndex", () => {
+  describe("getLastEventTimestamp", () => {
     it("returns undefined for unknown instances", () => {
-      expect(getLastEventIndex("unknown-instance")).toBeUndefined()
+      expect(getLastEventTimestamp("unknown-instance")).toBeUndefined()
     })
   })
 
-  describe("clearEventIndices", () => {
-    it("clears all tracked event indices", () => {
-      // We can't directly set indices in the test since they're internal,
+  describe("clearEventTimestamps", () => {
+    it("clears all tracked event timestamps", () => {
+      // We can't directly set timestamps in the test since they're internal,
       // but we can verify the clear function is exported and callable
-      clearEventIndices()
-      expect(getLastEventIndex("any-instance")).toBeUndefined()
+      clearEventTimestamps()
+      expect(getLastEventTimestamp("any-instance")).toBeUndefined()
     })
   })
 
   describe("ralphConnection.reset", () => {
-    it("clears event indices on reset", () => {
-      // After reset, all indices should be cleared
+    it("clears event timestamps on reset", () => {
+      // After reset, all timestamps should be cleared
       ralphConnection.reset()
-      expect(getLastEventIndex("test-instance")).toBeUndefined()
-      expect(getLastEventIndex("other-instance")).toBeUndefined()
+      expect(getLastEventTimestamp("test-instance")).toBeUndefined()
+      expect(getLastEventTimestamp("other-instance")).toBeUndefined()
     })
   })
 
@@ -129,8 +129,8 @@ describe("ralphConnection event index tracking", () => {
     })
   })
 
-  describe("clearEventIndices clears session IDs", () => {
-    it("clears all session IDs when clearEventIndices is called", () => {
+  describe("clearEventTimestamps clears session IDs", () => {
+    it("clears all session IDs when clearEventTimestamps is called", () => {
       // Set up some session IDs
       setCurrentSessionId("instance-1", "session-1")
       setCurrentSessionId("instance-2", "session-2")
@@ -139,8 +139,8 @@ describe("ralphConnection event index tracking", () => {
       expect(getCurrentSessionId("instance-1")).toBe("session-1")
       expect(getCurrentSessionId("instance-2")).toBe("session-2")
 
-      // Clear event indices (which also clears session IDs)
-      clearEventIndices()
+      // Clear event timestamps (which also clears session IDs)
+      clearEventTimestamps()
 
       // Verify session IDs are cleared
       expect(getCurrentSessionId("instance-1")).toBeUndefined()

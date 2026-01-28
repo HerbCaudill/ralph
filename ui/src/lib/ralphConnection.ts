@@ -45,9 +45,9 @@ const JITTER_FACTOR = 0.3 // +/- 30% jitter
 let reconnectAttempts = 0
 let currentReconnectDelay = INITIAL_RECONNECT_DELAY
 
-// Event index tracking for reconnection sync
-// Maps instanceId to the last known event index for that instance
-const lastEventIndices: Map<string, number> = new Map()
+// Event timestamp tracking for reconnection sync
+// Maps instanceId to the last known event timestamp for that instance
+const lastEventTimestamps: Map<string, number> = new Map()
 
 // Session tracking for IndexedDB persistence
 // Maps instanceId to the current session ID for that instance
@@ -201,11 +201,13 @@ function handleMessage(event: MessageEvent): void {
             timestamp: number
             [key: string]: unknown
           }>
-          const totalEvents = data.totalEvents as number | undefined
 
-          // Update our tracking with the latest event index
-          if (typeof totalEvents === "number" && totalEvents > 0) {
-            lastEventIndices.set(pendingInstanceId, totalEvents - 1)
+          // Update our tracking with the latest event timestamp
+          if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
+            const lastEvent = pendingEvents[pendingEvents.length - 1]
+            if (typeof lastEvent.timestamp === "number") {
+              lastEventTimestamps.set(pendingInstanceId, lastEvent.timestamp)
+            }
           }
 
           // Sync Ralph status if provided
@@ -281,10 +283,9 @@ function handleMessage(event: MessageEvent): void {
             `[ralphConnection] ralph:event received: type=${event.type}, subtype=${(event as any).subtype ?? "none"}, isForActiveInstance=${isForActiveInstance}`,
           )
 
-          // Track the event index for reconnection sync
-          const eventIndex = data.eventIndex as number | undefined
-          if (typeof eventIndex === "number") {
-            lastEventIndices.set(targetInstanceId, eventIndex)
+          // Track the event timestamp for reconnection sync
+          if (typeof event.timestamp === "number") {
+            lastEventTimestamps.set(targetInstanceId, event.timestamp)
           }
 
           // Reset session stats when a new session starts (before adding the event)
@@ -577,17 +578,17 @@ function connect(): void {
     const store = useAppStore.getState()
     const instanceId = store.activeInstanceId
 
-    // Send reconnect message if we have a previous event index
+    // Send reconnect message if we have a previous event timestamp
     // This allows the server to send us any events we missed while disconnected
-    const lastEventIndex = lastEventIndices.get(instanceId)
-    if (typeof lastEventIndex === "number") {
+    const lastEventTimestamp = lastEventTimestamps.get(instanceId)
+    if (typeof lastEventTimestamp === "number") {
       console.log(
-        `[ralphConnection] Reconnecting with lastEventIndex: ${lastEventIndex} for instance: ${instanceId}`,
+        `[ralphConnection] Reconnecting with lastEventTimestamp: ${lastEventTimestamp} for instance: ${instanceId}`,
       )
       send({
         type: "reconnect",
         instanceId,
-        lastEventIndex,
+        lastEventTimestamp,
       })
     }
 
@@ -702,7 +703,7 @@ function reset(): void {
   initialized = false
   intentionalClose = false
   resetReconnectState()
-  lastEventIndices.clear()
+  lastEventTimestamps.clear()
   currentSessionIds.clear()
 }
 
@@ -716,19 +717,19 @@ function reconnect(): void {
 }
 
 /**
- * Get the last known event index for an instance.
+ * Get the last known event timestamp for an instance.
  * Used for testing and debugging.
  */
-export function getLastEventIndex(instanceId: string): number | undefined {
-  return lastEventIndices.get(instanceId)
+export function getLastEventTimestamp(instanceId: string): number | undefined {
+  return lastEventTimestamps.get(instanceId)
 }
 
 /**
- * Clear event indices for all instances.
+ * Clear event timestamps for all instances.
  * Called when switching workspaces to start fresh.
  */
-export function clearEventIndices(): void {
-  lastEventIndices.clear()
+export function clearEventTimestamps(): void {
+  lastEventTimestamps.clear()
   currentSessionIds.clear()
 }
 
