@@ -2,9 +2,13 @@
 export default {
   suites: [
     { name: "typecheck", command: "pnpm -r --parallel typecheck" },
-    { name: "shared", command: "pnpm vitest run --reporter=json", type: "vitest", dir: "shared" },
-    { name: "cli", command: "pnpm vitest run --reporter=json", type: "vitest", dir: "cli" },
-    { name: "ui-vitest", command: "pnpm vitest run --reporter=json", type: "vitest", dir: "ui" },
-    { name: "ui-playwright", command: "node scripts/playwright.js", type: "playwright" },
+    { name: "shared", command: "pnpm --filter @herbcaudill/ralph-shared test", type: "vitest" },
+    { name: "cli", command: "pnpm --filter @herbcaudill/ralph test", type: "vitest" },
+    { name: "ui-vitest", command: "pnpm --filter @herbcaudill/ralph-ui test", type: "vitest" },
+    {
+      name: "ui-playwright",
+      command: "pnpm --filter @herbcaudill/ralph-ui test:pw",
+      type: "playwright",
+    },
   ],
 }

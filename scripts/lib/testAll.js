@@ -244,11 +244,15 @@ try {
 }
 
 const suites = config.suites.map(suite => {
-  if (!changed || suite.type !== "vitest") return suite
+  if (suite.type !== "vitest") return suite
+  // Vitest suites get --reporter=json for structured output parsing,
+  // and --changed when that flag is passed to the CLI.
+  // Uses -- separator so pnpm --filter forwards args to the script.
+  const extras = ["--", "--reporter=json", ...(changed ? ["--changed"] : [])]
   const cmd =
     typeof suite.command === "string" ?
-      `${suite.command} --changed`
-    : [...suite.command, "--changed"]
+      `${suite.command} ${extras.join(" ")}`
+    : [...suite.command, ...extras]
   return { ...suite, command: cmd }
 })
 
