@@ -61,6 +61,25 @@ interface RalphDBSchema extends DBSchema {
 const DB_NAME = "ralph-persistence"
 
 /**
+ * Eviction policy constants.
+ *
+ * These control how aggressively old data is removed from IndexedDB
+ * to prevent unbounded storage growth over long-running sessions.
+ */
+
+/** Maximum age for completed sessions before eviction (7 days). */
+const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+/** Maximum number of sessions to keep in IndexedDB. Oldest are evicted first. */
+const MAX_SESSIONS = 200
+
+/** Maximum number of chat sessions to keep in IndexedDB. Oldest are evicted first. */
+const MAX_CHAT_SESSIONS = 200
+
+/** Maximum age for chat sessions before eviction (7 days). */
+const CHAT_SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
  * EventDatabase provides IndexedDB storage for sessions and task chat sessions.
  *
  * Features:
@@ -132,11 +151,15 @@ export class EventDatabase {
       },
     })
 
-    // Run orphaned session cleanup in the background after database is ready.
-    // This is fire-and-forget - cleanup failures should not block initialization.
-    this.cleanupOrphanedSessions().catch(error => {
-      console.error("[EventDatabase] Orphaned session cleanup failed:", error)
-    })
+    // Run cleanup tasks sequentially after database is ready.
+    // Awaiting ensures cleanup completes before the database is used,
+    // preventing IndexedDB transaction conflicts with application operations.
+    try {
+      await this.cleanupOrphanedSessions()
+      await this.evictStaleData()
+    } catch (error) {
+      console.error("[EventDatabase] Background cleanup failed:", error)
+    }
   }
 
   /**
@@ -784,6 +807,129 @@ export class EventDatabase {
     }
 
     return removedCount
+  }
+
+  /**
+   * Evict stale data from IndexedDB to prevent unbounded storage growth.
+   *
+   * This performs two types of eviction:
+   *
+   * 1. **Age-based eviction**: Removes completed sessions and chat sessions
+   *    older than the configured max age (default 7 days). Active (incomplete)
+   *    sessions are never evicted by age.
+   *
+   * 2. **Count-based eviction**: If the number of sessions or chat sessions
+   *    exceeds the configured maximum, the oldest entries are removed until
+   *    the count is within limits. Active sessions are preserved.
+   *
+   * Associated events in the events store are also deleted when their parent
+   * session is evicted.
+   *
+   * Runs automatically on database initialization alongside orphaned session cleanup.
+   *
+   * @returns Summary of evicted items.
+   */
+  async evictStaleData(): Promise<{
+    sessionsEvicted: number
+    chatSessionsEvicted: number
+    eventsEvicted: number
+  }> {
+    const db = await this.ensureDb()
+    const now = Date.now()
+    let sessionsEvicted = 0
+    let chatSessionsEvicted = 0
+    let eventsEvicted = 0
+
+    // --- Evict old sessions ---
+    const allSessions = await db.getAll(STORE_NAMES.SESSIONS)
+
+    // Sort by startedAt ascending (oldest first)
+    allSessions.sort((a, b) => a.startedAt - b.startedAt)
+
+    const sessionIdsToEvict = new Set<string>()
+
+    // Age-based: evict completed sessions older than max age
+    for (const session of allSessions) {
+      const age = now - session.startedAt
+      if (age > SESSION_MAX_AGE_MS && session.completedAt !== null) {
+        sessionIdsToEvict.add(session.id)
+      }
+    }
+
+    // Count-based: if still over limit, evict oldest completed sessions
+    const remainingSessions = allSessions.filter(s => !sessionIdsToEvict.has(s.id))
+    if (remainingSessions.length > MAX_SESSIONS) {
+      const excess = remainingSessions.length - MAX_SESSIONS
+      // Only evict completed sessions; active sessions are protected
+      const completedOldest = remainingSessions.filter(s => s.completedAt !== null)
+      for (let i = 0; i < Math.min(excess, completedOldest.length); i++) {
+        sessionIdsToEvict.add(completedOldest[i].id)
+      }
+    }
+
+    // Delete evicted sessions and their events
+    for (const sessionId of sessionIdsToEvict) {
+      try {
+        const eventCount = await this.countEventsForSession(sessionId)
+        await this.deleteSession(sessionId)
+        sessionsEvicted++
+        eventsEvicted += eventCount
+      } catch (error) {
+        console.error(
+          `[EventDatabase] evictStaleData: failed to delete session ${sessionId}:`,
+          error,
+        )
+      }
+    }
+
+    // --- Evict old chat sessions ---
+    const allChatSessions = await db.getAll(STORE_NAMES.CHAT_SESSIONS)
+
+    // Sort by updatedAt ascending (oldest first)
+    allChatSessions.sort((a, b) => a.updatedAt - b.updatedAt)
+
+    const chatSessionIdsToEvict = new Set<string>()
+
+    // Age-based: evict chat sessions older than max age
+    for (const chatSession of allChatSessions) {
+      const age = now - chatSession.updatedAt
+      if (age > CHAT_SESSION_MAX_AGE_MS) {
+        chatSessionIdsToEvict.add(chatSession.id)
+      }
+    }
+
+    // Count-based: if still over limit, evict oldest chat sessions
+    const remainingChatSessions = allChatSessions.filter(s => !chatSessionIdsToEvict.has(s.id))
+    if (remainingChatSessions.length > MAX_CHAT_SESSIONS) {
+      const excess = remainingChatSessions.length - MAX_CHAT_SESSIONS
+      for (let i = 0; i < excess; i++) {
+        chatSessionIdsToEvict.add(remainingChatSessions[i].id)
+      }
+    }
+
+    // Delete evicted chat sessions and their events
+    for (const chatSessionId of chatSessionIdsToEvict) {
+      try {
+        const eventCount = await this.countEventsForSession(chatSessionId)
+        await this.deleteTaskChatSession(chatSessionId)
+        chatSessionsEvicted++
+        eventsEvicted += eventCount
+      } catch (error) {
+        console.error(
+          `[EventDatabase] evictStaleData: failed to delete chat session ${chatSessionId}:`,
+          error,
+        )
+      }
+    }
+
+    if (sessionsEvicted > 0 || chatSessionsEvicted > 0 || eventsEvicted > 0) {
+      console.debug(
+        `[EventDatabase] evictStaleData: evicted ${sessionsEvicted} sessions, ` +
+          `${chatSessionsEvicted} chat sessions, ${eventsEvicted} events`,
+      )
+    }
+
+    return { sessionsEvicted, chatSessionsEvicted, eventsEvicted }
   }
 
   // Utility Methods

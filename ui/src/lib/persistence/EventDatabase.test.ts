@@ -2966,4 +2966,400 @@ describe("EventDatabase", () => {
       })
     })
   })
+
+  describe("evictStaleData", () => {
+    const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000
+    const SIX_DAYS_MS = 6 * 24 * 60 * 60 * 1000
+
+    describe("age-based session eviction", () => {
+      it("evicts completed sessions older than 7 days", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+
+        // Save an old completed session with events
+        await db.saveSession(
+          createTestSession({
+            id: "old-completed",
+            startedAt: eightDaysAgo,
+            completedAt: eightDaysAgo + 1000,
+            eventCount: 3,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents(
+          Array.from({ length: 3 }, (_, i) =>
+            createTestEvent({ id: `old-completed-event-${i}`, sessionId: "old-completed" }),
+          ),
+        )
+
+        const result = await db.evictStaleData()
+
+        expect(result.sessionsEvicted).toBe(1)
+        expect(await db.getSession("old-completed")).toBeUndefined()
+      })
+
+      it("does NOT evict active (incomplete) sessions regardless of age", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+
+        // Save an old active session (completedAt is null)
+        await db.saveSession(
+          createTestSession({
+            id: "old-active",
+            startedAt: eightDaysAgo,
+            completedAt: null,
+            eventCount: 5,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents(
+          Array.from({ length: 5 }, (_, i) =>
+            createTestEvent({ id: `old-active-event-${i}`, sessionId: "old-active" }),
+          ),
+        )
+
+        const result = await db.evictStaleData()
+
+        expect(result.sessionsEvicted).toBe(0)
+        expect(await db.getSession("old-active")).toBeDefined()
+      })
+
+      it("does NOT evict completed sessions younger than 7 days", async () => {
+        const sixDaysAgo = Date.now() - SIX_DAYS_MS
+
+        await db.saveSession(
+          createTestSession({
+            id: "recent-completed",
+            startedAt: sixDaysAgo,
+            completedAt: sixDaysAgo + 1000,
+            eventCount: 3,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents(
+          Array.from({ length: 3 }, (_, i) =>
+            createTestEvent({ id: `recent-completed-event-${i}`, sessionId: "recent-completed" }),
+          ),
+        )
+
+        const result = await db.evictStaleData()
+
+        expect(result.sessionsEvicted).toBe(0)
+        expect(await db.getSession("recent-completed")).toBeDefined()
+      })
+    })
+
+    describe("age-based chat session eviction", () => {
+      it("evicts chat sessions with updatedAt older than 7 days", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "old-chat",
+            updatedAt: eightDaysAgo,
+          }),
+        )
+
+        const result = await db.evictStaleData()
+
+        expect(result.chatSessionsEvicted).toBe(1)
+        expect(await db.getTaskChatSession("old-chat")).toBeUndefined()
+      })
+
+      it("does NOT evict chat sessions younger than 7 days", async () => {
+        const sixDaysAgo = Date.now() - SIX_DAYS_MS
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "recent-chat",
+            updatedAt: sixDaysAgo,
+          }),
+        )
+
+        const result = await db.evictStaleData()
+
+        expect(result.chatSessionsEvicted).toBe(0)
+        expect(await db.getTaskChatSession("recent-chat")).toBeDefined()
+      })
+    })
+
+    describe("event cascade on session eviction", () => {
+      it("deletes associated events when a session is evicted", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+
+        await db.saveSession(
+          createTestSession({
+            id: "cascade-session",
+            startedAt: eightDaysAgo,
+            completedAt: eightDaysAgo + 1000,
+            eventCount: 3,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents([
+          createTestEvent({ id: "cascade-event-0", sessionId: "cascade-session" }),
+          createTestEvent({ id: "cascade-event-1", sessionId: "cascade-session" }),
+          createTestEvent({ id: "cascade-event-2", sessionId: "cascade-session" }),
+        ])
+
+        const result = await db.evictStaleData()
+
+        expect(result.sessionsEvicted).toBe(1)
+        expect(result.eventsEvicted).toBe(3)
+        expect(await db.getEvent("cascade-event-0")).toBeUndefined()
+        expect(await db.getEvent("cascade-event-1")).toBeUndefined()
+        expect(await db.getEvent("cascade-event-2")).toBeUndefined()
+      })
+
+      it("deletes associated events when a chat session is evicted", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+        const chatId = "cascade-chat"
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: chatId,
+            updatedAt: eightDaysAgo,
+            events: undefined,
+            eventCount: 2,
+          }),
+        )
+        await db.saveEvents([
+          createTestEvent({ id: `${chatId}-event-0`, sessionId: chatId }),
+          createTestEvent({ id: `${chatId}-event-1`, sessionId: chatId }),
+        ])
+
+        const result = await db.evictStaleData()
+
+        expect(result.chatSessionsEvicted).toBe(1)
+        expect(result.eventsEvicted).toBe(2)
+        expect(await db.getEvent(`${chatId}-event-0`)).toBeUndefined()
+        expect(await db.getEvent(`${chatId}-event-1`)).toBeUndefined()
+      })
+
+      it("does not delete events belonging to non-evicted sessions", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+
+        // Old completed session (will be evicted)
+        await db.saveSession(
+          createTestSession({
+            id: "evicted-session",
+            startedAt: eightDaysAgo,
+            completedAt: eightDaysAgo + 1000,
+            eventCount: 2,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents([
+          createTestEvent({ id: "evicted-event-0", sessionId: "evicted-session" }),
+          createTestEvent({ id: "evicted-event-1", sessionId: "evicted-session" }),
+        ])
+
+        // Recent session (will NOT be evicted)
+        await db.saveSession(
+          createTestSession({
+            id: "kept-session",
+            startedAt: Date.now(),
+            completedAt: Date.now() + 1000,
+            eventCount: 2,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents([
+          createTestEvent({ id: "kept-event-0", sessionId: "kept-session" }),
+          createTestEvent({ id: "kept-event-1", sessionId: "kept-session" }),
+        ])
+
+        const result = await db.evictStaleData()
+
+        expect(result.sessionsEvicted).toBe(1)
+        expect(result.eventsEvicted).toBe(2)
+
+        // Evicted session's events are gone
+        expect(await db.getEvent("evicted-event-0")).toBeUndefined()
+        expect(await db.getEvent("evicted-event-1")).toBeUndefined()
+
+        // Kept session's events remain
+        expect(await db.getEvent("kept-event-0")).toBeDefined()
+        expect(await db.getEvent("kept-event-1")).toBeDefined()
+      })
+    })
+
+    describe("no-op on fresh data", () => {
+      it("returns all zeros when no data needs eviction", async () => {
+        // Save recent completed session
+        await db.saveSession(
+          createTestSession({
+            id: "fresh-session",
+            startedAt: Date.now(),
+            completedAt: Date.now() + 1000,
+            eventCount: 3,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents(
+          Array.from({ length: 3 }, (_, i) =>
+            createTestEvent({ id: `fresh-event-${i}`, sessionId: "fresh-session" }),
+          ),
+        )
+
+        // Save recent chat session
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "fresh-chat",
+            updatedAt: Date.now(),
+          }),
+        )
+
+        const result = await db.evictStaleData()
+
+        expect(result).toEqual({
+          sessionsEvicted: 0,
+          chatSessionsEvicted: 0,
+          eventsEvicted: 0,
+        })
+      })
+
+      it("returns all zeros when database is empty", async () => {
+        const result = await db.evictStaleData()
+
+        expect(result).toEqual({
+          sessionsEvicted: 0,
+          chatSessionsEvicted: 0,
+          eventsEvicted: 0,
+        })
+      })
+    })
+
+    describe("mixed eviction scenarios", () => {
+      it("evicts old completed sessions while preserving active and recent ones", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+        const now = Date.now()
+
+        // Old completed session (should be evicted)
+        await db.saveSession(
+          createTestSession({
+            id: "old-completed-1",
+            startedAt: eightDaysAgo,
+            completedAt: eightDaysAgo + 1000,
+            eventCount: 2,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents([
+          createTestEvent({ id: "oc1-event-0", sessionId: "old-completed-1" }),
+          createTestEvent({ id: "oc1-event-1", sessionId: "old-completed-1" }),
+        ])
+
+        // Old active session (should NOT be evicted)
+        await db.saveSession(
+          createTestSession({
+            id: "old-active-1",
+            startedAt: eightDaysAgo,
+            completedAt: null,
+            eventCount: 3,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents(
+          Array.from({ length: 3 }, (_, i) =>
+            createTestEvent({ id: `oa1-event-${i}`, sessionId: "old-active-1" }),
+          ),
+        )
+
+        // Recent completed session (should NOT be evicted)
+        await db.saveSession(
+          createTestSession({
+            id: "recent-completed-1",
+            startedAt: now,
+            completedAt: now + 1000,
+            eventCount: 2,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents([
+          createTestEvent({ id: "rc1-event-0", sessionId: "recent-completed-1" }),
+          createTestEvent({ id: "rc1-event-1", sessionId: "recent-completed-1" }),
+        ])
+
+        const result = await db.evictStaleData()
+
+        expect(result.sessionsEvicted).toBe(1)
+        expect(result.eventsEvicted).toBe(2)
+        expect(await db.getSession("old-completed-1")).toBeUndefined()
+        expect(await db.getSession("old-active-1")).toBeDefined()
+        expect(await db.getSession("recent-completed-1")).toBeDefined()
+      })
+
+      it("evicts both old sessions and old chat sessions in one call", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+
+        // Old completed session
+        await db.saveSession(
+          createTestSession({
+            id: "old-session",
+            startedAt: eightDaysAgo,
+            completedAt: eightDaysAgo + 1000,
+            eventCount: 1,
+            events: undefined,
+          }),
+        )
+        await db.saveEvents([
+          createTestEvent({ id: "old-session-event", sessionId: "old-session" }),
+        ])
+
+        // Old chat session
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "old-chat-session",
+            updatedAt: eightDaysAgo,
+            events: undefined,
+            eventCount: 1,
+          }),
+        )
+        await db.saveEvents([
+          createTestEvent({ id: "old-chat-event", sessionId: "old-chat-session" }),
+        ])
+
+        const result = await db.evictStaleData()
+
+        expect(result.sessionsEvicted).toBe(1)
+        expect(result.chatSessionsEvicted).toBe(1)
+        expect(result.eventsEvicted).toBe(2)
+        expect(await db.getSession("old-session")).toBeUndefined()
+        expect(await db.getTaskChatSession("old-chat-session")).toBeUndefined()
+      })
+
+      it("evicts multiple old sessions of different ages", async () => {
+        const eightDaysAgo = Date.now() - EIGHT_DAYS_MS
+        const tenDaysAgo = Date.now() - 10 * 24 * 60 * 60 * 1000
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
+
+        // All old completed sessions should be evicted
+        for (const [id, startedAt] of [
+          ["eight-days", eightDaysAgo],
+          ["ten-days", tenDaysAgo],
+          ["thirty-days", thirtyDaysAgo],
+        ] as const) {
+          await db.saveSession(
+            createTestSession({
+              id,
+              startedAt,
+              completedAt: startedAt + 1000,
+              eventCount: 1,
+              events: undefined,
+            }),
+          )
+          await db.saveEvents([
+            createTestEvent({ id: `${id}-event`, sessionId: id }),
+          ])
+        }
+
+        const result = await db.evictStaleData()
+
+        expect(result.sessionsEvicted).toBe(3)
+        expect(result.eventsEvicted).toBe(3)
+        expect(await db.getSession("eight-days")).toBeUndefined()
+        expect(await db.getSession("ten-days")).toBeUndefined()
+        expect(await db.getSession("thirty-days")).toBeUndefined()
+      })
+    })
+  })
 })

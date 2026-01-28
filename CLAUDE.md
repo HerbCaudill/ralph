@@ -588,6 +588,8 @@ Four object stores:
 - **`useSessionPersistence`** - Persists session metadata on session boundaries
 - **`useEventPersistence`** - Append-only writes of individual events as they arrive
 
+**Eviction Policy:** `EventDatabase.evictStaleData()` runs automatically on database initialization (after orphaned session cleanup). It removes completed sessions and chat sessions older than 7 days, then caps each at 200 entries by evicting the oldest completed/updated first. Active (incomplete) sessions are never evicted. Associated events are cascade-deleted when sessions are evicted.
+
 **Session ID Management:**
 
 `useSessionPersistence` is the **single source of truth** for session IDs. When a new session starts (detected by a `ralph_session_start` event), the hook:
