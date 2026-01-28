@@ -13,6 +13,13 @@ vi.mock("@/lib/persistence", () => ({
   },
 }))
 
+// Mock the ralphConnection module to verify session ID sync
+const mockSetRalphConnectionSessionId = vi.fn()
+vi.mock("@/lib/ralphConnection", () => ({
+  setCurrentSessionId: (instanceId: string, sessionId: string) =>
+    mockSetRalphConnectionSessionId(instanceId, sessionId),
+}))
+
 describe("useSessionPersistence", () => {
   const mockTokenUsage: TokenUsage = { input: 1000, output: 500 }
   const mockContextWindow: ContextWindow = { used: 5000, max: 200000 }
@@ -54,6 +61,7 @@ describe("useSessionPersistence", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSetRalphConnectionSessionId.mockClear()
   })
 
   afterEach(() => {
@@ -571,6 +579,96 @@ describe("useSessionPersistence", () => {
 
       const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
       expect(savedSession?.workspaceId).toBeNull()
+    })
+  })
+
+  describe("ralphConnection session ID sync (bug r-tufi7.1)", () => {
+    it("syncs session ID to ralphConnection when a new session is detected", async () => {
+      const timestamp = Date.now()
+      const events: ChatEvent[] = [createSystemInitEvent(timestamp)]
+
+      renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          instanceId: "test-instance",
+          events,
+        }),
+      )
+
+      await waitFor(() => {
+        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith(
+          "test-instance",
+          `test-instance-${timestamp}`,
+        )
+      })
+    })
+
+    it("syncs session ID for each new session boundary", async () => {
+      const startTime1 = Date.now()
+      const startTime2 = startTime1 + 1000
+
+      const { rerender } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        { initialProps: { ...defaultOptions, instanceId: "instance-x", events: [] as ChatEvent[] } },
+      )
+
+      // First session
+      rerender({
+        ...defaultOptions,
+        instanceId: "instance-x",
+        events: [
+          createSystemInitEvent(startTime1),
+          createRalphTaskStartedEvent(startTime1 + 50, "task-1"),
+          createAssistantEvent(startTime1 + 100, "First session"),
+        ] as ChatEvent[],
+      })
+
+      await waitFor(() => {
+        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith(
+          "instance-x",
+          `instance-x-${startTime1}`,
+        )
+      })
+
+      mockSetRalphConnectionSessionId.mockClear()
+
+      // Second session starts - should sync the new session ID
+      rerender({
+        ...defaultOptions,
+        instanceId: "instance-x",
+        events: [
+          createSystemInitEvent(startTime1),
+          createRalphTaskStartedEvent(startTime1 + 50, "task-1"),
+          createAssistantEvent(startTime1 + 100, "First session"),
+          createSystemInitEvent(startTime2),
+        ] as ChatEvent[],
+      })
+
+      await waitFor(() => {
+        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith(
+          "instance-x",
+          `instance-x-${startTime2}`,
+        )
+      })
+    })
+
+    it("uses the same instanceId when syncing to ralphConnection", async () => {
+      const timestamp = 1706123456789
+
+      renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          instanceId: "my-specific-instance",
+          events: [createSystemInitEvent(timestamp)],
+        }),
+      )
+
+      await waitFor(() => {
+        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledTimes(1)
+        const [instanceId, sessionId] = mockSetRalphConnectionSessionId.mock.calls[0]
+        expect(instanceId).toBe("my-specific-instance")
+        expect(sessionId).toBe("my-specific-instance-1706123456789")
+      })
     })
   })
 

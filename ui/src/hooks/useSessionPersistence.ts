@@ -16,6 +16,7 @@ import { eventDatabase } from "@/lib/persistence"
 import type { PersistedSession } from "@/lib/persistence"
 import type { ChatEvent, TokenUsage, ContextWindow, SessionInfo } from "@/types"
 import { getSessionBoundaries, getTaskFromSessionEvents } from "@/store"
+import { setCurrentSessionId as setRalphConnectionSessionId } from "@/lib/ralphConnection"
 
 /**
  * Generates a stable session ID based on instance ID and session start timestamp.
@@ -332,6 +333,10 @@ export function useSessionPersistence(
         }
         console.debug(`[useSessionPersistence] Setting currentSessionId to: ${newId}`)
         setCurrentSessionId(newId)
+
+        // Sync session ID to ralphConnection singleton so it uses the same ID for IndexedDB persistence
+        // This ensures both systems (hook and singleton) use the same session ID, avoiding event/session mismatches
+        setRalphConnectionSessionId(instanceId, newId)
 
         // Save the new session immediately so it appears in the session history dropdown
         // This ensures sessions are visible even before they complete

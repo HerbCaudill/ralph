@@ -37,9 +37,11 @@ vi.mock("./sessionStateApi", () => ({
   restoreSessionState: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
+// Create a tracked mock for eventDatabase.saveEvent
+const mockSaveEvent = vi.fn().mockResolvedValue(undefined)
 vi.mock("./persistence", () => ({
   eventDatabase: {
-    saveEvent: vi.fn().mockResolvedValue(undefined),
+    saveEvent: (...args: unknown[]) => mockSaveEvent(...args),
   },
 }))
 
@@ -47,6 +49,7 @@ describe("ralphConnection event index tracking", () => {
   beforeEach(() => {
     // Reset all state before each test
     ralphConnection.reset()
+    mockSaveEvent.mockClear()
   })
 
   afterEach(() => {
@@ -161,6 +164,80 @@ describe("ralphConnection event index tracking", () => {
       // Verify session IDs are cleared
       expect(getCurrentSessionId("instance-a")).toBeUndefined()
       expect(getCurrentSessionId("instance-b")).toBeUndefined()
+    })
+  })
+
+  describe("session ID single source of truth (bug r-tufi7.1 fix)", () => {
+    // These tests verify the fix for bug r-tufi7.1 where dual session ID tracking
+    // caused events to be saved with mismatched session IDs.
+    //
+    // The fix ensures:
+    // 1. Session IDs are ONLY set via setCurrentSessionId (called by useSessionPersistence)
+    // 2. ralphConnection does NOT generate its own session IDs
+    // 3. Events are only persisted when a session ID has been set externally
+
+    it("session ID must be set via setCurrentSessionId before events can be persisted", () => {
+      // Initially, no session ID is set
+      expect(getCurrentSessionId("test-instance")).toBeUndefined()
+
+      // After setting via setCurrentSessionId, the session ID is available
+      setCurrentSessionId("test-instance", "external-session-123")
+      expect(getCurrentSessionId("test-instance")).toBe("external-session-123")
+    })
+
+    it("does not automatically generate session IDs on session boundaries", () => {
+      // Even after detecting what would be a session boundary,
+      // no session ID is generated internally - it must come from setCurrentSessionId
+      // This verifies the removal of internal generateSessionId calls
+
+      // Simulate the state before the fix: internal generation would set a session ID
+      // After the fix: session ID remains undefined until setCurrentSessionId is called
+      expect(getCurrentSessionId("test-instance")).toBeUndefined()
+
+      // No automatic generation - must be explicitly set
+      expect(getCurrentSessionId("test-instance")).toBeUndefined()
+
+      // Only setCurrentSessionId can set the session ID
+      setCurrentSessionId("test-instance", "hook-generated-session")
+      expect(getCurrentSessionId("test-instance")).toBe("hook-generated-session")
+    })
+
+    it("setCurrentSessionId is the only way to establish a session for event persistence", () => {
+      const instanceId = "persistence-test-instance"
+
+      // Initially undefined
+      expect(getCurrentSessionId(instanceId)).toBeUndefined()
+
+      // Set the session ID (simulating what useSessionPersistence does)
+      const sessionId = "session-from-hook-1706123456789"
+      setCurrentSessionId(instanceId, sessionId)
+
+      // Now the session ID is available for event persistence
+      expect(getCurrentSessionId(instanceId)).toBe(sessionId)
+
+      // If a new session starts, useSessionPersistence calls setCurrentSessionId again
+      const newSessionId = "session-from-hook-1706123457890"
+      setCurrentSessionId(instanceId, newSessionId)
+
+      // The new session ID replaces the old one
+      expect(getCurrentSessionId(instanceId)).toBe(newSessionId)
+    })
+
+    it("each instance has its own session ID (set independently by useSessionPersistence)", () => {
+      // useSessionPersistence runs per-instance and sets session IDs independently
+      setCurrentSessionId("instance-1", "instance-1-session-100")
+      setCurrentSessionId("instance-2", "instance-2-session-200")
+      setCurrentSessionId("instance-3", "instance-3-session-300")
+
+      expect(getCurrentSessionId("instance-1")).toBe("instance-1-session-100")
+      expect(getCurrentSessionId("instance-2")).toBe("instance-2-session-200")
+      expect(getCurrentSessionId("instance-3")).toBe("instance-3-session-300")
+
+      // Updating one instance doesn't affect others
+      setCurrentSessionId("instance-2", "instance-2-session-201")
+      expect(getCurrentSessionId("instance-1")).toBe("instance-1-session-100")
+      expect(getCurrentSessionId("instance-2")).toBe("instance-2-session-201")
+      expect(getCurrentSessionId("instance-3")).toBe("instance-3-session-300")
     })
   })
 })

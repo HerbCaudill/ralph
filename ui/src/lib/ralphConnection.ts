@@ -51,15 +51,8 @@ const lastEventIndices: Map<string, number> = new Map()
 
 // Session tracking for IndexedDB persistence
 // Maps instanceId to the current session ID for that instance
+// Session IDs are set by useSessionPersistence via setCurrentSessionId (single source of truth)
 const currentSessionIds: Map<string, string> = new Map()
-
-/**
- * Generate a session ID based on instance ID and timestamp.
- * Format: "{instanceId}-{timestamp}"
- */
-function generateSessionId(instanceId: string, timestamp: number): string {
-  return `${instanceId}-${timestamp}`
-}
 
 /**
  * Persist an event directly to IndexedDB.
@@ -232,19 +225,19 @@ function handleMessage(event: MessageEvent): void {
             )
             const isPendingActive = pendingInstanceId === store.activeInstanceId
             for (const event of pendingEvents) {
-              // Check for session boundary to update session tracking
-              if (isSessionBoundary(event)) {
-                const newSessionId = generateSessionId(pendingInstanceId, event.timestamp)
-                currentSessionIds.set(pendingInstanceId, newSessionId)
-                console.debug(
-                  `[ralphConnection] New session from pending event: id=${newSessionId}, instanceId=${pendingInstanceId}`,
-                )
-              }
+              // Note: Session boundaries in pending events are detected by useSessionPersistence
+              // which will set the session ID via setCurrentSessionId. We don't generate IDs here
+              // to avoid dual session ID tracking (bug r-tufi7.1).
 
               // Persist to IndexedDB (deduplication handled by server UUID)
+              // Only persist if we have a session ID (set by useSessionPersistence)
               const sessionId = currentSessionIds.get(pendingInstanceId)
               if (sessionId) {
                 persistEventToIndexedDB(event, sessionId)
+              } else {
+                console.debug(
+                  `[ralphConnection] Skipping IndexedDB persistence for pending event (no session ID yet): type=${event.type}`,
+                )
               }
 
               // Update Zustand for UI
@@ -302,13 +295,8 @@ function handleMessage(event: MessageEvent): void {
             } else {
               store.resetSessionStatsForInstance(targetInstanceId)
             }
-
-            // Generate a new session ID for this instance
-            const newSessionId = generateSessionId(targetInstanceId, event.timestamp)
-            currentSessionIds.set(targetInstanceId, newSessionId)
-            console.debug(
-              `[ralphConnection] New session started: id=${newSessionId}, instanceId=${targetInstanceId}`,
-            )
+            // Note: Session ID is set by useSessionPersistence via setCurrentSessionId
+            // We don't generate IDs here to avoid dual session ID tracking (bug r-tufi7.1)
           }
 
           // Persist event to IndexedDB (before updating Zustand for UI)

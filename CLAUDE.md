@@ -588,6 +588,15 @@ Four object stores:
 - **`useSessionPersistence`** - Persists session metadata on session boundaries
 - **`useEventPersistence`** - Append-only writes of individual events as they arrive
 
+**Session ID Management:**
+
+`useSessionPersistence` is the **single source of truth** for session IDs. When a new session starts (detected by a session boundary event), the hook:
+
+1. Generates a stable session ID: `{instanceId}-{timestamp}`
+2. Syncs the ID to `ralphConnection.ts` via `setCurrentSessionId(instanceId, sessionId)`
+
+`ralphConnection.ts` does NOT generate session IDs internally. It relies entirely on `useSessionPersistence` to set session IDs via the `setCurrentSessionId` export. This prevents dual session ID tracking bugs where events could be persisted with mismatched session IDs.
+
 ### Event Logs
 
 Standalone snapshots saved when sessions complete:
