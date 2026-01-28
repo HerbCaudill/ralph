@@ -65,30 +65,28 @@ function createMockEvent(overrides: Partial<ChatEvent> = {}): ChatEvent {
  */
 function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppActions {
   const defaultInstance = createMockInstance({ id: DEFAULT_INSTANCE_ID, name: "Main" })
-  const instances = new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
+  const instances = overrides.instances ?? new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
 
   return {
     instances,
     activeInstanceId: DEFAULT_INSTANCE_ID,
-    ralphStatus: "stopped",
-    runStartedAt: null,
     initialTaskCount: null,
-    events: [],
     tasks: [],
     workspace: null,
     branch: null,
     issuePrefix: null,
-    tokenUsage: { input: 0, output: 0 },
-    contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-    session: { current: 0, total: 0 },
     connectionStatus: "disconnected",
     accentColor: null,
     sidebarWidth: 320,
     theme: "system",
+    vscodeThemeId: null,
+    lastDarkThemeId: null,
+    lastLightThemeId: null,
     taskChatOpen: true,
     taskChatWidth: 400,
     taskChatMessages: [],
     taskChatLoading: false,
+    currentTaskChatSessionId: null,
     viewingSessionIndex: null,
     taskSearchQuery: "",
     selectedTaskId: null,
@@ -98,9 +96,14 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     isSearchVisible: false,
     hotkeysDialogOpen: false,
     wasRunningBeforeDisconnect: false,
+    hasInitialSync: false,
+    persistenceError: null,
     taskChatEvents: [],
     statusCollapsedState: { open: false, deferred: true, closed: true },
     parentCollapsedState: {},
+    taskInputDraft: "",
+    taskChatInputDraft: "",
+    commentDrafts: {},
     ...overrides,
   } as AppState & AppActions
 }
@@ -383,12 +386,19 @@ describe("persist", () => {
         showToolOutput: true,
         theme: "dark",
         closedTimeFilter: "past_week",
+        vscodeThemeId: null,
+        lastDarkThemeId: null,
+        lastLightThemeId: null,
+        currentTaskChatSessionId: null,
         viewingSessionIndex: 2,
         taskSearchQuery: "search term",
         selectedTaskId: "task-123",
         isSearchVisible: true,
         statusCollapsedState: { open: false, deferred: true, closed: true },
         parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        commentDrafts: {},
         workspace: "/path/to/workspace",
         branch: "main",
         issuePrefix: "TEST",
@@ -400,32 +410,45 @@ describe("persist", () => {
     })
 
     it("excludes runtime-only fields", () => {
+      // Create an instance with runtime fields set
+      const runningInstance = createMockInstance({
+        id: DEFAULT_INSTANCE_ID,
+        name: "Main",
+        status: "running",
+        runStartedAt: Date.now(),
+      })
+      const instances = new Map([[DEFAULT_INSTANCE_ID, runningInstance]])
+
       const state = createMockAppState({
+        instances,
         connectionStatus: "connected",
-        ralphStatus: "running",
         taskChatMessages: [{ id: "1", role: "user", content: "hi", timestamp: 0 }],
         taskChatLoading: true,
         taskChatEvents: [createMockEvent()],
         hotkeysDialogOpen: true,
         visibleTaskIds: ["task-1", "task-2"],
-        runStartedAt: Date.now(),
         initialTaskCount: 5,
         wasRunningBeforeDisconnect: true,
+        hasInitialSync: true,
+        persistenceError: { message: "test error", failedCount: 3 },
       })
 
       const result = partialize(state)
 
-      // These should NOT be in the result
+      // These should NOT be in the result (they are runtime-only)
       expect(result).not.toHaveProperty("connectionStatus")
-      expect(result).not.toHaveProperty("ralphStatus")
       expect(result).not.toHaveProperty("taskChatMessages")
       expect(result).not.toHaveProperty("taskChatLoading")
       expect(result).not.toHaveProperty("taskChatEvents")
       expect(result).not.toHaveProperty("hotkeysDialogOpen")
       expect(result).not.toHaveProperty("visibleTaskIds")
-      expect(result).not.toHaveProperty("runStartedAt")
       expect(result).not.toHaveProperty("initialTaskCount")
       expect(result).not.toHaveProperty("wasRunningBeforeDisconnect")
+      expect(result).not.toHaveProperty("hasInitialSync")
+      expect(result).not.toHaveProperty("persistenceError")
+
+      // Note: ralphStatus and runStartedAt are per-instance fields stored within RalphInstance,
+      // not on AppState directly. The serialized instances should also exclude these runtime fields.
     })
 
     it("serializes instances correctly (without events)", () => {

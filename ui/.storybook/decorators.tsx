@@ -57,11 +57,26 @@ export function withStoreState(state: StoreState): Decorator {
         useAppStore.setState({ activeInstanceId: state.activeInstanceId })
       }
       // Handle runStartedAt - if explicitly set, use that value; if status is "running" and not set, auto-set to now
-      if (state.runStartedAt !== undefined) {
-        useAppStore.setState({ runStartedAt: state.runStartedAt })
-      } else if (state.ralphStatus === "running") {
-        // Auto-set runStartedAt to a time in the past for a realistic display
-        useAppStore.setState({ runStartedAt: Date.now() - 125000 }) // 2:05 elapsed
+      // Note: runStartedAt is stored within the active instance in the instances Map
+      if (state.runStartedAt !== undefined || state.ralphStatus === "running") {
+        useAppStore.setState(currentState => {
+          const activeInstance = currentState.instances.get(currentState.activeInstanceId)
+          if (!activeInstance) return currentState
+
+          const runStartedAt =
+            state.runStartedAt !== undefined ? state.runStartedAt
+              // Auto-set runStartedAt to a time in the past for a realistic display (2:05 elapsed)
+            : state.ralphStatus === "running" ? Date.now() - 125000
+            : activeInstance.runStartedAt
+
+          const updatedInstances = new Map(currentState.instances)
+          updatedInstances.set(currentState.activeInstanceId, {
+            ...activeInstance,
+            runStartedAt,
+          })
+
+          return { instances: updatedInstances }
+        })
       }
     }, [])
 
