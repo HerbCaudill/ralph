@@ -3,7 +3,7 @@
  * Lives outside React to survive HMR and StrictMode remounts.
  */
 
-import { useAppStore, flushTaskChatEventsBatch } from "../store"
+import { useAppStore } from "../store"
 import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 import { extractTokenUsageFromEvent } from "./extractTokenUsage"
@@ -535,12 +535,8 @@ function handleMessage(event: MessageEvent): void {
         if (typeof data.status === "string") {
           const isProcessing = data.status === "processing" || data.status === "streaming"
           store.setTaskChatLoading(isProcessing)
-
-          // When transitioning to idle, ensure all events are flushed immediately
-          // so the final response is visible without waiting for the batch timeout
-          if (data.status === "idle") {
-            flushTaskChatEventsBatch()
-          }
+          // Note: With 16ms batch interval, explicit flush on idle is no longer needed
+          // Events will be visible within one animation frame
         }
         break
 
