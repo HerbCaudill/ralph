@@ -101,6 +101,7 @@ async function openDatabase(): Promise<IDBDatabase> {
         chatSessionsStore.createIndex("by-task", "taskId")
         chatSessionsStore.createIndex("by-updated-at", "updatedAt")
         chatSessionsStore.createIndex("by-instance-and-task", ["instanceId", "taskId"])
+        chatSessionsStore.createIndex("by-workspace-and-updated-at", ["workspaceId", "updatedAt"])
 
         // Sync state store
         db.createObjectStore(STORE_NAMES.SYNC_STATE, {

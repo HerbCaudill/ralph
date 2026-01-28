@@ -83,6 +83,8 @@ export interface UseTaskChatPersistenceOptions {
    * between useStoreHydration (which loads session ID from IndexedDB) and session creation.
    */
   isHydrated?: boolean
+  /** Path to the workspace this session belongs to (for cross-workspace queries) */
+  workspaceId?: string | null
 }
 
 export interface UseTaskChatPersistenceResult {
@@ -106,7 +108,14 @@ export interface UseTaskChatPersistenceResult {
 export function useTaskChatPersistence(
   options: UseTaskChatPersistenceOptions,
 ): UseTaskChatPersistenceResult {
-  const { instanceId, messages, events, enabled = true, isHydrated = false } = options
+  const {
+    instanceId,
+    messages,
+    events,
+    enabled = true,
+    isHydrated = false,
+    workspaceId = null,
+  } = options
 
   // Get setter for syncing session ID to store
   const setStoreSessionId = useAppStore(state => state.setCurrentTaskChatSessionId)
@@ -164,6 +173,7 @@ export function useTaskChatPersistence(
     return {
       id: session.id,
       instanceId,
+      workspaceId,
       createdAt: session.createdAt,
       updatedAt: now,
       messageCount: messages.length,
@@ -172,7 +182,7 @@ export function useTaskChatPersistence(
       messages,
       // Events are stored separately in the events table (v7+ schema)
     }
-  }, [instanceId, messages, events])
+  }, [instanceId, workspaceId, messages, events])
 
   /**
    * Save a single event to IndexedDB.

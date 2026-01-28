@@ -28,6 +28,7 @@ function createMockSessions(): TaskChatSessionMetadata[] {
       taskId: "r-test.1",
       taskTitle: "Fix authentication bug",
       instanceId: "default",
+      workspaceId: null,
       createdAt: todayNoon - 3600000, // Today noon minus 1 hour
       updatedAt: todayNoon, // noon today -> "Today"
       messageCount: 5,
@@ -39,6 +40,7 @@ function createMockSessions(): TaskChatSessionMetadata[] {
       taskId: "r-test.2",
       taskTitle: "Add new feature",
       instanceId: "default",
+      workspaceId: null,
       createdAt: yesterdayNoon - 3600000,
       updatedAt: yesterdayNoon, // noon yesterday -> "Yesterday"
       messageCount: 10,
@@ -50,6 +52,7 @@ function createMockSessions(): TaskChatSessionMetadata[] {
       taskId: "untitled",
       taskTitle: null,
       instanceId: "default",
+      workspaceId: null,
       createdAt: twoDaysAgoNoon - 3600000,
       updatedAt: twoDaysAgoNoon, // 2 days ago -> "Older" (full date format)
       messageCount: 3,
@@ -407,6 +410,7 @@ describe("TaskChatHistoryPanel", () => {
           taskId: "r-1",
           taskTitle: "First task",
           instanceId: "default",
+          workspaceId: null,
           createdAt: todayNoon - 1000,
           updatedAt: todayNoon - 1000,
           messageCount: 2,
@@ -418,6 +422,7 @@ describe("TaskChatHistoryPanel", () => {
           taskId: "r-2",
           taskTitle: "Second task",
           instanceId: "default",
+          workspaceId: null,
           createdAt: todayNoon - 2000,
           updatedAt: todayNoon - 2000,
           messageCount: 3,

@@ -563,6 +563,7 @@ describe("Persistence Integration Tests", () => {
       await db.saveTaskChatSession({
         id: `${instanceId}-taskchat-${now}`,
         instanceId,
+        workspaceId: null,
         createdAt: now,
         updatedAt: now + 100,
         messageCount: messages.length,

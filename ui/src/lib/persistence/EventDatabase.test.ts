@@ -41,6 +41,7 @@ function createTestTaskChatSession(
   return {
     id,
     instanceId: "test-instance",
+    workspaceId: null,
     createdAt: now,
     updatedAt: now,
     messageCount: 2,

@@ -97,6 +97,9 @@ export interface TaskChatSessionMetadata {
   /** ID of the Ralph instance this session belongs to */
   instanceId: string
 
+  /** Path to the workspace this session belongs to (for cross-workspace queries) */
+  workspaceId: string | null
+
   /**
    * ID of the task this chat session was associated with.
    * @deprecated Task chat sessions are no longer tied to specific tasks.
@@ -148,7 +151,7 @@ export interface PersistedTaskChatSession extends TaskChatSessionMetadata {
  * Database schema version.
  * When this changes, users must clear IndexedDB (no migration support).
  */
-export const PERSISTENCE_SCHEMA_VERSION = 7
+export const PERSISTENCE_SCHEMA_VERSION = 8
 
 /**  IndexedDB store names. */
 export const STORE_NAMES = {

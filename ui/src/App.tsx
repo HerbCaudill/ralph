@@ -100,6 +100,7 @@ export function App() {
     messages: taskChatMessages,
     events: taskChatEvents,
     isHydrated,
+    workspaceId,
   })
 
   // Task list refresh

@@ -521,7 +521,7 @@ interface ExportedState {
   meta: {
     exportedAt: string // ISO timestamp
     version: 1 // Export format version
-    indexedDbSchemaVersion: number // Schema version (currently 7)
+    indexedDbSchemaVersion: number // Schema version (currently 8)
     localStorageKey: string // "ralph-ui-store"
   }
   localStorage: {
@@ -572,7 +572,7 @@ const sessionEvents = data.indexedDb.events.filter(e => e.sessionId === "default
 
 **For Storybook:** Compress exports with gzip, place in `public/fixtures/`, use `withImportedState` decorator.
 
-### IndexedDB Schema (v7)
+### IndexedDB Schema (v8)
 
 Four object stores:
 
@@ -580,7 +580,7 @@ Four object stores:
 | --------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | `sessions`      | Session data (metadata only, events separate)    | `by-instance`, `by-started-at`, `by-instance-and-started-at`, `by-task`, `by-workspace-and-started-at` |
 | `events`        | Individual events (shared by sessions and chats) | `by-session`, `by-timestamp`                                                                           |
-| `chat_sessions` | Task chat session data (unified store)           | `by-instance`, `by-task`, `by-updated-at`, `by-instance-and-task`                                      |
+| `chat_sessions` | Task chat session data (unified store)           | `by-instance`, `by-task`, `by-updated-at`, `by-instance-and-task`, `by-workspace-and-updated-at`       |
 | `sync_state`    | Key-value settings                               | Primary key: `key`                                                                                     |
 
 **Persistence uses two hooks:**

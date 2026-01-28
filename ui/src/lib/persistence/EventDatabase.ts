@@ -48,6 +48,8 @@ interface RalphDBSchema extends DBSchema {
       "by-task": string
       "by-updated-at": number
       "by-instance-and-task": [string, string]
+      // Note: Records with null workspaceId won't be indexed by this compound index
+      "by-workspace-and-updated-at": [string, number]
     }
   }
   [STORE_NAMES.SYNC_STATE]: {
@@ -108,6 +110,7 @@ export class EventDatabase {
         chatSessionsStore.createIndex("by-task", "taskId")
         chatSessionsStore.createIndex("by-updated-at", "updatedAt")
         chatSessionsStore.createIndex("by-instance-and-task", ["instanceId", "taskId"])
+        chatSessionsStore.createIndex("by-workspace-and-updated-at", ["workspaceId", "updatedAt"])
 
         // Sync state key-value store
         db.createObjectStore(STORE_NAMES.SYNC_STATE, {
