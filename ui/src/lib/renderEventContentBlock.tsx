@@ -3,8 +3,24 @@ import { ThinkingBlock } from "@/components/events/ThinkingBlock"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
 import { TaskLifecycleEvent } from "@/components/events/TaskLifecycleEvent"
 import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
+import { shouldFilterContentBlock } from "@/lib/EventFilterPipeline"
 import type { AssistantContentBlock, AssistantTextEvent, ToolUseEvent } from "@/types"
 
+/**
+ * Renders a single content block from an assistant message.
+ *
+ * This function handles Layer 4 of the event filtering pipeline.
+ * See EVENT_FILTERING_PIPELINE.md for full documentation.
+ *
+ * Supported block types:
+ * - thinking: Extended thinking blocks (rendered as collapsible)
+ * - text: Regular text (may contain lifecycle markers)
+ * - tool_use: Tool invocations (rendered with results inline)
+ *
+ * Filtered (return null):
+ * - Lifecycle text when structured events exist (avoid duplication)
+ * - Unrecognized block types
+ */
 export function renderEventContentBlock(
   block: AssistantContentBlock,
   index: number,
@@ -12,16 +28,32 @@ export function renderEventContentBlock(
   toolResults: Map<string, { output?: string; error?: string }>,
   options?: { hasStructuredLifecycleEvents?: boolean },
 ) {
+  // For text blocks, check if it's a lifecycle marker
+  const lifecycleEvent =
+    block.type === "text" ? parseTaskLifecycleEvent(block.text, timestamp) : null
+  const isLifecycleText = lifecycleEvent !== null
+
+  // Use centralized filter logic
+  const filterResult = shouldFilterContentBlock(block, isLifecycleText, {
+    hasStructuredLifecycleEvents: options?.hasStructuredLifecycleEvents,
+  })
+
+  if (!filterResult.shouldRender) {
+    // Note: filterResult.reason contains why (e.g., "lifecycle_text_has_structured_event")
+    // This can be used with debug mode in the future
+    return null
+  }
+
+  // Render thinking blocks
   if (block.type === "thinking") {
     return <ThinkingBlock key={`thinking-${index}`} content={block.thinking} />
   }
 
+  // Render text blocks (may be lifecycle events or regular text)
   if (block.type === "text") {
-    const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
+    // If it's a lifecycle text and we get here, structured events don't exist
+    // so we should render it as a lifecycle event
     if (lifecycleEvent) {
-      if (options?.hasStructuredLifecycleEvents) {
-        return null
-      }
       return <TaskLifecycleEvent key={`lifecycle-${index}`} event={lifecycleEvent} />
     }
 
@@ -33,6 +65,7 @@ export function renderEventContentBlock(
     return <AssistantText key={`text-${index}`} event={textEvent} />
   }
 
+  // Render tool use blocks
   if (block.type === "tool_use") {
     const result = toolResults.get(block.id)
     const toolEvent: ToolUseEvent = {
@@ -52,5 +85,6 @@ export function renderEventContentBlock(
     return <ToolUseCard key={`tool-${block.id}`} event={toolEvent} />
   }
 
+  // This shouldn't be reached if filter logic is correct
   return null
 }
