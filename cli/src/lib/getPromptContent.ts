@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
-import { loadSessionPrompt } from "@herbcaudill/ralph-shared"
+import { loadSessionPrompt } from "@herbcaudill/ralph-shared/prompts"
 
 /**
  * Get the prompt content by combining core-prompt.md with workflow.md.

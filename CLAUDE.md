@@ -298,7 +298,14 @@ The server automatically wraps user messages in this format before sending to th
 
 ### Shared Package (`shared/`)
 
-Shared utilities and types used by both CLI and UI packages:
+Shared utilities and types used by both CLI and UI packages.
+
+**Subpath Exports:** The main entry point (`@herbcaudill/ralph-shared`) is browser-safe and only exports events, beads types, and the version constant. Node-only code (prompt loading utilities that use `node:fs`) is available via a separate subpath:
+
+- `@herbcaudill/ralph-shared` — Browser-safe: events, beads types, VERSION
+- `@herbcaudill/ralph-shared/prompts` — Node-only: prompt loading utilities
+
+**Modules:**
 
 - **Agent Events** (`events/`):
   - Normalized event types (`AgentMessageEvent`, `AgentToolUseEvent`, `AgentThinkingEvent`, etc.)
@@ -308,7 +315,7 @@ Shared utilities and types used by both CLI and UI packages:
   - Issue types (`BdIssue`, `BdDependency`)
   - Options types (`BdListOptions`, `BdCreateOptions`, `BdUpdateOptions`)
   - Mutation events (`MutationEvent`, `MutationType`)
-- **Prompt Loading** (`prompts/`):
+- **Prompt Loading** (`prompts/`) — **Node-only, import from `@herbcaudill/ralph-shared/prompts`**:
   - `loadSessionPrompt()` - Combine core-prompt with workflow
   - `loadPrompt()` - Load prompt files with custom overrides
   - `hasCustomWorkflow()` - Check for custom workflow existence

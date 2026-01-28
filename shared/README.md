@@ -72,26 +72,28 @@ Utilities for loading and managing prompt files with customization support.
 - `LoadPromptOptions` - Configuration for loading a prompt file
 - `LoadPromptResult` - Result from loading a prompt file
 
+## Subpath Exports
+
+The main entry point is browser-safe. Node-only utilities (prompt loading) are available via a separate subpath:
+
+- `@herbcaudill/ralph-shared` — Browser-safe: events, beads types, VERSION
+- `@herbcaudill/ralph-shared/prompts` — Node-only: prompt loading utilities (uses `node:fs`)
+
 ## Usage
 
 ```typescript
+// Browser-safe imports (events, types, version)
 import {
-  // Agent events
   AgentEvent,
   AgentMessageEvent,
   isAgentMessageEvent,
-
-  // Beads types
   BdIssue,
   IssueStatus,
-
-  // Prompt loading
-  loadPrompt,
-  initPrompt,
-
-  // Version
   VERSION,
 } from "@herbcaudill/ralph-shared"
+
+// Node-only imports (prompt loading)
+import { loadPrompt, initPrompt } from "@herbcaudill/ralph-shared/prompts"
 
 // Type guard example
 function handleEvent(event: AgentEvent) {
@@ -100,7 +102,7 @@ function handleEvent(event: AgentEvent) {
   }
 }
 
-// Load prompt with customization
+// Load prompt with customization (Node.js only)
 const result = loadPrompt({
   filename: "prompt.md",
   customDir: ".ralph",
