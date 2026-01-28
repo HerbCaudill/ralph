@@ -110,7 +110,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
         className={cn("hover:bg-white/20")}
         style={{ color: textColor }}
       >
-        <IconSettings className="size-4" />
+        <IconSettings className="size-5" />
       </Button>
 
       {isOpen && (

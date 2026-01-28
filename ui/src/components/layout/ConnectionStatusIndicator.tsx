@@ -62,7 +62,7 @@ export function ConnectionStatusIndicator({
       <Icon
         className={cn(!useCustomColor && config.color, isConnecting && "animate-spin")}
         style={useCustomColor ? { color: textColor } : undefined}
-        size={14}
+        size={18}
         data-testid="connection-status-icon"
       />
       {showLabel && (

@@ -21,7 +21,7 @@ export function HelpButton({ className, textColor }: HelpButtonProps) {
       className={cn("hover:bg-white/20", className)}
       style={{ color: textColor }}
     >
-      <IconHelp className="size-4" />
+      <IconHelp className="size-5" />
     </Button>
   )
 }
