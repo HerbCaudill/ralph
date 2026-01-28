@@ -124,7 +124,7 @@ export function getConfig(): ServerConfig {
     host: process.env.HOST || "localhost",
     port: parseInt(process.env.PORT || "4242", 10),
     appDir: path.resolve(import.meta.dirname, ".."),
-    workspacePath: process.env.WORKSPACE_PATH || undefined,
+    workspacePath: process.env.WORKSPACE_PATH || path.resolve(import.meta.dirname, "../.."),
     logRalphEvents: process.env.LOG_RALPH_EVENTS === "true",
     ralphCommand,
     ralphArgs,

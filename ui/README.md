@@ -242,6 +242,7 @@ pnpm format
 | `ANTHROPIC_API_KEY`          | API key for Claude agent                  | Required for Claude                            |
 | `OPENAI_API_KEY`             | API key for Codex agent                   | Optional (uses local codex CLI auth if absent) |
 | `CLAUDE_MAX_THINKING_TOKENS` | Token budget for Claude extended thinking | 10000                                          |
+| `WORKSPACE_PATH`             | Workspace directory path                  | Repository root                                |
 | `HOST`                       | Server bind address                       | 127.0.0.1                                      |
 | `PORT`                       | Server port                               | 4242                                           |
 

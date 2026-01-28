@@ -84,6 +84,7 @@ pnpm format
 | ------------------- | ---------------------------------------- | -------------- |
 | `ANTHROPIC_API_KEY` | API key for Claude                       | Yes for Claude |
 | `OPENAI_API_KEY`    | API key for Codex                        | Optional       |
+| `WORKSPACE_PATH`    | Workspace directory (default: repo root) | No             |
 | `HOST`              | Server bind address (default: 127.0.0.1) | No             |
 | `PORT`              | Server port (default: 4242)              | No             |
 

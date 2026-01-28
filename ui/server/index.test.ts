@@ -1,7 +1,45 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { createServer, type Server } from "node:http"
+import path from "node:path"
 import express from "express"
 import { WebSocketServer, WebSocket } from "ws"
+import { getConfig } from "./index.js"
+
+describe("getConfig", () => {
+  it("defaults workspacePath to the repo root when WORKSPACE_PATH is not set", () => {
+    const original = process.env.WORKSPACE_PATH
+    delete process.env.WORKSPACE_PATH
+
+    try {
+      const config = getConfig()
+      // The server dir is ui/server, so two levels up ("../..") is the repo root
+      const expected = path.resolve(import.meta.dirname, "../..")
+      expect(config.workspacePath).toBe(expected)
+    } finally {
+      if (original !== undefined) {
+        process.env.WORKSPACE_PATH = original
+      } else {
+        delete process.env.WORKSPACE_PATH
+      }
+    }
+  })
+
+  it("uses WORKSPACE_PATH env var when set", () => {
+    const original = process.env.WORKSPACE_PATH
+    process.env.WORKSPACE_PATH = "/custom/workspace"
+
+    try {
+      const config = getConfig()
+      expect(config.workspacePath).toBe("/custom/workspace")
+    } finally {
+      if (original !== undefined) {
+        process.env.WORKSPACE_PATH = original
+      } else {
+        delete process.env.WORKSPACE_PATH
+      }
+    }
+  })
+})
 
 describe("server", () => {
   let server: Server
