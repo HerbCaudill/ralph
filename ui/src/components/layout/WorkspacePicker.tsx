@@ -268,7 +268,7 @@ export function WorkspacePicker({
       {isOpen && (
         <div
           className={cn(
-            "bg-popover border-border absolute top-full left-0 z-50 mt-1 w-80 rounded-md border shadow-lg",
+            "bg-popover text-popover-foreground border-border absolute top-full left-0 z-50 mt-1 w-80 rounded-md border shadow-lg",
           )}
         >
           {/* Error state */}
