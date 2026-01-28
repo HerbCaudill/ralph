@@ -50,6 +50,10 @@ let currentReconnectDelay = INITIAL_RECONNECT_DELAY
 // Maps instanceId to the last known event timestamp for that instance
 const lastEventTimestamps: Map<string, number> = new Map()
 
+// Task chat event timestamp tracking for reconnection sync
+// Maps instanceId to the last known task chat event timestamp for that instance
+const lastTaskChatEventTimestamps: Map<string, number> = new Map()
+
 // Session tracking for IndexedDB persistence
 // Maps instanceId to the current session info (ID and start time) for that instance
 // Session IDs are now generated synchronously when session boundary events arrive,
@@ -554,7 +558,7 @@ function handleMessage(event: MessageEvent): void {
         break
 
       // Task chat events - unified event model
-      case "task-chat:event":
+      case "task-chat:event": {
         // Raw SDK event for unified event stream
         if (data.event && typeof data.event === "object") {
           // Ensure the event has required properties
@@ -565,6 +569,11 @@ function handleMessage(event: MessageEvent): void {
           }
           if (typeof rawEvent.type === "string" && typeof rawEvent.timestamp === "number") {
             store.addTaskChatEvent(data.event)
+
+            // Track last event timestamp for reconnection sync
+            const taskChatInstanceId =
+              typeof data.instanceId === "string" ? data.instanceId : store.activeInstanceId
+            lastTaskChatEventTimestamps.set(taskChatInstanceId, rawEvent.timestamp)
 
             // Create a properly typed event for token extraction
             const typedEvent = { ...rawEvent, type: rawEvent.type, timestamp: rawEvent.timestamp }
@@ -581,6 +590,7 @@ function handleMessage(event: MessageEvent): void {
           }
         }
         break
+      }
 
       // Task chat status/error handlers (still needed for loading state)
       case "task-chat:status":
@@ -606,11 +616,16 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
-      case "task-chat:cleared":
+      case "task-chat:cleared": {
         // Task chat history was cleared (by this or another client)
         // Clear local state to sync across all connected clients
         store.clearTaskChatMessages()
+        // Clear timestamp tracking since there's no history to reconnect to
+        const clearedInstanceId =
+          typeof data.instanceId === "string" ? data.instanceId : store.activeInstanceId
+        lastTaskChatEventTimestamps.delete(clearedInstanceId)
         break
+      }
 
       // Deprecated legacy handlers - these message types are still emitted by server
       // but we now get content from task-chat:event instead. Ignore them silently.
@@ -802,6 +817,7 @@ function reset(): void {
   intentionalClose = false
   resetReconnectState()
   lastEventTimestamps.clear()
+  lastTaskChatEventTimestamps.clear()
   currentSessions.clear()
 }
 
@@ -828,7 +844,24 @@ export function getLastEventTimestamp(instanceId: string): number | undefined {
  */
 export function clearEventTimestamps(): void {
   lastEventTimestamps.clear()
+  lastTaskChatEventTimestamps.clear()
   currentSessions.clear()
+}
+
+/**
+ * Get the last known task chat event timestamp for an instance.
+ * Used for reconnection sync to request missed events.
+ */
+export function getLastTaskChatEventTimestamp(instanceId: string): number | undefined {
+  return lastTaskChatEventTimestamps.get(instanceId)
+}
+
+/**
+ * Clear task chat event timestamps for all instances.
+ * Called when task chat history is cleared.
+ */
+export function clearTaskChatEventTimestamps(): void {
+  lastTaskChatEventTimestamps.clear()
 }
 
 /**
