@@ -1,12 +1,15 @@
+#!/usr/bin/env node
 /**
  * Generic test runner that executes suites sequentially, parses output,
  * bails on first failure, and prints a concise summary.
  *
- * Each suite defines a command to run and a parser type for extracting
- * test counts from the output.
+ * Loads configuration from `test-all.config.js` in the working directory.
+ * The config should export a function that receives CLI flags and returns
+ * { suites, options }.
  */
 import { spawn } from "node:child_process"
 import path from "node:path"
+import { pathToFileURL } from "node:url"
 
 /** ANSI style helpers */
 const style = {
@@ -85,10 +88,10 @@ const parsers = {
 /**
  * Run a single command and capture its output.
  *
- * Returns { exitCode, duration, output, passed, failed, skipped }.
+ * Returns { exitCode, duration, output }.
  */
 function runCommand(
-  /** The command and arguments to run, e.g. ["pnpm", "vitest", "run"] */
+  /** The command and arguments to run, e.g. "pnpm vitest run" or ["pnpm", "vitest", "run"] */
   args,
   /** Options: cwd, env overrides */
   { cwd, env } = {},
@@ -137,7 +140,6 @@ function printResultLine(result) {
   const durationStr = style.yellow(`(${formatDuration(result.duration)})`)
 
   if (result.type == null) {
-    // No parser means no test counts (e.g. typecheck) — just pass/fail
     console.log(`  ${status} ${name} ${durationStr}`)
   } else {
     const passedStr = style.green(`${result.passed} passed`)
@@ -179,7 +181,7 @@ function printSummary(suiteResults, totalDuration) {
  * - title: header text (default: "Running all tests")
  * - clear: clear the terminal before running (default: true)
  */
-export async function testAll(
+async function testAll(
   /** Array of suite definitions */
   suites,
   /** Options */
@@ -223,3 +225,22 @@ export async function testAll(
   const exitCode = printSummary(completed, totalDuration)
   process.exit(exitCode)
 }
+
+// ---- CLI entry point ----
+
+const configPath = path.join(process.cwd(), "test-all.config.js")
+const flags = process.argv.slice(2)
+
+let config
+try {
+  const mod = await import(pathToFileURL(configPath).href)
+  config = typeof mod.default === "function" ? mod.default(flags) : mod.default
+} catch (err) {
+  if (err.code === "ERR_MODULE_NOT_FOUND") {
+    console.error(`No test-all.config.js found in ${process.cwd()}`)
+    process.exit(1)
+  }
+  throw err
+}
+
+await testAll(config.suites, config.options)
