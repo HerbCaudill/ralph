@@ -215,9 +215,7 @@ export const BlockedTask: Story = {
   ),
 }
 
-// ==========================
 // Interaction Test Stories
-// ==========================
 
 // Default form values for interaction tests
 const defaultFormValues: TaskFormValues = {

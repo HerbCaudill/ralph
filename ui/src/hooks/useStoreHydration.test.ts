@@ -480,9 +480,11 @@ describe("useStoreHydration", () => {
 
     it("should restore session ID even when event restoration is skipped (server already provided events)", async () => {
       // Server already synced events
-      useAppStore.getState().setEventsForInstance("default", [
-        { type: "system", timestamp: 1000, subtype: "init" } as any,
-      ])
+      useAppStore
+        .getState()
+        .setEventsForInstance("default", [
+          { type: "system", timestamp: 1000, subtype: "init" } as any,
+        ])
       useAppStore.getState().setHasInitialSync(true)
 
       const mockSession: PersistedSession = {

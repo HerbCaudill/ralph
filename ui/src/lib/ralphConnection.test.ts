@@ -2281,10 +2281,10 @@ describe("ralphConnection event timestamp tracking", () => {
 
       // Get references to the mocked session state API functions
       const sessionStateApi = await import("./sessionStateApi")
-      mockCheckForSavedSessionState =
-        sessionStateApi.checkForSavedSessionState as ReturnType<typeof vi.fn>
-      mockRestoreSessionState =
-        sessionStateApi.restoreSessionState as ReturnType<typeof vi.fn>
+      mockCheckForSavedSessionState = sessionStateApi.checkForSavedSessionState as ReturnType<
+        typeof vi.fn
+      >
+      mockRestoreSessionState = sessionStateApi.restoreSessionState as ReturnType<typeof vi.fn>
 
       // Reset mocks
       mockCheckForSavedSessionState.mockReset()
@@ -2454,9 +2454,7 @@ describe("ralphConnection event timestamp tracking", () => {
       expect(mockRestoreSessionState).not.toHaveBeenCalled()
 
       // Should log the skip reason
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining("No saved state on server"),
-      )
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("No saved state on server"))
 
       logSpy.mockRestore()
     })

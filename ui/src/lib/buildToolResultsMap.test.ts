@@ -2,9 +2,7 @@ import { describe, it, expect } from "vitest"
 import { buildToolResultsMap } from "./buildToolResultsMap"
 import type { ChatEvent } from "@/types"
 
-const toolResultEvent = (
-  content: unknown[],
-): ChatEvent => ({
+const toolResultEvent = (content: unknown[]): ChatEvent => ({
   type: "user",
   timestamp: Date.now(),
   tool_use_result: true,
@@ -58,18 +56,14 @@ describe("buildToolResultsMap", () => {
   })
 
   it("detects ralph_task_started lifecycle events", () => {
-    const events: ChatEvent[] = [
-      { type: "ralph_task_started", timestamp: 1 },
-    ]
+    const events: ChatEvent[] = [{ type: "ralph_task_started", timestamp: 1 }]
 
     const { hasStructuredLifecycleEvents } = buildToolResultsMap(events)
     expect(hasStructuredLifecycleEvents).toBe(true)
   })
 
   it("detects ralph_task_completed lifecycle events", () => {
-    const events: ChatEvent[] = [
-      { type: "ralph_task_completed", timestamp: 1 },
-    ]
+    const events: ChatEvent[] = [{ type: "ralph_task_completed", timestamp: 1 }]
 
     const { hasStructuredLifecycleEvents } = buildToolResultsMap(events)
     expect(hasStructuredLifecycleEvents).toBe(true)
@@ -78,9 +72,7 @@ describe("buildToolResultsMap", () => {
   it("handles mixed events with both tool results and lifecycle events", () => {
     const events: ChatEvent[] = [
       { type: "ralph_task_started", timestamp: 1 },
-      toolResultEvent([
-        { type: "tool_result", tool_use_id: "t-1", content: "output" },
-      ]),
+      toolResultEvent([{ type: "tool_result", tool_use_id: "t-1", content: "output" }]),
       { type: "assistant_message", timestamp: 2, message: { content: [] } },
       { type: "ralph_task_completed", timestamp: 3 },
     ]
@@ -116,11 +108,7 @@ describe("buildToolResultsMap", () => {
   })
 
   it("skips tool_result items without tool_use_id", () => {
-    const events: ChatEvent[] = [
-      toolResultEvent([
-        { type: "tool_result", content: "no id" },
-      ]),
-    ]
+    const events: ChatEvent[] = [toolResultEvent([{ type: "tool_result", content: "no id" }])]
 
     const { toolResults } = buildToolResultsMap(events)
     expect(toolResults.size).toBe(0)

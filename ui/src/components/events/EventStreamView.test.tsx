@@ -47,9 +47,7 @@ describe("EventStreamView", () => {
 
       // Should show the "Ralph is not running" message
       expect(screen.getByText("Ralph is not running")).toBeInTheDocument()
-      expect(
-        screen.getByText("Click Start to begin working on open tasks"),
-      ).toBeInTheDocument()
+      expect(screen.getByText("Click Start to begin working on open tasks")).toBeInTheDocument()
 
       // Should show the Start button
       const startButton = screen.getByTestId("ralph-start-button")

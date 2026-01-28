@@ -23,9 +23,7 @@ export interface TaskChatFixture {
   entries: TaskChatLogEntry[]
 }
 
-// ============================================================================
 // Simple Q&A Conversation Fixture
-// ============================================================================
 
 /**
  * Simple Q&A conversation: user asks a question, assistant responds with text.
@@ -157,9 +155,7 @@ export const simpleQAFixture: TaskChatFixture = {
   ],
 }
 
-// ============================================================================
 // Tool Use with Success Fixture
-// ============================================================================
 
 /**  Tool use scenario: assistant uses Bash tool to run a command successfully. */
 export const toolUseSuccessFixture: TaskChatFixture = {
@@ -340,9 +336,7 @@ export const toolUseSuccessFixture: TaskChatFixture = {
   ],
 }
 
-// ============================================================================
 // Multiple Rapid Events (Streaming) Fixture
-// ============================================================================
 
 /**  Multiple rapid streaming events simulating real-time text generation. */
 export const rapidStreamingFixture: TaskChatFixture = {
@@ -536,9 +530,7 @@ export const rapidStreamingFixture: TaskChatFixture = {
   ],
 }
 
-// ============================================================================
 // Out-of-Order Events Fixture
-// ============================================================================
 
 /**
  * Events that arrive out of order (by timestamp) to test sorting behavior.
@@ -634,9 +626,7 @@ export const outOfOrderFixture: TaskChatFixture = {
   ],
 }
 
-// ============================================================================
 // Multiple Tool Uses Fixture
-// ============================================================================
 
 /**  Multiple tool uses in a single turn (Read, then Grep). */
 export const multipleToolUsesFixture: TaskChatFixture = {
@@ -841,9 +831,7 @@ export const multipleToolUsesFixture: TaskChatFixture = {
   ],
 }
 
-// ============================================================================
 // Tool Use Error Fixture
-// ============================================================================
 
 /**  Tool use that results in an error. */
 export const toolUseErrorFixture: TaskChatFixture = {
@@ -1004,9 +992,7 @@ export const toolUseErrorFixture: TaskChatFixture = {
   ],
 }
 
-// ============================================================================
 // Full Streaming with Deduplication Fixture
-// ============================================================================
 
 /**
  * Full streaming scenario with message_start/message_stop that tests deduplication.
@@ -1127,9 +1113,7 @@ export const fullStreamingFixture: TaskChatFixture = {
   ],
 }
 
-// ============================================================================
 // Multi-Tool Full Streaming Fixture (Issue r-3mjn reproduction)
-// ============================================================================
 
 /**
  * Full streaming scenario with multiple tool uses and message_start/message_stop.
@@ -1496,9 +1480,7 @@ export const multiToolFullStreamingFixture: TaskChatFixture = {
   ],
 }
 
-// ============================================================================
 // Helper Functions
-// ============================================================================
 
 /**  Get all available fixtures. */
 export function getAllFixtures(): TaskChatFixture[] {

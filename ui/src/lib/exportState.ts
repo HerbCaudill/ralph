@@ -139,9 +139,7 @@ export async function downloadStateExport(filename?: string): Promise<void> {
   URL.revokeObjectURL(url)
 }
 
-// ============================================================================
 // Internal helpers for direct IndexedDB access
-// ============================================================================
 
 const DB_NAME = "ralph-persistence"
 
