@@ -188,8 +188,9 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
       if (sessionId) {
         // URL has a session ID, load it
         loadSessionEvents(sessionId)
-      } else if (selectedSession) {
-        // URL was cleared but we have a selected session, clear it
+      } else {
+        // URL has no session ID — clear any selected session.
+        // This is idempotent, so it's safe to call even if no session is selected.
         clearSelectedSession()
       }
     }
@@ -206,9 +207,6 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
       window.removeEventListener("popstate", handleUrlChange)
       window.removeEventListener("hashchange", handleUrlChange)
     }
-    // Note: selectedSession intentionally excluded from deps to avoid infinite loop.
-    // The effect uses selectedSession only for cleanup when URL is cleared.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadSessionEvents, clearSelectedSession])
 
   const handleSessionHistorySelect = useCallback(

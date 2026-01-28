@@ -135,7 +135,14 @@ export function App() {
   // Session navigation
   const goToPreviousSession = useAppStore(state => state.goToPreviousSession)
   const goToNextSession = useAppStore(state => state.goToNextSession)
-  const goToLatestSession = useAppStore(state => state.goToLatestSession)
+
+  // Return to live session via URL-based navigation.
+  // Clears the URL and dispatches popstate so useEventStream's listener
+  // picks up the change and clears the selected historical session.
+  const goToLatestSession = useCallback(() => {
+    window.history.pushState(null, "", "/")
+    window.dispatchEvent(new PopStateEvent("popstate"))
+  }, [])
 
   // Task navigation
   const selectedTaskId = useAppStore(selectSelectedTaskId)

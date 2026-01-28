@@ -399,6 +399,9 @@ describe("useEventStream", () => {
     it("returnToLive calls clearSelectedSession", () => {
       const { result } = renderHook(() => useEventStream())
 
+      // Clear the mount-time call (URL is "/" so clearSelectedSession is called on mount)
+      mockClearSelectedSession.mockClear()
+
       result.current.navigation.returnToLive()
 
       expect(mockClearSelectedSession).toHaveBeenCalledTimes(1)
@@ -601,6 +604,10 @@ describe("useEventStream", () => {
         mockSelectedSession = null
 
         const { result } = renderHook(() => useEventStream())
+        // Clear any calls from mount effects before testing navigation action
+        mockClearSelectedSession.mockClear()
+        mockLoadSessionEvents.mockClear()
+
         result.current.navigation.goToNext()
 
         expect(mockLoadSessionEvents).not.toHaveBeenCalled()
@@ -770,6 +777,96 @@ describe("useEventStream", () => {
       const { result } = renderHook(() => useEventStream())
       expect(result.current.containerRef).toBeDefined()
       expect(result.current.containerRef.current).toBe(null)
+    })
+  })
+
+  describe("URL-based session navigation (popstate)", () => {
+    it("calls clearSelectedSession on mount when URL has no session ID", () => {
+      // URL is "/" (set in beforeEach)
+      renderHook(() => useEventStream())
+
+      // clearSelectedSession should be called during mount because URL is "/"
+      expect(mockClearSelectedSession).toHaveBeenCalledTimes(1)
+    })
+
+    it("calls loadSessionEvents on mount when URL has a session ID", () => {
+      // Set URL to a session path before mounting
+      window.history.replaceState(null, "", "/session/session-abc")
+
+      renderHook(() => useEventStream())
+
+      expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-abc")
+      // clearSelectedSession should NOT be called since URL has a session ID
+      expect(mockClearSelectedSession).not.toHaveBeenCalled()
+    })
+
+    it("clears selected session when a popstate event fires with no session ID in URL", () => {
+      renderHook(() => useEventStream())
+
+      // Clear mount-time call
+      mockClearSelectedSession.mockClear()
+
+      // Simulate the pattern used by goToLatestSession in App.tsx:
+      // pushState to "/" then dispatch popstate
+      window.history.pushState(null, "", "/")
+      window.dispatchEvent(new PopStateEvent("popstate"))
+
+      expect(mockClearSelectedSession).toHaveBeenCalledTimes(1)
+    })
+
+    it("loads session events when a popstate event fires with a session ID in URL", () => {
+      renderHook(() => useEventStream())
+
+      // Clear mount-time calls
+      mockClearSelectedSession.mockClear()
+      mockLoadSessionEvents.mockClear()
+
+      // Simulate navigating to a session via URL
+      window.history.pushState(null, "", "/session/session-xyz")
+      window.dispatchEvent(new PopStateEvent("popstate"))
+
+      expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-xyz")
+      expect(mockClearSelectedSession).not.toHaveBeenCalled()
+    })
+
+    it("clears selected session on popstate even when no session was previously selected", () => {
+      // This tests the "always clear" behavior: clearSelectedSession is called
+      // even when selectedSession is already null. This ensures the dispatched
+      // popstate from goToLatestSession works without stale closure issues.
+      mockSelectedSession = null
+
+      renderHook(() => useEventStream())
+
+      // Mount-time call should have happened even though mockSelectedSession is null
+      expect(mockClearSelectedSession).toHaveBeenCalledTimes(1)
+
+      // Clear and fire another popstate
+      mockClearSelectedSession.mockClear()
+      window.history.pushState(null, "", "/")
+      window.dispatchEvent(new PopStateEvent("popstate"))
+
+      // Should still call clearSelectedSession (idempotent)
+      expect(mockClearSelectedSession).toHaveBeenCalledTimes(1)
+    })
+
+    it("removes popstate and hashchange listeners on unmount", () => {
+      const addSpy = vi.spyOn(window, "addEventListener")
+      const removeSpy = vi.spyOn(window, "removeEventListener")
+
+      const { unmount } = renderHook(() => useEventStream())
+
+      // Should have added popstate and hashchange listeners
+      expect(addSpy).toHaveBeenCalledWith("popstate", expect.any(Function))
+      expect(addSpy).toHaveBeenCalledWith("hashchange", expect.any(Function))
+
+      unmount()
+
+      // Should have removed both listeners
+      expect(removeSpy).toHaveBeenCalledWith("popstate", expect.any(Function))
+      expect(removeSpy).toHaveBeenCalledWith("hashchange", expect.any(Function))
+
+      addSpy.mockRestore()
+      removeSpy.mockRestore()
     })
   })
 })
