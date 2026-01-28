@@ -20,6 +20,7 @@ import {
   selectVisibleTaskIds,
   selectHotkeysDialogOpen,
   selectActiveInstanceId,
+  selectWorkspace,
   selectEvents,
   selectTokenUsage,
   selectContextWindow,
@@ -62,11 +63,13 @@ export function App() {
   // Set favicon from logo.svg
   useFavicon()
 
-  // Get active instance ID for hydration
+  // Get active instance ID and workspace for hydration
   const activeInstanceId = useAppStore(selectActiveInstanceId)
+  const workspaceId = useAppStore(selectWorkspace)
 
   // Hydrate store from IndexedDB on startup (restores events and task chat from last session)
-  const { isHydrated } = useStoreHydration({ instanceId: activeInstanceId })
+  // Pass workspaceId to ensure only sessions from the current workspace are restored
+  const { isHydrated } = useStoreHydration({ instanceId: activeInstanceId, workspaceId })
 
   // Subscribe to state for session persistence
   const events = useAppStore(selectEvents)

@@ -15,6 +15,7 @@ vi.mock("@/lib/persistence", () => ({
   eventDatabase: {
     init: vi.fn().mockResolvedValue(undefined),
     getLatestActiveSession: vi.fn().mockResolvedValue(undefined),
+    getLatestActiveSessionForWorkspace: vi.fn().mockResolvedValue(undefined),
     getLatestTaskChatSessionForInstance: vi.fn().mockResolvedValue(undefined),
     getTaskChatSession: vi.fn().mockResolvedValue(undefined),
     getEventsForSession: vi.fn().mockResolvedValue([]),
@@ -247,5 +248,96 @@ describe("useStoreHydration", () => {
     // Check that task chat events were loaded from the events store
     expect(eventDatabase.getEventsForSession).toHaveBeenCalledWith("default-task-abc-1000")
     expect(useAppStore.getState().taskChatEvents).toEqual(mockPersistedEvents.map(pe => pe.event))
+  })
+
+  describe("workspace scoping", () => {
+    it("should use workspace-scoped query when workspaceId is provided", async () => {
+      const mockEvents: ChatEvent[] = [{ type: "system", timestamp: 1000, subtype: "init" } as any]
+
+      const mockSession: PersistedSession = {
+        id: "default-1000",
+        instanceId: "default",
+        workspaceId: "/Users/test/project",
+        startedAt: 1000,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 100, output: 50 },
+        contextWindow: { used: 150, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: mockEvents,
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSessionForWorkspace).mockResolvedValue(mockSession)
+
+      const { result } = renderHook(() =>
+        useStoreHydration({ instanceId: "default", workspaceId: "/Users/test/project" }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Should use workspace-scoped method
+      expect(eventDatabase.getLatestActiveSessionForWorkspace).toHaveBeenCalledWith(
+        "default",
+        "/Users/test/project",
+      )
+      // Should NOT use the non-scoped method
+      expect(eventDatabase.getLatestActiveSession).not.toHaveBeenCalled()
+
+      // Check that events were restored
+      expect(selectEvents(useAppStore.getState())).toEqual(mockEvents)
+    })
+
+    it("should use non-scoped query when workspaceId is not provided", async () => {
+      const mockEvents: ChatEvent[] = [{ type: "system", timestamp: 1000, subtype: "init" } as any]
+
+      const mockSession: PersistedSession = {
+        id: "default-1000",
+        instanceId: "default",
+        workspaceId: null,
+        startedAt: 1000,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 100, output: 50 },
+        contextWindow: { used: 150, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: mockEvents,
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Should use non-scoped method
+      expect(eventDatabase.getLatestActiveSession).toHaveBeenCalledWith("default")
+      // Should NOT use workspace-scoped method
+      expect(eventDatabase.getLatestActiveSessionForWorkspace).not.toHaveBeenCalled()
+
+      // Check that events were restored
+      expect(selectEvents(useAppStore.getState())).toEqual(mockEvents)
+    })
+
+    it("should use non-scoped query when workspaceId is null", async () => {
+      const { result } = renderHook(() =>
+        useStoreHydration({ instanceId: "default", workspaceId: null }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Should use non-scoped method when workspaceId is null
+      expect(eventDatabase.getLatestActiveSession).toHaveBeenCalledWith("default")
+      expect(eventDatabase.getLatestActiveSessionForWorkspace).not.toHaveBeenCalled()
+    })
   })
 })

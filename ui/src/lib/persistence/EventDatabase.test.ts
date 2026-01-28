@@ -482,6 +482,101 @@ describe("EventDatabase", () => {
       })
     })
 
+    describe("getLatestActiveSessionForWorkspace", () => {
+      it("returns the most recent active session for the specified workspace", async () => {
+        const now = Date.now()
+        // Active session in workspace A
+        await db.saveSession(
+          createTestSession({
+            id: "active-workspace-a",
+            instanceId: "test",
+            workspaceId: "/workspace/a",
+            startedAt: now - 1000,
+            completedAt: null,
+          }),
+        )
+        // Active session in workspace B (more recent)
+        await db.saveSession(
+          createTestSession({
+            id: "active-workspace-b",
+            instanceId: "test",
+            workspaceId: "/workspace/b",
+            startedAt: now,
+            completedAt: null,
+          }),
+        )
+
+        // Should only return the session from workspace A
+        const active = await db.getLatestActiveSessionForWorkspace("test", "/workspace/a")
+        expect(active?.id).toBe("active-workspace-a")
+      })
+
+      it("ignores sessions from other workspaces", async () => {
+        const now = Date.now()
+        // Active session in a different workspace
+        await db.saveSession(
+          createTestSession({
+            id: "active-other-workspace",
+            instanceId: "test",
+            workspaceId: "/workspace/other",
+            startedAt: now,
+            completedAt: null,
+          }),
+        )
+
+        // Should return undefined because no sessions match the requested workspace
+        const active = await db.getLatestActiveSessionForWorkspace("test", "/workspace/requested")
+        expect(active).toBeUndefined()
+      })
+
+      it("ignores completed sessions", async () => {
+        const now = Date.now()
+        // Completed session in the target workspace
+        await db.saveSession(
+          createTestSession({
+            id: "completed-session",
+            instanceId: "test",
+            workspaceId: "/workspace/target",
+            startedAt: now,
+            completedAt: now + 1000,
+          }),
+        )
+
+        const active = await db.getLatestActiveSessionForWorkspace("test", "/workspace/target")
+        expect(active).toBeUndefined()
+      })
+
+      it("returns the most recent active session when multiple exist in the same workspace", async () => {
+        const now = Date.now()
+        await db.saveSession(
+          createTestSession({
+            id: "older-active",
+            instanceId: "test",
+            workspaceId: "/workspace/target",
+            startedAt: now - 2000,
+            completedAt: null,
+          }),
+        )
+        await db.saveSession(
+          createTestSession({
+            id: "newer-active",
+            instanceId: "test",
+            workspaceId: "/workspace/target",
+            startedAt: now,
+            completedAt: null,
+          }),
+        )
+
+        const active = await db.getLatestActiveSessionForWorkspace("test", "/workspace/target")
+        expect(active?.id).toBe("newer-active")
+      })
+
+      it("returns undefined when no sessions exist", async () => {
+        const active = await db.getLatestActiveSessionForWorkspace("test", "/workspace/any")
+        expect(active).toBeUndefined()
+      })
+    })
+
     describe("getLatestSession", () => {
       it("returns the most recent session regardless of completion status", async () => {
         const now = Date.now()

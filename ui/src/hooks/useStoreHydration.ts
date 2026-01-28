@@ -15,6 +15,8 @@ import { useAppStore } from "@/store"
 export interface UseStoreHydrationOptions {
   /** ID of the Ralph instance to hydrate */
   instanceId: string
+  /** Path of the current workspace (optional - if provided, only sessions from this workspace are restored) */
+  workspaceId?: string | null
   /** Whether hydration is enabled (default: true) */
   enabled?: boolean
 }
@@ -38,7 +40,7 @@ export interface UseStoreHydrationResult {
  * This allows the UI to pick up where it left off after a page reload.
  */
 export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHydrationResult {
-  const { instanceId, enabled = true } = options
+  const { instanceId, workspaceId, enabled = true } = options
 
   const [isHydrated, setIsHydrated] = useState(false)
   const [isHydrating, setIsHydrating] = useState(false)
@@ -69,7 +71,11 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
         await eventDatabase.init()
 
         // Load the most recent active session
-        const activeSession = await eventDatabase.getLatestActiveSession(instanceId)
+        // If workspaceId is provided, only restore sessions from the current workspace
+        const activeSession =
+          workspaceId ?
+            await eventDatabase.getLatestActiveSessionForWorkspace(instanceId, workspaceId)
+          : await eventDatabase.getLatestActiveSession(instanceId)
 
         if (activeSession) {
           // In v3+ schema, events are stored separately in the events table.
@@ -155,7 +161,7 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
     }
 
     hydrate()
-  }, [enabled, instanceId, setEventsForInstance])
+  }, [enabled, instanceId, workspaceId, setEventsForInstance])
 
   return {
     isHydrated,

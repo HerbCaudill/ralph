@@ -330,6 +330,25 @@ export class EventDatabase {
   }
 
   /**
+   * Get the most recent active (incomplete) session for an instance within a specific workspace.
+   * Returns the most recently started session where completedAt is null and workspaceId matches.
+   * This ensures hydration only restores sessions from the current workspace.
+   */
+  async getLatestActiveSessionForWorkspace(
+    instanceId: string,
+    workspaceId: string,
+  ): Promise<PersistedSession | undefined> {
+    const metadata = await this.listSessions(instanceId)
+
+    // Find the most recent session that hasn't completed and matches the workspace
+    // (sorted by startedAt descending)
+    const activeMeta = metadata.find(m => m.completedAt === null && m.workspaceId === workspaceId)
+    if (!activeMeta) return undefined
+
+    return this.getSession(activeMeta.id)
+  }
+
+  /**
    * Get the most recent session for an instance (whether complete or not).
    * Useful for hydrating the UI with the last state on page reload.
    */
