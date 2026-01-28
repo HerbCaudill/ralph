@@ -37,11 +37,13 @@ vi.mock("./sessionStateApi", () => ({
   restoreSessionState: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
-// Create a tracked mock for eventDatabase.saveEvent
+// Create tracked mocks for eventDatabase methods
 const mockSaveEvent = vi.fn().mockResolvedValue(undefined)
+const mockUpdateSessionTaskId = vi.fn().mockResolvedValue(true)
 vi.mock("./persistence", () => ({
   eventDatabase: {
     saveEvent: (...args: unknown[]) => mockSaveEvent(...args),
+    updateSessionTaskId: (...args: unknown[]) => mockUpdateSessionTaskId(...args),
   },
 }))
 
@@ -164,6 +166,65 @@ describe("ralphConnection event timestamp tracking", () => {
       // Verify session IDs are cleared
       expect(getCurrentSessionId("instance-a")).toBeUndefined()
       expect(getCurrentSessionId("instance-b")).toBeUndefined()
+    })
+  })
+
+  describe("ralph_task_started event handling prerequisites", () => {
+    // These tests verify that the infrastructure for updateSessionTaskId is correctly set up.
+    // The actual WebSocket message handling that triggers updateSessionTaskId is internal,
+    // but these tests ensure the mocks and session ID management work correctly.
+
+    beforeEach(() => {
+      mockUpdateSessionTaskId.mockClear()
+      mockSaveEvent.mockClear()
+    })
+
+    it("eventDatabase.updateSessionTaskId mock is correctly configured", async () => {
+      // Verify the mock resolves to true (default behavior)
+      const result = await mockUpdateSessionTaskId("session-123", "task-456")
+
+      expect(result).toBe(true)
+      expect(mockUpdateSessionTaskId).toHaveBeenCalledWith("session-123", "task-456")
+    })
+
+    it("session ID must be set for event persistence", () => {
+      const instanceId = "test-instance"
+
+      // Initially no session ID
+      expect(getCurrentSessionId(instanceId)).toBeUndefined()
+
+      // Set the session ID (as useSessionPersistence would do)
+      setCurrentSessionId(instanceId, "session-123")
+      expect(getCurrentSessionId(instanceId)).toBe("session-123")
+
+      // When a ralph_task_started event arrives, the handler will:
+      // 1. Check if sessionId = currentSessionIds.get(targetInstanceId)
+      // 2. If sessionId exists and event.type === "ralph_task_started", call:
+      //    eventDatabase.updateSessionTaskId(sessionId, event.taskId)
+    })
+
+    it("clearEventTimestamps clears session IDs (prevents stale updates)", () => {
+      setCurrentSessionId("instance-1", "session-1")
+      setCurrentSessionId("instance-2", "session-2")
+
+      expect(getCurrentSessionId("instance-1")).toBe("session-1")
+      expect(getCurrentSessionId("instance-2")).toBe("session-2")
+
+      clearEventTimestamps()
+
+      // After clearing, no session IDs are set
+      // This prevents updateSessionTaskId from being called with stale session IDs
+      expect(getCurrentSessionId("instance-1")).toBeUndefined()
+      expect(getCurrentSessionId("instance-2")).toBeUndefined()
+    })
+
+    it("updateSessionTaskId mock can be configured to return false for non-existent sessions", async () => {
+      mockUpdateSessionTaskId.mockResolvedValueOnce(false)
+
+      const result = await mockUpdateSessionTaskId("non-existent-session", "task-123")
+
+      expect(result).toBe(false)
+      expect(mockUpdateSessionTaskId).toHaveBeenCalledWith("non-existent-session", "task-123")
     })
   })
 

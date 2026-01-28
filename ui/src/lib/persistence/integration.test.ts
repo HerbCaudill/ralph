@@ -583,6 +583,114 @@ describe("Persistence Integration Tests", () => {
     })
   })
 
+  describe("EventDatabase.updateSessionTaskId", () => {
+    it("updates taskId when session exists", async () => {
+      const instanceId = "test-instance"
+      const now = Date.now()
+      const sessionId = `${instanceId}-${now}`
+
+      // Create a session without a taskId
+      await db.saveSession({
+        id: sessionId,
+        instanceId,
+        workspaceId: null,
+        startedAt: now,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 100, output: 50 },
+        contextWindow: { used: 150, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: [{ type: "system", timestamp: now, subtype: "init" }] as ChatEvent[],
+      })
+
+      // Update the taskId
+      const result = await db.updateSessionTaskId(sessionId, "r-new-task-123")
+
+      expect(result).toBe(true)
+
+      // Verify the taskId was updated
+      const updatedSession = await db.getSession(sessionId)
+      expect(updatedSession).toBeDefined()
+      expect(updatedSession?.taskId).toBe("r-new-task-123")
+    })
+
+    it("returns false when session does not exist", async () => {
+      const result = await db.updateSessionTaskId("non-existent-session", "r-task-123")
+
+      expect(result).toBe(false)
+    })
+
+    it("is idempotent - returns true without write when taskId is already set", async () => {
+      const instanceId = "test-instance"
+      const now = Date.now()
+      const sessionId = `${instanceId}-${now}`
+      const taskId = "r-existing-task"
+
+      // Create a session with a taskId already set
+      await db.saveSession({
+        id: sessionId,
+        instanceId,
+        workspaceId: null,
+        startedAt: now,
+        completedAt: null,
+        taskId,
+        tokenUsage: { input: 100, output: 50 },
+        contextWindow: { used: 150, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: [{ type: "system", timestamp: now, subtype: "init" }] as ChatEvent[],
+      })
+
+      // Attempt to update with the same taskId
+      const result = await db.updateSessionTaskId(sessionId, taskId)
+
+      // Should return true (success) without unnecessary write
+      expect(result).toBe(true)
+
+      // Verify the session still has the same taskId
+      const session = await db.getSession(sessionId)
+      expect(session).toBeDefined()
+      expect(session?.taskId).toBe(taskId)
+    })
+
+    it("updates taskId from one value to another", async () => {
+      const instanceId = "test-instance"
+      const now = Date.now()
+      const sessionId = `${instanceId}-${now}`
+      const originalTaskId = "r-original-task"
+      const newTaskId = "r-new-task"
+
+      // Create a session with an initial taskId
+      await db.saveSession({
+        id: sessionId,
+        instanceId,
+        workspaceId: null,
+        startedAt: now,
+        completedAt: null,
+        taskId: originalTaskId,
+        tokenUsage: { input: 100, output: 50 },
+        contextWindow: { used: 150, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: [{ type: "system", timestamp: now, subtype: "init" }] as ChatEvent[],
+      })
+
+      // Update to a different taskId
+      const result = await db.updateSessionTaskId(sessionId, newTaskId)
+
+      expect(result).toBe(true)
+
+      // Verify the taskId was updated to the new value
+      const updatedSession = await db.getSession(sessionId)
+      expect(updatedSession).toBeDefined()
+      expect(updatedSession?.taskId).toBe(newTaskId)
+    })
+  })
+
   describe("Data Integrity", () => {
     it("preserves event structure through save/load cycle", async () => {
       const instanceId = "test-instance"

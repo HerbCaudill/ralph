@@ -305,6 +305,21 @@ function handleMessage(event: MessageEvent): void {
           if (sessionId) {
             // Fire and forget - don't block on IndexedDB write
             persistEventToIndexedDB(event, sessionId)
+
+            // When ralph_task_started event arrives, immediately update the session's taskId
+            // This ensures the session is associated with the task without waiting for completion
+            if (event.type === "ralph_task_started") {
+              const taskId = (event as { taskId?: string }).taskId
+              if (taskId) {
+                console.debug(
+                  `[ralphConnection] ralph_task_started event received, updating session taskId: sessionId=${sessionId}, taskId=${taskId}`,
+                )
+                // Fire and forget - don't block on IndexedDB write
+                eventDatabase.updateSessionTaskId(sessionId, taskId).catch(error => {
+                  console.error("[ralphConnection] Failed to update session taskId:", error)
+                })
+              }
+            }
           } else {
             console.debug(
               `[ralphConnection] No active session for instance ${targetInstanceId}, skipping IndexedDB persistence`,

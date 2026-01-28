@@ -196,6 +196,37 @@ export class EventDatabase {
   }
 
   /**
+   * Update only the taskId field of an existing session.
+   * Used when a ralph_task_started event arrives to immediately associate
+   * the session with a task without waiting for session completion.
+   *
+   * Returns true if the session was found and updated, false otherwise.
+   */
+  async updateSessionTaskId(sessionId: string, taskId: string): Promise<boolean> {
+    const db = await this.ensureDb()
+    const session = await db.get(STORE_NAMES.SESSIONS, sessionId)
+    if (!session) {
+      console.debug(`[EventDatabase] updateSessionTaskId: session not found: id=${sessionId}`)
+      return false
+    }
+
+    // Only update if taskId is different (avoid unnecessary writes)
+    if (session.taskId === taskId) {
+      console.debug(
+        `[EventDatabase] updateSessionTaskId: taskId already set: id=${sessionId}, taskId=${taskId}`,
+      )
+      return true
+    }
+
+    session.taskId = taskId
+    await db.put(STORE_NAMES.SESSIONS, session)
+    console.debug(
+      `[EventDatabase] updateSessionTaskId: updated session: id=${sessionId}, taskId=${taskId}`,
+    )
+    return true
+  }
+
+  /**
    * Get sessions for a specific task, sorted by startedAt descending.
    */
   async getSessionsForTask(taskId: string): Promise<PersistedSession[]> {
