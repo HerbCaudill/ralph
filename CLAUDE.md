@@ -682,6 +682,10 @@ Standalone snapshots saved when sessions complete:
 
 All broadcast messages include `instanceId`, `workspaceId`, and `timestamp`. The `workspaceId` enables cross-workspace event correlation and client-side persistence tracking.
 
+**Unified `agent:event` Envelope:**
+
+In addition to legacy wire types (`ralph:event`, `ralph:status`, `ralph:output`, `ralph:error`, `ralph:exit`, `task-chat:event`), the server broadcasts a unified `agent:event` envelope (`AgentEventEnvelope`) for all agent events. The envelope includes a `source` field discriminating between `"ralph"` and `"task-chat"` origins. Legacy wire types are preserved for backward compatibility.
+
 ## Environment Variables
 
 - `ANTHROPIC_API_KEY` - Required for Claude agent

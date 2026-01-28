@@ -27,7 +27,12 @@ import {
 } from "./RalphRegistry.js"
 import { getSessionStateStore } from "./SessionStateStore.js"
 import { getSessionEventPersister } from "./SessionEventPersister.js"
-import type { MutationEvent } from "@herbcaudill/ralph-shared"
+import type {
+  MutationEvent,
+  AgentEventEnvelope,
+  AgentEventSource,
+  AgentEvent,
+} from "@herbcaudill/ralph-shared"
 
 const execFileAsync = promisify(execFile)
 
@@ -1678,6 +1683,81 @@ export function broadcast(message: unknown): void {
   }
 }
 
+/**
+ * Broadcast an agent event wrapped in the unified AgentEventEnvelope.
+ *
+ * Both Ralph session events and Task Chat events are wrapped in the same
+ * envelope type (`"agent:event"`) with a `source` discriminator, replacing
+ * the previous divergent `"ralph:event"` / `"task-chat:event"` wire types.
+ */
+function broadcastAgentEvent(options: {
+  source: AgentEventSource
+  instanceId: string
+  workspaceId: string | null
+  event: AgentEvent
+  eventIndex?: number
+}): void {
+  const envelope: AgentEventEnvelope = {
+    type: "agent:event",
+    source: options.source,
+    instanceId: options.instanceId,
+    workspaceId: options.workspaceId,
+    event: options.event,
+    timestamp: Date.now(),
+    ...(options.eventIndex !== undefined ? { eventIndex: options.eventIndex } : {}),
+  }
+  broadcast(envelope)
+}
+
+/**
+ * Handle common operational event types shared by both RalphRegistry and
+ * WorkspaceContextManager paths. Returns true if the event was handled.
+ */
+function broadcastOperationalEvent(
+  eventType: string,
+  instanceId: string,
+  workspaceId: string | null,
+  args: unknown[],
+): boolean {
+  switch (eventType) {
+    case "ralph:status": {
+      const status = args[0] as RalphStatus
+      broadcast({ type: "ralph:status", instanceId, workspaceId, status, timestamp: Date.now() })
+      return true
+    }
+    case "ralph:output": {
+      const line = args[0] as string
+      broadcast({ type: "ralph:output", instanceId, workspaceId, line, timestamp: Date.now() })
+      return true
+    }
+    case "ralph:error": {
+      const error = args[0] as Error
+      broadcast({
+        type: "ralph:error",
+        instanceId,
+        workspaceId,
+        error: error.message,
+        timestamp: Date.now(),
+      })
+      return true
+    }
+    case "ralph:exit": {
+      const info = args[0] as { code: number | null; signal: string | null }
+      broadcast({
+        type: "ralph:exit",
+        instanceId,
+        workspaceId,
+        code: info.code,
+        signal: info.signal,
+        timestamp: Date.now(),
+      })
+      return true
+    }
+    default:
+      return false
+  }
+}
+
 /**  Singleton RalphRegistry instance */
 let ralphRegistry: RalphRegistry | null = null
 
@@ -1712,8 +1792,18 @@ function wireRegistryEvents(
         const instance = registry.get(instanceId)
         const workspaceId = instance?.workspaceId ?? null
 
-        // Broadcast and update per-client tracking
-        const payload = JSON.stringify({
+        // Broadcast unified agent:event envelope (new path)
+        broadcastAgentEvent({
+          source: "ralph",
+          instanceId,
+          workspaceId,
+          event: event as unknown as AgentEvent,
+          eventIndex,
+        })
+
+        // Also broadcast legacy ralph:event for backward compatibility
+        // TODO(r-tufi7.51.5): Remove once clients migrate to agent:event
+        broadcast({
           type: "ralph:event",
           instanceId,
           workspaceId,
@@ -1721,64 +1811,13 @@ function wireRegistryEvents(
           eventIndex,
           timestamp: Date.now(),
         })
-        for (const client of clients) {
-          if (client.ws.readyState === client.ws.OPEN) {
-            client.ws.send(payload)
-          }
-        }
         break
       }
-      case "ralph:status": {
-        const status = args[0] as RalphStatus
-        const statusInstance = registry.get(instanceId)
-        const statusWorkspaceId = statusInstance?.workspaceId ?? null
-        broadcast({
-          type: "ralph:status",
-          instanceId,
-          workspaceId: statusWorkspaceId,
-          status,
-          timestamp: Date.now(),
-        })
-        break
-      }
-      case "ralph:output": {
-        const line = args[0] as string
-        const outputInstance = registry.get(instanceId)
-        const outputWorkspaceId = outputInstance?.workspaceId ?? null
-        broadcast({
-          type: "ralph:output",
-          instanceId,
-          workspaceId: outputWorkspaceId,
-          line,
-          timestamp: Date.now(),
-        })
-        break
-      }
-      case "ralph:error": {
-        const error = args[0] as Error
-        const errorInstance = registry.get(instanceId)
-        const errorWorkspaceId = errorInstance?.workspaceId ?? null
-        broadcast({
-          type: "ralph:error",
-          instanceId,
-          workspaceId: errorWorkspaceId,
-          error: error.message,
-          timestamp: Date.now(),
-        })
-        break
-      }
-      case "ralph:exit": {
-        const info = args[0] as { code: number | null; signal: string | null }
-        const exitInstance = registry.get(instanceId)
-        const exitWorkspaceId = exitInstance?.workspaceId ?? null
-        broadcast({
-          type: "ralph:exit",
-          instanceId,
-          workspaceId: exitWorkspaceId,
-          code: info.code,
-          signal: info.signal,
-          timestamp: Date.now(),
-        })
+      default: {
+        // Handle shared operational events (ralph:status, ralph:output, ralph:error, ralph:exit)
+        const opInstance = registry.get(instanceId)
+        const opWorkspaceId = opInstance?.workspaceId ?? null
+        broadcastOperationalEvent(eventType, instanceId, opWorkspaceId, args)
         break
       }
     }
@@ -1905,6 +1944,15 @@ function wireContextManagerEvents(
     switch (eventType) {
       case "ralph:event": {
         const event = args[0] as RalphEvent
+        // Broadcast unified agent:event envelope (new path)
+        broadcastAgentEvent({
+          source: "ralph",
+          instanceId,
+          workspaceId,
+          event: event as unknown as AgentEvent,
+        })
+        // Also broadcast legacy ralph:event for backward compatibility
+        // TODO(r-tufi7.51.5): Remove once clients migrate to agent:event
         broadcast({
           type: "ralph:event",
           instanceId,
@@ -1914,49 +1962,11 @@ function wireContextManagerEvents(
         })
         break
       }
-      case "ralph:status": {
-        const status = args[0] as RalphStatus
-        broadcast({
-          type: "ralph:status",
-          instanceId,
-          workspaceId,
-          status,
-          timestamp: Date.now(),
-        })
-        break
-      }
-      case "ralph:output": {
-        const line = args[0] as string
-        broadcast({
-          type: "ralph:output",
-          instanceId,
-          workspaceId,
-          line,
-          timestamp: Date.now(),
-        })
-        break
-      }
-      case "ralph:error": {
-        const error = args[0] as Error
-        broadcast({
-          type: "ralph:error",
-          instanceId,
-          workspaceId,
-          error: error.message,
-          timestamp: Date.now(),
-        })
-        break
-      }
+      case "ralph:status":
+      case "ralph:output":
+      case "ralph:error":
       case "ralph:exit": {
-        const info = args[0] as { code: number | null; signal: string | null }
-        broadcast({
-          type: "ralph:exit",
-          instanceId,
-          workspaceId,
-          code: info.code,
-          signal: info.signal,
-          timestamp: Date.now(),
-        })
+        broadcastOperationalEvent(eventType, instanceId, workspaceId, args)
         break
       }
       case "task-chat:message": {
@@ -2037,8 +2047,16 @@ function wireContextManagerEvents(
         break
       }
       case "task-chat:event": {
-        // Raw SDK events for unified event model
         const event = args[0] as TaskChatEvent
+        // Broadcast unified agent:event envelope (new path)
+        broadcastAgentEvent({
+          source: "task-chat",
+          instanceId,
+          workspaceId,
+          event: event as unknown as AgentEvent,
+        })
+        // Also broadcast legacy task-chat:event for backward compatibility
+        // TODO(r-tufi7.51.5): Remove once clients migrate to agent:event
         broadcast({
           type: "task-chat:event",
           instanceId,
