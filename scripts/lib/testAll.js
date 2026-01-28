@@ -8,6 +8,7 @@
  * { suites, options }.
  */
 import { spawn } from "node:child_process"
+import { readFileSync, readdirSync, existsSync } from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -83,6 +84,73 @@ function parsePlaywrightOutput(output) {
 const parsers = {
   vitest: parseVitestOutput,
   playwright: parsePlaywrightOutput,
+}
+
+/** Known tool names to detect in commands. */
+const knownTypes = Object.keys(parsers)
+
+/**
+ * Build a map of package name → scripts object by scanning workspace packages.
+ * Returns null if no pnpm-workspace.yaml is found.
+ */
+function loadWorkspaceScripts(cwd) {
+  const wsPath = path.join(cwd, "pnpm-workspace.yaml")
+  if (!existsSync(wsPath)) return null
+
+  // Simple YAML parse — just extract "- dir" lines
+  const content = readFileSync(wsPath, "utf8")
+  const dirs = [...content.matchAll(/^\s*-\s*["']?([^"'\n]+)["']?\s*$/gm)].map(m => m[1])
+
+  const scripts = new Map()
+  for (const dir of dirs) {
+    const pkgPath = path.join(cwd, dir, "package.json")
+    if (!existsSync(pkgPath)) continue
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
+      if (!pkg.scripts) continue
+      // Index by package name, unscoped name, and directory basename,
+      // since pnpm --filter accepts any of these
+      if (pkg.name) {
+        scripts.set(pkg.name, pkg.scripts)
+        const unscoped = pkg.name.replace(/^@[^/]+\//, "")
+        scripts.set(unscoped, pkg.scripts)
+      }
+      scripts.set(path.basename(dir), pkg.scripts)
+    } catch {
+      // skip unparseable package.json
+    }
+  }
+  return scripts
+}
+
+/**
+ * Detect suite type from the command string.
+ * First checks the command itself for known tool names, then resolves
+ * pnpm --filter commands by looking up the script in the workspace.
+ */
+function detectType(command, workspaceScripts) {
+  const cmd = typeof command === "string" ? command : command.join(" ")
+
+  // Check the command string directly
+  for (const type of knownTypes) {
+    if (cmd.includes(type)) return type
+  }
+
+  // Try to resolve pnpm --filter <pkg> <script>
+  if (workspaceScripts) {
+    const filterMatch = cmd.match(/pnpm\s+--filter\s+(\S+)\s+(\S+)/)
+    if (filterMatch) {
+      const [, pkg, script] = filterMatch
+      const scripts = workspaceScripts.get(pkg)
+      if (scripts?.[script]) {
+        for (const type of knownTypes) {
+          if (scripts[script].includes(type)) return type
+        }
+      }
+    }
+  }
+
+  return undefined
 }
 
 /**
@@ -173,7 +241,7 @@ function printSummary(suiteResults, totalDuration) {
  * Each suite in the array should have:
  * - name: display name
  * - command: string or array, e.g. "pnpm vitest run" or ["pnpm", "vitest", "run"]
- * - type: "vitest" | "playwright" | null (determines output parser; null = no test counts)
+ * - type: "vitest" | "playwright" (optional; auto-detected from command/package.json)
  * - dir: subdirectory to run in, resolved relative to options.cwd (optional)
  *
  * Options:
@@ -243,8 +311,12 @@ try {
   throw err
 }
 
+const cwd = config.options?.cwd ?? process.cwd()
+const workspaceScripts = loadWorkspaceScripts(cwd)
+
 const suites = config.suites.map(suite => {
-  if (suite.type !== "vitest") return suite
+  const type = suite.type ?? detectType(suite.command, workspaceScripts)
+  if (type !== "vitest") return { ...suite, type }
   // Vitest suites get --reporter=json for structured output parsing,
   // and --changed when that flag is passed to the CLI.
   // Uses -- separator so pnpm --filter forwards args to the script.
@@ -253,7 +325,7 @@ const suites = config.suites.map(suite => {
     typeof suite.command === "string" ?
       `${suite.command} ${extras.join(" ")}`
     : [...suite.command, ...extras]
-  return { ...suite, command: cmd }
+  return { ...suite, type, command: cmd }
 })
 
 const title =
