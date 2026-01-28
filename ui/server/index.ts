@@ -1171,9 +1171,11 @@ function createApp(
   app.get("/api/task-chat/messages", (_req: Request, res: Response) => {
     try {
       const taskChatManager = getTaskChatManager()
+      // Note: Client is authoritative for message history.
+      // This endpoint returns an empty array - client should use its local store.
       res.status(200).json({
         ok: true,
-        messages: taskChatManager.messages,
+        messages: [],
         status: taskChatManager.status,
       })
     } catch (err) {
@@ -1207,10 +1209,10 @@ function createApp(
   app.get("/api/task-chat/status", (_req: Request, res: Response) => {
     try {
       const taskChatManager = getTaskChatManager()
+      // Note: messageCount removed - client is authoritative for message history
       res.status(200).json({
         ok: true,
         status: taskChatManager.status,
-        messageCount: taskChatManager.messages.length,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to get status"

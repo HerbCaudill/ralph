@@ -21,7 +21,6 @@ import { findClaudeExecutable } from "./findClaudeExecutable.js"
  */
 export class TaskChatManager extends EventEmitter {
   private _status: TaskChatStatus = "idle"
-  private _messages: TaskChatMessage[] = []
   private currentResponse = ""
   private cancelled = false
   private abortController: AbortController | null = null
@@ -72,17 +71,10 @@ export class TaskChatManager extends EventEmitter {
   }
 
   /**
-   * Conversation history.
-   */
-  get messages(): TaskChatMessage[] {
-    return [...this._messages]
-  }
-
-  /**
-   * Clear conversation history.
+   * Clear conversation history (client-side only, emits event for UI).
+   * Note: Server no longer stores message history - client is authoritative.
    */
   clearHistory(): void {
-    this._messages = []
     this.emit("historyCleared")
   }
 
@@ -90,9 +82,10 @@ export class TaskChatManager extends EventEmitter {
    * Send a message and get a response from Claude.
    *
    * @param userMessage - The user's message
+   * @param history - Previous conversation messages (client-authoritative)
    * @returns Promise that resolves with the assistant's response
    */
-  async sendMessage(userMessage: string): Promise<string> {
+  async sendMessage(userMessage: string, history: TaskChatMessage[] = []): Promise<string> {
     if (this._status === "processing") {
       throw new Error("A request is already in progress")
     }
@@ -102,13 +95,12 @@ export class TaskChatManager extends EventEmitter {
     this.currentResponse = ""
     this.sequenceCounter = 0 // Reset sequence counter for new turn
 
-    // Add user message to history
+    // Emit user message event (for real-time UI updates)
     const userMsg: TaskChatMessage = {
       role: "user",
       content: userMessage,
       timestamp: Date.now(),
     }
-    this._messages.push(userMsg)
     this.emit("message", userMsg)
 
     let appendSystemPrompt: string
@@ -123,8 +115,8 @@ export class TaskChatManager extends EventEmitter {
       skillTools = skillConfig.tools
       skillModel = skillConfig.model
 
-      // Build conversation for Claude
-      conversationPrompt = this.buildConversationPrompt(userMessage)
+      // Build conversation for Claude using client-provided history
+      conversationPrompt = this.buildConversationPrompt(userMessage, history)
     } catch (err) {
       // If building prompts fails, reset status and re-throw
       this.setStatus("idle")
@@ -249,7 +241,7 @@ export class TaskChatManager extends EventEmitter {
         return
       }
 
-      // After session completes, add assistant message to history
+      // After session completes, emit assistant message event (client stores it)
       if (this.currentResponse) {
         // Assign a sequence number that places this message AFTER all tool uses in the turn
         // This ensures the final text appears at the end, after any interleaved tool uses
@@ -260,7 +252,6 @@ export class TaskChatManager extends EventEmitter {
           timestamp: Date.now(),
           sequence,
         }
-        this._messages.push(assistantMsg)
         this.emit("message", assistantMsg)
       }
 
@@ -351,17 +342,19 @@ export class TaskChatManager extends EventEmitter {
   }
 
   /**
-   * Build the conversation prompt from history.
+   * Build the conversation prompt from client-provided history.
+   * @param currentMessage - The current user message
+   * @param history - Previous conversation messages from client
    */
-  private buildConversationPrompt(currentMessage: string): string {
+  private buildConversationPrompt(currentMessage: string, history: TaskChatMessage[]): string {
     // Build a prompt that includes recent conversation context
-    if (this._messages.length <= 1) {
+    if (history.length === 0) {
       // First message - just use it directly
       return currentMessage
     }
 
-    // Include recent conversation history in the prompt
-    const recentHistory = this._messages.slice(-10, -1) // Last 10 messages, excluding current
+    // Include recent conversation history in the prompt (last 10 messages)
+    const recentHistory = history.slice(-10)
     let conversationContext = "Previous conversation:\n\n"
 
     for (const msg of recentHistory) {

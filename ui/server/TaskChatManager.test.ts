@@ -66,12 +66,19 @@ describe("TaskChatManager", () => {
 
   /**
    * Helper to send a message and simulate response from the mock SDK.
+   * @param userMessage - The user's message
+   * @param response - The mocked response from Claude
+   * @param history - Optional conversation history to include (client-authoritative)
    */
-  async function sendAndRespond(userMessage: string, response: string): Promise<string> {
+  async function sendAndRespond(
+    userMessage: string,
+    response: string,
+    history: TaskChatMessage[] = [],
+  ): Promise<string> {
     // Mock the SDK query function to return our mock response
     vi.mocked(mockQuery).mockReturnValueOnce(createMockSDKResponse(response) as any)
 
-    const promise = manager.sendMessage(userMessage)
+    const promise = manager.sendMessage(userMessage, history)
 
     // Wait a bit for the async operation to start
     await new Promise(resolve => setTimeout(resolve, 10))
@@ -85,9 +92,8 @@ describe("TaskChatManager", () => {
       expect(manager.isProcessing).toBe(false)
     })
 
-    it("starts with empty message history", () => {
-      expect(manager.messages).toEqual([])
-    })
+    // Note: Server no longer stores message history - client is authoritative
+    // The messages getter has been removed
 
     it("accepts custom options", () => {
       const customManager = new TaskChatManager({
@@ -162,10 +168,13 @@ describe("TaskChatManager", () => {
       await promise
     })
 
-    it("adds assistant message to history on completion", async () => {
+    it("emits message events for user and assistant messages", async () => {
+      const messages: TaskChatMessage[] = []
+      manager.on("message", msg => messages.push(msg))
+
       await sendAndRespond("Hello", "Hi there!")
 
-      const messages = manager.messages
+      // Server emits message events but doesn't store them (client is authoritative)
       expect(messages).toHaveLength(2)
       expect(messages[0].role).toBe("user")
       expect(messages[1].role).toBe("assistant")
@@ -364,20 +373,20 @@ describe("TaskChatManager", () => {
   })
 
   describe("conversation history", () => {
-    it("includes conversation context for subsequent messages", async () => {
-      // First message
-      await sendAndRespond("First question", "First answer")
+    it("includes conversation context from client-provided history", async () => {
+      // Simulate previous conversation history (client-authoritative)
+      const history: TaskChatMessage[] = [
+        { role: "user", content: "First question", timestamp: Date.now() - 2000 },
+        { role: "assistant", content: "First answer", timestamp: Date.now() - 1000 },
+      ]
 
-      // Clear mock for second call
-      vi.mocked(mockQuery).mockClear()
+      // Send a follow-up message with history
+      await sendAndRespond("Follow up", "Follow up answer", history)
 
-      // Second message
-      await sendAndRespond("Follow up", "Follow up answer")
-
-      // Second call should include conversation history in the prompt
+      // The call should include conversation history in the prompt
       expect(mockQuery).toHaveBeenCalledTimes(1)
-      const secondCallArgs = vi.mocked(mockQuery).mock.calls[0][0]
-      const promptArg = secondCallArgs.prompt
+      const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
+      const promptArg = callArgs.prompt
 
       expect(promptArg).toContain("Previous conversation")
       expect(promptArg).toContain("First question")
@@ -385,35 +394,80 @@ describe("TaskChatManager", () => {
       expect(promptArg).toContain("Follow up")
     })
 
-    it("preserves messages across multiple exchanges", async () => {
+    it("emits message events for multiple exchanges", async () => {
+      const messages: TaskChatMessage[] = []
+      manager.on("message", msg => messages.push(msg))
+
       // First message
       await sendAndRespond("Q1", "A1")
 
       // Second message
       await sendAndRespond("Q2", "A2")
 
-      const messages = manager.messages
+      // Server emits message events but doesn't store them (client is authoritative)
       expect(messages).toHaveLength(4)
       expect(messages[0]).toMatchObject({ role: "user", content: "Q1" })
       expect(messages[1]).toMatchObject({ role: "assistant", content: "A1" })
       expect(messages[2]).toMatchObject({ role: "user", content: "Q2" })
       expect(messages[3]).toMatchObject({ role: "assistant", content: "A2" })
     })
+
+    it("sends message without history context when empty history provided", async () => {
+      // Empty history array should behave the same as no history
+      await sendAndRespond("Hello", "Hi there!", [])
+
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+      const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
+      const promptArg = callArgs.prompt
+
+      // Should NOT contain "Previous conversation" since history is empty
+      expect(promptArg).not.toContain("Previous conversation")
+      expect(promptArg).toBe("Hello")
+    })
+
+    it("truncates history to last 10 messages", async () => {
+      // Create a history with 15 messages (more than the 10 message limit)
+      // Use distinctive markers to avoid substring matching issues (e.g., "msg-01" vs "msg-10")
+      const history: TaskChatMessage[] = []
+      for (let i = 1; i <= 15; i++) {
+        const paddedNum = i.toString().padStart(2, "0")
+        history.push({
+          role: i % 2 === 1 ? "user" : "assistant",
+          content: `[msg-${paddedNum}]`,
+          timestamp: Date.now() - (15 - i) * 1000,
+        })
+      }
+
+      await sendAndRespond("Current question", "Current answer", history)
+
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+      const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
+      const promptArg = callArgs.prompt
+
+      // Should contain "Previous conversation"
+      expect(promptArg).toContain("Previous conversation")
+
+      // Should NOT contain early messages (1-5) that were truncated
+      expect(promptArg).not.toContain("[msg-01]")
+      expect(promptArg).not.toContain("[msg-02]")
+      expect(promptArg).not.toContain("[msg-03]")
+      expect(promptArg).not.toContain("[msg-04]")
+      expect(promptArg).not.toContain("[msg-05]")
+
+      // Should contain the last 10 messages (6-15)
+      expect(promptArg).toContain("[msg-06]")
+      expect(promptArg).toContain("[msg-10]")
+      expect(promptArg).toContain("[msg-15]")
+
+      // Should contain the current question
+      expect(promptArg).toContain("Current question")
+    })
   })
 
   describe("clearHistory", () => {
-    it("clears all messages", async () => {
-      // Add some messages
-      await sendAndRespond("Test", "Response")
-
-      expect(manager.messages).toHaveLength(2)
-
-      manager.clearHistory()
-
-      expect(manager.messages).toEqual([])
-    })
-
     it("emits historyCleared event", () => {
+      // Note: Server no longer stores messages - clearHistory just emits an event
+      // to signal to the client that it should clear its local store
       const cleared = vi.fn()
       manager.on("historyCleared", cleared)
 
@@ -582,10 +636,13 @@ describe("TaskChatManager", () => {
       // Suppress console.error for this test
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
+      const messages: TaskChatMessage[] = []
+      manager.on("message", msg => messages.push(msg))
+
       await sendAndRespond("Test", "Response")
 
-      // Should still work
-      expect(manager.messages).toHaveLength(2)
+      // Should still work - verify via message events
+      expect(messages).toHaveLength(2)
 
       consoleSpy.mockRestore()
     })
@@ -595,9 +652,13 @@ describe("TaskChatManager", () => {
         // No getBdProxy provided
       })
 
+      const messages: TaskChatMessage[] = []
+      manager.on("message", msg => messages.push(msg))
+
       await sendAndRespond("Test", "Response")
 
-      expect(manager.messages).toHaveLength(2)
+      // Verify via message events (server no longer stores messages)
+      expect(messages).toHaveLength(2)
     })
   })
 
@@ -605,8 +666,11 @@ describe("TaskChatManager", () => {
     it("SDK handles errors internally (no stderr to test)", async () => {
       // With SDK, we don't have direct stderr access
       // Errors are handled through the SDK's error messages
+      const messages: TaskChatMessage[] = []
+      manager.on("message", msg => messages.push(msg))
+
       const response = await sendAndRespond("Test", "Response")
-      expect(manager.messages).toHaveLength(2)
+      expect(messages).toHaveLength(2)
       expect(response).toBe("Response")
     })
   })
