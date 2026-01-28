@@ -1593,7 +1593,6 @@ describe("ralphConnection event timestamp tracking", () => {
       ws.simulateOpen()
 
       const timestamp1 = 1706123456789
-      const timestamp2 = 1706123457890
 
       // Send task-chat:event for active instance
       ws.simulateMessage({
