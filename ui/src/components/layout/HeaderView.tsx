@@ -6,6 +6,7 @@ import { SettingsDropdown } from "./SettingsDropdown"
 import { HelpButton } from "./HelpButton"
 import { InstanceCountBadge } from "./InstanceCountBadge"
 import { MergeConflictNotification } from "./MergeConflictNotification"
+import { PersistenceErrorNotification } from "./PersistenceErrorNotification"
 import { ConnectionStatusIndicator } from "./ConnectionStatusIndicator"
 
 /**
@@ -31,6 +32,7 @@ export function HeaderView({ className, accentColor, instanceCount }: HeaderView
         <WorkspacePicker variant="header" textColor={textColor} />
         {instanceCount > 1 && <InstanceCountBadge count={instanceCount} />}
         <MergeConflictNotification textColor={textColor} />
+        <PersistenceErrorNotification textColor={textColor} />
       </div>
 
       <div className="flex items-center gap-2">

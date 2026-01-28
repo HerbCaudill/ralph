@@ -127,6 +127,7 @@ describe("useAppStore", () => {
       expect(state.taskChatLoading).toBe(false)
       expect(state.taskChatEvents).toEqual([])
       expect(state.viewingSessionIndex).toBeNull()
+      expect(state.persistenceError).toBeNull()
     })
 
     it("has instances Map with default instance", () => {
@@ -2356,6 +2357,42 @@ describe("useAppStore", () => {
 
       setConnectionStatus("disconnected")
       expect(useAppStore.getState().connectionStatus).toBe("disconnected")
+    })
+  })
+
+  describe("persistence error", () => {
+    it("sets persistence error", () => {
+      useAppStore.getState().setPersistenceError({
+        message: "Failed to persist events",
+        failedCount: 3,
+      })
+
+      const error = useAppStore.getState().persistenceError
+      expect(error).toEqual({
+        message: "Failed to persist events",
+        failedCount: 3,
+      })
+    })
+
+    it("clears persistence error", () => {
+      useAppStore.getState().setPersistenceError({
+        message: "Failed to persist events",
+        failedCount: 3,
+      })
+      expect(useAppStore.getState().persistenceError).not.toBeNull()
+
+      useAppStore.getState().clearPersistenceError()
+      expect(useAppStore.getState().persistenceError).toBeNull()
+    })
+
+    it("can set error to null directly", () => {
+      useAppStore.getState().setPersistenceError({
+        message: "Failed to persist events",
+        failedCount: 3,
+      })
+
+      useAppStore.getState().setPersistenceError(null)
+      expect(useAppStore.getState().persistenceError).toBeNull()
     })
   })
 

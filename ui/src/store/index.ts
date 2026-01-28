@@ -200,6 +200,13 @@ export interface AppState {
   // Initial sync tracking (to prevent auto-start race conditions on page reload)
   /** Whether we've received the initial WebSocket sync (instances:list message) */
   hasInitialSync: boolean
+
+  // IndexedDB persistence error state
+  /** Error information when IndexedDB writes fail persistently */
+  persistenceError: {
+    message: string
+    failedCount: number
+  } | null
 }
 
 // Store Actions
@@ -329,6 +336,12 @@ export interface AppActions {
   // Initial sync tracking
   /** Mark that we've received the initial WebSocket sync */
   setHasInitialSync: (hasSync: boolean) => void
+
+  // IndexedDB persistence error
+  /** Set persistence error state (called when IndexedDB writes fail) */
+  setPersistenceError: (error: { message: string; failedCount: number } | null) => void
+  /** Clear persistence error state (called when user dismisses or retries) */
+  clearPersistenceError: () => void
 
   // Active instance
   setActiveInstanceId: (instanceId: string) => void
@@ -596,6 +609,7 @@ const initialState: AppState = {
   hotkeysDialogOpen: false,
   wasRunningBeforeDisconnect: false,
   hasInitialSync: false,
+  persistenceError: null,
   taskChatEvents: [],
   statusCollapsedState: {
     open: false,
@@ -1100,6 +1114,10 @@ export const useAppStore = create<AppState & AppActions>()(
 
       // Initial sync tracking
       setHasInitialSync: hasSync => set({ hasInitialSync: hasSync }),
+
+      // IndexedDB persistence error
+      setPersistenceError: error => set({ persistenceError: error }),
+      clearPersistenceError: () => set({ persistenceError: null }),
 
       // Active instance
       setActiveInstanceId: instanceId =>
@@ -1608,6 +1626,7 @@ export const selectSession = (state: AppState) => {
 export const selectConnectionStatus = (state: AppState) => state.connectionStatus
 export const selectIsConnected = (state: AppState) => state.connectionStatus === "connected"
 export const selectHasInitialSync = (state: AppState) => state.hasInitialSync
+export const selectPersistenceError = (state: AppState) => state.persistenceError
 export const selectIsRalphRunning = (state: AppState) => state.ralphStatus === "running"
 /** Whether Ralph can accept user messages (running, paused, or stopping after current) */
 export const selectCanAcceptMessages = (state: AppState) =>

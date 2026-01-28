@@ -7,7 +7,7 @@ import { useAppStore, flushTaskChatEventsBatch } from "../store"
 import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 import { extractTokenUsageFromEvent } from "./extractTokenUsage"
-import { eventDatabase, type PersistedEvent } from "./persistence"
+import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -55,13 +55,14 @@ const lastEventTimestamps: Map<string, number> = new Map()
 const currentSessionIds: Map<string, string> = new Map()
 
 /**
- * Persist an event directly to IndexedDB.
+ * Persist an event to IndexedDB via the write queue.
  * Uses the server-assigned UUID as the event ID for deduplication.
+ * Non-blocking: enqueues the write and returns immediately.
  */
-async function persistEventToIndexedDB(
+function persistEventToIndexedDB(
   event: { type: string; timestamp: number; id?: string; [key: string]: unknown },
   sessionId: string,
-): Promise<void> {
+): void {
   // Use server-assigned UUID if available, otherwise generate one
   const eventId =
     event.id ?? `${sessionId}-event-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -74,18 +75,8 @@ async function persistEventToIndexedDB(
     event: event as PersistedEvent["event"],
   }
 
-  try {
-    await eventDatabase.saveEvent(persistedEvent)
-    console.debug(
-      `[ralphConnection] Event persisted to IndexedDB: id=${eventId}, type=${event.type}`,
-    )
-  } catch (error) {
-    console.error("[ralphConnection] Failed to persist event to IndexedDB:", error, {
-      eventId,
-      sessionId,
-      eventType: event.type,
-    })
-  }
+  // Enqueue the write (non-blocking with retry logic)
+  writeQueue.enqueue(persistedEvent, sessionId)
 }
 
 /**
@@ -786,6 +777,15 @@ export const ralphConnection: RalphConnectionManager = {
 export function initRalphConnection(): void {
   if (initialized) return
   initialized = true
+
+  // Set up IndexedDB persistence error callback to update Zustand store
+  writeQueue.setFailureCallback(error => {
+    useAppStore.getState().setPersistenceError({
+      message: error.message,
+      failedCount: error.failedCount,
+    })
+  })
+
   connect()
 }
 

@@ -7,3 +7,4 @@
 
 export * from "./types"
 export * from "./EventDatabase"
+export * from "./writeQueue"
