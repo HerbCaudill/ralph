@@ -46,8 +46,9 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
   const [isHydrating, setIsHydrating] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  // Track whether we've already hydrated to prevent re-hydration
-  const hasHydratedRef = useRef(false)
+  // Track which instance IDs we've already hydrated to prevent redundant hydration
+  // while still allowing hydration when switching to a new instance
+  const hydratedInstancesRef = useRef(new Set<string>())
 
   // Get store actions
   const setEventsForInstance = useAppStore(state => state.setEventsForInstance)
@@ -58,9 +59,9 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
       return
     }
 
-    // Only hydrate once
-    if (hasHydratedRef.current) return
-    hasHydratedRef.current = true
+    // Only hydrate each instance once (but allow hydration when switching to a new instance)
+    if (hydratedInstancesRef.current.has(instanceId)) return
+    hydratedInstancesRef.current.add(instanceId)
 
     async function hydrate() {
       setIsHydrating(true)

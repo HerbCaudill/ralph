@@ -144,7 +144,7 @@ describe("useStoreHydration", () => {
     expect(eventDatabase.init).not.toHaveBeenCalled()
   })
 
-  it("should only hydrate once", async () => {
+  it("should only hydrate same instance once", async () => {
     const { rerender } = renderHook(({ instanceId }) => useStoreHydration({ instanceId }), {
       initialProps: { instanceId: "default" },
     })
@@ -156,8 +156,150 @@ describe("useStoreHydration", () => {
     // Rerender with the same props
     rerender({ instanceId: "default" })
 
-    // Should still only be called once
+    // Should still only be called once for the same instance
     expect(eventDatabase.init).toHaveBeenCalledTimes(1)
+  })
+
+  it("should hydrate when switching to a different instance", async () => {
+    const mockEventsDefault: ChatEvent[] = [
+      { type: "system", timestamp: 1000, subtype: "init" } as any,
+    ]
+    const mockEventsOther: ChatEvent[] = [
+      { type: "system", timestamp: 2000, subtype: "init" } as any,
+      {
+        type: "assistant",
+        timestamp: 3000,
+        message: { content: [{ type: "text", text: "Hi" }] },
+      } as any,
+    ]
+
+    // Mock session for default instance
+    const mockSessionDefault: PersistedSession = {
+      id: "default-1000",
+      instanceId: "default",
+      workspaceId: null,
+      startedAt: 1000,
+      completedAt: null,
+      taskId: null,
+      tokenUsage: { input: 100, output: 50 },
+      contextWindow: { used: 150, max: 200000 },
+      session: { current: 1, total: 1 },
+      eventCount: 1,
+      lastEventSequence: 0,
+      events: mockEventsDefault,
+    }
+
+    // Mock session for other instance
+    const mockSessionOther: PersistedSession = {
+      id: "other-2000",
+      instanceId: "other-instance",
+      workspaceId: null,
+      startedAt: 2000,
+      completedAt: null,
+      taskId: null,
+      tokenUsage: { input: 200, output: 100 },
+      contextWindow: { used: 300, max: 200000 },
+      session: { current: 2, total: 2 },
+      eventCount: 2,
+      lastEventSequence: 1,
+      events: mockEventsOther,
+    }
+
+    // Ensure mocks are fresh (in case previous test didn't clean up properly)
+    vi.mocked(eventDatabase.init).mockResolvedValue(undefined)
+    vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSessionDefault)
+    vi.mocked(eventDatabase.getLatestActiveSessionForWorkspace).mockResolvedValue(undefined)
+    vi.mocked(eventDatabase.getLatestTaskChatSessionForInstance).mockResolvedValue(undefined)
+    vi.mocked(eventDatabase.getTaskChatSession).mockResolvedValue(undefined)
+    vi.mocked(eventDatabase.getEventsForSession).mockResolvedValue([])
+
+    // Hydrate default instance first
+    const { result: result1 } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+    await waitFor(() => {
+      expect(result1.current.isHydrated).toBe(true)
+    })
+
+    // Verify hydration happened for default
+    expect(eventDatabase.getLatestActiveSession).toHaveBeenCalledWith("default")
+    expect(useAppStore.getState().instances.get("default")?.events).toEqual(mockEventsDefault)
+
+    // Create the other instance in the store BEFORE hydrating it
+    useAppStore.getState().createInstance("other-instance", "Other")
+
+    // Change mock to return the other session
+    vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSessionOther)
+
+    // Now hydrate the other instance with a NEW hook instance
+    const { result: result2 } = renderHook(() =>
+      useStoreHydration({ instanceId: "other-instance" }),
+    )
+
+    // Wait for hydration to complete for other instance
+    await waitFor(() => {
+      expect(result2.current.isHydrated).toBe(true)
+    })
+
+    expect(eventDatabase.getLatestActiveSession).toHaveBeenCalledWith("other-instance")
+
+    // Check that events were restored to the other instance
+    expect(useAppStore.getState().instances.get("other-instance")?.events).toEqual(mockEventsOther)
+
+    // Verify init was called twice (once per instance)
+    expect(eventDatabase.init).toHaveBeenCalledTimes(2)
+  })
+
+  it("should not re-hydrate when switching back to an already-hydrated instance", async () => {
+    const mockEventsDefault: ChatEvent[] = [
+      { type: "system", timestamp: 1000, subtype: "init" } as any,
+    ]
+
+    const mockSessionDefault: PersistedSession = {
+      id: "default-1000",
+      instanceId: "default",
+      workspaceId: null,
+      startedAt: 1000,
+      completedAt: null,
+      taskId: null,
+      tokenUsage: { input: 100, output: 50 },
+      contextWindow: { used: 150, max: 200000 },
+      session: { current: 1, total: 1 },
+      eventCount: 1,
+      lastEventSequence: 0,
+      events: mockEventsDefault,
+    }
+
+    vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSessionDefault)
+
+    // Create the other instance in the store
+    useAppStore.getState().createInstance("other-instance", "Other")
+    // Switch back to default so we start from default
+    useAppStore.getState().setActiveInstanceId("default")
+
+    const { result, rerender } = renderHook(({ instanceId }) => useStoreHydration({ instanceId }), {
+      initialProps: { instanceId: "default" },
+    })
+
+    await waitFor(() => {
+      expect(result.current.isHydrated).toBe(true)
+    })
+    expect(eventDatabase.init).toHaveBeenCalledTimes(1)
+
+    // Switch to other instance
+    rerender({ instanceId: "other-instance" })
+
+    await waitFor(() => {
+      expect(eventDatabase.init).toHaveBeenCalledTimes(2)
+    })
+
+    // Switch back to default instance
+    rerender({ instanceId: "default" })
+
+    // Wait a tick to ensure no additional hydration is triggered
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    // Should still only have 2 calls (not 3) - already hydrated default, no need to re-hydrate
+    expect(eventDatabase.init).toHaveBeenCalledTimes(2)
   })
 
   it("should not restore events if session has no events", async () => {
