@@ -563,26 +563,12 @@ export const persistConfig: PersistOptions<AppState & AppActions, PersistedState
         persisted.activeInstanceId
       : currentState.activeInstanceId
 
-    // Get active instance for syncing flat fields
-    const activeInstance = instances.get(activeInstanceId)
-
     return {
       ...currentState,
       ...persisted,
       // Restore Map from array
       instances,
       activeInstanceId,
-      // Sync flat fields from active instance for backward compatibility
-      // Note: events are kept empty (currentState.events) - they will be restored from IndexedDB
-      ...(activeInstance ?
-        {
-          ralphStatus: activeInstance.status,
-          tokenUsage: activeInstance.tokenUsage,
-          contextWindow: activeInstance.contextWindow,
-          session: activeInstance.session,
-          runStartedAt: activeInstance.runStartedAt,
-        }
-      : {}),
     }
   },
 }

@@ -718,7 +718,7 @@ describe("persist", () => {
         expect(result.activeInstanceId).toBe(currentState.activeInstanceId)
       })
 
-      it("syncs flat fields from active instance (except events)", () => {
+      it("restores instances from persisted state", () => {
         const currentState = createMockAppState()
         const persistedState: PersistedState = {
           ...partialize(currentState),
@@ -744,14 +744,16 @@ describe("persist", () => {
 
         const result = persistConfig.merge!(persistedState, currentState)
 
-        // Flat fields should be synced from the active instance
-        expect(result.ralphStatus).toBe("running")
-        // Events are NOT synced from persisted state - they come from IndexedDB
-        expect(result.events).toEqual(currentState.events)
-        expect(result.tokenUsage).toEqual({ input: 100, output: 50 })
-        expect(result.contextWindow).toEqual({ used: 5000, max: 200000 })
-        expect(result.session).toEqual({ current: 2, total: 5 })
-        expect(result.runStartedAt).toBe(1234567900)
+        // Instances should be restored from persisted state
+        const activeInstance = result.instances.get("active")
+        expect(activeInstance).toBeDefined()
+        expect(activeInstance?.status).toBe("running")
+        expect(activeInstance?.tokenUsage).toEqual({ input: 100, output: 50 })
+        expect(activeInstance?.contextWindow).toEqual({ used: 5000, max: 200000 })
+        expect(activeInstance?.session).toEqual({ current: 2, total: 5 })
+        expect(activeInstance?.runStartedAt).toBe(1234567900)
+        // Events are NOT restored from localStorage - they come from IndexedDB
+        expect(activeInstance?.events).toEqual([])
       })
 
       it("uses current state instances when persisted instances is empty", () => {

@@ -92,41 +92,11 @@ export interface AppState {
   /** ID of the currently active/displayed instance */
   activeInstanceId: string
 
-  // === Legacy flat fields (DEPRECATED - for backward compatibility) ===
-  // These fields duplicate data from the active instance. They are deprecated
-  // and will be removed in a future release. All consumers should use the
-  // instances Map via selectors (selectRalphStatus, selectEvents, etc.).
-  //
-  // Migration status:
-  // - Phase 1: Selectors read from instances Map (no fallback) ✓
-  // - Phase 2: Actions only update instances Map ✓
-  // - Phase 3: Remove these fields from AppState (pending)
-
-  /**
-   * @deprecated Use selectRalphStatus(state) instead, which reads from instances Map.
-   * This flat field will be removed in a future release.
-   */
-  ralphStatus: RalphStatus
-
-  /**
-   * @deprecated Use selectRunStartedAt(state) instead, which reads from instances Map.
-   * This flat field will be removed in a future release.
-   */
-  runStartedAt: number | null
-
-  /**
-   * @deprecated This field is not replicated in instances Map. Consider deriving from tasks.
-   * This flat field will be removed in a future release.
-   */
-  initialTaskCount: number | null
-
-  /**
-   * @deprecated Use selectEvents(state) instead, which reads from instances Map.
-   * This flat field will be removed in a future release.
-   */
-  events: ChatEvent[]
-
   // === Workspace state (shared across all instances) ===
+
+  // Task count at the start of a run (used to track new tasks)
+  // This is workspace-level state, not per-instance
+  initialTaskCount: number | null
 
   // Tasks from ralph
   tasks: Task[]
@@ -139,24 +109,6 @@ export interface AppState {
 
   // Issue prefix for this workspace (e.g., "rui")
   issuePrefix: string | null
-
-  /**
-   * @deprecated Use selectTokenUsage(state) instead, which reads from instances Map.
-   * This flat field will be removed in a future release.
-   */
-  tokenUsage: TokenUsage
-
-  /**
-   * @deprecated Use selectContextWindow(state) instead, which reads from instances Map.
-   * This flat field will be removed in a future release.
-   */
-  contextWindow: ContextWindow
-
-  /**
-   * @deprecated Use selectSession(state) instead, which reads from instances Map.
-   * This flat field will be removed in a future release.
-   */
-  session: SessionInfo
 
   // WebSocket connection status
   connectionStatus: ConnectionStatus
@@ -637,20 +589,12 @@ const initialState: AppState = {
   ]),
   activeInstanceId: DEFAULT_INSTANCE_ID,
 
-  // Legacy flat fields (delegate to active instance)
-  ralphStatus: "stopped",
-  runStartedAt: null,
+  // Workspace state (shared across instances)
   initialTaskCount: null,
-  events: [],
-
-  // Workspace state
   tasks: [],
   workspace: null,
   branch: null,
   issuePrefix: null,
-  tokenUsage: { input: 0, output: 0 },
-  contextWindow: { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX },
-  session: { current: 0, total: 0 },
   connectionStatus: "disconnected",
   accentColor: null,
   sidebarWidth: defaultSidebarWidthPercent,

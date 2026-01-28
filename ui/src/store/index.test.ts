@@ -111,14 +111,16 @@ describe("useAppStore", () => {
   describe("initial state", () => {
     it("has correct initial values", () => {
       const state = useAppStore.getState()
-      expect(state.ralphStatus).toBe("stopped")
-      expect(state.events).toEqual([])
+      // Instance-based state is accessed via selectors
+      expect(selectRalphStatus(state)).toBe("stopped")
+      expect(selectEvents(state)).toEqual([])
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectContextWindow(state)).toEqual({ used: 0, max: 200_000 })
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
+      // Workspace state
       expect(state.tasks).toEqual([])
       expect(state.workspace).toBeNull()
       expect(state.branch).toBeNull()
-      expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
-      expect(state.contextWindow).toEqual({ used: 0, max: 200_000 })
-      expect(state.session).toEqual({ current: 0, total: 0 })
       expect(state.connectionStatus).toBe("disconnected")
       expect(state.accentColor).toBeNull()
       expect(state.sidebarWidth).toBe(20)
@@ -676,17 +678,17 @@ describe("useAppStore", () => {
       expect(useAppStore.getState().activeInstanceId).toBe("new-instance")
     })
 
-    it("syncs flat fields when auto-selecting newly created instance", () => {
+    it("selectors return data from newly created instance", () => {
       useAppStore.getState().createInstance("new-instance", "My Instance", "My Agent")
 
       const state = useAppStore.getState()
-      // Verify flat fields are synced from the new instance
-      expect(state.ralphStatus).toBe("stopped")
-      expect(state.events).toEqual([])
-      expect(state.tokenUsage).toEqual({ input: 0, output: 0 })
-      expect(state.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
-      expect(state.session).toEqual({ current: 0, total: 0 })
-      expect(state.runStartedAt).toBeNull()
+      // Verify selectors read from the new active instance
+      expect(selectRalphStatus(state)).toBe("stopped")
+      expect(selectEvents(state)).toEqual([])
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectContextWindow(state)).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
+      expect(selectRunStartedAt(state)).toBeNull()
       expect(state.viewingSessionIndex).toBeNull()
     })
 
