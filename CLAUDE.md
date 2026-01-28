@@ -451,6 +451,11 @@ pnpm ui:test           # Run UI tests only
 - Components lead files; helper functions live in `ui/src/lib` (one function per file).
 - Standalone subcomponents live in their own files next to the parent component.
 - Shared types and constants live in `ui/src/types.ts` and `ui/src/constants.ts`.
+- **ChatEvent types**: The base `ChatEvent` interface (`ui/src/types.ts`) uses an index signature for
+  backward compatibility. Narrower **discriminated event interfaces** (e.g. `AssistantChatEvent`,
+  `UserMessageChatEvent`, `ErrorChatEvent`, `SystemChatEvent`, etc.) extend `ChatEvent` with literal
+  `type` fields and typed properties. Use type-guard functions in `ui/src/lib/is*.ts` (e.g.
+  `isAssistantMessage`, `isErrorEvent`) to narrow a `ChatEvent` to its concrete shape.
 
 ## UI Architecture
 
