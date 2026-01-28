@@ -34,6 +34,7 @@ import type {
   AgentEvent,
   AgentPendingEventsResponse,
 } from "@herbcaudill/ralph-shared"
+import { envelopeToLegacy } from "@herbcaudill/ralph-shared"
 
 const execFileAsync = promisify(execFile)
 
@@ -1792,25 +1793,6 @@ export function broadcast(message: unknown): void {
  * envelope type (`"agent:event"`) with a `source` discriminator, replacing
  * the previous divergent `"ralph:event"` / `"task-chat:event"` wire types.
  */
-function broadcastAgentEvent(options: {
-  source: AgentEventSource
-  instanceId: string
-  workspaceId: string | null
-  event: AgentEvent
-  eventIndex?: number
-}): void {
-  const envelope: AgentEventEnvelope = {
-    type: "agent:event",
-    source: options.source,
-    instanceId: options.instanceId,
-    workspaceId: options.workspaceId,
-    event: options.event,
-    timestamp: Date.now(),
-    ...(options.eventIndex !== undefined ? { eventIndex: options.eventIndex } : {}),
-  }
-  broadcast(envelope)
-}
-
 /**
  * Handle common operational event types shared by both RalphRegistry and
  * WorkspaceContextManager paths. Returns true if the event was handled.
@@ -1895,24 +1877,21 @@ function wireRegistryEvents(
         const workspaceId = instance?.workspaceId ?? null
 
         // Broadcast unified agent:event envelope (new path)
-        broadcastAgentEvent({
+        const envelope: AgentEventEnvelope = {
+          type: "agent:event",
           source: "ralph",
           instanceId,
           workspaceId,
           event: event as unknown as AgentEvent,
+          timestamp: Date.now(),
           eventIndex,
-        })
+        }
+        broadcast(envelope)
 
         // Also broadcast legacy ralph:event for backward compatibility
-        // TODO(r-tufi7.51.5): Remove once clients migrate to agent:event
-        broadcast({
-          type: "ralph:event",
-          instanceId,
-          workspaceId,
-          event,
-          eventIndex,
-          timestamp: Date.now(),
-        })
+        // @deprecated(r-tufi7.51.5): Remove once all clients migrate to agent:event
+        const legacy = envelopeToLegacy(envelope)
+        if (legacy) broadcast(legacy)
         break
       }
       default: {
@@ -2047,21 +2026,19 @@ function wireContextManagerEvents(
       case "ralph:event": {
         const event = args[0] as RalphEvent
         // Broadcast unified agent:event envelope (new path)
-        broadcastAgentEvent({
+        const ralphEnvelope: AgentEventEnvelope = {
+          type: "agent:event",
           source: "ralph",
           instanceId,
           workspaceId,
           event: event as unknown as AgentEvent,
-        })
-        // Also broadcast legacy ralph:event for backward compatibility
-        // TODO(r-tufi7.51.5): Remove once clients migrate to agent:event
-        broadcast({
-          type: "ralph:event",
-          instanceId,
-          workspaceId,
-          event,
           timestamp: Date.now(),
-        })
+        }
+        broadcast(ralphEnvelope)
+        // Also broadcast legacy ralph:event for backward compatibility
+        // @deprecated(r-tufi7.51.5): Remove once all clients migrate to agent:event
+        const ralphLegacy = envelopeToLegacy(ralphEnvelope)
+        if (ralphLegacy) broadcast(ralphLegacy)
         break
       }
       case "ralph:status":
@@ -2071,6 +2048,11 @@ function wireContextManagerEvents(
         broadcastOperationalEvent(eventType, instanceId, workspaceId, args)
         break
       }
+      // @deprecated(r-tufi7.51.5): Legacy task-chat:* broadcast handlers.
+      // These are kept for backward compatibility with older clients that
+      // haven't migrated to the unified agent:event envelope. Content from
+      // these messages is now also available through task-chat:event / agent:event.
+      // Remove these cases once all clients have migrated.
       case "task-chat:message": {
         const message = args[0] as TaskChatMessage
         broadcast({
@@ -2151,21 +2133,19 @@ function wireContextManagerEvents(
       case "task-chat:event": {
         const event = args[0] as TaskChatEvent
         // Broadcast unified agent:event envelope (new path)
-        broadcastAgentEvent({
+        const tcEnvelope: AgentEventEnvelope = {
+          type: "agent:event",
           source: "task-chat",
           instanceId,
           workspaceId,
           event: event as unknown as AgentEvent,
-        })
-        // Also broadcast legacy task-chat:event for backward compatibility
-        // TODO(r-tufi7.51.5): Remove once clients migrate to agent:event
-        broadcast({
-          type: "task-chat:event",
-          instanceId,
-          workspaceId,
-          event,
           timestamp: Date.now(),
-        })
+        }
+        broadcast(tcEnvelope)
+        // Also broadcast legacy task-chat:event for backward compatibility
+        // @deprecated(r-tufi7.51.5): Remove once all clients migrate to agent:event
+        const tcLegacy = envelopeToLegacy(tcEnvelope)
+        if (tcLegacy) broadcast(tcLegacy)
         break
       }
       case "task-chat:cleared": {

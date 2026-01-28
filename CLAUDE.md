@@ -706,6 +706,17 @@ Reconnection uses a unified wire protocol with a `source` field for routing:
 
 Both types (`AgentReconnectRequest`, `AgentPendingEventsResponse`) are defined in `@herbcaudill/ralph-shared`. Legacy wire types (`reconnect`, `pending_events`, `task-chat:reconnect`, `task-chat:pending_events`) are preserved for backward compatibility.
 
+**Legacy Wire Format Translation (`shared/src/events/legacyCompat.ts`):**
+
+A backward compatibility module provides translation between legacy and unified wire formats:
+
+- **`translateLegacyToEnvelope()`** - Converts legacy wire messages (`ralph:event`, `task-chat:*`) to unified `AgentEventEnvelope`
+- **`envelopeToLegacy()`** - Converts `AgentEventEnvelope` back to legacy format for dual-broadcasting to old clients
+- **`translateLegacyReconnect()`** - Converts legacy `reconnect` / `task-chat:reconnect` to `agent:reconnect`
+- **Type guards** (`isLegacyWireType`, `isLegacyReconnectType`, `isLegacyPendingType`) - Identify legacy message types
+
+The server uses `envelopeToLegacy()` in its dual-broadcast paths to maintain backward compatibility without duplicating wire message construction. This module is deprecated and should be removed once all clients migrate to the unified envelope format.
+
 ## Environment Variables
 
 - `ANTHROPIC_API_KEY` - Required for Claude agent

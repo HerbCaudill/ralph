@@ -902,14 +902,18 @@ function handleMessage(event: MessageEvent): void {
         break
       }
 
-      // Deprecated legacy handlers - these message types are still emitted by server
-      // but we now get content from task-chat:event instead. Ignore them silently.
+      // @deprecated(r-tufi7.51.5): Legacy task-chat:* message types.
+      // These are still emitted by the server for backward compatibility
+      // but content now comes through agent:event / task-chat:event.
+      // The translateLegacyToEnvelope() function in shared/events/legacyCompat.ts
+      // can convert these to unified envelopes if needed. Ignoring silently for now.
+      // Remove these cases once all servers stop emitting legacy formats.
       case "task-chat:message":
       case "task-chat:chunk":
       case "task-chat:tool_use":
       case "task-chat:tool_update":
       case "task-chat:tool_result":
-        // No longer needed - content comes through task-chat:event
+        // No longer needed - content comes through task-chat:event / agent:event
         break
 
       // Mutation events from beads daemon - refresh task list on any task mutation
