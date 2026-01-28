@@ -323,6 +323,46 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      case "task-chat:pending_events":
+        // Response to task-chat:reconnect message - contains task chat events we missed
+        {
+          const pendingInstanceId = (data.instanceId as string) || "default"
+          const pendingEvents = data.events as Array<{
+            type: string
+            timestamp: number
+            [key: string]: unknown
+          }>
+
+          // Update our tracking with the latest event timestamp
+          if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
+            const lastEvent = pendingEvents[pendingEvents.length - 1]
+            if (typeof lastEvent.timestamp === "number") {
+              lastTaskChatEventTimestamps.set(pendingInstanceId, lastEvent.timestamp)
+            }
+          }
+
+          // Add missed task chat events to the store
+          if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
+            console.log(
+              `[ralphConnection] Processing ${pendingEvents.length} pending task chat events for instance: ${pendingInstanceId}`,
+            )
+
+            // Only process if this is for our active instance
+            if (pendingInstanceId === store.activeInstanceId) {
+              for (const pendingEvent of pendingEvents) {
+                // Ensure the event has required properties
+                if (
+                  typeof pendingEvent.type === "string" &&
+                  typeof pendingEvent.timestamp === "number"
+                ) {
+                  store.addTaskChatEvent(pendingEvent)
+                }
+              }
+            }
+          }
+        }
+        break
+
       case "workspace_switched":
         // Workspace was switched on the server - sync state from new workspace
         // This happens when switching to a workspace that may already have Ralph running
@@ -702,6 +742,20 @@ function connect(): void {
         type: "reconnect",
         instanceId,
         lastEventTimestamp,
+      })
+    }
+
+    // Send task chat reconnect message if we have a previous task chat event timestamp
+    // This allows the server to send us any task chat events we missed while disconnected
+    const lastTaskChatTimestamp = lastTaskChatEventTimestamps.get(instanceId)
+    if (typeof lastTaskChatTimestamp === "number") {
+      console.log(
+        `[ralphConnection] Task chat reconnecting with lastEventTimestamp: ${lastTaskChatTimestamp} for instance: ${instanceId}`,
+      )
+      send({
+        type: "task-chat:reconnect",
+        instanceId,
+        lastEventTimestamp: lastTaskChatTimestamp,
       })
     }
 
