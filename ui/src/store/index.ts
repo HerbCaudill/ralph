@@ -217,7 +217,10 @@ export interface AppActions {
 
   // Events
   addEvent: (event: ChatEvent) => void
+  /** Merge events with existing events, deduplicating by ID. Used for reconnection sync. */
   setEvents: (events: ChatEvent[]) => void
+  /** Replace all events (no merge). Used for workspace switching. */
+  replaceEvents: (events: ChatEvent[]) => void
   clearEvents: () => void
 
   // Tasks
@@ -359,8 +362,10 @@ export interface AppActions {
   // Per-instance actions (for routing WebSocket messages to specific instances)
   /** Add an event to a specific instance by ID */
   addEventForInstance: (instanceId: string, event: ChatEvent) => void
-  /** Set events for a specific instance by ID */
+  /** Merge events for a specific instance by ID, deduplicating by event ID. Used for reconnection sync. */
   setEventsForInstance: (instanceId: string, events: ChatEvent[]) => void
+  /** Replace all events for a specific instance (no merge). Used for workspace switching. */
+  replaceEventsForInstance: (instanceId: string, events: ChatEvent[]) => void
   /** Set status for a specific instance by ID */
   setStatusForInstance: (instanceId: string, status: RalphStatus) => void
   /** Add token usage for a specific instance by ID */
@@ -559,6 +564,42 @@ function flushTaskChatEventsBatch(): void {
   }))
 }
 
+/**
+ * Merge incoming events with existing events, deduplicating by event ID.
+ * Events with `id` are deduped; events without `id` are always appended.
+ * Maintains chronological order by timestamp.
+ *
+ * This prevents race conditions between `connected` (setEvents) and
+ * `pending_events` (addEvent) messages during WebSocket reconnection.
+ */
+function mergeEventsById(existingEvents: ChatEvent[], incomingEvents: ChatEvent[]): ChatEvent[] {
+  // Build a map of existing events by ID for fast lookup
+  const seenIds = new Set<string>()
+  for (const event of existingEvents) {
+    if (event.id) {
+      seenIds.add(event.id)
+    }
+  }
+
+  // Filter incoming events to exclude duplicates (by ID)
+  const newEvents: ChatEvent[] = []
+  for (const event of incomingEvents) {
+    if (event.id) {
+      if (seenIds.has(event.id)) {
+        // Skip duplicate
+        continue
+      }
+      seenIds.add(event.id)
+    }
+    newEvents.push(event)
+  }
+
+  // Merge and sort by timestamp to maintain chronological order
+  const merged = [...existingEvents, ...newEvents]
+  merged.sort((a, b) => a.timestamp - b.timestamp)
+  return merged
+}
+
 const initialState: AppState = {
   // Multi-instance state - create default instance inline
   instances: new Map([
@@ -664,7 +705,9 @@ export const useAppStore = create<AppState & AppActions>()(
       // Events
       addEvent: event =>
         set(state => {
-          const newEvents = [...state.events, event]
+          // Deduplicate by event ID to prevent race conditions between
+          // connected and pending_events messages during reconnection
+          const newEvents = mergeEventsById(state.events, [event])
           // Update active instance in the instances Map
           const activeInstance = state.instances.get(state.activeInstanceId)
           const updatedInstances = new Map(state.instances)
@@ -682,7 +725,29 @@ export const useAppStore = create<AppState & AppActions>()(
 
       setEvents: events =>
         set(state => {
+          // Merge incoming events with existing, deduplicating by ID.
+          // This handles the race condition where pending_events may have arrived
+          // before the connected message, or vice versa.
+          const mergedEvents = mergeEventsById(state.events, events)
           // Update active instance in the instances Map
+          const activeInstance = state.instances.get(state.activeInstanceId)
+          const updatedInstances = new Map(state.instances)
+          if (activeInstance) {
+            updatedInstances.set(state.activeInstanceId, {
+              ...activeInstance,
+              events: mergedEvents,
+            })
+          }
+          return {
+            events: mergedEvents,
+            instances: updatedInstances,
+          }
+        }),
+
+      replaceEvents: events =>
+        set(state => {
+          // Replace all events (no merge). Used for workspace switching where
+          // we want to completely replace events from the previous workspace.
           const activeInstance = state.instances.get(state.activeInstanceId)
           const updatedInstances = new Map(state.instances)
           if (activeInstance) {
@@ -1335,7 +1400,8 @@ export const useAppStore = create<AppState & AppActions>()(
             return state
           }
 
-          const newEvents = [...instance.events, event]
+          // Deduplicate by event ID to prevent race conditions during reconnection
+          const newEvents = mergeEventsById(instance.events, [event])
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, { ...instance, events: newEvents })
 
@@ -1358,6 +1424,31 @@ export const useAppStore = create<AppState & AppActions>()(
             return state
           }
 
+          // Merge incoming events with existing, deduplicating by ID
+          const mergedEvents = mergeEventsById(instance.events, events)
+          const updatedInstances = new Map(state.instances)
+          updatedInstances.set(instanceId, { ...instance, events: mergedEvents })
+
+          // If this is the active instance, also update flat fields for backward compatibility
+          if (state.activeInstanceId === instanceId) {
+            return {
+              instances: updatedInstances,
+              events: mergedEvents,
+            }
+          }
+
+          return { instances: updatedInstances }
+        }),
+
+      replaceEventsForInstance: (instanceId, events) =>
+        set(state => {
+          const instance = state.instances.get(instanceId)
+          if (!instance) {
+            console.warn(`[store] Cannot replace events for non-existent instance: ${instanceId}`)
+            return state
+          }
+
+          // Replace all events (no merge). Used for workspace switching.
           const updatedInstances = new Map(state.instances)
           updatedInstances.set(instanceId, { ...instance, events })
 
@@ -1578,6 +1669,9 @@ export const useAppStore = create<AppState & AppActions>()(
  * Useful for testing or when you need events to be applied synchronously.
  */
 export { flushTaskChatEventsBatch }
+
+// Export for testing
+export { mergeEventsById }
 
 export const selectInstances = (state: AppState) => state.instances
 export const selectActiveInstanceId = (state: AppState) => state.activeInstanceId

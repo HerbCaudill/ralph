@@ -293,12 +293,13 @@ function handleMessage(event: MessageEvent): void {
           }
         }
         // Replace events with the new workspace's event history
-        // (clearWorkspaceData already cleared events, this restores from server)
+        // Use replaceEvents (not setEvents) to fully replace rather than merge,
+        // since we're switching to a completely different workspace
         if (Array.isArray(data.events)) {
           if (isForActiveInstance) {
-            store.setEvents(data.events)
+            store.replaceEvents(data.events)
           } else {
-            store.setEventsForInstance(targetInstanceId, data.events)
+            store.replaceEventsForInstance(targetInstanceId, data.events)
           }
         }
         break

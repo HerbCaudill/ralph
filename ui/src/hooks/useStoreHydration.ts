@@ -49,8 +49,6 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
 
   // Get store actions
   const setEventsForInstance = useAppStore(state => state.setEventsForInstance)
-  const setEvents = useAppStore(state => state.setEvents)
-  const activeInstanceId = useAppStore(state => state.activeInstanceId)
 
   useEffect(() => {
     if (!enabled) {
@@ -87,12 +85,9 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
           if (sessionEvents.length > 0) {
             // Restore events to the store
             // Use setEventsForInstance for the specific instance
+            // Note: When instanceId === activeInstanceId, setEventsForInstance automatically
+            // syncs to the flat events array, so we don't need a separate setEvents call
             setEventsForInstance(instanceId, sessionEvents)
-
-            // If this is the active instance, also update the flat events array
-            if (instanceId === activeInstanceId) {
-              setEvents(sessionEvents)
-            }
 
             console.log(
               `[useStoreHydration] Restored ${sessionEvents.length} events from active session ${activeSession.id}`,
@@ -160,7 +155,7 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
     }
 
     hydrate()
-  }, [enabled, instanceId, activeInstanceId, setEventsForInstance, setEvents])
+  }, [enabled, instanceId, setEventsForInstance])
 
   return {
     isHydrated,

@@ -48,6 +48,7 @@ import {
   selectInstanceSessionCount,
   flushTaskChatEventsBatch,
   selectCanAcceptMessages,
+  mergeEventsById,
 } from "./index"
 import type { ChatEvent, Task, TaskChatMessage } from "@/types"
 import { PERSIST_NAME, type PersistedState, serializeInstances } from "./persist"
@@ -1543,17 +1544,37 @@ describe("useAppStore", () => {
       expect(storedEvents).toEqual(events)
     })
 
-    it("setEvents replaces existing events", () => {
+    it("setEvents merges with existing events without duplicates", () => {
       // Add initial events
       useAppStore.getState().addEvent({ type: "old", timestamp: 1 })
       expect(useAppStore.getState().events).toHaveLength(1)
 
-      // Set new events (should replace)
+      // Set new events (should merge, not replace)
       const newEvents: ChatEvent[] = [
         { type: "new1", timestamp: 2 },
         { type: "new2", timestamp: 3 },
       ]
       useAppStore.getState().setEvents(newEvents)
+
+      // All events should be present, sorted by timestamp
+      const storedEvents = useAppStore.getState().events
+      expect(storedEvents).toHaveLength(3)
+      expect(storedEvents[0].type).toBe("old")
+      expect(storedEvents[1].type).toBe("new1")
+      expect(storedEvents[2].type).toBe("new2")
+    })
+
+    it("replaceEvents replaces existing events", () => {
+      // Add initial events
+      useAppStore.getState().addEvent({ type: "old", timestamp: 1 })
+      expect(useAppStore.getState().events).toHaveLength(1)
+
+      // Replace events (should fully replace, not merge)
+      const newEvents: ChatEvent[] = [
+        { type: "new1", timestamp: 2 },
+        { type: "new2", timestamp: 3 },
+      ]
+      useAppStore.getState().replaceEvents(newEvents)
 
       const storedEvents = useAppStore.getState().events
       expect(storedEvents).toHaveLength(2)
@@ -3094,16 +3115,19 @@ describe("useAppStore", () => {
         expect(instance2?.events).toEqual(events)
       })
 
-      it("replaces existing events", () => {
+      it("merges with existing events", () => {
         // Add initial event
         useAppStore.getState().addEventForInstance("instance-2", { type: "old", timestamp: 1000 })
 
-        // Replace with new events
+        // Set new events (should merge, not replace)
         const newEvents: ChatEvent[] = [{ type: "new", timestamp: 2000 }]
         useAppStore.getState().setEventsForInstance("instance-2", newEvents)
 
         const instance2 = useAppStore.getState().instances.get("instance-2")
-        expect(instance2?.events).toEqual(newEvents)
+        // Both events should be present, sorted by timestamp
+        expect(instance2?.events).toHaveLength(2)
+        expect(instance2?.events?.[0].type).toBe("old")
+        expect(instance2?.events?.[1].type).toBe("new")
       })
 
       it("updates flat fields when setting for active instance", () => {
@@ -3111,7 +3135,33 @@ describe("useAppStore", () => {
 
         useAppStore.getState().setEventsForInstance("instance-1", events)
 
+        // Events are merged with existing (empty) events
         expect(useAppStore.getState().events).toEqual(events)
+      })
+    })
+
+    describe("replaceEventsForInstance action", () => {
+      it("replaces existing events", () => {
+        // Add initial event
+        useAppStore.getState().addEventForInstance("instance-2", { type: "old", timestamp: 1000 })
+
+        // Replace with new events (should fully replace, not merge)
+        const newEvents: ChatEvent[] = [{ type: "new", timestamp: 2000 }]
+        useAppStore.getState().replaceEventsForInstance("instance-2", newEvents)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.events).toEqual(newEvents)
+      })
+
+      it("updates flat fields when replacing for active instance", () => {
+        // Add initial event to active instance
+        useAppStore.getState().addEventForInstance("instance-1", { type: "old", timestamp: 1000 })
+
+        // Replace with new events
+        const newEvents: ChatEvent[] = [{ type: "new", timestamp: 2000 }]
+        useAppStore.getState().replaceEventsForInstance("instance-1", newEvents)
+
+        expect(useAppStore.getState().events).toEqual(newEvents)
       })
     })
 
@@ -3402,6 +3452,211 @@ describe("useAppStore", () => {
         useAppStore.getState().clearRunningBeforeDisconnect()
         expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
       })
+    })
+  })
+
+  describe("mergeEventsById", () => {
+    it("merges events and removes duplicates by id", () => {
+      const existing: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+      ]
+      const incoming: ChatEvent[] = [
+        { id: "event-2", type: "tool_result", timestamp: 2000 }, // duplicate
+        { id: "event-3", type: "system", timestamp: 3000 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(3)
+      expect(result.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+    })
+
+    it("maintains chronological order after merge", () => {
+      const existing: ChatEvent[] = [{ id: "event-2", type: "tool_result", timestamp: 2000 }]
+      const incoming: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 }, // earlier timestamp
+        { id: "event-3", type: "system", timestamp: 3000 }, // later timestamp
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(3)
+      expect(result.map(e => e.timestamp)).toEqual([1000, 2000, 3000])
+    })
+
+    it("appends events without id (no deduplication)", () => {
+      const existing: ChatEvent[] = [{ type: "output", timestamp: 1000, line: "first" }]
+      const incoming: ChatEvent[] = [
+        { type: "output", timestamp: 2000, line: "second" },
+        { type: "output", timestamp: 3000, line: "third" },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(3)
+    })
+
+    it("handles empty existing array", () => {
+      const existing: ChatEvent[] = []
+      const incoming: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(2)
+      expect(result.map(e => e.id)).toEqual(["event-1", "event-2"])
+    })
+
+    it("handles empty incoming array", () => {
+      const existing: ChatEvent[] = [{ id: "event-1", type: "tool_use", timestamp: 1000 }]
+      const incoming: ChatEvent[] = []
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("event-1")
+    })
+
+    it("handles mixed events with and without id", () => {
+      const existing: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { type: "output", timestamp: 1500, line: "log" }, // no id
+      ]
+      const incoming: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 }, // duplicate (with id)
+        { type: "output", timestamp: 2000, line: "another log" }, // no id, not deduped
+        { id: "event-2", type: "system", timestamp: 2500 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(4)
+      // Two tool events (one deduped), two output events (not deduped), one system event
+      const ids = result.filter(e => e.id).map(e => e.id)
+      expect(ids).toEqual(["event-1", "event-2"])
+    })
+  })
+
+  describe("event deduplication in store actions", () => {
+    it("addEvent deduplicates by id", () => {
+      const event1: ChatEvent = { id: "event-1", type: "tool_use", timestamp: 1000 }
+      const event2: ChatEvent = { id: "event-2", type: "tool_result", timestamp: 2000 }
+
+      useAppStore.getState().addEvent(event1)
+      useAppStore.getState().addEvent(event2)
+      useAppStore.getState().addEvent(event1) // duplicate
+
+      const events = useAppStore.getState().events
+      expect(events).toHaveLength(2)
+      expect(events.map(e => e.id)).toEqual(["event-1", "event-2"])
+    })
+
+    it("setEvents merges with existing events and deduplicates", () => {
+      // Simulate pending_events arriving first
+      const pendingEvent: ChatEvent = { id: "event-2", type: "tool_result", timestamp: 2000 }
+      useAppStore.getState().addEvent(pendingEvent)
+
+      // Simulate connected message arriving with full history
+      const serverEvents: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 }, // duplicate
+        { id: "event-3", type: "system", timestamp: 3000 },
+      ]
+      useAppStore.getState().setEvents(serverEvents)
+
+      const events = useAppStore.getState().events
+      expect(events).toHaveLength(3)
+      expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+    })
+
+    it("addEventForInstance deduplicates by id", () => {
+      const instanceId = "test-instance"
+      useAppStore.getState().createInstance(instanceId, "Test", "Ralph")
+
+      const event1: ChatEvent = { id: "event-1", type: "tool_use", timestamp: 1000 }
+      const event2: ChatEvent = { id: "event-2", type: "tool_result", timestamp: 2000 }
+
+      useAppStore.getState().addEventForInstance(instanceId, event1)
+      useAppStore.getState().addEventForInstance(instanceId, event2)
+      useAppStore.getState().addEventForInstance(instanceId, event1) // duplicate
+
+      const instance = useAppStore.getState().instances.get(instanceId)
+      expect(instance?.events).toHaveLength(2)
+      expect(instance?.events.map(e => e.id)).toEqual(["event-1", "event-2"])
+    })
+
+    it("setEventsForInstance merges and deduplicates", () => {
+      const instanceId = "test-instance"
+      useAppStore.getState().createInstance(instanceId, "Test", "Ralph")
+
+      // Add initial event
+      const existingEvent: ChatEvent = { id: "event-2", type: "tool_result", timestamp: 2000 }
+      useAppStore.getState().addEventForInstance(instanceId, existingEvent)
+
+      // Set events with overlap
+      const newEvents: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 }, // duplicate
+        { id: "event-3", type: "system", timestamp: 3000 },
+      ]
+      useAppStore.getState().setEventsForInstance(instanceId, newEvents)
+
+      const instance = useAppStore.getState().instances.get(instanceId)
+      expect(instance?.events).toHaveLength(3)
+      expect(instance?.events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+    })
+
+    it("handles reconnection race condition: pending_events before connected", () => {
+      // Scenario: Client reconnects and receives pending_events before connected message
+
+      // 1. Client receives pending_events first (via addEvent)
+      const pendingEvents: ChatEvent[] = [
+        { id: "event-3", type: "system", timestamp: 3000 },
+        { id: "event-4", type: "tool_use", timestamp: 4000 },
+      ]
+      pendingEvents.forEach(e => useAppStore.getState().addEvent(e))
+
+      // 2. Client receives connected message with full history (via setEvents)
+      const serverHistory: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+        { id: "event-3", type: "system", timestamp: 3000 }, // duplicate
+        { id: "event-4", type: "tool_use", timestamp: 4000 }, // duplicate
+      ]
+      useAppStore.getState().setEvents(serverHistory)
+
+      // Verify: all events present, no duplicates, chronologically ordered
+      const events = useAppStore.getState().events
+      expect(events).toHaveLength(4)
+      expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3", "event-4"])
+      expect(events.map(e => e.timestamp)).toEqual([1000, 2000, 3000, 4000])
+    })
+
+    it("handles reconnection race condition: connected before pending_events", () => {
+      // Scenario: Client reconnects and receives connected before pending_events
+
+      // 1. Client receives connected message with full history (via setEvents)
+      const serverHistory: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+      ]
+      useAppStore.getState().setEvents(serverHistory)
+
+      // 2. Client receives pending_events with some overlap (via addEvent)
+      const pendingEvents: ChatEvent[] = [
+        { id: "event-2", type: "tool_result", timestamp: 2000 }, // duplicate
+        { id: "event-3", type: "system", timestamp: 3000 }, // new
+      ]
+      pendingEvents.forEach(e => useAppStore.getState().addEvent(e))
+
+      // Verify: all events present, no duplicates, chronologically ordered
+      const events = useAppStore.getState().events
+      expect(events).toHaveLength(3)
+      expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+      expect(events.map(e => e.timestamp)).toEqual([1000, 2000, 3000])
     })
   })
 })
