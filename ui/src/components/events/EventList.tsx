@@ -47,6 +47,7 @@ export function EventList({ events, maxEvents = 1000, loadingIndicator }: EventL
         <EventStreamEventItem
           key={`${event.timestamp}-${index}`}
           event={event}
+          eventIndex={index}
           toolResults={toolResults}
           hasStructuredLifecycleEvents={hasStructuredLifecycleEvents}
         />

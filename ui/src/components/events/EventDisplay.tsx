@@ -52,6 +52,7 @@ export function EventDisplay({
             <EventStreamEventItem
               key={`${event.timestamp}-${index}`}
               event={event}
+              eventIndex={index}
               toolResults={toolResults}
               hasStructuredLifecycleEvents={hasStructuredLifecycleEvents}
             />

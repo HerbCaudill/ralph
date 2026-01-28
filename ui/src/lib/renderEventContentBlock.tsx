@@ -27,7 +27,7 @@ export function renderEventContentBlock(
   index: number,
   timestamp: number,
   toolResults: Map<string, ToolResult>,
-  options?: { hasStructuredLifecycleEvents?: boolean },
+  options?: { hasStructuredLifecycleEvents?: boolean; eventIndex?: number },
 ) {
   // For text blocks, check if it's a lifecycle marker
   const lifecycleEvent =
@@ -47,9 +47,13 @@ export function renderEventContentBlock(
     return null
   }
 
+  // Build a key prefix that includes the event index to ensure uniqueness
+  // across multiple assistant message events containing the same block IDs
+  const keyPrefix = options?.eventIndex !== undefined ? `${options.eventIndex}-` : ""
+
   // Render thinking blocks
   if (block.type === "thinking") {
-    return <ThinkingBlock key={`thinking-${index}`} content={block.thinking} />
+    return <ThinkingBlock key={`${keyPrefix}thinking-${index}`} content={block.thinking} />
   }
 
   // Render text blocks (may be lifecycle events or regular text)
@@ -57,7 +61,7 @@ export function renderEventContentBlock(
     // If it's a lifecycle text and we get here, structured events don't exist
     // so we should render it as a lifecycle event
     if (lifecycleEvent) {
-      return <TaskLifecycleEvent key={`lifecycle-${index}`} event={lifecycleEvent} />
+      return <TaskLifecycleEvent key={`${keyPrefix}lifecycle-${index}`} event={lifecycleEvent} />
     }
 
     const textEvent: AssistantTextEvent = {
@@ -65,7 +69,7 @@ export function renderEventContentBlock(
       timestamp,
       content: block.text,
     }
-    return <AssistantText key={`text-${index}`} event={textEvent} />
+    return <AssistantText key={`${keyPrefix}text-${index}`} event={textEvent} />
   }
 
   // Render tool use blocks
@@ -85,7 +89,7 @@ export function renderEventContentBlock(
       output: result?.output,
       error: result?.error,
     }
-    return <ToolUseCard key={`tool-${block.id}`} event={toolEvent} />
+    return <ToolUseCard key={`${keyPrefix}tool-${block.id}`} event={toolEvent} />
   }
 
   // This shouldn't be reached if filter logic is correct

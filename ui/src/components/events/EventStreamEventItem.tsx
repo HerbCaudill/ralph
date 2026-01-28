@@ -33,7 +33,12 @@ import type {
  * - system: Internal events not for display
  * - unrecognized: Unknown event types
  */
-export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycleEvents }: Props) {
+export function EventStreamEventItem({
+  event,
+  toolResults,
+  hasStructuredLifecycleEvents,
+  eventIndex,
+}: Props) {
   // Use centralized filter logic to check if event should be rendered
   const filterResult = shouldFilterEventByType(event)
 
@@ -85,6 +90,7 @@ export function EventStreamEventItem({ event, toolResults, hasStructuredLifecycl
         {content.map((block, index) =>
           renderEventContentBlock(block, index, event.timestamp, toolResults, {
             hasStructuredLifecycleEvents,
+            eventIndex,
           }),
         )}
       </>
@@ -112,4 +118,6 @@ type Props = {
   event: ChatEvent
   toolResults: Map<string, ToolResult>
   hasStructuredLifecycleEvents: boolean
+  /** Index of the event in the parent list, used to generate unique React keys across events */
+  eventIndex?: number
 }
