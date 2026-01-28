@@ -17,6 +17,7 @@ vi.mock("@/lib/persistence", () => ({
     getLatestActiveSession: vi.fn().mockResolvedValue(undefined),
     getLatestActiveSessionForWorkspace: vi.fn().mockResolvedValue(undefined),
     getLatestTaskChatSessionForInstance: vi.fn().mockResolvedValue(undefined),
+    getLatestTaskChatSessionForWorkspace: vi.fn().mockResolvedValue(undefined),
     getTaskChatSession: vi.fn().mockResolvedValue(undefined),
     getEventsForSession: vi.fn().mockResolvedValue([]),
   },
@@ -612,6 +613,278 @@ describe("useStoreHydration", () => {
       // Should use non-scoped method when workspaceId is null
       expect(eventDatabase.getLatestActiveSession).toHaveBeenCalledWith("default")
       expect(eventDatabase.getLatestActiveSessionForWorkspace).not.toHaveBeenCalled()
+    })
+
+    it("should use workspace-scoped task chat session lookup when workspaceId is provided", async () => {
+      const mockMessages: TaskChatMessage[] = [
+        { id: "msg-1", role: "user", content: "Hello", timestamp: 1000 },
+      ]
+
+      const mockTaskChatSession: PersistedTaskChatSession = {
+        id: "default-task-abc-1000",
+        taskId: "abc",
+        instanceId: "default",
+        workspaceId: "/Users/test/project",
+        createdAt: 1000,
+        updatedAt: 2000,
+        messageCount: 1,
+        eventCount: 0,
+        lastEventSequence: -1,
+        messages: mockMessages,
+        events: [],
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSessionForWorkspace).mockResolvedValue(undefined)
+      vi.mocked(eventDatabase.getLatestTaskChatSessionForWorkspace).mockResolvedValue(
+        mockTaskChatSession,
+      )
+
+      const { result } = renderHook(() =>
+        useStoreHydration({ instanceId: "default", workspaceId: "/Users/test/project" }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Should use workspace-scoped method for task chat
+      expect(eventDatabase.getLatestTaskChatSessionForWorkspace).toHaveBeenCalledWith(
+        "default",
+        "/Users/test/project",
+      )
+      // Should NOT use the non-scoped method
+      expect(eventDatabase.getLatestTaskChatSessionForInstance).not.toHaveBeenCalled()
+
+      // Check that task chat messages were restored
+      expect(useAppStore.getState().taskChatMessages).toEqual(mockMessages)
+    })
+
+    it("should use instance-scoped task chat session lookup when workspaceId is not provided", async () => {
+      const mockMessages: TaskChatMessage[] = [
+        { id: "msg-1", role: "user", content: "Hello", timestamp: 1000 },
+      ]
+
+      const mockTaskChatSession: PersistedTaskChatSession = {
+        id: "default-task-abc-1000",
+        taskId: "abc",
+        instanceId: "default",
+        workspaceId: null,
+        createdAt: 1000,
+        updatedAt: 2000,
+        messageCount: 1,
+        eventCount: 0,
+        lastEventSequence: -1,
+        messages: mockMessages,
+        events: [],
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(undefined)
+      vi.mocked(eventDatabase.getLatestTaskChatSessionForInstance).mockResolvedValue(
+        mockTaskChatSession,
+      )
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Should use non-scoped method for task chat
+      expect(eventDatabase.getLatestTaskChatSessionForInstance).toHaveBeenCalledWith("default")
+      // Should NOT use workspace-scoped method
+      expect(eventDatabase.getLatestTaskChatSessionForWorkspace).not.toHaveBeenCalled()
+
+      // Check that task chat messages were restored
+      expect(useAppStore.getState().taskChatMessages).toEqual(mockMessages)
+    })
+
+    it("should fall back to workspace-scoped lookup when stored session belongs to a different workspace", async () => {
+      const wrongWorkspaceMessages: TaskChatMessage[] = [
+        { id: "msg-wrong", role: "user", content: "Wrong workspace", timestamp: 500 },
+      ]
+
+      const correctWorkspaceMessages: TaskChatMessage[] = [
+        { id: "msg-correct", role: "user", content: "Correct workspace", timestamp: 1000 },
+      ]
+
+      // Stored session belongs to a different workspace
+      const storedSession: PersistedTaskChatSession = {
+        id: "stored-session-id",
+        taskId: "task-1",
+        instanceId: "default",
+        workspaceId: "/Users/test/other-project",
+        createdAt: 500,
+        updatedAt: 600,
+        messageCount: 1,
+        eventCount: 0,
+        lastEventSequence: -1,
+        messages: wrongWorkspaceMessages,
+        events: [],
+      }
+
+      // Correct workspace session returned by workspace-scoped query
+      const workspaceSession: PersistedTaskChatSession = {
+        id: "workspace-session-id",
+        taskId: "task-2",
+        instanceId: "default",
+        workspaceId: "/Users/test/project",
+        createdAt: 1000,
+        updatedAt: 2000,
+        messageCount: 1,
+        eventCount: 0,
+        lastEventSequence: -1,
+        messages: correctWorkspaceMessages,
+        events: [],
+      }
+
+      // Set the stored session ID in the store
+      useAppStore.setState({ currentTaskChatSessionId: "stored-session-id" })
+
+      vi.mocked(eventDatabase.getLatestActiveSessionForWorkspace).mockResolvedValue(undefined)
+      vi.mocked(eventDatabase.getTaskChatSession).mockResolvedValue(storedSession)
+      vi.mocked(eventDatabase.getLatestTaskChatSessionForWorkspace).mockResolvedValue(
+        workspaceSession,
+      )
+
+      const { result } = renderHook(() =>
+        useStoreHydration({ instanceId: "default", workspaceId: "/Users/test/project" }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Should have looked up the stored session
+      expect(eventDatabase.getTaskChatSession).toHaveBeenCalledWith("stored-session-id")
+
+      // Should have fallen back to workspace-scoped lookup since stored session is from a different workspace
+      expect(eventDatabase.getLatestTaskChatSessionForWorkspace).toHaveBeenCalledWith(
+        "default",
+        "/Users/test/project",
+      )
+
+      // Should have restored the correct workspace's messages (not the stored session's)
+      expect(useAppStore.getState().taskChatMessages).toEqual(correctWorkspaceMessages)
+
+      // Session ID should be updated to the workspace session
+      expect(useAppStore.getState().currentTaskChatSessionId).toBe("workspace-session-id")
+    })
+
+    it("should use stored session when it belongs to the current workspace", async () => {
+      const mockMessages: TaskChatMessage[] = [
+        { id: "msg-1", role: "user", content: "Hello from correct workspace", timestamp: 1000 },
+      ]
+
+      const storedSession: PersistedTaskChatSession = {
+        id: "stored-session-id",
+        taskId: "task-1",
+        instanceId: "default",
+        workspaceId: "/Users/test/project",
+        createdAt: 1000,
+        updatedAt: 2000,
+        messageCount: 1,
+        eventCount: 0,
+        lastEventSequence: -1,
+        messages: mockMessages,
+        events: [],
+      }
+
+      // Set the stored session ID in the store
+      useAppStore.setState({ currentTaskChatSessionId: "stored-session-id" })
+
+      vi.mocked(eventDatabase.getLatestActiveSessionForWorkspace).mockResolvedValue(undefined)
+      vi.mocked(eventDatabase.getTaskChatSession).mockResolvedValue(storedSession)
+
+      const { result } = renderHook(() =>
+        useStoreHydration({ instanceId: "default", workspaceId: "/Users/test/project" }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Should have looked up the stored session
+      expect(eventDatabase.getTaskChatSession).toHaveBeenCalledWith("stored-session-id")
+
+      // Should NOT have fallen back to workspace-scoped lookup (stored session matches workspace)
+      expect(eventDatabase.getLatestTaskChatSessionForWorkspace).not.toHaveBeenCalled()
+      expect(eventDatabase.getLatestTaskChatSessionForInstance).not.toHaveBeenCalled()
+
+      // Should have restored the stored session's messages
+      expect(useAppStore.getState().taskChatMessages).toEqual(mockMessages)
+    })
+
+    it("should re-hydrate when switching to a different workspace", async () => {
+      vi.mocked(eventDatabase.init).mockResolvedValue(undefined)
+      vi.mocked(eventDatabase.getLatestActiveSessionForWorkspace).mockResolvedValue(undefined)
+      vi.mocked(eventDatabase.getLatestTaskChatSessionForWorkspace).mockResolvedValue(undefined)
+
+      const { result, rerender } = renderHook(
+        ({ instanceId, workspaceId }: { instanceId: string; workspaceId: string }) =>
+          useStoreHydration({ instanceId, workspaceId }),
+        {
+          initialProps: { instanceId: "default", workspaceId: "/Users/test/project-a" },
+        },
+      )
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      expect(eventDatabase.init).toHaveBeenCalledTimes(1)
+      expect(eventDatabase.getLatestActiveSessionForWorkspace).toHaveBeenCalledWith(
+        "default",
+        "/Users/test/project-a",
+      )
+
+      // Switch to a different workspace
+      rerender({ instanceId: "default", workspaceId: "/Users/test/project-b" })
+
+      await waitFor(() => {
+        // Should have been called twice - once per workspace
+        expect(eventDatabase.init).toHaveBeenCalledTimes(2)
+      })
+
+      expect(eventDatabase.getLatestActiveSessionForWorkspace).toHaveBeenCalledWith(
+        "default",
+        "/Users/test/project-b",
+      )
+    })
+
+    it("should not re-hydrate when switching back to an already-hydrated workspace", async () => {
+      vi.mocked(eventDatabase.init).mockResolvedValue(undefined)
+      vi.mocked(eventDatabase.getLatestActiveSessionForWorkspace).mockResolvedValue(undefined)
+      vi.mocked(eventDatabase.getLatestTaskChatSessionForWorkspace).mockResolvedValue(undefined)
+
+      const { result, rerender } = renderHook(
+        ({ instanceId, workspaceId }: { instanceId: string; workspaceId: string }) =>
+          useStoreHydration({ instanceId, workspaceId }),
+        {
+          initialProps: { instanceId: "default", workspaceId: "/Users/test/project-a" },
+        },
+      )
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      expect(eventDatabase.init).toHaveBeenCalledTimes(1)
+
+      // Switch to workspace B
+      rerender({ instanceId: "default", workspaceId: "/Users/test/project-b" })
+
+      await waitFor(() => {
+        expect(eventDatabase.init).toHaveBeenCalledTimes(2)
+      })
+
+      // Switch back to workspace A
+      rerender({ instanceId: "default", workspaceId: "/Users/test/project-a" })
+
+      // Wait a tick to ensure no additional hydration is triggered
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Should still only have 2 calls (not 3) - already hydrated workspace A
+      expect(eventDatabase.init).toHaveBeenCalledTimes(2)
     })
   })
 

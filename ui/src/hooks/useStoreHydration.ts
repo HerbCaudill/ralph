@@ -47,9 +47,9 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
   const [isHydrating, setIsHydrating] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  // Track which instance IDs we've already hydrated to prevent redundant hydration
-  // while still allowing hydration when switching to a new instance
-  const hydratedInstancesRef = useRef(new Set<string>())
+  // Track which instance+workspace combos we've already hydrated to prevent redundant hydration
+  // while still allowing hydration when switching to a new instance or workspace
+  const hydratedKeysRef = useRef(new Set<string>())
 
   // Get store actions
   const setEventsForInstance = useAppStore(state => state.setEventsForInstance)
@@ -60,9 +60,11 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
       return
     }
 
-    // Only hydrate each instance once (but allow hydration when switching to a new instance)
-    if (hydratedInstancesRef.current.has(instanceId)) return
-    hydratedInstancesRef.current.add(instanceId)
+    // Only hydrate each instance+workspace combo once
+    // (but allow re-hydration when switching to a new instance or workspace)
+    const hydrationKey = `${instanceId}:${workspaceId ?? ""}`
+    if (hydratedKeysRef.current.has(hydrationKey)) return
+    hydratedKeysRef.current.add(hydrationKey)
 
     async function hydrate() {
       setIsHydrating(true)
@@ -129,11 +131,29 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
         }
 
         // Load the task chat session - use stored session ID if available
+        // If workspaceId is provided, prefer workspace-scoped queries to ensure
+        // we only restore task chat sessions from the current workspace
         const storedSessionId = useAppStore.getState().currentTaskChatSessionId
-        const taskChatSession =
-          storedSessionId ?
-            await eventDatabase.getTaskChatSession(storedSessionId)
-          : await eventDatabase.getLatestTaskChatSessionForInstance(instanceId)
+        let taskChatSession:
+          | Awaited<ReturnType<typeof eventDatabase.getTaskChatSession>>
+          | undefined
+
+        if (storedSessionId) {
+          const storedSession = await eventDatabase.getTaskChatSession(storedSessionId)
+          // Only use the stored session if it belongs to the current workspace
+          // (or if no workspace filtering is needed)
+          if (storedSession && (!workspaceId || storedSession.workspaceId === workspaceId)) {
+            taskChatSession = storedSession
+          }
+        }
+
+        // If no valid stored session found, look up the latest session
+        if (!taskChatSession) {
+          taskChatSession =
+            workspaceId ?
+              await eventDatabase.getLatestTaskChatSessionForWorkspace(instanceId, workspaceId)
+            : await eventDatabase.getLatestTaskChatSessionForInstance(instanceId)
+        }
 
         if (taskChatSession) {
           // Restore task chat messages

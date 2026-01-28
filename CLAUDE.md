@@ -608,6 +608,10 @@ Server-generated session IDs are preferred because they ensure consistency betwe
 
 On page reload, `useStoreHydration` restores the `currentSessions` Map in `ralphConnection.ts` by calling `setCurrentSessionId(instanceId, sessionId, startedAt)` for each active session loaded from IndexedDB. This ensures that events arriving immediately after hydration can be persisted to the correct session without waiting for a new `ralph_session_start` boundary event. The optional `startedAt` parameter on `setCurrentSessionId` allows the hydration flow to restore the original session start time.
 
+**Workspace-Scoped Hydration:**
+
+Hydration is scoped to the current workspace. The deduplication key includes `workspaceId` so that switching workspaces triggers re-hydration rather than reusing stale data from a different workspace. For task chat sessions, the stored `currentTaskChatSessionId` is validated against the current workspace before use -- if the stored session belongs to a different workspace, it is ignored and a workspace-scoped lookup finds the most recent session for the active workspace instead. This prevents task chat from displaying messages from a different project after switching workspaces.
+
 ### Zustand Store Architecture
 
 The UI state is managed by a Zustand store (`ui/src/store/index.ts`). The store supports **multi-instance state management** where each Ralph instance has its own isolated state.
