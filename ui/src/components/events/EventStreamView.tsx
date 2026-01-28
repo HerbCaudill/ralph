@@ -167,6 +167,10 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
           currentSessionId={currentSessionId}
           onSessionHistorySelect={navigation.selectSessionHistory}
           onReturnToLive={navigation.returnToLive}
+          onPreviousSession={navigation.goToPrevious}
+          onNextSession={navigation.goToNext}
+          hasPreviousSession={navigation.hasPrevious}
+          hasNextSession={navigation.hasNext}
         />
 
         {isLoadingHistoricalEvents ?

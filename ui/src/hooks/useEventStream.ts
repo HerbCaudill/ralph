@@ -11,6 +11,8 @@ import {
   selectInstance,
   selectIssuePrefix,
   selectIsConnected,
+  selectHasPreviousSession,
+  selectHasNextSession,
   getEventsForSessionId,
 } from "@/store"
 import { useSessions, buildSessionPath, parseSessionIdFromUrl } from "@/hooks"
@@ -25,6 +27,10 @@ export interface SessionTask {
 export interface SessionNavigationActions {
   selectSessionHistory: (id: string) => void
   returnToLive: () => void
+  goToPrevious: () => void
+  goToNext: () => void
+  hasPrevious: boolean
+  hasNext: boolean
 }
 
 export interface UseEventStreamOptions {
@@ -83,6 +89,10 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const tasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const isConnected = useAppStore(selectIsConnected)
+  const hasPrevious = useAppStore(selectHasPreviousSession)
+  const hasNext = useAppStore(selectHasNextSession)
+  const goToPreviousSession = useAppStore(state => state.goToPreviousSession)
+  const goToNextSession = useAppStore(state => state.goToNextSession)
 
   // Get instance for currentTaskId fallback
   const instance = useAppStore(state =>
@@ -228,8 +238,19 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     () => ({
       selectSessionHistory: handleSessionHistorySelect,
       returnToLive: handleReturnToLive,
+      goToPrevious: goToPreviousSession,
+      goToNext: goToNextSession,
+      hasPrevious,
+      hasNext,
     }),
-    [handleSessionHistorySelect, handleReturnToLive],
+    [
+      handleSessionHistorySelect,
+      handleReturnToLive,
+      goToPreviousSession,
+      goToNextSession,
+      hasPrevious,
+      hasNext,
+    ],
   )
 
   return {

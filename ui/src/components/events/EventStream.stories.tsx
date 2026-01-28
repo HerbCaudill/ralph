@@ -32,6 +32,10 @@ const defaultProps: Partial<EventStreamViewProps> = {
   navigation: {
     selectSessionHistory: () => {},
     returnToLive: () => {},
+    goToPrevious: () => {},
+    goToNext: () => {},
+    hasPrevious: false,
+    hasNext: false,
   },
 }
 

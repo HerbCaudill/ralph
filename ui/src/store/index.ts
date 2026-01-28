@@ -1794,6 +1794,22 @@ export const selectViewingSessionIndex = (state: AppState) => {
   return getSessionIndexById(events, state.viewingSessionId)
 }
 export const selectSessionCount = (state: AppState) => countSessions(selectEvents(state))
+export const selectHasPreviousSession = (state: AppState): boolean => {
+  const events = selectEvents(state)
+  const totalSessions = countSessions(events)
+  if (totalSessions === 0) return false
+  if (state.viewingSessionId === null) return totalSessions > 1
+  const currentIndex = getSessionIndexById(events, state.viewingSessionId)
+  return currentIndex !== null && currentIndex > 0
+}
+export const selectHasNextSession = (state: AppState): boolean => {
+  const events = selectEvents(state)
+  const totalSessions = countSessions(events)
+  if (totalSessions === 0) return false
+  if (state.viewingSessionId === null) return false
+  const currentIndex = getSessionIndexById(events, state.viewingSessionId)
+  return currentIndex !== null && currentIndex < totalSessions - 1
+}
 export const selectCurrentSessionEvents = (state: AppState) =>
   getEventsForSessionId(selectEvents(state), state.viewingSessionId)
 export const selectIsViewingLatestSession = (state: AppState) => state.viewingSessionId === null

@@ -49,6 +49,10 @@ describe("EventStreamSessionBar", () => {
     isViewingHistorical: false,
     onSessionHistorySelect: vi.fn(),
     onReturnToLive: vi.fn(),
+    onPreviousSession: vi.fn(),
+    onNextSession: vi.fn(),
+    hasPreviousSession: false,
+    hasNextSession: false,
   }
 
   describe("showDropdown condition", () => {
@@ -223,37 +227,6 @@ describe("EventStreamSessionBar", () => {
   })
 
   describe("viewing historical session", () => {
-    it("shows return to live button when viewing historical session", () => {
-      render(
-        <EventStreamSessionBar
-          {...defaultProps}
-          isViewingHistorical={true}
-          currentTask={{ id: "task-123", title: "Historical task" }}
-        />,
-      )
-
-      expect(screen.getByTestId("return-to-live-button")).toBeInTheDocument()
-      expect(screen.getByText("Live")).toBeInTheDocument()
-    })
-
-    it("calls onReturnToLive when clicking return button", async () => {
-      const onReturnToLive = vi.fn()
-      const userEvent = await import("@testing-library/user-event")
-      const user = userEvent.default.setup()
-
-      render(
-        <EventStreamSessionBar
-          {...defaultProps}
-          isViewingHistorical={true}
-          currentTask={{ id: "task-123", title: "Historical task" }}
-          onReturnToLive={onReturnToLive}
-        />,
-      )
-
-      await user.click(screen.getByTestId("return-to-live-button"))
-      expect(onReturnToLive).toHaveBeenCalled()
-    })
-
     it("shows session dropdown with history icon when viewing historical session", () => {
       render(
         <EventStreamSessionBar
@@ -280,20 +253,96 @@ describe("EventStreamSessionBar", () => {
       // With placeholder for no task (not running)
       expect(screen.getByTestId("dropdown-placeholder")).toHaveTextContent("No active task")
     })
+  })
 
-    it("shows dropdown alongside return button when viewing historical session", () => {
+  describe("previous/next navigation buttons", () => {
+    it("renders previous and next buttons", () => {
+      render(<EventStreamSessionBar {...defaultProps} />)
+
+      expect(screen.getByTestId("previous-session-button")).toBeInTheDocument()
+      expect(screen.getByTestId("next-session-button")).toBeInTheDocument()
+    })
+
+    it("disables previous button when hasPreviousSession is false", () => {
       render(
         <EventStreamSessionBar
           {...defaultProps}
-          isViewingHistorical={true}
-          sessions={[createMockSession("abc123", new Date().toISOString())]}
-          currentTask={{ id: "task-1", title: "Test" }}
+          hasPreviousSession={false}
+          hasNextSession={true}
         />,
       )
 
-      // Should show both the dropdown and return button
-      expect(screen.getByTestId("session-history-dropdown")).toBeInTheDocument()
-      expect(screen.getByTestId("return-to-live-button")).toBeInTheDocument()
+      expect(screen.getByTestId("previous-session-button")).toBeDisabled()
+      expect(screen.getByTestId("next-session-button")).not.toBeDisabled()
+    })
+
+    it("disables next button when hasNextSession is false", () => {
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          hasPreviousSession={true}
+          hasNextSession={false}
+        />,
+      )
+
+      expect(screen.getByTestId("previous-session-button")).not.toBeDisabled()
+      expect(screen.getByTestId("next-session-button")).toBeDisabled()
+    })
+
+    it("disables both buttons when no adjacent sessions exist", () => {
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          hasPreviousSession={false}
+          hasNextSession={false}
+        />,
+      )
+
+      expect(screen.getByTestId("previous-session-button")).toBeDisabled()
+      expect(screen.getByTestId("next-session-button")).toBeDisabled()
+    })
+
+    it("enables both buttons when adjacent sessions exist", () => {
+      render(
+        <EventStreamSessionBar {...defaultProps} hasPreviousSession={true} hasNextSession={true} />,
+      )
+
+      expect(screen.getByTestId("previous-session-button")).not.toBeDisabled()
+      expect(screen.getByTestId("next-session-button")).not.toBeDisabled()
+    })
+
+    it("calls onPreviousSession when clicking previous button", async () => {
+      const onPreviousSession = vi.fn()
+      const userEvent = await import("@testing-library/user-event")
+      const user = userEvent.default.setup()
+
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          hasPreviousSession={true}
+          onPreviousSession={onPreviousSession}
+        />,
+      )
+
+      await user.click(screen.getByTestId("previous-session-button"))
+      expect(onPreviousSession).toHaveBeenCalled()
+    })
+
+    it("calls onNextSession when clicking next button", async () => {
+      const onNextSession = vi.fn()
+      const userEvent = await import("@testing-library/user-event")
+      const user = userEvent.default.setup()
+
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          hasNextSession={true}
+          onNextSession={onNextSession}
+        />,
+      )
+
+      await user.click(screen.getByTestId("next-session-button"))
+      expect(onNextSession).toHaveBeenCalled()
     })
   })
 })

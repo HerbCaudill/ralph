@@ -25,6 +25,10 @@ const defaultProps: EventStreamViewProps = {
   navigation: {
     selectSessionHistory: vi.fn(),
     returnToLive: vi.fn(),
+    goToPrevious: vi.fn(),
+    goToNext: vi.fn(),
+    hasPrevious: false,
+    hasNext: false,
   },
 }
 
