@@ -10,6 +10,7 @@ import { extractTokenUsageFromEvent } from "./extractTokenUsage"
 import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
 import { BoundedMap } from "./BoundedMap"
 import type { ChatEvent } from "@/types"
+import { isSystemEvent } from "@/lib/isSystemEvent"
 import { isAgentEventEnvelope, isAgentPendingEventsResponse } from "@herbcaudill/ralph-shared"
 import type { AgentEventSource, AgentReconnectRequest } from "@herbcaudill/ralph-shared"
 
@@ -623,10 +624,10 @@ function handleMessage(event: MessageEvent): void {
       // --- Legacy handlers (backward compat — TODO(r-tufi7.51.5): remove once migration complete) ---
       case "ralph:event":
         if (data.event && typeof data.event === "object") {
-          const event = data.event as { type: string; timestamp: number; [key: string]: unknown }
+          const event = data.event as ChatEvent
 
           console.debug(
-            `[ralphConnection] ralph:event received: type=${event.type}, subtype=${(event as any).subtype ?? "none"}, isForActiveInstance=${isForActiveInstance}`,
+            `[ralphConnection] ralph:event received: type=${event.type}, subtype=${isSystemEvent(event) ? event.subtype : "none"}, isForActiveInstance=${isForActiveInstance}`,
           )
 
           // Track the event timestamp for reconnection sync
@@ -636,7 +637,7 @@ function handleMessage(event: MessageEvent): void {
 
           // Reset session stats and generate session ID when a new session starts
           // Session ID is generated synchronously to fix race condition (r-tufi7.36)
-          if (isSessionBoundary(event as ChatEvent)) {
+          if (isSessionBoundary(event)) {
             console.debug(`[ralphConnection] Session boundary detected, resetting stats`)
             if (isForActiveInstance) {
               store.resetSessionStats()
@@ -647,7 +648,7 @@ function handleMessage(event: MessageEvent): void {
             // Generate and store session ID synchronously - this ensures the ID is available
             // for persistence before the event is processed, fixing the race condition
             const { sessionId: newSessionId, startedAt } = getSessionIdFromEvent(
-              event as ChatEvent,
+              event,
               targetInstanceId,
             )
             currentSessions.set(targetInstanceId, { id: newSessionId, startedAt })

@@ -17,6 +17,7 @@ import type {
   SessionInfo,
 } from "@/types"
 import { persistConfig } from "./persist"
+import { isSystemEvent } from "@/lib/isSystemEvent"
 
 /** Get the cutoff timestamp for a time filter */
 export function getTimeFilterCutoff(filter: ClosedTasksTimeFilter): Date | null {
@@ -382,7 +383,7 @@ export function isSessionBoundary(event: ChatEvent): boolean {
     return true
   }
   // Legacy fallback: system/init (for backward compatibility with older persisted events)
-  if (event.type === "system" && (event as any).subtype === "init") {
+  if (isSystemEvent(event) && event.subtype === "init") {
     return true
   }
   return false
@@ -406,7 +407,7 @@ export function getSessionBoundaries(events: ChatEvent[]): number[] {
   events.forEach((event, index) => {
     if (event.type === "ralph_session_start") {
       primaryBoundaries.push(index)
-    } else if (event.type === "system" && (event as any).subtype === "init") {
+    } else if (isSystemEvent(event) && event.subtype === "init") {
       fallbackBoundaries.push(index)
     }
   })
