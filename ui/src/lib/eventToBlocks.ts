@@ -1,11 +1,11 @@
-import type {
-  AgentEvent,
-  AgentMessageEvent,
-  AgentToolUseEvent,
-  AgentToolResultEvent,
-  AgentResultEvent,
-  AgentErrorEvent,
-  AgentStatusEvent,
+import type { AgentEvent, AgentToolResultEvent } from "../../server/AgentAdapter.js"
+import {
+  isAgentMessageEvent,
+  isAgentToolUseEvent,
+  isAgentToolResultEvent,
+  isAgentResultEvent,
+  isAgentErrorEvent,
+  isAgentStatusEvent,
 } from "../../server/AgentAdapter.js"
 import type { AssistantTextEvent, ToolUseEvent, ToolName } from "@/types"
 
@@ -64,36 +64,6 @@ function createInitialState(): ConversionState {
     currentMessageContent: "",
     isStreaming: false,
   }
-}
-
-/**  Type guard for message events. */
-export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
-  return event.type === "message"
-}
-
-/**  Type guard for tool use events. */
-export function isAgentToolUseEvent(event: AgentEvent): event is AgentToolUseEvent {
-  return event.type === "tool_use"
-}
-
-/**  Type guard for tool result events. */
-export function isAgentToolResultEvent(event: AgentEvent): event is AgentToolResultEvent {
-  return event.type === "tool_result"
-}
-
-/**  Type guard for result events. */
-export function isAgentResultEvent(event: AgentEvent): event is AgentResultEvent {
-  return event.type === "result"
-}
-
-/**  Type guard for error events. */
-export function isAgentErrorEvent(event: AgentEvent): event is AgentErrorEvent {
-  return event.type === "error"
-}
-
-/**  Type guard for status events. */
-export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent {
-  return event.type === "status"
 }
 
 /**

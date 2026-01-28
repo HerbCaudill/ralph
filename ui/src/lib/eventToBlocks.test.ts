@@ -5,17 +5,19 @@ import {
   mergeToolResult,
   toAssistantTextEvent,
   toToolUseEvent,
+  type DisplayBlock,
+  type TextBlock,
+  type ToolUseBlock,
+} from "./eventToBlocks"
+import type { AgentEvent, AgentToolResultEvent } from "../../server/AgentAdapter"
+import {
   isAgentMessageEvent,
   isAgentToolUseEvent,
   isAgentToolResultEvent,
   isAgentResultEvent,
   isAgentErrorEvent,
   isAgentStatusEvent,
-  type DisplayBlock,
-  type TextBlock,
-  type ToolUseBlock,
-} from "./eventToBlocks"
-import type { AgentEvent, AgentToolResultEvent } from "../../server/AgentAdapter"
+} from "../../server/AgentAdapter"
 
 describe("eventToBlocks", () => {
   describe("basic event processing", () => {
