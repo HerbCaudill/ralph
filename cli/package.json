@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/ralph",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Autonomous AI session engine for Claude CLI",
   "type": "module",
   "main": "./dist/index.js",
