@@ -1,5 +1,5 @@
-import type { ChatEvent } from "@/types"
+import type { ChatEvent, UserChatEvent } from "@/types"
 
-export function isToolResultEvent(event: ChatEvent): boolean {
-  return event.type === "user" && typeof (event as any).tool_use_result !== "undefined"
+export function isToolResultEvent(event: ChatEvent): event is UserChatEvent {
+  return event.type === "user" && typeof event.tool_use_result !== "undefined"
 }

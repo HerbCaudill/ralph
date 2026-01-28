@@ -455,7 +455,11 @@ pnpm ui:test           # Run UI tests only
   backward compatibility. Narrower **discriminated event interfaces** (e.g. `AssistantChatEvent`,
   `UserMessageChatEvent`, `ErrorChatEvent`, `SystemChatEvent`, etc.) extend `ChatEvent` with literal
   `type` fields and typed properties. Use type-guard functions in `ui/src/lib/is*.ts` (e.g.
-  `isAssistantMessage`, `isErrorEvent`) to narrow a `ChatEvent` to its concrete shape.
+  `isAssistantMessage`, `isErrorEvent`) to narrow a `ChatEvent` to its concrete shape. Type guards
+  use proper TypeScript type predicates (e.g. `event is AssistantChatEvent`) rather than returning
+  plain `boolean`, so the compiler narrows automatically without manual casts. New code should use
+  the `*ChatEvent` discriminated types; deprecated aliases (`ErrorEventData`, `UserMessageEvent`,
+  etc.) remain for backward compatibility but should not be introduced in new code.
 
 ## UI Architecture
 
