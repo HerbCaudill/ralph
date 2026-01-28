@@ -24,6 +24,8 @@ let mockStoreState: {
   wasRunningBeforeDisconnect: boolean
   markRunningBeforeDisconnect: ReturnType<typeof vi.fn>
   clearRunningBeforeDisconnect: ReturnType<typeof vi.fn>
+  resetSessionStats: ReturnType<typeof vi.fn>
+  resetSessionStatsForInstance: ReturnType<typeof vi.fn>
 }
 
 // Initialize mock store state
@@ -43,6 +45,8 @@ function createMockStoreState() {
     wasRunningBeforeDisconnect: false,
     markRunningBeforeDisconnect: vi.fn(),
     clearRunningBeforeDisconnect: vi.fn(),
+    resetSessionStats: vi.fn(),
+    resetSessionStatsForInstance: vi.fn(),
   }
 }
 
@@ -893,9 +897,6 @@ describe("ralphConnection event timestamp tracking", () => {
       MockWebSocket.instances = []
       mockEnqueue.mockClear()
       mockStoreState = createMockStoreState()
-      // Add resetSessionStats to mock store
-      mockStoreState.resetSessionStats = vi.fn()
-      mockStoreState.resetSessionStatsForInstance = vi.fn()
     })
 
     afterEach(() => {
