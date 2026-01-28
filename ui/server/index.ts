@@ -32,6 +32,7 @@ import type {
   AgentEventEnvelope,
   AgentEventSource,
   AgentEvent,
+  AgentPendingEventsResponse,
 } from "@herbcaudill/ralph-shared"
 
 const execFileAsync = promisify(execFile)
@@ -1554,6 +1555,106 @@ function handleWsMessage(
         break
       }
 
+      case "agent:reconnect": {
+        // Unified reconnection handler (r-tufi7.51.4)
+        // Replaces the separate "reconnect" and "task-chat:reconnect" message types.
+        // The client sends { type: "agent:reconnect", source, instanceId, lastEventTimestamp }
+        // and receives { type: "agent:pending_events", source, instanceId, events, ... }.
+        const arSource = message.source as AgentEventSource | undefined
+        const arInstanceId = (message.instanceId as string) || "default"
+        const arLastTs = message.lastEventTimestamp as number | undefined
+
+        if (arSource === "ralph") {
+          // --- Ralph: synchronous, in-memory event history ---
+          const client = getClientByWebSocket(ws)
+          if (!client) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                error: "Client not found",
+                timestamp: Date.now(),
+              }),
+            )
+            break
+          }
+
+          const registry = getRalphRegistry()
+          const eventHistory = registry.getEventHistory(arInstanceId)
+
+          let pendingEvents: RalphEvent[] = []
+          if (typeof arLastTs === "number" && arLastTs > 0) {
+            pendingEvents = eventHistory.filter(event => event.timestamp > arLastTs)
+          } else {
+            pendingEvents = eventHistory
+          }
+
+          const instance = registry.get(arInstanceId)
+          const ralphStatus = instance?.manager.status ?? "stopped"
+
+          const response: AgentPendingEventsResponse = {
+            type: "agent:pending_events",
+            source: "ralph",
+            instanceId: arInstanceId,
+            events: pendingEvents,
+            totalEvents: eventHistory.length,
+            status: ralphStatus,
+            timestamp: Date.now(),
+          }
+          ws.send(JSON.stringify(response))
+
+          console.log(
+            `[ws] agent:reconnect (ralph) for instance ${arInstanceId}: sent ${pendingEvents.length} pending events (after timestamp ${arLastTs ?? "none"})`,
+          )
+        } else if (arSource === "task-chat") {
+          // --- Task Chat: async, disk-based persister ---
+          // Supports non-active instances (critical fix from r-tufi7.51.4)
+          ;(async () => {
+            try {
+              const context = getActiveContext()
+              const persister = context.taskChatEventPersister
+
+              let pendingEvents: TaskChatEvent[]
+              if (typeof arLastTs === "number" && arLastTs > 0) {
+                pendingEvents = await persister.readEventsSince(arInstanceId, arLastTs)
+              } else {
+                pendingEvents = await persister.readEvents(arInstanceId)
+              }
+
+              const totalEvents = await persister.getEventCount(arInstanceId)
+              const taskChatStatus = context.taskChatManager.status
+
+              const response: AgentPendingEventsResponse = {
+                type: "agent:pending_events",
+                source: "task-chat",
+                instanceId: arInstanceId,
+                events: pendingEvents,
+                totalEvents,
+                status: taskChatStatus,
+                timestamp: Date.now(),
+              }
+              ws.send(JSON.stringify(response))
+
+              console.log(
+                `[ws] agent:reconnect (task-chat) for instance ${arInstanceId}: sent ${pendingEvents.length} pending events (after timestamp ${arLastTs ?? "none"})`,
+              )
+            } catch (err) {
+              console.error("[ws] agent:reconnect (task-chat) failed:", err)
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  error: `Failed to sync task chat events: ${err instanceof Error ? err.message : "Unknown error"}`,
+                  timestamp: Date.now(),
+                }),
+              )
+            }
+          })()
+        } else {
+          console.warn(`[ws] agent:reconnect: unknown source "${arSource}"`)
+        }
+        break
+      }
+
+      // Legacy reconnect handler — kept for backward compatibility (r-tufi7.51.5)
       case "reconnect": {
         // Handle reconnection sync - client sends lastEventTimestamp to get missed events
         const instanceId = (message.instanceId as string) || "default"
@@ -1609,6 +1710,7 @@ function handleWsMessage(
         break
       }
 
+      // Legacy task-chat:reconnect handler — kept for backward compatibility (r-tufi7.51.5)
       case "task-chat:reconnect": {
         // Handle task chat reconnection sync - client sends lastEventTimestamp to get missed events
         const tcInstanceId = (message.instanceId as string) || "default"

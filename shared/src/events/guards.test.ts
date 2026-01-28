@@ -8,6 +8,8 @@ import {
   isAgentErrorEvent,
   isAgentStatusEvent,
   isAgentEventEnvelope,
+  isAgentReconnectRequest,
+  isAgentPendingEventsResponse,
 } from "./guards.js"
 import type {
   AgentEvent,
@@ -19,6 +21,8 @@ import type {
   AgentResultEvent,
   AgentErrorEvent,
   AgentStatusEvent,
+  AgentReconnectRequest,
+  AgentPendingEventsResponse,
 } from "./types.js"
 
 describe("Agent Event Type Guards", () => {
@@ -357,6 +361,175 @@ describe("Agent Event Type Guards", () => {
         expect(message.source).toBe("ralph")
         expect(message.instanceId).toBe("instance-123")
         expect(message.event).toBe(messageEvent)
+      }
+    })
+  })
+
+  describe("isAgentReconnectRequest", () => {
+    const validRalphReconnect: AgentReconnectRequest = {
+      type: "agent:reconnect",
+      source: "ralph",
+      instanceId: "instance-123",
+      lastEventTimestamp: 1706123456789,
+    }
+
+    const validTaskChatReconnect: AgentReconnectRequest = {
+      type: "agent:reconnect",
+      source: "task-chat",
+      instanceId: "instance-789",
+    }
+
+    it("returns true for a valid Ralph-sourced reconnect request", () => {
+      expect(isAgentReconnectRequest(validRalphReconnect)).toBe(true)
+    })
+
+    it("returns true for a valid Task-Chat-sourced reconnect request", () => {
+      expect(isAgentReconnectRequest(validTaskChatReconnect)).toBe(true)
+    })
+
+    it("returns true when lastEventTimestamp is omitted", () => {
+      expect(isAgentReconnectRequest(validTaskChatReconnect)).toBe(true)
+    })
+
+    it("returns false for null", () => {
+      expect(isAgentReconnectRequest(null)).toBe(false)
+    })
+
+    it("returns false for undefined", () => {
+      expect(isAgentReconnectRequest(undefined)).toBe(false)
+    })
+
+    it("returns false for primitives", () => {
+      expect(isAgentReconnectRequest("agent:reconnect")).toBe(false)
+      expect(isAgentReconnectRequest(42)).toBe(false)
+      expect(isAgentReconnectRequest(true)).toBe(false)
+    })
+
+    it("returns false for an object missing type", () => {
+      const { type: _, ...noType } = validRalphReconnect
+      expect(isAgentReconnectRequest(noType)).toBe(false)
+    })
+
+    it("returns false for an object missing source", () => {
+      const { source: _, ...noSource } = validRalphReconnect
+      expect(isAgentReconnectRequest(noSource)).toBe(false)
+    })
+
+    it("returns false for an object missing instanceId", () => {
+      const { instanceId: _, ...noInstanceId } = validRalphReconnect
+      expect(isAgentReconnectRequest(noInstanceId)).toBe(false)
+    })
+
+    it("returns false for an object with wrong type value", () => {
+      expect(isAgentReconnectRequest({ ...validRalphReconnect, type: "reconnect" })).toBe(false)
+      expect(isAgentReconnectRequest({ ...validRalphReconnect, type: "agent:event" })).toBe(false)
+      expect(isAgentReconnectRequest({ ...validRalphReconnect, type: "task-chat:reconnect" })).toBe(
+        false,
+      )
+    })
+
+    it("narrows type correctly", () => {
+      const message: unknown = validRalphReconnect
+      if (isAgentReconnectRequest(message)) {
+        expect(message.type).toBe("agent:reconnect")
+        expect(message.source).toBe("ralph")
+        expect(message.instanceId).toBe("instance-123")
+        expect(message.lastEventTimestamp).toBe(1706123456789)
+      }
+    })
+  })
+
+  describe("isAgentPendingEventsResponse", () => {
+    const validRalphPending: AgentPendingEventsResponse = {
+      type: "agent:pending_events",
+      source: "ralph",
+      instanceId: "instance-123",
+      events: [
+        { type: "message", timestamp: 1706123456789, content: "Hello" },
+        { type: "tool_use", timestamp: 1706123456890, tool: "Bash" },
+      ],
+      totalEvents: 10,
+      status: "running",
+      timestamp: Date.now(),
+    }
+
+    const validTaskChatPending: AgentPendingEventsResponse = {
+      type: "agent:pending_events",
+      source: "task-chat",
+      instanceId: "instance-789",
+      events: [],
+      totalEvents: 0,
+      status: "idle",
+      timestamp: Date.now(),
+    }
+
+    it("returns true for a valid Ralph-sourced pending events response", () => {
+      expect(isAgentPendingEventsResponse(validRalphPending)).toBe(true)
+    })
+
+    it("returns true for a valid Task-Chat-sourced pending events response", () => {
+      expect(isAgentPendingEventsResponse(validTaskChatPending)).toBe(true)
+    })
+
+    it("returns true with an empty events array", () => {
+      expect(isAgentPendingEventsResponse(validTaskChatPending)).toBe(true)
+    })
+
+    it("returns false for null", () => {
+      expect(isAgentPendingEventsResponse(null)).toBe(false)
+    })
+
+    it("returns false for undefined", () => {
+      expect(isAgentPendingEventsResponse(undefined)).toBe(false)
+    })
+
+    it("returns false for primitives", () => {
+      expect(isAgentPendingEventsResponse("agent:pending_events")).toBe(false)
+      expect(isAgentPendingEventsResponse(42)).toBe(false)
+      expect(isAgentPendingEventsResponse(true)).toBe(false)
+    })
+
+    it("returns false for an object missing type", () => {
+      const { type: _, ...noType } = validRalphPending
+      expect(isAgentPendingEventsResponse(noType)).toBe(false)
+    })
+
+    it("returns false for an object missing source", () => {
+      const { source: _, ...noSource } = validRalphPending
+      expect(isAgentPendingEventsResponse(noSource)).toBe(false)
+    })
+
+    it("returns false for an object missing instanceId", () => {
+      const { instanceId: _, ...noInstanceId } = validRalphPending
+      expect(isAgentPendingEventsResponse(noInstanceId)).toBe(false)
+    })
+
+    it("returns false for an object missing events", () => {
+      const { events: _, ...noEvents } = validRalphPending
+      expect(isAgentPendingEventsResponse(noEvents)).toBe(false)
+    })
+
+    it("returns false for an object with wrong type value", () => {
+      expect(isAgentPendingEventsResponse({ ...validRalphPending, type: "pending_events" })).toBe(
+        false,
+      )
+      expect(
+        isAgentPendingEventsResponse({ ...validRalphPending, type: "task-chat:pending_events" }),
+      ).toBe(false)
+      expect(isAgentPendingEventsResponse({ ...validRalphPending, type: "agent:event" })).toBe(
+        false,
+      )
+    })
+
+    it("narrows type correctly", () => {
+      const message: unknown = validRalphPending
+      if (isAgentPendingEventsResponse(message)) {
+        expect(message.type).toBe("agent:pending_events")
+        expect(message.source).toBe("ralph")
+        expect(message.instanceId).toBe("instance-123")
+        expect(message.events).toHaveLength(2)
+        expect(message.totalEvents).toBe(10)
+        expect(message.status).toBe("running")
       }
     })
   })

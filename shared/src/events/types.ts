@@ -138,3 +138,65 @@ export interface AgentEventEnvelope {
    */
   eventIndex?: number
 }
+
+// ---------------------------------------------------------------------------
+// Unified reconnection wire messages
+// ---------------------------------------------------------------------------
+
+/**
+ * Client → Server reconnection request.
+ *
+ * Sent on WebSocket open to request events missed while disconnected.
+ * The `source` field tells the server which subsystem to query (Ralph
+ * in-memory history or Task Chat disk persister).  Both sources share the
+ * same wire message type (`"agent:reconnect"`), replacing the previous
+ * divergent `"reconnect"` / `"task-chat:reconnect"` message types.
+ */
+export interface AgentReconnectRequest {
+  /** Wire message type — always `"agent:reconnect"`. */
+  type: "agent:reconnect"
+
+  /** Which subsystem to query for missed events. */
+  source: AgentEventSource
+
+  /** Instance to retrieve events for. */
+  instanceId: string
+
+  /**
+   * Last event timestamp (ms) the client received.
+   * The server returns events with `timestamp > lastEventTimestamp`.
+   * If omitted or 0, the server returns the full event history.
+   */
+  lastEventTimestamp?: number
+}
+
+/**
+ * Server → Client reconnection response.
+ *
+ * Contains the events the client missed while disconnected, along with
+ * diagnostic metadata.  Both Ralph and Task Chat events use the same
+ * response envelope (`"agent:pending_events"`), replacing the previous
+ * divergent `"pending_events"` / `"task-chat:pending_events"` types.
+ */
+export interface AgentPendingEventsResponse {
+  /** Wire message type — always `"agent:pending_events"`. */
+  type: "agent:pending_events"
+
+  /** Which subsystem produced these events. */
+  source: AgentEventSource
+
+  /** Instance the events belong to. */
+  instanceId: string
+
+  /** Events the client missed, ordered by timestamp ascending. */
+  events: Array<{ type: string; timestamp: number; [key: string]: unknown }>
+
+  /** Total number of events the server has for this instance (diagnostic). */
+  totalEvents: number
+
+  /** Current agent status for this source/instance. */
+  status: string
+
+  /** Server-side timestamp (ms) when this response was sent. */
+  timestamp: number
+}

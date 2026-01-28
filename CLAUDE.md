@@ -697,6 +697,15 @@ In addition to legacy wire types (`ralph:event`, `ralph:status`, `ralph:output`,
 
 The `handleMessage()` function in `ralphConnection.ts` processes `agent:event` envelopes through a single code path, dispatching on the `source` field (`"ralph"` | `"task-chat"`) of the `AgentEventEnvelope` from `@herbcaudill/ralph-shared`. Event timestamp tracking for reconnection sync uses a single `BoundedMap` with composite keys `"{source}:{instanceId}"` (e.g. `"ralph:default"`, `"task-chat:default"`), replacing the previous separate maps. Legacy `ralph:event` and `task-chat:event` handlers remain for backward compatibility (tracked in r-tufi7.51.5 for removal).
 
+**Unified Reconnection Protocol:**
+
+Reconnection uses a unified wire protocol with a `source` field for routing:
+
+- **`agent:reconnect`** (client to server) - Client sends this on WebSocket reconnect to request missed events. Payload: `AgentReconnectRequest` with `source` (`"ralph"` | `"task-chat"`), `instanceId`, `workspaceId`, and `lastEventTimestamp`.
+- **`agent:pending_events`** (server to client) - Server responds with missed events since the given timestamp. Payload: `AgentPendingEventsResponse` with `source`, `instanceId`, `workspaceId`, and `events` array.
+
+Both types (`AgentReconnectRequest`, `AgentPendingEventsResponse`) are defined in `@herbcaudill/ralph-shared`. Legacy wire types (`reconnect`, `pending_events`, `task-chat:reconnect`, `task-chat:pending_events`) are preserved for backward compatibility.
+
 ## Environment Variables
 
 - `ANTHROPIC_API_KEY` - Required for Claude agent

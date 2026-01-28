@@ -11,6 +11,8 @@ export type {
   AgentStatus,
   AgentEventSource,
   AgentEventEnvelope,
+  AgentReconnectRequest,
+  AgentPendingEventsResponse,
 } from "./types.js"
 
 export {
@@ -22,4 +24,6 @@ export {
   isAgentErrorEvent,
   isAgentStatusEvent,
   isAgentEventEnvelope,
+  isAgentReconnectRequest,
+  isAgentPendingEventsResponse,
 } from "./guards.js"

@@ -10,8 +10,8 @@ import { extractTokenUsageFromEvent } from "./extractTokenUsage"
 import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
 import { BoundedMap } from "./BoundedMap"
 import type { ChatEvent } from "@/types"
-import { isAgentEventEnvelope } from "@herbcaudill/ralph-shared"
-import type { AgentEventSource } from "@herbcaudill/ralph-shared"
+import { isAgentEventEnvelope, isAgentPendingEventsResponse } from "@herbcaudill/ralph-shared"
+import type { AgentEventSource, AgentReconnectRequest } from "@herbcaudill/ralph-shared"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -271,6 +271,98 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      case "agent:pending_events":
+        // Unified pending events response (r-tufi7.51.4)
+        // Handles both Ralph and Task Chat pending events through a single code path.
+        // The server sends { type: "agent:pending_events", source, instanceId, events, ... }.
+        if (isAgentPendingEventsResponse(data)) {
+          const {
+            source: apSource,
+            instanceId: apInstanceId,
+            events: apEvents,
+            status: apStatus,
+          } = data
+
+          // Update timestamp tracking
+          if (Array.isArray(apEvents) && apEvents.length > 0) {
+            const lastEvent = apEvents[apEvents.length - 1]
+            if (typeof lastEvent.timestamp === "number") {
+              setTimestamp(apSource, apInstanceId, lastEvent.timestamp)
+            }
+          }
+
+          const isActive = apInstanceId === store.activeInstanceId
+
+          if (apSource === "ralph") {
+            // Sync Ralph status
+            if (isRalphStatus(apStatus)) {
+              if (isActive) {
+                store.setRalphStatus(apStatus)
+              } else {
+                store.setStatusForInstance(apInstanceId, apStatus)
+              }
+            }
+
+            // Add missed events to the store and persist to IndexedDB
+            if (Array.isArray(apEvents) && apEvents.length > 0) {
+              console.log(
+                `[ralphConnection] agent:pending_events (ralph): processing ${apEvents.length} events for instance: ${apInstanceId}`,
+              )
+              for (const pendingEvent of apEvents) {
+                // Detect session boundaries synchronously (fixes r-tufi7.36)
+                if (isSessionBoundary(pendingEvent as ChatEvent)) {
+                  const { sessionId, startedAt } = getSessionIdFromEvent(
+                    pendingEvent as ChatEvent,
+                    apInstanceId,
+                  )
+                  currentSessions.set(apInstanceId, { id: sessionId, startedAt })
+                  console.debug(
+                    `[ralphConnection] Session boundary detected in pending events, new session: ${sessionId}`,
+                  )
+                }
+
+                // Persist to IndexedDB (deduplication handled by server UUID)
+                const sessionId = currentSessions.get(apInstanceId)?.id
+                if (sessionId) {
+                  persistEventToIndexedDB(pendingEvent, sessionId)
+                } else {
+                  console.debug(
+                    `[ralphConnection] Skipping IndexedDB persistence for pending event (no session ID yet): type=${pendingEvent.type}`,
+                  )
+                }
+
+                // Update Zustand for UI
+                if (isActive) {
+                  store.addEvent(pendingEvent)
+                } else {
+                  store.addEventForInstance(apInstanceId, pendingEvent)
+                }
+              }
+            }
+          } else if (apSource === "task-chat") {
+            // Add missed task chat events to the store
+            // Supports non-active instances: events are still tracked via timestamp
+            // but only applied to UI for the active instance (store limitation)
+            if (Array.isArray(apEvents) && apEvents.length > 0) {
+              console.log(
+                `[ralphConnection] agent:pending_events (task-chat): processing ${apEvents.length} events for instance: ${apInstanceId}`,
+              )
+              if (isActive) {
+                for (const pendingEvent of apEvents) {
+                  if (
+                    typeof pendingEvent.type === "string" &&
+                    typeof pendingEvent.timestamp === "number"
+                  ) {
+                    store.addTaskChatEvent(pendingEvent)
+                  }
+                }
+              }
+            }
+          }
+        }
+        break
+
+      // Legacy pending_events handler — kept for backward compatibility (r-tufi7.51.5)
       case "pending_events":
         // Response to reconnect message - contains events we missed while disconnected
         {
@@ -340,6 +432,7 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
+      // Legacy task-chat:pending_events handler — kept for backward compatibility (r-tufi7.51.5)
       case "task-chat:pending_events":
         // Response to task-chat:reconnect message - contains task chat events we missed
         {
@@ -873,32 +966,34 @@ function connect(): void {
     const store = useAppStore.getState()
     const instanceId = store.activeInstanceId
 
-    // Send reconnect message if we have a previous event timestamp
-    // This allows the server to send us any events we missed while disconnected
+    // Send unified agent:reconnect messages (r-tufi7.51.4)
+    // One per source that has a tracked timestamp for this instance.
     const lastRalphTimestamp = getTimestamp("ralph", instanceId)
     if (typeof lastRalphTimestamp === "number") {
       console.log(
-        `[ralphConnection] Reconnecting with lastEventTimestamp: ${lastRalphTimestamp} for instance: ${instanceId}`,
+        `[ralphConnection] agent:reconnect (ralph) lastEventTimestamp: ${lastRalphTimestamp} instance: ${instanceId}`,
       )
-      send({
-        type: "reconnect",
+      const msg: AgentReconnectRequest = {
+        type: "agent:reconnect",
+        source: "ralph",
         instanceId,
         lastEventTimestamp: lastRalphTimestamp,
-      })
+      }
+      send(msg)
     }
 
-    // Send task chat reconnect message if we have a previous task chat event timestamp
-    // This allows the server to send us any task chat events we missed while disconnected
     const lastTaskChatTimestamp = getTimestamp("task-chat", instanceId)
     if (typeof lastTaskChatTimestamp === "number") {
       console.log(
-        `[ralphConnection] Task chat reconnecting with lastEventTimestamp: ${lastTaskChatTimestamp} for instance: ${instanceId}`,
+        `[ralphConnection] agent:reconnect (task-chat) lastEventTimestamp: ${lastTaskChatTimestamp} instance: ${instanceId}`,
       )
-      send({
-        type: "task-chat:reconnect",
+      const msg: AgentReconnectRequest = {
+        type: "agent:reconnect",
+        source: "task-chat",
         instanceId,
         lastEventTimestamp: lastTaskChatTimestamp,
-      })
+      }
+      send(msg)
     }
 
     // Auto-resume session if Ralph was running before disconnect or has saved state.
