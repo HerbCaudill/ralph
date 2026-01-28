@@ -17,6 +17,7 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
     isViewingLatest,
     isViewingHistorical,
     isRunning,
+    isConnected,
     sessionTask,
     sessions,
     isLoadingSessions,
@@ -37,6 +38,7 @@ export function EventStream({ className, maxEvents = 1000, instanceId }: EventSt
       isViewingLatest={isViewingLatest}
       isViewingHistorical={isViewingHistorical}
       isRunning={isRunning}
+      isConnected={isConnected}
       sessionTask={sessionTask}
       sessions={sessions}
       isLoadingSessions={isLoadingSessions}

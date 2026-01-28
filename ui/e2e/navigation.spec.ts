@@ -53,10 +53,10 @@ test.describe("Navigation", () => {
       .poll(() => leftPanel.evaluate(el => el.getBoundingClientRect().width))
       .toBeGreaterThan(0)
 
-    // Focus something else first (main chat input)
-    const mainChatInput = app.page.getByLabel("Message input")
-    await mainChatInput.click()
-    await expect(mainChatInput).toBeFocused()
+    // Focus something else first (search input, since main chat is disabled when Ralph is stopped)
+    const searchInput = app.page.getByLabel("Search tasks")
+    await searchInput.click()
+    await expect(searchInput).toBeFocused()
 
     // First press: Focus the task chat input (not toggle off)
     await app.page.keyboard.press("Meta+j")

@@ -51,10 +51,10 @@ test.describe("Task Chat", () => {
       // Wait for chat input to be enabled (connected)
       await expect(chatInput).toBeEnabled({ timeout: 10000 })
 
-      // First focus something else (main chat input)
-      const mainChatInput = app.page.getByLabel("Message input")
-      await mainChatInput.click()
-      await expect(mainChatInput).toBeFocused()
+      // First focus something else (search input, since main chat is disabled when Ralph is stopped)
+      const searchInput = app.page.getByLabel("Search tasks")
+      await searchInput.click()
+      await expect(searchInput).toBeFocused()
 
       // Use Cmd+J to focus task chat
       await app.page.keyboard.press("Meta+j")

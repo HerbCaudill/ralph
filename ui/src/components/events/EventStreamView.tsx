@@ -1,9 +1,12 @@
 import { useMemo, forwardRef } from "react"
+import { IconPlayerPlayFilled } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
 import { TopologySpinner } from "@/components/ui/TopologySpinner"
+import { Button } from "@/components/ui/button"
 import { EventList, useEventListState } from "./EventList"
 import { EventStreamSessionBar } from "./EventStreamSessionBar"
+import { startRalph } from "@/lib/startRalph"
 import type { SessionSummary } from "@/hooks"
 import type { SessionTask, SessionNavigationActions } from "@/hooks/useEventStream"
 import type { ChatEvent, RalphStatus } from "@/types"
@@ -27,6 +30,8 @@ export interface EventStreamViewProps {
   isViewingHistorical: boolean
   /** Whether Ralph is currently running */
   isRunning: boolean
+  /** Whether connected to the server */
+  isConnected: boolean
   /** Current task for the session */
   sessionTask: SessionTask | null
   /** Past sessions for history dropdown */
@@ -57,11 +62,11 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       className,
       maxEvents = 1000,
       sessionEvents,
-      // ralphStatus is passed for potential future use but currently derived values (isRunning) are used
-      ralphStatus: _ralphStatus,
+      ralphStatus,
       isViewingLatest,
       isViewingHistorical,
       isRunning,
+      isConnected,
       sessionTask,
       sessions,
       isLoadingSessions,
@@ -106,11 +111,31 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       return null
     }, [isRunning, isViewingLatest, isViewingHistorical, hasContent])
 
-    const emptyState = (
-      <div className="flex h-full items-center justify-start px-4 py-4">
-        <TopologySpinner />
-      </div>
-    )
+    // Show "Ralph is not running" with Start button when stopped and connected
+    // Show spinner when starting or when not connected (waiting for connection)
+    const emptyState = useMemo(() => {
+      if (ralphStatus === "stopped" && isConnected) {
+        return (
+          <div className="flex h-full flex-col items-center justify-center gap-4">
+            <div className="text-center">
+              <div className="text-foreground text-lg font-medium">Ralph is not running</div>
+              <div className="text-muted-foreground text-sm">
+                Click Start to begin working on open tasks
+              </div>
+            </div>
+            <Button onClick={() => startRalph()} size="lg" data-testid="ralph-start-button">
+              <IconPlayerPlayFilled className="size-4" />
+              Start
+            </Button>
+          </div>
+        )
+      }
+      return (
+        <div className="flex h-full items-center justify-start px-4 py-4">
+          <TopologySpinner />
+        </div>
+      )
+    }, [ralphStatus, isConnected])
 
     const loadingHistoricalState = (
       <div className="text-muted-foreground flex h-full items-center justify-center">

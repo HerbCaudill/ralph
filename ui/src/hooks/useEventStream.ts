@@ -10,6 +10,7 @@ import {
   selectActiveInstance,
   selectInstance,
   selectIssuePrefix,
+  selectIsConnected,
   getEventsForSession,
 } from "@/store"
 import { useSessions, buildSessionPath, parseSessionIdFromUrl } from "@/hooks"
@@ -44,6 +45,8 @@ export interface UseEventStreamResult {
   isViewingHistorical: boolean
   /** Whether Ralph is currently running */
   isRunning: boolean
+  /** Whether connected to the server */
+  isConnected: boolean
   /** Current task for the session */
   sessionTask: SessionTask | null
   /** Past sessions for history dropdown */
@@ -79,6 +82,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const viewingSessionIndex = useAppStore(selectViewingSessionIndex)
   const tasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
+  const isConnected = useAppStore(selectIsConnected)
 
   // Get instance for currentTaskId fallback
   const instance = useAppStore(state =>
@@ -229,6 +233,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     isViewingLatest: isViewingLatest && !isViewingHistorical,
     isViewingHistorical,
     isRunning,
+    isConnected,
     sessionTask,
     sessions,
     isLoadingSessions,
