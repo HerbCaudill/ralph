@@ -21,6 +21,8 @@ export interface EventLogSummary {
 export interface UseEventLogsOptions {
   /** Optional task ID to filter event logs by */
   taskId?: string
+  /** Optional workspace ID to scope event logs to a specific workspace */
+  workspaceId?: string
 }
 
 export interface UseEventLogsResult {
@@ -62,7 +64,7 @@ function toEventLogSummary(metadata: SessionMetadata): EventLogSummary {
  * Event logs are stored client-side in IndexedDB as sessions.
  */
 export function useEventLogs(options: UseEventLogsOptions = {}): UseEventLogsResult {
-  const { taskId } = options
+  const { taskId, workspaceId } = options
 
   const [eventLogs, setEventLogs] = useState<EventLogSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -72,10 +74,18 @@ export function useEventLogs(options: UseEventLogsOptions = {}): UseEventLogsRes
     try {
       await eventDatabase.init()
 
-      const metadata =
-        taskId ?
-          await eventDatabase.getSessionsForTask(taskId)
-        : await eventDatabase.listAllSessions()
+      // Use workspace-scoped queries when workspaceId is provided
+      // to ensure only sessions from the current workspace are shown
+      let metadata
+      if (taskId && workspaceId) {
+        metadata = await eventDatabase.getSessionsForTaskInWorkspace(taskId, workspaceId)
+      } else if (taskId) {
+        metadata = await eventDatabase.getSessionsForTask(taskId)
+      } else if (workspaceId) {
+        metadata = await eventDatabase.listSessionsByWorkspace(workspaceId)
+      } else {
+        metadata = await eventDatabase.listAllSessions()
+      }
 
       const summaries = metadata.map(toEventLogSummary)
       setEventLogs(summaries)
@@ -85,7 +95,7 @@ export function useEventLogs(options: UseEventLogsOptions = {}): UseEventLogsRes
     } finally {
       setIsLoading(false)
     }
-  }, [taskId])
+  }, [taskId, workspaceId])
 
   // Initial fetch
   useEffect(() => {

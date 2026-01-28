@@ -9,12 +9,20 @@ vi.mock("@/lib/persistence", () => ({
     init: vi.fn(),
     listAllSessions: vi.fn(),
     getSessionsForTask: vi.fn(),
+    listSessionsByWorkspace: vi.fn(),
+    getSessionsForTaskInWorkspace: vi.fn(),
   },
 }))
 
 const mockInit = eventDatabase.init as ReturnType<typeof vi.fn>
 const mockListAllSessions = eventDatabase.listAllSessions as ReturnType<typeof vi.fn>
 const mockGetSessionsForTask = eventDatabase.getSessionsForTask as ReturnType<typeof vi.fn>
+const mockListSessionsByWorkspace = eventDatabase.listSessionsByWorkspace as ReturnType<
+  typeof vi.fn
+>
+const mockGetSessionsForTaskInWorkspace = eventDatabase.getSessionsForTaskInWorkspace as ReturnType<
+  typeof vi.fn
+>
 
 describe("useEventLogs", () => {
   // Mock session metadata that will be returned by the database
@@ -65,6 +73,8 @@ describe("useEventLogs", () => {
     mockInit.mockResolvedValue(undefined)
     mockListAllSessions.mockResolvedValue(mockSessionMetadata)
     mockGetSessionsForTask.mockResolvedValue([])
+    mockListSessionsByWorkspace.mockResolvedValue([])
+    mockGetSessionsForTaskInWorkspace.mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -185,6 +195,71 @@ describe("useEventLogs", () => {
       await waitFor(() => {
         expect(result.current.eventLogs[0].id).toBe("def67890")
       })
+    })
+  })
+
+  describe("filtering by workspaceId", () => {
+    it("fetches event logs for a specific workspace when workspaceId is provided", async () => {
+      const workspaceLogs: SessionMetadata[] = [mockSessionMetadata[0], mockSessionMetadata[1]]
+      mockListSessionsByWorkspace.mockResolvedValue(workspaceLogs)
+
+      const { result } = renderHook(() => useEventLogs({ workspaceId: "/test/workspace" }))
+
+      await waitFor(() => {
+        expect(result.current.eventLogs).toHaveLength(2)
+      })
+
+      expect(mockListSessionsByWorkspace).toHaveBeenCalledWith("/test/workspace")
+      expect(mockListAllSessions).not.toHaveBeenCalled()
+      expect(mockGetSessionsForTask).not.toHaveBeenCalled()
+      expect(mockGetSessionsForTaskInWorkspace).not.toHaveBeenCalled()
+    })
+
+    it("fetches event logs scoped to both task and workspace when both are provided", async () => {
+      const scopedLogs: SessionMetadata[] = [mockSessionMetadata[0]]
+      mockGetSessionsForTaskInWorkspace.mockResolvedValue(scopedLogs)
+
+      const { result } = renderHook(() =>
+        useEventLogs({ taskId: "r-test.1", workspaceId: "/test/workspace" }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.eventLogs).toHaveLength(1)
+      })
+
+      expect(mockGetSessionsForTaskInWorkspace).toHaveBeenCalledWith("r-test.1", "/test/workspace")
+      expect(mockGetSessionsForTask).not.toHaveBeenCalled()
+      expect(mockListSessionsByWorkspace).not.toHaveBeenCalled()
+      expect(mockListAllSessions).not.toHaveBeenCalled()
+    })
+
+    it("falls back to getSessionsForTask when only taskId is provided (backward compat)", async () => {
+      const taskLogs: SessionMetadata[] = [mockSessionMetadata[0]]
+      mockGetSessionsForTask.mockResolvedValue(taskLogs)
+
+      const { result } = renderHook(() => useEventLogs({ taskId: "r-test.1" }))
+
+      await waitFor(() => {
+        expect(result.current.eventLogs).toHaveLength(1)
+      })
+
+      expect(mockGetSessionsForTask).toHaveBeenCalledWith("r-test.1")
+      expect(mockGetSessionsForTaskInWorkspace).not.toHaveBeenCalled()
+      expect(mockListSessionsByWorkspace).not.toHaveBeenCalled()
+      expect(mockListAllSessions).not.toHaveBeenCalled()
+    })
+
+    it("falls back to listAllSessions when neither taskId nor workspaceId is provided (backward compat)", async () => {
+      const { result } = renderHook(() => useEventLogs())
+
+      await waitFor(() => {
+        expect(result.current.eventLogs).toHaveLength(3)
+      })
+
+      expect(mockListAllSessions).toHaveBeenCalled()
+      expect(mockGetSessionsForTask).not.toHaveBeenCalled()
+      expect(mockListSessionsByWorkspace).not.toHaveBeenCalled()
+      expect(mockGetSessionsForTaskInWorkspace).not.toHaveBeenCalled()
     })
   })
 
