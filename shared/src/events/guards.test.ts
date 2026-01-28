@@ -7,9 +7,11 @@ import {
   isAgentResultEvent,
   isAgentErrorEvent,
   isAgentStatusEvent,
+  isAgentEventEnvelope,
 } from "./guards.js"
 import type {
   AgentEvent,
+  AgentEventEnvelope,
   AgentMessageEvent,
   AgentThinkingEvent,
   AgentToolUseEvent,
@@ -276,6 +278,85 @@ describe("Agent Event Type Guards", () => {
         if (isAgentStatusEvent(event)) {
           expect(event.status).toBe(status)
         }
+      }
+    })
+  })
+
+  describe("isAgentEventEnvelope", () => {
+    const validRalphEnvelope: AgentEventEnvelope = {
+      type: "agent:event",
+      source: "ralph",
+      instanceId: "instance-123",
+      workspaceId: "workspace-456",
+      event: messageEvent,
+      timestamp,
+    }
+
+    const validTaskChatEnvelope: AgentEventEnvelope = {
+      type: "agent:event",
+      source: "task-chat",
+      instanceId: "instance-789",
+      workspaceId: null,
+      event: toolUseEvent,
+      timestamp,
+      eventIndex: 5,
+    }
+
+    it("returns true for a valid Ralph-sourced envelope", () => {
+      expect(isAgentEventEnvelope(validRalphEnvelope)).toBe(true)
+    })
+
+    it("returns true for a valid Task-Chat-sourced envelope", () => {
+      expect(isAgentEventEnvelope(validTaskChatEnvelope)).toBe(true)
+    })
+
+    it("returns false for null", () => {
+      expect(isAgentEventEnvelope(null)).toBe(false)
+    })
+
+    it("returns false for undefined", () => {
+      expect(isAgentEventEnvelope(undefined)).toBe(false)
+    })
+
+    it("returns false for primitives", () => {
+      expect(isAgentEventEnvelope("agent:event")).toBe(false)
+      expect(isAgentEventEnvelope(42)).toBe(false)
+      expect(isAgentEventEnvelope(true)).toBe(false)
+    })
+
+    it("returns false for an object missing type", () => {
+      const { type: _, ...noType } = validRalphEnvelope
+      expect(isAgentEventEnvelope(noType)).toBe(false)
+    })
+
+    it("returns false for an object missing source", () => {
+      const { source: _, ...noSource } = validRalphEnvelope
+      expect(isAgentEventEnvelope(noSource)).toBe(false)
+    })
+
+    it("returns false for an object missing instanceId", () => {
+      const { instanceId: _, ...noInstanceId } = validRalphEnvelope
+      expect(isAgentEventEnvelope(noInstanceId)).toBe(false)
+    })
+
+    it("returns false for an object missing event", () => {
+      const { event: _, ...noEvent } = validRalphEnvelope
+      expect(isAgentEventEnvelope(noEvent)).toBe(false)
+    })
+
+    it("returns false for an object with wrong type value", () => {
+      expect(isAgentEventEnvelope({ ...validRalphEnvelope, type: "ralph:event" })).toBe(false)
+      expect(isAgentEventEnvelope({ ...validRalphEnvelope, type: "message" })).toBe(false)
+      expect(isAgentEventEnvelope({ ...validRalphEnvelope, type: "event" })).toBe(false)
+    })
+
+    it("narrows type correctly", () => {
+      const message: unknown = validRalphEnvelope
+      if (isAgentEventEnvelope(message)) {
+        expect(message.type).toBe("agent:event")
+        expect(message.source).toBe("ralph")
+        expect(message.instanceId).toBe("instance-123")
+        expect(message.event).toBe(messageEvent)
       }
     })
   })

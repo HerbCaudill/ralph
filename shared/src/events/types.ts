@@ -93,3 +93,48 @@ export type AgentEvent =
 
 /**  Possible agent statuses. */
 export type AgentStatus = "idle" | "starting" | "running" | "paused" | "stopping" | "stopped"
+
+// ---------------------------------------------------------------------------
+// Unified wire message envelope
+// ---------------------------------------------------------------------------
+
+/** Source of the agent event — distinguishes Ralph session events from Task Chat events. */
+export type AgentEventSource = "ralph" | "task-chat"
+
+/**
+ * Unified WebSocket wire message envelope for all agent events.
+ *
+ * Both Ralph session events and Task Chat events share this common envelope
+ * when broadcast over the WebSocket connection. The `source` field discriminates
+ * between the two origins while keeping a single message type (`"agent:event"`)
+ * on the wire.
+ *
+ * This replaces the previous divergent schemas where Ralph used `"ralph:event"`
+ * and Task Chat used `"task-chat:event"` with different payload shapes.
+ */
+export interface AgentEventEnvelope {
+  /** Wire message type — always `"agent:event"` for this envelope. */
+  type: "agent:event"
+
+  /** Which subsystem produced this event. */
+  source: AgentEventSource
+
+  /** Instance this event belongs to (for routing to the correct Ralph instance). */
+  instanceId: string
+
+  /** Workspace identifier (null for the main/default workspace). */
+  workspaceId: string | null
+
+  /** The normalized agent event payload. */
+  event: AgentEvent
+
+  /** Server-side timestamp (ms) when the message was broadcast. */
+  timestamp: number
+
+  /**
+   * Monotonically increasing index for reconnection sync.
+   * Clients can send the last received `eventIndex` on reconnect to resume
+   * from where they left off, avoiding duplicate or missed events.
+   */
+  eventIndex?: number
+}

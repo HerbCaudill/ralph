@@ -1,5 +1,6 @@
 import type {
   AgentEvent,
+  AgentEventEnvelope,
   AgentMessageEvent,
   AgentThinkingEvent,
   AgentToolUseEvent,
@@ -42,4 +43,17 @@ export function isAgentErrorEvent(event: AgentEvent): event is AgentErrorEvent {
 /**  Check if an event is a status event. */
 export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent {
   return event.type === "status"
+}
+
+/**  Check if a wire message is an agent event envelope. */
+export function isAgentEventEnvelope(message: unknown): message is AgentEventEnvelope {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    "type" in message &&
+    (message as Record<string, unknown>).type === "agent:event" &&
+    "source" in message &&
+    "instanceId" in message &&
+    "event" in message
+  )
 }

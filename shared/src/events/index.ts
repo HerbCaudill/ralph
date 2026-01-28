@@ -9,6 +9,8 @@ export type {
   AgentErrorEvent,
   AgentStatusEvent,
   AgentStatus,
+  AgentEventSource,
+  AgentEventEnvelope,
 } from "./types.js"
 
 export {
@@ -19,4 +21,5 @@ export {
   isAgentResultEvent,
   isAgentErrorEvent,
   isAgentStatusEvent,
+  isAgentEventEnvelope,
 } from "./guards.js"

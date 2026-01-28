@@ -284,7 +284,7 @@ All agents implement the `AgentAdapter` base class (`server/AgentAdapter.ts`):
 
 Each adapter normalizes native events into `AgentEvent` types:
 
-- `AgentMessageEvent`, `AgentToolUseEvent`, `AgentToolResultEvent`, `AgentResultEvent`, `AgentErrorEvent`, `AgentStatusEvent`, `AgentThinkingEvent`
+- `AgentMessageEvent`, `AgentToolUseEvent`, `AgentToolResultEvent`, `AgentResultEvent`, `AgentErrorEvent`, `AgentStatusEvent`, `AgentThinkingEvent`, `AgentEventEnvelope`
 
 **User Messages During Sessions:**
 
@@ -302,7 +302,7 @@ Shared utilities and types used by both CLI and UI packages:
 
 - **Agent Events** (`events/`):
   - Normalized event types (`AgentMessageEvent`, `AgentToolUseEvent`, `AgentThinkingEvent`, etc.)
-  - Type guards (`isAgentMessageEvent`, `isAgentToolUseEvent`, `isAgentThinkingEvent`, etc.)
+  - Type guards (`isAgentMessageEvent`, `isAgentToolUseEvent`, `isAgentThinkingEvent`, `isAgentEventEnvelope`, etc.)
   - Status types (`AgentStatus`)
 - **Beads Domain Types** (`beads/`):
   - Issue types (`BdIssue`, `BdDependency`)
