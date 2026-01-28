@@ -589,6 +589,62 @@ export class EventDatabase {
   }
 
   /**
+   * List all task chat sessions for a workspace, sorted by updatedAt descending.
+   * Uses the by-workspace-and-updated-at index for efficient retrieval.
+   * Returns sessions without messages and events for efficiency.
+   */
+  async listTaskChatSessionsByWorkspace(
+    workspaceId: string,
+  ): Promise<Omit<PersistedTaskChatSession, "messages" | "events">[]> {
+    const db = await this.ensureDb()
+    const range = IDBKeyRange.bound([workspaceId, 0], [workspaceId, Number.MAX_SAFE_INTEGER])
+    const all = await db.getAllFromIndex(
+      STORE_NAMES.CHAT_SESSIONS,
+      "by-workspace-and-updated-at",
+      range,
+    )
+    // Sort by updatedAt descending and strip heavy fields
+    return all
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map(({ messages: _, events: __, ...metadata }) => metadata)
+  }
+
+  /**
+   * Get the most recent task chat session for an instance within a workspace.
+   * Useful for hydrating the UI with workspace-scoped state on page reload.
+   */
+  async getLatestTaskChatSessionForWorkspace(
+    instanceId: string,
+    workspaceId: string,
+  ): Promise<PersistedTaskChatSession | undefined> {
+    const db = await this.ensureDb()
+    const all = await db.getAllFromIndex(STORE_NAMES.CHAT_SESSIONS, "by-instance", instanceId)
+    // Filter by workspaceId and sort by updatedAt descending
+    const filtered = all
+      .filter(session => session.workspaceId === workspaceId)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+    return filtered[0]
+  }
+
+  /**
+   * Get task chat sessions for a specific task within a workspace.
+   * Filters by both taskId and workspaceId to ensure cross-workspace isolation.
+   * Returns sessions without messages and events for efficiency.
+   */
+  async getTaskChatSessionsForTaskInWorkspace(
+    taskId: string,
+    workspaceId: string,
+  ): Promise<Omit<PersistedTaskChatSession, "messages" | "events">[]> {
+    const db = await this.ensureDb()
+    const all = await db.getAllFromIndex(STORE_NAMES.CHAT_SESSIONS, "by-task", taskId)
+    // Filter by workspaceId and sort by updatedAt descending
+    return all
+      .filter(session => session.workspaceId === workspaceId)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map(({ messages: _, events: __, ...metadata }) => metadata)
+  }
+
+  /**
    * Delete a task chat session and its associated events.
    */
   async deleteTaskChatSession(id: string): Promise<void> {

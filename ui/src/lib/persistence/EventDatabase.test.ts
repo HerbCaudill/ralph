@@ -2560,4 +2560,410 @@ describe("EventDatabase", () => {
       expect(session?.events?.length).toBe(2)
     })
   })
+
+  describe("task chat session workspaceId association", () => {
+    describe("listTaskChatSessionsByWorkspace", () => {
+      it("returns task chat sessions for the specified workspace only", async () => {
+        const now = Date.now()
+
+        // Create task chat sessions in different workspaces
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-workspace-a-1",
+            workspaceId: "/Users/test/project-a",
+            updatedAt: now - 1000,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-workspace-a-2",
+            workspaceId: "/Users/test/project-a",
+            updatedAt: now,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-workspace-b-1",
+            workspaceId: "/Users/test/project-b",
+            updatedAt: now - 500,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-null-workspace",
+            workspaceId: null,
+            updatedAt: now - 200,
+          }),
+        )
+
+        // Query by workspace A
+        const workspaceASessions = await db.listTaskChatSessionsByWorkspace(
+          "/Users/test/project-a",
+        )
+        expect(workspaceASessions.length).toBe(2)
+        expect(workspaceASessions.map(s => s.id)).toEqual(
+          expect.arrayContaining(["tc-workspace-a-1", "tc-workspace-a-2"]),
+        )
+        expect(workspaceASessions.map(s => s.id)).not.toContain("tc-workspace-b-1")
+        expect(workspaceASessions.map(s => s.id)).not.toContain("tc-null-workspace")
+
+        // Query by workspace B
+        const workspaceBSessions = await db.listTaskChatSessionsByWorkspace(
+          "/Users/test/project-b",
+        )
+        expect(workspaceBSessions.length).toBe(1)
+        expect(workspaceBSessions[0].id).toBe("tc-workspace-b-1")
+      })
+
+      it("returns sessions sorted by updatedAt descending", async () => {
+        const now = Date.now()
+        const workspace = "/Users/test/sorted-workspace"
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-old",
+            workspaceId: workspace,
+            updatedAt: now - 2000,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-newest",
+            workspaceId: workspace,
+            updatedAt: now + 1000,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-middle",
+            workspaceId: workspace,
+            updatedAt: now,
+          }),
+        )
+
+        const sessions = await db.listTaskChatSessionsByWorkspace(workspace)
+        expect(sessions.map(s => s.id)).toEqual(["tc-newest", "tc-middle", "tc-old"])
+      })
+
+      it("returns empty array for unknown workspace", async () => {
+        const sessions = await db.listTaskChatSessionsByWorkspace("/Users/unknown/workspace")
+        expect(sessions).toEqual([])
+      })
+
+      it("does not return sessions with null workspaceId", async () => {
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-null-ws",
+            workspaceId: null,
+          }),
+        )
+
+        // Querying with any workspace should not return null workspace sessions
+        const sessions = await db.listTaskChatSessionsByWorkspace("/any/workspace")
+        expect(sessions.map(s => s.id)).not.toContain("tc-null-ws")
+      })
+
+      it("strips messages and events from returned metadata", async () => {
+        const now = Date.now()
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-strip-test",
+            workspaceId: "/Users/test/strip-workspace",
+            updatedAt: now,
+            messages: [
+              { id: "msg-1", role: "user", content: "Hello", timestamp: now },
+            ],
+            events: [
+              { type: "user_message", timestamp: now, message: "Hello" },
+            ],
+          }),
+        )
+
+        const sessions = await db.listTaskChatSessionsByWorkspace("/Users/test/strip-workspace")
+        expect(sessions.length).toBe(1)
+        expect(sessions[0].id).toBe("tc-strip-test")
+        // Verify messages and events are stripped
+        expect("messages" in sessions[0]).toBe(false)
+        expect("events" in sessions[0]).toBe(false)
+      })
+    })
+
+    describe("getLatestTaskChatSessionForWorkspace", () => {
+      it("returns the most recent task chat session for an instance within a workspace", async () => {
+        const now = Date.now()
+        const workspace = "/Users/test/workspace-latest"
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-latest-old",
+            instanceId: "instance-1",
+            workspaceId: workspace,
+            updatedAt: now - 2000,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-latest-newest",
+            instanceId: "instance-1",
+            workspaceId: workspace,
+            updatedAt: now + 1000,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-latest-middle",
+            instanceId: "instance-1",
+            workspaceId: workspace,
+            updatedAt: now,
+          }),
+        )
+
+        const latest = await db.getLatestTaskChatSessionForWorkspace("instance-1", workspace)
+        expect(latest).toBeDefined()
+        expect(latest?.id).toBe("tc-latest-newest")
+      })
+
+      it("returns undefined when no sessions match the workspace", async () => {
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-other-workspace",
+            instanceId: "instance-1",
+            workspaceId: "/Users/test/other-workspace",
+          }),
+        )
+
+        const latest = await db.getLatestTaskChatSessionForWorkspace(
+          "instance-1",
+          "/Users/test/nonexistent-workspace",
+        )
+        expect(latest).toBeUndefined()
+      })
+
+      it("returns undefined when no sessions match the instance", async () => {
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-other-instance",
+            instanceId: "instance-2",
+            workspaceId: "/Users/test/workspace",
+          }),
+        )
+
+        const latest = await db.getLatestTaskChatSessionForWorkspace(
+          "instance-1",
+          "/Users/test/workspace",
+        )
+        expect(latest).toBeUndefined()
+      })
+
+      it("does not return sessions from other workspaces for the same instance", async () => {
+        const now = Date.now()
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-ws-a",
+            instanceId: "instance-1",
+            workspaceId: "/workspace-a",
+            updatedAt: now + 1000, // newer
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-ws-b",
+            instanceId: "instance-1",
+            workspaceId: "/workspace-b",
+            updatedAt: now, // older
+          }),
+        )
+
+        const latest = await db.getLatestTaskChatSessionForWorkspace("instance-1", "/workspace-b")
+        expect(latest).toBeDefined()
+        expect(latest?.id).toBe("tc-ws-b")
+      })
+
+      it("does not return sessions with null workspaceId", async () => {
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-null-ws-latest",
+            instanceId: "instance-1",
+            workspaceId: null,
+          }),
+        )
+
+        const latest = await db.getLatestTaskChatSessionForWorkspace(
+          "instance-1",
+          "/any/workspace",
+        )
+        expect(latest).toBeUndefined()
+      })
+
+      it("returns full session data including messages and events", async () => {
+        const now = Date.now()
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-full-data",
+            instanceId: "instance-1",
+            workspaceId: "/Users/test/full-data-workspace",
+            updatedAt: now,
+            messages: [
+              { id: "msg-1", role: "user", content: "Hello", timestamp: now },
+              { id: "msg-2", role: "assistant", content: "Hi!", timestamp: now + 1 },
+            ],
+            events: [
+              { type: "user_message", timestamp: now, message: "Hello" },
+            ],
+          }),
+        )
+
+        const latest = await db.getLatestTaskChatSessionForWorkspace(
+          "instance-1",
+          "/Users/test/full-data-workspace",
+        )
+        expect(latest).toBeDefined()
+        expect(latest?.messages?.length).toBe(2)
+        expect(latest?.events?.length).toBe(1)
+      })
+    })
+
+    describe("getTaskChatSessionsForTaskInWorkspace", () => {
+      it("returns sessions filtered by both taskId and workspaceId", async () => {
+        const now = Date.now()
+
+        // Create sessions with different task/workspace combinations
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-task-a-ws-a",
+            taskId: "task-a",
+            workspaceId: "/workspace-a",
+            updatedAt: now,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-task-a-ws-b",
+            taskId: "task-a",
+            workspaceId: "/workspace-b",
+            updatedAt: now - 100,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-task-b-ws-a",
+            taskId: "task-b",
+            workspaceId: "/workspace-a",
+            updatedAt: now - 200,
+          }),
+        )
+
+        // Query for task-a in workspace-a
+        const sessions = await db.getTaskChatSessionsForTaskInWorkspace("task-a", "/workspace-a")
+        expect(sessions.length).toBe(1)
+        expect(sessions[0].id).toBe("tc-task-a-ws-a")
+      })
+
+      it("returns sessions sorted by updatedAt descending", async () => {
+        const now = Date.now()
+        const workspace = "/Users/test/workspace"
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-task-old",
+            taskId: "task-1",
+            workspaceId: workspace,
+            updatedAt: now - 2000,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-task-newest",
+            taskId: "task-1",
+            workspaceId: workspace,
+            updatedAt: now + 1000,
+          }),
+        )
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-task-middle",
+            taskId: "task-1",
+            workspaceId: workspace,
+            updatedAt: now,
+          }),
+        )
+
+        const sessions = await db.getTaskChatSessionsForTaskInWorkspace("task-1", workspace)
+        expect(sessions.map(s => s.id)).toEqual(["tc-task-newest", "tc-task-middle", "tc-task-old"])
+      })
+
+      it("returns empty array when no sessions match", async () => {
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-no-match",
+            taskId: "task-a",
+            workspaceId: "/workspace-a",
+          }),
+        )
+
+        // Query for different task
+        const sessions = await db.getTaskChatSessionsForTaskInWorkspace("task-b", "/workspace-a")
+        expect(sessions).toEqual([])
+      })
+
+      it("does not return sessions from other workspaces", async () => {
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-wrong-workspace",
+            taskId: "task-a",
+            workspaceId: "/workspace-a",
+          }),
+        )
+
+        // Query for same task but different workspace
+        const sessions = await db.getTaskChatSessionsForTaskInWorkspace("task-a", "/workspace-b")
+        expect(sessions).toEqual([])
+      })
+
+      it("does not return sessions with null workspaceId", async () => {
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-null-ws-task",
+            taskId: "task-a",
+            workspaceId: null,
+          }),
+        )
+
+        const sessions = await db.getTaskChatSessionsForTaskInWorkspace("task-a", "/any/workspace")
+        expect(sessions).toEqual([])
+      })
+
+      it("strips messages and events from returned metadata", async () => {
+        const now = Date.now()
+
+        await db.saveTaskChatSession(
+          createTestTaskChatSession({
+            id: "tc-task-strip-test",
+            taskId: "task-strip",
+            workspaceId: "/Users/test/strip-workspace",
+            updatedAt: now,
+            messages: [
+              { id: "msg-1", role: "user", content: "Hello", timestamp: now },
+            ],
+            events: [
+              { type: "user_message", timestamp: now, message: "Hello" },
+            ],
+          }),
+        )
+
+        const sessions = await db.getTaskChatSessionsForTaskInWorkspace(
+          "task-strip",
+          "/Users/test/strip-workspace",
+        )
+        expect(sessions.length).toBe(1)
+        expect(sessions[0].id).toBe("tc-task-strip-test")
+        // Verify messages and events are stripped
+        expect("messages" in sessions[0]).toBe(false)
+        expect("events" in sessions[0]).toBe(false)
+      })
+    })
+  })
 })
