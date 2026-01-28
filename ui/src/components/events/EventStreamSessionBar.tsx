@@ -1,4 +1,9 @@
-import { IconChevronLeft, IconChevronRight, IconHistory } from "@tabler/icons-react"
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconHistory,
+  IconPlayerTrackNext,
+} from "@tabler/icons-react"
 import { buildTaskIdPath } from "@/hooks/useTaskDialogRouter"
 import { SessionHistoryDropdown } from "./SessionHistoryDropdown"
 import type { SessionSummary } from "@/hooks"
@@ -17,7 +22,7 @@ export function EventStreamSessionBar({
   isViewingHistorical,
   currentSessionId,
   onSessionHistorySelect,
-  onReturnToLive: _onReturnToLive,
+  onReturnToLive,
   onPreviousSession,
   onNextSession,
   hasPreviousSession,
@@ -108,6 +113,18 @@ export function EventStreamSessionBar({
           data-testid="next-session-button"
         >
           <IconChevronRight className="size-3.5" />
+        </button>
+
+        {/* Current button - returns to the live session */}
+        <button
+          onClick={onReturnToLive}
+          disabled={!isViewingHistorical}
+          className="text-muted-foreground hover:bg-muted hover:text-foreground flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-30"
+          title="Return to current session"
+          aria-label="Current session"
+          data-testid="current-session-button"
+        >
+          <IconPlayerTrackNext className="size-3.5" />
         </button>
       </div>
     </div>

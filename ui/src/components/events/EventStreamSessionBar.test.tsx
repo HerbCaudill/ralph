@@ -345,4 +345,51 @@ describe("EventStreamSessionBar", () => {
       expect(onNextSession).toHaveBeenCalled()
     })
   })
+
+  describe("current session button", () => {
+    it("renders the current session button", () => {
+      render(<EventStreamSessionBar {...defaultProps} />)
+
+      expect(screen.getByTestId("current-session-button")).toBeInTheDocument()
+    })
+
+    it("disables the button when isViewingHistorical is false", () => {
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          isViewingHistorical={false}
+        />,
+      )
+
+      expect(screen.getByTestId("current-session-button")).toBeDisabled()
+    })
+
+    it("enables the button when isViewingHistorical is true", () => {
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          isViewingHistorical={true}
+        />,
+      )
+
+      expect(screen.getByTestId("current-session-button")).not.toBeDisabled()
+    })
+
+    it("calls onReturnToLive when clicked", async () => {
+      const onReturnToLive = vi.fn()
+      const userEvent = await import("@testing-library/user-event")
+      const user = userEvent.default.setup()
+
+      render(
+        <EventStreamSessionBar
+          {...defaultProps}
+          isViewingHistorical={true}
+          onReturnToLive={onReturnToLive}
+        />,
+      )
+
+      await user.click(screen.getByTestId("current-session-button"))
+      expect(onReturnToLive).toHaveBeenCalled()
+    })
+  })
 })
