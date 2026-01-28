@@ -1416,7 +1416,16 @@ function attachWsServer(
       if (hasActiveSession && persister && events.length === 0) {
         // Session is active but no in-memory events - try to restore from disk
         try {
-          const persistedEvents = await persister.readEvents("default")
+          const RESTORE_TIMEOUT_MS = 5_000
+          const persistedEvents = await Promise.race([
+            persister.readEvents("default"),
+            new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new Error("Timed out restoring events from disk")),
+                RESTORE_TIMEOUT_MS,
+              ),
+            ),
+          ])
           if (persistedEvents.length > 0) {
             console.log(
               `[ws] Restored ${persistedEvents.length} events from disk for reconnecting client`,
@@ -1426,7 +1435,8 @@ function attachWsServer(
             context.setEventHistory(persistedEvents)
           }
         } catch (err) {
-          console.error("[ws] Failed to restore events from disk:", err)
+          console.warn("[ws] Failed to restore events from disk:", err)
+          // Continue with whatever events we have — don't block the welcome message
         }
       }
 
@@ -1451,6 +1461,21 @@ function attachWsServer(
       )
     })().catch(err => {
       console.error("[ws] Error sending welcome message:", err)
+      // Send a fallback welcome message so the client doesn't stay stuck in 'connecting' state
+      try {
+        const context = getActiveContext()
+        ws.send(
+          JSON.stringify({
+            type: "connected",
+            instanceId: "default",
+            timestamp: Date.now(),
+            ralphStatus: context.ralphManager.status,
+            events: [],
+          }),
+        )
+      } catch (fallbackErr) {
+        console.error("[ws] Failed to send fallback welcome message:", fallbackErr)
+      }
     })
   })
 
