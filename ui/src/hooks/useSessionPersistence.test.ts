@@ -31,6 +31,19 @@ describe("useSessionPersistence", () => {
     subtype: "init",
   })
 
+  const createRalphSessionStartEvent = (
+    timestamp: number,
+    sessionId: string,
+    session: number = 1,
+  ): ChatEvent =>
+    ({
+      type: "ralph_session_start",
+      timestamp,
+      sessionId,
+      session,
+      totalSessions: 5,
+    }) as ChatEvent
+
   const createAssistantEvent = (timestamp: number, text: string): ChatEvent => ({
     type: "assistant",
     timestamp,
@@ -224,6 +237,155 @@ describe("useSessionPersistence", () => {
       await waitFor(() => {
         expect(result1.current.currentSessionId).toBe("instance-1-1706123456789")
         expect(result2.current.currentSessionId).toBe("instance-2-1706123456789")
+      })
+    })
+  })
+
+  describe("server-generated session IDs (bug r-tufi7.2)", () => {
+    it("uses server-generated sessionId from ralph_session_start event", async () => {
+      const timestamp = Date.now()
+      const serverSessionId = "550e8400-e29b-41d4-a716-446655440000"
+      const events: ChatEvent[] = [createRalphSessionStartEvent(timestamp, serverSessionId)]
+
+      const { result } = renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          events,
+        }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.currentSessionId).toBe(serverSessionId)
+      })
+    })
+
+    it("syncs server-generated sessionId to ralphConnection", async () => {
+      const timestamp = Date.now()
+      const serverSessionId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      const events: ChatEvent[] = [createRalphSessionStartEvent(timestamp, serverSessionId)]
+
+      renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          instanceId: "test-instance",
+          events,
+        }),
+      )
+
+      await waitFor(() => {
+        expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith(
+          "test-instance",
+          serverSessionId,
+        )
+      })
+    })
+
+    it("saves session with server-generated sessionId", async () => {
+      const timestamp = Date.now()
+      const serverSessionId = "server-uuid-12345"
+      const events: ChatEvent[] = [createRalphSessionStartEvent(timestamp, serverSessionId)]
+
+      renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          events,
+        }),
+      )
+
+      await waitFor(() => {
+        expect(eventDatabase.saveSession).toHaveBeenCalled()
+      })
+
+      const savedSession = vi.mocked(eventDatabase.saveSession).mock.calls[0]?.[0]
+      expect(savedSession?.id).toBe(serverSessionId)
+    })
+
+    it("falls back to generated ID when sessionId is missing from ralph_session_start", async () => {
+      const timestamp = Date.now()
+      // Create a ralph_session_start event WITHOUT sessionId (backward compatibility)
+      const eventWithoutSessionId = {
+        type: "ralph_session_start",
+        timestamp,
+        session: 1,
+        totalSessions: 5,
+      } as ChatEvent
+
+      const { result } = renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          instanceId: "fallback-test",
+          events: [eventWithoutSessionId],
+        }),
+      )
+
+      await waitFor(() => {
+        // Should fall back to the generated format: instanceId-timestamp
+        expect(result.current.currentSessionId).toBe(`fallback-test-${timestamp}`)
+      })
+    })
+
+    it("handles multiple sessions with different server-generated IDs", async () => {
+      const startTime1 = Date.now()
+      const startTime2 = startTime1 + 1000
+      const sessionId1 = "session-uuid-1"
+      const sessionId2 = "session-uuid-2"
+
+      const { rerender, result } = renderHook(
+        (props: UseSessionPersistenceOptions) => useSessionPersistence(props),
+        { initialProps: { ...defaultOptions, events: [] as ChatEvent[] } },
+      )
+
+      // First session with server sessionId
+      rerender({
+        ...defaultOptions,
+        events: [
+          createRalphSessionStartEvent(startTime1, sessionId1, 1),
+          createRalphTaskStartedEvent(startTime1 + 50, "task-1"),
+          createAssistantEvent(startTime1 + 100, "First session"),
+        ] as ChatEvent[],
+      })
+
+      await waitFor(() => {
+        expect(result.current.currentSessionId).toBe(sessionId1)
+      })
+
+      // Second session starts with a different server sessionId
+      rerender({
+        ...defaultOptions,
+        events: [
+          createRalphSessionStartEvent(startTime1, sessionId1, 1),
+          createRalphTaskStartedEvent(startTime1 + 50, "task-1"),
+          createAssistantEvent(startTime1 + 100, "First session"),
+          createRalphSessionStartEvent(startTime2, sessionId2, 2),
+        ] as ChatEvent[],
+      })
+
+      await waitFor(() => {
+        expect(result.current.currentSessionId).toBe(sessionId2)
+      })
+
+      // Both session IDs should have been synced to ralphConnection
+      expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith("default", sessionId1)
+      expect(mockSetRalphConnectionSessionId).toHaveBeenCalledWith("default", sessionId2)
+    })
+
+    it("prefers server sessionId over timestamp-based ID in same event", async () => {
+      const timestamp = Date.now()
+      const serverSessionId = "explicit-server-id"
+
+      // ralph_session_start events have both timestamp and sessionId
+      // The server-generated sessionId should take precedence
+      const { result } = renderHook(() =>
+        useSessionPersistence({
+          ...defaultOptions,
+          events: [createRalphSessionStartEvent(timestamp, serverSessionId)],
+        }),
+      )
+
+      await waitFor(() => {
+        expect(result.current.currentSessionId).toBe(serverSessionId)
+        // NOT "default-{timestamp}"
+        expect(result.current.currentSessionId).not.toMatch(/^default-\d+$/)
       })
     })
   })

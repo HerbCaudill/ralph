@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { useApp, Text } from "ink"
 import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join, basename } from "path"
+import { randomUUID } from "node:crypto"
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { getProgress } from "../lib/getProgress.js"
@@ -129,13 +130,16 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
     const abortController = new AbortController()
     setIsRunning(true)
 
-    // Output session start event
+    // Output session start event with server-generated session ID
+    // The sessionId is a UUID that uniquely identifies this session, enabling
+    // the UI to use a stable ID for IndexedDB persistence without generating its own
     outputEvent({
       type: "ralph_session_start",
       session: currentSession,
       totalSessions,
       repo: repoName,
       taskId: currentTaskIdRef.current,
+      sessionId: randomUUID(),
     })
 
     // Create a message queue for this session

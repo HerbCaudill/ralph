@@ -19,11 +19,27 @@ import { getSessionBoundaries, getTaskFromSessionEvents } from "@/store"
 import { setCurrentSessionId as setRalphConnectionSessionId } from "@/lib/ralphConnection"
 
 /**
- * Generates a stable session ID based on instance ID and session start timestamp.
- * Format: "{instanceId}-{timestamp}"
+ * Extracts the session ID from a session boundary event.
+ *
+ * Prefers the server-generated sessionId field (added in ralph_session_start events).
+ * Falls back to generating a deterministic ID from instanceId + timestamp for
+ * backward compatibility with events that don't have a sessionId.
  */
-function generateSessionId(instanceId: string, startedAt: number): string {
-  return `${instanceId}-${startedAt}`
+function getSessionIdFromEvent(
+  event: ChatEvent,
+  instanceId: string,
+): { sessionId: string; startedAt: number } {
+  const startedAt = event.timestamp || Date.now()
+
+  // Prefer server-generated sessionId if available (from ralph_session_start events)
+  const serverSessionId = (event as { sessionId?: string }).sessionId
+  if (serverSessionId && typeof serverSessionId === "string") {
+    return { sessionId: serverSessionId, startedAt }
+  }
+
+  // Fall back to generating a deterministic ID for backward compatibility
+  // Format: "{instanceId}-{timestamp}"
+  return { sessionId: `${instanceId}-${startedAt}`, startedAt }
 }
 
 /**
@@ -319,10 +335,8 @@ export function useSessionPersistence(
         }
 
         // Start tracking new session
-        // Fall back to Date.now() if timestamp is missing or invalid (defensive - should be set by server)
-        // Using || instead of ?? to also catch timestamp=0 (falsy but not nullish)
-        const startedAt = boundaryEvent.timestamp || Date.now()
-        const newId = generateSessionId(instanceId, startedAt)
+        // Extract session ID from the boundary event (prefers server-generated ID)
+        const { sessionId: newId, startedAt } = getSessionIdFromEvent(boundaryEvent, instanceId)
 
         currentSessionRef.current = {
           id: newId,
