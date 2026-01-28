@@ -13,12 +13,7 @@ import { isErrorEvent } from "@/lib/isErrorEvent"
 import { isRalphTaskCompletedEvent } from "@/lib/isRalphTaskCompletedEvent"
 import { isRalphTaskStartedEvent } from "@/lib/isRalphTaskStartedEvent"
 import { isUserMessageEvent } from "@/lib/isUserMessageEvent"
-import type {
-  ChatEvent,
-  TaskLifecycleEventData,
-  ErrorEventData,
-  AssistantContentBlock,
-} from "@/types"
+import type { ChatEvent, TaskLifecycleEventData, ErrorEventData } from "@/types"
 
 /**
  * Renders different types of Ralph events (user messages, task lifecycle events, assistant messages, errors).
@@ -56,32 +51,27 @@ export function EventStreamEventItem({
   }
 
   if (isRalphTaskStartedEvent(event)) {
-    const taskEvent = event as Record<string, unknown>
     const lifecycleEvent: TaskLifecycleEventData = {
       type: "task_lifecycle",
       timestamp: event.timestamp,
       action: "starting",
-      taskId: taskEvent.taskId as string,
+      taskId: event.taskId ?? "",
     }
     return <TaskLifecycleEvent event={lifecycleEvent} />
   }
 
   if (isRalphTaskCompletedEvent(event)) {
-    const taskEvent = event as Record<string, unknown>
     const lifecycleEvent: TaskLifecycleEventData = {
       type: "task_lifecycle",
       timestamp: event.timestamp,
       action: "completed",
-      taskId: taskEvent.taskId as string,
+      taskId: event.taskId ?? "",
     }
     return <TaskLifecycleEvent event={lifecycleEvent} />
   }
 
   if (isAssistantMessage(event)) {
-    const message = (event as Record<string, unknown>).message as {
-      content?: AssistantContentBlock[]
-    }
-    const content = message?.content
+    const content = event.message?.content
 
     if (!content || content.length === 0) return null
 
@@ -99,9 +89,9 @@ export function EventStreamEventItem({
 
   if (isErrorEvent(event)) {
     const errorEvent: ErrorEventData = {
-      type: event.type as "error" | "server_error",
+      type: event.type,
       timestamp: event.timestamp,
-      error: (event as Record<string, unknown>).error as string,
+      error: event.error,
     }
     return <ErrorEvent event={errorEvent} />
   }
