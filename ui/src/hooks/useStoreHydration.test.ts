@@ -22,9 +22,16 @@ vi.mock("@/lib/persistence", () => ({
   },
 }))
 
+// Mock setCurrentSessionId from ralphConnection
+const mockSetCurrentSessionId = vi.fn()
+vi.mock("@/lib/ralphConnection", () => ({
+  setCurrentSessionId: (...args: unknown[]) => mockSetCurrentSessionId(...args),
+}))
+
 describe("useStoreHydration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSetCurrentSessionId.mockClear()
     useAppStore.getState().reset()
     vi.spyOn(console, "log").mockImplementation(() => {})
     vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -390,6 +397,127 @@ describe("useStoreHydration", () => {
     // Check that task chat events were loaded from the events store
     expect(eventDatabase.getEventsForSession).toHaveBeenCalledWith("default-task-abc-1000")
     expect(useAppStore.getState().taskChatEvents).toEqual(mockPersistedEvents.map(pe => pe.event))
+  })
+
+  describe("session ID restoration into ralphConnection (bug r-tufi7.35 fix)", () => {
+    it("should restore session ID into ralphConnection when active session exists", async () => {
+      const mockSession: PersistedSession = {
+        id: "default-1000",
+        instanceId: "default",
+        workspaceId: null,
+        startedAt: 1000,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 100, output: 50 },
+        contextWindow: { used: 150, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: [{ type: "system", timestamp: 1000, subtype: "init" } as any],
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Verify setCurrentSessionId was called with instanceId, session ID, and startedAt
+      expect(mockSetCurrentSessionId).toHaveBeenCalledWith("default", "default-1000", 1000)
+    })
+
+    it("should pass correct startedAt from persisted session to setCurrentSessionId", async () => {
+      const startedAt = 1706123456789
+
+      const mockSession: PersistedSession = {
+        id: `my-instance-${startedAt}`,
+        instanceId: "my-instance",
+        workspaceId: null,
+        startedAt,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 0, output: 0 },
+        contextWindow: { used: 0, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: [{ type: "system", timestamp: startedAt, subtype: "init" } as any],
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
+
+      // Create the instance in the store before hydrating
+      useAppStore.getState().createInstance("my-instance", "My Instance")
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "my-instance" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Verify the original startedAt from IndexedDB is preserved
+      expect(mockSetCurrentSessionId).toHaveBeenCalledWith(
+        "my-instance",
+        `my-instance-${startedAt}`,
+        startedAt,
+      )
+    })
+
+    it("should not call setCurrentSessionId when no active session exists", async () => {
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(undefined)
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // setCurrentSessionId should NOT have been called
+      expect(mockSetCurrentSessionId).not.toHaveBeenCalled()
+    })
+
+    it("should restore session ID even when event restoration is skipped (server already provided events)", async () => {
+      // Server already synced events
+      useAppStore.getState().setEventsForInstance("default", [
+        { type: "system", timestamp: 1000, subtype: "init" } as any,
+      ])
+      useAppStore.getState().setHasInitialSync(true)
+
+      const mockSession: PersistedSession = {
+        id: "default-500",
+        instanceId: "default",
+        workspaceId: null,
+        startedAt: 500,
+        completedAt: null,
+        taskId: null,
+        tokenUsage: { input: 50, output: 25 },
+        contextWindow: { used: 75, max: 200000 },
+        session: { current: 1, total: 1 },
+        eventCount: 1,
+        lastEventSequence: 0,
+        events: [{ type: "system", timestamp: 500, subtype: "init" } as any],
+      }
+
+      vi.mocked(eventDatabase.getLatestActiveSession).mockResolvedValue(mockSession)
+
+      const { result } = renderHook(() => useStoreHydration({ instanceId: "default" }))
+
+      await waitFor(() => {
+        expect(result.current.isHydrated).toBe(true)
+      })
+
+      // Session ID should STILL be restored even though event restoration is skipped.
+      // This is critical: the session ID is needed for persisting NEW events to IndexedDB,
+      // regardless of whether we restored old events.
+      expect(mockSetCurrentSessionId).toHaveBeenCalledWith("default", "default-500", 500)
+
+      // But events should NOT have been overwritten (server data is authoritative)
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping event restoration from IndexedDB"),
+      )
+    })
   })
 
   describe("workspace scoping", () => {

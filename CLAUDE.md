@@ -600,6 +600,10 @@ Server-generated session IDs are preferred because they ensure consistency betwe
 
 `ralphConnection.ts` does NOT generate session IDs internally. It relies entirely on `useSessionPersistence` to set session IDs via the `setCurrentSessionId` export. This prevents dual session ID tracking bugs where events could be persisted with mismatched session IDs.
 
+**Session ID Restoration on Hydration:**
+
+On page reload, `useStoreHydration` restores the `currentSessions` Map in `ralphConnection.ts` by calling `setCurrentSessionId(instanceId, sessionId, startedAt)` for each active session loaded from IndexedDB. This ensures that events arriving immediately after hydration can be persisted to the correct session without waiting for a new `ralph_session_start` boundary event. The optional `startedAt` parameter on `setCurrentSessionId` allows the hydration flow to restore the original session start time.
+
 ### Zustand Store Architecture
 
 The UI state is managed by a Zustand store (`ui/src/store/index.ts`). The store supports **multi-instance state management** where each Ralph instance has its own isolated state.

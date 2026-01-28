@@ -938,13 +938,21 @@ export function getCurrentSession(instanceId: string): SessionInfo | undefined {
  * Set the current session ID for an instance.
  * Used when restoring session state on reconnection/reload.
  * Also used by useSessionPersistence for backward compatibility during transition.
+ *
+ * @param startedAt - Optional start time for the session. If not provided,
+ *   preserves the existing startedAt or falls back to Date.now().
+ *   Pass this when restoring from IndexedDB to preserve the original start time.
  */
-export function setCurrentSessionId(instanceId: string, sessionId: string): void {
-  // Preserve startedAt if session already exists, otherwise use current time
+export function setCurrentSessionId(
+  instanceId: string,
+  sessionId: string,
+  startedAt?: number,
+): void {
+  // Use provided startedAt, then preserve existing, then fall back to current time
   const existing = currentSessions.get(instanceId)
   currentSessions.set(instanceId, {
     id: sessionId,
-    startedAt: existing?.startedAt ?? Date.now(),
+    startedAt: startedAt ?? existing?.startedAt ?? Date.now(),
   })
 }
 

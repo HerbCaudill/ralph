@@ -10,6 +10,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { eventDatabase } from "@/lib/persistence"
+import { setCurrentSessionId } from "@/lib/ralphConnection"
 import { useAppStore } from "@/store"
 
 export interface UseStoreHydrationOptions {
@@ -93,27 +94,37 @@ export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHy
             await eventDatabase.getLatestActiveSessionForWorkspace(instanceId, workspaceId)
           : await eventDatabase.getLatestActiveSession(instanceId)
 
-        if (activeSession && !shouldSkipEventRestoration) {
-          // In v3+ schema, events are stored separately in the events table.
-          // For v2 data (migration), events may be inline.
-          let sessionEvents = activeSession.events ?? []
+        if (activeSession) {
+          // Restore the session ID into ralphConnection's in-memory currentSessions Map.
+          // This ensures events arriving after page reload can be persisted to IndexedDB
+          // immediately, without waiting for a new session boundary event. (fixes r-tufi7.35)
+          setCurrentSessionId(instanceId, activeSession.id, activeSession.startedAt)
+          console.log(
+            `[useStoreHydration] Restored session ID ${activeSession.id} for instance ${instanceId} into ralphConnection`,
+          )
 
-          // If no inline events (v3 schema), load from the events table
-          if (sessionEvents.length === 0) {
-            const persistedEvents = await eventDatabase.getEventsForSession(activeSession.id)
-            sessionEvents = persistedEvents.map(pe => pe.event)
-          }
+          if (!shouldSkipEventRestoration) {
+            // In v3+ schema, events are stored separately in the events table.
+            // For v2 data (migration), events may be inline.
+            let sessionEvents = activeSession.events ?? []
 
-          if (sessionEvents.length > 0) {
-            // Restore events to the store
-            // Use setEventsForInstance for the specific instance
-            // Note: When instanceId === activeInstanceId, setEventsForInstance automatically
-            // syncs to the flat events array, so we don't need a separate setEvents call
-            setEventsForInstance(instanceId, sessionEvents)
+            // If no inline events (v3 schema), load from the events table
+            if (sessionEvents.length === 0) {
+              const persistedEvents = await eventDatabase.getEventsForSession(activeSession.id)
+              sessionEvents = persistedEvents.map(pe => pe.event)
+            }
 
-            console.log(
-              `[useStoreHydration] Restored ${sessionEvents.length} events from active session ${activeSession.id}`,
-            )
+            if (sessionEvents.length > 0) {
+              // Restore events to the store
+              // Use setEventsForInstance for the specific instance
+              // Note: When instanceId === activeInstanceId, setEventsForInstance automatically
+              // syncs to the flat events array, so we don't need a separate setEvents call
+              setEventsForInstance(instanceId, sessionEvents)
+
+              console.log(
+                `[useStoreHydration] Restored ${sessionEvents.length} events from active session ${activeSession.id}`,
+              )
+            }
           }
         }
 

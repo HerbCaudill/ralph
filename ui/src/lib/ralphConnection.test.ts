@@ -285,6 +285,51 @@ describe("ralphConnection event timestamp tracking", () => {
       expect(updatedSession?.startedAt).toBe(originalStartedAt)
     })
 
+    it("uses provided startedAt when explicitly passed (hydration from IndexedDB, r-tufi7.35)", () => {
+      const instanceId = "hydration-restore-instance"
+      const sessionId = "default-1000"
+      const originalStartedAt = 1000
+
+      // Simulate what useStoreHydration does when restoring from IndexedDB:
+      // pass the original startedAt from the persisted session
+      setCurrentSessionId(instanceId, sessionId, originalStartedAt)
+
+      const session = getCurrentSession(instanceId)
+      expect(session).toBeDefined()
+      expect(session?.id).toBe(sessionId)
+      expect(session?.startedAt).toBe(originalStartedAt)
+    })
+
+    it("provided startedAt overrides existing startedAt", () => {
+      const instanceId = "override-startedat-instance"
+
+      // Set initial session with auto-generated startedAt
+      setCurrentSessionId(instanceId, "session-1")
+      const autoStartedAt = getCurrentSession(instanceId)?.startedAt
+
+      // Now set a new session with explicit startedAt (simulating IndexedDB restore)
+      const explicitStartedAt = 5000
+      setCurrentSessionId(instanceId, "session-2", explicitStartedAt)
+
+      const session = getCurrentSession(instanceId)
+      expect(session?.id).toBe("session-2")
+      expect(session?.startedAt).toBe(explicitStartedAt)
+      expect(session?.startedAt).not.toBe(autoStartedAt)
+    })
+
+    it("falls back to existing startedAt when startedAt is not provided", () => {
+      const instanceId = "fallback-startedat-instance"
+      const explicitStartedAt = 42000
+
+      // Set initial session with explicit startedAt
+      setCurrentSessionId(instanceId, "session-1", explicitStartedAt)
+      expect(getCurrentSession(instanceId)?.startedAt).toBe(explicitStartedAt)
+
+      // Update session ID without providing startedAt - should preserve existing
+      setCurrentSessionId(instanceId, "session-2")
+      expect(getCurrentSession(instanceId)?.startedAt).toBe(explicitStartedAt)
+    })
+
     it("returns different SessionInfo for different instances", () => {
       setCurrentSessionId("instance-a", "session-a")
       setCurrentSessionId("instance-b", "session-b")
