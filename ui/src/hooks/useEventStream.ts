@@ -110,12 +110,17 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const isViewingHistorical = selectedSession !== null
 
   // Session data - use historical session events or live events
+  // When loading historical events, return an empty array to avoid briefly
+  // showing live session events before the historical data arrives.
   const sessionEvents = useMemo(() => {
     if (selectedSession) {
       return selectedSession.events
     }
+    if (isLoadingHistoricalEvents) {
+      return []
+    }
     return getEventsForSessionId(allEvents, viewingSessionId)
-  }, [allEvents, viewingSessionId, selectedSession])
+  }, [allEvents, viewingSessionId, selectedSession, isLoadingHistoricalEvents])
 
   // Determine the current task for the session
   // Task ID comes from ralph_task_started events, title is looked up from beads
@@ -230,7 +235,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   return {
     sessionEvents,
     ralphStatus,
-    isViewingLatest: isViewingLatest && !isViewingHistorical,
+    isViewingLatest: isViewingLatest && !isViewingHistorical && !isLoadingHistoricalEvents,
     isViewingHistorical,
     isRunning,
     isConnected,

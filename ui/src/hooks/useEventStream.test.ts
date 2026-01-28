@@ -18,6 +18,7 @@ let mockSelectedSession: {
   }>
   metadata?: { taskId?: string; title?: string }
 } | null = null
+let mockIsLoadingEvents = false
 
 vi.mock("@/hooks", async importOriginal => {
   const actual = await importOriginal<typeof import("@/hooks")>()
@@ -30,7 +31,7 @@ vi.mock("@/hooks", async importOriginal => {
       refresh: vi.fn(),
       loadSessionEvents: mockLoadSessionEvents,
       selectedSession: mockSelectedSession,
-      isLoadingEvents: false,
+      isLoadingEvents: mockIsLoadingEvents,
       eventsError: null,
       clearSelectedSession: mockClearSelectedSession,
     })),
@@ -45,6 +46,7 @@ describe("useEventStream", () => {
     mockLoadSessionEvents.mockClear()
     mockClearSelectedSession.mockClear()
     mockSelectedSession = null
+    mockIsLoadingEvents = false
   })
 
   describe("basic functionality", () => {
@@ -465,6 +467,37 @@ describe("useEventStream", () => {
       const { result } = renderHook(() => useEventStream())
 
       expect(result.current.currentSessionId).toBe("session-456")
+    })
+
+    it("returns empty sessionEvents while loading historical events", () => {
+      // Simulate loading state: no selectedSession yet, but loading is true
+      mockIsLoadingEvents = true
+      mockSelectedSession = null
+
+      // Add live events that should NOT leak through during loading
+      useAppStore.getState().addEvent({
+        type: "user_message",
+        timestamp: 1705600001000,
+        message: "Live message that should not appear",
+      })
+
+      const { result } = renderHook(() => useEventStream())
+
+      // Should return empty array, not live events
+      expect(result.current.sessionEvents).toEqual([])
+      expect(result.current.isLoadingHistoricalEvents).toBe(true)
+    })
+
+    it("returns isViewingLatest as false while loading historical events", () => {
+      // During loading: viewingSessionId is null, selectedSession is null
+      // but isLoadingEvents is true — should NOT be considered "viewing latest"
+      mockIsLoadingEvents = true
+      mockSelectedSession = null
+
+      const { result } = renderHook(() => useEventStream())
+
+      expect(result.current.isViewingLatest).toBe(false)
+      expect(result.current.isLoadingHistoricalEvents).toBe(true)
     })
   })
 
