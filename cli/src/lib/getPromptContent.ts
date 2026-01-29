@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
-import { loadSessionPrompt } from "@herbcaudill/ralph-shared/prompts"
+import { loadSessionPrompt, getWorkspaceRoot } from "@herbcaudill/ralph-shared/prompts"
 
 /**
  * Get the prompt content by combining core-prompt.md with workflow.md.
@@ -13,7 +13,8 @@ import { loadSessionPrompt } from "@herbcaudill/ralph-shared/prompts"
  */
 export const getPromptContent = (): string => {
   const __dirname = dirname(fileURLToPath(import.meta.url))
-  const ralphDir = join(process.cwd(), ".ralph")
+  const workspaceRoot = getWorkspaceRoot(process.cwd())
+  const ralphDir = join(workspaceRoot, ".ralph")
   const promptFile = join(ralphDir, "prompt.md")
   const templatesDir = join(__dirname, "..", "..", "templates")
 
@@ -25,7 +26,7 @@ export const getPromptContent = (): string => {
   // Load session prompt (combines core-prompt.md with workflow.md)
   const { content } = loadSessionPrompt({
     templatesDir,
-    cwd: process.cwd(),
+    cwd: workspaceRoot,
   })
 
   return content

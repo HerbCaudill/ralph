@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import {
   loadPrompt,
+  loadSessionPrompt,
   initPrompt,
   getCustomPromptPath,
   hasCustomPrompt,
@@ -199,6 +200,44 @@ describe("loadPrompt", () => {
       initPrompt(createOptions())
 
       expect(hasCustomPrompt({ filename, customDir, cwd: testDir })).toBe(true)
+    })
+  })
+
+  describe("loadSessionPrompt", () => {
+    it("loads workflow from the repo root when cwd is nested", () => {
+      const repoRoot = join(testDir, "repo")
+      const nested = join(repoRoot, "packages", "app")
+      const templatesDir = join(testDir, "templates")
+      mkdirSync(join(repoRoot, ".git"), { recursive: true })
+      mkdirSync(nested, { recursive: true })
+      mkdirSync(templatesDir, { recursive: true })
+
+      writeFileSync(join(templatesDir, "core-prompt.md"), "CORE\\n\\n{WORKFLOW}")
+      writeFileSync(join(templatesDir, "workflow.md"), "DEFAULT WORKFLOW")
+      mkdirSync(join(repoRoot, ".ralph"), { recursive: true })
+      writeFileSync(join(repoRoot, ".ralph", "workflow.md"), "CUSTOM WORKFLOW")
+
+      const result = loadSessionPrompt({ templatesDir, cwd: nested })
+      expect(result.content).toBe("CORE\\n\\nCUSTOM WORKFLOW")
+      expect(result.hasCustomWorkflow).toBe(true)
+      expect(result.workflowPath).toBe(join(repoRoot, ".ralph", "workflow.md"))
+    })
+
+    it("falls back to default workflow when no custom workflow exists", () => {
+      const repoRoot = join(testDir, "repo-default")
+      const nested = join(repoRoot, "packages", "app")
+      const templatesDir = join(testDir, "templates-default")
+      mkdirSync(join(repoRoot, ".git"), { recursive: true })
+      mkdirSync(nested, { recursive: true })
+      mkdirSync(templatesDir, { recursive: true })
+
+      writeFileSync(join(templatesDir, "core-prompt.md"), "CORE\\n\\n{WORKFLOW}")
+      writeFileSync(join(templatesDir, "workflow.md"), "DEFAULT WORKFLOW")
+
+      const result = loadSessionPrompt({ templatesDir, cwd: nested })
+      expect(result.content).toBe("CORE\\n\\nDEFAULT WORKFLOW")
+      expect(result.hasCustomWorkflow).toBe(false)
+      expect(result.workflowPath).toBe(join(templatesDir, "workflow.md"))
     })
   })
 })

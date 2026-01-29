@@ -157,7 +157,7 @@ Ralph uses a two-tier prompt system:
    - Task assignment logic
    - Output tokens (`<promise>COMPLETE</promise>`, `<start_task>`, `<end_task>`)
 
-2. **Workflow** (`.ralph/workflow.md`) - Repo-specific configuration
+2. **Workflow** (`.ralph/workflow.md`) - Repo-specific configuration (resolved from the repo root)
    - Build/test commands
    - Task prioritization rules
    - Wrap-up steps (formatting, committing)

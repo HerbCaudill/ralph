@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, copyFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
+import { getWorkspaceRoot } from "./getWorkspaceRoot.js"
 
 /** Placeholder in core prompt for workflow content */
 const WORKFLOW_PLACEHOLDER = "{WORKFLOW}"
@@ -111,6 +112,7 @@ export function loadSessionPrompt(
   options: LoadSessionPromptOptions,
 ): LoadSessionPromptResult {
   const { templatesDir, cwd = process.cwd() } = options
+  const workspaceRoot = getWorkspaceRoot(cwd)
 
   // Load core prompt (always from templates)
   const corePromptPath = join(templatesDir, "core-prompt.md")
@@ -120,7 +122,7 @@ export function loadSessionPrompt(
   const corePrompt = readFileSync(corePromptPath, "utf-8")
 
   // Try custom workflow first, then fall back to template
-  const customWorkflowPath = join(cwd, ".ralph", "workflow.md")
+  const customWorkflowPath = join(workspaceRoot, ".ralph", "workflow.md")
   const defaultWorkflowPath = join(templatesDir, "workflow.md")
 
   let workflowContent: string
@@ -154,7 +156,7 @@ export function hasCustomWorkflow(
   /** Working directory (defaults to process.cwd()) */
   cwd: string = process.cwd(),
 ): boolean {
-  return existsSync(join(cwd, ".ralph", "workflow.md"))
+  return existsSync(join(getWorkspaceRoot(cwd), ".ralph", "workflow.md"))
 }
 
 /**  Get the path to the custom workflow file. */
@@ -162,7 +164,7 @@ export function getCustomWorkflowPath(
   /** Working directory (defaults to process.cwd()) */
   cwd: string = process.cwd(),
 ): string {
-  return join(cwd, ".ralph", "workflow.md")
+  return join(getWorkspaceRoot(cwd), ".ralph", "workflow.md")
 }
 
 /**  Configuration for loading a prompt file. */

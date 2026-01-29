@@ -11,3 +11,5 @@ export {
   type LoadSessionPromptOptions,
   type LoadSessionPromptResult,
 } from "./loadPrompt.js"
+
+export { getWorkspaceRoot } from "./getWorkspaceRoot.js"

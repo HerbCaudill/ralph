@@ -63,9 +63,11 @@ Utilities for loading and managing prompt files with customization support.
 **Functions:**
 
 - `loadPrompt(options)` - Load a prompt file with fallback to default
+- `loadSessionPrompt(options)` - Combine core prompt with workflow prompt
 - `initPrompt(options)` - Initialize a prompt by copying default to custom directory
 - `getCustomPromptPath(options)` - Get the path to a custom prompt file
 - `hasCustomPrompt(options)` - Check if a custom prompt file exists
+- `getWorkspaceRoot(cwd?)` - Resolve the repo root (nearest `.git`)
 
 **Types:**
 
