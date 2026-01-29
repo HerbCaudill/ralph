@@ -187,6 +187,11 @@ export interface TaskLifecycleChatEvent extends ChatEvent {
   taskId: string
 }
 
+/** A promise complete event, emitted when a session signals completion. */
+export interface PromiseCompleteChatEvent extends ChatEvent {
+  type: "promise_complete"
+}
+
 export type TaskStatus = "open" | "in_progress" | "blocked" | "deferred" | "closed"
 
 export interface TaskDependency {

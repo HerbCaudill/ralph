@@ -18,11 +18,14 @@ export { SessionHistoryPanel } from "./SessionHistoryPanel"
 export type { SessionHistoryPanelProps } from "./SessionHistoryPanel"
 
 export { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+export { PromiseCompleteEvent } from "./PromiseCompleteEvent"
 export { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
+export { parsePromiseCompleteEvent } from "@/lib/parsePromiseCompleteEvent"
 export type {
   AssistantTextEvent,
   UserMessageEvent,
   ToolUseEvent,
   ToolName,
   TaskLifecycleEventData,
+  PromiseCompleteChatEvent,
 } from "@/types"

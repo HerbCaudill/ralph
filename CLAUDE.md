@@ -280,6 +280,15 @@ Web app with integrated Express server and React frontend:
   - Bash tool output strips ANSI color codes before display
   - Extended thinking blocks support for Claude's internal reasoning
 
+**Session Lifecycle Events:**
+
+The UI renders special XML tags from agent output as styled event cards:
+
+- **`<start_task>`/`<end_task>`** → `TaskLifecycleEvent` component (blue/green styling with task ID links)
+- **`<promise>COMPLETE</promise>`** → `PromiseCompleteEvent` component (purple styling, "Session Complete" label)
+
+Both are parsed from text blocks via `parseTaskLifecycleEvent` and `parsePromiseCompleteEvent` in `ui/src/lib/`, and rendered in `renderEventContentBlock` and `StreamingBlockRenderer`.
+
 **Extended Thinking Support:**
 
 The UI supports Claude's extended thinking (internal monologue) blocks:

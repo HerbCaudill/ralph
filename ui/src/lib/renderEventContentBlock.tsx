@@ -2,8 +2,10 @@ import { AssistantText } from "@/components/events/AssistantText"
 import { ThinkingBlock } from "@/components/events/ThinkingBlock"
 import { ToolUseCard } from "@/components/events/ToolUseCard"
 import { TaskLifecycleEvent } from "@/components/events/TaskLifecycleEvent"
+import { PromiseCompleteEvent } from "@/components/events/PromiseCompleteEvent"
 import type { ToolResult } from "@/lib/buildToolResultsMap"
 import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
+import { parsePromiseCompleteEvent } from "@/lib/parsePromiseCompleteEvent"
 import { shouldFilterContentBlock, logContentBlockFilterDecision } from "@/lib/EventFilterPipeline"
 import type { AssistantContentBlock, AssistantTextEvent, ToolUseEvent } from "@/types"
 
@@ -62,6 +64,14 @@ export function renderEventContentBlock(
     // so we should render it as a lifecycle event
     if (lifecycleEvent) {
       return <TaskLifecycleEvent key={`${keyPrefix}lifecycle-${index}`} event={lifecycleEvent} />
+    }
+
+    // Check for promise complete events
+    const promiseCompleteEvent = parsePromiseCompleteEvent(block.text, timestamp)
+    if (promiseCompleteEvent) {
+      return (
+        <PromiseCompleteEvent key={`${keyPrefix}promise-${index}`} event={promiseCompleteEvent} />
+      )
     }
 
     const textEvent: AssistantTextEvent = {

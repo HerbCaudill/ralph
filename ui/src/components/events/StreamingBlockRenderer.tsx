@@ -2,7 +2,9 @@ import { AssistantText } from "./AssistantText"
 import { ThinkingBlock } from "./ThinkingBlock"
 import { ToolUseCard } from "./ToolUseCard"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+import { PromiseCompleteEvent } from "./PromiseCompleteEvent"
 import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
+import { parsePromiseCompleteEvent } from "@/lib/parsePromiseCompleteEvent"
 import { unescapeJsonString } from "@/lib/unescapeJsonString"
 import type { AssistantTextEvent, StreamingContentBlock, ToolUseEvent } from "@/types"
 
@@ -23,6 +25,11 @@ export function StreamingBlockRenderer({ block, timestamp }: Props) {
     const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
     if (lifecycleEvent) {
       return <TaskLifecycleEvent event={lifecycleEvent} />
+    }
+
+    const promiseCompleteEvent = parsePromiseCompleteEvent(block.text, timestamp)
+    if (promiseCompleteEvent) {
+      return <PromiseCompleteEvent event={promiseCompleteEvent} />
     }
 
     const textEvent: AssistantTextEvent = {
