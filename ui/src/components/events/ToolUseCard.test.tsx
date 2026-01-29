@@ -26,81 +26,17 @@ describe("ToolUseCard", () => {
       expect(screen.getByText("Read")).toBeInTheDocument()
     })
 
-    it("renders file path summary for Read tool", () => {
-      render(
-        <ToolUseCard
-          event={createToolEvent("Read", {
-            input: { file_path: "/path/to/file.ts" },
-          })}
-        />,
-      )
-      expect(screen.getByText("/path/to/file.ts")).toBeInTheDocument()
-    })
-
-    it("renders command summary for Bash tool", () => {
-      render(
-        <ToolUseCard
-          event={createToolEvent("Bash", {
-            input: { command: "npm install" },
-          })}
-        />,
-      )
-      expect(screen.getByText("npm install")).toBeInTheDocument()
-    })
-
-    it("renders pattern summary for Grep tool", () => {
-      render(
-        <ToolUseCard
-          event={createToolEvent("Grep", {
-            input: { pattern: "TODO:" },
-          })}
-        />,
-      )
-      expect(screen.getByText("TODO:")).toBeInTheDocument()
-    })
-
-    it("renders pattern summary for Glob tool", () => {
-      render(
-        <ToolUseCard
-          event={createToolEvent("Glob", {
-            input: { pattern: "**/*.tsx" },
-          })}
-        />,
-      )
-      expect(screen.getByText("**/*.tsx")).toBeInTheDocument()
-    })
-
-    it("renders query summary for WebSearch tool", () => {
-      render(
-        <ToolUseCard
-          event={createToolEvent("WebSearch", {
-            input: { query: "react hooks" },
-          })}
-        />,
-      )
-      expect(screen.getByText("react hooks")).toBeInTheDocument()
-    })
-
-    it("renders URL summary for WebFetch tool", () => {
-      render(
-        <ToolUseCard
-          event={createToolEvent("WebFetch", {
-            input: { url: "https://example.com" },
-          })}
-        />,
-      )
-      expect(screen.getByText("https://example.com")).toBeInTheDocument()
-    })
-
-    it("renders description summary for Task tool", () => {
-      render(
-        <ToolUseCard
-          event={createToolEvent("Task", {
-            input: { description: "Run tests" },
-          })}
-        />,
-      )
-      expect(screen.getByText("Run tests")).toBeInTheDocument()
+    it.each<[ToolName, Partial<ToolUseEvent>, string]>([
+      ["Read", { input: { file_path: "/path/to/file.ts" } }, "/path/to/file.ts"],
+      ["Bash", { input: { command: "npm install" } }, "npm install"],
+      ["Grep", { input: { pattern: "TODO:" } }, "TODO:"],
+      ["Glob", { input: { pattern: "**/*.tsx" } }, "**/*.tsx"],
+      ["WebSearch", { input: { query: "react hooks" } }, "react hooks"],
+      ["WebFetch", { input: { url: "https://example.com" } }, "https://example.com"],
+      ["Task", { input: { description: "Run tests" } }, "Run tests"],
+    ])("renders %s summary", (tool, overrides, text) => {
+      render(<ToolUseCard event={createToolEvent(tool, overrides)} />)
+      expect(screen.getByText(text)).toBeInTheDocument()
     })
   })
 

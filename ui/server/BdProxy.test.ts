@@ -65,101 +65,23 @@ describe("BdProxy", () => {
       expect(result).toEqual([sampleIssue])
     })
 
-    it("passes limit option", async () => {
-      const listPromise = proxy.list({ limit: 10 })
+    it.each([
+      ["limit option", { limit: 10 }, ["list", "--json", "--limit", "10"]],
+      ["status filter", { status: "in_progress" }, ["list", "--json", "--status", "in_progress"]],
+      ["priority filter", { priority: 1 }, ["list", "--json", "--priority", "1"]],
+      ["type filter", { type: "bug" }, ["list", "--json", "--type", "bug"]],
+      ["ready flag", { ready: true }, ["list", "--json", "--ready"]],
+      ["all flag", { all: true }, ["list", "--json", "--all"]],
+      ["parent filter", { parent: "rui-epic" }, ["list", "--json", "--parent", "rui-epic"]],
+    ])("passes %s", async (_label, options, expectedArgs) => {
+      const listPromise = proxy.list(options)
 
       mockProcess.stdout.emit("data", Buffer.from("[]"))
       mockProcess.emit("close", 0)
 
       await listPromise
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
-        ["list", "--json", "--limit", "10"],
-        expect.anything(),
-      )
-    })
-
-    it("passes status filter", async () => {
-      const listPromise = proxy.list({ status: "in_progress" })
-
-      mockProcess.stdout.emit("data", Buffer.from("[]"))
-      mockProcess.emit("close", 0)
-
-      await listPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
-        ["list", "--json", "--status", "in_progress"],
-        expect.anything(),
-      )
-    })
-
-    it("passes priority filter", async () => {
-      const listPromise = proxy.list({ priority: 1 })
-
-      mockProcess.stdout.emit("data", Buffer.from("[]"))
-      mockProcess.emit("close", 0)
-
-      await listPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
-        ["list", "--json", "--priority", "1"],
-        expect.anything(),
-      )
-    })
-
-    it("passes type filter", async () => {
-      const listPromise = proxy.list({ type: "bug" })
-
-      mockProcess.stdout.emit("data", Buffer.from("[]"))
-      mockProcess.emit("close", 0)
-
-      await listPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
-        ["list", "--json", "--type", "bug"],
-        expect.anything(),
-      )
-    })
-
-    it("passes ready flag", async () => {
-      const listPromise = proxy.list({ ready: true })
-
-      mockProcess.stdout.emit("data", Buffer.from("[]"))
-      mockProcess.emit("close", 0)
-
-      await listPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith("bd", ["list", "--json", "--ready"], expect.anything())
-    })
-
-    it("passes all flag", async () => {
-      const listPromise = proxy.list({ all: true })
-
-      mockProcess.stdout.emit("data", Buffer.from("[]"))
-      mockProcess.emit("close", 0)
-
-      await listPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith("bd", ["list", "--json", "--all"], expect.anything())
-    })
-
-    it("passes parent filter", async () => {
-      const listPromise = proxy.list({ parent: "rui-epic" })
-
-      mockProcess.stdout.emit("data", Buffer.from("[]"))
-      mockProcess.emit("close", 0)
-
-      await listPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
-        ["list", "--json", "--parent", "rui-epic"],
-        expect.anything(),
-      )
+      expect(mockSpawn).toHaveBeenCalledWith("bd", expectedArgs, expect.anything())
     })
 
     it("rejects on non-zero exit code", async () => {
@@ -239,112 +161,46 @@ describe("BdProxy", () => {
       expect(result).toEqual(sampleIssue)
     })
 
-    it("passes description option", async () => {
-      const createPromise = proxy.create({
-        title: "New Issue",
-        description: "Issue description",
-      })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
-      mockProcess.emit("close", 0)
-
-      await createPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+    it.each([
+      [
+        "description option",
+        { title: "New Issue", description: "Issue description" },
         ["create", "--json", "New Issue", "--description", "Issue description"],
-        expect.anything(),
-      )
-    })
-
-    it("passes priority option", async () => {
-      const createPromise = proxy.create({
-        title: "New Issue",
-        priority: 1,
-      })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
-      mockProcess.emit("close", 0)
-
-      await createPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+      ],
+      [
+        "priority option",
+        { title: "New Issue", priority: 1 },
         ["create", "--json", "New Issue", "--priority", "1"],
-        expect.anything(),
-      )
-    })
-
-    it("passes type option", async () => {
-      const createPromise = proxy.create({
-        title: "New Issue",
-        type: "bug",
-      })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
-      mockProcess.emit("close", 0)
-
-      await createPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+      ],
+      [
+        "type option",
+        { title: "New Issue", type: "bug" },
         ["create", "--json", "New Issue", "--type", "bug"],
-        expect.anything(),
-      )
-    })
-
-    it("passes assignee option", async () => {
-      const createPromise = proxy.create({
-        title: "New Issue",
-        assignee: "alice",
-      })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
-      mockProcess.emit("close", 0)
-
-      await createPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+      ],
+      [
+        "assignee option",
+        { title: "New Issue", assignee: "alice" },
         ["create", "--json", "New Issue", "--assignee", "alice"],
-        expect.anything(),
-      )
-    })
-
-    it("passes parent option", async () => {
-      const createPromise = proxy.create({
-        title: "New Issue",
-        parent: "rui-epic",
-      })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
-      mockProcess.emit("close", 0)
-
-      await createPromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+      ],
+      [
+        "parent option",
+        { title: "New Issue", parent: "rui-epic" },
         ["create", "--json", "New Issue", "--parent", "rui-epic"],
-        expect.anything(),
-      )
-    })
-
-    it("passes labels option", async () => {
-      const createPromise = proxy.create({
-        title: "New Issue",
-        labels: ["urgent", "frontend"],
-      })
+      ],
+      [
+        "labels option",
+        { title: "New Issue", labels: ["urgent", "frontend"] },
+        ["create", "--json", "New Issue", "--labels", "urgent,frontend"],
+      ],
+    ])("passes %s", async (_label, options, expectedArgs) => {
+      const createPromise = proxy.create(options)
 
       mockProcess.stdout.emit("data", Buffer.from(JSON.stringify(sampleIssue)))
       mockProcess.emit("close", 0)
 
       await createPromise
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
-        ["create", "--json", "New Issue", "--labels", "urgent,frontend"],
-        expect.anything(),
-      )
+      expect(mockSpawn).toHaveBeenCalledWith("bd", expectedArgs, expect.anything())
     })
 
     it("throws error when no issue is returned", async () => {
@@ -407,83 +263,41 @@ describe("BdProxy", () => {
       )
     })
 
-    it("passes status option", async () => {
-      const updatePromise = proxy.update("rui-123", { status: "in_progress" })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
-      mockProcess.emit("close", 0)
-
-      await updatePromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+    it.each([
+      [
+        "status option",
+        { status: "in_progress" },
         ["update", "--json", "rui-123", "--status", "in_progress"],
-        expect.anything(),
-      )
-    })
-
-    it("passes description option", async () => {
-      const updatePromise = proxy.update("rui-123", { description: "New description" })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
-      mockProcess.emit("close", 0)
-
-      await updatePromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+      ],
+      [
+        "description option",
+        { description: "New description" },
         ["update", "--json", "rui-123", "--description", "New description"],
-        expect.anything(),
-      )
-    })
-
-    it("passes add-label options", async () => {
-      const updatePromise = proxy.update("rui-123", {
-        addLabels: ["urgent", "frontend"],
-      })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
-      mockProcess.emit("close", 0)
-
-      await updatePromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+      ],
+      [
+        "add-label options",
+        { addLabels: ["urgent", "frontend"] },
         ["update", "--json", "rui-123", "--add-label", "urgent", "--add-label", "frontend"],
-        expect.anything(),
-      )
-    })
-
-    it("passes remove-label options", async () => {
-      const updatePromise = proxy.update("rui-123", {
-        removeLabels: ["wontfix"],
-      })
-
-      mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
-      mockProcess.emit("close", 0)
-
-      await updatePromise
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
+      ],
+      [
+        "remove-label options",
+        { removeLabels: ["wontfix"] },
         ["update", "--json", "rui-123", "--remove-label", "wontfix"],
-        expect.anything(),
-      )
-    })
-
-    it("passes empty parent to clear parent", async () => {
-      const updatePromise = proxy.update("rui-123", { parent: "" })
+      ],
+      [
+        "empty parent to clear parent",
+        { parent: "" },
+        ["update", "--json", "rui-123", "--parent", ""],
+      ],
+    ])("passes %s", async (_label, options, expectedArgs) => {
+      const updatePromise = proxy.update("rui-123", options)
 
       mockProcess.stdout.emit("data", Buffer.from(JSON.stringify([sampleIssue])))
       mockProcess.emit("close", 0)
 
       await updatePromise
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "bd",
-        ["update", "--json", "rui-123", "--parent", ""],
-        expect.anything(),
-      )
+      expect(mockSpawn).toHaveBeenCalledWith("bd", expectedArgs, expect.anything())
     })
   })
 
