@@ -4,6 +4,7 @@ import Spinner from "ink-spinner"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
 import { appendFileSync, writeFileSync, readFileSync, existsSync } from "fs"
 import { join, basename } from "path"
+import { randomUUID } from "node:crypto"
 import { query } from "@anthropic-ai/claude-agent-sdk"
 import { eventToBlocks } from "./eventToBlocks.js"
 import { addTodo } from "../lib/addTodo.js"
@@ -82,6 +83,7 @@ export const SessionRunner = ({
   const [isPaused, setIsPaused] = useState(false) // Pause after current session completes
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+  const sessionIdRef = useRef<string | null>(null)
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -363,6 +365,10 @@ export const SessionRunner = ({
     const abortController = new AbortController()
     setIsRunning(true)
 
+    // Generate a session ID for this session (used in log file events)
+    const sessionId = randomUUID()
+    sessionIdRef.current = sessionId
+
     // Create a message queue for this session
     // This allows us to send user messages to Claude while it's running
     const messageQueue = new MessageQueue()
@@ -423,6 +429,7 @@ export const SessionRunner = ({
                         type: "ralph_task_started",
                         taskId: taskInfo.taskId,
                         session: currentSession,
+                        sessionId: sessionIdRef.current,
                       }
                       appendFileSync(logFile, JSON.stringify(taskStartedEvent) + "\n")
                     } else if (taskInfo.action === "completed") {
@@ -432,6 +439,7 @@ export const SessionRunner = ({
                         type: "ralph_task_completed",
                         taskId: taskInfo.taskId,
                         session: currentSession,
+                        sessionId: sessionIdRef.current,
                       }
                       appendFileSync(logFile, JSON.stringify(taskCompletedEvent) + "\n")
                       // Keep tracking the same task until a new one starts

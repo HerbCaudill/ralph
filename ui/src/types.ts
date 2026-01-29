@@ -146,17 +146,25 @@ export interface ToolUseChatEvent extends ChatEvent {
 export interface RalphTaskStartedChatEvent extends ChatEvent {
   type: "ralph_task_started"
   taskId?: string
+  sessionId?: string
 }
 
 /** Emitted when Ralph finishes working on a task. */
 export interface RalphTaskCompletedChatEvent extends ChatEvent {
   type: "ralph_task_completed"
   taskId?: string
+  sessionId?: string
 }
 
 /** Emitted at the start of a Ralph session. */
 export interface RalphSessionStartChatEvent extends ChatEvent {
   type: "ralph_session_start"
+  sessionId?: string
+}
+
+/** Emitted at the end of a Ralph session. */
+export interface RalphSessionEndChatEvent extends ChatEvent {
+  type: "ralph_session_end"
   sessionId?: string
 }
 

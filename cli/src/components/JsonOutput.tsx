@@ -44,6 +44,7 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const stdinCleanupRef = useRef<(() => void) | null>(null)
   const currentTaskIdRef = useRef<string | null>(null)
+  const sessionIdRef = useRef<string | null>(null)
 
   // Keep stopAfterCurrent ref in sync with state
   useEffect(() => {
@@ -133,13 +134,15 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
     // Output session start event with server-generated session ID
     // The sessionId is a UUID that uniquely identifies this session, enabling
     // the UI to use a stable ID for IndexedDB persistence without generating its own
+    const sessionId = randomUUID()
+    sessionIdRef.current = sessionId
     outputEvent({
       type: "ralph_session_start",
       session: currentSession,
       totalSessions,
       repo: repoName,
       taskId: currentTaskIdRef.current,
-      sessionId: randomUUID(),
+      sessionId,
     })
 
     // Create a message queue for this session
@@ -191,6 +194,7 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
                         type: "ralph_task_started",
                         taskId: taskInfo.taskId,
                         session: currentSession,
+                        sessionId: sessionIdRef.current,
                       })
                     } else if (taskInfo.action === "completed") {
                       log(`Task completed: ${taskInfo.taskId}`)
@@ -199,6 +203,7 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
                         type: "ralph_task_completed",
                         taskId: taskInfo.taskId,
                         session: currentSession,
+                        sessionId: sessionIdRef.current,
                       })
                     }
                   }
@@ -232,6 +237,7 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
           type: "ralph_session_end",
           session: currentSession,
           taskId: currentTaskIdRef.current,
+          sessionId: sessionIdRef.current,
         })
 
         // Check for stop-after-current request
