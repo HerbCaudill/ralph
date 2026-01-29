@@ -2,10 +2,11 @@ import type { TaskCardTask } from "@/types"
 
 export function matchesSearchQuery(task: TaskCardTask, query: string): boolean {
   if (!query.trim()) return true
-  const lowerQuery = query.toLowerCase()
-  return (
-    task.id.toLowerCase().includes(lowerQuery) ||
-    task.title.toLowerCase().includes(lowerQuery) ||
-    (task.description?.toLowerCase().includes(lowerQuery) ?? false)
-  )
+
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return true
+
+  const searchableText = [task.id, task.title, task.description ?? ""].join(" ").toLowerCase()
+
+  return words.every(word => searchableText.includes(word))
 }
