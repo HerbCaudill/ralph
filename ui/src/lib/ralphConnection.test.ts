@@ -1555,10 +1555,11 @@ describe("ralphConnection event timestamp tracking", () => {
       const ws = MockWebSocket.instances[0]
       ws.simulateOpen()
 
-      // First, send a task-chat:event to set a timestamp
+      // First, send an agent:event with source=task-chat to set a timestamp
       const timestamp = 1706123456789
       ws.simulateMessage({
-        type: "task-chat:event",
+        type: "agent:event",
+        source: "task-chat",
         instanceId: "test-instance",
         event: {
           type: "assistant",
@@ -1582,322 +1583,9 @@ describe("ralphConnection event timestamp tracking", () => {
     })
   })
 
-  describe("task-chat:event timestamp tracking", () => {
-    // These tests verify that task-chat:event messages update the timestamp tracking
-    // for reconnection sync purposes.
-
-    beforeEach(() => {
-      // Install mock WebSocket
-      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
-      MockWebSocket.instances = []
-      mockStoreState = createMockStoreState()
-    })
-
-    afterEach(() => {
-      // Restore original WebSocket
-      globalThis.WebSocket = originalWebSocket
-      ralphConnection.reset()
-    })
-
-    it("tracks timestamp from task-chat:event messages", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      const timestamp = 1706123456789
-
-      // Send a task-chat:event
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          type: "assistant",
-          timestamp,
-          message: { role: "assistant", content: "Hello" },
-        },
-      })
-
-      // Verify timestamp was tracked
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBe(timestamp)
-    })
-
-    it("updates timestamp with each new task-chat:event", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      const timestamp1 = 1706123456789
-      const timestamp2 = 1706123456890
-
-      // Send first task-chat:event
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          type: "assistant",
-          timestamp: timestamp1,
-          message: { role: "assistant", content: "First" },
-        },
-      })
-
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBe(timestamp1)
-
-      // Send second task-chat:event with newer timestamp
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          type: "assistant",
-          timestamp: timestamp2,
-          message: { role: "assistant", content: "Second" },
-        },
-      })
-
-      // Timestamp should be updated to the newer one
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBe(timestamp2)
-    })
-
-    it("uses active instance ID when instanceId not specified in message", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      const timestamp = 1706123456789
-
-      // Send task-chat:event without instanceId (should default to active instance)
-      ws.simulateMessage({
-        type: "task-chat:event",
-        event: {
-          type: "assistant",
-          timestamp,
-          message: { role: "assistant", content: "Hello" },
-        },
-      })
-
-      // Should be tracked under the active instance ID
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBe(timestamp)
-    })
-
-    it("tracks timestamps per instance independently", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      const timestamp1 = 1706123456789
-
-      // Send task-chat:event for active instance
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          type: "assistant",
-          timestamp: timestamp1,
-          message: { role: "assistant", content: "First instance" },
-        },
-      })
-
-      // Manually set a different timestamp for another instance
-      // (simulating what would happen if we received events for multiple instances)
-      // Note: We can't directly send task-chat:event for non-active instance
-      // because they're filtered out, but we can verify the timestamps are separate
-
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBe(timestamp1)
-      expect(getLastTaskChatEventTimestamp("other-instance")).toBeUndefined()
-    })
-
-    it("clearTaskChatEventTimestamps clears all instance timestamps", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      // Set up a timestamp
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          type: "assistant",
-          timestamp: 1706123456789,
-          message: { role: "assistant", content: "Hello" },
-        },
-      })
-
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBeDefined()
-
-      // Clear all timestamps
-      clearTaskChatEventTimestamps()
-
-      // All timestamps should be cleared
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBeUndefined()
-    })
-
-    it("clearEventTimestamps also clears task chat timestamps", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      // Set up a task chat timestamp
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          type: "assistant",
-          timestamp: 1706123456789,
-          message: { role: "assistant", content: "Hello" },
-        },
-      })
-
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBeDefined()
-
-      // Clear all event timestamps (should also clear task chat timestamps)
-      clearEventTimestamps()
-
-      // Task chat timestamps should be cleared too
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBeUndefined()
-    })
-
-    it("ralphConnection.reset clears task chat timestamps", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      // Set up a task chat timestamp
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          type: "assistant",
-          timestamp: 1706123456789,
-          message: { role: "assistant", content: "Hello" },
-        },
-      })
-
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBeDefined()
-
-      // Reset the connection
-      ralphConnection.reset()
-
-      // Task chat timestamps should be cleared
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBeUndefined()
-    })
-
-    it("does not track timestamp when event lacks required properties", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      // Send task-chat:event with missing type
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          timestamp: 1706123456789,
-          message: { role: "assistant", content: "Hello" },
-          // Missing 'type' property
-        },
-      })
-
-      // Should not track timestamp because event is invalid
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBeUndefined()
-
-      // Send task-chat:event with missing timestamp
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event: {
-          type: "assistant",
-          message: { role: "assistant", content: "Hello" },
-          // Missing 'timestamp' property
-        },
-      })
-
-      // Should still not track timestamp
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBeUndefined()
-    })
-
-    it("adds event to store when task-chat:event is received", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      const event = {
-        type: "assistant",
-        timestamp: 1706123456789,
-        message: { role: "assistant", content: "Hello" },
-      }
-
-      ws.simulateMessage({
-        type: "task-chat:event",
-        instanceId: "test-instance",
-        event,
-      })
-
-      // Verify addTaskChatEvent was called with the event
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledWith(event)
-    })
-  })
+  // Legacy task-chat:event timestamp tracking tests removed (r-z9gpz) — the legacy
+  // task-chat:event handler was removed; timestamp tracking is now handled by the
+  // agent:event handler with source="task-chat".
 
   describe("agent:reconnect message on WebSocket open", () => {
     // These tests verify that agent:reconnect is sent on WebSocket open
@@ -1933,9 +1621,10 @@ describe("ralphConnection event timestamp tracking", () => {
 
       const timestamp = 1706123456789
 
-      // Receive a task-chat:event to set the timestamp
+      // Receive an agent:event (task-chat) to set the timestamp
       ws1.simulateMessage({
-        type: "task-chat:event",
+        type: "agent:event",
+        source: "task-chat",
         instanceId: "test-instance",
         event: {
           type: "assistant",
@@ -2032,9 +1721,10 @@ describe("ralphConnection event timestamp tracking", () => {
         },
       })
 
-      // Receive a task-chat:event to set the task chat timestamp
+      // Receive an agent:event (task-chat) to set the task chat timestamp
       ws1.simulateMessage({
-        type: "task-chat:event",
+        type: "agent:event",
+        source: "task-chat",
         instanceId: "test-instance",
         event: {
           type: "assistant",
@@ -2083,254 +1773,8 @@ describe("ralphConnection event timestamp tracking", () => {
     })
   })
 
-  describe("task-chat:pending_events message handling", () => {
-    // These tests verify the handler for task-chat:pending_events messages,
-    // which are sent by the server in response to task-chat:reconnect.
-
-    beforeEach(() => {
-      // Install mock WebSocket
-      globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
-      MockWebSocket.instances = []
-      mockStoreState = createMockStoreState()
-    })
-
-    afterEach(() => {
-      // Restore original WebSocket
-      globalThis.WebSocket = originalWebSocket
-      ralphConnection.reset()
-    })
-
-    it("adds pending task chat events to the store", async () => {
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      const pendingEvents = [
-        {
-          type: "assistant",
-          timestamp: 1706123456789,
-          message: { role: "assistant", content: "First" },
-        },
-        {
-          type: "user",
-          timestamp: 1706123456890,
-          message: { role: "user", content: "Second" },
-        },
-        {
-          type: "assistant",
-          timestamp: 1706123456991,
-          message: { role: "assistant", content: "Third" },
-        },
-      ]
-
-      // Simulate receiving task-chat:pending_events
-      ws.simulateMessage({
-        type: "task-chat:pending_events",
-        instanceId: "test-instance",
-        events: pendingEvents,
-      })
-
-      // Verify all events were added to the store
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledTimes(3)
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenNthCalledWith(1, pendingEvents[0])
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenNthCalledWith(2, pendingEvents[1])
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenNthCalledWith(3, pendingEvents[2])
-
-      // Verify log message
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Processing 3 pending task chat events"),
-      )
-
-      logSpy.mockRestore()
-    })
-
-    it("updates timestamp tracking with the last event timestamp", async () => {
-      vi.spyOn(console, "log").mockImplementation(() => {})
-
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      const lastTimestamp = 1706123456991
-
-      ws.simulateMessage({
-        type: "task-chat:pending_events",
-        instanceId: "test-instance",
-        events: [
-          {
-            type: "assistant",
-            timestamp: 1706123456789,
-            message: { role: "assistant", content: "First" },
-          },
-          {
-            type: "assistant",
-            timestamp: lastTimestamp,
-            message: { role: "assistant", content: "Last" },
-          },
-        ],
-      })
-
-      // Verify timestamp was updated to the last event's timestamp
-      expect(getLastTaskChatEventTimestamp("test-instance")).toBe(lastTimestamp)
-    })
-
-    it("only processes events for the active instance", async () => {
-      vi.spyOn(console, "log").mockImplementation(() => {})
-
-      // Set up active instance as "test-instance"
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      // Set up a non-active instance
-      mockStoreState.instances.set("other-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      // Send pending events for a non-active instance
-      ws.simulateMessage({
-        type: "task-chat:pending_events",
-        instanceId: "other-instance",
-        events: [
-          {
-            type: "assistant",
-            timestamp: 1706123456789,
-            message: { role: "assistant", content: "Hello" },
-          },
-        ],
-      })
-
-      // Verify events were NOT added to the store (since it's not the active instance)
-      expect(mockStoreState.addTaskChatEvent).not.toHaveBeenCalled()
-
-      // But timestamp tracking should still be updated for the instance
-      expect(getLastTaskChatEventTimestamp("other-instance")).toBe(1706123456789)
-    })
-
-    it("handles empty events array gracefully", async () => {
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      // Send pending events with empty array
-      ws.simulateMessage({
-        type: "task-chat:pending_events",
-        instanceId: "test-instance",
-        events: [],
-      })
-
-      // Should not crash, and no events should be added
-      expect(mockStoreState.addTaskChatEvent).not.toHaveBeenCalled()
-    })
-
-    it("skips events without required properties", async () => {
-      vi.spyOn(console, "log").mockImplementation(() => {})
-
-      mockStoreState.instances.set("test-instance", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      ws.simulateMessage({
-        type: "task-chat:pending_events",
-        instanceId: "test-instance",
-        events: [
-          {
-            type: "assistant",
-            timestamp: 1706123456789,
-            message: { role: "assistant", content: "Valid" },
-          },
-          { timestamp: 1706123456890, message: { role: "assistant", content: "Missing type" } }, // Missing type
-          { type: "assistant", message: { role: "assistant", content: "Missing timestamp" } }, // Missing timestamp
-          {
-            type: "user",
-            timestamp: 1706123456991,
-            message: { role: "user", content: "Also valid" },
-          },
-        ],
-      })
-
-      // Only events with both type and timestamp should be added
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledTimes(2)
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "assistant", timestamp: 1706123456789 }),
-      )
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "user", timestamp: 1706123456991 }),
-      )
-    })
-
-    it("defaults to 'default' instanceId when not specified", async () => {
-      vi.spyOn(console, "log").mockImplementation(() => {})
-
-      // Set active instance to "default" for this test
-      mockStoreState.activeInstanceId = "default"
-      mockStoreState.instances.set("default", {
-        events: [],
-        status: "running",
-      })
-
-      ralphConnection.connect()
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      const ws = MockWebSocket.instances[0]
-      ws.simulateOpen()
-
-      const timestamp = 1706123456789
-
-      // Send pending events without instanceId
-      ws.simulateMessage({
-        type: "task-chat:pending_events",
-        // No instanceId specified
-        events: [
-          { type: "assistant", timestamp, message: { role: "assistant", content: "Hello" } },
-        ],
-      })
-
-      // Event should be added since activeInstanceId is "default"
-      expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledTimes(1)
-
-      // Timestamp should be tracked under "default"
-      expect(getLastTaskChatEventTimestamp("default")).toBe(timestamp)
-    })
-  })
+  // Legacy task-chat:pending_events tests removed (r-z9gpz) — the legacy handler was
+  // removed; pending event handling is now done by agent:pending_events with source="task-chat".
 
   describe("agent:pending_events message handling", () => {
     // These tests verify the unified handler for agent:pending_events messages (r-tufi7.51.4),
@@ -4012,6 +3456,127 @@ describe("ralphConnection event timestamp tracking", () => {
         })
 
         expect(mockStoreState.addEvent).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    describe("legacy task-chat:event and task-chat:pending_events are ignored (r-z9gpz)", () => {
+      // These tests verify that the removed legacy handlers do NOT process events.
+      // Before the fix, both `agent:event` (source="task-chat") and the legacy
+      // `task-chat:event` handler would each call addTaskChatEvent, causing
+      // every task chat event to appear twice in the UI.
+
+      it("does NOT process legacy task-chat:event messages", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        // Send a legacy task-chat:event message (the old wire format)
+        ws.simulateMessage({
+          type: "task-chat:event",
+          instanceId: "test-instance",
+          event: { type: "message", timestamp: 1706123456789, content: "Legacy event" },
+        })
+
+        // Should NOT be processed — no store mutations
+        expect(mockStoreState.addTaskChatEvent).not.toHaveBeenCalled()
+        expect(mockStoreState.addEvent).not.toHaveBeenCalled()
+        expect(mockStoreState.addEventForInstance).not.toHaveBeenCalled()
+      })
+
+      it("does NOT process legacy task-chat:pending_events messages", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        // Send a legacy task-chat:pending_events message
+        ws.simulateMessage({
+          type: "task-chat:pending_events",
+          instanceId: "test-instance",
+          events: [
+            { type: "message", timestamp: 1706123456001, content: "Pending 1" },
+            { type: "message", timestamp: 1706123456002, content: "Pending 2" },
+          ],
+        })
+
+        // Should NOT be processed — no store mutations
+        expect(mockStoreState.addTaskChatEvent).not.toHaveBeenCalled()
+        expect(mockStoreState.addEvent).not.toHaveBeenCalled()
+        expect(mockStoreState.addEventForInstance).not.toHaveBeenCalled()
+      })
+
+      it("processes only agent:event when both agent:event and legacy task-chat:event arrive for the same event", async () => {
+        // This is the core duplication scenario that r-z9gpz fixes.
+        // The server used to broadcast both formats; the client had handlers for both.
+        // Now only agent:event is processed.
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        const eventPayload = {
+          type: "message",
+          timestamp: 1706123456789,
+          content: "This should appear once, not twice",
+        }
+
+        // Simulate the server sending both formats (as it did before the server-side fix)
+        ws.simulateMessage(makeEnvelope("task-chat", eventPayload))
+        ws.simulateMessage({
+          type: "task-chat:event",
+          instanceId: "test-instance",
+          event: eventPayload,
+        })
+
+        // Only the agent:event envelope should have been processed
+        expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledTimes(1)
+        expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "message",
+            timestamp: 1706123456789,
+            content: "This should appear once, not twice",
+          }),
+        )
+      })
+
+      it("processes only agent:pending_events when both agent:pending_events and legacy task-chat:pending_events arrive", async () => {
+        // Same duplication scenario but for pending events on reconnection.
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        const ws = await connectAndOpen()
+
+        const pendingEvents = [
+          { type: "message", timestamp: 1706123456001, content: "Pending A" },
+          { type: "message", timestamp: 1706123456002, content: "Pending B" },
+        ]
+
+        // Simulate agent:pending_events (the unified format)
+        ws.simulateMessage({
+          type: "agent:pending_events",
+          source: "task-chat",
+          instanceId: "test-instance",
+          events: pendingEvents,
+        })
+
+        // Simulate legacy task-chat:pending_events (the old format)
+        ws.simulateMessage({
+          type: "task-chat:pending_events",
+          instanceId: "test-instance",
+          events: pendingEvents,
+        })
+
+        // Only the agent:pending_events should have been processed (2 events, once each)
+        expect(mockStoreState.addTaskChatEvent).toHaveBeenCalledTimes(2)
       })
     })
   })

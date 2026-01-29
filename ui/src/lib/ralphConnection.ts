@@ -455,46 +455,9 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
-      // Legacy task-chat:pending_events handler — kept for backward compatibility (r-tufi7.51.5)
-      case "task-chat:pending_events":
-        // Response to task-chat:reconnect message - contains task chat events we missed
-        {
-          const pendingInstanceId = (data.instanceId as string) || "default"
-          const pendingEvents = data.events as Array<{
-            type: string
-            timestamp: number
-            [key: string]: unknown
-          }>
-
-          // Update our tracking with the latest event timestamp
-          if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
-            const lastEvent = pendingEvents[pendingEvents.length - 1]
-            if (typeof lastEvent.timestamp === "number") {
-              setTimestamp("task-chat", pendingInstanceId, lastEvent.timestamp)
-            }
-          }
-
-          // Add missed task chat events to the store
-          if (Array.isArray(pendingEvents) && pendingEvents.length > 0) {
-            console.log(
-              `[ralphConnection] Processing ${pendingEvents.length} pending task chat events for instance: ${pendingInstanceId}`,
-            )
-
-            // Only process if this is for our active instance
-            if (pendingInstanceId === store.activeInstanceId) {
-              for (const pendingEvent of pendingEvents) {
-                // Ensure the event has required properties
-                if (
-                  typeof pendingEvent.type === "string" &&
-                  typeof pendingEvent.timestamp === "number"
-                ) {
-                  store.addTaskChatEvent(pendingEvent)
-                }
-              }
-            }
-          }
-        }
-        break
+      // Legacy task-chat:pending_events handler removed (r-z9gpz) — redundant with
+      // agent:pending_events handler for source="task-chat" above, which was causing
+      // double-delivery of pending task chat events on reconnection.
 
       case "workspace_switched":
         // Workspace was switched on the server - sync state from new workspace
@@ -855,40 +818,11 @@ function handleMessage(event: MessageEvent): void {
         }
         break
 
-      // Task chat events - unified event model
-      case "task-chat:event": {
-        // Raw SDK event for unified event stream
-        if (data.event && typeof data.event === "object") {
-          // Ensure the event has required properties
-          const rawEvent = data.event as {
-            type?: string
-            timestamp?: number
-            [key: string]: unknown
-          }
-          if (typeof rawEvent.type === "string" && typeof rawEvent.timestamp === "number") {
-            store.addTaskChatEvent(data.event)
-
-            // Track last event timestamp for reconnection sync
-            const taskChatInstanceId =
-              typeof data.instanceId === "string" ? data.instanceId : store.activeInstanceId
-            setTimestamp("task-chat", taskChatInstanceId, rawEvent.timestamp)
-
-            // Create a properly typed event for token extraction
-            const typedEvent = { ...rawEvent, type: rawEvent.type, timestamp: rawEvent.timestamp }
-
-            // Extract and update token usage from task chat events using pure function
-            const tokenUsage = extractTokenUsageFromEvent(typedEvent)
-            if (tokenUsage) {
-              store.addTokenUsage(tokenUsage)
-              // Update context window usage (total tokens used = input + output)
-              store.updateContextWindowUsed(
-                selectTokenUsage(store).input + selectTokenUsage(store).output,
-              )
-            }
-          }
-        }
-        break
-      }
+      // Legacy task-chat:event handler removed (r-z9gpz) — was causing double-delivery
+      // of every task chat event since agent:event with source="task-chat" already
+      // handles these events above. The duplicate events caused garbled/doubled text
+      // in the task chat UI because task chat events lack id fields, making
+      // mergeEventsById unable to deduplicate them.
 
       // Task chat status/error handlers (still needed for loading state)
       case "task-chat:status":

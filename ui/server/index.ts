@@ -2174,10 +2174,8 @@ function wireContextManagerEvents(
           timestamp: Date.now(),
         }
         broadcast(tcEnvelope)
-        // Also broadcast legacy task-chat:event for backward compatibility
-        // @deprecated(r-tufi7.51.5): Remove once all clients migrate to agent:event
-        const tcLegacy = envelopeToLegacy(tcEnvelope)
-        if (tcLegacy) broadcast(tcLegacy)
+        // Legacy task-chat:event broadcast removed (r-z9gpz) — was causing double-delivery
+        // of every event since clients now process agent:event with source="task-chat"
         break
       }
       case "task-chat:cleared": {

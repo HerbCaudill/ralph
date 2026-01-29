@@ -753,11 +753,11 @@ All broadcast messages include `instanceId`, `workspaceId`, and `timestamp`. The
 
 **Unified `agent:event` Envelope:**
 
-In addition to legacy wire types (`ralph:event`, `ralph:status`, `ralph:output`, `ralph:error`, `ralph:exit`, `task-chat:event`), the server broadcasts a unified `agent:event` envelope (`AgentEventEnvelope`) for all agent events. The envelope includes a `source` field discriminating between `"ralph"` and `"task-chat"` origins. Legacy wire types are preserved for backward compatibility.
+In addition to legacy wire types (`ralph:event`, `ralph:status`, `ralph:output`, `ralph:error`, `ralph:exit`), the server broadcasts a unified `agent:event` envelope (`AgentEventEnvelope`) for all agent events. The envelope includes a `source` field discriminating between `"ralph"` and `"task-chat"` origins. Task chat events are only broadcast via the unified `agent:event` envelope (with `source="task-chat"`); legacy Ralph wire types are preserved for backward compatibility.
 
 **Client-Side Unified Handler (`ralphConnection.ts`):**
 
-The `handleMessage()` function in `ralphConnection.ts` processes `agent:event` envelopes through a single code path, dispatching on the `source` field (`"ralph"` | `"task-chat"`) of the `AgentEventEnvelope` from `@herbcaudill/ralph-shared`. Event timestamp tracking for reconnection sync uses a single `BoundedMap` with composite keys `"{source}:{instanceId}"` (e.g. `"ralph:default"`, `"task-chat:default"`), replacing the previous separate maps. Legacy `ralph:event` and `task-chat:event` handlers remain for backward compatibility (tracked in r-tufi7.51.5 for removal).
+The `handleMessage()` function in `ralphConnection.ts` processes `agent:event` envelopes through a single code path, dispatching on the `source` field (`"ralph"` | `"task-chat"`) of the `AgentEventEnvelope` from `@herbcaudill/ralph-shared`. Event timestamp tracking for reconnection sync uses a single `BoundedMap` with composite keys `"{source}:{instanceId}"` (e.g. `"ralph:default"`, `"task-chat:default"`), replacing the previous separate maps. The legacy `ralph:event` handler remains for backward compatibility; the legacy `task-chat:event` and `task-chat:pending_events` handlers have been removed (r-z9gpz) since the unified `agent:event` handler with `source="task-chat"` fully covers task chat events.
 
 **Unified Reconnection Protocol:**
 
@@ -766,7 +766,7 @@ Reconnection uses a unified wire protocol with a `source` field for routing:
 - **`agent:reconnect`** (client to server) - Client sends this on WebSocket reconnect to request missed events. Payload: `AgentReconnectRequest` with `source` (`"ralph"` | `"task-chat"`), `instanceId`, `workspaceId`, and `lastEventTimestamp`.
 - **`agent:pending_events`** (server to client) - Server responds with missed events since the given timestamp. Payload: `AgentPendingEventsResponse` with `source`, `instanceId`, `workspaceId`, and `events` array.
 
-Both types (`AgentReconnectRequest`, `AgentPendingEventsResponse`) are defined in `@herbcaudill/ralph-shared`. Legacy wire types (`reconnect`, `pending_events`, `task-chat:reconnect`, `task-chat:pending_events`) are preserved for backward compatibility.
+Both types (`AgentReconnectRequest`, `AgentPendingEventsResponse`) are defined in `@herbcaudill/ralph-shared`. Legacy wire types (`reconnect`, `pending_events`, `task-chat:reconnect`) are preserved for backward compatibility. The legacy `task-chat:pending_events` client handler was removed in r-z9gpz.
 
 **Legacy Wire Format Translation (`shared/src/events/legacyCompat.ts`):**
 
@@ -777,7 +777,7 @@ A backward compatibility module provides translation between legacy and unified 
 - **`translateLegacyReconnect()`** - Converts legacy `reconnect` / `task-chat:reconnect` to `agent:reconnect`
 - **Type guards** (`isLegacyWireType`, `isLegacyReconnectType`, `isLegacyPendingType`) - Identify legacy message types
 
-The server uses `envelopeToLegacy()` in its dual-broadcast paths to maintain backward compatibility without duplicating wire message construction. This module is deprecated and should be removed once all clients migrate to the unified envelope format.
+The server uses `envelopeToLegacy()` in its dual-broadcast paths for Ralph events to maintain backward compatibility without duplicating wire message construction. Task chat events are no longer dual-broadcast (r-z9gpz); they use only the unified `agent:event` envelope. This module is deprecated and should be removed once all clients migrate to the unified envelope format.
 
 ## Environment Variables
 
