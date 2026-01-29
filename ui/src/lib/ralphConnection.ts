@@ -128,23 +128,28 @@ function persistEventToIndexedDB(
   },
   sessionId: string,
 ): void {
+  // Prefer the event's own session identifier over the client-side guess (fixes r-unv4u).
+  // CLI events carry session_id (snake_case, from Claude SDK) or sessionId (camelCase,
+  // on ralph_session_start). Fall back to the caller-provided sessionId as last resort.
+  const resolvedSessionId = event.session_id ?? event.sessionId ?? sessionId
+
   // Prefer stable server-assigned UUID for deduplication (fixes r-ewtbw).
   // Falls back to event.id, then generates a random key as last resort.
   const eventId =
     event.uuid ??
     event.id ??
-    `${sessionId}-event-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    `${resolvedSessionId}-event-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 
   const persistedEvent: PersistedEvent = {
     id: eventId,
-    sessionId,
+    sessionId: resolvedSessionId,
     timestamp: event.timestamp,
     eventType: event.type ?? "unknown",
     event: event as PersistedEvent["event"],
   }
 
   // Enqueue the write (non-blocking with retry logic)
-  writeQueue.enqueue(persistedEvent, sessionId)
+  writeQueue.enqueue(persistedEvent, resolvedSessionId)
 }
 
 /**

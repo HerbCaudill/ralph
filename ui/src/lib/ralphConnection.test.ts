@@ -3798,6 +3798,162 @@ describe("ralphConnection event timestamp tracking", () => {
       })
     })
 
+    describe("persistEventToIndexedDB session ID resolution (r-unv4u)", () => {
+      // These tests verify that persistEventToIndexedDB prefers the event's own
+      // session identifier over the caller-provided fallback sessionId.
+      // Priority: event.session_id > event.sessionId > caller sessionId
+
+      it("uses event.session_id (snake_case) over the caller-provided sessionId", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        // The caller-provided session comes from currentSessions
+        setCurrentSessionId("test-instance", "caller-session-id")
+
+        const ws = await connectAndOpen()
+
+        // Event carries its own session_id (snake_case, from Claude SDK)
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "assistant",
+            timestamp: 1706123456789,
+            id: "evt-snake",
+            session_id: "event-snake-session",
+          }),
+        )
+
+        // The persisted event should use the event's session_id, not the caller's
+        expect(mockEnqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "evt-snake",
+            sessionId: "event-snake-session",
+          }),
+          "event-snake-session",
+        )
+      })
+
+      it("uses event.sessionId (camelCase) over the caller-provided sessionId", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        setCurrentSessionId("test-instance", "caller-session-id")
+
+        const ws = await connectAndOpen()
+
+        // Event carries sessionId (camelCase, from ralph_session_start)
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "assistant",
+            timestamp: 1706123456789,
+            id: "evt-camel",
+            sessionId: "event-camel-session",
+          }),
+        )
+
+        expect(mockEnqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "evt-camel",
+            sessionId: "event-camel-session",
+          }),
+          "event-camel-session",
+        )
+      })
+
+      it("prefers event.session_id (snake_case) over event.sessionId (camelCase)", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        setCurrentSessionId("test-instance", "caller-session-id")
+
+        const ws = await connectAndOpen()
+
+        // Event has both session_id and sessionId — snake_case wins
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "assistant",
+            timestamp: 1706123456789,
+            id: "evt-both",
+            session_id: "snake-wins",
+            sessionId: "camel-loses",
+          }),
+        )
+
+        expect(mockEnqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "evt-both",
+            sessionId: "snake-wins",
+          }),
+          "snake-wins",
+        )
+      })
+
+      it("falls back to caller-provided sessionId when event has neither session_id nor sessionId", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        setCurrentSessionId("test-instance", "caller-session-id")
+
+        const ws = await connectAndOpen()
+
+        // Event has no session identifier of its own
+        ws.simulateMessage(
+          makeEnvelope("ralph", {
+            type: "assistant",
+            timestamp: 1706123456789,
+            id: "evt-fallback",
+          }),
+        )
+
+        // Should use the caller-provided sessionId (from currentSessions)
+        expect(mockEnqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "evt-fallback",
+            sessionId: "caller-session-id",
+          }),
+          "caller-session-id",
+        )
+      })
+
+      it("uses event.session_id via legacy ralph:event handler", async () => {
+        mockStoreState.instances.set("test-instance", {
+          events: [],
+          status: "running",
+        })
+
+        setCurrentSessionId("test-instance", "caller-session-id")
+
+        const ws = await connectAndOpen()
+
+        // Send via legacy ralph:event message type
+        ws.simulateMessage({
+          type: "ralph:event",
+          instanceId: "test-instance",
+          event: {
+            type: "assistant",
+            timestamp: 1706123456789,
+            id: "evt-legacy-snake",
+            session_id: "legacy-event-session",
+          },
+        })
+
+        expect(mockEnqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "evt-legacy-snake",
+            sessionId: "legacy-event-session",
+          }),
+          "legacy-event-session",
+        )
+      })
+    })
+
     describe("envelope validation via isAgentEventEnvelope", () => {
       it("ignores messages missing required envelope fields", async () => {
         mockStoreState.instances.set("test-instance", {
