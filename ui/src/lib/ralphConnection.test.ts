@@ -926,6 +926,77 @@ describe("ralphConnection event timestamp tracking", () => {
       )
     })
 
+    it("prefers event.uuid over event.id for IndexedDB deduplication key (r-ewtbw)", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.instances.set("test-instance", {
+        events: [{ type: "user_message", timestamp: 1000 }],
+        status: "stopped",
+      })
+      setCurrentSessionId("test-instance", "test-session")
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server events have both uuid and id — uuid should be preferred
+      ws.simulateMessage({
+        type: "connected",
+        events: [
+          { type: "user_message", timestamp: 1000, uuid: "stable-uuid-1", id: "old-id-1" },
+          { type: "assistant_message", timestamp: 2000, uuid: "stable-uuid-2", id: "old-id-2" },
+        ],
+      })
+
+      // Verify event.uuid is used as the persisted event ID, not event.id
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "stable-uuid-1" }),
+        "test-session",
+      )
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "stable-uuid-2" }),
+        "test-session",
+      )
+    })
+
+    it("falls back to event.id when event.uuid is not present (r-ewtbw)", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      vi.spyOn(console, "log").mockImplementation(() => {})
+
+      mockStoreState.instances.set("test-instance", {
+        events: [{ type: "user_message", timestamp: 1000 }],
+        status: "stopped",
+      })
+      setCurrentSessionId("test-instance", "test-session")
+
+      ralphConnection.connect()
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const ws = MockWebSocket.instances[0]
+      ws.simulateOpen()
+
+      // Server events have only id (no uuid) — should fall back to id
+      ws.simulateMessage({
+        type: "connected",
+        events: [
+          { type: "user_message", timestamp: 1000, id: "fallback-id-1" },
+          { type: "assistant_message", timestamp: 2000, id: "fallback-id-2" },
+        ],
+      })
+
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "fallback-id-1" }),
+        "test-session",
+      )
+      expect(mockEnqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "fallback-id-2" }),
+        "test-session",
+      )
+    })
+
     it("still updates store events even when mismatch detected", async () => {
       vi.spyOn(console, "warn").mockImplementation(() => {})
       vi.spyOn(console, "log").mockImplementation(() => {})
@@ -2329,9 +2400,7 @@ describe("ralphConnection event timestamp tracking", () => {
       const ws = MockWebSocket.instances[0]
       ws.simulateOpen()
 
-      const pendingEvents = [
-        { type: "assistant", timestamp: 1706123456789, id: "evt-1" },
-      ]
+      const pendingEvents = [{ type: "assistant", timestamp: 1706123456789, id: "evt-1" }]
 
       ws.simulateMessage({
         type: "agent:pending_events",
@@ -2507,8 +2576,16 @@ describe("ralphConnection event timestamp tracking", () => {
         source: "task-chat",
         instanceId: "test-instance",
         events: [
-          { type: "assistant", timestamp: 1706123456789, message: { role: "assistant", content: "A" } },
-          { type: "assistant", timestamp: lastTimestamp, message: { role: "assistant", content: "B" } },
+          {
+            type: "assistant",
+            timestamp: 1706123456789,
+            message: { role: "assistant", content: "A" },
+          },
+          {
+            type: "assistant",
+            timestamp: lastTimestamp,
+            message: { role: "assistant", content: "B" },
+          },
         ],
         totalEvents: 2,
         status: "running",
@@ -2541,7 +2618,11 @@ describe("ralphConnection event timestamp tracking", () => {
         source: "task-chat",
         instanceId: "other-instance",
         events: [
-          { type: "assistant", timestamp: 1706123456789, message: { role: "assistant", content: "Hello" } },
+          {
+            type: "assistant",
+            timestamp: 1706123456789,
+            message: { role: "assistant", content: "Hello" },
+          },
         ],
         totalEvents: 1,
         status: "running",
@@ -2613,10 +2694,18 @@ describe("ralphConnection event timestamp tracking", () => {
         source: "task-chat",
         instanceId: "test-instance",
         events: [
-          { type: "assistant", timestamp: 1706123456789, message: { role: "assistant", content: "Valid" } },
+          {
+            type: "assistant",
+            timestamp: 1706123456789,
+            message: { role: "assistant", content: "Valid" },
+          },
           { timestamp: 1706123456890, message: { role: "assistant", content: "Missing type" } },
           { type: "assistant", message: { role: "assistant", content: "Missing timestamp" } },
-          { type: "user", timestamp: 1706123456991, message: { role: "user", content: "Also valid" } },
+          {
+            type: "user",
+            timestamp: 1706123456991,
+            message: { role: "user", content: "Also valid" },
+          },
         ],
         totalEvents: 4,
         status: "running",

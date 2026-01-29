@@ -107,16 +107,33 @@ function getSessionIdFromEvent(
 
 /**
  * Persist an event to IndexedDB via the write queue.
- * Uses the server-assigned UUID as the event ID for deduplication.
+ * Uses the server-assigned UUID as the primary deduplication key.
+ * Falls back to event.id, then generates a random key.
+ *
+ * Using event.uuid (stable across sessions) instead of sessionId-based keys
+ * prevents the same event from being stored multiple times when persisted
+ * under different sessions (fixes r-ewtbw).
+ *
  * Non-blocking: enqueues the write and returns immediately.
  */
 function persistEventToIndexedDB(
-  event: { type: string; timestamp: number; id?: string; [key: string]: unknown },
+  event: {
+    type: string
+    timestamp: number
+    uuid?: string
+    id?: string
+    session_id?: string
+    sessionId?: string
+    [key: string]: unknown
+  },
   sessionId: string,
 ): void {
-  // Use server-assigned UUID if available, otherwise generate one
+  // Prefer stable server-assigned UUID for deduplication (fixes r-ewtbw).
+  // Falls back to event.id, then generates a random key as last resort.
   const eventId =
-    event.id ?? `${sessionId}-event-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    event.uuid ??
+    event.id ??
+    `${sessionId}-event-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 
   const persistedEvent: PersistedEvent = {
     id: eventId,

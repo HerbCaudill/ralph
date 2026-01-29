@@ -606,6 +606,10 @@ Four object stores:
 
 **Eviction Policy:** `EventDatabase.evictStaleData()` runs automatically on database initialization (after orphaned session cleanup). It removes completed sessions and chat sessions older than 7 days, then caps each at 200 entries by evicting the oldest completed/updated first. Active (incomplete) sessions are never evicted. Associated events are cascade-deleted when sessions are evicted.
 
+**Event Deduplication:**
+
+`persistEventToIndexedDB()` uses `event.uuid` as the primary IndexedDB key for deduplication. Every JSONL event from the CLI carries a stable `uuid` field that is consistent across sessions. The function falls back to `event.id`, then generates a random key as a last resort. Using the stable UUID (rather than session-scoped keys like `${sessionId}-event-...`) prevents the same event from being duplicated when persisted under different sessions (r-ewtbw).
+
 **Session ID Management:**
 
 `useSessionPersistence` is the **single source of truth** for session IDs. When a new session starts (detected by a `ralph_session_start` event), the hook:
