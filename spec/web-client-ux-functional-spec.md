@@ -304,6 +304,7 @@ Right cluster:
 - Submit on Enter; Shift+Enter creates a new line.
 - Send button disabled until there is non-whitespace input.
 - While submitting, button shows spinner.
+- Placeholder text: “Tell Ralph what you want to do”.
 
 **Screenshot:** `spec/screenshots/15-quick-task-input.png`
 
@@ -311,6 +312,7 @@ Right cluster:
 
 - Search input filters tasks in real time.
 - Clear “X” appears when a query is present.
+- Placeholder text: “Search tasks...”.
 - Keyboard navigation:
   - Arrow Up/Down moves selection through visible tasks.
   - Enter opens the selected task.
@@ -348,6 +350,7 @@ Each task row contains:
 - Session history indicator (clock icon)
 - Issue type icon (Bug / Feature / Epic)
 - Priority badge (P0, P1, P3, P4 only; P2 omitted)
+- Type icon column always reserves space (placeholder shown when no icon) so row alignment is consistent.
 
 Selection state:
 
@@ -370,6 +373,7 @@ Selection state:
 - Opens as a left-side panel overlaying the main content area.
 - Header includes status icon, task ID, and a close button.
 - Content scrolls independently.
+- The rest of the UI remains interactive while the panel is open.
 
 **Screenshot:** `spec/screenshots/17-task-details.png`
 
@@ -421,9 +425,11 @@ Selection state:
 - The most recent “Today” session shows a running spinner when the agent is active.
 - When no sessions are available, the dropdown shows “No session history yet.”
 - A search field appears only when there are 5+ sessions.
+- Search placeholder: “Search sessions...”.
 - Items show task title + task ID when available; they do not show a history icon, timestamps, or event counts.
 - Selecting a session replaces the current main view (does not open a sidebar).
 - The dropdown is available while viewing historical sessions.
+- The dropdown does not include a separate “Current session” row; the current session appears as the highlighted item.
 
 **Screenshots:**
 
@@ -508,6 +514,18 @@ Selection state:
 
 **Screenshot:** `spec/screenshots/30-promise-complete-event.png`
 
+### 11.5 Message input (main)
+
+- A single-line message input sits below the event stream (above the status bar).
+- Visible only while viewing the latest session; hidden for historical sessions.
+- Auto-focused on page load.
+- Disabled when disconnected or when the agent cannot accept messages.
+- Placeholder text:
+  - Disconnected: “Connecting...”
+  - Stopped/unavailable: “Start Ralph to send messages...”
+  - Ready: “Send a message...”
+- The floating “Latest” button appears above the input and is never obscured by it.
+
 ## 12. Task chat panel (left)
 
 ### 12.1 Structure
@@ -529,7 +547,10 @@ Selection state:
 - Single input area with Send button.
 - Enter to send, Shift+Enter for new line.
 - Disabled state when not connected.
-- When disconnected or the agent is stopped, placeholder text indicates the reason.
+- Placeholder text reflects state:
+  - Disconnected: “Connecting...”
+  - Loading: “Waiting for response...”
+  - Ready: “How can I help?”
 
 ### 12.4 Loading and error states
 
@@ -558,7 +579,7 @@ The following shortcuts are displayed in the Hotkeys dialog and should match beh
 - Focus task chat input: Cmd+3
 - Show task search: Cmd+K
 - Focus chat input: Cmd+L
-- Cycle focus through inputs: Tab
+- Cycle focus through inputs: Tab (task search ↔ main message input)
 - Toggle task chat: Cmd+J (if open and unfocused, first press focuses input; second press closes)
 - Previous session: Cmd+[
 - Next session: Cmd+]
