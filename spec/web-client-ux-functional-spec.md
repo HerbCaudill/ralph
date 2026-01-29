@@ -277,6 +277,15 @@ Right cluster:
 - Context window progress
 - Session progress (current session number / total)
 
+Additional behavior:
+
+- Status indicator uses a colored dot + label; “Starting/Pausing/Stopping” pulses.
+- Run duration appears only while a run is active and updates once per second.
+- Repo/branch shows repo name and branch separated by a slash; hidden when neither is known.
+- Token usage is always visible (including 0/0) with ↓ input and ↑ output counts.
+- Context window progress appears only when usage > 0 and shifts color at higher usage thresholds.
+- Session progress appears only when the session total is known (> 0).
+
 **Screenshots:**
 
 - `spec/screenshots/09-status-bar.png`
@@ -290,6 +299,7 @@ Right cluster:
 - **Pause/Resume**: toggles based on current state.
 - **Stop**: immediate stop of current run.
 - **Stop-after-current**: toggles into a “Cancel stop after current” state when active.
+- If a control action fails, an inline error message appears to the right of the buttons.
 
 ## 9. Task sidebar
 
@@ -391,12 +401,23 @@ Selection state:
 - Type (Task, Bug, Epic)
 - Parent (combobox with searchable tasks; “None” option)
 - Labels (chips with remove buttons; add label input)
+- Status/priority/type groups support left/right arrow key navigation.
+- Labels: “Add label” appears as a dashed pill; label input placeholder is “Label name”.
+- When read-only and no labels exist, the labels row shows “No labels”.
 
 ### 10.3 Related information sections
 
-- **Sessions**: list of related sessions with date/time and event counts. Clicking navigates to session view.
-- **Related tasks**: collapsible lists of Children, Blocked by, and Blocks.
+- **Sessions**: list of related sessions with date/time and event counts. Clicking navigates to session view. Hidden if there are no sessions or while loading has failed.
+- **Related tasks**: collapsible lists of Children, Blocked by, and Blocks. Each list shows a count in the section label.
+  - Sections are hidden if they have no items; the entire “Related” section is hidden in read-only mode when empty.
+  - Sections are expanded by default.
+  - “Blocked by” items show a remove (X) action on hover when editable.
+  - “Add blocker” opens a task search dropdown (search placeholder “Search tasks...”, empty state “No tasks available.”).
 - **Comments**: chronologically listed with author and relative time; input at bottom for adding new comments.
+  - Comment input placeholder: “Add a comment (Enter to submit, Shift+Enter for new line)...”.
+  - Enter submits; Shift+Enter inserts a new line.
+  - Input auto-expands; send button shows a spinner while submitting.
+  - Loading state shows “Loading comments...”; errors appear inline.
 
 **Screenshots:**
 
@@ -630,6 +651,7 @@ The following preferences persist across reloads:
 - Theme preference (light/dark/system + chosen theme)
 - Task search query
 - Closed tasks time filter
+- Comment drafts are preserved per task when switching between tasks.
 
 ## 16. Acceptance criteria (E2E coverage)
 
