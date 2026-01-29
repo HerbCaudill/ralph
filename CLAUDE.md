@@ -79,6 +79,41 @@ RALPH_DEBUG=messagequeue,session ralph
 
 Debug logs are written to stderr with timestamps, so they don't interfere with the normal output.
 
+## Dev State Snapshot (`.ralph/state.latest.json`)
+
+When the UI is running in dev mode, a snapshot of all Ralph instance state is automatically written to `.ralph/state.latest.json` in the workspace directory on every session boundary (new session start). This file is gitignored.
+
+**What it contains:**
+
+```json
+{
+  "exportedAt": "2026-01-29T12:00:00.000Z",
+  "instances": [
+    {
+      "id": "default",
+      "name": "Default",
+      "agentName": "claude",
+      "status": "running",
+      "worktreePath": "/path/to/worktree",
+      "workspaceId": "ws-1",
+      "branch": "main",
+      "currentTaskId": "r-abc123",
+      "currentTaskTitle": "Fix bug"
+    }
+  ]
+}
+```
+
+**How to use it for debugging:**
+
+- `cat .ralph/state.latest.json | jq .` — View the latest state snapshot
+- Check `instances[].status` to see if Ralph is running, stopped, or errored
+- Check `instances[].currentTaskId` to see what task each instance is working on
+- The file updates automatically on session boundaries — no browser interaction needed
+- Useful in CI scripts or automated workflows that need to inspect Ralph state
+
+**Implementation:** The `useDevStateExport` hook POSTs to `POST /api/state/export` on session transitions. The server writes the file and returns 403 in production mode. See the "Server-Side State Export" section below for details.
+
 ---
 
 ## Project Overview
