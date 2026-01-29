@@ -81,6 +81,10 @@ pnpm format
 
 Unit tests focus on behavioral coverage; avoid type-only guard tests.
 
+## UX specification
+
+The web client UX-only functional spec (with screenshots) lives in `spec/web-client-ux-functional-spec.md`.
+
 ## Environment variables
 
 | Variable            | Description                              | Required       |

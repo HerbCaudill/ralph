@@ -120,6 +120,10 @@ When the UI is running in dev mode, a snapshot of all Ralph instance state is au
 
 Ralph is an autonomous AI session engine that wraps the Claude CLI to run iterative development workflows. It spawns Claude CLI processes with a custom prompt and todo list, captures streaming JSON output, displays it in a formatted terminal UI using Ink (React for CLIs), and orchestrates multiple sessions.
 
+## UX spec (web client)
+
+See `spec/web-client-ux-functional-spec.md` and `spec/screenshots/` for the UX-only functional spec and supporting screenshots.
+
 ## Key Architecture
 
 ### Core Flow
