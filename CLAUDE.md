@@ -597,6 +597,8 @@ The UI server provides a `POST /api/state/export` endpoint (dev mode only) that 
 - The JSON file contains `exportedAt` (ISO timestamp) and `instances` (array of serialized instance state).
 - Returns `{ ok: true, savedAt: number }` on success, or `{ ok: false, error: string }` on failure.
 
+The client-side `useDevStateExport` hook (`ui/src/hooks/useDevStateExport.ts`) automatically triggers this endpoint on session boundaries (new session start) by watching `getSessionBoundaries()`. It is wired into `App.tsx` alongside other session hooks and silently no-ops in production (the server returns 403).
+
 This is useful for automated debugging workflows and CI scripts that need a snapshot of Ralph state without browser interaction.
 
 ### IndexedDB Schema (v8)
@@ -614,6 +616,7 @@ Four object stores:
 
 - **`useSessionPersistence`** - Persists session metadata on session boundaries
 - **`useEventPersistence`** - Append-only writes of individual events as they arrive
+- **`useDevStateExport`** - POSTs to `/api/state/export` on session boundaries to write server state to `.ralph/state.latest.json` (dev mode only)
 
 **Eviction Policy:** `EventDatabase.evictStaleData()` runs automatically on database initialization (after orphaned session cleanup). It removes completed sessions and chat sessions older than 7 days, then caps each at 200 entries by evicting the oldest completed/updated first. Active (incomplete) sessions are never evicted. Associated events are cascade-deleted when sessions are evicted.
 

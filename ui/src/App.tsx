@@ -39,6 +39,7 @@ import {
   useSessionPersistence,
   useTaskChatPersistence,
   useFavicon,
+  useDevStateExport,
 } from "./hooks"
 import { startRalph } from "./lib/startRalph"
 import { stopRalph } from "./lib/stopRalph"
@@ -84,6 +85,9 @@ export function App() {
     contextWindow,
     session,
   })
+
+  // Export server state to .ralph/state.latest.json on session transitions (dev mode only)
+  useDevStateExport({ events })
 
   // Events are persisted to IndexedDB directly in ralphConnection.ts as they arrive
   // (see r-5fspp for context)
