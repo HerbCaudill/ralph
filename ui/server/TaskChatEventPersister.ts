@@ -136,7 +136,7 @@ export class TaskChatEventPersister {
    */
   async readEventsSince(instanceId: string, timestamp: number): Promise<TaskChatEvent[]> {
     const allEvents = await this.readEvents(instanceId)
-    return allEvents.filter(event => event.timestamp > timestamp)
+    return allEvents.filter(event => event.timestamp >= timestamp)
   }
 
   /**

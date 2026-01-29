@@ -559,7 +559,7 @@ describe("Reconnection sync protocol", () => {
 
             if (typeof lastEventTimestamp === "number" && lastEventTimestamp > 0) {
               // Filter events by timestamp
-              pendingEvents = events.filter(event => event.timestamp > lastEventTimestamp)
+              pendingEvents = events.filter(event => event.timestamp >= lastEventTimestamp)
             } else {
               pendingEvents = events
             }
@@ -666,11 +666,12 @@ describe("Reconnection sync protocol", () => {
 
     expect(response.type).toBe("pending_events")
     expect(response.instanceId).toBe("default")
-    expect(response.events).toHaveLength(2) // Events with timestamp > 1000
+    expect(response.events).toHaveLength(3) // Events with timestamp >= 1000 (client deduplicates by event ID)
     expect(response.totalEvents).toBe(3)
     expect(response.ralphStatus).toBe("running")
-    expect(response.events[0]).toMatchObject({ type: "text", content: "Hello" })
-    expect(response.events[1]).toMatchObject({ type: "tool_result", tool: "bash" })
+    expect(response.events[0]).toMatchObject({ type: "tool_use", tool: "bash" })
+    expect(response.events[1]).toMatchObject({ type: "text", content: "Hello" })
+    expect(response.events[2]).toMatchObject({ type: "tool_result", tool: "bash" })
 
     ws.close()
   })
@@ -747,7 +748,7 @@ describe("Reconnection sync protocol", () => {
     }
 
     expect(response.type).toBe("pending_events")
-    expect(response.events).toHaveLength(0) // No new events (none have timestamp > 2000)
+    expect(response.events).toHaveLength(1) // Event at timestamp 2000 included with >= (client deduplicates by event ID)
     expect(response.totalEvents).toBe(2)
 
     ws.close()
@@ -829,8 +830,9 @@ describe("Reconnection sync protocol", () => {
 
     expect(response.type).toBe("pending_events")
     expect(response.instanceId).toBe("instance2")
-    expect(response.events).toHaveLength(1) // Only event with timestamp > 2000
-    expect(response.events[0]).toMatchObject({ content: "Instance2-B" })
+    expect(response.events).toHaveLength(2) // Events with timestamp >= 2000 (client deduplicates by event ID)
+    expect(response.events[0]).toMatchObject({ content: "Instance2-A" })
+    expect(response.events[1]).toMatchObject({ content: "Instance2-B" })
     expect(response.ralphStatus).toBe("paused")
 
     ws.close()
@@ -871,7 +873,7 @@ describe("Task chat reconnection sync protocol", () => {
       },
       async readEventsSince(instanceId: string, timestamp: number): Promise<TaskChatEvent[]> {
         const events = eventStorage.get(instanceId) ?? []
-        return events.filter(e => e.timestamp > timestamp)
+        return events.filter(e => e.timestamp >= timestamp)
       },
       async getEventCount(instanceId: string): Promise<number> {
         return (eventStorage.get(instanceId) ?? []).length
@@ -1038,11 +1040,12 @@ describe("Task chat reconnection sync protocol", () => {
 
     expect(response.type).toBe("task-chat:pending_events")
     expect(response.instanceId).toBe("default")
-    expect(response.events).toHaveLength(2) // Events with timestamp > 2000
+    expect(response.events).toHaveLength(3) // Events with timestamp >= 2000 (client deduplicates by event ID)
     expect(response.totalEvents).toBe(4)
     expect(response.status).toBe("processing")
-    expect(response.events[0]).toMatchObject({ type: "tool_use", timestamp: 3000 })
-    expect(response.events[1]).toMatchObject({ type: "tool_result", timestamp: 4000 })
+    expect(response.events[0]).toMatchObject({ type: "assistant", timestamp: 2000 })
+    expect(response.events[1]).toMatchObject({ type: "tool_use", timestamp: 3000 })
+    expect(response.events[2]).toMatchObject({ type: "tool_result", timestamp: 4000 })
     expect(response.timestamp).toBeGreaterThan(0)
 
     ws.close()
@@ -1191,7 +1194,7 @@ describe("Task chat reconnection sync protocol", () => {
     ws.close()
   })
 
-  it("sends empty events array when client is fully up to date", async () => {
+  it("re-sends boundary event when client timestamp matches latest event", async () => {
     // Add events
     testServer.addEvent("default", { type: "user_message", timestamp: 1000, content: "Hello" })
     testServer.addEvent("default", { type: "assistant", timestamp: 2000, content: "World" })
@@ -1216,6 +1219,7 @@ describe("Task chat reconnection sync protocol", () => {
     })
 
     // Send reconnect with lastEventTimestamp equal to the latest event
+    // With >= filtering, the event at the boundary is re-sent; client deduplicates by event ID
     ws.send(
       JSON.stringify({
         type: "task-chat:reconnect",
@@ -1226,12 +1230,13 @@ describe("Task chat reconnection sync protocol", () => {
 
     const response = (await pendingEventsPromise) as {
       type: string
-      events: unknown[]
+      events: Array<{ type: string; content?: string }>
       totalEvents: number
     }
 
     expect(response.type).toBe("task-chat:pending_events")
-    expect(response.events).toEqual([]) // No events after timestamp 2000
+    expect(response.events).toHaveLength(1) // Boundary event re-sent for client-side dedup
+    expect(response.events[0]).toMatchObject({ type: "assistant", content: "World" })
     expect(response.totalEvents).toBe(2)
 
     ws.close()
@@ -1327,8 +1332,9 @@ describe("Task chat reconnection sync protocol", () => {
 
     expect(response.type).toBe("task-chat:pending_events")
     expect(response.instanceId).toBe("instance-2")
-    expect(response.events).toHaveLength(1) // Only event with timestamp > 2000
-    expect(response.events[0]).toMatchObject({ type: "assistant", content: "Instance2-B" })
+    expect(response.events).toHaveLength(2) // Events with timestamp >= 2000 (client deduplicates by event ID)
+    expect(response.events[0]).toMatchObject({ type: "user_message", content: "Instance2-A" })
+    expect(response.events[1]).toMatchObject({ type: "assistant", content: "Instance2-B" })
     expect(response.status).toBe("processing")
 
     ws.close()

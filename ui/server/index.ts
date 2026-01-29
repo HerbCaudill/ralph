@@ -1616,7 +1616,7 @@ function handleWsMessage(
 
           let pendingEvents: RalphEvent[] = []
           if (typeof arLastTs === "number" && arLastTs > 0) {
-            pendingEvents = eventHistory.filter(event => event.timestamp > arLastTs)
+            pendingEvents = eventHistory.filter(event => event.timestamp >= arLastTs)
           } else {
             pendingEvents = eventHistory
           }
@@ -1714,8 +1714,8 @@ function handleWsMessage(
         let pendingEvents: RalphEvent[] = []
 
         if (typeof lastEventTimestamp === "number" && lastEventTimestamp > 0) {
-          // Client has events up to lastEventTimestamp, send everything after
-          pendingEvents = eventHistory.filter(event => event.timestamp > lastEventTimestamp)
+          // Client has events up to lastEventTimestamp, send everything at or after (client deduplicates by event ID)
+          pendingEvents = eventHistory.filter(event => event.timestamp >= lastEventTimestamp)
         } else {
           // Client has no events, send all
           pendingEvents = eventHistory

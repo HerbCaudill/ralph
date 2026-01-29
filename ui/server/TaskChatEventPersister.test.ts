@@ -204,17 +204,19 @@ describe("TaskChatEventPersister", () => {
   })
 
   describe("readEventsSince", () => {
-    it("returns events after the given timestamp", async () => {
+    it("returns events at or after the given timestamp", async () => {
       await persister.appendEvent("test-1", createTestEvent({ type: "old", timestamp: 1000 }))
       await persister.appendEvent("test-1", createTestEvent({ type: "cutoff", timestamp: 2000 }))
       await persister.appendEvent("test-1", createTestEvent({ type: "new-1", timestamp: 3000 }))
       await persister.appendEvent("test-1", createTestEvent({ type: "new-2", timestamp: 4000 }))
 
+      // Uses >= to include events at the cutoff timestamp (client deduplicates by event ID)
       const events = await persister.readEventsSince("test-1", 2000)
 
-      expect(events).toHaveLength(2)
-      expect(events[0].type).toBe("new-1")
-      expect(events[1].type).toBe("new-2")
+      expect(events).toHaveLength(3)
+      expect(events[0].type).toBe("cutoff")
+      expect(events[1].type).toBe("new-1")
+      expect(events[2].type).toBe("new-2")
     })
 
     it("returns all events if timestamp is 0", async () => {
@@ -454,11 +456,13 @@ describe("TaskChatEventPersister", () => {
       )
 
       // Client reconnects with last known timestamp of 2000
+      // Uses >= to include events at the cutoff timestamp (client deduplicates by event ID)
       const missedEvents = await persister.readEventsSince("instance-1", 2000)
 
-      expect(missedEvents).toHaveLength(2)
-      expect(missedEvents[0].type).toBe("event-3")
-      expect(missedEvents[1].type).toBe("event-4")
+      expect(missedEvents).toHaveLength(3)
+      expect(missedEvents[0].type).toBe("event-2")
+      expect(missedEvents[1].type).toBe("event-3")
+      expect(missedEvents[2].type).toBe("event-4")
     })
   })
 })
