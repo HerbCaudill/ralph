@@ -246,7 +246,21 @@ pnpm format
 | `HOST`                       | Server bind address                       | 127.0.0.1                                      |
 | `PORT`                       | Server port                               | 4242                                           |
 
-## API
+## Server API
+
+### State Export (Dev Only)
+
+In dev mode, the server exposes an endpoint to export all Ralph instance state to disk:
+
+```
+POST /api/state/export
+```
+
+- **Dev mode only** -- returns `403` if the server is not running in dev mode.
+- Writes all instance state to `.ralph/state.latest.json` in the workspace directory.
+- Returns `{ ok: true, savedAt: number }` on success.
+
+The exported file contains a JSON snapshot with an `exportedAt` ISO timestamp and the full `instances` array. This is useful for debugging and reproducing issues outside the browser.
 
 ### RalphManager
 

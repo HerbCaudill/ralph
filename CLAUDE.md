@@ -588,6 +588,17 @@ const sessionEvents = data.indexedDb.events.filter(e => e.sessionId === "default
 
 **For Storybook:** Compress exports with gzip, place in `public/fixtures/`, use `withImportedState` decorator.
 
+### Server-Side State Export (Dev Only)
+
+The UI server provides a `POST /api/state/export` endpoint (dev mode only) that writes all Ralph instance state to `.ralph/state.latest.json` in the workspace directory. This is a server-side complement to the browser-side export described above.
+
+- Returns `403` if the server is not running in dev mode.
+- Serializes all instances from `RalphRegistry` and writes them to `<workspace>/.ralph/state.latest.json`.
+- The JSON file contains `exportedAt` (ISO timestamp) and `instances` (array of serialized instance state).
+- Returns `{ ok: true, savedAt: number }` on success, or `{ ok: false, error: string }` on failure.
+
+This is useful for automated debugging workflows and CI scripts that need a snapshot of Ralph state without browser interaction.
+
 ### IndexedDB Schema (v8)
 
 Four object stores:

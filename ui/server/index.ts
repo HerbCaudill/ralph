@@ -2,7 +2,7 @@ import express, { type Express, type Request, type Response } from "express"
 import { createServer, type Server } from "node:http"
 import path from "node:path"
 import { existsSync, readFileSync } from "node:fs"
-import { readFile } from "node:fs/promises"
+import { readFile, writeFile, mkdir } from "node:fs/promises"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { WebSocketServer, type WebSocket, type RawData } from "ws"
@@ -272,6 +272,38 @@ function createApp(
     const registry = getRalphRegistry()
     const instances = registry.getAll().map(serializeInstanceState)
     res.status(200).json({ ok: true, instances })
+  })
+
+  // Export current state to .ralph/state.latest.json (dev mode only)
+  app.post("/api/state/export", async (_req: Request, res: Response) => {
+    if (!isDevMode()) {
+      res.status(403).json({ ok: false, error: "State export is only available in dev mode" })
+      return
+    }
+
+    try {
+      const registry = getRalphRegistry()
+      const instances = registry.getAll().map(serializeInstanceState)
+      const workspacePath = configuredWorkspacePath || process.cwd()
+
+      const state = {
+        exportedAt: new Date().toISOString(),
+        instances,
+      }
+
+      const ralphDir = path.join(workspacePath, ".ralph")
+      await mkdir(ralphDir, { recursive: true })
+      await writeFile(
+        path.join(ralphDir, "state.latest.json"),
+        JSON.stringify(state, null, 2),
+        "utf-8",
+      )
+
+      res.status(200).json({ ok: true, savedAt: Date.now() })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to export state"
+      res.status(500).json({ ok: false, error: message })
+    }
   })
 
   // Get a specific instance
