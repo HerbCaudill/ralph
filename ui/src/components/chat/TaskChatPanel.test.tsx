@@ -218,7 +218,7 @@ describe("TaskChatPanel", () => {
         expect(mockFetch).toHaveBeenCalledWith("/api/task-chat/message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: "Hello", history: [] }),
+          body: JSON.stringify({ message: "Hello" }),
         })
       })
     })

@@ -33,6 +33,8 @@ export class TaskChatManager extends EventEmitter {
   > = new Map()
   /** Sequence counter for ordering content within a turn */
   private sequenceCounter = 0
+  /** Session ID for maintaining conversation continuity across messages */
+  private sessionId: string | null = null
   private options: {
     cwd: string
     env: Record<string, string>
@@ -72,21 +74,25 @@ export class TaskChatManager extends EventEmitter {
   }
 
   /**
-   * Clear conversation history (client-side only, emits event for UI).
-   * Note: Server no longer stores message history - client is authoritative.
+   * Clear conversation history and reset the SDK session.
+   * The next message will start a fresh session.
    */
   clearHistory(): void {
+    this.sessionId = null
     this.emit("historyCleared")
   }
 
   /**
    * Send a message and get a response from Claude.
    *
+   * Uses SDK session persistence to maintain conversation continuity.
+   * On the first message, a new session is created. Subsequent messages
+   * resume the same session, preserving full conversation history natively.
+   *
    * @param userMessage - The user's message
-   * @param history - Previous conversation messages (client-authoritative)
    * @returns Promise that resolves with the assistant's response
    */
-  async sendMessage(userMessage: string, history: TaskChatMessage[] = []): Promise<string> {
+  async sendMessage(userMessage: string): Promise<string> {
     if (this._status === "processing") {
       throw new Error("A request is already in progress")
     }
@@ -107,7 +113,6 @@ export class TaskChatManager extends EventEmitter {
     let appendSystemPrompt: string
     let skillTools: string[]
     let skillModel: string | undefined
-    let conversationPrompt: string
 
     try {
       // Build system prompt to append to Claude Code's defaults
@@ -115,9 +120,6 @@ export class TaskChatManager extends EventEmitter {
       appendSystemPrompt = skillConfig.prompt
       skillTools = skillConfig.tools
       skillModel = skillConfig.model
-
-      // Build conversation for Claude using client-provided history
-      conversationPrompt = this.buildConversationPrompt(userMessage, history)
     } catch (err) {
       // If building prompts fails, reset status and re-throw
       this.setStatus("idle")
@@ -145,7 +147,7 @@ export class TaskChatManager extends EventEmitter {
       }
 
       this.executeQuery(
-        conversationPrompt,
+        userMessage,
         appendSystemPrompt,
         skillTools,
         skillModel,
@@ -171,8 +173,8 @@ export class TaskChatManager extends EventEmitter {
    * Execute the query with the given parameters.
    */
   private async executeQuery(
-    /** The conversation prompt to send */
-    conversationPrompt: string,
+    /** The user message to send */
+    userMessage: string,
     /** System prompt to append */
     appendSystemPrompt: string,
     /** Tools to use */
@@ -191,31 +193,39 @@ export class TaskChatManager extends EventEmitter {
       let hasError = false
       let errorMessage = ""
 
-      for await (const message of query({
-        prompt: conversationPrompt,
-        options: {
-          model: skillModel ?? this.options.model,
-          cwd: this.options.cwd,
-          env: this.options.env,
-          // Use Claude Code's default system prompt (includes CLAUDE.md, cwd awareness)
-          // and append our task chat instructions
-          systemPrompt: {
-            type: "preset",
-            preset: "claude_code",
-            append: appendSystemPrompt,
-          },
-          // Disable hooks to avoid "tool use concurrency" errors
-          // See: https://github.com/anthropics/claude-agent-sdk-python/issues/265
-          hooks: {},
-          // Tools from skill metadata (with fallback defaults)
-          tools: skillTools,
-          permissionMode: "bypassPermissions",
-          allowDangerouslySkipPermissions: true,
-          includePartialMessages: true, // Enable streaming
-          maxTurns: 100, // High limit to allow complex investigations
-          abortController: this.abortController,
-          pathToClaudeCodeExecutable: this.options.pathToClaudeCodeExecutable,
+      // Build query options - resume existing session if available
+      const queryOptions: Record<string, unknown> = {
+        model: skillModel ?? this.options.model,
+        cwd: this.options.cwd,
+        env: this.options.env,
+        // Use Claude Code's default system prompt (includes CLAUDE.md, cwd awareness)
+        // and append our task chat instructions
+        systemPrompt: {
+          type: "preset",
+          preset: "claude_code",
+          append: appendSystemPrompt,
         },
+        // Disable hooks to avoid "tool use concurrency" errors
+        // See: https://github.com/anthropics/claude-agent-sdk-python/issues/265
+        hooks: {},
+        // Tools from skill metadata (with fallback defaults)
+        tools: skillTools,
+        permissionMode: "bypassPermissions",
+        allowDangerouslySkipPermissions: true,
+        includePartialMessages: true, // Enable streaming
+        maxTurns: 100, // High limit to allow complex investigations
+        abortController: this.abortController,
+        pathToClaudeCodeExecutable: this.options.pathToClaudeCodeExecutable,
+      }
+
+      // Resume existing session for conversation continuity
+      if (this.sessionId) {
+        queryOptions.resume = this.sessionId
+      }
+
+      for await (const message of query({
+        prompt: userMessage,
+        options: queryOptions,
       })) {
         // If cancelled, stop processing
         if (this.cancelled) {
@@ -343,36 +353,15 @@ export class TaskChatManager extends EventEmitter {
   }
 
   /**
-   * Build the conversation prompt from client-provided history.
-   * @param currentMessage - The current user message
-   * @param history - Previous conversation messages from client
-   */
-  private buildConversationPrompt(currentMessage: string, history: TaskChatMessage[]): string {
-    // Build a prompt that includes recent conversation context
-    if (history.length === 0) {
-      // First message - just use it directly
-      return currentMessage
-    }
-
-    // Include recent conversation history in the prompt (last 10 messages)
-    const recentHistory = history.slice(-10)
-    let conversationContext = "Previous conversation:\n\n"
-
-    for (const msg of recentHistory) {
-      const role = msg.role === "user" ? "User" : "Assistant"
-      conversationContext += `${role}: ${msg.content}\n\n`
-    }
-
-    conversationContext += `User: ${currentMessage}\n\nAssistant:`
-
-    return conversationContext
-  }
-
-  /**
    * Handle SDK message from query() and emit appropriate events.
    */
   private handleSDKMessage(message: SDKMessage): void {
     const timestamp = Date.now()
+
+    // Capture session_id from any SDK message for session continuity
+    if ("session_id" in message && typeof message.session_id === "string" && !this.sessionId) {
+      this.sessionId = message.session_id
+    }
 
     switch (message.type) {
       case "stream_event":

@@ -14,12 +14,17 @@ import { query as mockQuery } from "@anthropic-ai/claude-agent-sdk"
 
 /**
  * Create a mock SDK response generator for testing TaskChatManager.
+ * Includes session_id on messages to test session persistence.
  */
-async function* createMockSDKResponse(text: string): AsyncGenerator<SDKMessage> {
+async function* createMockSDKResponse(
+  text: string,
+  sessionId = "test-session-123",
+): AsyncGenerator<SDKMessage> {
   // Emit streaming deltas
   for (const char of text) {
     yield {
       type: "stream_event",
+      session_id: sessionId,
       event: {
         type: "content_block_delta",
         delta: { type: "text_delta", text: char },
@@ -32,6 +37,7 @@ async function* createMockSDKResponse(text: string): AsyncGenerator<SDKMessage> 
     type: "result",
     subtype: "success",
     result: text,
+    session_id: sessionId,
   } as SDKMessage
 }
 
@@ -68,17 +74,17 @@ describe("TaskChatManager", () => {
    * Helper to send a message and simulate response from the mock SDK.
    * @param userMessage - The user's message
    * @param response - The mocked response from Claude
-   * @param history - Optional conversation history to include (client-authoritative)
+   * @param sessionId - Optional session ID to use in mock response
    */
   async function sendAndRespond(
     userMessage: string,
     response: string,
-    history: TaskChatMessage[] = [],
+    sessionId = "test-session-123",
   ): Promise<string> {
     // Mock the SDK query function to return our mock response
-    vi.mocked(mockQuery).mockReturnValueOnce(createMockSDKResponse(response) as any)
+    vi.mocked(mockQuery).mockReturnValueOnce(createMockSDKResponse(response, sessionId) as any)
 
-    const promise = manager.sendMessage(userMessage, history)
+    const promise = manager.sendMessage(userMessage)
 
     // Wait a bit for the async operation to start
     await new Promise(resolve => setTimeout(resolve, 10))
@@ -91,9 +97,6 @@ describe("TaskChatManager", () => {
       expect(manager.status).toBe("idle")
       expect(manager.isProcessing).toBe(false)
     })
-
-    // Note: Server no longer stores message history - client is authoritative
-    // The messages getter has been removed
 
     it("accepts custom options", () => {
       const customManager = new TaskChatManager({
@@ -128,6 +131,16 @@ describe("TaskChatManager", () => {
           maxTurns: 100, // Allow multiple turns for tool use
         }),
       })
+    })
+
+    it("sends the user message directly as prompt (no history wrapping)", async () => {
+      await sendAndRespond("Hello", "Hi there!")
+
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+      const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
+
+      // The prompt should be the exact user message, not wrapped in history context
+      expect(callArgs.prompt).toBe("Hello")
     })
 
     it("transitions to processing status", async () => {
@@ -174,7 +187,6 @@ describe("TaskChatManager", () => {
 
       await sendAndRespond("Hello", "Hi there!")
 
-      // Server emits message events but doesn't store them (client is authoritative)
       expect(messages).toHaveLength(2)
       expect(messages[0].role).toBe("user")
       expect(messages[1].role).toBe("assistant")
@@ -372,26 +384,49 @@ describe("TaskChatManager", () => {
     })
   })
 
-  describe("conversation history", () => {
-    it("includes conversation context from client-provided history", async () => {
-      // Simulate previous conversation history (client-authoritative)
-      const history: TaskChatMessage[] = [
-        { role: "user", content: "First question", timestamp: Date.now() - 2000 },
-        { role: "assistant", content: "First answer", timestamp: Date.now() - 1000 },
-      ]
+  describe("session persistence", () => {
+    it("does not pass resume on first message", async () => {
+      await sendAndRespond("First message", "First response")
 
-      // Send a follow-up message with history
-      await sendAndRespond("Follow up", "Follow up answer", history)
-
-      // The call should include conversation history in the prompt
       expect(mockQuery).toHaveBeenCalledTimes(1)
       const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
-      const promptArg = callArgs.prompt
 
-      expect(promptArg).toContain("Previous conversation")
-      expect(promptArg).toContain("First question")
-      expect(promptArg).toContain("First answer")
-      expect(promptArg).toContain("Follow up")
+      // First call should NOT have resume option
+      expect(callArgs.options).not.toHaveProperty("resume")
+    })
+
+    it("captures session_id and passes resume on subsequent messages", async () => {
+      const testSessionId = "session-abc-123"
+
+      // First message - establishes session
+      await sendAndRespond("First message", "First response", testSessionId)
+
+      // Second message - should resume the session
+      await sendAndRespond("Second message", "Second response", testSessionId)
+
+      expect(mockQuery).toHaveBeenCalledTimes(2)
+
+      // First call should NOT have resume
+      const firstCallArgs = vi.mocked(mockQuery).mock.calls[0][0]
+      expect(firstCallArgs.options).not.toHaveProperty("resume")
+
+      // Second call SHOULD have resume with the captured session_id
+      const secondCallArgs = vi.mocked(mockQuery).mock.calls[1][0]
+      expect(secondCallArgs.options).toHaveProperty("resume", testSessionId)
+    })
+
+    it("sends each message directly as prompt without history wrapping", async () => {
+      // First message
+      await sendAndRespond("First question", "First answer")
+
+      // Second message - should NOT wrap in "Previous conversation" context
+      await sendAndRespond("Follow up question", "Follow up answer")
+
+      expect(mockQuery).toHaveBeenCalledTimes(2)
+
+      // Both prompts should be the exact user message
+      expect(vi.mocked(mockQuery).mock.calls[0][0].prompt).toBe("First question")
+      expect(vi.mocked(mockQuery).mock.calls[1][0].prompt).toBe("Follow up question")
     })
 
     it("emits message events for multiple exchanges", async () => {
@@ -404,76 +439,43 @@ describe("TaskChatManager", () => {
       // Second message
       await sendAndRespond("Q2", "A2")
 
-      // Server emits message events but doesn't store them (client is authoritative)
       expect(messages).toHaveLength(4)
       expect(messages[0]).toMatchObject({ role: "user", content: "Q1" })
       expect(messages[1]).toMatchObject({ role: "assistant", content: "A1" })
       expect(messages[2]).toMatchObject({ role: "user", content: "Q2" })
       expect(messages[3]).toMatchObject({ role: "assistant", content: "A2" })
     })
-
-    it("sends message without history context when empty history provided", async () => {
-      // Empty history array should behave the same as no history
-      await sendAndRespond("Hello", "Hi there!", [])
-
-      expect(mockQuery).toHaveBeenCalledTimes(1)
-      const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
-      const promptArg = callArgs.prompt
-
-      // Should NOT contain "Previous conversation" since history is empty
-      expect(promptArg).not.toContain("Previous conversation")
-      expect(promptArg).toBe("Hello")
-    })
-
-    it("truncates history to last 10 messages", async () => {
-      // Create a history with 15 messages (more than the 10 message limit)
-      // Use distinctive markers to avoid substring matching issues (e.g., "msg-01" vs "msg-10")
-      const history: TaskChatMessage[] = []
-      for (let i = 1; i <= 15; i++) {
-        const paddedNum = i.toString().padStart(2, "0")
-        history.push({
-          role: i % 2 === 1 ? "user" : "assistant",
-          content: `[msg-${paddedNum}]`,
-          timestamp: Date.now() - (15 - i) * 1000,
-        })
-      }
-
-      await sendAndRespond("Current question", "Current answer", history)
-
-      expect(mockQuery).toHaveBeenCalledTimes(1)
-      const callArgs = vi.mocked(mockQuery).mock.calls[0][0]
-      const promptArg = callArgs.prompt
-
-      // Should contain "Previous conversation"
-      expect(promptArg).toContain("Previous conversation")
-
-      // Should NOT contain early messages (1-5) that were truncated
-      expect(promptArg).not.toContain("[msg-01]")
-      expect(promptArg).not.toContain("[msg-02]")
-      expect(promptArg).not.toContain("[msg-03]")
-      expect(promptArg).not.toContain("[msg-04]")
-      expect(promptArg).not.toContain("[msg-05]")
-
-      // Should contain the last 10 messages (6-15)
-      expect(promptArg).toContain("[msg-06]")
-      expect(promptArg).toContain("[msg-10]")
-      expect(promptArg).toContain("[msg-15]")
-
-      // Should contain the current question
-      expect(promptArg).toContain("Current question")
-    })
   })
 
   describe("clearHistory", () => {
     it("emits historyCleared event", () => {
-      // Note: Server no longer stores messages - clearHistory just emits an event
-      // to signal to the client that it should clear its local store
       const cleared = vi.fn()
       manager.on("historyCleared", cleared)
 
       manager.clearHistory()
 
       expect(cleared).toHaveBeenCalled()
+    })
+
+    it("resets session so next message starts a fresh session", async () => {
+      const testSessionId = "session-to-clear"
+
+      // First message - establishes session
+      await sendAndRespond("First message", "First response", testSessionId)
+
+      // Verify session was captured (second message would use resume)
+      vi.mocked(mockQuery).mockReturnValueOnce(createMockSDKResponse("temp") as any)
+      await manager.sendMessage("Verify resume")
+      expect(vi.mocked(mockQuery).mock.calls[1][0].options).toHaveProperty("resume", testSessionId)
+
+      // Clear history - should reset session
+      manager.clearHistory()
+
+      // Next message should NOT have resume (fresh session)
+      await sendAndRespond("After clear", "Fresh response", "new-session-456")
+
+      const lastCallArgs = vi.mocked(mockQuery).mock.calls[2][0]
+      expect(lastCallArgs.options).not.toHaveProperty("resume")
     })
   })
 

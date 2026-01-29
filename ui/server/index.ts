@@ -1175,9 +1175,8 @@ function createApp(
   // Task chat endpoints
   app.post("/api/task-chat/message", (req: Request, res: Response) => {
     try {
-      const { message, history } = req.body as {
+      const { message } = req.body as {
         message?: string
-        history?: TaskChatMessage[]
       }
 
       if (!message?.trim()) {
@@ -1194,8 +1193,8 @@ function createApp(
 
       // Fire and forget - don't await the response
       // The response will come via WebSocket events (task-chat:message, task-chat:chunk, etc.)
-      // Pass conversation history from client (client is authoritative for message history)
-      taskChatManager.sendMessage(message.trim(), history ?? []).catch(err => {
+      // Session continuity is managed server-side via SDK session persistence
+      taskChatManager.sendMessage(message.trim()).catch(err => {
         // Errors are already handled via WebSocket events (task-chat:error)
         console.error("[task-chat] Error sending message:", err)
       })
