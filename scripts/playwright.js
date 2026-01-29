@@ -82,7 +82,8 @@ async function main() {
   const devServerRunning = !(await checkPortAvailable(DEV_SERVER_PORT))
   const devUiRunning = !(await checkPortAvailable(DEV_UI_PORT))
 
-  if (devServerRunning || devUiRunning) {
+  const quiet = !!(process.env.CI || process.env.RALPH_QUIET || process.env.PW_QUIET)
+  if ((devServerRunning || devUiRunning) && !quiet) {
     console.error("\x1b[31m" + "⚠️  WARNING: Ralph dev server appears to be running!" + "\x1b[0m")
     console.error("")
     console.error("   E2E tests use an isolated test workspace, but if you interact")
