@@ -2,6 +2,19 @@ import { render, screen } from "@/test-utils"
 import { describe, it, expect, beforeEach } from "vitest"
 import { StatusBar } from "./StatusBar"
 import { useAppStore } from "@/store"
+import type { ChatEvent } from "@/types"
+
+/**
+ * Helper to create a result event with token usage that derived selectors can extract.
+ */
+function makeResultEvent(input: number, output: number, timestamp = Date.now()): ChatEvent {
+  return {
+    type: "result",
+    timestamp,
+    content: "",
+    usage: { inputTokens: input, outputTokens: output },
+  } as unknown as ChatEvent
+}
 
 describe("StatusBar", () => {
   beforeEach(() => {
@@ -69,21 +82,21 @@ describe("StatusBar", () => {
     })
 
     it("shows token counts", () => {
-      useAppStore.getState().setTokenUsage({ input: 500, output: 250 })
+      useAppStore.getState().addEvent(makeResultEvent(500, 250))
       render(<StatusBar />)
       expect(screen.getByText("500")).toBeInTheDocument()
       expect(screen.getByText("250")).toBeInTheDocument()
     })
 
     it("formats large token counts with k suffix", () => {
-      useAppStore.getState().setTokenUsage({ input: 1500, output: 2500 })
+      useAppStore.getState().addEvent(makeResultEvent(1500, 2500))
       render(<StatusBar />)
       expect(screen.getByText("1.5k")).toBeInTheDocument()
       expect(screen.getByText("2.5k")).toBeInTheDocument()
     })
 
     it("formats very large token counts with M suffix", () => {
-      useAppStore.getState().setTokenUsage({ input: 1500000, output: 2500000 })
+      useAppStore.getState().addEvent(makeResultEvent(1500000, 2500000))
       render(<StatusBar />)
       expect(screen.getByText("1.5M")).toBeInTheDocument()
       expect(screen.getByText("2.5M")).toBeInTheDocument()
@@ -97,15 +110,16 @@ describe("StatusBar", () => {
     })
 
     it("shows context window usage when tokens are used", () => {
-      useAppStore.getState().updateContextWindowUsed(50000)
+      // Context window used = input + output from events
+      useAppStore.getState().addEvent(makeResultEvent(30000, 20000))
       render(<StatusBar />)
       expect(screen.getByTestId("context-window-progress")).toBeInTheDocument()
       expect(screen.getByText("50.0k")).toBeInTheDocument()
     })
 
     it("shows progress bar at correct percentage", () => {
-      // 100k of 200k = 50%
-      useAppStore.getState().updateContextWindowUsed(100000)
+      // 100k of 200k = 50% (input + output = 100k)
+      useAppStore.getState().addEvent(makeResultEvent(60000, 40000))
       render(<StatusBar />)
       const progressBar = screen
         .getByTestId("context-window-progress")
@@ -114,8 +128,8 @@ describe("StatusBar", () => {
     })
 
     it("uses warning color when usage is between 50% and 80%", () => {
-      // 120k of 200k = 60%
-      useAppStore.getState().updateContextWindowUsed(120000)
+      // 120k of 200k = 60% (input + output = 120k)
+      useAppStore.getState().addEvent(makeResultEvent(70000, 50000))
       render(<StatusBar />)
       const progressBar = screen
         .getByTestId("context-window-progress")
@@ -124,8 +138,8 @@ describe("StatusBar", () => {
     })
 
     it("uses error color when usage is over 80%", () => {
-      // 180k of 200k = 90%
-      useAppStore.getState().updateContextWindowUsed(180000)
+      // 180k of 200k = 90% (input + output = 180k)
+      useAppStore.getState().addEvent(makeResultEvent(100000, 80000))
       render(<StatusBar />)
       const progressBar = screen
         .getByTestId("context-window-progress")
@@ -134,7 +148,8 @@ describe("StatusBar", () => {
     })
 
     it("has proper tooltip with usage details", () => {
-      useAppStore.getState().updateContextWindowUsed(50000)
+      // Context window used = input + output = 50k
+      useAppStore.getState().addEvent(makeResultEvent(30000, 20000))
       render(<StatusBar />)
       const container = screen.getByTestId("context-window-progress")
       expect(container).toHaveAttribute("title", expect.stringContaining("Context window"))

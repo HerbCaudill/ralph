@@ -3062,8 +3062,8 @@ describe("ralphConnection event timestamp tracking", () => {
       })
     })
 
-    describe("token usage extraction", () => {
-      it("extracts and adds token usage from ralph result events for active instance", async () => {
+    describe("token usage is derived from events (no imperative updates)", () => {
+      it("adds ralph result events to the store (token usage derived from events)", async () => {
         mockStoreState.instances.set("test-instance", {
           events: [],
           status: "running",
@@ -3080,14 +3080,14 @@ describe("ralphConnection event timestamp tracking", () => {
           }),
         )
 
-        expect(mockStoreState.addTokenUsage).toHaveBeenCalledWith({
-          input: 100,
-          output: 50,
-        })
-        expect(mockStoreState.updateContextWindowUsed).toHaveBeenCalled()
+        // Token usage is now derived from events by selectors, not imperatively updated
+        expect(mockStoreState.addTokenUsage).not.toHaveBeenCalled()
+        expect(mockStoreState.updateContextWindowUsed).not.toHaveBeenCalled()
+        // The event itself is added to the store
+        expect(mockStoreState.addEvent).toHaveBeenCalled()
       })
 
-      it("extracts and adds token usage from ralph result events for non-active instance", async () => {
+      it("adds ralph result events for non-active instance to the store", async () => {
         const otherInstanceId = "other-instance"
         mockStoreState.instances.set("test-instance", {
           events: [],
@@ -3114,14 +3114,17 @@ describe("ralphConnection event timestamp tracking", () => {
           ),
         )
 
-        expect(mockAddTokenUsageForInstance).toHaveBeenCalledWith(otherInstanceId, {
-          input: 200,
-          output: 75,
-        })
-        expect(mockUpdateContextWindowUsedForInstance).toHaveBeenCalled()
+        // Token usage is derived from events, not imperatively updated
+        expect(mockAddTokenUsageForInstance).not.toHaveBeenCalled()
+        expect(mockUpdateContextWindowUsedForInstance).not.toHaveBeenCalled()
+        // The event is added to the correct instance
+        expect(mockStoreState.addEventForInstance).toHaveBeenCalledWith(
+          otherInstanceId,
+          expect.objectContaining({ type: "result" }),
+        )
       })
 
-      it("extracts and adds token usage from task-chat result events for active instance", async () => {
+      it("adds task-chat result events to the store", async () => {
         mockStoreState.instances.set("test-instance", {
           events: [],
           status: "running",
@@ -3138,14 +3141,14 @@ describe("ralphConnection event timestamp tracking", () => {
           }),
         )
 
-        expect(mockStoreState.addTokenUsage).toHaveBeenCalledWith({
-          input: 300,
-          output: 120,
-        })
-        expect(mockStoreState.updateContextWindowUsed).toHaveBeenCalled()
+        // Token usage is derived from events, not imperatively updated
+        expect(mockStoreState.addTokenUsage).not.toHaveBeenCalled()
+        expect(mockStoreState.updateContextWindowUsed).not.toHaveBeenCalled()
+        // Task-chat events are added via addTaskChatEvent
+        expect(mockStoreState.addTaskChatEvent).toHaveBeenCalled()
       })
 
-      it("does not add token usage when event has no usage data", async () => {
+      it("does not imperatively update token usage for any event type", async () => {
         mockStoreState.instances.set("test-instance", {
           events: [],
           status: "running",

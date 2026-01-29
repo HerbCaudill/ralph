@@ -56,6 +56,20 @@ import type { ChatEvent, Task, TaskChatMessage } from "@/types"
 import { PERSIST_NAME, type PersistedState, serializeInstances } from "./persist"
 
 /**
+ * Helper to create a result event with token usage that `selectTokenUsage` can derive from.
+ * Since selectors now derive token usage from events (not stored properties), tests
+ * must add events with usage data instead of calling `setTokenUsage()`.
+ */
+function makeResultEvent(input: number, output: number, timestamp = Date.now()): ChatEvent {
+  return {
+    type: "result",
+    timestamp,
+    content: "",
+    usage: { inputTokens: input, outputTokens: output },
+  } as unknown as ChatEvent
+}
+
+/**
  * Helper to create persisted state for localStorage tests.
  * Uses the persist middleware format with proper serialization.
  */
@@ -529,11 +543,10 @@ describe("useAppStore", () => {
     it("selectors return data from newly active instance after switch", () => {
       // Create a second instance with distinct state
       const state = useAppStore.getState()
+      const resultEvent = makeResultEvent(500, 250, 123)
       const newInstance = createRalphInstance("second-instance", "Second", "Agent2")
       newInstance.status = "running"
-      newInstance.events = [{ type: "test-event", timestamp: 123 } as any]
-      newInstance.tokenUsage = { input: 500, output: 250 }
-      newInstance.contextWindow = { used: 10000, max: 200000 }
+      newInstance.events = [resultEvent]
       newInstance.session = { current: 2, total: 5 }
       newInstance.runStartedAt = 12345
 
@@ -548,9 +561,9 @@ describe("useAppStore", () => {
       // Verify selectors return data from the new active instance
       const updatedState = useAppStore.getState()
       expect(selectRalphStatus(updatedState)).toBe("running")
-      expect(selectEvents(updatedState)).toEqual([{ type: "test-event", timestamp: 123 }])
+      expect(selectEvents(updatedState)).toEqual([resultEvent])
       expect(selectTokenUsage(updatedState)).toEqual({ input: 500, output: 250 })
-      expect(selectContextWindow(updatedState)).toEqual({ used: 10000, max: 200000 })
+      expect(selectContextWindow(updatedState)).toEqual({ used: 750, max: 200000 })
       expect(selectSession(updatedState)).toEqual({ current: 2, total: 5 })
       expect(selectRunStartedAt(updatedState)).toBe(12345)
     })
@@ -1236,19 +1249,21 @@ describe("useAppStore", () => {
       useAppStore.getState().setContextWindow({ used: 100000, max: 200000 })
       useAppStore.getState().setSession({ current: 7, total: 15 })
 
-      // Verify state was set (use selectors to read from instances Map)
+      // Verify instance properties were set
       let state = useAppStore.getState()
-      expect(selectTokenUsage(state)).toEqual({ input: 5000, output: 2500 })
-      expect(selectContextWindow(state)).toEqual({ used: 100000, max: 200000 })
+      let activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual({ input: 5000, output: 2500 })
+      expect(activeInstance?.contextWindow).toEqual({ used: 100000, max: 200000 })
       expect(selectSession(state)).toEqual({ current: 7, total: 15 })
 
       // Reset session stats
       useAppStore.getState().resetSessionStats()
 
-      // Verify all session stats were reset (use selectors)
+      // Verify all session stats were reset on the instance
       state = useAppStore.getState()
-      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
-      expect(selectContextWindow(state)).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(activeInstance?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
       expect(selectSession(state)).toEqual({ current: 0, total: 0 })
     })
 
@@ -1373,22 +1388,18 @@ describe("useAppStore", () => {
       expect(selectEvents(state)).toBe(state.instances.get(state.activeInstanceId)?.events)
     })
 
-    it("selectTokenUsage reads from active instance", () => {
-      const usage = { input: 1000, output: 500 }
-      useAppStore.getState().setTokenUsage(usage)
+    it("selectTokenUsage derives from active instance events", () => {
+      // Token usage is now derived from events, not stored properties
+      useAppStore.getState().addEvent(makeResultEvent(1000, 500))
       const state = useAppStore.getState()
-      expect(selectTokenUsage(state)).toEqual(usage)
-      expect(selectTokenUsage(state)).toBe(state.instances.get(state.activeInstanceId)?.tokenUsage)
+      expect(selectTokenUsage(state)).toEqual({ input: 1000, output: 500 })
     })
 
-    it("selectContextWindow reads from active instance", () => {
-      const contextWindow = { used: 50000, max: 200000 }
-      useAppStore.getState().setContextWindow(contextWindow)
+    it("selectContextWindow derives from active instance events", () => {
+      // Context window is now derived from events (input + output)
+      useAppStore.getState().addEvent(makeResultEvent(30000, 20000))
       const state = useAppStore.getState()
-      expect(selectContextWindow(state)).toEqual(contextWindow)
-      expect(selectContextWindow(state)).toBe(
-        state.instances.get(state.activeInstanceId)?.contextWindow,
-      )
+      expect(selectContextWindow(state)).toEqual({ used: 50000, max: 200000 })
     })
 
     it("selectSession reads from active instance", () => {
@@ -1712,17 +1723,10 @@ describe("useAppStore", () => {
 
     it("clears all workspace-specific data", () => {
       // Set up various workspace-specific state
-      const {
-        addEvent,
-        setTasks,
-        setTokenUsage,
-        setSession,
-        addTaskChatMessage,
-        addTaskChatEvent,
-      } = useAppStore.getState()
-      addEvent({ type: "test", timestamp: 123 })
+      const { addEvent, setTasks, setSession, addTaskChatMessage, addTaskChatEvent } =
+        useAppStore.getState()
+      addEvent(makeResultEvent(100, 50))
       setTasks([{ id: "1", title: "Task 1", status: "open" }])
-      setTokenUsage({ input: 100, output: 50 })
       setSession({ current: 2, total: 5 })
       addTaskChatMessage({ id: "msg-1", role: "user", content: "Hello", timestamp: 123 })
       addTaskChatEvent({ type: "stream_event", timestamp: 456, event: {} })
@@ -1776,21 +1780,39 @@ describe("useAppStore", () => {
   })
 
   describe("token usage", () => {
-    it("sets token usage", () => {
+    it("sets token usage on instance property", () => {
       useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
-      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.tokenUsage).toEqual({ input: 1000, output: 500 })
     })
 
-    it("adds to token usage", () => {
+    it("adds to token usage on instance property", () => {
       useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
       useAppStore.getState().addTokenUsage({ input: 200, output: 100 })
-      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1200, output: 600 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.tokenUsage).toEqual({ input: 1200, output: 600 })
     })
 
-    it("accumulates multiple token additions", () => {
+    it("accumulates multiple token additions on instance property", () => {
       useAppStore.getState().addTokenUsage({ input: 100, output: 50 })
       useAppStore.getState().addTokenUsage({ input: 200, output: 100 })
       useAppStore.getState().addTokenUsage({ input: 300, output: 150 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.tokenUsage).toEqual({ input: 600, output: 300 })
+    })
+
+    it("selectTokenUsage derives from events", () => {
+      useAppStore.getState().addEvent(makeResultEvent(1000, 500))
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
+    })
+
+    it("selectTokenUsage accumulates from multiple events", () => {
+      useAppStore.getState().addEvent(makeResultEvent(100, 50, 1))
+      useAppStore.getState().addEvent(makeResultEvent(200, 100, 2))
+      useAppStore.getState().addEvent(makeResultEvent(300, 150, 3))
       expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 600, output: 300 })
     })
   })
@@ -1800,20 +1822,31 @@ describe("useAppStore", () => {
       expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 0, max: 200_000 })
     })
 
-    it("sets context window", () => {
+    it("sets context window on instance property", () => {
       useAppStore.getState().setContextWindow({ used: 50000, max: 200000 })
-      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 50000, max: 200000 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.contextWindow).toEqual({ used: 50000, max: 200000 })
     })
 
-    it("updates context window used", () => {
+    it("updates context window used on instance property", () => {
       useAppStore.getState().updateContextWindowUsed(75000)
-      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 75000, max: 200_000 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.contextWindow.used).toBe(75000)
     })
 
-    it("preserves max when updating used", () => {
+    it("preserves max when updating used on instance property", () => {
       useAppStore.getState().setContextWindow({ used: 0, max: 150000 })
       useAppStore.getState().updateContextWindowUsed(50000)
-      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 50000, max: 150000 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.contextWindow).toEqual({ used: 50000, max: 150000 })
+    })
+
+    it("selectContextWindow derives used from events (input + output)", () => {
+      useAppStore.getState().addEvent(makeResultEvent(30000, 20000))
+      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 50000, max: 200_000 })
     })
   })
 
@@ -3070,7 +3103,6 @@ describe("useAppStore", () => {
         setWorkspace,
         setAccentColor,
         setBranch,
-        setTokenUsage,
         setSession,
         setConnectionStatus,
         setSidebarWidth,
@@ -3081,12 +3113,11 @@ describe("useAppStore", () => {
       } = useAppStore.getState()
 
       setRalphStatus("running")
-      addEvent({ type: "test", timestamp: 1 })
+      addEvent(makeResultEvent(1000, 500))
       setTasks([{ id: "1", title: "Task", status: "open" }])
       setWorkspace("/path")
       setAccentColor("#4d9697")
       setBranch("feature/test")
-      setTokenUsage({ input: 1000, output: 500 })
       setSession({ current: 5, total: 10 })
       setConnectionStatus("connected")
       setSidebarWidth(400)
@@ -3355,8 +3386,9 @@ describe("useAppStore", () => {
         expect(instance2?.tokenUsage).toEqual({ input: 300, output: 150 })
       })
 
-      it("selector returns token usage from active instance", () => {
-        useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 100, output: 50 })
+      it("selector returns token usage from active instance events", () => {
+        // selectTokenUsage derives from events, not the stored tokenUsage property
+        useAppStore.getState().addEventForInstance("instance-1", makeResultEvent(100, 50))
 
         expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 100, output: 50 })
       })
@@ -3370,8 +3402,9 @@ describe("useAppStore", () => {
         expect(instance2?.contextWindow.used).toBe(50000)
       })
 
-      it("selector returns context window from active instance", () => {
-        useAppStore.getState().updateContextWindowUsedForInstance("instance-1", 75000)
+      it("selector returns context window derived from active instance events", () => {
+        // selectContextWindow derives used from events (input + output)
+        useAppStore.getState().addEventForInstance("instance-1", makeResultEvent(50000, 25000))
 
         expect(selectContextWindow(useAppStore.getState()).used).toBe(75000)
       })
@@ -3415,35 +3448,35 @@ describe("useAppStore", () => {
         expect(instance2?.session).toEqual({ current: 0, total: 0 })
       })
 
-      it("selectors return reset values when resetting for active instance", () => {
-        // Set up state on the active instance (instance-1)
+      it("resets instance properties when resetting for active instance", () => {
+        // Set up stored properties on the active instance (instance-1)
         useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 4000, output: 2000 })
         useAppStore.getState().updateContextWindowUsedForInstance("instance-1", 120000)
         useAppStore.getState().setSessionForInstance("instance-1", { current: 8, total: 12 })
 
-        // Verify selectors return set values
-        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 4000, output: 2000 })
-        expect(selectContextWindow(useAppStore.getState()).used).toBe(120000)
+        // Verify instance properties were set
+        let instance = useAppStore.getState().instances.get("instance-1")
+        expect(instance?.tokenUsage).toEqual({ input: 4000, output: 2000 })
+        expect(instance?.contextWindow.used).toBe(120000)
         expect(selectSession(useAppStore.getState())).toEqual({ current: 8, total: 12 })
 
         // Reset session stats for the active instance
         useAppStore.getState().resetSessionStatsForInstance("instance-1")
 
-        // Verify selectors return reset values
-        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
-        expect(selectContextWindow(useAppStore.getState())).toEqual({
-          used: 0,
-          max: DEFAULT_CONTEXT_WINDOW_MAX,
-        })
+        // Verify instance properties are reset
+        instance = useAppStore.getState().instances.get("instance-1")
+        expect(instance?.tokenUsage).toEqual({ input: 0, output: 0 })
+        expect(instance?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
         expect(selectSession(useAppStore.getState())).toEqual({ current: 0, total: 0 })
       })
 
       it("selectors return active instance data when resetting non-active instance", () => {
-        // Set up state on both instances
-        useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 1000, output: 500 })
+        // Set up events on the active instance (instance-1) so selectTokenUsage derives values
+        useAppStore.getState().addEventForInstance("instance-1", makeResultEvent(1000, 500))
+        // Set up stored properties on instance-2
         useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 3000, output: 1500 })
 
-        // Verify selectors return active instance data (instance-1)
+        // Verify selectors return active instance data derived from events (instance-1)
         expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
 
         // Reset session stats for non-active instance (instance-2)
@@ -3452,7 +3485,7 @@ describe("useAppStore", () => {
         // Verify selector still returns active instance data (instance-1, not affected)
         expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
 
-        // But instance-2 should be reset
+        // But instance-2 properties should be reset
         const instance2 = useAppStore.getState().instances.get("instance-2")
         expect(instance2?.tokenUsage).toEqual({ input: 0, output: 0 })
       })

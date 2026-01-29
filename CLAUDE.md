@@ -697,6 +697,15 @@ The UI state is managed by a Zustand store (`ui/src/store/index.ts`). The store 
 
 Each instance contains: `status`, `events`, `tokenUsage`, `contextWindow`, `session`, `runStartedAt`, `currentTaskId`, `mergeConflict`, etc.
 
+**Derived Token Usage and Context Window:**
+
+`selectTokenUsage` and `selectContextWindow` are **derived selectors** that compute values from the current session's events, not from stored instance properties. This ensures:
+- Token usage automatically scopes to the current session (resets on new session)
+- No imperative `addTokenUsage`/`updateContextWindowUsed` calls are needed in production code
+- Event addition (`addEvent`/`addEventForInstance`) is sufficient; selectors derive the rest
+
+The stored `tokenUsage` and `contextWindow` properties on `RalphInstance` are legacy and not used by the UI selectors. Tests should use events with token usage data (e.g., `result` events with `usage` field) when testing derived selectors.
+
 **In-Memory Event Cap:** The `events` array in each instance is bounded to `MAX_STORE_EVENTS` (2000) entries. The `mergeEventsById()` helper accepts an optional `maxEvents` parameter (defaulting to `MAX_STORE_EVENTS`) and retains only the N most recent events after merging. This prevents unbounded memory growth in long-running sessions.
 
 **Legacy Flat Fields (Deprecated):**

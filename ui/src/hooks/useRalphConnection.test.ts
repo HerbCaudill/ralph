@@ -1068,7 +1068,7 @@ describe("useRalphConnection", () => {
       expect(useAppStore.getState().instances.get("instance-2")?.status).toBe("running")
     })
 
-    it("routes token usage to non-active instance from stream events", () => {
+    it("routes events to non-active instance (token usage derived from events)", () => {
       renderHook(() => useRalphConnection())
 
       // Create a second instance
@@ -1080,10 +1080,6 @@ describe("useRalphConnection", () => {
 
       // Ensure initial token usage is zero for both
       expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
-      expect(useAppStore.getState().instances.get("instance-2")?.tokenUsage).toEqual({
-        input: 0,
-        output: 0,
-      })
 
       // Simulate a message_delta event with token usage for instance-2
       const streamEvent = {
@@ -1106,14 +1102,12 @@ describe("useRalphConnection", () => {
         })
       })
 
-      // Active instance token usage should NOT change
+      // Active instance token usage (derived from events) should NOT change
       expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
 
-      // instance-2 token usage SHOULD update
-      expect(useAppStore.getState().instances.get("instance-2")?.tokenUsage).toEqual({
-        input: 100,
-        output: 50,
-      })
+      // instance-2 should have the event in its events array
+      const instance2 = useAppStore.getState().instances.get("instance-2")
+      expect(instance2?.events).toContainEqual(expect.objectContaining({ type: "stream_event" }))
     })
 
     it("updates flat fields when routing to active instance via instanceId", () => {
