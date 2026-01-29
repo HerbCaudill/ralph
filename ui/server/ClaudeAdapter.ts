@@ -36,8 +36,8 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   backoffMultiplier: 2,
 }
 
-/** Default thinking budget in tokens when extended thinking is enabled */
-const DEFAULT_MAX_THINKING_TOKENS = 10000
+/** Default thinking budget in tokens. Set to 0 to disable extended thinking. */
+const DEFAULT_MAX_THINKING_TOKENS = 0
 
 /**
  * Build the working directory context string for system prompts.
@@ -67,7 +67,7 @@ export interface ClaudeAdapterOptions {
    * Maximum number of tokens for extended thinking.
    * When set to a positive number, enables extended thinking with the specified token budget.
    * Can also be set via the CLAUDE_MAX_THINKING_TOKENS environment variable.
-   * Default: 10000 (enables extended thinking by default)
+   * Default: 0 (extended thinking disabled)
    */
   maxThinkingTokens?: number
 }
@@ -403,8 +403,8 @@ export class ClaudeAdapter extends AgentAdapter {
             abortController: this.abortController,
             // Resume from the session if we have one from a previous attempt
             resume: sessionToResume,
-            // Enable extended thinking with the configured token budget
-            maxThinkingTokens: this.maxThinkingTokens,
+            // Enable extended thinking with the configured token budget (0 = disabled)
+            ...(this.maxThinkingTokens > 0 && { maxThinkingTokens: this.maxThinkingTokens }),
           },
         })) {
           this.handleSDKMessage(message)

@@ -243,9 +243,10 @@ describe("ClaudeAdapter", () => {
       adapter.send({ type: "user_message", content: "Hi" })
       await (adapter as unknown as { inFlight: Promise<void> | null }).inFlight
 
-      const relevantEvents = events.filter(
-        e => e.type === "thinking" || e.type === "message",
-      ) as (AgentThinkingEvent | AgentMessageEvent)[]
+      const relevantEvents = events.filter(e => e.type === "thinking" || e.type === "message") as (
+        | AgentThinkingEvent
+        | AgentMessageEvent
+      )[]
       expect(relevantEvents).toHaveLength(2)
 
       // Thinking comes first
@@ -832,7 +833,7 @@ describe("ClaudeAdapter", () => {
   })
 
   describe("extended thinking", () => {
-    it("uses default maxThinkingTokens when no option or env var is set", async () => {
+    it("disables extended thinking by default when no option or env var is set", async () => {
       const previous = process.env.CLAUDE_MAX_THINKING_TOKENS
       delete process.env.CLAUDE_MAX_THINKING_TOKENS
 
@@ -845,8 +846,8 @@ describe("ClaudeAdapter", () => {
 
       expect(mockQuery).toHaveBeenCalledWith(
         expect.objectContaining({
-          options: expect.objectContaining({
-            maxThinkingTokens: 10000, // Default value
+          options: expect.not.objectContaining({
+            maxThinkingTokens: expect.anything(),
           }),
         }),
       )
