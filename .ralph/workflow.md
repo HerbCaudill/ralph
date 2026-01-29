@@ -2,6 +2,8 @@
 
 Output your working directory before beginning.
 
+Precede every message with an emoji.
+
 ## Build and test
 
 Use the **run-tests** agent to check for errors, using `pnpm test:all`.
@@ -17,7 +19,7 @@ When choosing which task to work on:
 
 ## Working on tasks
 
-When debugging, you can use the
+When debugging, you can use the .ralph/state.latest.json file to see a recent capture of the full localstorage and indexeddb state of the app.
 
 ## Breaking down tasks
 
