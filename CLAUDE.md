@@ -194,6 +194,8 @@ Claude is instructed (via core-prompt + workflow) to:
 
 ## Development Commands
 
+Use Node.js 24.x (repo pins 24.13.0 in `.prototools`).
+
 ```bash
 # Build all packages
 pnpm build
@@ -709,6 +711,7 @@ Each instance contains: `status`, `events`, `tokenUsage`, `contextWindow`, `sess
 **Derived Token Usage and Context Window:**
 
 `selectTokenUsage` and `selectContextWindow` are **derived selectors** that compute values from the current session's events, not from stored instance properties. This ensures:
+
 - Token usage automatically scopes to the current session (resets on new session)
 - No imperative `addTokenUsage`/`updateContextWindowUsed` calls are needed in production code
 - Event addition (`addEvent`/`addEventForInstance`) is sufficient; selectors derive the rest

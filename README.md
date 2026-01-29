@@ -62,6 +62,7 @@ Ralph integrates with [beads](https://github.com/HerbCaudill/beads) for issue tr
 ## Development
 
 ```bash
+# Use Node.js 24.x (repo pins 24.13.0 in .prototools)
 # Install dependencies
 pnpm install
 
