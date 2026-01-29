@@ -6,7 +6,8 @@ import type { ChatEvent } from "@/types"
 // Mock getSessionBoundaries from store
 const mockGetSessionBoundaries = vi.fn<(events: ChatEvent[]) => number[]>()
 vi.mock("@/store", () => ({
-  getSessionBoundaries: (...args: unknown[]) => mockGetSessionBoundaries(...(args as [ChatEvent[]])),
+  getSessionBoundaries: (...args: unknown[]) =>
+    mockGetSessionBoundaries(...(args as [ChatEvent[]])),
 }))
 
 // Mock global fetch
@@ -32,14 +33,18 @@ describe("useDevStateExport", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
     vi.stubGlobal("fetch", mockFetch)
     mockGetSessionBoundaries.mockReturnValue([])
     mockFetch.mockImplementation(() =>
-      Promise.resolve(new Response(JSON.stringify({ ok: true, savedAt: Date.now() }), { status: 200 })),
+      Promise.resolve(
+        new Response(JSON.stringify({ ok: true, savedAt: Date.now() }), { status: 200 }),
+      ),
     )
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
@@ -71,7 +76,7 @@ describe("useDevStateExport", () => {
     expect(mockFetch).toHaveBeenCalledWith("/api/state/export", { method: "POST" })
   })
 
-  it("does not re-fire for the same boundary count on rerender", () => {
+  it("does not re-fire for the same boundary count on rerender after success", async () => {
     const events = [createSessionStartEvent(1000)]
     mockGetSessionBoundaries.mockReturnValue([0])
 
@@ -82,13 +87,18 @@ describe("useDevStateExport", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
 
+    // Wait for the fetch promise to resolve (marking export as succeeded)
+    await vi.waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
     // Rerender with same events — should not fire again
     rerender({ events: [...events], enabled: true })
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it("fires again when a new boundary is added", () => {
+  it("fires again when a new boundary is added", async () => {
     const events1 = [createSessionStartEvent(1000)]
     mockGetSessionBoundaries.mockReturnValue([0])
 
@@ -98,6 +108,11 @@ describe("useDevStateExport", () => {
     )
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    // Wait for first export to succeed
+    await vi.waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
 
     // Add a second session boundary
     const events2 = [
@@ -203,5 +218,134 @@ describe("useDevStateExport", () => {
     renderHook(() => useDevStateExport({ events }))
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("retries export after failure when events change", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    // First call fails
+    mockFetch.mockRejectedValueOnce(new Error("Network failure"))
+
+    const events1 = [createSessionStartEvent(1000)]
+    mockGetSessionBoundaries.mockReturnValue([0])
+
+    renderHook(({ events, enabled }) => useDevStateExport({ events, enabled }), {
+      initialProps: { events: events1, enabled: true },
+    })
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    // Wait for failure to be processed
+    await vi.waitFor(() => {
+      expect(warnSpy).toHaveBeenCalled()
+    })
+
+    // Advance past the retry timer
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, savedAt: Date.now() }), { status: 200 }),
+    )
+    await vi.advanceTimersByTimeAsync(3000)
+
+    // Retry should have fired
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    warnSpy.mockRestore()
+  })
+
+  it("retries via timer after initial export fails", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+
+    // First call returns 500
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "Server error" }), { status: 500 }),
+    )
+    // Second call (retry) succeeds
+    const savedAt = Date.now()
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, savedAt }), { status: 200 }),
+    )
+
+    const events = [createSessionStartEvent(1000)]
+    mockGetSessionBoundaries.mockReturnValue([0])
+
+    renderHook(() => useDevStateExport({ events, enabled: true }))
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    // Wait for the 500 response to be processed
+    await vi.waitFor(() => {
+      expect(warnSpy).toHaveBeenCalledWith("[useDevStateExport] Export failed: Server error")
+    })
+
+    // Advance the retry timer
+    await vi.advanceTimersByTimeAsync(3000)
+
+    // Retry should have fired
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    // Wait for retry to succeed
+    await vi.waitFor(() => {
+      expect(debugSpy).toHaveBeenCalledWith(
+        `[useDevStateExport] State exported to .ralph/state.latest.json (savedAt: ${savedAt})`,
+      )
+    })
+
+    warnSpy.mockRestore()
+    debugSpy.mockRestore()
+  })
+
+  it("does not retry after 403 (not dev mode)", async () => {
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+
+    mockFetch.mockResolvedValue(new Response(null, { status: 403 }))
+
+    const events = [createSessionStartEvent(1000)]
+    mockGetSessionBoundaries.mockReturnValue([0])
+
+    renderHook(() => useDevStateExport({ events, enabled: true }))
+
+    // Wait for 403 response
+    await vi.waitFor(() => {
+      expect(debugSpy).toHaveBeenCalledWith("[useDevStateExport] Skipped: not in dev mode")
+    })
+
+    // Advance timers — no retry should happen
+    await vi.advanceTimersByTimeAsync(5000)
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    debugSpy.mockRestore()
+  })
+
+  it("cleans up retry timer on unmount", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    // Fail the export so a retry timer is scheduled
+    mockFetch.mockRejectedValueOnce(new Error("Network failure"))
+
+    const events = [createSessionStartEvent(1000)]
+    mockGetSessionBoundaries.mockReturnValue([0])
+
+    const { unmount } = renderHook(() => useDevStateExport({ events, enabled: true }))
+
+    // Wait for failure
+    await vi.waitFor(() => {
+      expect(warnSpy).toHaveBeenCalled()
+    })
+
+    // Unmount before retry timer fires
+    unmount()
+
+    // Advance past retry timer — should NOT fire a second fetch
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, savedAt: Date.now() }), { status: 200 }),
+    )
+    await vi.advanceTimersByTimeAsync(5000)
+
+    // Only the initial failed attempt should have been made
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    warnSpy.mockRestore()
   })
 })

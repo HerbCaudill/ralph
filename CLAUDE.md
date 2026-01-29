@@ -643,7 +643,7 @@ The UI server provides a `POST /api/state/export` endpoint (dev mode only) that 
 - The JSON file contains `exportedAt` (ISO timestamp) and `instances` (array of serialized instance state).
 - Returns `{ ok: true, savedAt: number }` on success, or `{ ok: false, error: string }` on failure.
 
-The client-side `useDevStateExport` hook (`ui/src/hooks/useDevStateExport.ts`) automatically triggers this endpoint on session boundaries (new session start) by watching `getSessionBoundaries()`. It is wired into `App.tsx` alongside other session hooks and silently no-ops in production (the server returns 403).
+The client-side `useDevStateExport` hook (`ui/src/hooks/useDevStateExport.ts`) automatically triggers this endpoint on session boundaries (new session start) by watching `getSessionBoundaries()`. It is wired into `App.tsx` alongside other session hooks and silently no-ops in production (the server returns 403). The hook includes retry logic: if the export fails (e.g., server not ready during startup), it retries after 3 seconds and will also retry on subsequent event changes.
 
 This is useful for automated debugging workflows and CI scripts that need a snapshot of Ralph state without browser interaction.
 
