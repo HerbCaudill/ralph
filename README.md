@@ -79,6 +79,8 @@ pnpm dev
 pnpm format
 ```
 
+Unit tests focus on behavioral coverage; avoid type-only guard tests.
+
 ## Environment variables
 
 | Variable            | Description                              | Required       |

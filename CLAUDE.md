@@ -466,6 +466,7 @@ On startup, `SessionRunner` combines core-prompt.md (bundled) with .ralph/workfl
 ## Testing
 
 Ralph has comprehensive test coverage across all three packages:
+Unit tests focus on behavioral coverage; avoid type-only guard tests.
 
 ```bash
 pnpm test:all          # Run all tests (CLI: 169, Server: 309, UI: 996+)
