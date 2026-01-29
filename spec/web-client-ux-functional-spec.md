@@ -247,6 +247,10 @@ Right to left:
 - Actions shown depend on app state (e.g., Start is hidden when running).
 - Each command shows a label, description, and its keyboard shortcut.
 - Supports keyboard navigation (Up/Down, Enter) and filtering by text.
+- Search placeholder text: “Type a command or search...”.
+- Filtering is fuzzy and uses command labels plus configured keywords.
+- Clicking outside the palette or pressing Escape closes it.
+- Empty results show “No commands found.”
 
 **Screenshot:** `spec/screenshots/07-command-palette.png`
 
@@ -295,6 +299,7 @@ Right cluster:
 - Floating search bar pinned at the top of the task list
 - Task list grouped by status
 - Bottom: task progress bar (only while agent is active)
+- When there are no tasks, the list area shows “No tasks yet.”
 
 **Screenshot:** `spec/screenshots/11-task-sidebar.png`
 
@@ -426,6 +431,8 @@ Selection state:
 - When no sessions are available, the dropdown shows “No session history yet.”
 - A search field appears only when there are 5+ sessions.
 - Search placeholder: “Search sessions...”.
+- Search matches task ID, task title, and session ID.
+- Empty search shows “No sessions found.”
 - Items show task title + task ID when available; they do not show a history icon, timestamps, or event counts.
 - Selecting a session replaces the current main view (does not open a sidebar).
 - The dropdown is available while viewing historical sessions.
@@ -532,6 +539,8 @@ Selection state:
 
 - Header with “Task Chat” label, clear history button, and optional close button.
 - Scrollable message list with floating input at bottom.
+- The panel is open by default on first load; open/closed state persists.
+- Clear history removes all messages and starts a fresh conversation.
 
 **Screenshots:**
 
@@ -588,6 +597,7 @@ The following shortcuts are displayed in the Hotkeys dialog and should match beh
 - Previous workspace: Cmd+Shift+[
 - Next workspace: Cmd+Shift+]
 - Toggle tool output: Ctrl+O
+- New task chat (clear history): Cmd+Backspace
 - Previous task: ArrowUp
 - Next task: ArrowDown
 - Open selected task: Enter
