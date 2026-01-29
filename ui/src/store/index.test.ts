@@ -11,9 +11,6 @@ import {
   getSessionTaskIds,
   selectSessionCount,
   selectCurrentSessionEvents,
-  selectViewingSessionIndex,
-  selectViewingSessionId,
-  selectIsViewingLatestSession,
   selectSessionTask,
   // Instance-related exports
   DEFAULT_INSTANCE_ID,
@@ -77,7 +74,6 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
     lastDarkThemeId: null,
     lastLightThemeId: null,
     currentTaskChatSessionId: null,
-    viewingSessionId: null,
     taskSearchQuery: "",
     selectedTaskId: null,
     isSearchVisible: false,
@@ -134,7 +130,6 @@ describe("useAppStore", () => {
       expect(state.taskChatMessages).toEqual([])
       expect(state.taskChatLoading).toBe(false)
       expect(state.taskChatEvents).toEqual([])
-      expect(state.viewingSessionId).toBeNull()
       expect(state.persistenceError).toBeNull()
     })
 
@@ -560,25 +555,6 @@ describe("useAppStore", () => {
       expect(selectRunStartedAt(updatedState)).toBe(12345)
     })
 
-    it("resets viewingSessionId when switching instance", () => {
-      // Set a viewing session ID
-      useAppStore.getState().setViewingSessionId("some-session")
-      expect(useAppStore.getState().viewingSessionId).toBe("some-session")
-
-      // Create and add a second instance
-      const state = useAppStore.getState()
-      const newInstance = createRalphInstance("second-instance")
-      const newInstances = new Map(state.instances)
-      newInstances.set("second-instance", newInstance)
-      useAppStore.setState({ instances: newInstances })
-
-      // Switch to the new instance
-      useAppStore.getState().setActiveInstanceId("second-instance")
-
-      // Verify viewingSessionId is reset
-      expect(useAppStore.getState().viewingSessionId).toBeNull()
-    })
-
     it("allows switching back to original instance", () => {
       // Create a second instance
       const state = useAppStore.getState()
@@ -694,7 +670,6 @@ describe("useAppStore", () => {
       expect(selectContextWindow(state)).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
       expect(selectSession(state)).toEqual({ current: 0, total: 0 })
       expect(selectRunStartedAt(state)).toBeNull()
-      expect(state.viewingSessionId).toBeNull()
     })
 
     it("can create multiple instances", () => {
@@ -883,7 +858,6 @@ describe("useAppStore", () => {
       expect(selectSession(state)).toEqual({ current: 0, total: 0 })
       expect(selectRunStartedAt(state)).toBeNull()
       expect(state.initialTaskCount).toBeNull()
-      expect(state.viewingSessionId).toBeNull()
     })
 
     it("does not affect active instance when cleaning up a non-active instance", () => {
@@ -1753,7 +1727,6 @@ describe("useAppStore", () => {
       addTaskChatMessage({ id: "msg-1", role: "user", content: "Hello", timestamp: 123 })
       addTaskChatEvent({ type: "stream_event", timestamp: 456, event: {} })
       flushTaskChatEventsBatch() // Flush batch to apply events immediately
-      useAppStore.getState().setViewingSessionId("session-1")
 
       // Verify state was set (use selectors for instance-level data)
       expect(selectEvents(useAppStore.getState())).toHaveLength(1)
@@ -1762,7 +1735,6 @@ describe("useAppStore", () => {
       expect(selectSession(useAppStore.getState()).current).toBe(2)
       expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
       expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
-      expect(useAppStore.getState().viewingSessionId).toBe("session-1")
 
       // Clear workspace data
       useAppStore.getState().clearWorkspaceData()
@@ -1774,7 +1746,6 @@ describe("useAppStore", () => {
       expect(selectSession(useAppStore.getState())).toEqual({ current: 0, total: 0 })
       expect(useAppStore.getState().taskChatMessages).toEqual([])
       expect(useAppStore.getState().taskChatEvents).toEqual([])
-      expect(useAppStore.getState().viewingSessionId).toBeNull()
     })
   })
 
@@ -2435,38 +2406,6 @@ describe("useAppStore", () => {
         expect(taskId).toBe("rui-999")
       })
 
-      it("returns task ID from specific session when viewingSessionId is set", () => {
-        // First session
-        useAppStore.getState().addEvent({
-          type: "system",
-          timestamp: 1000,
-          subtype: "init",
-        })
-        useAppStore.getState().addEvent({
-          type: "ralph_task_started",
-          timestamp: 1001,
-          taskId: "rui-111",
-        })
-
-        // Second session
-        useAppStore.getState().addEvent({
-          type: "system",
-          timestamp: 2000,
-          subtype: "init",
-        })
-        useAppStore.getState().addEvent({
-          type: "ralph_task_started",
-          timestamp: 2001,
-          taskId: "rui-222",
-        })
-
-        // View first session (session ID is fallback: session-{timestamp})
-        useAppStore.getState().setViewingSessionId("session-1000")
-
-        const taskId = selectSessionTask(useAppStore.getState())
-        expect(taskId).toBe("rui-111")
-      })
-
       it("falls back to instance currentTaskId when no events", () => {
         // Simulate page reload scenario where server sends instance info
         // with currentTaskId but events don't include ralph_task_started
@@ -2536,60 +2475,6 @@ describe("useAppStore", () => {
       })
     })
 
-    describe("session navigation actions", () => {
-      beforeEach(() => {
-        const events = createEventsWithSessions()
-        events.forEach(e => useAppStore.getState().addEvent(e))
-      })
-
-      it("has null viewingSessionId initially (latest)", () => {
-        expect(useAppStore.getState().viewingSessionId).toBeNull()
-      })
-
-      it("goToPreviousSession goes to second-to-last when viewing latest", () => {
-        useAppStore.getState().goToPreviousSession()
-        expect(useAppStore.getState().viewingSessionId).toBe("session-2000") // Session 2
-      })
-
-      it("goToPreviousSession navigates to previous session", () => {
-        useAppStore.getState().setViewingSessionId("session-3000") // Session 3
-        useAppStore.getState().goToPreviousSession()
-        expect(useAppStore.getState().viewingSessionId).toBe("session-2000")
-
-        useAppStore.getState().goToPreviousSession()
-        expect(useAppStore.getState().viewingSessionId).toBe("session-1000")
-      })
-
-      it("goToPreviousSession stays at first session when already there", () => {
-        useAppStore.getState().setViewingSessionId("session-1000") // Session 1
-        useAppStore.getState().goToPreviousSession()
-        expect(useAppStore.getState().viewingSessionId).toBe("session-1000")
-      })
-
-      it("goToNextSession navigates to next session", () => {
-        useAppStore.getState().setViewingSessionId("session-1000") // Session 1
-        useAppStore.getState().goToNextSession()
-        expect(useAppStore.getState().viewingSessionId).toBe("session-2000")
-      })
-
-      it("goToNextSession switches to null when reaching last session", () => {
-        useAppStore.getState().setViewingSessionId("session-3000") // Last session
-        useAppStore.getState().goToNextSession()
-        expect(useAppStore.getState().viewingSessionId).toBeNull()
-      })
-
-      it("goToNextSession does nothing when already viewing latest", () => {
-        useAppStore.getState().goToNextSession()
-        expect(useAppStore.getState().viewingSessionId).toBeNull()
-      })
-
-      it("goToLatestSession sets session to null", () => {
-        useAppStore.getState().setViewingSessionId("session-2000")
-        useAppStore.getState().goToLatestSession()
-        expect(useAppStore.getState().viewingSessionId).toBeNull()
-      })
-    })
-
     describe("session selectors", () => {
       beforeEach(() => {
         const events = createEventsWithSessions()
@@ -2601,38 +2486,11 @@ describe("useAppStore", () => {
         expect(selectSessionCount(state)).toBe(3)
       })
 
-      it("selectViewingSessionId returns current session ID", () => {
-        expect(selectViewingSessionId(useAppStore.getState())).toBeNull()
-
-        useAppStore.getState().setViewingSessionId("session-2000")
-        expect(selectViewingSessionId(useAppStore.getState())).toBe("session-2000")
-      })
-
-      it("selectViewingSessionIndex returns index from session ID (deprecated)", () => {
-        expect(selectViewingSessionIndex(useAppStore.getState())).toBeNull()
-
-        useAppStore.getState().setViewingSessionId("session-2000")
-        expect(selectViewingSessionIndex(useAppStore.getState())).toBe(1)
-      })
-
-      it("selectIsViewingLatestSession returns correct value", () => {
-        expect(selectIsViewingLatestSession(useAppStore.getState())).toBe(true)
-
-        useAppStore.getState().setViewingSessionId("session-2000")
-        expect(selectIsViewingLatestSession(useAppStore.getState())).toBe(false)
-      })
-
-      it("selectCurrentSessionEvents returns correct events", () => {
-        // Latest session
-        let events = selectCurrentSessionEvents(useAppStore.getState())
+      it("selectCurrentSessionEvents returns latest session events", () => {
+        // Always returns the latest session's events (historical navigation is URL-based)
+        const events = selectCurrentSessionEvents(useAppStore.getState())
         expect(events).toHaveLength(3)
         expect(events[0].timestamp).toBe(3000)
-
-        // First session
-        useAppStore.getState().setViewingSessionId("session-1000")
-        events = selectCurrentSessionEvents(useAppStore.getState())
-        expect(events).toHaveLength(3)
-        expect(events[0].timestamp).toBe(1000)
       })
     })
   })
@@ -3277,7 +3135,6 @@ describe("useAppStore", () => {
       expect(state.taskChatMessages).toEqual([])
       expect(state.taskChatEvents).toEqual([])
       expect(state.taskChatLoading).toBe(false)
-      expect(state.viewingSessionId).toBeNull()
     })
   })
 
@@ -3859,9 +3716,7 @@ describe("useAppStore", () => {
         { id: "event-1", type: "tool_use", timestamp: 1000 },
         { id: "event-2", type: "tool_result", timestamp: 2000 },
       ]
-      const incoming: ChatEvent[] = [
-        { id: "event-3", type: "system", timestamp: 3000 },
-      ]
+      const incoming: ChatEvent[] = [{ id: "event-3", type: "system", timestamp: 3000 }]
 
       const result = mergeEventsById(existing, incoming)
 

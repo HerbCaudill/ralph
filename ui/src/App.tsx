@@ -132,9 +132,15 @@ export function App() {
   const isConnected = useAppStore(selectIsConnected)
   const toggleTaskChat = useAppStore(state => state.toggleTaskChat)
 
-  // Session navigation
-  const goToPreviousSession = useAppStore(state => state.goToPreviousSession)
-  const goToNextSession = useAppStore(state => state.goToNextSession)
+  // Session navigation via custom events.
+  // These dispatch events that useEventStream listens for, ensuring
+  // navigation uses the URL + IndexedDB path consistently.
+  const goToPreviousSession = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("session-navigate-previous"))
+  }, [])
+  const goToNextSession = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("session-navigate-next"))
+  }, [])
 
   // Return to live session via URL-based navigation.
   // Clears the URL and dispatches popstate so useEventStream's listener

@@ -1,7 +1,8 @@
+import { useState, useEffect } from "react"
 import { ChatInput, type ChatInputHandle } from "./chat/ChatInput"
 import { EventStream } from "./events"
-import { useAppStore, selectCanAcceptMessages, selectViewingSessionId } from "@/store"
-import { useRalphConnection } from "@/hooks"
+import { useAppStore, selectCanAcceptMessages } from "@/store"
+import { useRalphConnection, parseSessionIdFromUrl } from "@/hooks"
 
 /**  Main agent view showing the event stream and chat input. */
 export function AgentView({
@@ -10,8 +11,27 @@ export function AgentView({
 }: AgentViewProps) {
   const { sendMessage, isConnected } = useRalphConnection()
   const canAcceptMessages = useAppStore(selectCanAcceptMessages)
-  const viewingSessionId = useAppStore(selectViewingSessionId)
-  const isViewingLatest = viewingSessionId === null
+
+  // Track whether we're viewing a historical session via URL
+  const [isViewingLatest, setIsViewingLatest] = useState(
+    () => parseSessionIdFromUrl(window.location) === null,
+  )
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      setIsViewingLatest(parseSessionIdFromUrl(window.location) === null)
+    }
+    // Listen for browser back/forward
+    window.addEventListener("popstate", handleUrlChange)
+    window.addEventListener("hashchange", handleUrlChange)
+    // Listen for programmatic session URL changes (from useEventStream)
+    window.addEventListener("session-url-change", handleUrlChange)
+    return () => {
+      window.removeEventListener("popstate", handleUrlChange)
+      window.removeEventListener("hashchange", handleUrlChange)
+      window.removeEventListener("session-url-change", handleUrlChange)
+    }
+  }, [])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

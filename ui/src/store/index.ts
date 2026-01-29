@@ -135,9 +135,6 @@ export interface AppState {
   taskChatLoading: boolean
   currentTaskChatSessionId: string | null
 
-  // Session view state (null = show current/latest session)
-  viewingSessionId: string | null
-
   // Task search filter
   taskSearchQuery: string
 
@@ -265,12 +262,6 @@ export interface AppActions {
   // Task chat events (unified array)
   addTaskChatEvent: (event: ChatEvent) => void
   clearTaskChatEvents: () => void
-
-  // Session view
-  setViewingSessionId: (sessionId: string | null) => void
-  goToPreviousSession: () => void
-  goToNextSession: () => void
-  goToLatestSession: () => void
 
   // Task search
   setTaskSearchQuery: (query: string) => void
@@ -695,7 +686,6 @@ const initialState: AppState = {
   taskChatMessages: [],
   taskChatLoading: false,
   currentTaskChatSessionId: null,
-  viewingSessionId: null,
   taskSearchQuery: "",
   selectedTaskId: null,
   visibleTaskIds: [],
@@ -931,8 +921,6 @@ export const useAppStore = create<AppState & AppActions>()(
           return {
             // Clear tasks immediately to avoid showing stale data
             tasks: [],
-            // Clear session view state
-            viewingSessionId: null,
             // Reset workspace-level state
             initialTaskCount: null,
             // Clear task chat messages and events
@@ -1149,55 +1137,6 @@ export const useAppStore = create<AppState & AppActions>()(
         set({ taskChatEvents: [] })
       },
 
-      // Session view
-      setViewingSessionId: sessionId => set({ viewingSessionId: sessionId }),
-      goToPreviousSession: () =>
-        set(state => {
-          // Read events from active instance (single source of truth)
-          const activeInstance = state.instances.get(state.activeInstanceId)
-          const events = activeInstance?.events ?? []
-          const totalSessions = countSessions(events)
-          if (totalSessions === 0) return state
-
-          // If viewing latest (null), go to second-to-last session
-          if (state.viewingSessionId === null) {
-            const newIndex = totalSessions > 1 ? totalSessions - 2 : 0
-            const newId = getSessionId(events, newIndex)
-            return newId !== null ? { viewingSessionId: newId } : state
-          }
-
-          // Resolve current ID to index
-          const currentIndex = getSessionIndexById(events, state.viewingSessionId)
-          if (currentIndex === null || currentIndex <= 0) return state
-
-          const prevId = getSessionId(events, currentIndex - 1)
-          return prevId !== null ? { viewingSessionId: prevId } : state
-        }),
-      goToNextSession: () =>
-        set(state => {
-          // Read events from active instance (single source of truth)
-          const activeInstance = state.instances.get(state.activeInstanceId)
-          const events = activeInstance?.events ?? []
-          const totalSessions = countSessions(events)
-          if (totalSessions === 0) return state
-
-          // If already viewing latest, stay there
-          if (state.viewingSessionId === null) return state
-
-          // Resolve current ID to index
-          const currentIndex = getSessionIndexById(events, state.viewingSessionId)
-          if (currentIndex === null) return { viewingSessionId: null }
-
-          // If at last session, switch to latest (null)
-          if (currentIndex >= totalSessions - 1) {
-            return { viewingSessionId: null }
-          }
-
-          const nextId = getSessionId(events, currentIndex + 1)
-          return nextId !== null ? { viewingSessionId: nextId } : state
-        }),
-      goToLatestSession: () => set({ viewingSessionId: null }),
-
       // Task search
       setTaskSearchQuery: query => set({ taskSearchQuery: query }),
       clearTaskSearchQuery: () => set({ taskSearchQuery: "" }),
@@ -1312,8 +1251,6 @@ export const useAppStore = create<AppState & AppActions>()(
 
           return {
             activeInstanceId: instanceId,
-            // Reset session view when switching instances
-            viewingSessionId: null,
           }
         }),
 
@@ -1338,8 +1275,6 @@ export const useAppStore = create<AppState & AppActions>()(
           return {
             instances: updatedInstances,
             activeInstanceId: id,
-            // Reset session view when switching instances
-            viewingSessionId: null,
           }
         }),
 
@@ -1400,7 +1335,6 @@ export const useAppStore = create<AppState & AppActions>()(
             return {
               instances: updatedInstances,
               initialTaskCount: null,
-              viewingSessionId: null,
             }
           }
 
@@ -1787,44 +1721,22 @@ export const selectTaskChatMessages = (state: AppState) => state.taskChatMessage
 export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
 export const selectCurrentTaskChatSessionId = (state: AppState) => state.currentTaskChatSessionId
 export const selectTaskChatEvents = (state: AppState) => state.taskChatEvents
-export const selectViewingSessionId = (state: AppState) => state.viewingSessionId
-/** @deprecated Use selectViewingSessionId instead. Kept for backward compatibility during migration. */
-export const selectViewingSessionIndex = (state: AppState) => {
-  if (state.viewingSessionId === null) return null
-  const events = selectEvents(state)
-  return getSessionIndexById(events, state.viewingSessionId)
-}
 export const selectSessionCount = (state: AppState) => countSessions(selectEvents(state))
-export const selectHasPreviousSession = (state: AppState): boolean => {
-  const events = selectEvents(state)
-  const totalSessions = countSessions(events)
-  if (totalSessions === 0) return false
-  if (state.viewingSessionId === null) return totalSessions > 1
-  const currentIndex = getSessionIndexById(events, state.viewingSessionId)
-  return currentIndex !== null && currentIndex > 0
-}
-export const selectHasNextSession = (state: AppState): boolean => {
-  const events = selectEvents(state)
-  const totalSessions = countSessions(events)
-  if (totalSessions === 0) return false
-  if (state.viewingSessionId === null) return false
-  const currentIndex = getSessionIndexById(events, state.viewingSessionId)
-  return currentIndex !== null && currentIndex < totalSessions - 1
-}
 export const selectCurrentSessionEvents = (state: AppState) =>
-  getEventsForSessionId(selectEvents(state), state.viewingSessionId)
-export const selectIsViewingLatestSession = (state: AppState) => state.viewingSessionId === null
+  getEventsForSessionId(selectEvents(state), null)
 export const selectTaskSearchQuery = (state: AppState) => state.taskSearchQuery
 export const selectSelectedTaskId = (state: AppState) => state.selectedTaskId
 export const selectVisibleTaskIds = (state: AppState) => state.visibleTaskIds
 export const selectClosedTimeFilter = (state: AppState) => state.closedTimeFilter
 /**
- * Get the task ID for the current session.
+ * Get the task ID for the current (latest) session.
  * Returns the task ID if found from ralph_task_started events, or falls back to the instance's currentTaskId.
  * Task titles should be looked up from beads using the returned ID.
+ *
+ * Note: For historical sessions, task ID is derived in useEventStream from the session's events/metadata.
  */
 export const selectSessionTask = (state: AppState): string | null => {
-  const sessionEvents = getEventsForSessionId(selectEvents(state), state.viewingSessionId)
+  const sessionEvents = getEventsForSessionId(selectEvents(state), null)
   const taskId = getTaskFromSessionEvents(sessionEvents)
   if (taskId) {
     return taskId

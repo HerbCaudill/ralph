@@ -27,7 +27,7 @@ import {
 } from "@/constants"
 
 /** Current schema version for persistence format */
-export const PERSIST_VERSION = 7
+export const PERSIST_VERSION = 8
 
 /** Storage key for persisted state */
 export const PERSIST_NAME = "ralph-ui-store"
@@ -78,7 +78,6 @@ export interface PersistedState {
   currentTaskChatSessionId: string | null
 
   // View state
-  viewingSessionId: string | null
   taskSearchQuery: string
   selectedTaskId: string | null
   isSearchVisible: boolean
@@ -222,7 +221,6 @@ export function partialize(state: AppState): PersistedState {
     currentTaskChatSessionId: state.currentTaskChatSessionId,
 
     // View state
-    viewingSessionId: state.viewingSessionId,
     taskSearchQuery: state.taskSearchQuery,
     selectedTaskId: state.selectedTaskId,
     isSearchVisible: state.isSearchVisible,
@@ -522,8 +520,16 @@ export function migrate(persistedState: unknown, version: number): PersistedStat
     const { viewingSessionIndex: _, ...rest } = oldState
     state = {
       ...rest,
-      viewingSessionId: null,
     } as PersistedState
+  }
+
+  if (version < 8) {
+    // Migrate from v7 to v8: Remove viewingSessionId
+    // Session navigation is now fully URL-based (using pushState + IndexedDB).
+    // The in-memory viewingSessionId is no longer needed.
+    const oldState = state as PersistedState & { viewingSessionId?: string | null }
+    const { viewingSessionId: _, ...rest } = oldState
+    state = rest as PersistedState
   }
 
   return state

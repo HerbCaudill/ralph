@@ -3,7 +3,6 @@ import {
   useAppStore,
   selectEvents,
   selectRalphStatus,
-  selectViewingSessionId,
   selectTasks,
   selectInstanceEvents,
   selectInstanceStatus,
@@ -83,7 +82,6 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const ralphStatus = useAppStore(state =>
     instanceId ? selectInstanceStatus(state, instanceId) : selectRalphStatus(state),
   )
-  const viewingSessionId = useAppStore(selectViewingSessionId)
   const tasks = useAppStore(selectTasks)
   const issuePrefix = useAppStore(selectIssuePrefix)
   const isConnected = useAppStore(selectIsConnected)
@@ -98,7 +96,6 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     ralphStatus === "running" ||
     ralphStatus === "starting" ||
     ralphStatus === "stopping_after_current"
-  const isViewingLatest = viewingSessionId === null
 
   // Fetch sessions for the history dropdown and manage selected session
   const {
@@ -123,8 +120,9 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     if (isLoadingHistoricalEvents) {
       return []
     }
-    return getEventsForSessionId(allEvents, viewingSessionId)
-  }, [allEvents, viewingSessionId, selectedSession, isLoadingHistoricalEvents])
+    // When not viewing a historical session, show the latest session's events
+    return getEventsForSessionId(allEvents, null)
+  }, [allEvents, selectedSession, isLoadingHistoricalEvents])
 
   // Determine the current task for the session
   // Task ID comes from ralph_task_started events, title is looked up from beads
@@ -173,13 +171,13 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
 
   // When viewing a historical session, scroll to bottom on session change
   useEffect(() => {
-    if (!isViewingLatest && containerRef.current) {
+    if (isViewingHistorical && containerRef.current) {
       const scrollContainer = containerRef.current.querySelector('[role="log"]')
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight
       }
     }
-  }, [viewingSessionId, isViewingLatest])
+  }, [isViewingHistorical, selectedSession?.id])
 
   // Handle URL-based session loading on mount and browser back/forward
   useEffect(() => {
@@ -215,6 +213,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
       window.history.pushState({ sessionId: id }, "", buildSessionPath(id))
       // Load the session data
       loadSessionEvents(id)
+      // Notify other components of the session URL change
+      window.dispatchEvent(new CustomEvent("session-url-change"))
     },
     [loadSessionEvents],
   )
@@ -224,6 +224,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     window.history.pushState(null, "", "/")
     // Clear the selected session
     clearSelectedSession()
+    // Notify other components of the session URL change
+    window.dispatchEvent(new CustomEvent("session-url-change"))
   }, [clearSelectedSession])
 
   // Derive hasPrevious/hasNext from the sessions list (IndexedDB-backed).
@@ -269,6 +271,20 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     handleReturnToLive,
   ])
 
+  // Listen for custom session navigation events dispatched by hotkey handlers
+  useEffect(() => {
+    const handlePrev = () => handleGoToPrevious()
+    const handleNext = () => handleGoToNext()
+
+    window.addEventListener("session-navigate-previous", handlePrev)
+    window.addEventListener("session-navigate-next", handleNext)
+
+    return () => {
+      window.removeEventListener("session-navigate-previous", handlePrev)
+      window.removeEventListener("session-navigate-next", handleNext)
+    }
+  }, [handleGoToPrevious, handleGoToNext])
+
   const navigation: SessionNavigationActions = useMemo(
     () => ({
       selectSessionHistory: handleSessionHistorySelect,
@@ -291,7 +307,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   return {
     sessionEvents,
     ralphStatus,
-    isViewingLatest: isViewingLatest && !isViewingHistorical && !isLoadingHistoricalEvents,
+    isViewingLatest: !isViewingHistorical && !isLoadingHistoricalEvents,
     isViewingHistorical,
     isRunning,
     isConnected,

@@ -102,9 +102,8 @@ describe("useEventStream", () => {
       expect(result.current.isViewingLatest).toBe(true)
     })
 
-    it("returns isViewingLatest as false when viewing historical session even if viewingSessionId is null", () => {
-      // viewingSessionId remains null (would normally mean viewing latest)
-      // but selectedSession is set (viewing historical via dropdown)
+    it("returns isViewingLatest as false when viewing historical session", () => {
+      // selectedSession is set (viewing historical via dropdown/URL navigation)
       mockSelectedSession = {
         id: "session-123",
         createdAt: new Date().toISOString(),
@@ -709,8 +708,8 @@ describe("useEventStream", () => {
     })
 
     it("returns isViewingLatest as false while loading historical events", () => {
-      // During loading: viewingSessionId is null, selectedSession is null
-      // but isLoadingEvents is true — should NOT be considered "viewing latest"
+      // During loading: selectedSession is null but isLoadingEvents is true
+      // — should NOT be considered "viewing latest"
       mockIsLoadingEvents = true
       mockSelectedSession = null
 
@@ -867,6 +866,139 @@ describe("useEventStream", () => {
 
       addSpy.mockRestore()
       removeSpy.mockRestore()
+    })
+  })
+
+  describe("custom event-based navigation (hotkey integration)", () => {
+    // Sessions are sorted newest-first: [newest, ..., oldest]
+    const threeSessions = [
+      { id: "session-c", createdAt: "2024-01-20T00:00:00Z", eventCount: 1 },
+      { id: "session-b", createdAt: "2024-01-19T00:00:00Z", eventCount: 1 },
+      { id: "session-a", createdAt: "2024-01-18T00:00:00Z", eventCount: 1 },
+    ]
+
+    it("navigates to previous session when session-navigate-previous event is dispatched", () => {
+      mockSessions = threeSessions
+      mockSelectedSession = null // viewing live
+
+      renderHook(() => useEventStream())
+      mockLoadSessionEvents.mockClear()
+
+      // Simulate hotkey dispatch
+      window.dispatchEvent(new CustomEvent("session-navigate-previous"))
+
+      // Should navigate to the most recent historical session
+      expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-c")
+    })
+
+    it("navigates to next session when session-navigate-next event is dispatched", () => {
+      mockSessions = threeSessions
+      mockSelectedSession = {
+        id: "session-a",
+        createdAt: "2024-01-18T00:00:00Z",
+        eventCount: 1,
+        events: [],
+      }
+
+      renderHook(() => useEventStream())
+      mockLoadSessionEvents.mockClear()
+
+      // Simulate hotkey dispatch
+      window.dispatchEvent(new CustomEvent("session-navigate-next"))
+
+      // session-a is index 2, next newer is index 1 => session-b
+      expect(mockLoadSessionEvents).toHaveBeenCalledWith("session-b")
+    })
+
+    it("removes custom event listeners on unmount", () => {
+      const addSpy = vi.spyOn(window, "addEventListener")
+      const removeSpy = vi.spyOn(window, "removeEventListener")
+
+      const { unmount } = renderHook(() => useEventStream())
+
+      expect(addSpy).toHaveBeenCalledWith("session-navigate-previous", expect.any(Function))
+      expect(addSpy).toHaveBeenCalledWith("session-navigate-next", expect.any(Function))
+
+      unmount()
+
+      expect(removeSpy).toHaveBeenCalledWith("session-navigate-previous", expect.any(Function))
+      expect(removeSpy).toHaveBeenCalledWith("session-navigate-next", expect.any(Function))
+
+      addSpy.mockRestore()
+      removeSpy.mockRestore()
+    })
+  })
+
+  describe("session-url-change event dispatch", () => {
+    it("dispatches session-url-change when selecting a historical session", () => {
+      const dispatchSpy = vi.spyOn(window, "dispatchEvent")
+
+      const { result } = renderHook(() => useEventStream())
+      dispatchSpy.mockClear()
+
+      result.current.navigation.selectSessionHistory("session-123")
+
+      // Should dispatch session-url-change custom event
+      const sessionUrlChangeEvents = dispatchSpy.mock.calls.filter(
+        ([event]) => event instanceof CustomEvent && event.type === "session-url-change",
+      )
+      expect(sessionUrlChangeEvents).toHaveLength(1)
+
+      dispatchSpy.mockRestore()
+    })
+
+    it("dispatches session-url-change when returning to live", () => {
+      mockSelectedSession = {
+        id: "session-123",
+        createdAt: "2024-01-20T00:00:00Z",
+        eventCount: 1,
+        events: [],
+      }
+
+      const dispatchSpy = vi.spyOn(window, "dispatchEvent")
+
+      const { result } = renderHook(() => useEventStream())
+      dispatchSpy.mockClear()
+
+      result.current.navigation.returnToLive()
+
+      // Should dispatch session-url-change custom event
+      const sessionUrlChangeEvents = dispatchSpy.mock.calls.filter(
+        ([event]) => event instanceof CustomEvent && event.type === "session-url-change",
+      )
+      expect(sessionUrlChangeEvents).toHaveLength(1)
+
+      dispatchSpy.mockRestore()
+    })
+
+    it("updates URL via pushState when selecting a historical session", () => {
+      const pushStateSpy = vi.spyOn(window.history, "pushState")
+
+      const { result } = renderHook(() => useEventStream())
+      pushStateSpy.mockClear()
+
+      result.current.navigation.selectSessionHistory("session-abc")
+
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { sessionId: "session-abc" },
+        "",
+        "/session/session-abc",
+      )
+
+      pushStateSpy.mockRestore()
+    })
+
+    it("clears URL when returning to live", () => {
+      const pushStateSpy = vi.spyOn(window.history, "pushState")
+
+      const { result } = renderHook(() => useEventStream())
+      pushStateSpy.mockClear()
+
+      result.current.navigation.returnToLive()
+
+      expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/")
+
+      pushStateSpy.mockRestore()
     })
   })
 })

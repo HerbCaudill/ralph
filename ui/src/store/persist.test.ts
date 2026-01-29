@@ -87,7 +87,6 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     taskChatMessages: [],
     taskChatLoading: false,
     currentTaskChatSessionId: null,
-    viewingSessionId: null,
     taskSearchQuery: "",
     selectedTaskId: null,
     visibleTaskIds: [],
@@ -111,7 +110,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
 describe("persist", () => {
   describe("constants", () => {
     it("exports PERSIST_VERSION", () => {
-      expect(PERSIST_VERSION).toBe(7)
+      expect(PERSIST_VERSION).toBe(8)
     })
 
     it("exports PERSIST_NAME", () => {
@@ -366,7 +365,6 @@ describe("persist", () => {
         showToolOutput: true,
         theme: "dark",
         closedTimeFilter: "past_week",
-        viewingSessionId: "session-2",
         taskSearchQuery: "search term",
         selectedTaskId: "task-123",
         isSearchVisible: true,
@@ -390,7 +388,6 @@ describe("persist", () => {
         lastDarkThemeId: null,
         lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        viewingSessionId: "session-2",
         taskSearchQuery: "search term",
         selectedTaskId: "task-123",
         isSearchVisible: true,
@@ -586,7 +583,7 @@ describe("persist", () => {
     })
 
     it("has correct version", () => {
-      expect(persistConfig.version).toBe(7)
+      expect(persistConfig.version).toBe(8)
     })
 
     it("has storage adapter", () => {
@@ -615,7 +612,6 @@ describe("persist", () => {
           lastDarkThemeId: null,
           lastLightThemeId: null,
           currentTaskChatSessionId: null,
-          viewingSessionId: "session-3",
           taskSearchQuery: "test",
           selectedTaskId: "selected",
           isSearchVisible: true,
@@ -901,7 +897,7 @@ describe("persist", () => {
       global.localStorage = originalLocalStorage
     })
 
-    it("returns state unchanged when version >= 7", () => {
+    it("returns state unchanged when version >= 8", () => {
       const state: PersistedState = {
         sidebarWidth: 25, // Now stored as percentage
         taskChatOpen: true,
@@ -913,7 +909,6 @@ describe("persist", () => {
         lastDarkThemeId: "dark-theme",
         lastLightThemeId: "light-theme",
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -931,7 +926,7 @@ describe("persist", () => {
         activeInstanceId: "default",
       }
 
-      const result = migrate(state, 7)
+      const result = migrate(state, 8)
 
       expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
       expect(result.parentCollapsedState).toEqual({ "parent-1": true })
@@ -943,7 +938,6 @@ describe("persist", () => {
       // Widths should remain as percentages (not converted again)
       expect(result.sidebarWidth).toBe(25)
       expect(result.taskChatWidth).toBe(30)
-      expect(result.viewingSessionId).toBeNull()
     })
 
     it("migrates from v1 by loading legacy localStorage keys", () => {
@@ -967,7 +961,6 @@ describe("persist", () => {
         theme: "system",
         closedTimeFilter: "past_day",
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -999,7 +992,6 @@ describe("persist", () => {
         theme: "system",
         closedTimeFilter: "past_day",
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -1067,7 +1059,6 @@ describe("persist", () => {
         theme: "system",
         closedTimeFilter: "past_day",
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -1101,7 +1092,6 @@ describe("persist", () => {
         theme: "system",
         closedTimeFilter: "past_day",
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -1139,7 +1129,6 @@ describe("persist", () => {
         theme: "system",
         closedTimeFilter: "past_day",
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -1179,7 +1168,6 @@ describe("persist", () => {
         theme: "system",
         closedTimeFilter: "past_day",
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -1225,7 +1213,6 @@ describe("persist", () => {
         lastDarkThemeId: null,
         lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -1264,7 +1251,6 @@ describe("persist", () => {
         lastDarkThemeId: null,
         lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -1289,7 +1275,7 @@ describe("persist", () => {
       expect(result.taskChatWidth).toBe(30)
     })
 
-    it("migrates from v6 to v7 by replacing viewingSessionIndex with viewingSessionId", () => {
+    it("migrates from v6 to v7 by removing viewingSessionIndex", () => {
       // v6 state with old viewingSessionIndex field
       const state = {
         sidebarWidth: 25,
@@ -1322,10 +1308,10 @@ describe("persist", () => {
 
       const result = migrate(state, 6)
 
-      // Should have viewingSessionId set to null (latest session)
-      expect(result.viewingSessionId).toBeNull()
       // Old field should be removed
       expect(result).not.toHaveProperty("viewingSessionIndex")
+      // viewingSessionId should also not be present (removed by v8 migration)
+      expect(result).not.toHaveProperty("viewingSessionId")
     })
 
     it("migrates from v6 to v7 when viewingSessionIndex is null", () => {
@@ -1360,12 +1346,12 @@ describe("persist", () => {
 
       const result = migrate(state, 6)
 
-      expect(result.viewingSessionId).toBeNull()
       expect(result).not.toHaveProperty("viewingSessionIndex")
+      expect(result).not.toHaveProperty("viewingSessionId")
     })
 
-    it("migrates from v6 to v7 when state already has viewingSessionId", () => {
-      // Edge case: state somehow already has viewingSessionId (e.g., partial migration)
+    it("migrates from v7 to v8 by removing viewingSessionId", () => {
+      // v7 state with viewingSessionId field
       const state = {
         sidebarWidth: 25,
         taskChatOpen: true,
@@ -1377,7 +1363,7 @@ describe("persist", () => {
         lastDarkThemeId: null,
         lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        viewingSessionId: "existing-session-id",
+        viewingSessionId: "some-session-id",
         taskSearchQuery: "",
         selectedTaskId: null,
         isSearchVisible: false,
@@ -1395,13 +1381,48 @@ describe("persist", () => {
         activeInstanceId: "default",
       } as unknown as PersistedState
 
-      const result = migrate(state, 6)
+      const result = migrate(state, 7)
 
-      // Should reset to null since we can't validate old session IDs
-      expect(result.viewingSessionId).toBeNull()
+      // viewingSessionId should be removed
+      expect(result).not.toHaveProperty("viewingSessionId")
     })
 
-    it("migrates from v1 all the way to v7", () => {
+    it("migrates from v7 to v8 when viewingSessionId is null", () => {
+      const state = {
+        sidebarWidth: 25,
+        taskChatOpen: true,
+        taskChatWidth: 30,
+        showToolOutput: false,
+        theme: "system",
+        closedTimeFilter: "past_day",
+        vscodeThemeId: null,
+        lastDarkThemeId: null,
+        lastLightThemeId: null,
+        currentTaskChatSessionId: null,
+        viewingSessionId: null,
+        taskSearchQuery: "",
+        selectedTaskId: null,
+        isSearchVisible: false,
+        statusCollapsedState: { open: false, deferred: true, closed: true },
+        parentCollapsedState: {},
+        taskInputDraft: "",
+        taskChatInputDraft: "",
+        commentDrafts: {},
+        workspace: null,
+        branch: null,
+        issuePrefix: null,
+        accentColor: null,
+        tasks: [],
+        instances: [],
+        activeInstanceId: "default",
+      } as unknown as PersistedState
+
+      const result = migrate(state, 7)
+
+      expect(result).not.toHaveProperty("viewingSessionId")
+    })
+
+    it("migrates from v1 all the way to v8", () => {
       // Mock window.innerWidth for v6 migration
       Object.defineProperty(window, "innerWidth", {
         value: 1600,
@@ -1448,9 +1469,10 @@ describe("persist", () => {
       // v5->v6 migration results (pixel to percentage conversion)
       expect(result.sidebarWidth).toBe(25) // 400/1600*100
       expect(result.taskChatWidth).toBe(25) // 400/1600*100
-      // v6->v7 migration results
-      expect(result.viewingSessionId).toBeNull()
+      // v6->v7 migration results (viewingSessionIndex removed)
       expect(result).not.toHaveProperty("viewingSessionIndex")
+      // v7->v8 migration results (viewingSessionId removed)
+      expect(result).not.toHaveProperty("viewingSessionId")
       // All legacy keys should be removed
       expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_STATUS_STORAGE_KEY)
       expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_PARENT_STORAGE_KEY)
