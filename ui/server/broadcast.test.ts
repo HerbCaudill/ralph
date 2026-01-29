@@ -1386,3 +1386,431 @@ describe("Task chat reconnection sync protocol", () => {
     ws.close()
   })
 })
+
+describe("Workspace-filtered broadcast", () => {
+  /**
+   * Creates a test server with workspace-filtered broadcast capabilities.
+   * Mirrors the production server's broadcastToWorkspace and ws:subscribe_workspace.
+   */
+  function createWorkspaceTestServer(port: number) {
+    const app = express()
+    const server = createServer(app)
+    const wss = new WebSocketServer({ server, path: "/ws" })
+
+    interface TestWsClient {
+      ws: typeof WebSocket.prototype
+      isAlive: boolean
+      workspaceIds: Set<string>
+    }
+
+    const clients = new Set<TestWsClient>()
+
+    /**
+     * Broadcast a message to all connected WebSocket clients.
+     */
+    const broadcast = (message: unknown) => {
+      const payload = JSON.stringify(message)
+      for (const client of clients) {
+        if (client.ws.readyState === WebSocket.OPEN) {
+          client.ws.send(payload)
+        }
+      }
+    }
+
+    /**
+     * Broadcast a message only to clients subscribed to a specific workspace.
+     * Clients with no workspace subscriptions (empty set) receive all messages
+     * for backward compatibility with clients that haven't sent ws:subscribe_workspace.
+     *
+     * If workspaceId is null, falls back to broadcast() (sent to all clients).
+     */
+    const broadcastToWorkspace = (workspaceId: string | null, message: unknown) => {
+      if (workspaceId === null) {
+        broadcast(message)
+        return
+      }
+      const payload = JSON.stringify(message)
+      for (const client of clients) {
+        if (client.ws.readyState !== WebSocket.OPEN) continue
+        if (client.workspaceIds.size === 0 || client.workspaceIds.has(workspaceId)) {
+          client.ws.send(payload)
+        }
+      }
+    }
+
+    wss.on("connection", (ws: typeof WebSocket.prototype) => {
+      const client: TestWsClient = { ws, isAlive: true, workspaceIds: new Set() }
+      clients.add(client)
+
+      ws.on("close", () => {
+        clients.delete(client)
+      })
+
+      ws.on("message", data => {
+        try {
+          const message = JSON.parse(data.toString())
+
+          if (message.type === "ws:subscribe_workspace") {
+            const workspaceIds = message.workspaceIds as string[] | undefined
+            if (Array.isArray(workspaceIds)) {
+              client.workspaceIds = new Set(workspaceIds)
+            } else if (typeof message.workspaceId === "string") {
+              client.workspaceIds = new Set([message.workspaceId])
+            }
+            ws.send(
+              JSON.stringify({
+                type: "ws:subscribed",
+                workspaceIds: [...client.workspaceIds],
+                timestamp: Date.now(),
+              }),
+            )
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      })
+
+      ws.send(JSON.stringify({ type: "connected", timestamp: Date.now() }))
+    })
+
+    return {
+      server,
+      wss,
+      broadcast,
+      broadcastToWorkspace,
+      getClientCount: () => clients.size,
+      start: () =>
+        new Promise<void>(resolve => {
+          server.listen(port, "localhost", () => resolve())
+        }),
+      close: async () => {
+        for (const client of wss.clients) {
+          client.terminate()
+        }
+        wss.close()
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("Server close timeout")), 5000)
+          server.close(err => {
+            clearTimeout(timeout)
+            if (err) reject(err)
+            else resolve()
+          })
+        })
+      },
+    }
+  }
+
+  /**
+   * Helper: connect a WebSocket client, wait for the welcome message, and return the socket.
+   */
+  async function connectClient(port: number): Promise<typeof WebSocket.prototype> {
+    const ws = new WebSocket(`ws://localhost:${port}/ws`)
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Connect timeout")), 5000)
+      ws.once("message", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+    return ws
+  }
+
+  /**
+   * Helper: send ws:subscribe_workspace and wait for the ws:subscribed ack.
+   */
+  async function subscribeToWorkspace(
+    ws: typeof WebSocket.prototype,
+    workspaceId: string,
+  ): Promise<unknown> {
+    const ackPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Subscribe ack timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+    ws.send(JSON.stringify({ type: "ws:subscribe_workspace", workspaceId }))
+    return ackPromise
+  }
+
+  /**
+   * Helper: send ws:subscribe_workspace with multiple IDs and wait for ack.
+   */
+  async function subscribeToWorkspaces(
+    ws: typeof WebSocket.prototype,
+    workspaceIds: string[],
+  ): Promise<unknown> {
+    const ackPromise = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Subscribe ack timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+    ws.send(JSON.stringify({ type: "ws:subscribe_workspace", workspaceIds }))
+    return ackPromise
+  }
+
+  const port = 3107
+  let testServer: ReturnType<typeof createWorkspaceTestServer>
+
+  beforeEach(async () => {
+    testServer = createWorkspaceTestServer(port)
+    await testServer.start()
+  })
+
+  afterEach(async () => {
+    await testServer.close()
+  })
+
+  it("sends to clients subscribed to the matching workspace", async () => {
+    const ws1 = await connectClient(port)
+    const ws2 = await connectClient(port)
+
+    // Subscribe both clients to workspace "ws-A"
+    await subscribeToWorkspace(ws1, "ws-A")
+    await subscribeToWorkspace(ws2, "ws-A")
+
+    // Set up listeners
+    const msg1 = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msg1 timeout")), 5000)
+      ws1.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+    const msg2 = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msg2 timeout")), 5000)
+      ws2.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Broadcast to workspace "ws-A"
+    testServer.broadcastToWorkspace("ws-A", { type: "test", data: "hello-A" })
+
+    const [received1, received2] = await Promise.all([msg1, msg2])
+    expect(received1).toEqual({ type: "test", data: "hello-A" })
+    expect(received2).toEqual({ type: "test", data: "hello-A" })
+
+    ws1.close()
+    ws2.close()
+  })
+
+  it("does NOT send to clients subscribed to a different workspace", async () => {
+    const wsA = await connectClient(port)
+    const wsB = await connectClient(port)
+
+    // Subscribe to different workspaces
+    await subscribeToWorkspace(wsA, "ws-A")
+    await subscribeToWorkspace(wsB, "ws-B")
+
+    // Set up listeners
+    const receivedByA: unknown[] = []
+    const receivedByB: unknown[] = []
+
+    wsA.on("message", data => {
+      receivedByA.push(JSON.parse(data.toString()))
+    })
+    wsB.on("message", data => {
+      receivedByB.push(JSON.parse(data.toString()))
+    })
+
+    // Broadcast to workspace "ws-A" only
+    testServer.broadcastToWorkspace("ws-A", { type: "test", data: "only-A" })
+
+    // Give time for messages to arrive (or not arrive)
+    await new Promise(resolve => setTimeout(resolve, 200))
+
+    expect(receivedByA).toHaveLength(1)
+    expect(receivedByA[0]).toEqual({ type: "test", data: "only-A" })
+
+    // Client subscribed to "ws-B" should NOT have received anything
+    expect(receivedByB).toHaveLength(0)
+
+    wsA.close()
+    wsB.close()
+  })
+
+  it("clients with no workspace subscriptions receive all workspace broadcasts (backward compat)", async () => {
+    const wsSubscribed = await connectClient(port)
+    const wsUnsubscribed = await connectClient(port)
+
+    // Only subscribe one client
+    await subscribeToWorkspace(wsSubscribed, "ws-A")
+    // wsUnsubscribed has empty workspaceIds (never subscribed)
+
+    // Set up listeners
+    const msgSubscribed = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msgSubscribed timeout")), 5000)
+      wsSubscribed.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+    const msgUnsubscribed = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msgUnsubscribed timeout")), 5000)
+      wsUnsubscribed.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Broadcast to workspace "ws-A"
+    testServer.broadcastToWorkspace("ws-A", { type: "test", data: "for-A" })
+
+    const [recvSubscribed, recvUnsubscribed] = await Promise.all([msgSubscribed, msgUnsubscribed])
+    expect(recvSubscribed).toEqual({ type: "test", data: "for-A" })
+    // Backward compat: unsubscribed client also receives the message
+    expect(recvUnsubscribed).toEqual({ type: "test", data: "for-A" })
+
+    wsSubscribed.close()
+    wsUnsubscribed.close()
+  })
+
+  it("broadcastToWorkspace with null workspaceId falls back to broadcast to all", async () => {
+    const wsA = await connectClient(port)
+    const wsB = await connectClient(port)
+    const wsNone = await connectClient(port)
+
+    // Subscribe clients to different workspaces
+    await subscribeToWorkspace(wsA, "ws-A")
+    await subscribeToWorkspace(wsB, "ws-B")
+    // wsNone has no subscriptions
+
+    // Set up listeners for all three
+    const msgA = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msgA timeout")), 5000)
+      wsA.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+    const msgB = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msgB timeout")), 5000)
+      wsB.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+    const msgNone = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msgNone timeout")), 5000)
+      wsNone.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    // Broadcast with null workspaceId -- should go to everyone
+    testServer.broadcastToWorkspace(null, { type: "global", data: "everyone" })
+
+    const [recvA, recvB, recvNone] = await Promise.all([msgA, msgB, msgNone])
+    expect(recvA).toEqual({ type: "global", data: "everyone" })
+    expect(recvB).toEqual({ type: "global", data: "everyone" })
+    expect(recvNone).toEqual({ type: "global", data: "everyone" })
+
+    wsA.close()
+    wsB.close()
+    wsNone.close()
+  })
+
+  it("ws:subscribe_workspace handler sets workspace subscriptions with single workspaceId", async () => {
+    const ws = await connectClient(port)
+
+    const ack = (await subscribeToWorkspace(ws, "my-workspace")) as {
+      type: string
+      workspaceIds: string[]
+      timestamp: number
+    }
+
+    expect(ack.type).toBe("ws:subscribed")
+    expect(ack.workspaceIds).toEqual(["my-workspace"])
+    expect(ack.timestamp).toBeGreaterThan(0)
+
+    ws.close()
+  })
+
+  it("ws:subscribe_workspace handler sets workspace subscriptions with multiple workspaceIds", async () => {
+    const ws = await connectClient(port)
+
+    const ack = (await subscribeToWorkspaces(ws, ["ws-1", "ws-2", "ws-3"])) as {
+      type: string
+      workspaceIds: string[]
+      timestamp: number
+    }
+
+    expect(ack.type).toBe("ws:subscribed")
+    expect(ack.workspaceIds).toEqual(expect.arrayContaining(["ws-1", "ws-2", "ws-3"]))
+    expect(ack.workspaceIds).toHaveLength(3)
+
+    // Verify it actually filters: broadcast to ws-2 should arrive
+    const msg = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msg timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+
+    testServer.broadcastToWorkspace("ws-2", { type: "test", data: "for-ws-2" })
+
+    const received = await msg
+    expect(received).toEqual({ type: "test", data: "for-ws-2" })
+
+    // Broadcast to ws-X (not subscribed) should NOT arrive
+    const receivedOther: unknown[] = []
+    ws.on("message", data => {
+      receivedOther.push(JSON.parse(data.toString()))
+    })
+
+    testServer.broadcastToWorkspace("ws-X", { type: "test", data: "for-ws-X" })
+
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(receivedOther).toHaveLength(0)
+
+    ws.close()
+  })
+
+  it("re-subscribing replaces previous workspace subscriptions", async () => {
+    const ws = await connectClient(port)
+
+    // First subscribe to ws-A
+    await subscribeToWorkspace(ws, "ws-A")
+
+    // Re-subscribe to ws-B (should replace ws-A)
+    const ack = (await subscribeToWorkspace(ws, "ws-B")) as {
+      type: string
+      workspaceIds: string[]
+    }
+
+    expect(ack.workspaceIds).toEqual(["ws-B"])
+
+    // Broadcast to ws-A should NOT arrive (no longer subscribed)
+    const receivedA: unknown[] = []
+    ws.on("message", data => {
+      receivedA.push(JSON.parse(data.toString()))
+    })
+    testServer.broadcastToWorkspace("ws-A", { type: "test", data: "for-A" })
+
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(receivedA).toHaveLength(0)
+
+    // Remove the catch-all listener, set up fresh one for ws-B
+    ws.removeAllListeners("message")
+
+    const msgB = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("msgB timeout")), 5000)
+      ws.once("message", data => {
+        clearTimeout(timeout)
+        resolve(JSON.parse(data.toString()))
+      })
+    })
+    testServer.broadcastToWorkspace("ws-B", { type: "test", data: "for-B" })
+
+    const received = await msgB
+    expect(received).toEqual({ type: "test", data: "for-B" })
+
+    ws.close()
+  })
+})

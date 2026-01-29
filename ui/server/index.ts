@@ -1362,6 +1362,8 @@ function createApp(
 export interface WsClient {
   ws: WebSocket
   isAlive: boolean
+  /** Workspace IDs this client is subscribed to. Empty set means "receive all" (backward compat). */
+  workspaceIds: Set<string>
 }
 
 const clients = new Set<WsClient>()
@@ -1417,7 +1419,7 @@ function attachWsServer(
   wss.on("connection", (ws: WebSocket) => {
     console.log("[ws] client connected")
 
-    const client: WsClient = { ws, isAlive: true }
+    const client: WsClient = { ws, isAlive: true, workspaceIds: new Set() }
     clients.add(client)
 
     ws.on("pong", () => {
@@ -1537,6 +1539,28 @@ function handleWsMessage(
         ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }))
         break
 
+      case "ws:subscribe_workspace": {
+        // Client subscribes to receive events for specific workspace(s).
+        // Prevents event leakage between workspaces (r-7r110.5).
+        const client = getClientByWebSocket(ws)
+        if (client) {
+          const workspaceIds = message.workspaceIds as string[] | undefined
+          if (Array.isArray(workspaceIds)) {
+            client.workspaceIds = new Set(workspaceIds)
+          } else if (typeof message.workspaceId === "string") {
+            client.workspaceIds = new Set([message.workspaceId])
+          }
+          ws.send(
+            JSON.stringify({
+              type: "ws:subscribed",
+              workspaceIds: [...client.workspaceIds],
+              timestamp: Date.now(),
+            }),
+          )
+        }
+        break
+      }
+
       case "chat_message": {
         // Forward user message to ralph stdin
         const chatMessage = message.message as string | undefined
@@ -1577,8 +1601,8 @@ function handleWsMessage(
         // Send to ralph - wrap in JSON format that Ralph CLI expects
         instance.manager.send({ type: "message", text: chatMessage })
 
-        // Broadcast user message to all clients so it appears in event stream
-        broadcast({
+        // Broadcast user message to clients in the same workspace so it appears in event stream
+        broadcastToWorkspace(instance.workspaceId, {
           type: "user_message",
           message: chatMessage,
           instanceId,
@@ -1818,6 +1842,30 @@ export function broadcast(message: unknown): void {
 }
 
 /**
+ * Broadcast a message only to clients subscribed to a specific workspace.
+ * Clients with no workspace subscriptions (empty set) receive all messages
+ * for backward compatibility with clients that haven't sent ws:subscribe_workspace.
+ *
+ * If workspaceId is null, falls back to broadcast() (sent to all clients).
+ */
+export function broadcastToWorkspace(workspaceId: string | null, message: unknown): void {
+  if (workspaceId === null) {
+    broadcast(message)
+    return
+  }
+  const payload = JSON.stringify(message)
+  for (const client of clients) {
+    if (client.ws.readyState !== client.ws.OPEN) continue
+    // Send to clients that either:
+    // 1. Have no workspace subscriptions (backward compat — receive everything)
+    // 2. Are subscribed to this specific workspace
+    if (client.workspaceIds.size === 0 || client.workspaceIds.has(workspaceId)) {
+      client.ws.send(payload)
+    }
+  }
+}
+
+/**
  * Broadcast an agent event wrapped in the unified AgentEventEnvelope.
  *
  * Both Ralph session events and Task Chat events are wrapped in the same
@@ -1837,17 +1885,29 @@ function broadcastOperationalEvent(
   switch (eventType) {
     case "ralph:status": {
       const status = args[0] as RalphStatus
-      broadcast({ type: "ralph:status", instanceId, workspaceId, status, timestamp: Date.now() })
+      broadcastToWorkspace(workspaceId, {
+        type: "ralph:status",
+        instanceId,
+        workspaceId,
+        status,
+        timestamp: Date.now(),
+      })
       return true
     }
     case "ralph:output": {
       const line = args[0] as string
-      broadcast({ type: "ralph:output", instanceId, workspaceId, line, timestamp: Date.now() })
+      broadcastToWorkspace(workspaceId, {
+        type: "ralph:output",
+        instanceId,
+        workspaceId,
+        line,
+        timestamp: Date.now(),
+      })
       return true
     }
     case "ralph:error": {
       const error = args[0] as Error
-      broadcast({
+      broadcastToWorkspace(workspaceId, {
         type: "ralph:error",
         instanceId,
         workspaceId,
@@ -1858,7 +1918,7 @@ function broadcastOperationalEvent(
     }
     case "ralph:exit": {
       const info = args[0] as { code: number | null; signal: string | null }
-      broadcast({
+      broadcastToWorkspace(workspaceId, {
         type: "ralph:exit",
         instanceId,
         workspaceId,
@@ -1917,12 +1977,12 @@ function wireRegistryEvents(
           timestamp: Date.now(),
           eventIndex,
         }
-        broadcast(envelope)
+        broadcastToWorkspace(workspaceId, envelope)
 
         // Also broadcast legacy ralph:event for backward compatibility
         // @deprecated(r-tufi7.51.5): Remove once all clients migrate to agent:event
         const legacy = envelopeToLegacy(envelope)
-        if (legacy) broadcast(legacy)
+        if (legacy) broadcastToWorkspace(workspaceId, legacy)
         break
       }
       default: {
@@ -1936,7 +1996,7 @@ function wireRegistryEvents(
   })
 
   registry.on("instance:created", (instanceId: string, state: RalphInstanceState) => {
-    broadcast({
+    broadcastToWorkspace(state.workspaceId, {
       type: "instance:created",
       instanceId,
       workspaceId: state.workspaceId,
@@ -1946,7 +2006,8 @@ function wireRegistryEvents(
   })
 
   registry.on("instance:disposed", (instanceId: string) => {
-    // Note: instance may already be disposed, so we can't look up workspaceId
+    // Note: instance may already be disposed, so we can't look up workspaceId.
+    // Broadcast to all clients since we don't know which workspace this belonged to.
     broadcast({
       type: "instance:disposed",
       instanceId,
@@ -1962,7 +2023,7 @@ function wireRegistryEvents(
     ) => {
       const conflictInstance = registry.get(instanceId)
       const conflictWorkspaceId = conflictInstance?.workspaceId ?? null
-      broadcast({
+      broadcastToWorkspace(conflictWorkspaceId, {
         type: "instance:merge_conflict",
         instanceId,
         workspaceId: conflictWorkspaceId,
@@ -2065,11 +2126,11 @@ function wireContextManagerEvents(
           event: event as unknown as AgentEvent,
           timestamp: Date.now(),
         }
-        broadcast(ralphEnvelope)
+        broadcastToWorkspace(workspaceId, ralphEnvelope)
         // Also broadcast legacy ralph:event for backward compatibility
         // @deprecated(r-tufi7.51.5): Remove once all clients migrate to agent:event
         const ralphLegacy = envelopeToLegacy(ralphEnvelope)
-        if (ralphLegacy) broadcast(ralphLegacy)
+        if (ralphLegacy) broadcastToWorkspace(workspaceId, ralphLegacy)
         break
       }
       case "ralph:status":
@@ -2086,7 +2147,7 @@ function wireContextManagerEvents(
       // Remove these cases once all clients have migrated.
       case "task-chat:message": {
         const message = args[0] as TaskChatMessage
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "task-chat:message",
           instanceId,
           workspaceId,
@@ -2097,7 +2158,7 @@ function wireContextManagerEvents(
       }
       case "task-chat:chunk": {
         const text = args[0] as string
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "task-chat:chunk",
           instanceId,
           workspaceId,
@@ -2108,7 +2169,7 @@ function wireContextManagerEvents(
       }
       case "task-chat:status": {
         const status = args[0] as TaskChatStatus
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "task-chat:status",
           instanceId,
           workspaceId,
@@ -2119,7 +2180,7 @@ function wireContextManagerEvents(
       }
       case "task-chat:error": {
         const error = args[0] as Error
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "task-chat:error",
           instanceId,
           workspaceId,
@@ -2130,7 +2191,7 @@ function wireContextManagerEvents(
       }
       case "task-chat:tool_use": {
         const toolUse = args[0] as TaskChatToolUse
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "task-chat:tool_use",
           instanceId,
           workspaceId,
@@ -2141,7 +2202,7 @@ function wireContextManagerEvents(
       }
       case "task-chat:tool_update": {
         const toolUse = args[0] as TaskChatToolUse
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "task-chat:tool_update",
           instanceId,
           workspaceId,
@@ -2152,7 +2213,7 @@ function wireContextManagerEvents(
       }
       case "task-chat:tool_result": {
         const toolUse = args[0] as TaskChatToolUse
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "task-chat:tool_result",
           instanceId,
           workspaceId,
@@ -2172,14 +2233,14 @@ function wireContextManagerEvents(
           event: event as unknown as AgentEvent,
           timestamp: Date.now(),
         }
-        broadcast(tcEnvelope)
+        broadcastToWorkspace(workspaceId, tcEnvelope)
         // Legacy task-chat:event broadcast removed (r-z9gpz) — was causing double-delivery
         // of every event since clients now process agent:event with source="task-chat"
         break
       }
       case "task-chat:cleared": {
         // Task chat history was cleared - broadcast for cross-client sync
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "task-chat:cleared",
           instanceId,
           workspaceId,
@@ -2190,7 +2251,7 @@ function wireContextManagerEvents(
       case "mutation:event": {
         // Mutation events from beads daemon (task list changes)
         const mutationEvent = args[0] as MutationEvent
-        broadcast({
+        broadcastToWorkspace(workspaceId, {
           type: "mutation:event",
           instanceId,
           workspaceId,
