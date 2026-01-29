@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 import { useAppStore, selectConnectionStatus } from "@/store"
-import type { ConnectionStatus } from "@/hooks/useWebSocket"
+import type { ConnectionStatus } from "@/store"
 import { IconBolt, IconBoltOff, IconLoader2 } from "@tabler/icons-react"
 import type { ComponentType } from "react"
 

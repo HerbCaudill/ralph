@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { ConnectionStatus } from "../hooks/useWebSocket"
 import type {
   ClosedTasksTimeFilter,
   MergeConflict,
@@ -83,6 +82,8 @@ export function createRalphInstance(
     mergeConflict: null,
   }
 }
+
+export type ConnectionStatus = "disconnected" | "connecting" | "connected"
 
 export interface AppState {
   // === Multi-instance state ===

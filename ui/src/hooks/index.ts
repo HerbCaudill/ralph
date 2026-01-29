@@ -1,12 +1,5 @@
 export { useAutoScroll, type UseAutoScrollOptions, type UseAutoScrollReturn } from "./useAutoScroll"
 
-export {
-  useWebSocket,
-  type UseWebSocketOptions,
-  type UseWebSocketReturn,
-  type ConnectionStatus,
-} from "./useWebSocket"
-
 export { useRalphConnection, type UseRalphConnectionReturn } from "./useRalphConnection"
 
 export {
