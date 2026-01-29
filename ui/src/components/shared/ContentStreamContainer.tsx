@@ -44,7 +44,7 @@ export function ContentStreamContainer({
         onScroll={handleScroll}
         onWheel={handleUserScroll}
         onTouchMove={handleUserScroll}
-        className="bg-background flex-1 overflow-y-auto py-2"
+        className="bg-background flex-1 overflow-y-auto pt-2 pb-[20em]"
         role="log"
         aria-label={ariaLabel}
         aria-live="polite"

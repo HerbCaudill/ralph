@@ -89,7 +89,7 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       if (isRunning && isViewingLatest) {
         return (
           <div
-            className="flex items-center justify-start px-4 pt-4 pb-[20em]"
+            className="flex items-center justify-start px-4 pt-4"
             aria-label="Ralph is running"
             data-testid="ralph-running-spinner"
           >
@@ -100,7 +100,7 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
       if (hasContent && isViewingLatest) {
         return (
           <div
-            className="flex items-center justify-start px-4 pt-4 pb-[20em]"
+            className="flex items-center justify-start px-4 pt-4"
             aria-label="Ralph is idle"
             data-testid="ralph-idle-spinner"
           >
