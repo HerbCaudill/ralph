@@ -1,9 +1,10 @@
+import { useShallow } from "zustand/react/shallow"
 import { cn } from "@/lib/utils"
 import { formatTokenCount } from "@/lib/formatTokenCount"
 import { useAppStore, selectContextWindow } from "@/store"
 
 export function ContextWindowProgress({}: Props) {
-  const contextWindow = useAppStore(selectContextWindow)
+  const contextWindow = useAppStore(useShallow(selectContextWindow))
 
   if (contextWindow.used === 0) return null
 

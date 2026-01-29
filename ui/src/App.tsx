@@ -1,4 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from "react"
+import { useShallow } from "zustand/react/shallow"
 import {
   MainLayout,
   type MainLayoutHandle,
@@ -73,8 +74,8 @@ export function App() {
 
   // Subscribe to state for session persistence
   const events = useAppStore(selectEvents)
-  const tokenUsage = useAppStore(selectTokenUsage)
-  const contextWindow = useAppStore(selectContextWindow)
+  const tokenUsage = useAppStore(useShallow(selectTokenUsage))
+  const contextWindow = useAppStore(useShallow(selectContextWindow))
   const session = useAppStore(selectSession)
 
   // Persist session metadata to IndexedDB (auto-saves on session boundaries and completion)

@@ -1,8 +1,9 @@
+import { useShallow } from "zustand/react/shallow"
 import { useAppStore, selectTokenUsage } from "@/store"
 import { formatTokenCount } from "@/lib/formatTokenCount"
 
 export function TokenUsageDisplay({}: Props) {
-  const tokenUsage = useAppStore(selectTokenUsage)
+  const tokenUsage = useAppStore(useShallow(selectTokenUsage))
 
   // Always show token usage - even 0/0 is useful information
   return (

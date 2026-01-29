@@ -2,11 +2,9 @@
  * Singleton WebSocket manager for Ralph connection.
  * Lives outside React to survive HMR and StrictMode remounts.
  */
-
-import { useAppStore, selectRalphStatus, selectEvents, selectTokenUsage } from "../store"
+import { useAppStore, selectRalphStatus, selectEvents } from "../store"
 import { isRalphStatus, isSessionBoundary } from "../store"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
-import { extractTokenUsageFromEvent } from "./extractTokenUsage"
 import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
 import { BoundedMap } from "./BoundedMap"
 import type { ChatEvent } from "@/types"
@@ -568,40 +566,15 @@ function handleMessage(event: MessageEvent): void {
             }
           }
 
-          // Extract and update token usage
-          const tokenUsage = extractTokenUsageFromEvent(eventRecord)
-          if (tokenUsage) {
-            if (isActive) {
-              store.addTokenUsage(tokenUsage)
-              store.updateContextWindowUsed(
-                selectTokenUsage(store).input + selectTokenUsage(store).output,
-              )
-            } else {
-              store.addTokenUsageForInstance(resolvedInstanceId, tokenUsage)
-              const targetInstance = store.instances.get(resolvedInstanceId)
-              if (targetInstance) {
-                store.updateContextWindowUsedForInstance(
-                  resolvedInstanceId,
-                  targetInstance.tokenUsage.input + targetInstance.tokenUsage.output,
-                )
-              }
-            }
-          }
+          // Token usage and context window are derived from session events
+          // (see selectTokenUsage/selectContextWindow selectors), so no
+          // imperative update is needed here.
         } else if (source === "task-chat") {
           // --- Task Chat event processing ---
           // Only process for active instance (task chat state is not per-instance yet)
           if (!isActive) break
 
           store.addTaskChatEvent(eventRecord)
-
-          // Extract and update token usage from task chat events
-          const tokenUsage = extractTokenUsageFromEvent(eventRecord)
-          if (tokenUsage) {
-            store.addTokenUsage(tokenUsage)
-            store.updateContextWindowUsed(
-              selectTokenUsage(store).input + selectTokenUsage(store).output,
-            )
-          }
         }
         break
       }
@@ -687,27 +660,9 @@ function handleMessage(event: MessageEvent): void {
             }
           }
 
-          // Extract and update token usage from events using pure function
-          const tokenUsage = extractTokenUsageFromEvent(event)
-          if (tokenUsage) {
-            if (isForActiveInstance) {
-              store.addTokenUsage(tokenUsage)
-              // Update context window usage (total tokens used = input + output)
-              store.updateContextWindowUsed(
-                selectTokenUsage(store).input + selectTokenUsage(store).output,
-              )
-            } else {
-              store.addTokenUsageForInstance(targetInstanceId, tokenUsage)
-              // Update context window usage for non-active instance
-              const targetInstance = store.instances.get(targetInstanceId)
-              if (targetInstance) {
-                store.updateContextWindowUsedForInstance(
-                  targetInstanceId,
-                  targetInstance.tokenUsage.input + targetInstance.tokenUsage.output,
-                )
-              }
-            }
-          }
+          // Token usage and context window are derived from session events
+          // (see selectTokenUsage/selectContextWindow selectors), so no
+          // imperative update is needed here.
         }
         break
 

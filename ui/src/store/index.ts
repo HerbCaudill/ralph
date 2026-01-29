@@ -17,6 +17,7 @@ import type {
 } from "@/types"
 import { persistConfig } from "./persist"
 import { isSystemEvent } from "@/lib/isSystemEvent"
+import { aggregateTokenUsage } from "@/lib/extractTokenUsage"
 
 /** Get the cutoff timestamp for a time filter */
 export function getTimeFilterCutoff(filter: ClosedTasksTimeFilter): Date | null {
@@ -1672,22 +1673,28 @@ export const selectWorkspace = (state: AppState) => state.workspace
 export const selectBranch = (state: AppState) => state.branch
 export const selectIssuePrefix = (state: AppState) => state.issuePrefix
 
+/** Get events for the current (latest) session of the active instance. */
+export const selectCurrentSessionEvents = (state: AppState) =>
+  getEventsForSessionId(selectEvents(state), null)
+
 /**
- * Get the token usage for the active instance.
- * Reads directly from the instances Map (single source of truth).
+ * Get the token usage for the active instance's current session.
+ * Derived on the fly from the current session's events, so it automatically
+ * resets when a new session starts and is immune to double-counting.
  */
 export const selectTokenUsage = (state: AppState): TokenUsage => {
-  const activeInstance = state.instances.get(state.activeInstanceId)
-  return activeInstance?.tokenUsage ?? { input: 0, output: 0 }
+  const sessionEvents = selectCurrentSessionEvents(state)
+  return aggregateTokenUsage(sessionEvents)
 }
 
 /**
- * Get the context window for the active instance.
- * Reads directly from the instances Map (single source of truth).
+ * Get the context window for the active instance's current session.
+ * The `used` value is derived from the current session's token usage
+ * (input + output), so it automatically resets per session.
  */
 export const selectContextWindow = (state: AppState): ContextWindow => {
-  const activeInstance = state.instances.get(state.activeInstanceId)
-  return activeInstance?.contextWindow ?? { used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX }
+  const tokenUsage = selectTokenUsage(state)
+  return { used: tokenUsage.input + tokenUsage.output, max: DEFAULT_CONTEXT_WINDOW_MAX }
 }
 
 /**
@@ -1723,8 +1730,6 @@ export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
 export const selectCurrentTaskChatSessionId = (state: AppState) => state.currentTaskChatSessionId
 export const selectTaskChatEvents = (state: AppState) => state.taskChatEvents
 export const selectSessionCount = (state: AppState) => countSessions(selectEvents(state))
-export const selectCurrentSessionEvents = (state: AppState) =>
-  getEventsForSessionId(selectEvents(state), null)
 export const selectTaskSearchQuery = (state: AppState) => state.taskSearchQuery
 export const selectSelectedTaskId = (state: AppState) => state.selectedTaskId
 export const selectVisibleTaskIds = (state: AppState) => state.visibleTaskIds
