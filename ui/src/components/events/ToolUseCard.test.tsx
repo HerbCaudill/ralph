@@ -657,6 +657,190 @@ describe("ToolUseCard", () => {
     })
   })
 
+  describe("click-to-toggle tool output", () => {
+    it("clicking tool header toggles tool output visibility when expandable content exists", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+
+      // Output should be hidden initially
+      expect(screen.queryByText("test output")).not.toBeInTheDocument()
+
+      // Click the tool header row to toggle
+      fireEvent.click(screen.getByRole("button", { name: "Toggle Bash output" }))
+
+      // Output should now be visible
+      expect(screen.getByText("test output")).toBeInTheDocument()
+
+      // Click again to collapse
+      fireEvent.click(screen.getByRole("button", { name: "Toggle Bash output" }))
+
+      // Output should be hidden again
+      expect(screen.queryByText("test output")).not.toBeInTheDocument()
+    })
+
+    it("shows ▸ disclosure triangle when collapsed", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+
+      expect(screen.getByText("▸")).toBeInTheDocument()
+    })
+
+    it("shows ▾ disclosure triangle when expanded", () => {
+      useAppStore.getState().setShowToolOutput(true)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+
+      expect(screen.getByText("▾")).toBeInTheDocument()
+    })
+
+    it("does not toggle when there is no expandable content", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Read", {
+            input: { file_path: "/path/to/file.ts" },
+            // no output, no error, no edit diff
+          })}
+        />,
+      )
+
+      // No disclosure triangle should be present
+      expect(screen.queryByText("▸")).not.toBeInTheDocument()
+      expect(screen.queryByText("▾")).not.toBeInTheDocument()
+
+      // No button role should be present
+      expect(screen.queryByRole("button")).not.toBeInTheDocument()
+    })
+
+    it("clicking header toggles for Edit tool with diff content", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Edit", {
+            input: {
+              file_path: "/test.ts",
+              old_string: "const x = 1",
+              new_string: "const x = 2",
+            },
+          })}
+        />,
+      )
+
+      // Diff should be hidden initially
+      expect(screen.queryByText("const x = 1")).not.toBeInTheDocument()
+
+      // Click to expand
+      fireEvent.click(screen.getByRole("button", { name: "Toggle Edit output" }))
+
+      // Diff should now be visible
+      expect(screen.getByText("const x = 1")).toBeInTheDocument()
+      expect(screen.getByText("const x = 2")).toBeInTheDocument()
+    })
+
+    it("clicking header toggles for tool with error", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "exit 1" },
+            status: "error",
+            error: "Command failed",
+          })}
+        />,
+      )
+
+      // Error should be hidden initially
+      expect(screen.queryByText("Command failed")).not.toBeInTheDocument()
+
+      // Click to expand
+      fireEvent.click(screen.getByRole("button", { name: "Toggle Bash output" }))
+
+      // Error should now be visible
+      expect(screen.getByText("Command failed")).toBeInTheDocument()
+    })
+  })
+
+  describe("click-to-toggle accessibility", () => {
+    it("has role=button when expandable content exists", () => {
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+
+      expect(screen.getByRole("button", { name: "Toggle Bash output" })).toBeInTheDocument()
+    })
+
+    it("has aria-expanded=true when tool output is shown", () => {
+      useAppStore.getState().setShowToolOutput(true)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+
+      expect(screen.getByRole("button", { name: "Toggle Bash output" })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      )
+    })
+
+    it("has aria-expanded=false when tool output is hidden", () => {
+      useAppStore.getState().setShowToolOutput(false)
+      render(
+        <ToolUseCard
+          event={createToolEvent("Bash", {
+            input: { command: "echo test" },
+            output: "test output",
+          })}
+        />,
+      )
+
+      expect(screen.getByRole("button", { name: "Toggle Bash output" })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      )
+    })
+
+    it("does not have role=button or aria-expanded without expandable content", () => {
+      render(
+        <ToolUseCard
+          event={createToolEvent("Read", {
+            input: { file_path: "/path/to/file.ts" },
+          })}
+        />,
+      )
+
+      expect(screen.queryByRole("button")).not.toBeInTheDocument()
+    })
+  })
+
   describe("relative path display", () => {
     it("shows relative path when file is within workspace", () => {
       useAppStore.getState().setWorkspace("/Users/herbcaudill/Code/HerbCaudill/ralph-ui")

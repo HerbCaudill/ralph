@@ -27,6 +27,7 @@ export function ToolUseCard({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const workspace = useAppStore(selectWorkspace)
   const showToolOutput = useAppStore(state => state.showToolOutput)
+  const toggleToolOutput = useAppStore(state => state.toggleToolOutput)
 
   const summary = getToolSummary(event.tool, event.input, workspace)
   const outputSummary = getOutputSummary(event.tool, event.output)
@@ -57,7 +58,13 @@ export function ToolUseCard({
 
   return (
     <div className={cn("py-1.5 pr-4 pl-4", className)}>
-      <div className="flex w-full items-center gap-2.5">
+      <div
+        className={cn("flex w-full items-center gap-2.5", hasExpandableContent && "cursor-pointer")}
+        onClick={hasExpandableContent ? toggleToolOutput : undefined}
+        role={hasExpandableContent ? "button" : undefined}
+        aria-expanded={hasExpandableContent ? showToolOutput : undefined}
+        aria-label={hasExpandableContent ? `Toggle ${event.tool} output` : undefined}
+      >
         <span
           className={cn("size-1.5 shrink-0 rounded-full", statusColor)}
           aria-label={event.status ?? "pending"}
@@ -69,6 +76,12 @@ export function ToolUseCard({
           {summary && (
             <span className="text-foreground/80 min-w-0 flex-1 truncate font-mono text-xs">
               <TextWithLinks>{summary}</TextWithLinks>
+            </span>
+          )}
+
+          {hasExpandableContent && (
+            <span className="text-muted-foreground/50 shrink-0 text-xs">
+              {showToolOutput ? "▾" : "▸"}
             </span>
           )}
         </div>

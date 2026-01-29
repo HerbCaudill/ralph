@@ -949,6 +949,47 @@ describe("TaskChatPanel", () => {
       expect(screen.getByText("test output")).toBeInTheDocument()
     })
 
+    it("clicking tool header toggles tool output in task chat context", async () => {
+      useAppStore.getState().setShowToolOutput(false)
+
+      // Add an assistant event with a Bash tool use that has output
+      useAppStore.getState().addTaskChatEvent({
+        type: "assistant",
+        timestamp: Date.now(),
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "echo hello" } },
+          ],
+        },
+      } as any)
+      // Add tool result
+      useAppStore.getState().addTaskChatEvent({
+        type: "user",
+        timestamp: Date.now() + 1,
+        tool_use_result: true,
+        message: {
+          content: [
+            { type: "tool_result", tool_use_id: "tool-1", content: "hello", is_error: false },
+          ],
+        },
+      } as any)
+      flushTaskChatEventsBatch()
+
+      render(<TaskChatPanel />)
+
+      // Tool output should be hidden initially
+      expect(screen.queryByText("hello")).not.toBeInTheDocument()
+
+      // Click the tool header to toggle output
+      const toggleButton = screen.getByRole("button", { name: "Toggle Bash output" })
+      fireEvent.click(toggleButton)
+
+      // Tool output should now be visible
+      await waitFor(() => {
+        expect(screen.getByText("hello")).toBeInTheDocument()
+      })
+    })
+
     it("automatically updates when showToolOutput changes (no manual rerender)", async () => {
       useAppStore.getState().setShowToolOutput(false)
 
