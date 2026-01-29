@@ -8,7 +8,11 @@ import {
   selectBranch,
   selectIssuePrefix,
 } from "@/store"
-import { clearEventTimestamps } from "@/lib/ralphConnection"
+import {
+  clearEventTimestamps,
+  pauseMessageProcessing,
+  resumeMessageProcessing,
+} from "@/lib/ralphConnection"
 import type { WorkspaceInfo, WorkspaceListEntry } from "@/types"
 
 /**
@@ -130,6 +134,9 @@ export function WorkspacePicker({
     async (workspacePath: string) => {
       setIsLoading(true)
       setError(null)
+      // Pause WebSocket message processing to prevent stale events from being
+      // routed to cleared state during the switch (fixes r-7r110.3)
+      pauseMessageProcessing()
       try {
         const response = await fetch("/api/workspace/switch", {
           method: "POST",
@@ -166,6 +173,9 @@ export function WorkspacePicker({
         const message = err instanceof Error ? err.message : "Failed to switch workspace"
         setError(message)
       } finally {
+        // Resume processing — any messages that arrived during the switch
+        // will now be replayed against the new workspace state
+        resumeMessageProcessing()
         setIsLoading(false)
         setIsOpen(false)
       }

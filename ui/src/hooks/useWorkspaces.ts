@@ -1,6 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useAppStore, selectWorkspace } from "@/store"
-import { clearEventTimestamps } from "@/lib/ralphConnection"
+import {
+  clearEventTimestamps,
+  pauseMessageProcessing,
+  resumeMessageProcessing,
+} from "@/lib/ralphConnection"
 import type { WorkspaceListEntry } from "@/types"
 
 /**
@@ -53,6 +57,9 @@ export function useWorkspaces(): UseWorkspacesReturn {
    */
   const switchToWorkspace = useCallback(
     async (workspacePath: string) => {
+      // Pause WebSocket message processing to prevent stale events from being
+      // routed to cleared state during the switch (fixes r-7r110.3)
+      pauseMessageProcessing()
       try {
         const response = await fetch("/api/workspace/switch", {
           method: "POST",
@@ -83,6 +90,10 @@ export function useWorkspaces(): UseWorkspacesReturn {
         }
       } catch (err) {
         console.error("Failed to switch workspace:", err)
+      } finally {
+        // Resume processing — any messages that arrived during the switch
+        // will now be replayed against the new workspace state
+        resumeMessageProcessing()
       }
     },
     [setWorkspace, setAccentColor, setBranch, setIssuePrefix, clearWorkspaceData, refreshTasks],

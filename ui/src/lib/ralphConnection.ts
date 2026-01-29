@@ -48,6 +48,13 @@ const JITTER_FACTOR = 0.3 // +/- 30% jitter
 let reconnectAttempts = 0
 let currentReconnectDelay = INITIAL_RECONNECT_DELAY
 
+// Workspace switch guard: pause WebSocket message processing during workspace switches.
+// Messages arriving while paused are queued and replayed (or discarded) once the switch completes.
+// This prevents stale events and timestamps from being routed to the cleared instance state
+// during the gap between clearWorkspaceData() and the new workspace setup (fixes r-7r110.3).
+let messageProcessingPaused = false
+let queuedMessages: MessageEvent[] = []
+
 // Unified event timestamp tracking for reconnection sync
 // Maps "{source}:{instanceId}" to the last known event timestamp
 // Replaces the previous separate lastEventTimestamps and lastTaskChatEventTimestamps maps
@@ -189,7 +196,40 @@ function setStatus(newStatus: ConnectionStatus): void {
   useAppStore.getState().setConnectionStatus(newStatus)
 }
 
+/**
+ * Pause WebSocket message processing during workspace switches (fixes r-7r110.3).
+ * While paused, incoming messages are queued instead of being processed immediately.
+ * Call resumeMessageProcessing() after the workspace switch is complete to replay
+ * any queued messages against the new workspace state.
+ */
+export function pauseMessageProcessing(): void {
+  messageProcessingPaused = true
+  queuedMessages = []
+}
+
+/**
+ * Resume WebSocket message processing after a workspace switch (fixes r-7r110.3).
+ * Replays any messages that arrived while paused, then returns to normal processing.
+ */
+export function resumeMessageProcessing(): void {
+  messageProcessingPaused = false
+  // Replay queued messages in order against the new workspace state
+  const pending = queuedMessages
+  queuedMessages = []
+  for (const msg of pending) {
+    processMessage(msg)
+  }
+}
+
 function handleMessage(event: MessageEvent): void {
+  if (messageProcessingPaused) {
+    queuedMessages.push(event)
+    return
+  }
+  processMessage(event)
+}
+
+function processMessage(event: MessageEvent): void {
   try {
     const data = JSON.parse(event.data)
     const { type, timestamp, instanceId } = data as {
@@ -1050,6 +1090,8 @@ function reset(): void {
   resetReconnectState()
   lastEventTimestamps.clear()
   currentSessions.clear()
+  messageProcessingPaused = false
+  queuedMessages = []
 }
 
 /**
@@ -1191,6 +1233,8 @@ if (import.meta.hot) {
     reconnectAttempts = prevData.reconnectAttempts as number
     currentReconnectDelay = prevData.currentReconnectDelay as number
     intentionalClose = prevData.intentionalClose as boolean
+    messageProcessingPaused = prevData.messageProcessingPaused as boolean
+    queuedMessages = (prevData.queuedMessages as MessageEvent[]) ?? []
 
     // Re-attach message handler to use the new module's handleMessage function
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1226,6 +1270,8 @@ if (import.meta.hot) {
     data.reconnectAttempts = reconnectAttempts
     data.currentReconnectDelay = currentReconnectDelay
     data.intentionalClose = intentionalClose
+    data.messageProcessingPaused = messageProcessingPaused
+    data.queuedMessages = queuedMessages
     data.lastEventTimestamps = new Map(lastEventTimestamps)
     data.currentSessions = new Map(currentSessions)
   })
