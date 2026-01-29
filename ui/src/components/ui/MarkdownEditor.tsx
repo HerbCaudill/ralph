@@ -8,6 +8,7 @@ import {
   markdownShortcutPlugin,
   linkPlugin,
   linkDialogPlugin,
+  codeBlockPlugin,
   toolbarPlugin,
   BoldItalicUnderlineToggles,
   ListsToggle,
@@ -109,6 +110,7 @@ export function MarkdownEditor({
     markdownShortcutPlugin(),
     linkPlugin(),
     linkDialogPlugin(),
+    codeBlockPlugin({ defaultCodeBlockLanguage: "text" }),
     ...(showToolbar && !readOnly ?
       [
         toolbarPlugin({
