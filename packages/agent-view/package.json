@@ -20,7 +20,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest --watch",
-    "format": "prettier --write . --log-level silent"
+    "format": "prettier --write . --log-level silent",
+    "storybook": "storybook dev -p 6007",
+    "build-storybook": "storybook build"
   },
   "keywords": [
     "agent",
@@ -50,10 +52,16 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@storybook/addon-vitest": "^10.2.0",
+    "@storybook/react-vite": "^10.2.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^24.10.9",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "prettier": "^3.5.3",
+    "storybook": "^10.2.0",
+    "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "vitest": "^4.0.17"
   },
