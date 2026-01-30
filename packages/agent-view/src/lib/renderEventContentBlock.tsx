@@ -7,7 +7,12 @@ import type { ToolResult } from "./buildToolResultsMap"
 import { parseTaskLifecycleEvent } from "./parseTaskLifecycleEvent"
 import { parsePromiseCompleteEvent } from "./parsePromiseCompleteEvent"
 import { shouldFilterContentBlock, logContentBlockFilterDecision } from "./EventFilterPipeline"
-import type { AssistantContentBlock, AssistantTextEvent, ToolUseEvent } from "../types"
+import type {
+  AssistantContentBlock,
+  AssistantTextEvent,
+  CustomEventRenderer,
+  ToolUseEvent,
+} from "../types"
 
 /**
  * Renders a single content block from an assistant message.
@@ -29,7 +34,11 @@ export function renderEventContentBlock(
   index: number,
   timestamp: number | undefined,
   toolResults: Map<string, ToolResult>,
-  options?: { hasStructuredLifecycleEvents?: boolean; eventIndex?: number },
+  options?: {
+    hasStructuredLifecycleEvents?: boolean
+    eventIndex?: number
+    customEventRenderers?: Record<string, CustomEventRenderer>
+  },
 ) {
   // For text blocks, check if it's a lifecycle marker
   const lifecycleEvent =
@@ -63,12 +72,24 @@ export function renderEventContentBlock(
     // If it's a lifecycle text and we get here, structured events don't exist
     // so we should render it as a lifecycle event
     if (lifecycleEvent) {
+      // Check custom renderer first, fall back to built-in
+      const customRenderer = options?.customEventRenderers?.["task_lifecycle"]
+      if (customRenderer) {
+        return <span key={`${keyPrefix}lifecycle-${index}`}>{customRenderer(lifecycleEvent)}</span>
+      }
       return <TaskLifecycleEvent key={`${keyPrefix}lifecycle-${index}`} event={lifecycleEvent} />
     }
 
     // Check for promise complete events
     const promiseCompleteEvent = parsePromiseCompleteEvent(block.text, timestamp)
     if (promiseCompleteEvent) {
+      // Check custom renderer first, fall back to built-in
+      const customRenderer = options?.customEventRenderers?.["promise_complete"]
+      if (customRenderer) {
+        return (
+          <span key={`${keyPrefix}promise-${index}`}>{customRenderer(promiseCompleteEvent)}</span>
+        )
+      }
       return (
         <PromiseCompleteEvent key={`${keyPrefix}promise-${index}`} event={promiseCompleteEvent} />
       )

@@ -7,6 +7,7 @@ export const DEFAULT_AGENT_VIEW_CONTEXT: AgentViewContextValue = {
   linkHandlers: {},
   toolOutput: undefined,
   workspacePath: undefined,
+  customEventRenderers: {},
 }
 
 /** Shared context for agent-view components. */

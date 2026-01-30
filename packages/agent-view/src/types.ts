@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+
 /** Base chat event interface. */
 export interface ChatEvent {
   type: string
@@ -263,6 +265,9 @@ export interface AgentViewTask {
   title?: string
 }
 
+/** A custom event renderer function that renders a ChatEvent as a React node. */
+export type CustomEventRenderer = (event: ChatEvent) => ReactNode
+
 /** Context values shared by agent-view components. */
 export interface AgentViewContextValue {
   isDark: boolean
@@ -271,4 +276,10 @@ export interface AgentViewContextValue {
   workspacePath?: string | null
   /** Available tasks for task ID lookups (e.g., in TaskLifecycleEvent). */
   tasks?: AgentViewTask[]
+  /**
+   * Custom event renderers keyed by event type.
+   * When rendering an event, the pipeline checks this map before falling back to built-in renderers.
+   * Unknown event types with no matching renderer are silently discarded.
+   */
+  customEventRenderers?: Record<string, CustomEventRenderer>
 }

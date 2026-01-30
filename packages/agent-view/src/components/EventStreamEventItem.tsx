@@ -1,3 +1,4 @@
+import { useContext } from "react"
 import { UserMessage } from "./UserMessage"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { ErrorEvent } from "./ErrorEvent"
@@ -13,6 +14,7 @@ import { isErrorEvent } from "../lib/isErrorEvent"
 import { isRalphTaskCompletedEvent } from "../lib/isRalphTaskCompletedEvent"
 import { isRalphTaskStartedEvent } from "../lib/isRalphTaskStartedEvent"
 import { isUserMessageEvent } from "../lib/isUserMessageEvent"
+import { AgentViewContext } from "../context/AgentViewContext"
 import type { ChatEvent, TaskLifecycleEventData, ErrorEventData } from "../types"
 
 /**
@@ -34,6 +36,8 @@ export function EventStreamEventItem({
   hasStructuredLifecycleEvents,
   eventIndex,
 }: Props) {
+  const { customEventRenderers } = useContext(AgentViewContext)
+
   // Use centralized filter logic to check if event should be rendered
   const filterResult = shouldFilterEventByType(event)
 
@@ -57,6 +61,8 @@ export function EventStreamEventItem({
       action: "starting",
       taskId: event.taskId ?? "",
     }
+    const customRenderer = customEventRenderers?.["task_lifecycle"]
+    if (customRenderer) return <>{customRenderer(lifecycleEvent)}</>
     return <TaskLifecycleEvent event={lifecycleEvent} />
   }
 
@@ -67,6 +73,8 @@ export function EventStreamEventItem({
       action: "completed",
       taskId: event.taskId ?? "",
     }
+    const customRenderer = customEventRenderers?.["task_lifecycle"]
+    if (customRenderer) return <>{customRenderer(lifecycleEvent)}</>
     return <TaskLifecycleEvent event={lifecycleEvent} />
   }
 
@@ -81,6 +89,7 @@ export function EventStreamEventItem({
           renderEventContentBlock(block, index, event.timestamp, toolResults, {
             hasStructuredLifecycleEvents,
             eventIndex,
+            customEventRenderers,
           }),
         )}
       </>

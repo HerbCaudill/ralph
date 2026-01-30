@@ -1,3 +1,4 @@
+import { useContext } from "react"
 import { AssistantText } from "./AssistantText"
 import { ThinkingBlock } from "./ThinkingBlock"
 import { ToolUseCard } from "./ToolUseCard"
@@ -6,13 +7,18 @@ import { PromiseCompleteEvent } from "./PromiseCompleteEvent"
 import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycleEvent"
 import { parsePromiseCompleteEvent } from "../lib/parsePromiseCompleteEvent"
 import { unescapeJsonString } from "../lib/unescapeJsonString"
+import { AgentViewContext } from "../context/AgentViewContext"
 import type { AssistantTextEvent, StreamingContentBlock, ToolUseEvent } from "../types"
 
 /**
  * Renders a single streaming content block (text or tool use) from the Claude API.
  * Handles parsing task lifecycle events from text and incomplete tool use JSON.
+ *
+ * Checks customEventRenderers from context before falling back to built-in renderers.
  */
 export function StreamingBlockRenderer({ block, timestamp }: Props) {
+  const { customEventRenderers } = useContext(AgentViewContext)
+
   if (block.type === "thinking") {
     if (!block.thinking) return null
     // Show thinking blocks expanded while streaming so user can see progress
@@ -22,13 +28,21 @@ export function StreamingBlockRenderer({ block, timestamp }: Props) {
   if (block.type === "text") {
     if (!block.text) return null
 
+    // Check for task lifecycle events
     const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
     if (lifecycleEvent) {
+      // Check custom renderer first, fall back to built-in
+      const customRenderer = customEventRenderers?.["task_lifecycle"]
+      if (customRenderer) return <>{customRenderer(lifecycleEvent)}</>
       return <TaskLifecycleEvent event={lifecycleEvent} />
     }
 
+    // Check for promise complete events
     const promiseCompleteEvent = parsePromiseCompleteEvent(block.text, timestamp)
     if (promiseCompleteEvent) {
+      // Check custom renderer first, fall back to built-in
+      const customRenderer = customEventRenderers?.["promise_complete"]
+      if (customRenderer) return <>{customRenderer(promiseCompleteEvent)}</>
       return <PromiseCompleteEvent event={promiseCompleteEvent} />
     }
 

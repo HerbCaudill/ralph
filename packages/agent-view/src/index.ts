@@ -105,6 +105,45 @@ export type { AgentAdapter, AgentMeta, ConvertEvent, ConvertEvents } from "./ada
 // ---- Constants ----
 export { TOOL_OUTPUT_PREVIEW_LINES } from "./constants"
 
+// ---- Canonical Event Schema ----
+export {
+  // Schema objects
+  BaseEvent as BaseEventSchema,
+  CanonicalEvent as CanonicalEventSchema,
+  MessageEvent as MessageEventSchema,
+  ThinkingEvent as ThinkingEventSchema,
+  ToolUseEvent as ToolUseEventSchema,
+  ToolResultEvent as ToolResultEventSchema,
+  ResultEvent as ResultEventSchema,
+  ErrorEvent as ErrorEventSchema,
+  StatusEvent as StatusEventSchema,
+  UnknownEvent as UnknownEventSchema,
+  // Type guards (canonical)
+  isCoreEvent,
+  isMessageEvent as isCanonicalMessageEvent,
+  isThinkingEvent as isCanonicalThinkingEvent,
+  isToolUseEvent as isCanonicalToolUseEvent,
+  isToolResultEvent as isCanonicalToolResultEvent,
+  isResultEvent as isCanonicalResultEvent,
+  isErrorEvent as isCanonicalErrorEvent,
+  isStatusEvent as isCanonicalStatusEvent,
+} from "./events/index.js"
+export type {
+  // Inferred types
+  BaseEventType,
+  CanonicalEventType,
+  CanonicalEventEncoded,
+  MessageEventType,
+  ThinkingEventType,
+  ToolUseEventType,
+  ToolResultEventType,
+  ResultEventType,
+  ErrorEventType,
+  StatusEventType,
+  UnknownEventType,
+  AgentStatus,
+} from "./events/index.js"
+
 // ---- Types ----
 export type {
   // Base types
@@ -145,6 +184,7 @@ export type {
   AgentViewToolOutputControl,
   AgentViewContextValue,
   AgentViewTask,
+  CustomEventRenderer,
   // Deprecated aliases
   AssistantTextEvent,
   UserMessageEvent,
