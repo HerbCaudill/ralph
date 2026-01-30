@@ -1,14 +1,14 @@
 import { exec, resolveExecOptions, type ExecOptions, type ResolvedExecOptions } from "./exec.js"
-import { DaemonSocket, watchMutations, type WatchMutationsOptions } from "./socket.js"
+import { watchMutations, type WatchMutationsOptions } from "./socket.js"
 import type {
-  BdIssue,
-  BdListOptions,
-  BdCreateOptions,
-  BdUpdateOptions,
-  BdInfo,
-  BdLabelResult,
-  BdDepResult,
   BdComment,
+  BdCreateOptions,
+  BdDepResult,
+  BdInfo,
+  BdIssue,
+  BdLabelResult,
+  BdListOptions,
+  BdUpdateOptions,
   MutationEvent,
 } from "./types.js"
 

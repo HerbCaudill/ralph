@@ -46,7 +46,7 @@ describe("utils", () => {
       const result = cx({
         "text-red-500": true,
         "font-bold": false,
-        "underline": true,
+        underline: true,
       })
       expect(result).toContain("text-red-500")
       expect(result).not.toContain("font-bold")

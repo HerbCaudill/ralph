@@ -118,11 +118,7 @@ describe("createBatchConverter", () => {
     }
 
     const convertEvents = createBatchConverter(convertEvent)
-    const nativeEvents = [
-      { messages: ["hello", "world"] },
-      { messages: ["foo"] },
-      { messages: [] },
-    ]
+    const nativeEvents = [{ messages: ["hello", "world"] }, { messages: ["foo"] }, { messages: [] }]
 
     const result = convertEvents(nativeEvents)
 

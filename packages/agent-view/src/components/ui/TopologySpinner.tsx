@@ -48,9 +48,7 @@ export function TopologySpinner({
   const Icon = TOPOLOGY_ICONS[iconIndex]
 
   if (stopped) {
-    return (
-      <Icon className={cx("text-muted-foreground size-6 opacity-50", className)} aria-hidden />
-    )
+    return <Icon className={cx("text-muted-foreground size-6 opacity-50", className)} aria-hidden />
   }
 
   return (

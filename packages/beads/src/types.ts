@@ -30,7 +30,7 @@ export interface BdDependency extends BdIssue {
   dependency_type: string
 }
 
-/**  Options for listing issues. */
+// /**  Options for listing issues. */
 export interface BdListOptions {
   /** Maximum number of results (default: 50) */
   limit?: number
