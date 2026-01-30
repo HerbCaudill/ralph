@@ -2,9 +2,11 @@ AGENTS.md is a symlink to CLAUDE.md.
 
 # Agent Instructions
 
+## Issue tracking
+
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
-## Quick Reference
+### Quick Reference
 
 ```bash
 bd ready              # Find available work
@@ -14,7 +16,7 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
-## Custom Beads Hooks
+### Custom Beads Hooks
 
 This project has custom hooks in `.beads/hooks/`:
 
