@@ -18,8 +18,8 @@ const WAIT_INTERVAL_MS = 250
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "..")
-const testWorkspacePath = path.join(repoRoot, "ui", "e2e", "test-workspace")
-const logDir = path.join(repoRoot, "ui", "test-results")
+const testWorkspacePath = path.join(repoRoot, "packages", "ui", "e2e", "test-workspace")
+const logDir = path.join(repoRoot, "packages", "ui", "test-results")
 const devLogPath = path.join(logDir, "playwright-dev.log")
 
 async function checkPortAvailable(port) {

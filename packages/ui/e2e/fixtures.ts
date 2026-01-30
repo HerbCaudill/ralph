@@ -21,6 +21,10 @@ export class TaskListPage {
     const response = await this.page.request.post("/api/tasks", {
       data: { title },
     })
+    if (!response.ok()) {
+      const body = await response.text()
+      throw new Error(`Task create failed: ${response.status()} ${response.statusText()} ${body}`)
+    }
     const result = await response.json()
 
     // Refresh to ensure the task list is updated (websocket updates may not work in test env)
