@@ -1,11 +1,17 @@
+import { useMemo } from "react"
 import { useEventStream } from "@/hooks/useEventStream"
 import { EventStream } from "./EventStream"
+import { AgentViewProvider } from "@herbcaudill/agent-view"
+import type { AgentViewContextValue } from "@herbcaudill/agent-view"
+import { useAppStore, selectTasks } from "@/store"
 
 /**
  * Controller component for the event stream display.
  *
  * Uses the useEventStream hook to access store state and provides
  * all data to the presentational EventStream component.
+ * Wraps the EventStream in AgentViewProvider to supply task data
+ * for task lifecycle event display.
  *
  * When `instanceId` is provided, displays events from that specific instance.
  * Otherwise, displays events from the currently active instance.
@@ -31,25 +37,40 @@ export function EventStreamController(
     containerRef,
   } = useEventStream({ instanceId, maxEvents })
 
+  // Provide tasks from store to agent-view context for task title lookups
+  const tasks = useAppStore(selectTasks)
+  const agentViewContext = useMemo<Partial<AgentViewContextValue>>(
+    () => ({
+      tasks: tasks.map(t => ({ id: t.id, title: t.title })),
+      linkHandlers: {
+        taskIdPrefix: issuePrefix,
+        buildTaskHref: (id: string) => `/issue/${id}`,
+      },
+    }),
+    [tasks, issuePrefix],
+  )
+
   return (
-    <EventStream
-      ref={containerRef}
-      className={className}
-      maxEvents={maxEvents}
-      sessionEvents={sessionEvents}
-      ralphStatus={ralphStatus}
-      isViewingLatest={isViewingLatest}
-      isViewingHistorical={isViewingHistorical}
-      isRunning={isRunning}
-      isConnected={isConnected}
-      sessionTask={sessionTask}
-      sessions={sessions}
-      isLoadingSessions={isLoadingSessions}
-      isLoadingHistoricalEvents={isLoadingHistoricalEvents}
-      issuePrefix={issuePrefix}
-      currentSessionId={currentSessionId}
-      navigation={navigation}
-    />
+    <AgentViewProvider value={agentViewContext}>
+      <EventStream
+        ref={containerRef}
+        className={className}
+        maxEvents={maxEvents}
+        sessionEvents={sessionEvents}
+        ralphStatus={ralphStatus}
+        isViewingLatest={isViewingLatest}
+        isViewingHistorical={isViewingHistorical}
+        isRunning={isRunning}
+        isConnected={isConnected}
+        sessionTask={sessionTask}
+        sessions={sessions}
+        isLoadingSessions={isLoadingSessions}
+        isLoadingHistoricalEvents={isLoadingHistoricalEvents}
+        issuePrefix={issuePrefix}
+        currentSessionId={currentSessionId}
+        navigation={navigation}
+      />
+    </AgentViewProvider>
   )
 }
 
