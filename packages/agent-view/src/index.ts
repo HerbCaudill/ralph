@@ -86,6 +86,10 @@ export {
 } from "./lib/EventFilterPipeline"
 export type { FilterResult, FilterContext } from "./lib/EventFilterPipeline"
 
+// ---- Adapter ----
+export { createBatchConverter } from "./adapter"
+export type { AgentAdapter, AgentMeta, ConvertEvent, ConvertEvents } from "./adapter"
+
 // ---- Constants ----
 export { TOOL_OUTPUT_PREVIEW_LINES } from "./constants"
 
