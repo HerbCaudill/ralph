@@ -40,26 +40,24 @@ export const convertCodexEvent = (
     return []
   }
 
-  const now = Date.now()
-
   switch (type) {
     case "item.started":
-      return convertItemStarted(event.item as ThreadItem | undefined, now)
+      return convertItemStarted(event.item as ThreadItem | undefined)
 
     case "item.completed":
-      return convertItemCompleted(event.item as ThreadItem | undefined, now)
+      return convertItemCompleted(event.item as ThreadItem | undefined)
 
     case "item.updated":
-      return convertItemUpdated(event.item as ThreadItem | undefined, now)
+      return convertItemUpdated(event.item as ThreadItem | undefined)
 
     case "turn.completed":
-      return convertTurnCompleted(event as Record<string, unknown>, now)
+      return convertTurnCompleted(event as Record<string, unknown>)
 
     case "turn.failed":
-      return convertTurnFailed(event as Record<string, unknown>, now)
+      return convertTurnFailed(event as Record<string, unknown>)
 
     case "error":
-      return convertError(event, now)
+      return convertError(event)
 
     case "thread.started":
     case "turn.started":
@@ -78,8 +76,6 @@ export const convertCodexEvent = (
 const convertItemStarted = (
   /** The thread item that started. */
   item: ThreadItem | undefined,
-  /** Timestamp to use for the ChatEvent. */
-  timestamp: number,
 ): ChatEvent[] => {
   if (!item) return []
 
@@ -88,7 +84,6 @@ const convertItemStarted = (
       const cmd = item as CommandExecutionItem
       const event: ToolUseChatEvent = {
         type: "tool_use",
-        timestamp,
         id: cmd.id,
         tool: "Bash",
         input: { command: cmd.command },
@@ -101,7 +96,6 @@ const convertItemStarted = (
       const mcp = item as McpToolCallItem
       const event: ToolUseChatEvent = {
         type: "tool_use",
-        timestamp,
         id: mcp.id,
         tool: "Task",
         input: {
@@ -126,8 +120,6 @@ const convertItemStarted = (
 const convertItemCompleted = (
   /** The thread item that completed. */
   item: ThreadItem | undefined,
-  /** Timestamp to use for the ChatEvent. */
-  timestamp: number,
 ): ChatEvent[] => {
   if (!item) return []
 
@@ -137,7 +129,6 @@ const convertItemCompleted = (
       if (!msg.text) return []
       const event: AssistantChatEvent = {
         type: "assistant",
-        timestamp,
         message: {
           content: [{ type: "text", text: msg.text }],
         },
@@ -150,7 +141,6 @@ const convertItemCompleted = (
       if (!reasoning.text) return []
       const event: AssistantChatEvent = {
         type: "assistant",
-        timestamp,
         message: {
           content: [{ type: "thinking", thinking: reasoning.text }],
         },
@@ -164,7 +154,6 @@ const convertItemCompleted = (
       const output = cmd.aggregated_output ?? ""
       const event: ToolUseChatEvent = {
         type: "tool_use",
-        timestamp,
         id: cmd.id,
         tool: "Bash",
         input: { command: cmd.command },
@@ -180,7 +169,6 @@ const convertItemCompleted = (
       const summary = fc.changes.map(c => `${c.kind}: ${c.path}`).join("\n")
       const event: ToolUseChatEvent = {
         type: "tool_use",
-        timestamp,
         id: fc.id,
         tool: "Edit",
         input: { changes: fc.changes },
@@ -196,7 +184,6 @@ const convertItemCompleted = (
       const isError = mcp.status === "failed"
       const event: ToolUseChatEvent = {
         type: "tool_use",
-        timestamp,
         id: mcp.id,
         tool: "Task",
         input: {
@@ -215,7 +202,6 @@ const convertItemCompleted = (
       const err = item as ErrorItem
       const event: ErrorChatEvent = {
         type: "error",
-        timestamp,
         error: err.message,
       }
       return [event]
@@ -233,8 +219,6 @@ const convertItemCompleted = (
 const convertItemUpdated = (
   /** The thread item that was updated. */
   item: ThreadItem | undefined,
-  /** Timestamp to use for the ChatEvent. */
-  timestamp: number,
 ): ChatEvent[] => {
   if (!item) return []
 
@@ -242,7 +226,6 @@ const convertItemUpdated = (
     const cmd = item as CommandExecutionItem
     const event: ToolUseChatEvent = {
       type: "tool_use",
-      timestamp,
       id: cmd.id,
       tool: "Bash",
       input: { command: cmd.command },
@@ -261,13 +244,10 @@ const convertItemUpdated = (
 const convertTurnCompleted = (
   /** The raw turn.completed event object. */
   event: Record<string, unknown>,
-  /** Timestamp to use for the ChatEvent. */
-  timestamp: number,
 ): ChatEvent[] => {
   const usage = event.usage as Usage | undefined
   const result: ResultChatEvent = {
     type: "result",
-    timestamp,
     usage:
       usage ?
         {
@@ -287,13 +267,10 @@ const convertTurnCompleted = (
 const convertTurnFailed = (
   /** The raw turn.failed event object. */
   event: Record<string, unknown>,
-  /** Timestamp to use for the ChatEvent. */
-  timestamp: number,
 ): ChatEvent[] => {
   const error = event.error as { message?: string } | undefined
   const errorEvent: ErrorChatEvent = {
     type: "error",
-    timestamp,
     error: error?.message ?? "Codex turn failed",
   }
   return [errorEvent]
@@ -305,13 +282,10 @@ const convertTurnFailed = (
 const convertError = (
   /** The raw error event object. */
   event: Record<string, unknown>,
-  /** Timestamp to use for the ChatEvent. */
-  timestamp: number,
 ): ChatEvent[] => {
   const message = typeof event.message === "string" ? event.message : "Unknown error"
   const errorEvent: ErrorChatEvent = {
     type: "error",
-    timestamp,
     error: message,
   }
   return [errorEvent]

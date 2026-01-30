@@ -93,14 +93,11 @@ describe("convertClaudeEvent", () => {
     expect(usage.output_tokens).toBe(80)
   })
 
-  it("adds timestamp when not present", () => {
-    const before = Date.now()
+  it("leaves timestamp undefined when not present", () => {
     const event = { type: "assistant", message: { content: [] } }
     const result = convertClaudeEvent(event)
-    const after = Date.now()
     expect(result).toHaveLength(1)
-    expect(result[0].timestamp).toBeGreaterThanOrEqual(before)
-    expect(result[0].timestamp).toBeLessThanOrEqual(after)
+    expect(result[0].timestamp).toBeUndefined()
   })
 
   it("passes through system events", () => {

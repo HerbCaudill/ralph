@@ -12,7 +12,7 @@ export function parseTaskLifecycleEvent(
   /** The text message to parse */
   text: string,
   /** Timestamp for the event */
-  timestamp: number,
+  timestamp: number | undefined,
 ): TaskLifecycleEventData | null {
   const startingMatch = text.match(/<start_task>([a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*)<\/start_task>/i)
   if (startingMatch) {

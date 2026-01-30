@@ -68,5 +68,5 @@ export function StreamingBlockRenderer({ block, timestamp }: Props) {
 
 type Props = {
   block: StreamingContentBlock
-  timestamp: number
+  timestamp?: number
 }

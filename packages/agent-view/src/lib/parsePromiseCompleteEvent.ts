@@ -11,7 +11,7 @@ export function parsePromiseCompleteEvent(
   /** The text message to parse */
   text: string,
   /** Timestamp for the event */
-  timestamp: number,
+  timestamp: number | undefined,
 ): PromiseCompleteChatEvent | null {
   const match = text.match(/<promise>COMPLETE<\/promise>/i)
   if (match) {

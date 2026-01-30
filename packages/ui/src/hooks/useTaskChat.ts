@@ -33,7 +33,7 @@ function toChatEvents(userMessages: TaskChatMessage[], taskChatEvents: ChatEvent
     }))
 
   // Merge with task chat events and sort by timestamp
-  return [...userEvents, ...taskChatEvents].sort((a, b) => a.timestamp - b.timestamp)
+  return [...userEvents, ...taskChatEvents].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
 }
 
 export interface UseTaskChatResult {

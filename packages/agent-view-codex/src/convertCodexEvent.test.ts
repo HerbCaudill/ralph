@@ -45,7 +45,7 @@ describe("convertCodexEvent", () => {
       expect((result[0] as any).id).toBe("cmd-123")
       expect((result[0] as any).input).toEqual({ command: "ls -la" })
       expect((result[0] as any).status).toBe("running")
-      expect((result[0] as any).timestamp).toBeGreaterThan(0)
+      expect(result[0].timestamp).toBeUndefined()
     })
 
     it("converts mcp_tool_call to pending tool_use", () => {
@@ -98,10 +98,8 @@ describe("convertCodexEvent", () => {
       const result = convertCodexEvent(event)
       expect(result).toHaveLength(1)
       expect(result[0].type).toBe("assistant")
-      expect((result[0] as any).message.content).toEqual([
-        { type: "text", text: "Hello world" },
-      ])
-      expect((result[0] as any).timestamp).toBeGreaterThan(0)
+      expect((result[0] as any).message.content).toEqual([{ type: "text", text: "Hello world" }])
+      expect(result[0].timestamp).toBeUndefined()
     })
 
     it("returns empty array for agent_message with no text", () => {
@@ -391,7 +389,7 @@ describe("convertCodexEvent", () => {
         input_tokens: 150,
         output_tokens: 75,
       })
-      expect((result[0] as any).timestamp).toBeGreaterThan(0)
+      expect(result[0].timestamp).toBeUndefined()
     })
 
     it("converts turn.completed with no cached tokens", () => {
@@ -430,7 +428,7 @@ describe("convertCodexEvent", () => {
       expect(result).toHaveLength(1)
       expect(result[0].type).toBe("error")
       expect((result[0] as any).error).toBe("Turn execution failed")
-      expect((result[0] as any).timestamp).toBeGreaterThan(0)
+      expect(result[0].timestamp).toBeUndefined()
     })
 
     it("uses default message for turn.failed with no error", () => {

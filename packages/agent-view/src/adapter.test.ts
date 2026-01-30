@@ -104,7 +104,7 @@ describe("createBatchConverter", () => {
 
     const result = convertEvents(nativeEvents)
 
-    expect(result.map(e => (e as any).id)).toEqual([1, 2, 3, 4, 5])
+    expect(result.map(e => (e as any).id)).toEqual(["1", "2", "3", "4", "5"])
   })
 
   it("should handle complex event transformations", () => {

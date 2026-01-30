@@ -25,7 +25,7 @@ const KNOWN_EVENT_TYPES = new Set([
  * Convert a single native Claude CLI JSON event into zero or more ChatEvents.
  *
  * Claude CLI events already use the same shape as ChatEvent, so this is
- * essentially a pass-through that ensures a `timestamp` field is present
+ * essentially a pass-through that preserves the `timestamp` field if present
  * and filters out unrecognized event types.
  */
 export const convertClaudeEvent = (
@@ -43,7 +43,7 @@ export const convertClaudeEvent = (
     return []
   }
 
-  const timestamp = typeof event.timestamp === "number" ? event.timestamp : Date.now()
+  const timestamp = typeof event.timestamp === "number" ? event.timestamp : undefined
 
   const chatEvent: ChatEvent = {
     ...event,

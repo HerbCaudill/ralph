@@ -124,7 +124,7 @@ function getSessionIdFromEvent(
 function persistEventToIndexedDB(
   event: {
     type: string
-    timestamp: number
+    timestamp?: number
     uuid?: string
     id?: string
     session_id?: string
@@ -148,7 +148,7 @@ function persistEventToIndexedDB(
   const persistedEvent: PersistedEvent = {
     id: eventId,
     sessionId: resolvedSessionId,
-    timestamp: event.timestamp,
+    timestamp: event.timestamp ?? Date.now(),
     eventType: event.type ?? "unknown",
     event: event as PersistedEvent["event"],
   }

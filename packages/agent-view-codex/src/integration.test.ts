@@ -108,10 +108,10 @@ describe("agent-view + agent-view-codex integration", () => {
     // thread.started and turn.started are filtered out
     expect(chatEvents).toHaveLength(7)
 
-    // Every ChatEvent has a type and timestamp
+    // Every ChatEvent has a type; Codex events don't carry timestamps
     for (const event of chatEvents) {
       expect(event.type).toBeDefined()
-      expect(event.timestamp).toBeGreaterThan(0)
+      expect(event.timestamp).toBeUndefined()
     }
 
     // Verify event types in order
@@ -320,9 +320,9 @@ describe("agent-view + agent-view-codex integration", () => {
 
     const [chatEvent] = adapter.convertEvent(nativeEvent)
 
-    // ChatEvent requires type and timestamp
+    // ChatEvent requires type; timestamp is undefined for Codex events
     const typed: ChatEvent = chatEvent
     expect(typed.type).toBe("assistant")
-    expect(typed.timestamp).toBeGreaterThan(0)
+    expect(typed.timestamp).toBeUndefined()
   })
 })

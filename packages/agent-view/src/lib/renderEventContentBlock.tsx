@@ -27,7 +27,7 @@ import type { AssistantContentBlock, AssistantTextEvent, ToolUseEvent } from "..
 export function renderEventContentBlock(
   block: AssistantContentBlock,
   index: number,
-  timestamp: number,
+  timestamp: number | undefined,
   toolResults: Map<string, ToolResult>,
   options?: { hasStructuredLifecycleEvents?: boolean; eventIndex?: number },
 ) {

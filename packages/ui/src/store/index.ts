@@ -651,7 +651,7 @@ function mergeEventsById(
 
   // Merge and sort by timestamp to maintain chronological order
   const merged = [...existingEvents, ...newEvents]
-  merged.sort((a, b) => a.timestamp - b.timestamp)
+  merged.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
 
   // Cap to maxEvents most recent entries to bound memory usage
   if (merged.length > maxEvents) {

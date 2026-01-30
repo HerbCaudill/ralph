@@ -57,7 +57,7 @@ interface BlockAccumulator {
 
 interface StreamState {
   currentMessage: {
-    timestamp: number
+    timestamp: number | undefined
     accumulators: BlockAccumulator[]
   } | null
   currentBlockIndex: number
@@ -99,14 +99,14 @@ function resolveAccumulator(acc: BlockAccumulator): StreamingContentBlock {
  * - synthesizedMessageIds: Set of message IDs that were synthesized from streaming
  */
 function findStreamingMessageRanges(events: ChatEvent[]): {
-  completedMessageRanges: Array<{ start: number; stop: number; id?: string }>
-  inProgressStartTimestamp: number | null
+  completedMessageRanges: Array<{ start?: number; stop?: number; id?: string }>
+  inProgressStartTimestamp: number | null | undefined
   inProgressMessageId: string | null
   synthesizedMessageIds: Set<string>
 } {
-  const completedMessageRanges: Array<{ start: number; stop: number; id?: string }> = []
+  const completedMessageRanges: Array<{ start?: number; stop?: number; id?: string }> = []
   const synthesizedMessageIds = new Set<string>()
-  let currentMessageStartTimestamp: number | null = null
+  let currentMessageStartTimestamp: number | null | undefined = null
   let currentMessageId: string | null = null
 
   for (const event of events) {
@@ -168,8 +168,8 @@ function findStreamingMessageRanges(events: ChatEvent[]): {
  */
 function shouldDeduplicateAssistant(
   assistantEvent: ChatEvent,
-  completedMessageRanges: Array<{ start: number; stop: number; id?: string }>,
-  inProgressStartTimestamp: number | null,
+  completedMessageRanges: Array<{ start?: number; stop?: number; id?: string }>,
+  inProgressStartTimestamp: number | null | undefined,
   inProgressMessageId: string | null,
   synthesizedMessageIds: Set<string>,
 ): boolean {
@@ -203,11 +203,16 @@ function shouldDeduplicateAssistant(
   // that doesn't include message IDs in stream events.
   const assistantTimestamp = assistantEvent.timestamp
 
+  // Skip timestamp-based deduplication if the assistant event has no timestamp
+  if (assistantTimestamp == null) {
+    return false
+  }
+
   // Check if this assistant is within threshold of any completed streaming message's stop
   for (const range of completedMessageRanges) {
     // Only use timestamp fallback if the range doesn't have an ID (legacy data)
     // If it has an ID and we didn't match above, they're different messages
-    if (range.id) {
+    if (range.id || range.stop == null) {
       continue
     }
     const diff = Math.abs(assistantTimestamp - range.stop)
@@ -219,7 +224,7 @@ function shouldDeduplicateAssistant(
   // Check if there's an in-progress streaming message (without ID) that started before
   // this assistant. Only use timestamp fallback if we don't have an ID to match.
   if (
-    inProgressStartTimestamp !== null &&
+    inProgressStartTimestamp != null &&
     inProgressMessageId === null && // Only fallback if no ID available
     inProgressStartTimestamp <= assistantTimestamp &&
     assistantTimestamp - inProgressStartTimestamp < IN_PROGRESS_MESSAGE_TIMEOUT_MS
