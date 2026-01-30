@@ -1,23 +1,16 @@
-node_modules
-dist
 .DS_Store
+.test-results
+.test-workspace
 *.log
 *.tsbuildinfo
+**/.ralph/*.jsonl
 **/.ralph/events.jsonl
 **/.ralph/sessions/**/*
 **/.ralph/state.*.json
-.test-results
-.test-workspace
-
-
-
-# UI-specific
-ui/dist
-ui/test-results
-ui/playwright-report
-ui/storybook-static
-ui/.ralph/*.jsonl
-ui/e2e/test-workspace
-
-# Benchmark results
+**/dist
+**/e2e/test-workspace
+**/node_modules
+**/playwright-report
+**/storybook-static
+**/test-results
 benchmark-results

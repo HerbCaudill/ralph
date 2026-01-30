@@ -156,7 +156,7 @@ See `spec/web-client-ux-functional-spec.md` and `spec/screenshots/` for the UX-o
 
 Ralph uses a two-tier prompt system:
 
-1. **Core prompt** (`cli/templates/core-prompt.md`) - Bundled session protocol (required by Ralph)
+1. **Core prompt** (`packages/cli/templates/core-prompt.md`) - Bundled session protocol (required by Ralph)
    - Session lifecycle (check errors → find issue → work → complete)
    - Task assignment logic
    - Output tokens (`<promise>COMPLETE</promise>`, `<start_task>`, `<end_task>`)
@@ -204,7 +204,7 @@ Use Node.js 24.x (repo pins 24.13.0 in `.prototools`).
 # Build all packages
 pnpm build
 
-# Build shared package (required after changes to shared/)
+# Build shared package (required after changes to packages/shared/)
 pnpm --filter @herbcaudill/ralph-shared build
 
 # Typecheck all packages
@@ -227,7 +227,7 @@ pnpm ui:build          # Build UI for production
 pnpm ui:test           # Run UI tests
 pnpm test:pw           # Run Playwright with dynamic ports (uses scripts/dev.js)
 pnpm --filter @herbcaudill/ralph-ui dev:headless  # Start UI without opening a browser
-# Playwright dev server output logs to ui/test-results/playwright-dev.log
+# Playwright dev server output logs to packages/ui/test-results/playwright-dev.log
 
 # Run server + UI together
 pnpm dev               # Start both server and UI concurrently
@@ -239,7 +239,7 @@ pnpm storybook         # Start Storybook for UI components
 pnpm format
 
 # Editor config
-# Use ui/server/tsconfig.json when editing UI server TypeScript files
+# Use packages/ui/server/tsconfig.json when editing UI server TypeScript files
 
 # Publish CLI + UI packages
 pnpm pub
@@ -252,11 +252,11 @@ pnpm --filter @herbcaudill/ralph-ui publish --access public
 
 This is a pnpm workspace with three packages:
 
-- **`cli/`** (`@herbcaudill/ralph`) - The CLI tool (published to npm)
-- **`ui/`** (`@herbcaudill/ralph-ui`) - Web app with server and React frontend (published to npm)
-- **`shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types used by CLI and UI
+- **`packages/cli/`** (`@herbcaudill/ralph`) - The CLI tool (published to npm)
+- **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with server and React frontend (published to npm)
+- **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types used by CLI and UI
 
-### CLI Package (`cli/`)
+### CLI Package (`packages/cli/`)
 
 The autonomous AI session engine that wraps Claude CLI:
 
@@ -265,18 +265,18 @@ The autonomous AI session engine that wraps Claude CLI:
 - Displays formatted terminal UI using Ink (React for CLIs)
 - Orchestrates multiple sessions
 
-### UI Package (`ui/`)
+### UI Package (`packages/ui/`)
 
 Web app with integrated Express server and React frontend:
 
-- **Server** (`ui/server/`):
+- **Server** (`packages/ui/server/`):
   - REST API for workspace management
   - WebSocket server for real-time event streaming
   - `RalphManager` - Spawns and manages Ralph CLI processes
   - `BdProxy` - Proxy for beads CLI commands
   - `ClaudeAdapter`/`CodexAdapter` - SDK-backed agent adapters for Claude and Codex
   - Theme discovery from VS Code installations
-- **Frontend** (`ui/src/`):
+- **Frontend** (`packages/ui/src/`):
   - Real-time event stream viewer
   - Task chat shows tool uses and results during responses
   - Task sidebar with beads integration
@@ -293,14 +293,14 @@ The UI renders special XML tags from agent output as styled event cards:
 - **`<start_task>`/`<end_task>`** → `TaskLifecycleEvent` component (blue/green styling with task ID links)
 - **`<promise>COMPLETE</promise>`** → `PromiseCompleteEvent` component (purple styling, "Session Complete" label)
 
-Both are parsed from text blocks via `parseTaskLifecycleEvent` and `parsePromiseCompleteEvent` in `ui/src/lib/`, and rendered in `renderEventContentBlock` and `StreamingBlockRenderer`.
+Both are parsed from text blocks via `parseTaskLifecycleEvent` and `parsePromiseCompleteEvent` in `packages/ui/src/lib/`, and rendered in `renderEventContentBlock` and `StreamingBlockRenderer`.
 
 **Extended Thinking Support:**
 
 The UI supports Claude's extended thinking (internal monologue) blocks:
 
-- **`ThinkingBlock`** component (`ui/src/components/events/ThinkingBlock.tsx`) - Renders thinking content
-- **Types**: `AssistantThinkingContentBlock` and `StreamingThinkingBlock` in `ui/src/types.ts`
+- **`ThinkingBlock`** component (`packages/ui/src/components/events/ThinkingBlock.tsx`) - Renders thinking content
+- **Types**: `AssistantThinkingContentBlock` and `StreamingThinkingBlock` in `packages/ui/src/types.ts`
 - **Features**:
   - Collapsible display (collapsed by default to reduce visual prominence)
   - Brain icon indicator
@@ -346,14 +346,14 @@ Users can send messages to Ralph during an active session. The message format ex
 
 The server automatically wraps user messages in this format before sending to the Ralph CLI via stdin.
 
-### Shared Package (`shared/`)
+### Shared Package (`packages/shared/`)
 
 Shared utilities and types used by both CLI and UI packages.
 
 **Subpath Exports:** The main entry point (`@herbcaudill/ralph-shared`) is browser-safe and only exports events, beads types, and the version constant. Node-only code (prompt loading utilities that use `node:fs`) is available via a separate subpath:
 
 - `@herbcaudill/ralph-shared` — Browser-safe: events, beads types, VERSION
-- `@herbcaudill/ralph-shared/prompts` — Node-only: prompt loading utilities
+- `@herbcaudill/ralph-packages/shared/prompts` — Node-only: prompt loading utilities
 
 **Modules:**
 
@@ -365,7 +365,7 @@ Shared utilities and types used by both CLI and UI packages.
   - Issue types (`BdIssue`, `BdDependency`)
   - Options types (`BdListOptions`, `BdCreateOptions`, `BdUpdateOptions`)
   - Mutation events (`MutationEvent`, `MutationType`)
-- **Prompt Loading** (`prompts/`) — **Node-only, import from `@herbcaudill/ralph-shared/prompts`**:
+- **Prompt Loading** (`prompts/`) — **Node-only, import from `@herbcaudill/ralph-packages/shared/prompts`**:
   - `loadSessionPrompt()` - Combine core-prompt with workflow
   - `loadPrompt()` - Load prompt files with custom overrides
   - `hasCustomWorkflow()` - Check for custom workflow existence
@@ -373,7 +373,7 @@ Shared utilities and types used by both CLI and UI packages.
 ## Project Structure
 
 ```
-cli/                       # CLI package (@herbcaudill/ralph)
+packages/cli/                       # CLI package (@herbcaudill/ralph)
   src/
     cli.ts                  # Commander program definition
     index.ts                # Entry point
@@ -398,7 +398,7 @@ cli/                       # CLI package (@herbcaudill/ralph)
     agents/                 # → symlink to .claude/agents/
   bin/ralph.js              # Published executable
 
-ui/                        # UI package (@herbcaudill/ralph-ui)
+packages/ui/                        # UI package (@herbcaudill/ralph-ui)
   server/                   # Express backend
     index.ts                # Server entry point with REST API + WebSocket
     main.ts                 # Development entry point
@@ -418,7 +418,7 @@ ui/                        # UI package (@herbcaudill/ralph-ui)
   public/                   # Static assets
   .storybook/               # Storybook configuration
 
-shared/                    # Shared package (@herbcaudill/ralph-shared)
+packages/shared/                    # Shared package (@herbcaudill/ralph-shared)
   src/
     events/                 # Normalized agent event types and guards
       types.ts              # AgentEvent, AgentMessageEvent, etc.
@@ -479,7 +479,7 @@ pnpm server:test       # Run server tests only
 pnpm ui:test           # Run UI tests only
 ```
 
-### CLI Tests (`cli/test/`)
+### CLI Tests (`packages/cli/test/`)
 
 - Utility functions: `rel.ts`, `shortenTempPaths.ts`, `eventToBlocks.ts`
 - React components (using `ink-testing-library`): `Header.tsx`, `ToolUse.tsx`, `StreamingText.tsx`
@@ -491,7 +491,7 @@ pnpm ui:test           # Run UI tests only
 - Theme API endpoints
 - WebSocket communication
 
-### UI Tests (`ui/src/`)
+### UI Tests (`packages/ui/src/`)
 
 - React component tests
 - Store tests
@@ -499,13 +499,13 @@ pnpm ui:test           # Run UI tests only
 
 ### UI Conventions
 
-- Components lead files; helper functions live in `ui/src/lib` (one function per file).
+- Components lead files; helper functions live in `packages/ui/src/lib` (one function per file).
 - Standalone subcomponents live in their own files next to the parent component.
-- Shared types and constants live in `ui/src/types.ts` and `ui/src/constants.ts`.
-- **ChatEvent types**: The base `ChatEvent` interface (`ui/src/types.ts`) uses an index signature for
+- Shared types and constants live in `packages/ui/src/types.ts` and `packages/ui/src/constants.ts`.
+- **ChatEvent types**: The base `ChatEvent` interface (`packages/ui/src/types.ts`) uses an index signature for
   backward compatibility. Narrower **discriminated event interfaces** (e.g. `AssistantChatEvent`,
   `UserMessageChatEvent`, `ErrorChatEvent`, `SystemChatEvent`, etc.) extend `ChatEvent` with literal
-  `type` fields and typed properties. Use type-guard functions in `ui/src/lib/is*.ts` (e.g.
+  `type` fields and typed properties. Use type-guard functions in `packages/ui/src/lib/is*.ts` (e.g.
   `isAssistantMessage`, `isErrorEvent`) to narrow a `ChatEvent` to its concrete shape. Type guards
   use proper TypeScript type predicates (e.g. `event is AssistantChatEvent`) rather than returning
   plain `boolean`, so the compiler narrows automatically without manual casts. New code should use
@@ -580,7 +580,7 @@ State files should be placed in `public/fixtures/` and can be generated using th
 
 The UI can export complete application state for debugging and Storybook stories. Export via the Settings dropdown or call `downloadStateExport()` programmatically.
 
-**Type Definition:** `ExportedState` in `ui/src/lib/exportState.ts`
+**Type Definition:** `ExportedState` in `packages/ui/src/lib/exportState.ts`
 
 **Structure:**
 
@@ -649,7 +649,7 @@ The UI server provides a `POST /api/state/export` endpoint (dev mode only) that 
 - The JSON file contains `exportedAt` (ISO timestamp) and `instances` (array of serialized instance state).
 - Returns `{ ok: true, savedAt: number }` on success, or `{ ok: false, error: string }` on failure.
 
-The client-side `useDevStateExport` hook (`ui/src/hooks/useDevStateExport.ts`) automatically triggers this endpoint on session boundaries (new session start) by watching `getSessionBoundaries()`. It is wired into `App.tsx` alongside other session hooks and silently no-ops in production (the server returns 403). The hook includes retry logic: if the export fails (e.g., server not ready during startup), it retries after 3 seconds and will also retry on subsequent event changes.
+The client-side `useDevStateExport` hook (`packages/ui/src/hooks/useDevStateExport.ts`) automatically triggers this endpoint on session boundaries (new session start) by watching `getSessionBoundaries()`. It is wired into `App.tsx` alongside other session hooks and silently no-ops in production (the server returns 403). The hook includes retry logic: if the export fails (e.g., server not ready during startup), it retries after 3 seconds and will also retry on subsequent event changes.
 
 This is useful for automated debugging workflows and CI scripts that need a snapshot of Ralph state without browser interaction.
 
@@ -702,7 +702,7 @@ Hydration is scoped to the current workspace. The deduplication key includes `wo
 
 ### Zustand Store Architecture
 
-The UI state is managed by a Zustand store (`ui/src/store/index.ts`). The store supports **multi-instance state management** where each Ralph instance has its own isolated state.
+The UI state is managed by a Zustand store (`packages/ui/src/store/index.ts`). The store supports **multi-instance state management** where each Ralph instance has its own isolated state.
 
 **Key Architecture:**
 
@@ -795,7 +795,7 @@ Reconnection uses a unified wire protocol with a `source` field for routing:
 
 Both types (`AgentReconnectRequest`, `AgentPendingEventsResponse`) are defined in `@herbcaudill/ralph-shared`. Legacy wire types (`reconnect`, `pending_events`, `task-chat:reconnect`) are preserved for backward compatibility. The legacy `task-chat:pending_events` client handler was removed in r-z9gpz.
 
-**Legacy Wire Format Translation (`shared/src/events/legacyCompat.ts`):**
+**Legacy Wire Format Translation (`packages/shared/src/events/legacyCompat.ts`):**
 
 A backward compatibility module provides translation between legacy and unified wire formats:
 

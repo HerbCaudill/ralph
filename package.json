@@ -14,7 +14,7 @@
     "test:all": "node scripts/lib/testAll.js",
     "test:changed": "node scripts/lib/testAll.js --changed",
     "format": "git diff --name-only HEAD --diff-filter=ACMR | xargs -r prettier --write --ignore-unknown --log-level silent",
-    "cli": "tsx cli/src/index.ts",
+    "cli": "tsx packages/cli/src/index.ts",
     "cli:build": "pnpm --filter @herbcaudill/ralph build",
     "cli:test": "pnpm --filter @herbcaudill/ralph test",
     "pub": "pnpm --filter @herbcaudill/ralph publish && pnpm --filter @herbcaudill/ralph-ui publish",

@@ -8,9 +8,9 @@ This monorepo contains three packages:
 
 | Package                                | Description                           |
 | -------------------------------------- | ------------------------------------- |
-| [`@herbcaudill/ralph`](cli/)           | CLI tool for terminal-based sessions  |
-| [`@herbcaudill/ralph-ui`](ui/)         | Web UI with real-time event streaming |
-| [`@herbcaudill/ralph-shared`](shared/) | Shared types and utilities            |
+| [`@herbcaudill/ralph`](packages/cli/)           | CLI tool for terminal-based sessions  |
+| [`@herbcaudill/ralph-ui`](packages/ui/)         | Web UI with real-time event streaming |
+| [`@herbcaudill/ralph-shared`](packages/shared/) | Shared types and utilities            |
 
 ## Installation
 
