@@ -63,11 +63,11 @@ const preview: Preview = {
 
       return React.createElement(
         AgentViewProvider,
-        { value: { isDark, toolOutput: { showOutput: true } } },
+        { value: { isDark, toolOutput: { isVisible: true, onToggle: () => {} } }, children: null },
         React.createElement(
           "div",
           {
-            className: `bg-background text-foreground min-h-screen p-10${isDark ? " dark" : ""}`,
+            className: `bg-background text-foreground min-h-screen p-10 ${isDark ? " dark" : ""}`,
             style,
           },
           React.createElement(Story),
