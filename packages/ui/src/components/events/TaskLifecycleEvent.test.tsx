@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { TaskLifecycleEvent, parseTaskLifecycleEvent } from "@herbcaudill/agent-view"
+import { parseTaskLifecycleEvent } from "@herbcaudill/agent-view"
+import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { AgentViewTestWrapper } from "@/test/agentViewTestWrapper"
 import type { AgentViewContextValue, AgentViewTask } from "@herbcaudill/agent-view"
 

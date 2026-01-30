@@ -5,6 +5,7 @@ import type { ChatEvent } from "@/types"
 import { renderHook } from "@testing-library/react"
 import { AgentViewTestWrapper } from "@/test/agentViewTestWrapper"
 import type { AgentViewContextValue, AgentViewTask } from "@herbcaudill/agent-view"
+import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 
 /** Render EventList wrapped in AgentViewProvider. */
 function renderEventList(
@@ -153,6 +154,10 @@ describe("EventList", () => {
   })
 
   describe("task lifecycle events", () => {
+    const customEventRenderers = {
+      task_lifecycle: (event: any) => <TaskLifecycleEvent event={event} />,
+    }
+
     it("renders task started events", () => {
       const tasks: AgentViewTask[] = [{ id: "task-1", title: "Test task" }]
 
@@ -164,7 +169,7 @@ describe("EventList", () => {
         },
       ]
 
-      renderEventList({ events }, { tasks })
+      renderEventList({ events }, { tasks, customEventRenderers })
       expect(screen.getByText("Test task")).toBeInTheDocument()
     })
 
@@ -179,7 +184,7 @@ describe("EventList", () => {
         },
       ]
 
-      renderEventList({ events }, { tasks })
+      renderEventList({ events }, { tasks, customEventRenderers })
       expect(screen.getByText("Test task")).toBeInTheDocument()
     })
   })

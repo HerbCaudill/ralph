@@ -1,8 +1,6 @@
 import { AssistantText } from "../components/AssistantText"
 import { ThinkingBlock } from "../components/ThinkingBlock"
 import { ToolUseCard } from "../components/ToolUseCard"
-import { TaskLifecycleEvent } from "../components/TaskLifecycleEvent"
-import { PromiseCompleteEvent } from "../components/PromiseCompleteEvent"
 import type { ToolResult } from "./buildToolResultsMap"
 import { parseTaskLifecycleEvent } from "./parseTaskLifecycleEvent"
 import { parsePromiseCompleteEvent } from "./parsePromiseCompleteEvent"
@@ -72,27 +70,20 @@ export function renderEventContentBlock(
     // If it's a lifecycle text and we get here, structured events don't exist
     // so we should render it as a lifecycle event
     if (lifecycleEvent) {
-      // Check custom renderer first, fall back to built-in
+      // Rendered via customEventRenderers plugin — no built-in fallback
       const customRenderer = options?.customEventRenderers?.["task_lifecycle"]
-      if (customRenderer) {
-        return <span key={`${keyPrefix}lifecycle-${index}`}>{customRenderer(lifecycleEvent)}</span>
-      }
-      return <TaskLifecycleEvent key={`${keyPrefix}lifecycle-${index}`} event={lifecycleEvent} />
+      return customRenderer ?
+          <span key={`${keyPrefix}lifecycle-${index}`}>{customRenderer(lifecycleEvent)}</span>
+        : null
     }
 
-    // Check for promise complete events
+    // Check for promise complete events (rendered via customEventRenderers plugin)
     const promiseCompleteEvent = parsePromiseCompleteEvent(block.text, timestamp)
     if (promiseCompleteEvent) {
-      // Check custom renderer first, fall back to built-in
       const customRenderer = options?.customEventRenderers?.["promise_complete"]
-      if (customRenderer) {
-        return (
+      return customRenderer ?
           <span key={`${keyPrefix}promise-${index}`}>{customRenderer(promiseCompleteEvent)}</span>
-        )
-      }
-      return (
-        <PromiseCompleteEvent key={`${keyPrefix}promise-${index}`} event={promiseCompleteEvent} />
-      )
+        : null
     }
 
     const textEvent: AssistantTextEvent = {

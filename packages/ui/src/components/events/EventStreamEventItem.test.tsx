@@ -2,6 +2,12 @@ import { describe, it, expect, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { EventStreamEventItem } from "@herbcaudill/agent-view"
 import { useAppStore } from "@/store"
+import { AgentViewTestWrapper } from "@/test/agentViewTestWrapper"
+import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+
+const customEventRenderers = {
+  task_lifecycle: (event: any) => <TaskLifecycleEvent event={event} />,
+}
 
 describe("EventStreamEventItem", () => {
   beforeEach(() => {
@@ -16,15 +22,17 @@ describe("EventStreamEventItem", () => {
         .setTasks([{ id: "r-abc1", title: "Implement feature", status: "in_progress" }])
 
       render(
-        <EventStreamEventItem
-          event={{
-            type: "ralph_task_started",
-            timestamp: 1234567890,
-            taskId: "r-abc1",
-          }}
-          toolResults={new Map()}
-          hasStructuredLifecycleEvents={false}
-        />,
+        <AgentViewTestWrapper value={{ customEventRenderers }}>
+          <EventStreamEventItem
+            event={{
+              type: "ralph_task_started",
+              timestamp: 1234567890,
+              taskId: "r-abc1",
+            }}
+            toolResults={new Map()}
+            hasStructuredLifecycleEvents={false}
+          />
+        </AgentViewTestWrapper>,
       )
 
       expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
@@ -34,14 +42,16 @@ describe("EventStreamEventItem", () => {
 
     it("renders without taskId (uses empty string fallback)", () => {
       render(
-        <EventStreamEventItem
-          event={{
-            type: "ralph_task_started",
-            timestamp: 1234567890,
-          }}
-          toolResults={new Map()}
-          hasStructuredLifecycleEvents={false}
-        />,
+        <AgentViewTestWrapper value={{ customEventRenderers }}>
+          <EventStreamEventItem
+            event={{
+              type: "ralph_task_started",
+              timestamp: 1234567890,
+            }}
+            toolResults={new Map()}
+            hasStructuredLifecycleEvents={false}
+          />
+        </AgentViewTestWrapper>,
       )
 
       expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
@@ -54,15 +64,17 @@ describe("EventStreamEventItem", () => {
       useAppStore.getState().setTasks([{ id: "r-xyz9", title: "Fix bug", status: "closed" }])
 
       render(
-        <EventStreamEventItem
-          event={{
-            type: "ralph_task_completed",
-            timestamp: 1234567890,
-            taskId: "r-xyz9",
-          }}
-          toolResults={new Map()}
-          hasStructuredLifecycleEvents={false}
-        />,
+        <AgentViewTestWrapper value={{ customEventRenderers }}>
+          <EventStreamEventItem
+            event={{
+              type: "ralph_task_completed",
+              timestamp: 1234567890,
+              taskId: "r-xyz9",
+            }}
+            toolResults={new Map()}
+            hasStructuredLifecycleEvents={false}
+          />
+        </AgentViewTestWrapper>,
       )
 
       expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
@@ -72,14 +84,16 @@ describe("EventStreamEventItem", () => {
 
     it("renders without taskId (uses empty string fallback)", () => {
       render(
-        <EventStreamEventItem
-          event={{
-            type: "ralph_task_completed",
-            timestamp: 1234567890,
-          }}
-          toolResults={new Map()}
-          hasStructuredLifecycleEvents={false}
-        />,
+        <AgentViewTestWrapper value={{ customEventRenderers }}>
+          <EventStreamEventItem
+            event={{
+              type: "ralph_task_completed",
+              timestamp: 1234567890,
+            }}
+            toolResults={new Map()}
+            hasStructuredLifecycleEvents={false}
+          />
+        </AgentViewTestWrapper>,
       )
 
       expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()

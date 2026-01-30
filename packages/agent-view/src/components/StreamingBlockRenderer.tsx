@@ -2,8 +2,6 @@ import { useContext } from "react"
 import { AssistantText } from "./AssistantText"
 import { ThinkingBlock } from "./ThinkingBlock"
 import { ToolUseCard } from "./ToolUseCard"
-import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
-import { PromiseCompleteEvent } from "./PromiseCompleteEvent"
 import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycleEvent"
 import { parsePromiseCompleteEvent } from "../lib/parsePromiseCompleteEvent"
 import { unescapeJsonString } from "../lib/unescapeJsonString"
@@ -28,22 +26,18 @@ export function StreamingBlockRenderer({ block, timestamp }: Props) {
   if (block.type === "text") {
     if (!block.text) return null
 
-    // Check for task lifecycle events
+    // Check for task lifecycle events (rendered via customEventRenderers plugin)
     const lifecycleEvent = parseTaskLifecycleEvent(block.text, timestamp)
     if (lifecycleEvent) {
-      // Check custom renderer first, fall back to built-in
       const customRenderer = customEventRenderers?.["task_lifecycle"]
-      if (customRenderer) return <>{customRenderer(lifecycleEvent)}</>
-      return <TaskLifecycleEvent event={lifecycleEvent} />
+      return customRenderer ? <>{customRenderer(lifecycleEvent)}</> : null
     }
 
-    // Check for promise complete events
+    // Check for promise complete events (rendered via customEventRenderers plugin)
     const promiseCompleteEvent = parsePromiseCompleteEvent(block.text, timestamp)
     if (promiseCompleteEvent) {
-      // Check custom renderer first, fall back to built-in
       const customRenderer = customEventRenderers?.["promise_complete"]
-      if (customRenderer) return <>{customRenderer(promiseCompleteEvent)}</>
-      return <PromiseCompleteEvent event={promiseCompleteEvent} />
+      return customRenderer ? <>{customRenderer(promiseCompleteEvent)}</> : null
     }
 
     const textEvent: AssistantTextEvent = {

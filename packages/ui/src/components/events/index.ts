@@ -11,11 +11,11 @@ export {
   AssistantText,
   UserMessage,
   ToolUseCard,
-  TaskLifecycleEvent,
-  PromiseCompleteEvent,
   parseTaskLifecycleEvent,
   parsePromiseCompleteEvent,
 } from "@herbcaudill/agent-view"
+export { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+export { PromiseCompleteEvent } from "./PromiseCompleteEvent"
 export type {
   EventListProps,
   EventListState,

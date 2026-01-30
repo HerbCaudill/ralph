@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { TaskLifecycleEvent } from "@herbcaudill/agent-view"
+import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 
 const meta: Meta<typeof TaskLifecycleEvent> = {
   title: "Feedback/TaskLifecycleEvent",

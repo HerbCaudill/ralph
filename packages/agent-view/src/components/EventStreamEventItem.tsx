@@ -1,6 +1,5 @@
 import { useContext } from "react"
 import { UserMessage } from "./UserMessage"
-import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { ErrorEvent } from "./ErrorEvent"
 import type { ToolResult } from "../lib/buildToolResultsMap"
 import { renderEventContentBlock } from "../lib/renderEventContentBlock"
@@ -62,8 +61,7 @@ export function EventStreamEventItem({
       taskId: event.taskId ?? "",
     }
     const customRenderer = customEventRenderers?.["task_lifecycle"]
-    if (customRenderer) return <>{customRenderer(lifecycleEvent)}</>
-    return <TaskLifecycleEvent event={lifecycleEvent} />
+    return customRenderer ? <>{customRenderer(lifecycleEvent)}</> : null
   }
 
   if (isRalphTaskCompletedEvent(event)) {
@@ -74,8 +72,7 @@ export function EventStreamEventItem({
       taskId: event.taskId ?? "",
     }
     const customRenderer = customEventRenderers?.["task_lifecycle"]
-    if (customRenderer) return <>{customRenderer(lifecycleEvent)}</>
-    return <TaskLifecycleEvent event={lifecycleEvent} />
+    return customRenderer ? <>{customRenderer(lifecycleEvent)}</> : null
   }
 
   if (isAssistantMessage(event)) {
