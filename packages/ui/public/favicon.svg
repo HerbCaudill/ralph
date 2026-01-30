@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 719.4 552.1">
+  <defs>
+    <style>
+      .st0 {
+        fill: none;
+        stroke: #374151;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 42px;
+      }
+    </style>
+  </defs>
+  <path class="st0" d="M83.9,392.8c152.4,152.4,399.1,152.4,551.5,0,0,0,0-233.6,0-233.6C483,6.8,236.4,6.8,83.9,159.2c0,0,0,233.6,0,233.6Z"/>
+  <line class="st0" x1="359.7" y1="44.9" x2="359.7" y2="175.1"/>
+  <line class="st0" x1="478.3" y1="71.1" x2="478.3" y2="175.1"/>
+  <line class="st0" x1="241.1" y1="71.1" x2="241.1" y2="175.1"/>
+  <line class="st0" x1="241.1" y1="267.2" x2="241.1" y2="284.9"/>
+  <line class="st0" x1="478.3" y1="267.2" x2="478.3" y2="284.9"/>
+  <rect class="st0" x="39.5" y="257.4" width="37.3" height="37.3"/>
+  <rect class="st0" x="642.6" y="257.4" width="37.3" height="37.3"/>
+</svg>
