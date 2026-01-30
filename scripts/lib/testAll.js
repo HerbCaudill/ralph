@@ -99,7 +99,19 @@ function loadWorkspaceScripts(cwd) {
 
   // Simple YAML parse — just extract "- dir" lines
   const content = readFileSync(wsPath, "utf8")
-  const dirs = [...content.matchAll(/^\s*-\s*["']?([^"'\n]+)["']?\s*$/gm)].map(m => m[1])
+  const rawDirs = [...content.matchAll(/^\s*-\s*["']?([^"'\n]+)["']?\s*$/gm)].map(m => m[1])
+
+  // Expand simple glob patterns like "packages/*"
+  const dirs = rawDirs.flatMap(dir => {
+    if (dir.endsWith("/*")) {
+      const parent = path.join(cwd, dir.slice(0, -2))
+      if (!existsSync(parent)) return []
+      return readdirSync(parent, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => path.join(dir.slice(0, -2), d.name))
+    }
+    return [dir]
+  })
 
   const scripts = new Map()
   for (const dir of dirs) {
@@ -319,8 +331,7 @@ const suites = config.suites.map(suite => {
   if (type !== "vitest") return { ...suite, type }
   // Vitest suites get --reporter=json for structured output parsing,
   // and --changed when that flag is passed to the CLI.
-  // Uses -- separator so pnpm --filter forwards args to the script.
-  const extras = ["--", "--reporter=json", ...(changed ? ["--changed"] : [])]
+  const extras = ["--reporter=json", ...(changed ? ["--changed"] : [])]
   const cmd =
     typeof suite.command === "string" ?
       `${suite.command} ${extras.join(" ")}`
