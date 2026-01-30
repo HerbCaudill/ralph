@@ -1,9 +1,9 @@
 /**
- * Re-exports from @herbcaudill/beads with backward-compatible names.
+ * Re-exports from @herbcaudill/beads-sdk with backward-compatible names.
  * The UI server's BeadsClient mapped to DaemonSocket, with a workspacePath → cwd adapter.
  */
-import { DaemonSocket, watchMutations as sdkWatchMutations } from "@herbcaudill/beads"
-import type { MutationEvent } from "@herbcaudill/beads"
+import { DaemonSocket, watchMutations as sdkWatchMutations } from "@herbcaudill/beads-sdk"
+import type { MutationEvent } from "@herbcaudill/beads-sdk"
 
 /** Options for creating a BeadsClient (backward-compatible wrapper). */
 export interface BeadsClientOptions {

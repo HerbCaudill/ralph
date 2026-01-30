@@ -115,6 +115,7 @@ packages/shared/                    # Shared package
 ### Template system
 
 Two-tier prompt system:
+
 - **Core prompt** (`packages/cli/templates/core-prompt.md`) - Session lifecycle, task assignment, output tokens
 - **Workflow** (`.ralph/workflow.md`) - Repo-specific build/test commands, prioritization, wrap-up steps
 
@@ -170,6 +171,7 @@ In-memory events capped at `MAX_STORE_EVENTS` (2000). Legacy flat fields (`ralph
 Four stores: `sessions`, `events`, `chat_sessions`, `sync_state`. Persistence via `useSessionPersistence` (session metadata), `useEventPersistence` (append-only events), `useDevStateExport` (dev-only server state snapshots).
 
 Key behaviors:
+
 - Event dedup uses `event.uuid` as IndexedDB key
 - `useSessionPersistence` is the single source of truth for session IDs
 - Eviction removes completed sessions/chats older than 7 days, caps at 200 each
@@ -186,7 +188,7 @@ Task closes → `saveEventLogAndAddComment()` saves to IndexedDB → closing com
 
 ## Shared package
 
-Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Node-only subpath (`@herbcaudill/ralph-shared/prompts`): prompt loading utilities. Beads types import from `@herbcaudill/beads`.
+Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Node-only subpath (`@herbcaudill/ralph-shared/prompts`): prompt loading utilities. Beads types import from `@herbcaudill/beads-sdk`.
 
 ## Environment variables
 

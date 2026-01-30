@@ -27,7 +27,7 @@ import {
 } from "./RalphRegistry.js"
 import { getSessionStateStore } from "./SessionStateStore.js"
 import { getSessionEventPersister } from "./SessionEventPersister.js"
-import type { MutationEvent } from "@herbcaudill/beads"
+import type { MutationEvent } from "@herbcaudill/beads-sdk"
 import type {
   AgentEventEnvelope,
   AgentEventSource,
