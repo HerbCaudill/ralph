@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { useArgs } from "storybook/preview-api"
-import { DiffView } from "./DiffView"
+import { DiffView } from "@herbcaudill/agent-view"
 
 const meta: Meta<typeof DiffView> = {
   title: "Feedback/DiffView",

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { IconPalette, IconChevronDown, IconCheck, IconRefresh } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import type { ThemeMeta } from "@/lib/theme"
+import type { ThemeMeta } from "@herbcaudill/agent-view-theme"
 
 /**
  * Presentational component for the theme picker dropdown.

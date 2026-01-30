@@ -1,4 +1,4 @@
-import type { ThemeMeta } from "@/lib/theme"
+import type { ThemeMeta } from "@herbcaudill/agent-view-theme"
 import type { ThemeGroup } from "@/types"
 
 export function groupThemesByType(themes: ThemeMeta[]): ThemeGroup[] {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { buildToolResultsMap } from "./buildToolResultsMap"
+import { buildToolResultsMap } from "@herbcaudill/agent-view"
 import type { ChatEvent } from "@/types"
 
 const toolResultEvent = (content: unknown[]): ChatEvent => ({

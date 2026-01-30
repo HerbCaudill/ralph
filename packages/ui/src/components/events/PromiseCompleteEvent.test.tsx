@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { PromiseCompleteEvent } from "./PromiseCompleteEvent"
-import { parsePromiseCompleteEvent } from "@/lib/parsePromiseCompleteEvent"
+import { PromiseCompleteEvent, parsePromiseCompleteEvent } from "@herbcaudill/agent-view"
 
 describe("parsePromiseCompleteEvent", () => {
   it("parses <promise>COMPLETE</promise> tag", () => {

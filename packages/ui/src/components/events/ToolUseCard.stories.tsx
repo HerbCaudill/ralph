@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { ToolUseCard } from "./ToolUseCard"
+import { ToolUseCard } from "@herbcaudill/agent-view"
 import { useAppStore } from "@/store"
 import type { ToolUseEvent, ToolName } from "@/types"
 

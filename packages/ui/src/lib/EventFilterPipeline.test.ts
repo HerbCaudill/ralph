@@ -8,7 +8,7 @@ import {
   logEventFilterDecision,
   logContentBlockFilterDecision,
   type FilterContext,
-} from "./EventFilterPipeline"
+} from "@herbcaudill/agent-view"
 import type { ChatEvent, AssistantContentBlock } from "@/types"
 
 describe("EventFilterPipeline", () => {

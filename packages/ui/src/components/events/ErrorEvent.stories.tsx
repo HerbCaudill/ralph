@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { ErrorEvent } from "./ErrorEvent"
+import { ErrorEvent } from "@herbcaudill/agent-view"
 
 const meta: Meta<typeof ErrorEvent> = {
   title: "Feedback/ErrorEvent",

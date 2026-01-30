@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { renderHook } from "@testing-library/react"
-import { useStreamingState } from "./useStreamingState"
+import { useStreamingState } from "@herbcaudill/agent-view"
 import type { ChatEvent } from "@/types"
 
 describe("useStreamingState", () => {

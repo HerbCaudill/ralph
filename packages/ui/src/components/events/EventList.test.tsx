@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
-import { EventList, useEventListState } from "./EventList"
+import { EventList, useEventListState } from "@herbcaudill/agent-view"
 import type { ChatEvent } from "@/types"
 import { renderHook } from "@testing-library/react"
 import { useAppStore } from "@/store"

@@ -1,4 +1,8 @@
-export { useAutoScroll, type UseAutoScrollOptions, type UseAutoScrollReturn } from "./useAutoScroll"
+export {
+  useAutoScroll,
+  type UseAutoScrollOptions,
+  type UseAutoScrollReturn,
+} from "@herbcaudill/agent-view"
 
 export { useRalphConnection, type UseRalphConnectionReturn } from "./useRalphConnection"
 
@@ -15,7 +19,7 @@ export { useTasks, type UseTasksOptions, type UseTasksResult } from "./useTasks"
 
 export { useTaskDialog, type UseTaskDialogOptions, type UseTaskDialogResult } from "./useTaskDialog"
 
-export { useStreamingState } from "./useStreamingState"
+export { useStreamingState } from "@herbcaudill/agent-view"
 export type {
   StreamingMessage,
   StreamingContentBlock,

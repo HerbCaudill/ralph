@@ -10,8 +10,8 @@ import {
   isLightTheme,
   isHighContrastTheme,
   getEssentialColors,
-} from "./parser"
-import type { VSCodeTheme } from "./types"
+} from "@herbcaudill/agent-view-theme"
+import type { VSCodeTheme } from "@herbcaudill/agent-view-theme"
 
 describe("parseThemeJson", () => {
   it("parses valid theme JSON", () => {

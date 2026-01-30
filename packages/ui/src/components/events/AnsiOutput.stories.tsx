@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { AnsiOutput } from "./AnsiOutput"
+import { AnsiOutput } from "@herbcaudill/agent-view"
 import { fn } from "storybook/test"
 
 const meta: Meta<typeof AnsiOutput> = {

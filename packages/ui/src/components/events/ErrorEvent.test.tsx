@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { ErrorEvent } from "./ErrorEvent"
+import { ErrorEvent } from "@herbcaudill/agent-view"
 
 describe("ErrorEvent", () => {
   it("renders error event", () => {

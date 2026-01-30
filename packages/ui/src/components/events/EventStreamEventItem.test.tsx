@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { EventStreamEventItem } from "./EventStreamEventItem"
+import { EventStreamEventItem } from "@herbcaudill/agent-view"
 import { useAppStore } from "@/store"
 
 describe("EventStreamEventItem", () => {
@@ -11,9 +11,9 @@ describe("EventStreamEventItem", () => {
 
   describe("ralph_task_started events", () => {
     it("renders a task lifecycle event with action 'starting'", () => {
-      useAppStore.getState().setTasks([
-        { id: "r-abc1", title: "Implement feature", status: "in_progress" },
-      ])
+      useAppStore
+        .getState()
+        .setTasks([{ id: "r-abc1", title: "Implement feature", status: "in_progress" }])
 
       render(
         <EventStreamEventItem
@@ -51,9 +51,7 @@ describe("EventStreamEventItem", () => {
 
   describe("ralph_task_completed events", () => {
     it("renders a task lifecycle event with action 'completed'", () => {
-      useAppStore.getState().setTasks([
-        { id: "r-xyz9", title: "Fix bug", status: "closed" },
-      ])
+      useAppStore.getState().setTasks([{ id: "r-xyz9", title: "Fix bug", status: "closed" }])
 
       render(
         <EventStreamEventItem

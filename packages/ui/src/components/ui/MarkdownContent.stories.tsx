@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { MarkdownContent } from "./MarkdownContent"
+import { MarkdownContent } from "@herbcaudill/agent-view"
 
 const meta: Meta<typeof MarkdownContent> = {
   title: "Content/MarkdownContent",

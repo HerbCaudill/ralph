@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { TopologySpinner } from "./TopologySpinner"
+import { TopologySpinner } from "@herbcaudill/agent-view"
 
 const meta: Meta<typeof TopologySpinner> = {
   title: "Primitives/TopologySpinner",

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { renderEventContentBlock } from "./renderEventContentBlock"
+import { renderEventContentBlock } from "@herbcaudill/agent-view"
 import type { AssistantContentBlock } from "@/types"
 
 describe("renderEventContentBlock", () => {

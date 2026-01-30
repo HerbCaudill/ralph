@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { PromiseCompleteEvent } from "./PromiseCompleteEvent"
+import { PromiseCompleteEvent } from "@herbcaudill/agent-view"
 
 const meta: Meta<typeof PromiseCompleteEvent> = {
   title: "Feedback/PromiseCompleteEvent",

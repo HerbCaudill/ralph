@@ -1,6 +1,9 @@
-import { ContentStreamContainer } from "@/components/shared/ContentStreamContainer"
-import { EventList, useEventListState } from "@/components/events/EventList"
-import { TopologySpinner } from "@/components/ui/TopologySpinner"
+import {
+  ContentStreamContainer,
+  TopologySpinner,
+  EventList,
+  useEventListState,
+} from "@herbcaudill/agent-view"
 import { cn } from "@/lib/utils"
 import type { ChatEvent } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"

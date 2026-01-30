@@ -5,7 +5,7 @@
  * VSCodeTheme objects for use in Storybook decorators.
  */
 
-import { parseThemeObject, type VSCodeTheme } from "../src/lib/theme"
+import { parseThemeObject, type VSCodeTheme } from "@herbcaudill/agent-view-theme"
 
 import lightPlusJson from "./themes/light-plus.json"
 import darkPlusJson from "./themes/dark-plus.json"

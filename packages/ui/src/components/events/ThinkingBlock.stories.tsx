@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { ThinkingBlock } from "./ThinkingBlock"
+import { ThinkingBlock } from "@herbcaudill/agent-view"
 
 const meta: Meta<typeof ThinkingBlock> = {
   title: "Feedback/ThinkingBlock",

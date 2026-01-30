@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
-import { parseTaskLifecycleEvent } from "@/lib/parseTaskLifecycleEvent"
+import { TaskLifecycleEvent, parseTaskLifecycleEvent } from "@herbcaudill/agent-view"
 import { useAppStore } from "@/store"
 
 describe("parseTaskLifecycleEvent", () => {

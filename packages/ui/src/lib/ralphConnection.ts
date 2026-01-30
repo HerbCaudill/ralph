@@ -8,7 +8,7 @@ import { checkForSavedSessionState, restoreSessionState } from "./sessionStateAp
 import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
 import { BoundedMap } from "./BoundedMap"
 import type { ChatEvent } from "@/types"
-import { isSystemEvent } from "@/lib/isSystemEvent"
+import { isSystemEvent } from "@herbcaudill/agent-view"
 import { isAgentEventEnvelope, isAgentPendingEventsResponse } from "@herbcaudill/ralph-shared"
 import type { AgentEventSource, AgentReconnectRequest } from "@herbcaudill/ralph-shared"
 

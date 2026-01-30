@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { AssistantText } from "./AssistantText"
+import { AssistantText } from "@herbcaudill/agent-view"
 
 const meta: Meta<typeof AssistantText> = {
   title: "Feedback/AssistantText",

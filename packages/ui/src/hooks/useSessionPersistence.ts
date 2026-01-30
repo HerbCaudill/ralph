@@ -19,8 +19,7 @@ import type { PersistedSession } from "@/lib/persistence"
 import type { ChatEvent, TokenUsage, ContextWindow, SessionInfo } from "@/types"
 import { getSessionBoundaries, getTaskFromSessionEvents } from "@/store"
 import { getCurrentSession } from "@/lib/ralphConnection"
-import { isAssistantMessage } from "@/lib/isAssistantMessage"
-import { isSystemEvent } from "@/lib/isSystemEvent"
+import { isAssistantMessage, isSystemEvent } from "@herbcaudill/agent-view"
 
 /**
  * Checks if an event signals session completion.

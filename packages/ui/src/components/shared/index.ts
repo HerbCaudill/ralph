@@ -1,1 +1,1 @@
-export { ScrollToBottomButton, type ScrollToBottomButtonProps } from "./ScrollToBottomButton"
+export { ScrollToBottomButton, type ScrollToBottomButtonProps } from "@herbcaudill/agent-view"

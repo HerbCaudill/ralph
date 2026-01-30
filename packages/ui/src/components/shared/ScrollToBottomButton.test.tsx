@@ -1,6 +1,6 @@
 import { render, screen, cleanup } from "@testing-library/react"
 import { vi, describe, it, expect, afterEach } from "vitest"
-import { ScrollToBottomButton } from "./ScrollToBottomButton"
+import { ScrollToBottomButton } from "@herbcaudill/agent-view"
 
 describe("ScrollToBottomButton", () => {
   afterEach(() => {

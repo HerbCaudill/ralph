@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { EventDisplay } from "./EventDisplay"
+import { EventDisplay } from "@herbcaudill/agent-view"
 import { IconMessageChatbot } from "@tabler/icons-react"
 import type { ChatEvent } from "@/types"
 

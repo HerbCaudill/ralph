@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import type { ThemeMeta, AppTheme } from "@/lib/theme"
-import { loadTheme, applyThemeToElement } from "@/lib/theme"
-import type { CSSVariables } from "@/lib/theme/mapper"
+import type { ThemeMeta, AppTheme, CSSVariables } from "@herbcaudill/agent-view-theme"
+import { loadTheme, applyThemeToElement } from "@herbcaudill/agent-view-theme"
 import { useAppStore, selectVSCodeThemeId } from "@/store"
 
 /**  Get the last used theme ID for a given mode (dark or light) from the store */

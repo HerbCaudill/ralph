@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { EventList } from "./EventList"
+import { EventList } from "@herbcaudill/agent-view"
 import type { ChatEvent } from "@/types"
 
 const meta: Meta<typeof EventList> = {

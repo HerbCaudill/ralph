@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect } from "vitest"
-import { EventDisplay, useEventDisplayState } from "./EventDisplay"
+import { EventDisplay, useEventDisplayState } from "@herbcaudill/agent-view"
 import type { ChatEvent } from "@/types"
 import { renderHook } from "@testing-library/react"
 

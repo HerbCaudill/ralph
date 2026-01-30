@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest"
-import type { VSCodeTheme } from "./types"
-import { DEFAULT_DARK_STATUS_COLORS, DEFAULT_LIGHT_STATUS_COLORS } from "./types"
+import type { VSCodeTheme } from "@herbcaudill/agent-view-theme"
+import {
+  DEFAULT_DARK_STATUS_COLORS,
+  DEFAULT_LIGHT_STATUS_COLORS,
+} from "@herbcaudill/agent-view-theme"
 import {
   extractStatusColors,
   mapThemeToCSSVariables,
@@ -8,7 +11,7 @@ import {
   generateThemeCSS,
   isValidHexColor,
   normalizeHexColor,
-} from "./mapper"
+} from "@herbcaudill/agent-view-theme"
 
 // Helper to create a minimal valid theme
 function createMinimalTheme(overrides: Partial<VSCodeTheme> = {}): VSCodeTheme {

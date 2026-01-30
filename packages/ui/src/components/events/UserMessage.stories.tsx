@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { UserMessage } from "./UserMessage"
+import { UserMessage } from "@herbcaudill/agent-view"
 
 const meta: Meta<typeof UserMessage> = {
   title: "Feedback/UserMessage",

@@ -47,7 +47,7 @@ export type {
 } from "@herbcaudill/agent-view"
 
 // UI-specific imports
-import type { ThemeMeta } from "@/lib/theme"
+import type { ThemeMeta } from "@herbcaudill/agent-view-theme"
 import type { HotkeyAction, HotkeyConfig } from "@/config"
 
 // UI-specific types

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
-import { useAutoScroll } from "./useAutoScroll"
+import { useAutoScroll } from "@herbcaudill/agent-view"
 
 // Mock container with controllable scroll properties
 function createMockContainer(scrollTop = 0, scrollHeight = 1000, clientHeight = 500) {
