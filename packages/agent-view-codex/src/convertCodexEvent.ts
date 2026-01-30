@@ -1,20 +1,18 @@
 import type {
-  ChatEvent,
   AssistantChatEvent,
-  AssistantTextChatEvent,
-  ToolUseChatEvent,
+  ChatEvent,
   ErrorChatEvent,
   ResultChatEvent,
+  ToolUseChatEvent,
 } from "@herbcaudill/agent-view"
 import type {
-  ThreadEvent,
-  ThreadItem,
-  CommandExecutionItem,
   AgentMessageItem,
-  ReasoningItem,
-  McpToolCallItem,
-  FileChangeItem,
+  CommandExecutionItem,
   ErrorItem,
+  FileChangeItem,
+  McpToolCallItem,
+  ReasoningItem,
+  ThreadItem,
   Usage,
 } from "@openai/codex-sdk"
 
