@@ -3,29 +3,6 @@ import { join } from "node:path"
 import { existsSync } from "node:fs"
 import type { MutationEvent } from "./types.js"
 
-/** RPC request format for beads daemon. */
-interface RPCRequest {
-  operation: string
-  args: Record<string, unknown>
-}
-
-/** RPC response format from beads daemon. */
-interface RPCResponse {
-  success: boolean
-  data?: unknown
-  error?: string
-}
-
-/** Options for the daemon socket connection. */
-export interface DaemonSocketOptions {
-  /** Workspace directory path (used to locate .beads/bd.sock) */
-  cwd?: string
-  /** Connection timeout in ms (default: 2000) */
-  connectTimeout?: number
-  /** Request timeout in ms (default: 5000) */
-  requestTimeout?: number
-}
-
 /**
  * Client for communicating with the beads daemon via Unix socket.
  * Provides mutation events and ready-issue queries via RPC.
@@ -250,4 +227,27 @@ export function watchMutations(
     client?.close()
     client = null
   }
+}
+
+/** RPC request format for beads daemon. */
+interface RPCRequest {
+  operation: string
+  args: Record<string, unknown>
+}
+
+/** RPC response format from beads daemon. */
+interface RPCResponse {
+  success: boolean
+  data?: unknown
+  error?: string
+}
+
+/** Options for the daemon socket connection. */
+export interface DaemonSocketOptions {
+  /** Workspace directory path (used to locate .beads/bd.sock) */
+  cwd?: string
+  /** Connection timeout in ms (default: 2000) */
+  connectTimeout?: number
+  /** Request timeout in ms (default: 5000) */
+  requestTimeout?: number
 }
