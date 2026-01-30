@@ -1006,9 +1006,9 @@ This appendix enumerates all closed bd issues reviewed for this spec pass.
 - r-68z9 - Consolidate task lists: show blocked, in-progress, ready under Open
 - r-v2p3 - Test failure: ScrollToBottomButton.test.tsx - missing @testing-library/user-event dependency
 - r-11sz - Theme discovery shows wrong themes
-- r-c7op.5 - Migrate TaskChatPanel to use ContentStreamContainer
-- r-c7op.4 - Migrate EventStream to use ContentStreamContainer
-- r-c7op.3 - Create ContentStreamContainer component
+- r-c7op.5 - Migrate TaskChatPanel to use AutoScroll
+- r-c7op.4 - Migrate EventStream to use AutoScroll
+- r-c7op.3 - Create AutoScroll component
 - r-c7op.2 - Extract ScrollToBottomButton component
 - r-c7op.1 - Extract useAutoScroll hook from EventStream and TaskChatPanel
 - r-1mo1 - Preserve iteration context on API reconnection

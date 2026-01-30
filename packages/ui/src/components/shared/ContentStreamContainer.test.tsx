@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
-import { ContentStreamContainer } from "@herbcaudill/agent-view"
+import { AutoScroll } from "@herbcaudill/agent-view"
 
-describe("ContentStreamContainer", () => {
+describe("AutoScroll", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
@@ -14,10 +14,10 @@ describe("ContentStreamContainer", () => {
 
   it("renders children content", () => {
     render(
-      <ContentStreamContainer ariaLabel="Test stream">
+      <AutoScroll ariaLabel="Test stream">
         <div>Message 1</div>
         <div>Message 2</div>
-      </ContentStreamContainer>,
+      </AutoScroll>,
     )
 
     expect(screen.getByText("Message 1")).toBeInTheDocument()
@@ -26,9 +26,9 @@ describe("ContentStreamContainer", () => {
 
   it("renders empty state when no children", () => {
     render(
-      <ContentStreamContainer ariaLabel="Test stream" emptyState={<div>No messages yet</div>}>
+      <AutoScroll ariaLabel="Test stream" emptyState={<div>No messages yet</div>}>
         {null}
-      </ContentStreamContainer>,
+      </AutoScroll>,
     )
 
     expect(screen.getByText("No messages yet")).toBeInTheDocument()
@@ -36,9 +36,9 @@ describe("ContentStreamContainer", () => {
 
   it("renders empty state when children is empty array", () => {
     render(
-      <ContentStreamContainer ariaLabel="Test stream" emptyState={<div>Empty</div>}>
+      <AutoScroll ariaLabel="Test stream" emptyState={<div>Empty</div>}>
         {[]}
-      </ContentStreamContainer>,
+      </AutoScroll>,
     )
 
     expect(screen.getByText("Empty")).toBeInTheDocument()
@@ -46,9 +46,9 @@ describe("ContentStreamContainer", () => {
 
   it("has correct aria attributes", () => {
     render(
-      <ContentStreamContainer ariaLabel="Event stream">
+      <AutoScroll ariaLabel="Event stream">
         <div>Content</div>
-      </ContentStreamContainer>,
+      </AutoScroll>,
     )
 
     const container = screen.getByRole("log")
@@ -58,9 +58,9 @@ describe("ContentStreamContainer", () => {
 
   it("applies custom className", () => {
     const { container } = render(
-      <ContentStreamContainer ariaLabel="Test" className="custom-class">
+      <AutoScroll ariaLabel="Test" className="custom-class">
         <div>Content</div>
-      </ContentStreamContainer>,
+      </AutoScroll>,
     )
 
     expect(container.firstChild).toHaveClass("custom-class")
@@ -77,7 +77,7 @@ describe("ContentStreamContainer", () => {
       </div>
     )
 
-    render(<ContentStreamContainer ariaLabel="Test stream">{tallContent}</ContentStreamContainer>)
+    render(<AutoScroll ariaLabel="Test stream">{tallContent}</AutoScroll>)
 
     const scrollContainer = screen.getByRole("log")
 
@@ -104,9 +104,9 @@ describe("ContentStreamContainer", () => {
 
   it("does not show scroll button when at bottom", () => {
     render(
-      <ContentStreamContainer ariaLabel="Test stream">
+      <AutoScroll ariaLabel="Test stream">
         <div>Short content</div>
-      </ContentStreamContainer>,
+      </AutoScroll>,
     )
 
     // Initially at bottom, button should not be visible

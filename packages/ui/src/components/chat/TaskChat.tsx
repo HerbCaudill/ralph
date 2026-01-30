@@ -1,9 +1,4 @@
-import {
-  ContentStreamContainer,
-  TopologySpinner,
-  EventList,
-  useEventListState,
-} from "@herbcaudill/agent-view"
+import { AutoScroll, TopologySpinner, EventList, useEventListState } from "@herbcaudill/agent-view"
 import { cn } from "@/lib/utils"
 import type { ChatEvent } from "@/types"
 import { IconMessageChatbot, IconTrash, IconX } from "@tabler/icons-react"
@@ -89,7 +84,7 @@ export function TaskChat({
 
       {/* Messages container with floating input */}
       <div className="relative min-h-0 flex-1">
-        <ContentStreamContainer
+        <AutoScroll
           className="h-full overflow-hidden pb-[72px]"
           ariaLabel="Task chat messages"
           dependencies={[events]}
@@ -128,7 +123,7 @@ export function TaskChat({
               }
             />
           : null}
-        </ContentStreamContainer>
+        </AutoScroll>
 
         {/* Floating input */}
         <div className="bg-background/95 absolute inset-x-0 bottom-0 z-10 p-3 backdrop-blur-sm">

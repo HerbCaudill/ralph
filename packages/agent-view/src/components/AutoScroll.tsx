@@ -7,16 +7,16 @@ import { ScrollToBottomButton } from "./ScrollToBottomButton"
  *
  * @example
  * ```tsx
- * <ContentStreamContainer
+ * <AutoScroll
  *   ariaLabel="Event stream"
  *   dependencies={[events]}
  *   emptyState={<Spinner />}
  * >
  *   {events.map(e => <EventItem key={e.id} event={e} />)}
- * </ContentStreamContainer>
+ * </AutoScroll>
  * ```
  */
-export function ContentStreamContainer({
+export function AutoScroll({
   children,
   className,
   ariaLabel,
@@ -24,7 +24,7 @@ export function ContentStreamContainer({
   emptyState,
   autoScrollEnabled = true,
   scrollButtonClassName,
-}: ContentStreamContainerProps) {
+}: AutoScrollProps) {
   const { containerRef, isAtBottom, handleScroll, handleUserScroll, scrollToBottom } =
     useAutoScroll({
       dependencies,
@@ -59,7 +59,7 @@ export function ContentStreamContainer({
   )
 }
 
-export type ContentStreamContainerProps = {
+export type AutoScrollProps = {
   /** The content to render inside the scrollable container */
   children: React.ReactNode
   /** Additional class names for the outer container */

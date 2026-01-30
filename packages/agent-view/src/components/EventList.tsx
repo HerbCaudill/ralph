@@ -20,9 +20,9 @@ import { StreamingContentRenderer } from "./StreamingContentRenderer"
  *
  * @example
  * ```tsx
- * <ContentStreamContainer ariaLabel="Events">
+ * <AutoScroll ariaLabel="Events">
  *   <EventList events={events} />
- * </ContentStreamContainer>
+ * </AutoScroll>
  * ```
  */
 export function EventList({ events, maxEvents = 1000, loadingIndicator }: EventListProps) {

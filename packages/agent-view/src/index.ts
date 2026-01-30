@@ -31,8 +31,8 @@ export { ContextWindowProgress } from "./components/ContextWindowProgress"
 export type { ContextWindowProgressProps } from "./components/ContextWindowProgress"
 
 // ---- Components: Shared ----
-export { ContentStreamContainer } from "./components/ContentStreamContainer"
-export type { ContentStreamContainerProps } from "./components/ContentStreamContainer"
+export { AutoScroll } from "./components/AutoScroll"
+export type { AutoScrollProps } from "./components/AutoScroll"
 export { ScrollToBottomButton } from "./components/ScrollToBottomButton"
 export type { ScrollToBottomButtonProps } from "./components/ScrollToBottomButton"
 

@@ -1,5 +1,5 @@
 import { AgentViewProvider } from "../context/AgentViewProvider"
-import { ContentStreamContainer } from "./ContentStreamContainer"
+import { AutoScroll } from "./AutoScroll"
 import { EventList } from "./EventList"
 import { TopologySpinner } from "./TopologySpinner"
 import { cx } from "../cx"
@@ -57,7 +57,7 @@ export function AgentView({
     <AgentViewProvider value={context}>
       <div className={cx("flex h-full flex-col", className)}>
         {header}
-        <ContentStreamContainer
+        <AutoScroll
           ariaLabel="Agent events"
           dependencies={[events]}
           emptyState={emptyState}
@@ -65,7 +65,7 @@ export function AgentView({
           scrollButtonClassName={hideScrollButton ? "hidden" : undefined}
         >
           <EventList events={events} loadingIndicator={spinner} />
-        </ContentStreamContainer>
+        </AutoScroll>
         {footer}
       </div>
     </AgentViewProvider>

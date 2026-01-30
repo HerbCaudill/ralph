@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { ContentStreamContainer } from "./ContentStreamContainer"
+import { AutoScroll } from "./AutoScroll"
 import { useStreamingState } from "../hooks/useStreamingState"
 import { buildToolResultsMap, type ToolResult } from "../lib/buildToolResultsMap"
 import type { ChatEvent, StreamingMessage } from "../types"
@@ -39,7 +39,7 @@ export function EventDisplay({
   const hasContent = displayedEvents.length > 0 || streamingMessage !== null
 
   return (
-    <ContentStreamContainer
+    <AutoScroll
       className={className}
       ariaLabel={ariaLabel}
       dependencies={[events]}
@@ -61,7 +61,7 @@ export function EventDisplay({
           {loadingIndicator}
         </>
       : null}
-    </ContentStreamContainer>
+    </AutoScroll>
   )
 }
 

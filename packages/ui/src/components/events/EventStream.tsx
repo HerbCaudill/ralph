@@ -1,7 +1,7 @@
 import { useMemo, forwardRef } from "react"
 import { IconPlayerPlayFilled } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import { ContentStreamContainer, TopologySpinner } from "@herbcaudill/agent-view"
+import { AutoScroll, TopologySpinner } from "@herbcaudill/agent-view"
 import { Button } from "@/components/ui/button"
 import { EventList, useEventListState } from "@herbcaudill/agent-view"
 import { EventStreamSessionBar } from "./EventStreamSessionBar"
@@ -136,7 +136,7 @@ export const EventStream = forwardRef<HTMLDivElement, EventStreamProps>(function
 
       {isLoadingHistoricalEvents ?
         <div className="flex-1">{loadingHistoricalState}</div>
-      : <ContentStreamContainer
+      : <AutoScroll
           className="flex-1"
           ariaLabel="Event stream"
           dependencies={[sessionEvents]}
@@ -150,7 +150,7 @@ export const EventStream = forwardRef<HTMLDivElement, EventStreamProps>(function
               loadingIndicator={bottomIndicator}
             />
           : null}
-        </ContentStreamContainer>
+        </AutoScroll>
       }
     </div>
   )
