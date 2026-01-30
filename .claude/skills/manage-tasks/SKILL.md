@@ -1,1 +1,1 @@
-../../../cli/templates/skills/manage-tasks/SKILL.md
+../../../packages/cli/templates/skills/manage-tasks/SKILL.md
