@@ -64,7 +64,7 @@ pnpm --filter @herbcaudill/ralph-ui add -D @storybook/addon-test @storybook/expe
 
 ### 2. Add test utilities
 
-Create `ui/.storybook/test-utils.ts`:
+Create `packages/ui/.storybook/test-utils.ts`:
 
 - `mockFetch()` - mock global fetch for API tests
 - `clearLocalStorage()` - clean localStorage between tests
@@ -101,17 +101,17 @@ Create `ui/.storybook/test-utils.ts`:
 
 **Create:**
 
-- `ui/.storybook/test-utils.ts`
-- `ui/src/components/layout/HotkeysDialog.stories.tsx`
-- `ui/src/components/layout/CommandPalette.stories.tsx`
+- `packages/ui/.storybook/test-utils.ts`
+- `packages/ui/src/components/layout/HotkeysDialog.stories.tsx`
+- `packages/ui/src/components/layout/CommandPalette.stories.tsx`
 
 **Modify:**
 
-- `ui/.storybook/main.ts` - add test addon
-- `ui/src/components/tasks/QuickTaskInput.stories.tsx` - add play functions
-- `ui/package.json` - add test script
-- `ui/e2e/navigation.spec.ts` - remove migrated tests
-- `ui/e2e/quick-task-input.spec.ts` - delete file
+- `packages/ui/.storybook/main.ts` - add test addon
+- `packages/ui/src/components/tasks/QuickTaskInput.stories.tsx` - add play functions
+- `packages/ui/package.json` - add test script
+- `packages/ui/e2e/navigation.spec.ts` - remove migrated tests
+- `packages/ui/e2e/quick-task-input.spec.ts` - delete file
 
 ## Verification
 

@@ -13,59 +13,59 @@
 These tests map directly to core workflows, persistence, and orchestration, and look worth keeping even if consolidated later.
 
 - Persistence and session lifecycle
-  - `ui/src/lib/persistence/EventDatabase.test.ts`
-  - `ui/src/lib/persistence/writeQueue.test.ts`
-  - `ui/src/lib/ralphConnection.test.ts`
-  - `ui/src/hooks/useSessionPersistence.test.ts`
-  - `ui/src/hooks/useRalphConnection.test.ts`
+  - `packages/ui/src/lib/persistence/EventDatabase.test.ts`
+  - `packages/ui/src/lib/persistence/writeQueue.test.ts`
+  - `packages/ui/src/lib/ralphConnection.test.ts`
+  - `packages/ui/src/hooks/useSessionPersistence.test.ts`
+  - `packages/ui/src/hooks/useRalphConnection.test.ts`
 - Event stream rendering and filtering
-  - `ui/src/components/events/EventStream.test.tsx`
-  - `ui/src/lib/EventFilterPipeline.test.ts`
-  - `ui/src/lib/eventToBlocks.test.ts`
+  - `packages/ui/src/components/events/EventStream.test.tsx`
+  - `packages/ui/src/lib/EventFilterPipeline.test.ts`
+  - `packages/ui/src/lib/eventToBlocks.test.ts`
 - Task chat regressions
-  - `ui/src/components/chat/TaskChatPanel.replay.test.tsx`
-  - `ui/server/TaskChatEventPersister.test.ts`
-  - `ui/server/TaskChatManager.test.ts`
+  - `packages/ui/src/components/chat/TaskChatPanel.replay.test.tsx`
+  - `packages/ui/server/TaskChatEventPersister.test.ts`
+  - `packages/ui/server/TaskChatManager.test.ts`
 - Server orchestration
-  - `ui/server/SessionRunner.test.ts`
-  - `ui/server/RalphManager.test.ts`
-  - `ui/server/RalphRegistry.test.ts`
+  - `packages/ui/server/SessionRunner.test.ts`
+  - `packages/ui/server/RalphManager.test.ts`
+  - `packages/ui/server/RalphRegistry.test.ts`
 
 ## Likely unnecessary or low-value tests (candidates to remove)
 
 These appear to provide minimal signal beyond TypeScript checking or trivial branching.
 
 - Type guard truth tables
-  - `shared/src/events/guards.test.ts`
-  - `ui/src/lib/isAssistantMessage.test.ts`
-  - `ui/src/lib/isErrorEvent.test.ts`
-  - `ui/src/lib/isRalphTaskCompletedEvent.test.ts`
-  - `ui/src/lib/isRalphTaskStartedEvent.test.ts`
-  - `ui/src/lib/isStreamEvent.test.ts`
-  - `ui/src/lib/isSystemEvent.test.ts`
-  - `ui/src/lib/isToolResultEvent.test.ts`
-  - `ui/src/lib/isUserMessageEvent.test.ts`
+  - `packages/shared/src/events/guards.test.ts`
+  - `packages/ui/src/lib/isAssistantMessage.test.ts`
+  - `packages/ui/src/lib/isErrorEvent.test.ts`
+  - `packages/ui/src/lib/isRalphTaskCompletedEvent.test.ts`
+  - `packages/ui/src/lib/isRalphTaskStartedEvent.test.ts`
+  - `packages/ui/src/lib/isStreamEvent.test.ts`
+  - `packages/ui/src/lib/isSystemEvent.test.ts`
+  - `packages/ui/src/lib/isToolResultEvent.test.ts`
+  - `packages/ui/src/lib/isUserMessageEvent.test.ts`
 - Type-only assertions
-  - `shared/src/beads/types.test.ts`
+  - `packages/shared/src/beads/types.test.ts`
 - Simple helpers that are effectively “enum checks”
-  - `ui/src/lib/cn.test.ts`
-  - `ui/src/lib/getContrastingColor.test.ts`
-  - `ui/src/lib/stripTaskPrefix.test.ts`
+  - `packages/ui/src/lib/cn.test.ts`
+  - `packages/ui/src/lib/getContrastingColor.test.ts`
+  - `packages/ui/src/lib/stripTaskPrefix.test.ts`
 
 ## Redundant or over-specified tests (candidates to consolidate)
 
 These test the same behavior repeatedly with slightly different inputs. They likely can be reduced to table-driven tests or a smaller representative subset.
 
 - Command/option permutations
-  - `ui/server/BdProxy.test.ts` (many near-identical tests for option flags)
+  - `packages/ui/server/BdProxy.test.ts` (many near-identical tests for option flags)
 - Per-tool UI summaries
-  - `ui/src/components/events/ToolUseCard.test.tsx`
+  - `packages/ui/src/components/events/ToolUseCard.test.tsx`
 - Per-status UI variants
-  - `ui/src/components/tasks/TaskCard.test.tsx`
-  - `ui/src/components/tasks/TaskList.test.tsx`
+  - `packages/ui/src/components/tasks/TaskCard.test.tsx`
+  - `packages/ui/src/components/tasks/TaskList.test.tsx`
 - Repeated fetch + render sequences
-  - `ui/src/components/layout/WorkspacePicker.test.tsx`
-  - `ui/src/components/layout/SettingsDropdown.test.tsx`
+  - `packages/ui/src/components/layout/WorkspacePicker.test.tsx`
+  - `packages/ui/src/components/layout/SettingsDropdown.test.tsx`
 
 ## Gaps to watch
 

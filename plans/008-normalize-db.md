@@ -450,13 +450,13 @@ The migration is one-time complexity, but the benefits compound over time.
 
 **1. Update IndexedDB schema to version 3**
 
-- File: `ui/src/lib/persistence/types.ts`
+- File: `packages/ui/src/lib/persistence/types.ts`
 - Update `PERSISTENCE_SCHEMA_VERSION` from 2 to 3
 - Add new `Event` and `EventMetadata` types
 
 **2. Add `events` object store**
 
-- File: `ui/src/lib/persistence/EventDatabase.ts`
+- File: `packages/ui/src/lib/persistence/EventDatabase.ts`
 - Create `events` store in `upgrade()` handler (version 3)
 - Schema:
   ```typescript
@@ -490,7 +490,7 @@ The migration is one-time complexity, but the benefits compound over time.
 
 **5. Implement migration for existing data**
 
-- File: `ui/src/lib/persistence/EventDatabase.ts`
+- File: `packages/ui/src/lib/persistence/EventDatabase.ts`
 - In version 3 upgrade handler:
   - Iterate over existing `sessions` store
   - For each session with `events` array:
@@ -510,7 +510,7 @@ The migration is one-time complexity, but the benefits compound over time.
 
 **7. Update session persistence hook**
 
-- File: `ui/src/hooks/useSessionPersistence.ts`
+- File: `packages/ui/src/hooks/useSessionPersistence.ts`
 - Change from periodic saves to append-only:
   - Remove "every 10 events" save logic
   - Only save session metadata on completion
@@ -518,7 +518,7 @@ The migration is one-time complexity, but the benefits compound over time.
 
 **8. Add event persistence hook**
 
-- File: `ui/src/hooks/useEventPersistence.ts` (new)
+- File: `packages/ui/src/hooks/useEventPersistence.ts` (new)
 - Listen for new events in store
 - Call `eventDatabase.saveEvent()` for each new event
 - Pass `sessionId` from current session metadata
@@ -534,21 +534,21 @@ The migration is one-time complexity, but the benefits compound over time.
 
 **10. Update session loading**
 
-- File: `ui/src/lib/persistence/EventDatabase.ts`
+- File: `packages/ui/src/lib/persistence/EventDatabase.ts`
 - Add `getEventsForSession(sessionId: string): Promise<PersistedEvent[]>`
 - Uses `by-session` index for efficient lookup
 - Returns events sorted by timestamp
 
 **11. Update UI components**
 
-- File: `ui/src/hooks/useSessions.ts`
+- File: `packages/ui/src/hooks/useSessions.ts`
 - When loading session details, fetch events separately
 - Combine session metadata with events for display
 - Update type to handle separate loading
 
 **12. Update event log viewer**
 
-- File: `ui/src/components/history/EventLogViewer.tsx`
+- File: `packages/ui/src/components/history/EventLogViewer.tsx`
 - Update to load events via new `getEventsForSession()` method
 - Handle loading state for events separately from metadata
 
@@ -556,13 +556,13 @@ The migration is one-time complexity, but the benefits compound over time.
 
 **13. Pass workspaceId to client**
 
-- File: `ui/server/WorkspaceContext.ts`
+- File: `packages/ui/server/WorkspaceContext.ts`
 - Include `workspaceId` (workspace path) in session metadata
 - Broadcast workspace info with events
 
 **14. Update WebSocket event format**
 
-- File: `ui/server/index.ts`
+- File: `packages/ui/server/index.ts`
 - Ensure `workspaceId` is included in event broadcast
 - Update `RalphInstance` type to track workspace
 
@@ -576,7 +576,7 @@ The migration is one-time complexity, but the benefits compound over time.
 
 **16. Add event-level query methods**
 
-- File: `ui/src/lib/persistence/EventDatabase.ts`
+- File: `packages/ui/src/lib/persistence/EventDatabase.ts`
 - Add `queryEventsAcrossSessions(filter)` for future analytics
 - Add `getEventsForWorkspace(workspaceId)` for workspace queries
 - Add `getEventsForTask(taskId)` via session join
@@ -602,27 +602,27 @@ The migration is one-time complexity, but the benefits compound over time.
 
 **Schema & Types:**
 
-- `ui/src/lib/persistence/types.ts` - Add types, update schema version
-- `ui/src/lib/persistence/EventDatabase.ts` - Add stores, indexes, methods
+- `packages/ui/src/lib/persistence/types.ts` - Add types, update schema version
+- `packages/ui/src/lib/persistence/EventDatabase.ts` - Add stores, indexes, methods
 
 **Persistence Hooks:**
 
-- `ui/src/hooks/useSessionPersistence.ts` - Update to metadata-only saves
-- `ui/src/hooks/useEventPersistence.ts` - New hook for event saves
+- `packages/ui/src/hooks/useSessionPersistence.ts` - Update to metadata-only saves
+- `packages/ui/src/hooks/useEventPersistence.ts` - New hook for event saves
 
 **Server:**
 
-- `ui/server/WorkspaceContext.ts` - Add workspaceId tracking
-- `ui/server/index.ts` - Update WebSocket broadcasts
+- `packages/ui/server/WorkspaceContext.ts` - Add workspaceId tracking
+- `packages/ui/server/index.ts` - Update WebSocket broadcasts
 
 **UI Components:**
 
-- `ui/src/hooks/useSessions.ts` - Update loading pattern
-- `ui/src/components/history/EventLogViewer.tsx` - Handle separate event loading
+- `packages/ui/src/hooks/useSessions.ts` - Update loading pattern
+- `packages/ui/src/components/history/EventLogViewer.tsx` - Handle separate event loading
 
 **Tests:**
 
-- `ui/src/lib/persistence/EventDatabase.test.ts` - Update tests
+- `packages/ui/src/lib/persistence/EventDatabase.test.ts` - Update tests
 - Add migration tests
 
 ---

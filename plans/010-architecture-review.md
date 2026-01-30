@@ -20,33 +20,38 @@ Find architectural anti-patterns similar to the Zustand/IndexedDB dual source-of
 The IndexedDB issue suggests state management patterns may be problematic across the board.
 
 **Questions:**
+
 - Where else does Zustand store data that's also persisted elsewhere?
 - Are there other hooks that "watch and sync" state between stores?
 - What happens to in-flight state during page reload, reconnect, session change?
 
 **Files:**
-- `ui/src/store/index.ts` - Main Zustand store
-- `ui/src/store/persist.ts` - Persistence middleware
-- `ui/src/hooks/useSessionPersistence.ts`
-- `ui/src/hooks/useEventPersistence.ts`
-- `ui/src/lib/persistence/EventDatabase.ts`
+
+- `packages/ui/src/store/index.ts` - Main Zustand store
+- `packages/ui/src/store/persist.ts` - Persistence middleware
+- `packages/ui/src/hooks/useSessionPersistence.ts`
+- `packages/ui/src/hooks/useEventPersistence.ts`
+- `packages/ui/src/lib/persistence/EventDatabase.ts`
 
 ### 2. WebSocket Connection & Reconnection
 
 **Questions:**
+
 - What state is lost on disconnect?
 - Is catch-up logic correct and complete?
 - Are there race conditions between reconnect and state updates?
 
 **Files:**
-- `ui/src/lib/ralphConnection.ts`
-- `ui/src/hooks/useWebSocket.ts`
-- `ui/src/hooks/useRalphConnection.ts`
-- `ui/server/index.ts` (WebSocket handling)
+
+- `packages/ui/src/lib/ralphConnection.ts`
+- `packages/ui/src/hooks/useWebSocket.ts`
+- `packages/ui/src/hooks/useRalphConnection.ts`
+- `packages/ui/server/index.ts` (WebSocket handling)
 
 ### 3. Multi-Instance & Workspace Partitioning
 
 **Questions:**
+
 - How is state partitioned between instances?
 - How is state partitioned between workspaces?
 - Can instance/workspace switches cause data to leak or get lost?
@@ -56,48 +61,55 @@ The IndexedDB issue suggests state management patterns may be problematic across
 - What happens when switching workspaces mid-session?
 
 **Files:**
-- `ui/server/RalphRegistry.ts`
-- `ui/src/store/index.ts` (instance/workspace-related state)
-- `ui/src/lib/persistence/EventDatabase.ts` (workspace scoping in queries)
-- `ui/src/hooks/useSessions.ts` (workspace filtering)
+
+- `packages/ui/server/RalphRegistry.ts`
+- `packages/ui/src/store/index.ts` (instance/workspace-related state)
+- `packages/ui/src/lib/persistence/EventDatabase.ts` (workspace scoping in queries)
+- `packages/ui/src/hooks/useSessions.ts` (workspace filtering)
 - Components that use `activeInstanceId` or `workspaceId`
 
 ### 4. Session Lifecycle
 
 **Questions:**
+
 - What defines a "session"? Is it consistent everywhere?
 - How is session ID generated and propagated?
 - What happens to orphaned sessions (no task, no events)?
 
 **Files:**
-- `ui/server/SessionRunner.ts`
-- `ui/server/RalphManager.ts`
-- `cli/src/components/SessionRunner.tsx`
+
+- `packages/ui/server/SessionRunner.ts`
+- `packages/ui/server/RalphManager.ts`
+- `packages/cli/src/components/SessionRunner.tsx`
 - Session-related hooks
 
 ### 5. Event Flow & Processing
 
 **Questions:**
+
 - How many places transform/filter events before display?
 - Are events ever mutated after creation?
 - Is event ordering guaranteed and preserved?
 
 **Files:**
-- `ui/src/lib/eventToBlocks.ts`
-- `cli/src/components/eventToBlocks.ts`
-- `shared/src/events/`
+
+- `packages/ui/src/lib/eventToBlocks.ts`
+- `packages/cli/src/components/eventToBlocks.ts`
+- `packages/shared/src/events/`
 
 ### 6. Task Chat vs Ralph Sessions
 
 **Questions:**
+
 - How do these two systems share (or not share) state?
 - Is persistence consistent between them?
 - Can they interfere with each other?
 
 **Files:**
-- `ui/server/TaskChatManager.ts`
-- `ui/src/hooks/useTaskChat.ts`
-- `ui/src/hooks/useTaskChatPersistence.ts`
+
+- `packages/ui/server/TaskChatManager.ts`
+- `packages/ui/src/hooks/useTaskChat.ts`
+- `packages/ui/src/hooks/useTaskChatPersistence.ts`
 
 ## Review Process
 

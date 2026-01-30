@@ -1,3 +1,5 @@
+AGENTS.md is a symlink to CLAUDE.md.
+
 # Agent Instructions
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
@@ -353,7 +355,7 @@ Shared utilities and types used by both CLI and UI packages.
 **Subpath Exports:** The main entry point (`@herbcaudill/ralph-shared`) is browser-safe and only exports events, beads types, and the version constant. Node-only code (prompt loading utilities that use `node:fs`) is available via a separate subpath:
 
 - `@herbcaudill/ralph-shared` — Browser-safe: events, beads types, VERSION
-- `@herbcaudill/ralph-packages/shared/prompts` — Node-only: prompt loading utilities
+- `@herbcaudill/ralph-shared/prompts` — Node-only: prompt loading utilities
 
 **Modules:**
 
@@ -365,7 +367,7 @@ Shared utilities and types used by both CLI and UI packages.
   - Issue types (`BdIssue`, `BdDependency`)
   - Options types (`BdListOptions`, `BdCreateOptions`, `BdUpdateOptions`)
   - Mutation events (`MutationEvent`, `MutationType`)
-- **Prompt Loading** (`prompts/`) — **Node-only, import from `@herbcaudill/ralph-packages/shared/prompts`**:
+- **Prompt Loading** (`prompts/`) — **Node-only, import from `@herbcaudill/ralph-shared/prompts`**:
   - `loadSessionPrompt()` - Combine core-prompt with workflow
   - `loadPrompt()` - Load prompt files with custom overrides
   - `hasCustomWorkflow()` - Check for custom workflow existence

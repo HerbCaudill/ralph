@@ -659,7 +659,7 @@ Existing E2E tests serve as acceptance criteria for the behaviors they cover. Ea
 
 ### 16.1 Event stream
 
-- `ui/e2e/event-stream.spec.ts`
+- `packages/ui/e2e/event-stream.spec.ts`
   - Visibility of event stream and session bar
   - Session navigation behaviors
   - Spinner states
@@ -668,7 +668,7 @@ Existing E2E tests serve as acceptance criteria for the behaviors they cover. Ea
 
 ### 16.2 Task chat
 
-- `ui/e2e/chat.spec.ts`
+- `packages/ui/e2e/chat.spec.ts`
   - Panel visibility and toggling
   - Input behavior and message sending
   - Clear history control
@@ -678,25 +678,25 @@ Existing E2E tests serve as acceptance criteria for the behaviors they cover. Ea
 
 ### 16.3 URL routing
 
-- `ui/e2e/url-routing.spec.ts`
+- `packages/ui/e2e/url-routing.spec.ts`
   - Task dialog routing
   - Session routing
   - Combined routing scenarios
 
 ### 16.4 Layout
 
-- `ui/e2e/layout.spec.ts`
+- `packages/ui/e2e/layout.spec.ts`
   - Panel layout presence and sizing
 
 ### 16.5 Task-session linking
 
-- `ui/e2e/task-session-linking.spec.ts`
+- `packages/ui/e2e/task-session-linking.spec.ts`
   - Session links visibility in task details
   - Navigation from task details to session view
 
 ### 16.6 Persistence
 
-- `ui/e2e/persistence.spec.ts`
+- `packages/ui/e2e/persistence.spec.ts`
   - Sidebar width persistence
   - Theme persistence
   - Task chat panel persistence
@@ -705,7 +705,7 @@ Existing E2E tests serve as acceptance criteria for the behaviors they cover. Ea
 
 ### 16.7 Navigation
 
-- `ui/e2e/navigation.spec.ts`
+- `packages/ui/e2e/navigation.spec.ts`
   - Keyboard navigation and focus behaviors
 
 ## 17. Closed-issue-derived UX requirements (systematic pass)
@@ -1662,7 +1662,7 @@ with nothing
 - r-mjf - Make a favicon with the ralph logo
 - r-1k3 - With the exception of the Ralph logo, use tabler icons instead of one-off svgs.
 - r-6q8 - Persist state in local storage
-- r-j2w - In the event log, when displaying paths, if they're in this repo show the path relative to the repo (so `src/components/ui/dialog.tsx` instead of `Users/herbcaudill/Code/HerbCaudill/ralph-ui/src/components/ui/dialog.tsx`. I think you can do that by just calculating the full path of the repo once (in this case `Users/herbcaudill/Code/HerbCaudill/ralph-ui/` , and just eliminating that from any part of the response
+- r-j2w - In the event log, when displaying paths, if they're in this repo show the path relative to the repo (so `packages/ui/src/components/ui/dialog.tsx` instead of `Users/herbcaudill/Code/HerbCaudill/ralph/packages/ui/src/components/ui/dialog.tsx`. I think you can do that by just calculating the full path of the repo once (in this case `Users/herbcaudill/Code/HerbCaudill/ralph/` , and just eliminating that from any part of the response
 - r-eep - in the add task input, enter should submit and shift-enter should create a new line
 - r-p5m - use the square-rounded-plus-filled icon for the add button
 - r-443 - add a hotkey for changing theme

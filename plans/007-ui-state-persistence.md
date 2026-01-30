@@ -62,13 +62,13 @@ The `instances` Map needs special handling:
 
 ### 1. Install Zustand persist middleware
 
-**File:** `ui/package.json`
+**File:** `packages/ui/package.json`
 
 - The persist middleware is already part of `zustand` - no new dependency needed
 
 ### 2. Create storage configuration
 
-**File:** `ui/src/store/persist.ts` (new file)
+**File:** `packages/ui/src/store/persist.ts` (new file)
 
 - Define `persistConfig` with:
   - `name: 'ralph-ui-state'` - Storage key
@@ -149,7 +149,7 @@ function deserializeInstances(array: any[]): Map<string, RalphInstance> {
 
 ### 3. Apply persist middleware to store
 
-**File:** `ui/src/store/index.ts`
+**File:** `packages/ui/src/store/index.ts`
 
 - Wrap the store with `persist()` middleware
 - Remove manual localStorage code for persisted fields
@@ -180,7 +180,7 @@ export const useAppStore = create<AppState & AppActions>()(
 
 ### 4. Remove manual localStorage functions
 
-**File:** `ui/src/store/index.ts`
+**File:** `packages/ui/src/store/index.ts`
 
 - Delete: `loadSidebarWidth`, `saveSidebarWidth`, `loadTaskChatWidth`, `saveTaskChatWidth`, etc.
 - Delete: All `STORAGE_KEY` constants (handled by persist middleware)
@@ -189,7 +189,7 @@ export const useAppStore = create<AppState & AppActions>()(
 
 ### 5. Update store initialization
 
-**File:** `ui/src/store/index.ts`
+**File:** `packages/ui/src/store/index.ts`
 
 - Remove `getInitialStateWithPersistence()` function
 - Use `initialState` directly in the store
@@ -197,7 +197,7 @@ export const useAppStore = create<AppState & AppActions>()(
 
 ### 6. Handle instance metadata sync
 
-**File:** `ui/src/store/index.ts`, action: `hydrateInstances`
+**File:** `packages/ui/src/store/index.ts`, action: `hydrateInstances`
 
 - Update to preserve instance metadata from localStorage
 - Merge server data with persisted instance metadata
@@ -216,9 +216,9 @@ export const useAppStore = create<AppState & AppActions>()(
 
 ## Critical Files
 
-- `ui/src/store/index.ts` - Main store implementation (~1800 lines)
-- `ui/src/store/persist.ts` - New file for persist configuration (~100 lines)
-- `ui/src/hooks/useStoreHydration.ts` - Verify IndexedDB hydration still works (~50 lines)
+- `packages/ui/src/store/index.ts` - Main store implementation (~1800 lines)
+- `packages/ui/src/store/persist.ts` - New file for persist configuration (~100 lines)
+- `packages/ui/src/hooks/useStoreHydration.ts` - Verify IndexedDB hydration still works (~50 lines)
 
 ## Edge Cases & Considerations
 

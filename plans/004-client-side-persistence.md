@@ -64,21 +64,21 @@ Extract the rendering into a single `EventList` component that takes `ChatEvent[
 
 ### Phase 1: Client-Side Persistence Infrastructure
 
-1. **Create IndexedDB storage module** - `ui/src/lib/persistence/EventDatabase.ts`
+1. **Create IndexedDB storage module** - `packages/ui/src/lib/persistence/EventDatabase.ts`
    - Schema with `sessions` and `taskChatSessions` object stores
    - Indexes: workspace, startedAt, taskId
    - Version migration support
 
-2. **Create persistence types** - `ui/src/lib/persistence/types.ts`
+2. **Create persistence types** - `packages/ui/src/lib/persistence/types.ts`
    - `PersistedSession`, `SessionMetadata`
    - `PersistedTaskChatSession`, `TaskChatSessionMetadata`
 
-3. **Create session persistence hook** - `ui/src/hooks/useSessionPersistence.ts`
+3. **Create session persistence hook** - `packages/ui/src/hooks/useSessionPersistence.ts`
    - Auto-save on session boundary (system init event)
    - Auto-save on session end (ralph_task_completed, COMPLETE signal)
    - Generate stable GUID per session
 
-4. **Create task chat persistence hook** - `ui/src/hooks/useTaskChatPersistence.ts`
+4. **Create task chat persistence hook** - `packages/ui/src/hooks/useTaskChatPersistence.ts`
    - Debounced auto-save on new events
    - Clear session on explicit "clear history"
 
@@ -88,22 +88,22 @@ Extract the rendering into a single `EventList` component that takes `ChatEvent[
 
 ### Phase 2: Server-Side Event Buffering
 
-6. **Add per-client event tracking** - `ui/server/index.ts`
+6. **Add per-client event tracking** - `packages/ui/server/index.ts`
    - Extend `WsClient` interface with `lastDeliveredEventIndex`
    - Track which events sent to each client
 
-7. **Implement reconnection sync protocol** - `ui/server/index.ts`
+7. **Implement reconnection sync protocol** - `packages/ui/server/index.ts`
    - Handle `reconnect` message from client with `lastEventTimestamp`
    - Send `pending_events` message with missed events
 
-8. **Add client-side reconnection handling** - `ui/src/lib/ralphConnection.ts`
+8. **Add client-side reconnection handling** - `packages/ui/src/lib/ralphConnection.ts`
    - Track `lastEventTimestamp` locally
    - Send in reconnection handshake
    - Process `pending_events` before normal flow
 
 ### Phase 3: Unified Event Display
 
-9. **Create shared EventList component** - `ui/src/components/events/EventList.tsx`
+9. **Create shared EventList component** - `packages/ui/src/components/events/EventList.tsx`
    - Takes `events: ChatEvent[]` and renders them
    - Handles user messages, assistant text, tool uses, streaming
    - Used by both EventStream and TaskChatPanel
@@ -118,7 +118,7 @@ Extract the rendering into a single `EventList` component that takes `ChatEvent[
 
 ### Phase 4: History Browsing UI
 
-12. **Session history panel** - `ui/src/components/events/SessionHistoryPanel.tsx`
+12. **Session history panel** - `packages/ui/src/components/events/SessionHistoryPanel.tsx`
     - List all persisted sessions (grouped by date)
     - Show metadata: task worked on, start/end time, status
     - Click to view full event stream for that session
@@ -129,7 +129,7 @@ Extract the rendering into a single `EventList` component that takes `ChatEvent[
     - Show "View session" button/link on closed tasks
     - Opens session history viewer for that session
 
-14. **Task chat session history** - `ui/src/components/chat/TaskChatHistoryPanel.tsx`
+14. **Task chat session history** - `packages/ui/src/components/chat/TaskChatHistoryPanel.tsx`
     - List past task chat sessions
     - Click to restore/view old conversations
 
@@ -143,14 +143,14 @@ Extract the rendering into a single `EventList` component that takes `ChatEvent[
 
 ## Key Files
 
-| Purpose                | Path                                                |
-| ---------------------- | --------------------------------------------------- |
-| Store initialization   | `ui/src/store/index.ts`                             |
-| WebSocket reconnection | `ui/src/lib/ralphConnection.ts`                     |
-| Server event tracking  | `ui/server/index.ts`                                |
-| Task chat panel        | `ui/src/components/chat/TaskChatPanel.tsx`          |
-| Event display          | `ui/src/components/events/EventDisplay.tsx`         |
-| Event item router      | `ui/src/components/events/EventStreamEventItem.tsx` |
+| Purpose                | Path                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| Store initialization   | `packages/ui/src/store/index.ts`                             |
+| WebSocket reconnection | `packages/ui/src/lib/ralphConnection.ts`                     |
+| Server event tracking  | `packages/ui/server/index.ts`                                |
+| Task chat panel        | `packages/ui/src/components/chat/TaskChatPanel.tsx`          |
+| Event display          | `packages/ui/src/components/events/EventDisplay.tsx`         |
+| Event item router      | `packages/ui/src/components/events/EventStreamEventItem.tsx` |
 
 ## Verification
 

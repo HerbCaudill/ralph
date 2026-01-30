@@ -19,7 +19,3 @@ Create a new workspace package `@herbcaudill/agent-view` with a high-level `Agen
 7. Create sibling package for VS Code theme → CSS variable mapping and document required CSS variables.
 8. Update `packages/ui/` to use the new packages.
 9. Add tests/stories for the new package(s) and update docs/README as needed.
-
-## Unresolved Questions
-
-None.
