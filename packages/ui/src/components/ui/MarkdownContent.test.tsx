@@ -1,19 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { MarkdownContent } from "@herbcaudill/agent-view"
-import { useAppStore } from "@/store"
+import { AgentViewTestWrapper } from "@/test/agentViewTestWrapper"
+import type { AgentViewContextValue } from "@herbcaudill/agent-view"
 
 // Mock useTheme hook
 vi.mock("@/hooks/useTheme", () => ({
   useTheme: () => ({ resolvedTheme: "light" }),
 }))
 
-describe("MarkdownContent", () => {
-  beforeEach(() => {
-    useAppStore.getState().reset()
-    useAppStore.getState().setIssuePrefix("rui")
-  })
+/** Render wrapped in AgentViewProvider with default test context. */
+function renderWithContext(ui: React.ReactElement, overrides?: Partial<AgentViewContextValue>) {
+  return render(<AgentViewTestWrapper value={overrides}>{ui}</AgentViewTestWrapper>)
+}
 
+describe("MarkdownContent", () => {
   describe("basic markdown rendering", () => {
     it("renders plain text", () => {
       render(<MarkdownContent>Hello world</MarkdownContent>)
@@ -86,7 +87,7 @@ describe("MarkdownContent", () => {
 
   describe("task ID linking", () => {
     it("converts task IDs to clickable links", () => {
-      render(<MarkdownContent>Check out rui-48s for details</MarkdownContent>)
+      renderWithContext(<MarkdownContent>Check out rui-48s for details</MarkdownContent>)
 
       const link = screen.getByRole("link", { name: "View task rui-48s" })
       expect(link).toBeInTheDocument()
@@ -94,20 +95,20 @@ describe("MarkdownContent", () => {
     })
 
     it("handles task IDs in bold text", () => {
-      render(<MarkdownContent>**Important: rui-48s**</MarkdownContent>)
+      renderWithContext(<MarkdownContent>**Important: rui-48s**</MarkdownContent>)
 
       expect(screen.getByRole("link", { name: "View task rui-48s" })).toBeInTheDocument()
     })
 
     it("handles task IDs in list items", () => {
-      render(<MarkdownContent>{`- Task rui-48s\n- Task rui-123`}</MarkdownContent>)
+      renderWithContext(<MarkdownContent>{`- Task rui-48s\n- Task rui-123`}</MarkdownContent>)
 
       expect(screen.getByRole("link", { name: "View task rui-48s" })).toBeInTheDocument()
       expect(screen.getByRole("link", { name: "View task rui-123" })).toBeInTheDocument()
     })
 
     it("handles task IDs with decimal suffixes", () => {
-      render(<MarkdownContent>See rui-4vp.5 for the subtask</MarkdownContent>)
+      renderWithContext(<MarkdownContent>See rui-4vp.5 for the subtask</MarkdownContent>)
 
       const link = screen.getByRole("link", { name: "View task rui-4vp.5" })
       expect(link).toBeInTheDocument()

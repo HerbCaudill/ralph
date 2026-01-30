@@ -1,7 +1,26 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { TaskLifecycleEvent, parseTaskLifecycleEvent } from "@herbcaudill/agent-view"
-import { useAppStore } from "@/store"
+import { AgentViewTestWrapper } from "@/test/agentViewTestWrapper"
+import type { AgentViewContextValue, AgentViewTask } from "@herbcaudill/agent-view"
+
+/** Render TaskLifecycleEvent wrapped in AgentViewProvider. */
+function renderWithContext(ui: React.ReactElement, overrides?: Partial<AgentViewContextValue>) {
+  return render(
+    <AgentViewTestWrapper
+      value={{
+        linkHandlers: {
+          taskIdPrefix: "r",
+          buildTaskHref: (id: string) => `/issue/${id}`,
+          buildSessionHref: (id: string) => `/session/${id}`,
+        },
+        ...overrides,
+      }}
+    >
+      {ui}
+    </AgentViewTestWrapper>,
+  )
+}
 
 describe("parseTaskLifecycleEvent", () => {
   describe("starting events", () => {
@@ -163,24 +182,10 @@ describe("parseTaskLifecycleEvent", () => {
 })
 
 describe("TaskLifecycleEvent", () => {
-  beforeEach(() => {
-    // Reset store before each test
-    useAppStore.getState().reset()
-    // Set a default issue prefix for tests
-    useAppStore.getState().setIssuePrefix("r")
-  })
-
   it("renders starting event", () => {
-    // Add task to store for title lookup
-    useAppStore.getState().setTasks([
-      {
-        id: "r-abc1",
-        title: "Add new feature",
-        status: "in_progress",
-      },
-    ])
+    const tasks: AgentViewTask[] = [{ id: "r-abc1", title: "Add new feature" }]
 
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -189,10 +194,10 @@ describe("TaskLifecycleEvent", () => {
           taskId: "r-abc1",
         }}
       />,
+      { tasks },
     )
 
     expect(screen.getByText("Starting")).toBeInTheDocument()
-    // Task ID is rendered as a link
     const link = screen.getByRole("link", { name: "View task r-abc1" })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute("href", "/issue/r-abc1")
@@ -201,16 +206,9 @@ describe("TaskLifecycleEvent", () => {
   })
 
   it("renders completed event", () => {
-    // Add task to store for title lookup
-    useAppStore.getState().setTasks([
-      {
-        id: "r-xyz9",
-        title: "Fix the bug",
-        status: "closed",
-      },
-    ])
+    const tasks: AgentViewTask[] = [{ id: "r-xyz9", title: "Fix the bug" }]
 
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -219,6 +217,7 @@ describe("TaskLifecycleEvent", () => {
           taskId: "r-xyz9",
         }}
       />,
+      { tasks },
     )
 
     expect(screen.getByText("Completed")).toBeInTheDocument()
@@ -230,7 +229,7 @@ describe("TaskLifecycleEvent", () => {
   })
 
   it("renders event without title when task not in store", () => {
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -239,6 +238,7 @@ describe("TaskLifecycleEvent", () => {
           taskId: "r-def3",
         }}
       />,
+      { tasks: [] },
     )
 
     expect(screen.getByText("Starting")).toBeInTheDocument()
@@ -246,16 +246,9 @@ describe("TaskLifecycleEvent", () => {
   })
 
   it("looks up task title from store", () => {
-    // Add task to store
-    useAppStore.getState().setTasks([
-      {
-        id: "r-store1",
-        title: "Task from store",
-        status: "in_progress",
-      },
-    ])
+    const tasks: AgentViewTask[] = [{ id: "r-store1", title: "Task from store" }]
 
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -264,25 +257,18 @@ describe("TaskLifecycleEvent", () => {
           taskId: "r-store1",
         }}
       />,
+      { tasks },
     )
 
     expect(screen.getByText("Starting")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "View task r-store1" })).toBeInTheDocument()
-    // Title should be looked up from store
     expect(screen.getByText("Task from store")).toBeInTheDocument()
   })
 
   it("uses store title for task", () => {
-    // Add task to store
-    useAppStore.getState().setTasks([
-      {
-        id: "r-pref1",
-        title: "Store title",
-        status: "in_progress",
-      },
-    ])
+    const tasks: AgentViewTask[] = [{ id: "r-pref1", title: "Store title" }]
 
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -291,23 +277,16 @@ describe("TaskLifecycleEvent", () => {
           taskId: "r-pref1",
         }}
       />,
+      { tasks },
     )
 
-    // Store title should be used
     expect(screen.getByText("Store title")).toBeInTheDocument()
   })
 
   it("looks up task title from store for completed events", () => {
-    // Add task to store
-    useAppStore.getState().setTasks([
-      {
-        id: "r-comp1",
-        title: "Completed task from store",
-        status: "closed",
-      },
-    ])
+    const tasks: AgentViewTask[] = [{ id: "r-comp1", title: "Completed task from store" }]
 
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -316,35 +295,22 @@ describe("TaskLifecycleEvent", () => {
           taskId: "r-comp1",
         }}
       />,
+      { tasks },
     )
 
     expect(screen.getByText("Completed")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "View task r-comp1" })).toBeInTheDocument()
-    // Title should be looked up from store
     expect(screen.getByText("Completed task from store")).toBeInTheDocument()
   })
 
   it("handles store with multiple tasks, returning correct title", () => {
-    // Add multiple tasks to store
-    useAppStore.getState().setTasks([
-      {
-        id: "r-other1",
-        title: "Other task 1",
-        status: "open",
-      },
-      {
-        id: "r-target",
-        title: "Target task title",
-        status: "in_progress",
-      },
-      {
-        id: "r-other2",
-        title: "Other task 2",
-        status: "closed",
-      },
-    ])
+    const tasks: AgentViewTask[] = [
+      { id: "r-other1", title: "Other task 1" },
+      { id: "r-target", title: "Target task title" },
+      { id: "r-other2", title: "Other task 2" },
+    ]
 
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -353,42 +319,32 @@ describe("TaskLifecycleEvent", () => {
           taskId: "r-target",
         }}
       />,
+      { tasks },
     )
 
-    // Should find the correct task among multiple tasks
     expect(screen.getByText("Target task title")).toBeInTheDocument()
     expect(screen.queryByText("Other task 1")).not.toBeInTheDocument()
     expect(screen.queryByText("Other task 2")).not.toBeInTheDocument()
   })
 
   it("handles taskId not found in store with other tasks present", () => {
-    // Add tasks to store, but not the one we're looking for
-    useAppStore.getState().setTasks([
-      {
-        id: "r-other1",
-        title: "Other task 1",
-        status: "open",
-      },
-      {
-        id: "r-other2",
-        title: "Other task 2",
-        status: "in_progress",
-      },
-    ])
+    const tasks: AgentViewTask[] = [
+      { id: "r-other1", title: "Other task 1" },
+      { id: "r-other2", title: "Other task 2" },
+    ]
 
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
           timestamp: 1234567890,
           action: "starting",
           taskId: "r-notfound",
-          // No taskTitle provided
         }}
       />,
+      { tasks },
     )
 
-    // Should render without title since task not in store
     expect(screen.getByText("Starting")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "View task r-notfound" })).toBeInTheDocument()
     expect(screen.queryByText("Other task 1")).not.toBeInTheDocument()
@@ -396,7 +352,7 @@ describe("TaskLifecycleEvent", () => {
   })
 
   it("renders task ID as a clickable link", () => {
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",
@@ -413,7 +369,7 @@ describe("TaskLifecycleEvent", () => {
   })
 
   it("applies custom className", () => {
-    render(
+    renderWithContext(
       <TaskLifecycleEvent
         event={{
           type: "task_lifecycle",

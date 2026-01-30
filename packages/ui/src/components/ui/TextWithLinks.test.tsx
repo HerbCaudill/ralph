@@ -1,41 +1,50 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, afterEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { TextWithLinks } from "./TextWithLinks"
-import { useAppStore } from "@/store"
+import { AgentViewTestWrapper, defaultTestContext } from "@/test/agentViewTestWrapper"
+import type { AgentViewContextValue } from "@herbcaudill/agent-view"
 
 describe("TextWithLinks", () => {
-  let pushStateSpy: ReturnType<typeof vi.spyOn>
-  let dispatchEventSpy: ReturnType<typeof vi.spyOn>
+  const mockSessionClick = vi.fn()
 
-  beforeEach(() => {
-    // Reset store before each test
-    useAppStore.getState().reset()
-    // Set a default issue prefix for tests
-    useAppStore.getState().setIssuePrefix("rui")
-    // Spy on pushState and dispatchEvent
-    pushStateSpy = vi.spyOn(window.history, "pushState").mockImplementation(() => {})
-    dispatchEventSpy = vi.spyOn(window, "dispatchEvent").mockImplementation(() => true)
-  })
+  /** Render with AgentViewProvider context. */
+  function renderWithContext(ui: React.ReactElement, overrides?: Partial<AgentViewContextValue>) {
+    return render(
+      <AgentViewTestWrapper
+        value={{
+          ...overrides,
+          linkHandlers: {
+            ...defaultTestContext.linkHandlers,
+            onSessionClick: mockSessionClick,
+            ...overrides?.linkHandlers,
+          },
+        }}
+      >
+        {ui}
+      </AgentViewTestWrapper>,
+    )
+  }
 
   afterEach(() => {
     vi.restoreAllMocks()
+    mockSessionClick.mockReset()
   })
 
   describe("basic rendering", () => {
     it("renders text without any links unchanged", () => {
-      render(<TextWithLinks>Hello world</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Hello world</TextWithLinks>)
       expect(screen.getByText("Hello world")).toBeInTheDocument()
     })
 
     it("renders empty string correctly", () => {
-      const { container } = render(<TextWithLinks>{""}</TextWithLinks>)
+      const { container } = renderWithContext(<TextWithLinks>{""}</TextWithLinks>)
       expect(container.textContent).toBe("")
     })
   })
 
   describe("task ID linking", () => {
     it("converts task ID to clickable link with stripped prefix", () => {
-      render(<TextWithLinks>Check out rui-48s for details</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Check out rui-48s for details</TextWithLinks>)
 
       const link = screen.getByRole("link", { name: "View task rui-48s" })
       expect(link).toBeInTheDocument()
@@ -44,7 +53,7 @@ describe("TextWithLinks", () => {
     })
 
     it("handles task IDs with decimal suffixes", () => {
-      render(<TextWithLinks>See rui-4vp.5 for the subtask</TextWithLinks>)
+      renderWithContext(<TextWithLinks>See rui-4vp.5 for the subtask</TextWithLinks>)
 
       const link = screen.getByRole("link", { name: "View task rui-4vp.5" })
       expect(link).toBeInTheDocument()
@@ -55,83 +64,72 @@ describe("TextWithLinks", () => {
 
   describe("session linking", () => {
     it("converts session path reference to clickable link (new format)", () => {
-      render(<TextWithLinks>Session: /session/default-1706123456789</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Session: /session/default-1706123456789</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session default-1706123456789" })
+      const link = screen.getByRole("link", { name: "View session default-1706123456789" })
       expect(link).toBeInTheDocument()
       expect(link).toHaveTextContent("/session/default-1706123456789")
     })
 
     it("converts legacy #session= reference to clickable link", () => {
-      render(<TextWithLinks>Session: #session=default-1706123456789</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Session: #session=default-1706123456789</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session default-1706123456789" })
+      const link = screen.getByRole("link", { name: "View session default-1706123456789" })
       expect(link).toBeInTheDocument()
       expect(link).toHaveTextContent("#session=default-1706123456789")
     })
 
     it("converts legacy #eventlog= reference to clickable link", () => {
-      render(<TextWithLinks>Event log: #eventlog=abcdef12</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Event log: #eventlog=abcdef12</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session abcdef12" })
+      const link = screen.getByRole("link", { name: "View session abcdef12" })
       expect(link).toBeInTheDocument()
       expect(link).toHaveTextContent("#eventlog=abcdef12")
     })
 
     it("navigates to session path when clicked (new format)", () => {
-      render(<TextWithLinks>Click /session/default-123 here</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Click /session/default-123 here</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session default-123" })
+      const link = screen.getByRole("link", { name: "View session default-123" })
       fireEvent.click(link)
 
-      expect(pushStateSpy).toHaveBeenCalledWith(
-        { sessionId: "default-123" },
-        "",
-        "/session/default-123",
-      )
-      expect(dispatchEventSpy).toHaveBeenCalled()
+      expect(mockSessionClick).toHaveBeenCalledWith("default-123")
     })
 
     it("navigates to session path when clicking legacy #session= format", () => {
-      render(<TextWithLinks>Click #session=default-123 here</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Click #session=default-123 here</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session default-123" })
+      const link = screen.getByRole("link", { name: "View session default-123" })
       fireEvent.click(link)
 
-      // Should use new /session/{id} path format when navigating
-      expect(pushStateSpy).toHaveBeenCalledWith(
-        { sessionId: "default-123" },
-        "",
-        "/session/default-123",
-      )
-      expect(dispatchEventSpy).toHaveBeenCalled()
+      expect(mockSessionClick).toHaveBeenCalledWith("default-123")
     })
 
     it("navigates to session path when clicking legacy #eventlog= format", () => {
-      render(<TextWithLinks>Click #eventlog=abcdef12 here</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Click #eventlog=abcdef12 here</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session abcdef12" })
+      const link = screen.getByRole("link", { name: "View session abcdef12" })
       fireEvent.click(link)
 
-      // Should use new /session/{id} path format when navigating
-      expect(pushStateSpy).toHaveBeenCalledWith({ sessionId: "abcdef12" }, "", "/session/abcdef12")
-      expect(dispatchEventSpy).toHaveBeenCalled()
+      expect(mockSessionClick).toHaveBeenCalledWith("abcdef12")
     })
 
     it("handles uppercase hex characters in legacy format", () => {
-      render(<TextWithLinks>Ref: #eventlog=ABCDEF00</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Ref: #eventlog=ABCDEF00</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session ABCDEF00" })
+      const link = screen.getByRole("link", { name: "View session ABCDEF00" })
       expect(link).toBeInTheDocument()
     })
   })
 
   describe("mixed content", () => {
     it("handles both task IDs and session references in same text", () => {
-      render(<TextWithLinks>Task rui-48s has session /session/default-123</TextWithLinks>)
+      renderWithContext(
+        <TextWithLinks>Task rui-48s has session /session/default-123</TextWithLinks>,
+      )
 
       const taskLink = screen.getByRole("link", { name: "View task rui-48s" })
-      const sessionLink = screen.getByRole("button", { name: "View session default-123" })
+      const sessionLink = screen.getByRole("link", { name: "View session default-123" })
 
       expect(taskLink).toBeInTheDocument()
       expect(taskLink).toHaveAttribute("href", "/issue/rui-48s")
@@ -139,25 +137,23 @@ describe("TextWithLinks", () => {
 
       // Click session link
       fireEvent.click(sessionLink)
-      expect(pushStateSpy).toHaveBeenCalledWith(
-        { sessionId: "default-123" },
-        "",
-        "/session/default-123",
-      )
+      expect(mockSessionClick).toHaveBeenCalledWith("default-123")
     })
 
     it("handles task IDs with legacy eventlog references", () => {
-      render(<TextWithLinks>Task rui-48s has event log #eventlog=abcdef12</TextWithLinks>)
+      renderWithContext(
+        <TextWithLinks>Task rui-48s has event log #eventlog=abcdef12</TextWithLinks>,
+      )
 
       const taskLink = screen.getByRole("link", { name: "View task rui-48s" })
-      const sessionLink = screen.getByRole("button", { name: "View session abcdef12" })
+      const sessionLink = screen.getByRole("link", { name: "View session abcdef12" })
 
       expect(taskLink).toBeInTheDocument()
       expect(sessionLink).toBeInTheDocument()
     })
 
     it("preserves text between links", () => {
-      const { container } = render(
+      const { container } = renderWithContext(
         <TextWithLinks>Start rui-1 middle /session/session-1 end</TextWithLinks>,
       )
 
@@ -166,7 +162,7 @@ describe("TextWithLinks", () => {
     })
 
     it("handles multiple of each type", () => {
-      render(
+      renderWithContext(
         <TextWithLinks>
           Tasks rui-1 and rui-2 with sessions /session/session-1 and /session/session-2
         </TextWithLinks>,
@@ -174,8 +170,8 @@ describe("TextWithLinks", () => {
 
       expect(screen.getByRole("link", { name: "View task rui-1" })).toBeInTheDocument()
       expect(screen.getByRole("link", { name: "View task rui-2" })).toBeInTheDocument()
-      expect(screen.getByRole("button", { name: "View session session-1" })).toBeInTheDocument()
-      expect(screen.getByRole("button", { name: "View session session-2" })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: "View session session-1" })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: "View session session-2" })).toBeInTheDocument()
     })
   })
 
@@ -184,12 +180,21 @@ describe("TextWithLinks", () => {
       const parentClick = vi.fn()
 
       render(
-        <div onClick={parentClick}>
-          <TextWithLinks>Click #session=default-123 here</TextWithLinks>
-        </div>,
+        <AgentViewTestWrapper
+          value={{
+            linkHandlers: {
+              ...defaultTestContext.linkHandlers,
+              onSessionClick: mockSessionClick,
+            },
+          }}
+        >
+          <div onClick={parentClick}>
+            <TextWithLinks>Click #session=default-123 here</TextWithLinks>
+          </div>
+        </AgentViewTestWrapper>,
       )
 
-      const link = screen.getByRole("button", { name: "View session default-123" })
+      const link = screen.getByRole("link", { name: "View session default-123" })
       fireEvent.click(link)
 
       expect(parentClick).not.toHaveBeenCalled()
@@ -198,59 +203,57 @@ describe("TextWithLinks", () => {
 
   describe("edge cases", () => {
     it("does not linkify task IDs when no prefix is configured", () => {
-      useAppStore.getState().setIssuePrefix(null)
-      render(<TextWithLinks>Check rui-48s and /session/default-123</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Check rui-48s and /session/default-123</TextWithLinks>, {
+        linkHandlers: {
+          taskIdPrefix: null,
+          onSessionClick: mockSessionClick,
+          buildSessionHref: (id: string) => `/session/${id}`,
+        },
+      })
 
       // Task link should not exist (no prefix)
       expect(screen.queryByRole("link", { name: "View task rui-48s" })).not.toBeInTheDocument()
 
       // Session link should still work
-      expect(screen.getByRole("button", { name: "View session default-123" })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: "View session default-123" })).toBeInTheDocument()
     })
 
     it("does not linkify invalid legacy eventlog references", () => {
-      render(<TextWithLinks>#eventlog=abc is too short</TextWithLinks>)
+      renderWithContext(<TextWithLinks>#eventlog=abc is too short</TextWithLinks>)
 
-      const buttons = screen.queryAllByRole("button")
-      expect(buttons).toHaveLength(0)
+      // No session links (eventlog hash must be exactly 8 hex chars)
+      const links = screen.queryAllByRole("link")
+      expect(links).toHaveLength(0)
     })
 
     it("handles closing comment format with new session path format", () => {
-      render(<TextWithLinks>Closed. Session log: /session/default-123</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Closed. Session log: /session/default-123</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session default-123" })
+      const link = screen.getByRole("link", { name: "View session default-123" })
       expect(link).toBeInTheDocument()
 
       fireEvent.click(link)
-      expect(pushStateSpy).toHaveBeenCalledWith(
-        { sessionId: "default-123" },
-        "",
-        "/session/default-123",
-      )
+      expect(mockSessionClick).toHaveBeenCalledWith("default-123")
     })
 
     it("handles closing comment format with legacy #session= format", () => {
-      render(<TextWithLinks>Closed. Session: #session=default-123</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Closed. Session: #session=default-123</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session default-123" })
+      const link = screen.getByRole("link", { name: "View session default-123" })
       expect(link).toBeInTheDocument()
 
       fireEvent.click(link)
-      expect(pushStateSpy).toHaveBeenCalledWith(
-        { sessionId: "default-123" },
-        "",
-        "/session/default-123",
-      )
+      expect(mockSessionClick).toHaveBeenCalledWith("default-123")
     })
 
     it("handles closing comment format with legacy #eventlog= format", () => {
-      render(<TextWithLinks>Closed. Event log: #eventlog=abcdef12</TextWithLinks>)
+      renderWithContext(<TextWithLinks>Closed. Event log: #eventlog=abcdef12</TextWithLinks>)
 
-      const link = screen.getByRole("button", { name: "View session abcdef12" })
+      const link = screen.getByRole("link", { name: "View session abcdef12" })
       expect(link).toBeInTheDocument()
 
       fireEvent.click(link)
-      expect(pushStateSpy).toHaveBeenCalledWith({ sessionId: "abcdef12" }, "", "/session/abcdef12")
+      expect(mockSessionClick).toHaveBeenCalledWith("abcdef12")
     })
   })
 })

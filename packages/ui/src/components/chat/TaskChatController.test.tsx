@@ -2,6 +2,23 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { TaskChatController } from "./TaskChatController"
 import { useAppStore, flushTaskChatEventsBatch } from "@/store"
+import { AgentViewProvider } from "@herbcaudill/agent-view"
+import type { AgentViewContextValue } from "@herbcaudill/agent-view"
+
+/**
+ * Wrapper that bridges the store's showToolOutput to AgentViewContext.
+ * Used by tests that verify tool output visibility toggle behavior.
+ */
+function StoreBackedAgentViewWrapper({ children }: { children: React.ReactNode }) {
+  const showToolOutput = useAppStore(s => s.showToolOutput)
+  const value: Partial<AgentViewContextValue> = {
+    toolOutput: {
+      isVisible: showToolOutput,
+      onToggle: () => useAppStore.getState().toggleToolOutput(),
+    },
+  }
+  return <AgentViewProvider value={value}>{children}</AgentViewProvider>
+}
 
 // Mock fetch
 const mockFetch = vi.fn()
@@ -865,7 +882,11 @@ describe("TaskChatController", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatController />)
+      render(
+        <StoreBackedAgentViewWrapper>
+          <TaskChatController />
+        </StoreBackedAgentViewWrapper>,
+      )
 
       // Tool name and command should still be visible
       expect(screen.getByText("Bash")).toBeInTheDocument()
@@ -900,7 +921,11 @@ describe("TaskChatController", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatController />)
+      render(
+        <StoreBackedAgentViewWrapper>
+          <TaskChatController />
+        </StoreBackedAgentViewWrapper>,
+      )
 
       // Tool name, command, and output should all be visible
       expect(screen.getByText("Bash")).toBeInTheDocument()
@@ -934,7 +959,11 @@ describe("TaskChatController", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      const { rerender } = render(<TaskChatController />)
+      const { rerender } = render(
+        <StoreBackedAgentViewWrapper>
+          <TaskChatController />
+        </StoreBackedAgentViewWrapper>,
+      )
 
       // Initially hidden
       expect(screen.queryByText("test output")).not.toBeInTheDocument()
@@ -943,7 +972,11 @@ describe("TaskChatController", () => {
       act(() => {
         useAppStore.getState().toggleToolOutput()
       })
-      rerender(<TaskChatController />)
+      rerender(
+        <StoreBackedAgentViewWrapper>
+          <TaskChatController />
+        </StoreBackedAgentViewWrapper>,
+      )
 
       // Now visible
       expect(screen.getByText("test output")).toBeInTheDocument()
@@ -975,7 +1008,11 @@ describe("TaskChatController", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatController />)
+      render(
+        <StoreBackedAgentViewWrapper>
+          <TaskChatController />
+        </StoreBackedAgentViewWrapper>,
+      )
 
       // Tool output should be hidden initially
       expect(screen.queryByText("hello")).not.toBeInTheDocument()
@@ -1016,7 +1053,11 @@ describe("TaskChatController", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatController />)
+      render(
+        <StoreBackedAgentViewWrapper>
+          <TaskChatController />
+        </StoreBackedAgentViewWrapper>,
+      )
 
       // Initially hidden
       expect(screen.queryByText("test output")).not.toBeInTheDocument()

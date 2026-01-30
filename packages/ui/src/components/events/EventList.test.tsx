@@ -1,13 +1,21 @@
 import { render, screen } from "@testing-library/react"
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect } from "vitest"
 import { EventList, useEventListState } from "@herbcaudill/agent-view"
 import type { ChatEvent } from "@/types"
 import { renderHook } from "@testing-library/react"
-import { useAppStore } from "@/store"
+import { AgentViewTestWrapper } from "@/test/agentViewTestWrapper"
+import type { AgentViewContextValue, AgentViewTask } from "@herbcaudill/agent-view"
 
-// Helper to render EventList
-function renderEventList(props: Parameters<typeof EventList>[0]) {
-  return render(<EventList {...props} />)
+/** Render EventList wrapped in AgentViewProvider. */
+function renderEventList(
+  props: Parameters<typeof EventList>[0],
+  contextOverrides?: Partial<AgentViewContextValue>,
+) {
+  return render(
+    <AgentViewTestWrapper value={contextOverrides}>
+      <EventList {...props} />
+    </AgentViewTestWrapper>,
+  )
 }
 
 describe("EventList", () => {
@@ -145,23 +153,8 @@ describe("EventList", () => {
   })
 
   describe("task lifecycle events", () => {
-    beforeEach(() => {
-      useAppStore.getState().reset()
-    })
-
-    afterEach(() => {
-      useAppStore.getState().reset()
-    })
-
     it("renders task started events", () => {
-      // Add task to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "task-1",
-          title: "Test task",
-          status: "in_progress",
-        },
-      ])
+      const tasks: AgentViewTask[] = [{ id: "task-1", title: "Test task" }]
 
       const events: ChatEvent[] = [
         {
@@ -171,19 +164,12 @@ describe("EventList", () => {
         },
       ]
 
-      renderEventList({ events })
+      renderEventList({ events }, { tasks })
       expect(screen.getByText("Test task")).toBeInTheDocument()
     })
 
     it("renders task completed events", () => {
-      // Add task to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "task-1",
-          title: "Test task",
-          status: "closed",
-        },
-      ])
+      const tasks: AgentViewTask[] = [{ id: "task-1", title: "Test task" }]
 
       const events: ChatEvent[] = [
         {
@@ -193,7 +179,7 @@ describe("EventList", () => {
         },
       ]
 
-      renderEventList({ events })
+      renderEventList({ events }, { tasks })
       expect(screen.getByText("Test task")).toBeInTheDocument()
     })
   })
