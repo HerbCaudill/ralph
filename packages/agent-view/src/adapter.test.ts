@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { createBatchConverter } from "./adapter"
-import type { ChatEvent, ConvertEvent } from "./adapter"
+import type { ConvertEvent } from "./adapter"
 
 describe("createBatchConverter", () => {
   it("should convert single events using convertEvent", () => {
@@ -63,7 +63,7 @@ describe("createBatchConverter", () => {
   })
 
   it("should handle empty input array", () => {
-    const convertEvent: ConvertEvent = (nativeEvent: unknown) => {
+    const convertEvent: ConvertEvent = (_nativeEvent: unknown) => {
       return [{ type: "test", timestamp: Date.now() }]
     }
 
@@ -96,7 +96,7 @@ describe("createBatchConverter", () => {
   it("should preserve event order", () => {
     const convertEvent: ConvertEvent = (nativeEvent: unknown) => {
       const event = nativeEvent as { id: number }
-      return [{ type: "event", timestamp: event.id, id: event.id }]
+      return [{ type: "event", timestamp: event.id, id: String(event.id) }]
     }
 
     const convertEvents = createBatchConverter(convertEvent)
