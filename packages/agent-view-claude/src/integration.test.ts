@@ -61,9 +61,7 @@ describe("agent-view + agent-view-claude integration", () => {
         type: "assistant",
         timestamp: 3000,
         message: {
-          content: [
-            { type: "text", text: "I see the issue. Let me fix the function." },
-          ],
+          content: [{ type: "text", text: "I see the issue. Let me fix the function." }],
         },
       },
 
@@ -158,7 +156,7 @@ describe("agent-view + agent-view-claude integration", () => {
 
     expect(chatEvents).toHaveLength(4)
     expect(chatEvents.every(e => e.type === "stream_event")).toBe(true)
-    expect(chatEvents.every(e => e.timestamp > 0)).toBe(true)
+    expect(chatEvents.every(e => e.timestamp ?? 0 > 0)).toBe(true)
   })
 
   it("normalizes token usage to both camelCase and snake_case", () => {
