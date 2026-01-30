@@ -85,6 +85,10 @@
   "description": "Web UI for Ralph - React frontend and server for the autonomous AI session engine",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.7",
+    "@herbcaudill/agent-view": "workspace:*",
+    "@herbcaudill/agent-view-claude": "workspace:*",
+    "@herbcaudill/agent-view-codex": "workspace:*",
+    "@herbcaudill/agent-view-theme": "workspace:*",
     "@mdxeditor/editor": "^3.52.3",
     "@openai/codex-sdk": "^0.87.0",
     "@radix-ui/react-dialog": "^1.1.15",

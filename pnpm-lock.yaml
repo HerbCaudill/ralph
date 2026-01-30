@@ -228,6 +228,18 @@ importers:
       "@anthropic-ai/claude-agent-sdk":
         specifier: ^0.2.7
         version: 0.2.19(zod@4.3.5)
+      "@herbcaudill/agent-view":
+        specifier: workspace:*
+        version: link:../agent-view
+      "@herbcaudill/agent-view-claude":
+        specifier: workspace:*
+        version: link:../agent-view-claude
+      "@herbcaudill/agent-view-codex":
+        specifier: workspace:*
+        version: link:../agent-view-codex
+      "@herbcaudill/agent-view-theme":
+        specifier: workspace:*
+        version: link:../agent-view-theme
       "@mdxeditor/editor":
         specifier: ^3.52.3
         version: 3.52.3(@codemirror/language@6.12.1)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(yjs@13.6.29)
