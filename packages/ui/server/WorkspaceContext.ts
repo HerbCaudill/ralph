@@ -11,7 +11,7 @@ import {
 import { TaskChatEventLog } from "./TaskChatEventLog.js"
 import { TaskChatEventPersister } from "./TaskChatEventPersister.js"
 import { watchMutations } from "./BeadsClient.js"
-import type { MutationEvent } from "@herbcaudill/ralph-shared"
+import type { MutationEvent } from "@herbcaudill/beads"
 
 /**  Maximum number of events to store in history buffer. */
 const MAX_EVENT_HISTORY = 1000

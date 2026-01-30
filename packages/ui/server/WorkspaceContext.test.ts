@@ -103,7 +103,7 @@ vi.mock("./BeadsClient.js", () => {
 })
 
 // Import MutationEvent type for mock
-import type { MutationEvent } from "@herbcaudill/ralph-shared"
+import type { MutationEvent } from "@herbcaudill/beads"
 
 // Import WorkspaceContext after mocks are set up
 import { WorkspaceContext } from "./WorkspaceContext.js"

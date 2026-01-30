@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { BeadsClient, watchMutations } from "./BeadsClient.js"
 import { EventEmitter } from "node:events"
-import type { MutationEvent } from "@herbcaudill/ralph-shared"
+import type { MutationEvent } from "@herbcaudill/beads"
 
 /**
  * Create a mock socket for testing.
