@@ -792,3 +792,394 @@ pnpm ui:test           # Run UI tests only
 ## Terminology
 
 **Sessions** - Previously called "iterations" throughout the codebase. This refers to a single autonomous work cycle where Ralph spawns an agent to complete a task. The database table was renamed from `iterations` to `sessions` to reflect this terminology.
+
+## Effect TS quick reference
+
+### The Effect type
+
+```typescript
+Effect<Success, Error, Requirements>
+```
+
+- **Success (A)**: Value produced on success
+- **Error (E)**: Expected (typed) error. `never` = can't fail
+- **Requirements (R)**: Dependencies needed. `never` = no dependencies
+
+### Creating effects
+
+```typescript
+import { Effect } from "effect"
+
+// From known values
+Effect.succeed(42)
+Effect.fail(new Error("boom"))
+
+// Lazy (deferred evaluation)
+Effect.sync(() => Math.random())
+Effect.try(() => JSON.parse(input))
+
+// From promises
+Effect.promise(() => fetch(url))
+Effect.tryPromise({
+  try: () => fetch(url),
+  catch: (e) => new FetchError(e)
+})
+
+// Async with cancellation
+Effect.async<string, Error>((resume) => {
+  const controller = new AbortController()
+  fetch(url, { signal: controller.signal })
+    .then((res) => res.text())
+    .then((text) => resume(Effect.succeed(text)))
+    .catch((err) => resume(Effect.fail(new Error(String(err)))))
+  return Effect.sync(() => controller.abort())
+})
+```
+
+### Running effects
+
+```typescript
+Effect.runSync(effect)          // Synchronous (throws on async or failure)
+Effect.runSyncExit(effect)      // Returns Exit (no throw)
+await Effect.runPromise(effect) // Promise-based
+await Effect.runPromiseExit(effect)
+Effect.runFork(effect)          // Fire and forget (returns Fiber)
+```
+
+### Generators (async/await style)
+
+```typescript
+const program = Effect.gen(function* () {
+  const user = yield* getUser(id)
+  const posts = yield* getPosts(user.id)
+  return { user, posts }
+})
+```
+
+- `yield*` unwraps an Effect (like `await` for promises)
+- Errors short-circuit automatically
+- The compiler tracks all error and requirement types through the generator
+
+### Error management
+
+```typescript
+// Tagged errors
+class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}
+class Unauthorized extends Data.TaggedError("Unauthorized")<{ readonly userId: string }> {}
+
+// Catch by tag
+program.pipe(Effect.catchTag("NotFound", (e) => Effect.succeed(`Not found: ${e.id}`)))
+
+// Catch all expected errors
+program.pipe(Effect.catchAll((e) => Effect.succeed("fallback")))
+
+// Map error type
+Effect.mapError(effect, (e) => new OtherError(e.message))
+
+// Provide a fallback effect
+Effect.orElse(effect, () => fallbackEffect)
+
+// Retry on failure
+Effect.retry(effect, Schedule.recurs(3))
+
+// Handle both success and failure
+Effect.match(effect, {
+  onSuccess: (a) => `ok: ${a}`,
+  onFailure: (e) => `err: ${e}`
+})
+```
+
+### Services & dependency injection
+
+```typescript
+// Define
+class Database extends Context.Tag("Database")<
+  Database,
+  { readonly query: (sql: string) => Effect.Effect<unknown[]> }
+>() {}
+
+// Use
+const program = Effect.gen(function* () {
+  const db = yield* Database
+  return yield* db.query("SELECT * FROM users")
+})
+// Type: Effect<unknown[], never, Database>
+
+// Provide
+program.pipe(Effect.provideService(Database, { query: (sql) => Effect.sync(() => []) }))
+```
+
+### Layers
+
+```typescript
+// Simple layer
+const DatabaseLive = Layer.succeed(Database, { query: (sql) => Effect.sync(() => []) })
+
+// Layer that needs an effect
+const DatabaseLive = Layer.effect(
+  Database,
+  Effect.gen(function* () {
+    const config = yield* Config
+    return { query: (sql) => Effect.promise(() => pgQuery(config.url, sql)) }
+  })
+)
+
+// Layer with resource management
+const DatabaseLive = Layer.scoped(
+  Database,
+  Effect.gen(function* () {
+    const pool = yield* Effect.acquireRelease(
+      Effect.sync(() => createPool()),
+      (pool) => Effect.sync(() => pool.close())
+    )
+    return { query: (sql) => Effect.promise(() => pool.query(sql)) }
+  })
+)
+
+// Compose layers
+const AppLive = Layer.mergeAll(DatabaseLive, LoggerLive)
+const ServiceLive = Layer.provide(ServiceLayer, DependencyLayer)
+
+// Run with layers
+Effect.runPromise(program.pipe(Effect.provide(AppLive)))
+```
+
+### Concurrency
+
+```typescript
+// Run effects concurrently
+const results = yield* Effect.all([effectA, effectB, effectC], { concurrency: "unbounded" })
+const results = yield* Effect.all(effects, { concurrency: 5 })
+const results = yield* Effect.forEach(items, (item) => processItem(item), { concurrency: 10 })
+const fastest = yield* Effect.race(effectA, effectB)
+
+// Fibers
+const fiber = yield* Effect.fork(longRunningTask)
+const result = yield* Fiber.join(fiber)
+yield* Fiber.interrupt(fiber)
+```
+
+### Resource management
+
+```typescript
+const managed = Effect.acquireRelease(
+  Effect.sync(() => openConnection()),
+  (conn) => Effect.sync(() => conn.close())
+)
+
+const program = Effect.scoped(
+  Effect.gen(function* () {
+    const conn = yield* managed
+    return yield* conn.query("SELECT 1")
+  })
+)
+```
+
+### Ref, streams, scheduling
+
+```typescript
+// Ref (mutable state)
+const counter = yield* Ref.make(0)
+yield* Ref.update(counter, (n) => n + 1)
+const value = yield* Ref.get(counter)
+
+// Streams
+Stream.make(1, 2, 3).pipe(
+  Stream.map((n) => n * 2),
+  Stream.filter((n) => n > 2),
+  Stream.take(10)
+)
+Stream.runCollect(stream) // Effect<Chunk<A>>
+
+// Scheduling
+Effect.retry(effect, Schedule.recurs(3))
+Effect.retry(effect, Schedule.exponential("100 millis"))
+Effect.repeat(effect, Schedule.spaced("1 second"))
+```
+
+### Key principles
+
+- Effects are values: describe computations but don't execute until run
+- Errors are typed: the `E` parameter makes all failure modes explicit
+- Dependencies are tracked: the `R` parameter ensures all requirements are provided
+- Composition over inheritance: use pipes, generators, and layers
+
+## Effect Schema quick reference
+
+### The Schema type
+
+```typescript
+Schema<Type, Encoded, Requirements>
+```
+
+- **Type (A)**: The decoded output type
+- **Encoded (I)**: The input/encoded type (defaults to Type)
+- **Requirements (R)**: Contextual dependencies (defaults to `never`)
+
+### Primitives
+
+```typescript
+import { Schema } from "effect"
+
+Schema.String    Schema.Number    Schema.Boolean
+Schema.BigIntFromSelf    Schema.Object    Schema.Undefined
+Schema.Void    Schema.Any    Schema.Unknown    Schema.Never
+```
+
+### Structs, literals, unions
+
+```typescript
+const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
+
+// Type extraction
+type PersonType = Schema.Type<typeof Person>
+interface Person extends Schema.Type<typeof Person> {}
+
+const Status = Schema.Literal("active", "inactive", "pending")
+const Flexible = Schema.Union(Schema.String, Schema.Number)
+```
+
+### Optional fields
+
+```typescript
+const Product = Schema.Struct({
+  name: Schema.String,
+  quantity: Schema.optional(Schema.Number)
+})
+
+// Optional with a default
+const WithDefault = Schema.Struct({
+  role: Schema.optional(Schema.String).pipe(Schema.withDefault(() => "user"))
+})
+```
+
+### Arrays, tuples, records
+
+```typescript
+Schema.Array(Schema.String)
+Schema.NonEmptyArray(Schema.Number)
+Schema.Tuple(Schema.String, Schema.Number)
+Schema.Record({ key: Schema.String, value: Schema.Number })
+```
+
+### Decoding and encoding
+
+```typescript
+// Decode (parse external data)
+Schema.decodeUnknownSync(schema)(input)        // throws on error
+Schema.decodeUnknownEither(schema)(input)      // Returns Either
+await Schema.decodeUnknown(schema)(input)      // Returns Effect
+
+// Encode (serialize)
+Schema.encodeSync(schema)(value)
+Schema.encodeEither(schema)(value)
+
+// Options
+Schema.decodeUnknownEither(schema, {
+  errors: "all",
+  onExcessProperty: "error"
+})(input)
+```
+
+### Transformations
+
+```typescript
+// Guaranteed-success
+const StringToNumber = Schema.transform(Schema.String, Schema.Number, {
+  decode: (s) => parseFloat(s),
+  encode: (n) => String(n)
+})
+
+// Fallible
+const SafeStringToNumber = Schema.transformOrFail(Schema.String, Schema.Number, {
+  decode: (s) => {
+    const n = parseFloat(s)
+    return isNaN(n)
+      ? ParseResult.fail(new ParseResult.Type(Schema.Number.ast, s))
+      : ParseResult.succeed(n)
+  },
+  encode: (n) => ParseResult.succeed(String(n))
+})
+```
+
+Built-in transforms: `trim`, `lowercase`, `uppercase`, `split`, `parseJson`, `NumberFromString`, `Date`, `Base64`, `Hex`
+
+### Filters and refinements
+
+```typescript
+const LongString = Schema.String.pipe(
+  Schema.filter((s) => s.length >= 10 || "must be at least 10 characters")
+)
+```
+
+Built-in filters:
+- **String**: `maxLength(n)`, `minLength(n)`, `nonEmptyString()`, `length(n)`, `pattern(regex)`, `startsWith(s)`, `endsWith(s)`, `includes(s)`, `trimmed()`
+- **Number**: `greaterThan(n)`, `lessThan(n)`, `between(min, max)`, `int()`, `positive()`, `nonNegative()`, `multipleOf(n)`
+- **Number shorthands**: `Schema.Int`, `Schema.Positive`, `Schema.NonNegative`
+- **Array**: `maxItems(n)`, `minItems(n)`, `itemsCount(n)`
+
+### Classes
+
+```typescript
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.NonEmptyString
+}) {
+  get upperName() { return this.name.toUpperCase() }
+}
+
+// Extending
+class Employee extends Schema.Class<Employee>("Employee")({
+  ...Person.fields,
+  department: Schema.String
+}) {}
+```
+
+### Brands
+
+```typescript
+const UserId = Schema.String.pipe(Schema.brand("UserId"))
+type UserId = Schema.Type<typeof UserId>
+const id = UserId.make("abc123")
+```
+
+### Property signatures
+
+```typescript
+// Rename fields
+const User = Schema.Struct({
+  name: Schema.propertySignature(Schema.String).pipe(Schema.fromKey("user_name"))
+})
+// Decodes { user_name: "Alice" } → { name: "Alice" }
+```
+
+### Recursive schemas
+
+```typescript
+interface Category {
+  readonly name: string
+  readonly children: ReadonlyArray<Category>
+}
+
+const Category: Schema.Schema<Category> = Schema.suspend(() =>
+  Schema.Struct({ name: Schema.String, children: Schema.Array(Category) })
+)
+```
+
+### Effect data types
+
+```typescript
+Schema.Option(Schema.String)                              // { _tag, value }
+Schema.OptionFromNullOr(Schema.String)                    // null → None
+Schema.Either({ left: Schema.String, right: Schema.Number })
+Schema.ReadonlySet(Schema.Number)                         // Array ↔ Set
+Schema.ReadonlyMap({ key: Schema.String, value: Schema.Number })
+Schema.Duration                                           // millis
+```
+
+### Key principles
+
+- Schemas are immutable values: every operation returns a new schema
+- Bidirectional: every schema supports both decoding and encoding
+- Encoded ≠ Type: the wire format can differ from the in-memory type
+- Validate at boundaries: decode external data at system edges
