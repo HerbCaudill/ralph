@@ -7,13 +7,13 @@ export type {
   StatusColors,
   ThemeMeta,
   AppTheme,
-} from "./types"
+} from "@herbcaudill/agent-view-theme"
 
 export {
   DEFAULT_STATUS_COLORS,
   DEFAULT_DARK_STATUS_COLORS,
   DEFAULT_LIGHT_STATUS_COLORS,
-} from "./types"
+} from "@herbcaudill/agent-view-theme"
 
 // Re-export highlighter functions
 export {
@@ -25,10 +25,10 @@ export {
   isLanguageSupported,
   getSupportedLanguages,
   normalizeLanguage,
-} from "./highlighter"
+} from "@herbcaudill/agent-view-theme"
 
 // Re-export parser functions and types
-export type { ParseResult, ValidationResult } from "./parser"
+export type { ParseResult, ValidationResult } from "@herbcaudill/agent-view-theme"
 export {
   parseThemeJson,
   parseThemeObject,
@@ -40,10 +40,10 @@ export {
   isLightTheme,
   isHighContrastTheme,
   getEssentialColors,
-} from "./parser"
+} from "@herbcaudill/agent-view-theme"
 
 // Re-export mapper functions and types
-export type { CSSVariables } from "./mapper"
+export type { CSSVariables } from "@herbcaudill/agent-view-theme"
 export {
   extractStatusColors,
   mapThemeToCSSVariables,
@@ -52,4 +52,4 @@ export {
   applyThemeToElement,
   isValidHexColor,
   normalizeHexColor,
-} from "./mapper"
+} from "@herbcaudill/agent-view-theme"
