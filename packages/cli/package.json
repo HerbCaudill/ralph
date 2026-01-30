@@ -18,7 +18,6 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "ralph": "tsx src/index.ts",
-
     "test": "vitest run",
     "test:e2e": "vitest --config vitest.e2e.config.ts",
     "test:watch": "vitest --watch",
@@ -53,6 +52,7 @@
     "react": "^19.2.3"
   },
   "devDependencies": {
+    "@herbcaudill/beads": "workspace:*",
     "@herbcaudill/ralph-shared": "workspace:*",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.8",

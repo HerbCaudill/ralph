@@ -69,6 +69,9 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3
     devDependencies:
+      '@herbcaudill/beads':
+        specifier: workspace:*
+        version: link:../beads
       '@herbcaudill/ralph-shared':
         specifier: workspace:*
         version: link:../shared
@@ -105,6 +108,9 @@ importers:
 
   packages/shared:
     devDependencies:
+      '@herbcaudill/beads':
+        specifier: workspace:*
+        version: link:../beads
       '@types/node':
         specifier: ^24.10.9
         version: 24.10.9
@@ -205,6 +211,9 @@ importers:
         specifier: ^5.0.10
         version: 5.0.10(@types/react@19.2.8)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
     devDependencies:
+      '@herbcaudill/beads':
+        specifier: workspace:*
+        version: link:../beads
       '@herbcaudill/ralph-shared':
         specifier: workspace:*
         version: link:../shared

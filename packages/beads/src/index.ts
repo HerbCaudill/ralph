@@ -16,5 +16,7 @@ export type {
 export { BeadsClient } from "./BeadsClient.js"
 export type { BeadsClientOptions } from "./BeadsClient.js"
 
-export { watchMutations } from "./socket.js"
-export type { WatchMutationsOptions } from "./socket.js"
+export { DaemonSocket, watchMutations } from "./socket.js"
+export type { DaemonSocketOptions, WatchMutationsOptions } from "./socket.js"
+
+export type { SpawnFn, ExecOptions } from "./exec.js"
