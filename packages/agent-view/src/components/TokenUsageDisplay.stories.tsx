@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { TokenUsageDisplay } from "@herbcaudill/agent-view"
+import { TokenUsageDisplay } from "./TokenUsageDisplay"
 
 const meta: Meta<typeof TokenUsageDisplay> = {
   title: "Indicators/TokenUsageDisplay",

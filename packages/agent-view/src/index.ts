@@ -24,6 +24,12 @@ export { ToolUseCard } from "./components/ToolUseCard"
 export type { ToolUseCardProps } from "./components/ToolUseCard"
 export { UserMessage } from "./components/UserMessage"
 
+// ---- Components: Indicators ----
+export { TokenUsageDisplay } from "./components/TokenUsageDisplay"
+export type { TokenUsageDisplayProps } from "./components/TokenUsageDisplay"
+export { ContextWindowProgress } from "./components/ContextWindowProgress"
+export type { ContextWindowProgressProps } from "./components/ContextWindowProgress"
+
 // ---- Components: Shared ----
 export { ContentStreamContainer } from "./components/ContentStreamContainer"
 export type { ContentStreamContainerProps } from "./components/ContentStreamContainer"
@@ -50,12 +56,14 @@ export { useAutoScroll } from "./hooks/useAutoScroll"
 export type { UseAutoScrollOptions, UseAutoScrollReturn } from "./hooks/useAutoScroll"
 export { useHighlightedCode } from "./hooks/useHighlightedCode"
 export { useStreamingState } from "./hooks/useStreamingState"
+export { useTokenUsage, useContextWindow } from "./hooks/useTokenUsage"
 
 // ---- Lib: Utilities ----
 export { cx, cn, stripAnsi, hasAnsiCodes, stripTaskPrefix, toRelativePath } from "./lib/utils"
 export { buildToolResultsMap } from "./lib/buildToolResultsMap"
 export type { ToolResult, ToolResultsInfo } from "./lib/buildToolResultsMap"
 export { renderEventContentBlock } from "./lib/renderEventContentBlock"
+export { extractTokenUsageFromEvent, aggregateTokenUsage } from "./lib/extractTokenUsage"
 export { formatTokenCount } from "./lib/formatTokenCount"
 export { getLanguageFromFilePath } from "./lib/getLanguageFromFilePath"
 export { getOutputSummary } from "./lib/getOutputSummary"

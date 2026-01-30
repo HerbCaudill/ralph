@@ -16,8 +16,7 @@ import type {
   SessionInfo,
 } from "@/types"
 import { persistConfig } from "./persist"
-import { isSystemEvent } from "@/lib/isSystemEvent"
-import { aggregateTokenUsage } from "@/lib/extractTokenUsage"
+import { isSystemEvent, aggregateTokenUsage } from "@herbcaudill/agent-view"
 
 /** Get the cutoff timestamp for a time filter */
 export function getTimeFilterCutoff(filter: ClosedTasksTimeFilter): Date | null {

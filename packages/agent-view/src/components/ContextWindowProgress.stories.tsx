@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { ContextWindowProgress } from "@herbcaudill/agent-view"
+import { ContextWindowProgress } from "./ContextWindowProgress"
 
 const meta: Meta<typeof ContextWindowProgress> = {
   title: "Indicators/ContextWindowProgress",
