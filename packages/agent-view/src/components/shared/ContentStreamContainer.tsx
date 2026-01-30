@@ -3,10 +3,7 @@ import { useAutoScroll } from "../../hooks/useAutoScroll"
 import { ScrollToBottomButton } from "./ScrollToBottomButton"
 
 /**
- * A shared container component that encapsulates a scrollable content area
- * with auto-scroll behavior.
- *
- * Used by EventStream and TaskChatController for consistent scrolling UX.
+ * Encapsulates a scrollable content area with auto-scroll behavior.
  *
  * @example
  * ```tsx
