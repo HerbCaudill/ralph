@@ -12,43 +12,6 @@ import type { SessionTask, SessionNavigationActions } from "@/hooks/useEventStre
 import type { ChatEvent, RalphStatus } from "@/types"
 
 /**
- * Props for the presentational EventStreamView component.
- * All data and callbacks are passed as props - no store access.
- */
-export interface EventStreamViewProps {
-  /** Optional CSS class to apply to the container */
-  className?: string
-  /** Maximum number of events to display */
-  maxEvents?: number
-  /** Events for the current session */
-  sessionEvents: ChatEvent[]
-  /** Ralph status (running, stopped, etc.) */
-  ralphStatus: RalphStatus
-  /** Whether viewing the latest session */
-  isViewingLatest: boolean
-  /** Whether viewing a historical session from IndexedDB */
-  isViewingHistorical: boolean
-  /** Whether Ralph is currently running */
-  isRunning: boolean
-  /** Whether connected to the server */
-  isConnected: boolean
-  /** Current task for the session */
-  sessionTask: SessionTask | null
-  /** Past sessions for history dropdown */
-  sessions: SessionSummary[]
-  /** Whether sessions are loading */
-  isLoadingSessions: boolean
-  /** Whether historical session events are loading */
-  isLoadingHistoricalEvents: boolean
-  /** Issue prefix for the workspace */
-  issuePrefix: string | null
-  /** ID of the currently viewed session (for highlighting in dropdown) */
-  currentSessionId?: string | null
-  /** Navigation actions */
-  navigation: SessionNavigationActions
-}
-
-/**
  * Presentational component for displaying real-time events from ralph.
  * Auto-scrolls to bottom, pauses on user interaction.
  *
@@ -195,3 +158,40 @@ export const EventStreamView = forwardRef<HTMLDivElement, EventStreamViewProps>(
     )
   },
 )
+
+/**
+ * Props for the presentational EventStreamView component.
+ * All data and callbacks are passed as props - no store access.
+ */
+export interface EventStreamViewProps {
+  /** Optional CSS class to apply to the container */
+  className?: string
+  /** Maximum number of events to display */
+  maxEvents?: number
+  /** Events for the current session */
+  sessionEvents: ChatEvent[]
+  /** Ralph status (running, stopped, etc.) */
+  ralphStatus: RalphStatus
+  /** Whether viewing the latest session */
+  isViewingLatest: boolean
+  /** Whether viewing a historical session from IndexedDB */
+  isViewingHistorical: boolean
+  /** Whether Ralph is currently running */
+  isRunning: boolean
+  /** Whether connected to the server */
+  isConnected: boolean
+  /** Current task for the session */
+  sessionTask: SessionTask | null
+  /** Past sessions for history dropdown */
+  sessions: SessionSummary[]
+  /** Whether sessions are loading */
+  isLoadingSessions: boolean
+  /** Whether historical session events are loading */
+  isLoadingHistoricalEvents: boolean
+  /** Issue prefix for the workspace */
+  issuePrefix: string | null
+  /** ID of the currently viewed session (for highlighting in dropdown) */
+  currentSessionId?: string | null
+  /** Navigation actions */
+  navigation: SessionNavigationActions
+}
