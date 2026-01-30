@@ -1,48 +1,57 @@
-/**
- * Stub exports for @herbcaudill/agent-view-theme.
- * Full implementation will be provided in a future task (r-79d25.4).
- */
+// Re-export all theme types and constants
+export type {
+  VSCodeTheme,
+  VSCodeTokenColor,
+  VSCodeTokenSettings,
+  VSCodeEditorColors,
+  StatusColors,
+  ThemeMeta,
+  AppTheme,
+} from "./types"
 
-/** Options for the highlight function. */
-export interface HighlightOptions {
-  isDark?: boolean
-}
+export {
+  DEFAULT_STATUS_COLORS,
+  DEFAULT_DARK_STATUS_COLORS,
+  DEFAULT_LIGHT_STATUS_COLORS,
+} from "./types"
 
-/**
- * Highlight code with syntax coloring.
- * Stub implementation that returns a plain pre/code block.
- */
-export async function highlight(
-  /** The code to highlight */
-  code: string,
-  /** The language for syntax highlighting */
-  _language: string,
-  /** Options for highlighting */
-  _options?: HighlightOptions,
-): Promise<string> {
-  return `<pre><code>${escapeHtml(code)}</code></pre>`
-}
+// Re-export highlighter functions
+export {
+  getHighlighter,
+  loadTheme,
+  getCurrentCustomThemeName,
+  getCurrentThemeType,
+  clearCustomTheme,
+  getDefaultThemeName,
+  highlight,
+  isLanguageSupported,
+  getSupportedLanguages,
+  normalizeLanguage,
+} from "./highlighter"
 
-/**
- * Normalize a language identifier to a standard form.
- * Stub implementation that passes through the input.
- */
-export function normalizeLanguage(
-  /** The language identifier to normalize */
-  language: string,
-): string {
-  return language
-}
+// Re-export parser functions and types
+export type { ParseResult, ValidationResult } from "./parser"
+export {
+  parseThemeJson,
+  parseThemeObject,
+  validateThemeObject,
+  getColor,
+  getTokenColorsForScope,
+  getForegroundForScope,
+  isDarkTheme,
+  isLightTheme,
+  isHighContrastTheme,
+  getEssentialColors,
+} from "./parser"
 
-/** Escape HTML special characters to prevent XSS. */
-function escapeHtml(
-  /** The text to escape */
-  text: string,
-): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
-}
+// Re-export mapper functions and types
+export type { CSSVariables } from "./mapper"
+export {
+  extractStatusColors,
+  mapThemeToCSSVariables,
+  createAppTheme,
+  generateThemeCSS,
+  applyThemeToElement,
+  isValidHexColor,
+  normalizeHexColor,
+} from "./mapper"
