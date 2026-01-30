@@ -151,8 +151,6 @@ packages/shared/                    # Shared package (@herbcaudill/ralph-shared)
     events/                 # Normalized agent event types and guards
       types.ts              # AgentEvent, AgentMessageEvent, etc.
       guards.ts             # Type guard functions
-    beads/                  # Beads domain types
-      types.ts              # BdIssue, BdDependency, etc.
     prompts/                # Prompt loading utilities
       loadPrompt.ts         # Load prompt with custom override support
     index.ts                # Package exports
@@ -737,9 +735,9 @@ The server uses `envelopeToLegacy()` in its dual-broadcast paths for Ralph event
 
 Shared utilities and types used by both CLI and UI packages.
 
-**Subpath exports:** The main entry point (`@herbcaudill/ralph-shared`) is browser-safe and only exports events, beads types, and the version constant. Node-only code (prompt loading utilities that use `node:fs`) is available via a separate subpath:
+**Subpath exports:** The main entry point (`@herbcaudill/ralph-shared`) is browser-safe and only exports events and the version constant. Node-only code (prompt loading utilities that use `node:fs`) is available via a separate subpath. Beads domain types (`BdIssue`, `MutationEvent`, etc.) should be imported directly from `@herbcaudill/beads`.
 
-- `@herbcaudill/ralph-shared` - Browser-safe: events, beads types, VERSION
+- `@herbcaudill/ralph-shared` - Browser-safe: events, VERSION
 - `@herbcaudill/ralph-shared/prompts` - Node-only: prompt loading utilities
 
 **Modules:**
@@ -748,10 +746,6 @@ Shared utilities and types used by both CLI and UI packages.
   - Normalized event types (`AgentMessageEvent`, `AgentToolUseEvent`, `AgentThinkingEvent`, etc.)
   - Type guards (`isAgentMessageEvent`, `isAgentToolUseEvent`, `isAgentThinkingEvent`, `isAgentEventEnvelope`, etc.)
   - Status types (`AgentStatus`)
-- **Beads domain types** (`beads/`):
-  - Issue types (`BdIssue`, `BdDependency`)
-  - Options types (`BdListOptions`, `BdCreateOptions`, `BdUpdateOptions`)
-  - Mutation events (`MutationEvent`, `MutationType`)
 - **Prompt loading** (`prompts/`) - **Node-only, import from `@herbcaudill/ralph-shared/prompts`**:
   - `loadSessionPrompt()` - Combine core-prompt with workflow
   - `loadPrompt()` - Load prompt files with custom overrides
