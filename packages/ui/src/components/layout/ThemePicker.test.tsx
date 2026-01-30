@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { ThemePicker } from "./ThemePicker"
-import type { ThemeMeta } from "@/lib/theme"
+import type { ThemeMeta } from "@herbcaudill/agent-view-theme"
 
 // Helper to create standard mock themes
 function createMockThemes(): ThemeMeta[] {

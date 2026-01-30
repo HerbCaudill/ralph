@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within, userEvent, fn, waitFor } from "storybook/test"
 import { ThemePicker } from "./ThemePicker"
-import type { ThemeMeta } from "@/lib/theme"
+import type { ThemeMeta } from "@herbcaudill/agent-view-theme"
 
 /**
  * Helper to create mock themes for stories.

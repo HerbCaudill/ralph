@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { SettingsDropdown } from "./SettingsDropdown"
-import type { ThemeMeta } from "@/lib/theme"
+import type { ThemeMeta } from "@herbcaudill/agent-view-theme"
 import * as exportStateModule from "@/lib/exportState"
 
 // Mock values for useThemeCoordinator (combines useVSCodeTheme and useTheme)

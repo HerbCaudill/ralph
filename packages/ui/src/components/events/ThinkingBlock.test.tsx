@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { ThinkingBlock } from "./ThinkingBlock"
+import { ThinkingBlock } from "@herbcaudill/agent-view"
 
 describe("ThinkingBlock", () => {
   describe("rendering", () => {

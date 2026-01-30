@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { MarkdownContent } from "./MarkdownContent"
+import { MarkdownContent } from "@herbcaudill/agent-view"
 import { useAppStore } from "@/store"
 
 // Mock useTheme hook

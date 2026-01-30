@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { render, fireEvent } from "@testing-library/react"
-import { TopologySpinner } from "./TopologySpinner"
+import { TopologySpinner } from "@herbcaudill/agent-view"
 
 describe("TopologySpinner", () => {
   it("renders an icon", () => {

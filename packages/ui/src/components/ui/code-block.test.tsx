@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@herbcaudill/agent-view"
 
 describe("CodeBlock", () => {
   // Mock clipboard API

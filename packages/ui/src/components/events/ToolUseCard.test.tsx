@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, beforeEach } from "vitest"
-import { ToolUseCard } from "./ToolUseCard"
+import { ToolUseCard } from "@herbcaudill/agent-view"
 import type { ToolUseEvent, ToolName } from "@/types"
 import { useAppStore } from "@/store"
 

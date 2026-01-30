@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useVSCodeTheme } from "./useVSCodeTheme"
 import { useAppStore } from "@/store"
-import type { ThemeMeta, AppTheme } from "@/lib/theme"
+import type { ThemeMeta, AppTheme } from "@herbcaudill/agent-view-theme"
 
 // Mock the theme library functions
-vi.mock("@/lib/theme", () => ({
+vi.mock("@herbcaudill/agent-view-theme", () => ({
   loadTheme: vi.fn().mockResolvedValue("mock-theme-name"),
   applyThemeToElement: vi.fn(),
 }))
