@@ -40,178 +40,21 @@ function CodexSession({ events }) {
 
 Codex thread events have a different structure from `ChatEvent`, so the adapter performs a non-trivial translation. Codex events don't carry timestamps, so converted events have `timestamp: undefined`.
 
-### Agent message → assistant
-
-```
-Input (Codex SDK)                         Output (ChatEvent)
-─────────────────                         ──────────────────
-{                                    →    {
-  type: "item.completed",                   type: "assistant",
-  item: {                                   message: {
-    type: "agent_message",                    content: [
-    id: "msg-1",                                { type: "text",
-    text: "Let me run the tests."                 text: "Let me run the tests." }
-  }                                           ]
-}                                           }
-                                          }
-```
-
-### Reasoning → thinking content block
-
-```
-Input (Codex SDK)                         Output (ChatEvent)
-─────────────────                         ──────────────────
-{                                    →    {
-  type: "item.completed",                   type: "assistant",
-  item: {                                   message: {
-    type: "reasoning",                        content: [
-    id: "reasoning-1",                          { type: "thinking",
-    text: "I should check the logs."              thinking: "I should check the logs." }
-  }                                           ]
-}                                           }
-                                          }
-```
-
-### Command execution lifecycle
-
-Commands produce events at each stage: started, streaming output, and completed.
-
-```
-Input (Codex SDK)                         Output (ChatEvent)
-─────────────────                         ──────────────────
-
-Started:
-{                                    →    {
-  type: "item.started",                     type: "tool_use",
-  item: {                                   id: "cmd-1",
-    type: "command_execution",              tool: "Bash",
-    id: "cmd-1",                            input: { command: "pnpm test" },
-    command: "pnpm test"                    status: "running"
-  }                                       }
-}
-
-Streaming output:
-{                                    →    {
-  type: "item.updated",                     type: "tool_use",
-  item: {                                   id: "cmd-1",
-    type: "command_execution",              tool: "Bash",
-    id: "cmd-1",                            input: { command: "pnpm test" },
-    command: "pnpm test",                   output: "Running tests...\n",
-    aggregated_output: "Running tests…"     status: "running"
-  }                                       }
-}
-
-Completed (success):
-{                                    →    {
-  type: "item.completed",                   type: "tool_use",
-  item: {                                   id: "cmd-1",
-    type: "command_execution",              tool: "Bash",
-    id: "cmd-1",                            input: { command: "pnpm test" },
-    command: "pnpm test",                   output: "✓ All 45 tests passed\n",
-    aggregated_output: "✓ All 45…",         status: "success"
-    exit_code: 0                          }
-  }
-}
-
-Completed (failure):
-{                                    →    {
-  type: "item.completed",                   type: "tool_use",
-  item: {                                   id: "cmd-2",
-    type: "command_execution",              tool: "Bash",
-    id: "cmd-2",                            input: { command: "false" },
-    command: "false",                       output: "",
-    exit_code: 1                            status: "error",
-  }                                         error: "Command failed with exit code 1"
-}                                         }
-```
-
-### File change → Edit tool use
-
-```
-Input (Codex SDK)                         Output (ChatEvent)
-─────────────────                         ──────────────────
-{                                    →    {
-  type: "item.completed",                   type: "tool_use",
-  item: {                                   id: "file-1",
-    type: "file_change",                    tool: "Edit",
-    id: "file-1",                           input: {
-    changes: [                                changes: [
-      { kind: "edit",                           { kind: "edit",
-        path: "/src/index.ts" }                   path: "/src/index.ts" }
-    ],                                        ]
-    status: "completed"                     },
-  }                                         output: "edit: /src/index.ts",
-}                                           status: "success"
-                                          }
-```
-
-### MCP tool call → Task tool use
-
-```
-Input (Codex SDK)                         Output (ChatEvent)
-─────────────────                         ──────────────────
-{                                    →    {
-  type: "item.completed",                   type: "tool_use",
-  item: {                                   id: "mcp-1",
-    type: "mcp_tool_call",                  tool: "Task",
-    id: "mcp-1",                            input: {
-    server: "test-server",                    server: "test-server",
-    tool: "read_file",                        tool: "read_file",
-    arguments: { path: "/foo.ts" },           arguments: { path: "/foo.ts" }
-    status: "completed",                    },
-    result: { content: "…" }                output: "{\"content\":\"…\"}",
-  }                                         status: "success"
-}                                         }
-```
-
-### Turn completed → result with token usage
-
-```
-Input (Codex SDK)                         Output (ChatEvent)
-─────────────────                         ──────────────────
-{                                    →    {
-  type: "turn.completed",                   type: "result",
-  usage: {                                  usage: {
-    input_tokens: 800,                        inputTokens: 1000,   // 800 + 200 cached
-    cached_input_tokens: 200,                 outputTokens: 150,
-    output_tokens: 150                        input_tokens: 1000,
-  }                                           output_tokens: 150
-}                                           }
-                                          }
-```
-
-Cached input tokens are added to input tokens in the output.
-
-### Errors
-
-```
-Input (Codex SDK)                         Output (ChatEvent)
-─────────────────                         ──────────────────
-
-Top-level error:
-{ type: "error",                     →    { type: "error",
-  message: "API error" }                    error: "API error" }
-
-Turn failure:
-{ type: "turn.failed",              →    { type: "error",
-  error: {                                  error: "Context exceeded" }
-    message: "Context exceeded" } }
-
-Error item:
-{ type: "item.completed",           →    { type: "error",
-  item: {                                   error: "Something broke" }
-    type: "error",
-    id: "err-1",
-    message: "Something broke" } }
-```
-
-### Filtered events
-
-These Codex events are silently dropped (the adapter returns `[]`):
-
-- `thread.started`
-- `turn.started`
-- Any event with an unrecognized `type`
+| Event                                                         | Input (Codex SDK)                                                                                                                                                                                       | Output (ChatEvent)                                                                                                                                                                           |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Agent message**                                             | `js { type: "item.completed", item: { type: "agent_message", id: "msg-1", text: "Let me run the tests." } } `                                                                                           | `js { type: "assistant", message: { content: [ { type: "text", text: "Let me run the tests." } ] } } `                                                                                       |
+| **Reasoning**                                                 | `js { type: "item.completed", item: { type: "reasoning", id: "reasoning-1", text: "I should check the logs." } } `                                                                                      | `js { type: "assistant", message: { content: [ { type: "thinking", thinking: "I should check the logs." } ] } } `                                                                            |
+| **Command started**                                           | `js { type: "item.started", item: { type: "command_execution", id: "cmd-1", command: "pnpm test" } } `                                                                                                  | `js { type: "tool_use", id: "cmd-1", tool: "Bash", input: { command: "pnpm test" }, status: "running" } `                                                                                    |
+| **Command streaming**                                         | `js { type: "item.updated", item: { type: "command_execution", id: "cmd-1", command: "pnpm test", aggregated_output: "Running tests…" } } `                                                             | `js { type: "tool_use", id: "cmd-1", tool: "Bash", input: { command: "pnpm test" }, output: "Running tests…", status: "running" } `                                                          |
+| **Command success**                                           | `js { type: "item.completed", item: { type: "command_execution", id: "cmd-1", command: "pnpm test", aggregated_output: "✓ All 45 tests passed\n", exit_code: 0 } } `                                    | `js { type: "tool_use", id: "cmd-1", tool: "Bash", input: { command: "pnpm test" }, output: "✓ All 45 tests passed\n", status: "success" } `                                                 |
+| **Command failure**                                           | `js { type: "item.completed", item: { type: "command_execution", id: "cmd-2", command: "false", exit_code: 1 } } `                                                                                      | `js { type: "tool_use", id: "cmd-2", tool: "Bash", input: { command: "false" }, output: "", status: "error", error: "Command failed with exit code 1" } `                                    |
+| **File change**                                               | `js { type: "item.completed", item: { type: "file_change", id: "file-1", changes: [ { kind: "edit", path: "/src/index.ts" } ], status: "completed" } } `                                                | `js { type: "tool_use", id: "file-1", tool: "Edit", input: { changes: [ { kind: "edit", path: "/src/index.ts" } ] }, output: "edit: /src/index.ts", status: "success" } `                    |
+| **MCP tool call**                                             | `js { type: "item.completed", item: { type: "mcp_tool_call", id: "mcp-1", server: "test-server", tool: "read_file", arguments: { path: "/foo.ts" }, status: "completed", result: { content: "…" } } } ` | `js { type: "tool_use", id: "mcp-1", tool: "Task", input: { server: "test-server", tool: "read_file", arguments: { path: "/foo.ts" } }, output: "{\"content\":\"…\"}", status: "success" } ` |
+| **Turn completed** (cached tokens added to input)             | `js { type: "turn.completed", usage: { input_tokens: 800, cached_input_tokens: 200, output_tokens: 150 } } `                                                                                            | `js { type: "result", usage: { inputTokens: 1000, outputTokens: 150, input_tokens: 1000, output_tokens: 150 } } `                                                                            |
+| **Top-level error**                                           | `js { type: "error", message: "API error" } `                                                                                                                                                           | `js { type: "error", error: "API error" } `                                                                                                                                                  |
+| **Turn failure**                                              | `js { type: "turn.failed", error: { message: "Context exceeded" } } `                                                                                                                                   | `js { type: "error", error: "Context exceeded" } `                                                                                                                                           |
+| **Error item**                                                | `js { type: "item.completed", item: { type: "error", id: "err-1", message: "Something broke" } } `                                                                                                      | `js { type: "error", error: "Something broke" } `                                                                                                                                            |
+| **Filtered** (`thread.started`, `turn.started`, unrecognized) | `js { type: "thread.started" } `                                                                                                                                                                        | Dropped (returns `[]`)                                                                                                                                                                       |
 
 ## API
 

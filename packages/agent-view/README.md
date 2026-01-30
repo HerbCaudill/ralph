@@ -1,6 +1,6 @@
 # @herbcaudill/agent-view
 
-React components for rendering agent event streams. Displays assistant messages, tool use, diffs, errors, and streaming content with VS Code theme support.
+Web UI for coding agents like Claude Code and OpenAI Codex. Displays user and assistant messages, tool use, diffs, errors, and streaming content, with syntax highlighting and VS Code theme support.
 
 ## Install
 
@@ -81,9 +81,13 @@ Wrap components with `AgentViewProvider` to configure behavior:
 ```tsx
 import { AgentViewProvider } from "@herbcaudill/agent-view"
 
-;<AgentViewProvider value={{ isDark: true, toolOutput: { showOutput: true } }}>
-  <EventList events={events} />
-</AgentViewProvider>
+// ...
+
+return (
+  <AgentViewProvider value={{ isDark: true, toolOutput: { showOutput: true } }}>
+    <EventList events={events} />
+  </AgentViewProvider>
+)
 ```
 
 ### Context options
