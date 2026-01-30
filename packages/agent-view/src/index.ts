@@ -1,3 +1,7 @@
+// ---- Components: Top-level ----
+export { AgentView } from "./components/AgentView"
+export type { AgentViewProps } from "./components/AgentView"
+
 // ---- Components: Events ----
 export { AnsiOutput } from "./components/events/AnsiOutput"
 export { AssistantText } from "./components/events/AssistantText"
