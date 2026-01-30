@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { ChatInput, type ChatInputHandle } from "./chat/ChatInput"
-import { EventStream } from "./events"
+import { EventStreamController } from "./events"
 import { useAppStore, selectCanAcceptMessages } from "@/store"
 import { useRalphConnection, parseSessionIdFromUrl } from "@/hooks"
 
@@ -37,7 +37,7 @@ export function AgentView({
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Event stream */}
       <div className="min-h-0 flex-1 overflow-hidden">
-        <EventStream />
+        <EventStreamController />
       </div>
 
       {/* Chat input - only show when viewing the latest session */}

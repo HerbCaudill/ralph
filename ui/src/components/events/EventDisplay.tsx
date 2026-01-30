@@ -9,7 +9,7 @@ import { StreamingContentRenderer } from "./StreamingContentRenderer"
 /**
  * Shared event display component that handles event processing and rendering.
  *
- * This is the core display logic extracted from EventStream and TaskChatPanel.
+ * This is the core display logic extracted from EventStream and TaskChat.
  * It handles:
  * - Processing events through useStreamingState
  * - Building tool results map

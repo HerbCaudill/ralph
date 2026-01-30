@@ -526,6 +526,7 @@ Ralph UI uses a **controller/presentational pattern** to separate concerns:
 
 - **FooController** - Controller component that connects hooks to presentational component
 - **Foo** - Presentational component that receives all data via props
+- Avoid `*View` suffixes; the base component name is reserved for presentational components.
 
 **File Structure:**
 

@@ -1,23 +1,23 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, beforeEach } from "vitest"
-import { InstanceSelector } from "./InstanceSelector"
+import { InstanceSelectorController } from "./InstanceSelectorController"
 import { useAppStore, createRalphInstance } from "@/store"
 
-describe("InstanceSelector", () => {
+describe("InstanceSelectorController", () => {
   beforeEach(() => {
     // Reset store state before each test
     useAppStore.getState().reset()
   })
 
   it("renders with default instance", () => {
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     expect(screen.getByTestId("instance-selector")).toBeInTheDocument()
     expect(screen.getByText("Main")).toBeInTheDocument()
   })
 
   it("shows status indicator for active instance", () => {
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     const statusIndicator = screen.getByTestId("instance-selector-status")
     expect(statusIndicator).toBeInTheDocument()
@@ -28,7 +28,7 @@ describe("InstanceSelector", () => {
   it("shows running status indicator when instance is running", () => {
     useAppStore.getState().setRalphStatus("running")
 
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     const statusIndicator = screen.getByTestId("instance-selector-status")
     expect(statusIndicator).toHaveClass("bg-status-success")
@@ -37,7 +37,7 @@ describe("InstanceSelector", () => {
   it("shows starting status indicator with animation", () => {
     useAppStore.getState().setRalphStatus("starting")
 
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     const statusIndicator = screen.getByTestId("instance-selector-status")
     expect(statusIndicator).toHaveClass("bg-status-warning")
@@ -45,7 +45,7 @@ describe("InstanceSelector", () => {
   })
 
   it("toggles dropdown when clicked", () => {
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     // Dropdown should be closed initially
     expect(screen.queryByTestId("instance-selector-dropdown")).not.toBeInTheDocument()
@@ -66,7 +66,7 @@ describe("InstanceSelector", () => {
     instances.set("instance-2", newInstance)
     useAppStore.setState({ instances })
 
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     // Open dropdown
     fireEvent.click(screen.getByTestId("instance-selector"))
@@ -86,7 +86,7 @@ describe("InstanceSelector", () => {
     instances.set("running-1", runningInstance)
     useAppStore.setState({ instances })
 
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     // Open dropdown
     fireEvent.click(screen.getByTestId("instance-selector"))
@@ -97,7 +97,7 @@ describe("InstanceSelector", () => {
   })
 
   it("marks active instance with checkmark", () => {
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     // Open dropdown
     fireEvent.click(screen.getByTestId("instance-selector"))
@@ -108,7 +108,7 @@ describe("InstanceSelector", () => {
   })
 
   it("closes dropdown when clicking outside", () => {
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     // Open dropdown
     fireEvent.click(screen.getByTestId("instance-selector"))
@@ -122,7 +122,7 @@ describe("InstanceSelector", () => {
   })
 
   it("shows 'New Instance' action button", () => {
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     // Open dropdown
     fireEvent.click(screen.getByTestId("instance-selector"))
@@ -145,7 +145,7 @@ describe("InstanceSelector", () => {
 
     useAppStore.setState({ instances })
 
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     // Should show count of running instances
     expect(screen.getByText("2")).toBeInTheDocument()
@@ -154,26 +154,26 @@ describe("InstanceSelector", () => {
   it("does not show running count badge when only one instance is running", () => {
     useAppStore.getState().setRalphStatus("running")
 
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     // Should not show a badge with "1"
     expect(screen.queryByText("1")).not.toBeInTheDocument()
   })
 
   it("applies custom className", () => {
-    const { container } = render(<InstanceSelector className="custom-class" />)
+    const { container } = render(<InstanceSelectorController className="custom-class" />)
     expect(container.firstChild).toHaveClass("custom-class")
   })
 
   it("applies textColor to button", () => {
-    render(<InstanceSelector textColor="#ffffff" />)
+    render(<InstanceSelectorController textColor="#ffffff" />)
 
     const button = screen.getByTestId("instance-selector")
     expect(button).toHaveStyle({ color: "#ffffff" })
   })
 
   it("has proper ARIA attributes", () => {
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     const button = screen.getByTestId("instance-selector")
     expect(button).toHaveAttribute("aria-expanded", "false")
@@ -191,7 +191,7 @@ describe("InstanceSelector", () => {
   it("shows paused status indicator", () => {
     useAppStore.getState().setRalphStatus("paused")
 
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     const statusIndicator = screen.getByTestId("instance-selector-status")
     expect(statusIndicator).toHaveClass("bg-status-warning")
@@ -200,7 +200,7 @@ describe("InstanceSelector", () => {
   it("shows stopping status indicator with animation", () => {
     useAppStore.getState().setRalphStatus("stopping")
 
-    render(<InstanceSelector />)
+    render(<InstanceSelectorController />)
 
     const statusIndicator = screen.getByTestId("instance-selector-status")
     expect(statusIndicator).toHaveClass("bg-status-warning")

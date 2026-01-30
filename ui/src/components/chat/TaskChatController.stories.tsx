@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { TaskChatPanel } from "./TaskChatPanel"
+import { TaskChatController } from "./TaskChatController"
 import { useAppStore } from "@/store"
 import { useEffect } from "react"
 import { fn } from "storybook/test"
 import type { ChatEvent, TaskChatMessage } from "@/types"
 
-const meta: Meta<typeof TaskChatPanel> = {
-  title: "Panels/TaskChatPanel",
-  component: TaskChatPanel,
+const meta: Meta<typeof TaskChatController> = {
+  title: "Panels/TaskChatController",
+  component: TaskChatController,
   parameters: {},
   decorators: [
     Story => (
@@ -24,7 +24,7 @@ const meta: Meta<typeof TaskChatPanel> = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Helper to set up store state for TaskChatPanel */
+/** Helper to set up store state for TaskChatController */
 function ChatStoreSetter({
   messages,
   events,
@@ -68,7 +68,7 @@ export const Empty: Story = {
   render: args => (
     <>
       <ChatStoreSetter messages={[]} />
-      <TaskChatPanel {...args} />
+      <TaskChatController {...args} />
     </>
   ),
 }
@@ -85,7 +85,7 @@ export const WithMessages: Story = {
           ),
         ]}
       />
-      <TaskChatPanel {...args} />
+      <TaskChatController {...args} />
     </>
   ),
 }
@@ -125,7 +125,7 @@ export const Conversation: Story = {
           ),
         ]}
       />
-      <TaskChatPanel {...args} />
+      <TaskChatController {...args} />
     </>
   ),
 }
@@ -137,7 +137,7 @@ export const Loading: Story = {
         messages={[createUserMessage("What tasks are blocking rui-4rt?", 5000)]}
         isLoading={true}
       />
-      <TaskChatPanel {...args} />
+      <TaskChatController {...args} />
     </>
   ),
 }
@@ -146,7 +146,7 @@ export const Disconnected: Story = {
   render: args => (
     <>
       <ChatStoreSetter messages={[]} connectionStatus="disconnected" />
-      <TaskChatPanel {...args} />
+      <TaskChatController {...args} />
     </>
   ),
 }
@@ -193,7 +193,7 @@ export const WithToolUse: Story = {
           ),
         ]}
       />
-      <TaskChatPanel {...args} />
+      <TaskChatController {...args} />
     </>
   ),
 }
@@ -224,7 +224,7 @@ export const LongConversation: Story = {
     return (
       <>
         <ChatStoreSetter messages={messages} events={events} />
-        <TaskChatPanel {...args} />
+        <TaskChatController {...args} />
       </>
     )
   },
@@ -240,7 +240,7 @@ export const WithoutCloseButton: Story = {
         messages={[createUserMessage("Hello!")]}
         events={[createAssistantEvent("Hello! How can I help you today?")]}
       />
-      <TaskChatPanel {...args} />
+      <TaskChatController {...args} />
     </>
   ),
 }
@@ -252,7 +252,7 @@ export const WithCustomClassName: Story = {
   render: args => (
     <>
       <ChatStoreSetter messages={[]} />
-      <TaskChatPanel {...args} />
+      <TaskChatController {...args} />
     </>
   ),
 }

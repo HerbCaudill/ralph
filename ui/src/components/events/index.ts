@@ -1,5 +1,7 @@
 export { EventStream } from "./EventStream"
 export type { EventStreamProps } from "./EventStream"
+export { EventStreamController } from "./EventStreamController"
+export type { EventStreamControllerProps } from "./EventStreamController"
 
 export { EventList, useEventListState } from "./EventList"
 export type { EventListProps, EventListState } from "./EventList"

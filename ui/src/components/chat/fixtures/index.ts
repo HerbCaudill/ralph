@@ -1,8 +1,8 @@
 /**
- * Test fixtures for TaskChatPanel event replay testing.
+ * Test fixtures for TaskChatController event replay testing.
  *
  * These fixtures contain realistic event sequences captured from actual usage,
- * used to test the TaskChatPanel's rendering of various scenarios.
+ * used to test the TaskChatController's rendering of various scenarios.
  */
 
 import type { TaskChatLogEntry } from "../../../../server/TaskChatEventLog.js"

@@ -6,7 +6,7 @@ import { ScrollToBottomButton } from "./ScrollToBottomButton"
  * A shared container component that encapsulates a scrollable content area
  * with auto-scroll behavior.
  *
- * Used by EventStream and TaskChatPanel for consistent scrolling UX.
+ * Used by EventStream and TaskChatController for consistent scrolling UX.
  *
  * @example
  * ```tsx

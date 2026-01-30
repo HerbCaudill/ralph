@@ -1,1165 +1,213 @@
-import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, beforeEach } from "vitest"
+import { render, screen, fireEvent, waitFor } from "@/test-utils"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { EventStream } from "./EventStream"
-import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
+import type { EventStreamProps } from "./EventStream"
 
-// Helper to render EventStream
-function renderEventStream(props?: { instanceId?: string; maxEvents?: number }) {
-  return render(<EventStream {...props} />)
+// Mock the startRalph function
+const mockStartRalph = vi.fn()
+vi.mock("@/lib/startRalph", () => ({
+  startRalph: () => mockStartRalph(),
+}))
+
+// Default props for testing
+const defaultProps: EventStreamProps = {
+  sessionEvents: [],
+  ralphStatus: "stopped",
+  isViewingLatest: true,
+  isViewingHistorical: false,
+  isRunning: false,
+  isConnected: true,
+  sessionTask: null,
+  sessions: [],
+  isLoadingSessions: false,
+  isLoadingHistoricalEvents: false,
+  issuePrefix: null,
+  navigation: {
+    selectSessionHistory: vi.fn(),
+    returnToLive: vi.fn(),
+    goToPrevious: vi.fn(),
+    goToNext: vi.fn(),
+    hasPrevious: false,
+    hasNext: false,
+  },
 }
 
 describe("EventStream", () => {
   beforeEach(() => {
-    // Reset store state before each test
-    useAppStore.getState().reset()
-    useAppStore.getState().setShowToolOutput(true)
+    mockStartRalph.mockReset()
   })
 
-  describe("Task lifecycle events", () => {
-    it("renders task lifecycle event as structured block, not plain text", () => {
-      // Add an assistant message with a task lifecycle event
-      useAppStore.getState().addEvent({
-        type: "assistant",
-        timestamp: Date.now(),
-        message: {
-          content: [
-            {
-              type: "text",
-              text: "<start_task>r-abc1</start_task>",
-            },
-          ],
-        },
-      })
-
-      renderEventStream()
-
-      // Should render as TaskLifecycleEvent (with data-testid="task-lifecycle-event")
-      expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
-
-      // Should show the structured elements
-      expect(screen.getByText("Starting")).toBeInTheDocument() // The label
-      expect(screen.getByText("r-abc1")).toBeInTheDocument() // The task ID
-
-      // Should NOT render the raw XML text
-      // The structured block should be the primary rendering
-    })
-
-    it("handles streaming task lifecycle events - WHILE streaming shows as text", () => {
-      // Simulate streaming a task lifecycle event
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "message_start",
-        },
-      })
-
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "content_block_start",
-          content_block: {
-            type: "text",
-            text: "",
-          },
-        },
-      })
-
-      // Stream the task lifecycle text incrementally
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "content_block_delta",
-          delta: {
-            type: "text_delta",
-            text: "<start_task>r-xyz2</start_task>",
-          },
-        },
-      })
-
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "content_block_stop",
-        },
-      })
-
-      renderEventStream()
-
-      // WHILE streaming (before message_stop), should render as TaskLifecycleEvent
-      // because the text is complete even though the message isn't stopped yet
-      expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
-      expect(screen.getByText("Starting")).toBeInTheDocument()
-      expect(screen.getByText("r-xyz2")).toBeInTheDocument()
-    })
-
-    it("renders ralph_task_started events as structured blocks", () => {
-      // Add task to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "r-abc1",
-          title: "Implement new feature",
-          status: "in_progress",
-        },
-      ])
-
-      // Add a ralph_task_started event (emitted by CLI)
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: Date.now(),
-        taskId: "r-abc1",
-        session: 1,
-      })
-
-      renderEventStream()
-
-      // Should render as TaskLifecycleEvent
-      const lifecycleEvent = screen.getByTestId("task-lifecycle-event")
-      expect(lifecycleEvent).toBeInTheDocument()
-      expect(lifecycleEvent).toHaveTextContent("Starting")
-      expect(lifecycleEvent).toHaveTextContent("r-abc1")
-      expect(lifecycleEvent).toHaveTextContent("Implement new feature")
-    })
-
-    it("renders ralph_task_completed events as structured blocks", () => {
-      // Add task to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "r-xyz9",
-          title: "Fix the bug",
-          status: "closed",
-        },
-      ])
-
-      // Add a ralph_task_completed event (emitted by CLI)
-      useAppStore.getState().addEvent({
-        type: "ralph_task_completed",
-        timestamp: Date.now(),
-        taskId: "r-xyz9",
-        session: 1,
-      })
-
-      renderEventStream()
-
-      // Should render as TaskLifecycleEvent with "completed" action
-      const lifecycleEvent = screen.getByTestId("task-lifecycle-event")
-      expect(lifecycleEvent).toBeInTheDocument()
-      expect(lifecycleEvent).toHaveAttribute("data-action", "completed")
-      expect(screen.getByText("Completed")).toBeInTheDocument()
-      expect(screen.getByText("r-xyz9")).toBeInTheDocument()
-      expect(screen.getByText("Fix the bug")).toBeInTheDocument()
-    })
-
-    it("does not duplicate task lifecycle rendering when both text and structured event are present", () => {
-      // Simulate the scenario where CLI emits both:
-      // 1. The assistant message with text
-      // 2. The structured ralph_task_started event
-
-      // Add task to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "r-abc1",
-          title: "Implement new feature",
-          status: "in_progress",
-        },
-      ])
-
-      // First, the assistant message with task lifecycle text
-      useAppStore.getState().addEvent({
-        type: "assistant",
-        timestamp: Date.now(),
-        message: {
-          content: [
-            {
-              type: "text",
-              text: "<start_task>r-abc1</start_task>",
-            },
-          ],
-        },
-      })
-
-      // Then, the structured event
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: Date.now(),
-        taskId: "r-abc1",
-        session: 1,
-      })
-
-      renderEventStream()
-
-      // Should render only ONE TaskLifecycleEvent block (from the structured event)
-      // The text block should be skipped to avoid duplication
-      const lifecycleEvents = screen.getAllByTestId("task-lifecycle-event")
-      expect(lifecycleEvents).toHaveLength(1)
-
-      // Verify it's the structured event that's rendered
-      const lifecycleEvent = lifecycleEvents[0]
-      expect(lifecycleEvent).toHaveTextContent("Starting")
-      expect(lifecycleEvent).toHaveTextContent("r-abc1")
-      expect(lifecycleEvent).toHaveTextContent("Implement new feature")
-    })
-
-    it("handles streaming task lifecycle events - after message_stop renders properly", () => {
-      // Simulate streaming a task lifecycle event
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "message_start",
-        },
-      })
-
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "content_block_start",
-          content_block: {
-            type: "text",
-            text: "",
-          },
-        },
-      })
-
-      // Stream the task lifecycle text incrementally
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "content_block_delta",
-          delta: {
-            type: "text_delta",
-            text: "<start_task>r-xyz2</start_task>",
-          },
-        },
-      })
-
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "content_block_stop",
-        },
-      })
-
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: Date.now(),
-        event: {
-          type: "message_stop",
-        },
-      })
-
-      renderEventStream()
-
-      // After message_stop, should still render as TaskLifecycleEvent
-      expect(screen.getByTestId("task-lifecycle-event")).toBeInTheDocument()
-      expect(screen.getByText("Starting")).toBeInTheDocument()
-      expect(screen.getByText("r-xyz2")).toBeInTheDocument()
-    })
-  })
-
-  describe("SessionBar", () => {
-    it("is always visible", () => {
-      renderEventStream()
-      expect(screen.getByTestId("session-bar")).toBeInTheDocument()
-    })
-
-    it("shows 'No active task' when stopped and no task is in progress", () => {
-      useAppStore.getState().setRalphStatus("stopped")
-      renderEventStream()
-      expect(screen.getByText("No active task")).toBeInTheDocument()
-    })
-
-    it("shows 'Choosing a task...' when running but no task selected yet", () => {
-      useAppStore.getState().setRalphStatus("running")
-      renderEventStream()
-      expect(screen.getByText("Choosing a task...")).toBeInTheDocument()
-    })
-
-    it("shows 'Choosing a task...' when starting but no task selected yet", () => {
-      useAppStore.getState().setRalphStatus("starting")
-      renderEventStream()
-      expect(screen.getByText("Choosing a task...")).toBeInTheDocument()
-    })
-
-    it("shows task from session events when ralph_task_started event exists", () => {
-      // Add task to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-123",
-          title: "Fix the bug",
-          status: "in_progress",
-        },
-      ])
-
-      // Add session boundary
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      // Add ralph_task_started event
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600001000,
-        taskId: "rui-123",
-      })
-      renderEventStream()
-      // Check that task is shown in session bar
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-123")
-      expect(sessionBar).toHaveTextContent("Fix the bug")
-    })
-
-    // Note: Session navigation buttons (previous/next/latest) have been removed.
-    // The session bar now only shows the current task and provides access to
-    // session history via a dropdown.
-
-    it("displays current task instead of session info when task exists", () => {
-      // Add tasks to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-abc",
-          title: "Current work",
-          status: "open",
-        },
-        {
-          id: "rui-def",
-          title: "Latest work",
-          status: "in_progress",
-        },
-      ])
-
-      // Add two sessions
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600000500,
-        taskId: "rui-abc",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600001500,
-        taskId: "rui-def",
-      })
-
-      renderEventStream()
-
-      // Should show task from latest session, not session info
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-def")
-      expect(sessionBar).toHaveTextContent("Latest work")
-      expect(screen.queryByText(/Session \d+ of \d+/)).not.toBeInTheDocument()
-    })
-
-    it("truncates long task titles", () => {
-      // Add task with long title to store for lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-456",
-          title: "This is a very long task description that should be truncated",
-          status: "in_progress",
-        },
-      ])
-
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600000500,
-        taskId: "rui-456",
-      })
-      renderEventStream()
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-456")
-      // Find the title within the session bar specifically
-      const taskTitleInBar = sessionBar.querySelector(".truncate")
-      expect(taskTitleInBar).toBeInTheDocument()
-      expect(taskTitleInBar).toHaveTextContent(
-        "This is a very long task description that should be truncated",
+  describe("Start button UI", () => {
+    it("shows 'Ralph is not running' message and Start button when stopped and connected", () => {
+      render(
+        <EventStream
+          {...defaultProps}
+          ralphStatus="stopped"
+          isConnected={true}
+          isRunning={false}
+          sessionEvents={[]}
+        />,
       )
+
+      // Should show the "Ralph is not running" message
+      expect(screen.getByText("Ralph is not running")).toBeInTheDocument()
+      expect(screen.getByText("Click Start to begin working on open tasks")).toBeInTheDocument()
+
+      // Should show the Start button
+      const startButton = screen.getByTestId("ralph-start-button")
+      expect(startButton).toBeInTheDocument()
+      expect(startButton).toHaveTextContent("Start")
     })
 
-    // Note: Navigation to past sessions is now done through the session history
-    // dropdown rather than Previous/Next buttons.
-
-    it("shows no active task when ralph_task_started event has no taskId", () => {
-      // Add a ralph_task_started event with no taskId
-      // (taskTitle is no longer supported on events - titles are looked up from store)
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600000500,
-      })
-
-      renderEventStream()
-
-      // Should show "No active task" since there's no taskId to look up
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("No active task")
-
-      // Should not show any task ID link
-      expect(screen.queryByRole("button", { name: /View task/ })).not.toBeInTheDocument()
-    })
-
-    it("looks up task title from store when ralph_task_started event has only taskId", () => {
-      // Add a task to the store with a known ID and title
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-xyz9",
-          title: "Fix the session toolbar",
-          status: "in_progress",
-        },
-      ])
-
-      // Add a ralph_task_started event with only taskId (no taskTitle)
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600000500,
-        taskId: "rui-xyz9",
-      })
-
-      renderEventStream()
-
-      // Should show the task title looked up from the store
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("Fix the session toolbar")
-      expect(sessionBar).toHaveTextContent("rui-xyz9")
-    })
-
-    it("shows taskId as title when ralph_task_started has taskId but task not found in store", () => {
-      // Empty tasks store
-      useAppStore.getState().setTasks([])
-
-      // Add a ralph_task_started event with only taskId
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600000500,
-        taskId: "rui-unknown",
-      })
-
-      renderEventStream()
-
-      // Should show the task ID as the title (fallback)
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-unknown")
-    })
-
-    it("shows in-progress task from store when no ralph_task_started event exists", () => {
-      // Set up tasks store with an in-progress task
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-in-progress",
-          title: "Current task being worked on",
-          status: "in_progress",
-        },
-        {
-          id: "rui-open",
-          title: "Another task",
-          status: "open",
-        },
-      ])
-
-      // Add some events but NO ralph_task_started event
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000500,
-        message: "Work on the task",
-      })
-
-      renderEventStream()
-
-      // Should show the in-progress task from the store as fallback
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-in-progress")
-      expect(sessionBar).toHaveTextContent("Current task being worked on")
-    })
-
-    it("prefers ralph_task_started event over in-progress task from store", () => {
-      // Set up tasks store with both tasks
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-in-progress",
-          title: "Task from store",
-          status: "in_progress",
-        },
-        {
-          id: "rui-event-task",
-          title: "Task from event",
-          status: "open",
-        },
-      ])
-
-      // Add a ralph_task_started event for a DIFFERENT task
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600000500,
-        taskId: "rui-event-task",
-      })
-
-      renderEventStream()
-
-      // Should show the task from the event, not the in-progress one from store
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-event-task")
-      expect(sessionBar).toHaveTextContent("Task from event")
-      expect(sessionBar).not.toHaveTextContent("Task from store")
-    })
-
-    it("shows task from instance currentTaskId/currentTaskTitle on page reload", () => {
-      // Simulate page reload scenario where server sends instance info
-      // with currentTaskId/currentTaskTitle but events might not include ralph_task_started
-      useAppStore.getState().hydrateInstances([
-        {
-          id: DEFAULT_INSTANCE_ID,
-          name: "Default",
-          agentName: "Ralph",
-          status: "running",
-          worktreePath: null,
-          branch: null,
-          currentTaskId: "rui-restored",
-          createdAt: Date.now(),
-          mergeConflict: null,
-        },
-      ])
-
-      // Add task to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-restored",
-          title: "Restored task from server",
-          status: "in_progress",
-        },
-      ])
-
-      // Add some events but NO ralph_task_started event
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000500,
-        message: "Continue working on the task",
-      })
-
-      renderEventStream()
-
-      // Should show the task from the instance as fallback
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-restored")
-      expect(sessionBar).toHaveTextContent("Restored task from server")
-    })
-
-    it("prefers ralph_task_started event over instance currentTaskId", () => {
-      // Simulate page reload scenario where both event and instance info exist
-      useAppStore.getState().hydrateInstances([
-        {
-          id: DEFAULT_INSTANCE_ID,
-          name: "Default",
-          agentName: "Ralph",
-          status: "running",
-          worktreePath: null,
-          branch: null,
-          currentTaskId: "rui-instance",
-          createdAt: Date.now(),
-          mergeConflict: null,
-        },
-      ])
-
-      // Add tasks to store for title lookup
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-event",
-          title: "Task from event",
-          status: "in_progress",
-        },
-        {
-          id: "rui-instance",
-          title: "Task from instance",
-          status: "open",
-        },
-      ])
-
-      // Add a ralph_task_started event for a DIFFERENT task
-      useAppStore.getState().addEvent({
-        type: "ralph_task_started",
-        timestamp: 1705600000500,
-        taskId: "rui-event",
-      })
-
-      renderEventStream()
-
-      // Should show the task from the event, not the instance
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-event")
-      expect(sessionBar).toHaveTextContent("Task from event")
-      expect(sessionBar).not.toHaveTextContent("Task from instance")
-    })
-
-    it("uses instance currentTaskId over in-progress task from store (fallback priority)", () => {
-      // Simulate page reload where both store task and instance info exist
-      // but no ralph_task_started event
-      useAppStore.getState().setTasks([
-        {
-          id: "rui-store",
-          title: "Task from store",
-          status: "in_progress",
-        },
-        {
-          id: "rui-instance",
-          title: "Task from instance",
-          status: "open",
-        },
-      ])
-
-      useAppStore.getState().hydrateInstances([
-        {
-          id: DEFAULT_INSTANCE_ID,
-          name: "Default",
-          agentName: "Ralph",
-          status: "running",
-          worktreePath: null,
-          branch: null,
-          currentTaskId: "rui-instance",
-          createdAt: Date.now(),
-          mergeConflict: null,
-        },
-      ])
-
-      renderEventStream()
-
-      // Should show the task from instance (higher priority than in-progress fallback)
-      // Priority: ralph_task_started event > instance.currentTaskId > in-progress task from store
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toHaveTextContent("rui-instance")
-      expect(sessionBar).toHaveTextContent("Task from instance")
-      expect(sessionBar).not.toHaveTextContent("Task from store")
-    })
-
-    it("shows nothing when instance has no currentTaskId and no tasks in store", () => {
-      // Simulate scenario where there's no task ID
-      useAppStore.getState().hydrateInstances([
-        {
-          id: DEFAULT_INSTANCE_ID,
-          name: "Default",
-          agentName: "Ralph",
-          status: "running",
-          worktreePath: null,
-          branch: null,
-          currentTaskId: null,
-          createdAt: Date.now(),
-          mergeConflict: null,
-        },
-      ])
-
-      renderEventStream()
-
-      // Session bar should exist but not show any task info
-      const sessionBar = screen.getByTestId("session-bar")
-      expect(sessionBar).toBeInTheDocument()
-    })
-  })
-
-  describe("empty state", () => {
-    it("shows spinner when no events", () => {
-      renderEventStream()
-      // When there are no events, show a spinner instead of "No events yet" text
-      expect(screen.getByRole("log").querySelector("svg")).toBeInTheDocument()
-    })
-
-    it("has correct ARIA attributes", () => {
-      renderEventStream()
-      const container = screen.getByRole("log")
-      expect(container).toHaveAttribute("aria-label", "Event stream")
-      expect(container).toHaveAttribute("aria-live", "polite")
-    })
-  })
-
-  describe("displaying user messages", () => {
-    it("renders user_message events", () => {
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Hello, can you help me?",
-      })
-      renderEventStream()
-      expect(screen.getByText("Hello, can you help me?")).toBeInTheDocument()
-    })
-
-    it("renders multiple user messages", () => {
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "First message",
-      })
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600001000,
-        message: "Second message",
-      })
-      renderEventStream()
-      expect(screen.getByText("First message")).toBeInTheDocument()
-      expect(screen.getByText("Second message")).toBeInTheDocument()
-    })
-  })
-
-  describe("displaying assistant messages", () => {
-    it("renders assistant text content", () => {
-      useAppStore.getState().addEvent({
-        type: "assistant",
-        timestamp: 1705600000000,
-        message: {
-          content: [
-            {
-              type: "text",
-              text: "I can help you with that.",
-            },
-          ],
-        },
-      })
-      renderEventStream()
-      expect(screen.getByText("I can help you with that.")).toBeInTheDocument()
-    })
-
-    it("renders assistant tool_use content", () => {
-      useAppStore.getState().addEvent({
-        type: "assistant",
-        timestamp: 1705600000000,
-        message: {
-          content: [
-            {
-              type: "tool_use",
-              id: "toolu_123",
-              name: "Read",
-              input: { file_path: "/test/file.ts" },
-            },
-          ],
-        },
-      })
-      renderEventStream()
-      expect(screen.getByText("Read")).toBeInTheDocument()
-      expect(screen.getByText("/test/file.ts")).toBeInTheDocument()
-    })
-
-    it("renders assistant with text and tool_use mixed", () => {
-      useAppStore.getState().addEvent({
-        type: "assistant",
-        timestamp: 1705600000000,
-        message: {
-          content: [
-            {
-              type: "text",
-              text: "Let me read that file.",
-            },
-            {
-              type: "tool_use",
-              id: "toolu_123",
-              name: "Read",
-              input: { file_path: "/test/file.ts" },
-            },
-          ],
-        },
-      })
-      renderEventStream()
-      expect(screen.getByText("Let me read that file.")).toBeInTheDocument()
-      expect(screen.getByText("Read")).toBeInTheDocument()
-    })
-  })
-
-  describe("tool results", () => {
-    it("shows tool result output when present", () => {
-      // Add tool use
-      useAppStore.getState().addEvent({
-        type: "assistant",
-        timestamp: 1705600000000,
-        message: {
-          content: [
-            {
-              type: "tool_use",
-              id: "toolu_123",
-              name: "Read",
-              input: { file_path: "/test/file.ts" },
-            },
-          ],
-        },
-      })
-      // Add tool result
-      useAppStore.getState().addEvent({
-        type: "user",
-        timestamp: 1705600001000,
-        tool_use_result: "File content",
-        message: {
-          content: [
-            {
-              type: "tool_result",
-              tool_use_id: "toolu_123",
-              content: "line 1\nline 2\nline 3",
-              is_error: false,
-            },
-          ],
-        },
-      })
-      renderEventStream()
-      // Should show line count for Read tool
-      expect(screen.getByText(/Read 3 lines/)).toBeInTheDocument()
-    })
-  })
-
-  describe("filtering events", () => {
-    it("skips stream_event events (renders nothing visible)", () => {
-      useAppStore.getState().addEvent({
-        type: "stream_event",
-        timestamp: 1705600000000,
-        event: { type: "content_block_delta" },
-      })
-      renderEventStream()
-      // Stream events render nothing, but the container has events so empty state doesn't show
-      const container = screen.getByRole("log")
-      // Should have no visible content (just the container)
-      expect(container.textContent?.trim()).toBe("")
-    })
-
-    it("skips system events (renders nothing visible)", () => {
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      renderEventStream()
-      // System events render nothing
-      const container = screen.getByRole("log")
-      expect(container.textContent?.trim()).toBe("")
-    })
-  })
-
-  describe("maxEvents limit", () => {
-    it("limits displayed events to maxEvents", () => {
-      // Add 5 user messages
-      for (let i = 0; i < 5; i++) {
-        useAppStore.getState().addEvent({
-          type: "user_message",
-          timestamp: 1705600000000 + i * 1000,
-          message: `Message ${i}`,
-        })
-      }
-      render(<EventStream maxEvents={3} />)
-      // Should only show the last 3 messages
-      expect(screen.queryByText("Message 0")).not.toBeInTheDocument()
-      expect(screen.queryByText("Message 1")).not.toBeInTheDocument()
-      expect(screen.getByText("Message 2")).toBeInTheDocument()
-      expect(screen.getByText("Message 3")).toBeInTheDocument()
-      expect(screen.getByText("Message 4")).toBeInTheDocument()
-    })
-  })
-
-  describe("scroll to bottom button", () => {
-    it("does not show scroll to bottom button initially", () => {
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Test message",
-      })
-      renderEventStream()
-      expect(screen.queryByLabelText("Scroll to latest events")).not.toBeInTheDocument()
-    })
-
-    it("shows scroll to bottom button when scrolled up", () => {
-      // Add many events to make scrolling possible
-      for (let i = 0; i < 100; i++) {
-        useAppStore.getState().addEvent({
-          type: "user_message",
-          timestamp: 1705600000000 + i * 1000,
-          message: `Message ${i}`,
-        })
-      }
-      renderEventStream()
-
-      // Get the scroll container
-      const container = screen.getByRole("log")
-
-      // Mock scroll position to simulate being scrolled up
-      Object.defineProperty(container, "scrollHeight", { value: 2000 })
-      Object.defineProperty(container, "scrollTop", { value: 0 })
-      Object.defineProperty(container, "clientHeight", { value: 500 })
-
-      // Trigger wheel event (user scrolling)
-      fireEvent.wheel(container)
-      // Trigger scroll event
-      fireEvent.scroll(container)
-
-      // Now the button should appear
-      expect(screen.getByLabelText("Scroll to latest event stream")).toBeInTheDocument()
-    })
-  })
-
-  describe("styling", () => {
-    it("applies custom className", () => {
-      const { container } = render(<EventStream className="custom-class" />)
-      expect(container.firstChild).toHaveClass("custom-class")
-    })
-  })
-
-  describe("instanceId filtering", () => {
-    it("shows events from active instance when instanceId is not provided", () => {
-      // Add an event to the default/active instance
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Active instance message",
-      })
-
-      renderEventStream()
-      expect(screen.getByText("Active instance message")).toBeInTheDocument()
-    })
-
-    it("shows events from specified instance when instanceId is provided", () => {
-      // Create a second instance
-      useAppStore.getState().createInstance("instance-2", "Second Instance")
-
-      // Add events to the second instance
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Instance 2 message",
-      })
-
-      // Switch back to default instance
-      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
-
-      // Add an event to the default instance
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600001000,
-        message: "Default instance message",
-      })
-
-      // Render with instanceId pointing to instance-2
-      renderEventStream({ instanceId: "instance-2" })
-
-      // Should show instance-2's message
-      expect(screen.getByText("Instance 2 message")).toBeInTheDocument()
-      // Should NOT show default instance's message
-      expect(screen.queryByText("Default instance message")).not.toBeInTheDocument()
-    })
-
-    it("shows empty state when specified instance has no events", () => {
-      // Create a second instance (empty)
-      useAppStore.getState().createInstance("empty-instance", "Empty Instance")
-      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
-
-      // Add event to default instance
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Default message",
-      })
-
-      // Render with instanceId pointing to the empty instance
-      renderEventStream({ instanceId: "empty-instance" })
-
-      // Should show spinner (empty state now shows spinner instead of text)
-      expect(screen.getByRole("log").querySelector("svg")).toBeInTheDocument()
-      expect(screen.queryByText("Default message")).not.toBeInTheDocument()
-    })
-
-    it("shows status from specified instance when instanceId is provided", () => {
-      // Create a second instance
-      useAppStore.getState().createInstance("running-instance", "Running Instance")
-
-      // Add an event to make it non-empty
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Test message",
-      })
-
-      // Set the second instance as running
-      useAppStore.getState().setRalphStatus("running")
-
-      // Switch back to default instance (which should be stopped)
-      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
-
-      // Render with instanceId pointing to the running instance
-      renderEventStream({ instanceId: "running-instance" })
-
-      // Should show the running spinner because we're viewing the running instance
-      expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
-    })
-
-    it("uses active instance events when instanceId is undefined", () => {
-      // Add events to default instance
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "First message",
-      })
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600001000,
-        message: "Second message",
-      })
-
-      // Render without instanceId (should use active instance)
-      renderEventStream({ instanceId: undefined })
-
-      expect(screen.getByText("First message")).toBeInTheDocument()
-      expect(screen.getByText("Second message")).toBeInTheDocument()
-    })
-  })
-
-  describe("running spinner", () => {
     it("shows spinner when Ralph is running", () => {
-      useAppStore.getState().setRalphStatus("running")
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Test message",
-      })
-      renderEventStream()
+      render(
+        <EventStream
+          {...defaultProps}
+          ralphStatus="running"
+          isConnected={true}
+          isRunning={true}
+          sessionEvents={[
+            {
+              type: "user_message",
+              timestamp: Date.now(),
+              message: "Test message",
+            },
+          ]}
+        />,
+      )
+
+      // Should show the running spinner
       expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
       expect(screen.getByLabelText("Ralph is running")).toBeInTheDocument()
+
+      // Should NOT show the Start button
+      expect(screen.queryByTestId("ralph-start-button")).not.toBeInTheDocument()
+      expect(screen.queryByText("Ralph is not running")).not.toBeInTheDocument()
     })
 
-    it("shows spinner when Ralph is starting", () => {
-      useAppStore.getState().setRalphStatus("starting")
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Test message",
-      })
-      renderEventStream()
-      expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
+    it("shows spinner when not connected (waiting for connection)", () => {
+      render(
+        <EventStream
+          {...defaultProps}
+          ralphStatus="stopped"
+          isConnected={false}
+          isRunning={false}
+          sessionEvents={[]}
+        />,
+      )
+
+      // Should show a spinner in the empty state (not the "Ralph is not running" message)
+      // because we're waiting for connection
+      expect(screen.queryByText("Ralph is not running")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("ralph-start-button")).not.toBeInTheDocument()
+
+      // Should have a spinner in the empty state container
+      const logContainer = screen.getByRole("log")
+      expect(logContainer.querySelector("svg")).toBeInTheDocument()
     })
 
-    it("shows idle spinner when Ralph is stopped with content", () => {
-      useAppStore.getState().setRalphStatus("stopped")
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Test message",
+    it("calls startRalph when Start button is clicked", async () => {
+      render(
+        <EventStream
+          {...defaultProps}
+          ralphStatus="stopped"
+          isConnected={true}
+          isRunning={false}
+          sessionEvents={[]}
+        />,
+      )
+
+      const startButton = screen.getByTestId("ralph-start-button")
+      fireEvent.click(startButton)
+
+      await waitFor(() => {
+        expect(mockStartRalph).toHaveBeenCalledTimes(1)
       })
-      renderEventStream()
-      expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
+    })
+
+    it("shows spinner in empty state when starting", () => {
+      render(
+        <EventStream
+          {...defaultProps}
+          ralphStatus="starting"
+          isConnected={true}
+          isRunning={true}
+          sessionEvents={[]}
+        />,
+      )
+
+      // Should not show the "Ralph is not running" message when starting
+      expect(screen.queryByText("Ralph is not running")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("ralph-start-button")).not.toBeInTheDocument()
+
+      // Should show a spinner
+      const logContainer = screen.getByRole("log")
+      expect(logContainer.querySelector("svg")).toBeInTheDocument()
+    })
+
+    it("shows idle spinner when stopped with content", () => {
+      render(
+        <EventStream
+          {...defaultProps}
+          ralphStatus="stopped"
+          isConnected={true}
+          isRunning={false}
+          sessionEvents={[
+            {
+              type: "user_message",
+              timestamp: Date.now(),
+              message: "Test message",
+            },
+          ]}
+        />,
+      )
+
+      // Should show the idle spinner when there's content
       expect(screen.getByTestId("ralph-idle-spinner")).toBeInTheDocument()
       expect(screen.getByLabelText("Ralph is idle")).toBeInTheDocument()
+
+      // Should NOT show the Start button in the main content area
+      // (empty state is not shown when there's content)
+      expect(screen.queryByTestId("ralph-start-button")).not.toBeInTheDocument()
     })
 
-    it("shows idle spinner when Ralph is paused with content", () => {
-      useAppStore.getState().setRalphStatus("paused")
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Test message",
-      })
-      renderEventStream()
+    it("does not show spinners when viewing historical session", () => {
+      render(
+        <EventStream
+          {...defaultProps}
+          ralphStatus="running"
+          isConnected={true}
+          isRunning={true}
+          isViewingLatest={false}
+          isViewingHistorical={true}
+          sessionEvents={[
+            {
+              type: "user_message",
+              timestamp: Date.now(),
+              message: "Historical message",
+            },
+          ]}
+        />,
+      )
+
+      // Should NOT show running or idle spinners when viewing historical session
       expect(screen.queryByTestId("ralph-running-spinner")).not.toBeInTheDocument()
-      expect(screen.getByTestId("ralph-idle-spinner")).toBeInTheDocument()
+      expect(screen.queryByTestId("ralph-idle-spinner")).not.toBeInTheDocument()
     })
 
-    it("shows running spinner when Ralph is stopping_after_current with content", () => {
-      useAppStore.getState().setRalphStatus("stopping_after_current")
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000000,
-        message: "Test message",
-      })
-      renderEventStream()
-      expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
-      expect(screen.getByLabelText("Ralph is running")).toBeInTheDocument()
-    })
+    it("shows loading state when loading historical events", () => {
+      render(
+        <EventStream
+          {...defaultProps}
+          isViewingLatest={false}
+          isViewingHistorical={true}
+          isLoadingHistoricalEvents={true}
+          sessionEvents={[]}
+        />,
+      )
 
-    it("shows spinner in empty state (replaces 'no events yet' message)", () => {
-      useAppStore.getState().setRalphStatus("running")
-      renderEventStream()
-      // Empty state now shows a spinner instead of "No events yet" text
-      expect(screen.getByRole("log").querySelector("svg")).toBeInTheDocument()
-    })
-
-    it("does not show running or idle spinner when viewing a completed session", () => {
-      // Add two session boundaries
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000500,
-        message: "First session message",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600001500,
-        message: "Second session message",
-      })
-
-      // Set Ralph as running
-      useAppStore.getState().setRalphStatus("running")
-
-      renderEventStream()
-
-      // When viewing the latest session, should show the second session's message
-      expect(screen.getByText("Second session message")).toBeInTheDocument()
-
-      // Note: Testing historical session viewing (which hides spinners) requires
-      // URL-based navigation with IndexedDB mocking. See useEventStream.test.ts
-      // for comprehensive URL-based navigation tests.
-    })
-
-    it("shows spinner when viewing latest session and Ralph is running", () => {
-      // Add two session boundaries
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600000000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600000500,
-        message: "First session message",
-      })
-      useAppStore.getState().addEvent({
-        type: "system",
-        timestamp: 1705600001000,
-        subtype: "init",
-      })
-      useAppStore.getState().addEvent({
-        type: "user_message",
-        timestamp: 1705600001500,
-        message: "Second session message",
-      })
-
-      // Set Ralph as running
-      useAppStore.getState().setRalphStatus("running")
-
-      // Keep viewing the latest session (default)
-      // viewingSessionId should be null (latest)
-
-      renderEventStream()
-
-      // Should show the second session's message
-      expect(screen.getByText("Second session message")).toBeInTheDocument()
-
-      // Should show spinner because we're viewing latest and Ralph is running
-      expect(screen.getByTestId("ralph-running-spinner")).toBeInTheDocument()
+      // Should show "Loading session..." text
+      expect(screen.getByText("Loading session...")).toBeInTheDocument()
     })
   })
 })

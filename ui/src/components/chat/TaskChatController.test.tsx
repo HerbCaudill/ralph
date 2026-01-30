@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { TaskChatPanel } from "./TaskChatPanel"
+import { TaskChatController } from "./TaskChatController"
 import { useAppStore, flushTaskChatEventsBatch } from "@/store"
 
 // Mock fetch
@@ -24,7 +24,7 @@ function addAssistantEvent(content: string, timestamp: number) {
   flushTaskChatEventsBatch()
 }
 
-describe("TaskChatPanel", () => {
+describe("TaskChatController", () => {
   beforeEach(() => {
     // Reset the store before each test
     useAppStore.getState().clearTaskChatMessages()
@@ -40,37 +40,37 @@ describe("TaskChatPanel", () => {
 
   describe("rendering", () => {
     it("renders header with title", () => {
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByText("Task Chat")).toBeInTheDocument()
     })
 
     it("renders empty state when no messages", () => {
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByText("Manage your tasks")).toBeInTheDocument()
     })
 
     it("renders chat input", () => {
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByRole("textbox")).toBeInTheDocument()
     })
 
     it("renders close button when onClose is provided", () => {
-      render(<TaskChatPanel onClose={() => {}} />)
+      render(<TaskChatController onClose={() => {}} />)
       expect(screen.getByRole("button", { name: "Close task chat" })).toBeInTheDocument()
     })
 
     it("does not render close button when onClose is not provided", () => {
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.queryByRole("button", { name: "Close task chat" })).not.toBeInTheDocument()
     })
 
     it("renders clear history button", () => {
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByRole("button", { name: "Clear chat history" })).toBeInTheDocument()
     })
 
     it("applies custom className", () => {
-      const { container } = render(<TaskChatPanel className="custom-class" />)
+      const { container } = render(<TaskChatController className="custom-class" />)
       expect(container.firstChild).toHaveClass("custom-class")
     })
   })
@@ -85,7 +85,7 @@ describe("TaskChatPanel", () => {
         timestamp: Date.now(),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByText("Hello, how do I prioritize tasks?")).toBeInTheDocument()
     })
 
@@ -93,7 +93,7 @@ describe("TaskChatPanel", () => {
       // Add an assistant message via SDK events (the new unified model)
       addAssistantEvent("You can **prioritize** tasks by setting their priority level.", Date.now())
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByText(/prioritize/)).toBeInTheDocument()
     })
 
@@ -113,7 +113,7 @@ describe("TaskChatPanel", () => {
         timestamp: 3,
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const messages = screen.getAllByText(/message/)
       expect(messages).toHaveLength(3)
@@ -127,7 +127,7 @@ describe("TaskChatPanel", () => {
         timestamp: Date.now(),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.queryByText("Manage your tasks")).not.toBeInTheDocument()
     })
   })
@@ -143,7 +143,7 @@ describe("TaskChatPanel", () => {
         timestamp: Date.now(),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByTestId("task-chat-loading-spinner")).toBeInTheDocument()
     })
 
@@ -157,7 +157,7 @@ describe("TaskChatPanel", () => {
         timestamp: Date.now(),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByTestId("task-chat-idle-spinner")).toBeInTheDocument()
       expect(screen.getByLabelText("Task chat is idle")).toBeInTheDocument()
     })
@@ -166,21 +166,21 @@ describe("TaskChatPanel", () => {
       useAppStore.getState().setTaskChatLoading(false)
       // No messages
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.queryByTestId("task-chat-idle-spinner")).not.toBeInTheDocument()
     })
 
     it("shows waiting placeholder when loading", () => {
       useAppStore.getState().setTaskChatLoading(true)
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByPlaceholderText("Waiting for response...")).toBeInTheDocument()
     })
 
     it("allows typing while loading", () => {
       useAppStore.getState().setTaskChatLoading(true)
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       // Input should NOT be disabled during loading - user can type ahead
       expect(screen.getByRole("textbox")).not.toBeDisabled()
     })
@@ -190,14 +190,14 @@ describe("TaskChatPanel", () => {
     it("disables input when disconnected", () => {
       useAppStore.getState().setConnectionStatus("disconnected")
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByRole("textbox")).toBeDisabled()
     })
 
     it("shows connecting placeholder when disconnected", () => {
       useAppStore.getState().setConnectionStatus("disconnected")
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByPlaceholderText("Connecting...")).toBeInTheDocument()
     })
   })
@@ -208,7 +208,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true, status: "processing" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       fireEvent.change(input, { target: { value: "Hello" } })
@@ -228,7 +228,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true, status: "processing" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       await act(async () => {
@@ -250,7 +250,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: false, error: "Failed to process" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       fireEvent.change(input, { target: { value: "Hello" } })
@@ -266,7 +266,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: false, error: "A request is already in progress" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       await act(async () => {
@@ -293,7 +293,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true, status: "processing" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       await act(async () => {
@@ -314,7 +314,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true, status: "processing" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       await act(async () => {
@@ -347,7 +347,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const clearButton = screen.getByRole("button", { name: "Clear chat history" })
 
       fireEvent.click(clearButton)
@@ -373,7 +373,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByText("Hello")).toBeInTheDocument()
 
       const clearButton = screen.getByRole("button", { name: "Clear chat history" })
@@ -390,7 +390,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const clearButton = screen.getByRole("button", { name: "Clear chat history" })
       const input = screen.getByRole("textbox")
 
@@ -408,7 +408,7 @@ describe("TaskChatPanel", () => {
   describe("close button", () => {
     it("calls onClose when close button is clicked", () => {
       const onClose = vi.fn()
-      render(<TaskChatPanel onClose={onClose} />)
+      render(<TaskChatController onClose={onClose} />)
 
       const closeButton = screen.getByRole("button", { name: "Close task chat" })
       fireEvent.click(closeButton)
@@ -419,12 +419,12 @@ describe("TaskChatPanel", () => {
 
   describe("accessibility", () => {
     it("has correct ARIA label for messages container", () => {
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByRole("log")).toHaveAttribute("aria-label", "Task chat messages")
     })
 
     it("has correct ARIA label for input", () => {
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByLabelText("Task chat input")).toBeInTheDocument()
     })
   })
@@ -436,7 +436,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true, status: "processing" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       await act(async () => {
@@ -461,7 +461,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: false, error: "Failed to process" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       await act(async () => {
@@ -488,7 +488,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: false, error: "A request is already in progress" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       const input = screen.getByRole("textbox")
 
       // Send message
@@ -526,7 +526,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByText("Bash")).toBeInTheDocument()
     })
 
@@ -543,7 +543,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByText("Read")).toBeInTheDocument()
     })
 
@@ -560,7 +560,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.getByText("Bash")).toBeInTheDocument()
     })
 
@@ -581,7 +581,7 @@ describe("TaskChatPanel", () => {
         json: () => Promise.resolve({ ok: true, status: "processing" }),
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       // Tool use should be visible initially
       expect(screen.getByText("Bash")).toBeInTheDocument()
 
@@ -624,7 +624,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // User message should be visible
       expect(screen.getByText("Check my tasks")).toBeInTheDocument()
@@ -645,7 +645,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
       expect(screen.queryByText("Manage your tasks")).not.toBeInTheDocument()
     })
 
@@ -673,7 +673,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Get all rendered elements
       const userMsg = screen.getByText("First user message")
@@ -713,7 +713,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Should only show one Bash tool use, not two
       const bashElements = screen.getAllByText("Bash")
@@ -745,7 +745,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -783,7 +783,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -821,7 +821,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -865,7 +865,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Tool name and command should still be visible
       expect(screen.getByText("Bash")).toBeInTheDocument()
@@ -900,7 +900,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Tool name, command, and output should all be visible
       expect(screen.getByText("Bash")).toBeInTheDocument()
@@ -934,7 +934,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      const { rerender } = render(<TaskChatPanel />)
+      const { rerender } = render(<TaskChatController />)
 
       // Initially hidden
       expect(screen.queryByText("test output")).not.toBeInTheDocument()
@@ -943,7 +943,7 @@ describe("TaskChatPanel", () => {
       act(() => {
         useAppStore.getState().toggleToolOutput()
       })
-      rerender(<TaskChatPanel />)
+      rerender(<TaskChatController />)
 
       // Now visible
       expect(screen.getByText("test output")).toBeInTheDocument()
@@ -975,7 +975,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Tool output should be hidden initially
       expect(screen.queryByText("hello")).not.toBeInTheDocument()
@@ -1016,7 +1016,7 @@ describe("TaskChatPanel", () => {
       } as any)
       flushTaskChatEventsBatch()
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Initially hidden
       expect(screen.queryByText("test output")).not.toBeInTheDocument()

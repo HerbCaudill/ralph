@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { EventStreamView } from "./EventStreamView"
-import type { EventStreamViewProps } from "./EventStreamView"
+import { EventStream } from "./EventStream"
+import type { EventStreamProps } from "./EventStream"
 
-const meta: Meta<typeof EventStreamView> = {
+const meta: Meta<typeof EventStream> = {
   title: "Collections/EventStream",
-  component: EventStreamView,
+  component: EventStream,
   parameters: {},
   decorators: [
     Story => (
@@ -19,7 +19,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /** Default props for stories */
-const defaultProps: Partial<EventStreamViewProps> = {
+const defaultProps: Partial<EventStreamProps> = {
   ralphStatus: "stopped",
   isViewingLatest: true,
   isViewingHistorical: false,

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within } from "storybook/test"
-import { HeaderView } from "./HeaderView"
+import { Header } from "./Header"
 import { withStoreState } from "../../../.storybook/decorators"
 
 /**
@@ -8,12 +8,12 @@ import { withStoreState } from "../../../.storybook/decorators"
  * and settings controls. It uses the accent color as background with
  * contrasting text.
  *
- * Stories use the HeaderView presentational component directly with args,
+ * Stories use the Header presentational component directly with args,
  * allowing full control over the displayed state without store mocking.
  */
-const meta: Meta<typeof HeaderView> = {
+const meta: Meta<typeof Header> = {
   title: "Panels/Header",
-  component: HeaderView,
+  component: Header,
   args: {
     accentColor: "#007ACC",
     instanceCount: 1,
@@ -67,7 +67,7 @@ export const WithPeacockColor: Story = {
 
 export const DefaultAccentColor: Story = {
   // Use render to pass null directly, avoiding Storybook control type checking
-  render: args => <HeaderView {...args} accentColor={null} />,
+  render: args => <Header {...args} accentColor={null} />,
   argTypes: {
     accentColor: { control: false },
   },

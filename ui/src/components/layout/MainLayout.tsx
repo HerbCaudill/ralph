@@ -8,7 +8,7 @@ import {
   useMemo,
 } from "react"
 import { cn } from "@/lib/utils"
-import { Header } from "./Header"
+import { HeaderController } from "./HeaderController"
 import { useAppStore, selectSidebarWidth, selectAccentColor } from "@/store"
 import { DEFAULT_ACCENT_COLOR } from "@/constants"
 import { getContrastingColor } from "@/lib/getContrastingColor"
@@ -246,7 +246,7 @@ export const MainLayout = forwardRef<MainLayoutHandle, MainLayoutProps>(function
         } as React.CSSProperties
       }
     >
-      {showHeader && (header || <Header />)}
+      {showHeader && (header || <HeaderController />)}
       <div className="flex flex-1 overflow-hidden">
         {leftPanel && (
           <div

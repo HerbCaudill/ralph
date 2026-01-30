@@ -49,7 +49,7 @@ import { resumeRalph } from "./lib/resumeRalph"
 import { stopAfterCurrentRalph } from "./lib/stopAfterCurrentRalph"
 import { clearTaskChatHistory } from "./lib/clearTaskChatHistory"
 import { downloadStateExport } from "./lib/exportState"
-import { TasksSidebarPanel } from "./components/TasksSidebarPanel"
+import { TaskSidebarController } from "./components/tasks/TaskSidebarController"
 import { AgentView } from "./components/AgentView"
 
 /**  Root application component. */
@@ -394,7 +394,7 @@ export function App() {
       <MainLayout
         ref={layoutRef}
         sidebar={
-          <TasksSidebarPanel
+          <TaskSidebarController
             searchInputRef={searchInputRef}
             onTaskClick={handleTaskClick}
             onOpenTask={handleTaskClick}

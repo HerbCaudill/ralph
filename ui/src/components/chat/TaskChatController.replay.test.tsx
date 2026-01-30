@@ -1,13 +1,13 @@
 /**
- * Replay tests for TaskChatPanel using event fixtures.
+ * Replay tests for TaskChatController using event fixtures.
  *
- * These tests verify that the TaskChatPanel correctly renders UI
+ * These tests verify that the TaskChatController correctly renders UI
  * when replaying logged event sequences from real usage scenarios.
  */
 
 import { render, screen, act } from "@testing-library/react"
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import { TaskChatPanel } from "./TaskChatPanel"
+import { TaskChatController } from "./TaskChatController"
 import { useAppStore, flushTaskChatEventsBatch } from "@/store"
 import {
   getAllFixtures,
@@ -96,7 +96,7 @@ function clearTaskChatState(): void {
   useAppStore.getState().setConnectionStatus("connected")
 }
 
-describe("TaskChatPanel replay tests", () => {
+describe("TaskChatController replay tests", () => {
   beforeEach(() => {
     clearTaskChatState()
     mockFetch.mockReset()
@@ -112,7 +112,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(simpleQAFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // User message should be visible
       expect(screen.getByText("What are my highest priority tasks?")).toBeInTheDocument()
@@ -123,7 +123,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(simpleQAFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Assistant response should contain the task list (look for the starting text)
       expect(screen.getByText(/Your highest priority tasks are/)).toBeInTheDocument()
@@ -138,7 +138,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(simpleQAFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -156,7 +156,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(simpleQAFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Empty state should not be visible
       expect(screen.queryByText("Ask questions about your tasks")).not.toBeInTheDocument()
@@ -169,7 +169,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(toolUseSuccessFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // User message should be visible
       expect(screen.getByText("Show me the open tasks")).toBeInTheDocument()
@@ -182,7 +182,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(toolUseSuccessFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Final assistant response should be visible (with "Here are")
       expect(screen.getByText(/Here are the open tasks/)).toBeInTheDocument()
@@ -193,7 +193,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(toolUseSuccessFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -216,7 +216,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(rapidStreamingFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // The final accumulated text should be complete
       expect(screen.getByText(/Task priorities help you focus/)).toBeInTheDocument()
@@ -227,7 +227,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(rapidStreamingFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       expect(screen.getByText("Explain task priorities")).toBeInTheDocument()
     })
@@ -237,7 +237,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(rapidStreamingFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -255,7 +255,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(outOfOrderFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -282,7 +282,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(outOfOrderFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Both messages should be visible
       expect(screen.getByText("Hello")).toBeInTheDocument()
@@ -296,7 +296,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(multipleToolUsesFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Both tools should be visible
       expect(screen.getByText("Read")).toBeInTheDocument()
@@ -308,7 +308,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(multipleToolUsesFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -326,7 +326,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(multipleToolUsesFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -343,7 +343,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(multipleToolUsesFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Final response mentions the TODO comments found
       expect(screen.getByText(/found 2 TODO comments/i)).toBeInTheDocument()
@@ -356,7 +356,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(toolUseErrorFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Tool use should be visible
       expect(screen.getByText("Read")).toBeInTheDocument()
@@ -367,7 +367,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(toolUseErrorFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // Assistant should provide a helpful response about the error
       expect(screen.getByText(/couldn't find the config file/i)).toBeInTheDocument()
@@ -378,7 +378,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(toolUseErrorFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -402,7 +402,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(simpleQAFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -417,7 +417,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(toolUseSuccessFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       // There should be exactly one Bash tool use card
       const bashElements = screen.getAllByText("Bash")
@@ -431,7 +431,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(fullStreamingFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -450,7 +450,7 @@ describe("TaskChatPanel replay tests", () => {
         await replayEvents(multiToolFullStreamingFixture.entries)
       })
 
-      render(<TaskChatPanel />)
+      render(<TaskChatController />)
 
       const container = screen.getByRole("log", { name: "Task chat messages" })
       const textContent = container.textContent || ""
@@ -485,7 +485,7 @@ describe("TaskChatPanel replay tests", () => {
         })
 
         // Should render without throwing
-        expect(() => render(<TaskChatPanel />)).not.toThrow()
+        expect(() => render(<TaskChatController />)).not.toThrow()
       },
     )
 
@@ -496,7 +496,7 @@ describe("TaskChatPanel replay tests", () => {
           await replayEvents(fixture.entries)
         })
 
-        render(<TaskChatPanel />)
+        render(<TaskChatController />)
 
         // All fixtures have content, so empty state should be hidden
         expect(screen.queryByText("Ask questions about your tasks")).not.toBeInTheDocument()

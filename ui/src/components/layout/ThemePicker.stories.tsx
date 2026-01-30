@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within, userEvent, fn, waitFor } from "storybook/test"
-import { ThemePickerView } from "./ThemePickerView"
+import { ThemePicker } from "./ThemePicker"
 import type { ThemeMeta } from "@/lib/theme"
 
 /**
@@ -45,9 +45,9 @@ function createMockThemes(): ThemeMeta[] {
 
 const mockThemes = createMockThemes()
 
-const meta: Meta<typeof ThemePickerView> = {
+const meta: Meta<typeof ThemePicker> = {
   title: "Selectors/ThemePicker",
-  component: ThemePickerView,
+  component: ThemePicker,
   parameters: {},
   args: {
     themes: mockThemes,

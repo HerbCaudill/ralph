@@ -14,7 +14,7 @@ import {
   multiToolFullStreamingFixture,
 } from "./index"
 
-describe("TaskChatPanel fixtures", () => {
+describe("TaskChatController fixtures", () => {
   describe("getAllFixtures", () => {
     it("returns all fixtures", () => {
       const fixtures = getAllFixtures()

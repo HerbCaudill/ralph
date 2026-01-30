@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
-import { ThemePickerView } from "./ThemePickerView"
+import { ThemePicker } from "./ThemePicker"
 import type { ThemeMeta } from "@/lib/theme"
 
 // Helper to create standard mock themes
@@ -41,8 +41,8 @@ function createMockThemes(): ThemeMeta[] {
   ]
 }
 
-// Default props for ThemePickerView
-function createDefaultProps(overrides: Partial<Parameters<typeof ThemePickerView>[0]> = {}) {
+// Default props for ThemePicker
+function createDefaultProps(overrides: Partial<Parameters<typeof ThemePicker>[0]> = {}) {
   return {
     themes: createMockThemes(),
     activeThemeId: null as string | null,
@@ -54,7 +54,7 @@ function createDefaultProps(overrides: Partial<Parameters<typeof ThemePickerView
   }
 }
 
-describe("ThemePickerView", () => {
+describe("ThemePicker", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -65,27 +65,25 @@ describe("ThemePickerView", () => {
 
   describe("rendering", () => {
     it("renders with default display name when no theme is active", () => {
-      render(<ThemePickerView {...createDefaultProps()} />)
+      render(<ThemePicker {...createDefaultProps()} />)
       expect(screen.getByTestId("theme-picker-trigger")).toBeInTheDocument()
       expect(screen.getByText("Default")).toBeInTheDocument()
     })
 
     it("displays active theme name in trigger when theme is selected", () => {
-      render(<ThemePickerView {...createDefaultProps({ activeThemeId: "gruvbox-dark" })} />)
+      render(<ThemePicker {...createDefaultProps({ activeThemeId: "gruvbox-dark" })} />)
       expect(screen.getByText("Gruvbox Dark")).toBeInTheDocument()
     })
 
     it("applies custom className", () => {
       const { container } = render(
-        <ThemePickerView {...createDefaultProps({ className: "custom-class" })} />,
+        <ThemePicker {...createDefaultProps({ className: "custom-class" })} />,
       )
       expect(container.firstChild).toHaveClass("custom-class")
     })
 
     it("uses header variant styling when variant is header", () => {
-      render(
-        <ThemePickerView {...createDefaultProps({ variant: "header", textColor: "#ffffff" })} />,
-      )
+      render(<ThemePicker {...createDefaultProps({ variant: "header", textColor: "#ffffff" })} />)
       const trigger = screen.getByTestId("theme-picker-trigger")
       expect(trigger).toHaveClass("hover:bg-white/20")
     })
@@ -93,7 +91,7 @@ describe("ThemePickerView", () => {
 
   describe("dropdown behavior", () => {
     it("toggles dropdown when clicked", () => {
-      render(<ThemePickerView {...createDefaultProps()} />)
+      render(<ThemePicker {...createDefaultProps()} />)
 
       // Dropdown should be closed initially
       expect(screen.queryByTestId("theme-picker-dropdown")).not.toBeInTheDocument()
@@ -107,7 +105,7 @@ describe("ThemePickerView", () => {
 
     it("closes dropdown when clicking outside", async () => {
       const props = createDefaultProps()
-      render(<ThemePickerView {...props} />)
+      render(<ThemePicker {...props} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -124,7 +122,7 @@ describe("ThemePickerView", () => {
 
     it("closes dropdown when pressing Escape", async () => {
       const props = createDefaultProps()
-      render(<ThemePickerView {...props} />)
+      render(<ThemePicker {...props} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -142,7 +140,7 @@ describe("ThemePickerView", () => {
 
   describe("theme display", () => {
     it("displays all passed themes", () => {
-      render(<ThemePickerView {...createDefaultProps()} />)
+      render(<ThemePicker {...createDefaultProps()} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -157,7 +155,7 @@ describe("ThemePickerView", () => {
 
   describe("dropdown content", () => {
     it("shows checkmark on currently active theme", () => {
-      render(<ThemePickerView {...createDefaultProps({ activeThemeId: "dracula" })} />)
+      render(<ThemePicker {...createDefaultProps({ activeThemeId: "dracula" })} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -172,7 +170,7 @@ describe("ThemePickerView", () => {
   describe("theme selection", () => {
     it("calls onApplyTheme when clicking a theme item", async () => {
       const props = createDefaultProps()
-      render(<ThemePickerView {...props} />)
+      render(<ThemePicker {...props} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -188,7 +186,7 @@ describe("ThemePickerView", () => {
 
     it("closes dropdown after selecting a theme", async () => {
       const props = createDefaultProps()
-      render(<ThemePickerView {...props} />)
+      render(<ThemePicker {...props} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -206,21 +204,21 @@ describe("ThemePickerView", () => {
 
   describe("loading states", () => {
     it("disables trigger button when loading", () => {
-      render(<ThemePickerView {...createDefaultProps({ isLoading: true })} />)
+      render(<ThemePicker {...createDefaultProps({ isLoading: true })} />)
 
       const trigger = screen.getByTestId("theme-picker-trigger")
       expect(trigger).toBeDisabled()
     })
 
     it("shows opacity when loading", () => {
-      render(<ThemePickerView {...createDefaultProps({ isLoading: true })} />)
+      render(<ThemePicker {...createDefaultProps({ isLoading: true })} />)
 
       const trigger = screen.getByTestId("theme-picker-trigger")
       expect(trigger).toHaveClass("opacity-70")
     })
 
     it("shows loading message when dropdown open with empty themes", () => {
-      render(<ThemePickerView {...createDefaultProps({ themes: [], isLoading: false })} />)
+      render(<ThemePicker {...createDefaultProps({ themes: [], isLoading: false })} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -232,7 +230,7 @@ describe("ThemePickerView", () => {
 
   describe("error states", () => {
     it("shows error state when there is an error and themes exist", () => {
-      render(<ThemePickerView {...createDefaultProps({ error: "Failed to load themes" })} />)
+      render(<ThemePicker {...createDefaultProps({ error: "Failed to load themes" })} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -242,7 +240,7 @@ describe("ThemePickerView", () => {
     })
 
     it("hides theme list when there is an error and themes exist", () => {
-      render(<ThemePickerView {...createDefaultProps({ error: "Failed to load themes" })} />)
+      render(<ThemePicker {...createDefaultProps({ error: "Failed to load themes" })} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -257,7 +255,7 @@ describe("ThemePickerView", () => {
 
     it("calls onRefresh when clicking retry button in error state", () => {
       const props = createDefaultProps({ error: "Failed to load themes" })
-      render(<ThemePickerView {...props} />)
+      render(<ThemePicker {...props} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -271,7 +269,7 @@ describe("ThemePickerView", () => {
     })
 
     it("shows 'No themes found' instead of error when there are no themes", () => {
-      render(<ThemePickerView {...createDefaultProps({ themes: [], error: "Theme not found" })} />)
+      render(<ThemePicker {...createDefaultProps({ themes: [], error: "Theme not found" })} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
@@ -284,7 +282,7 @@ describe("ThemePickerView", () => {
 
   describe("empty states", () => {
     it("shows empty state when no themes available", () => {
-      render(<ThemePickerView {...createDefaultProps({ themes: [], isLoading: false })} />)
+      render(<ThemePicker {...createDefaultProps({ themes: [], isLoading: false })} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))

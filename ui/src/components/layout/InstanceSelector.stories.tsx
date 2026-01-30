@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { fn } from "storybook/test"
-import { InstanceSelectorView } from "./InstanceSelectorView"
+import { InstanceSelector } from "./InstanceSelector"
 import type { RalphInstance, RalphStatus } from "@/types"
 
 /**
@@ -32,9 +32,9 @@ const defaultInstances = new Map<string, RalphInstance>([
   ["default", createInstance("default", "Main", "stopped")],
 ])
 
-const meta: Meta<typeof InstanceSelectorView> = {
+const meta: Meta<typeof InstanceSelector> = {
   title: "Selectors/InstanceSelector",
-  component: InstanceSelectorView,
+  component: InstanceSelector,
   parameters: {},
   args: {
     instances: defaultInstances,

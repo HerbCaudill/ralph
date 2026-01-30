@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 
 /**
  * A floating button that scrolls the container to the bottom.
- * Used in EventStream and TaskChatPanel for consistent scroll-to-bottom behavior.
+ * Used in EventStream and TaskChat for consistent scroll-to-bottom behavior.
  */
 export function ScrollToBottomButton({
   isVisible,
