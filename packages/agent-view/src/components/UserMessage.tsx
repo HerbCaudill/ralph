@@ -1,5 +1,5 @@
-import { cn } from "../../lib/utils"
-import type { UserMessageEvent } from "../../types"
+import { cn } from "../lib/utils"
+import type { UserMessageEvent } from "../types"
 
 /**
  * Renders a user-sent message in the event stream.

@@ -1,19 +1,19 @@
 import { UserMessage } from "./UserMessage"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { ErrorEvent } from "./ErrorEvent"
-import type { ToolResult } from "../../lib/buildToolResultsMap"
-import { renderEventContentBlock } from "../../lib/renderEventContentBlock"
+import type { ToolResult } from "../lib/buildToolResultsMap"
+import { renderEventContentBlock } from "../lib/renderEventContentBlock"
 import {
   shouldFilterEventByType,
   logEventFilterDecision,
   type FilterReason,
-} from "../../lib/EventFilterPipeline"
-import { isAssistantMessage } from "../../lib/isAssistantMessage"
-import { isErrorEvent } from "../../lib/isErrorEvent"
-import { isRalphTaskCompletedEvent } from "../../lib/isRalphTaskCompletedEvent"
-import { isRalphTaskStartedEvent } from "../../lib/isRalphTaskStartedEvent"
-import { isUserMessageEvent } from "../../lib/isUserMessageEvent"
-import type { ChatEvent, TaskLifecycleEventData, ErrorEventData } from "../../types"
+} from "../lib/EventFilterPipeline"
+import { isAssistantMessage } from "../lib/isAssistantMessage"
+import { isErrorEvent } from "../lib/isErrorEvent"
+import { isRalphTaskCompletedEvent } from "../lib/isRalphTaskCompletedEvent"
+import { isRalphTaskStartedEvent } from "../lib/isRalphTaskStartedEvent"
+import { isUserMessageEvent } from "../lib/isUserMessageEvent"
+import type { ChatEvent, TaskLifecycleEventData, ErrorEventData } from "../types"
 
 /**
  * Renders different types of Ralph events (user messages, task lifecycle events, assistant messages, errors).

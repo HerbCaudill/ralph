@@ -1,5 +1,5 @@
-import { cn } from "../../lib/utils"
-import { useAutoScroll } from "../../hooks/useAutoScroll"
+import { cn } from "../lib/utils"
+import { useAutoScroll } from "../hooks/useAutoScroll"
 import { ScrollToBottomButton } from "./ScrollToBottomButton"
 
 /**

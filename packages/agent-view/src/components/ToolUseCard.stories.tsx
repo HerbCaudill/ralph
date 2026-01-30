@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { ToolUseCard } from "./ToolUseCard"
-import type { ToolUseEvent, ToolName } from "../../types"
+import type { ToolUseEvent, ToolName } from "../types"
 
 const meta: Meta<typeof ToolUseCard> = {
   title: "Feedback/ToolUseCard",

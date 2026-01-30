@@ -1,7 +1,7 @@
 import { AgentViewProvider } from "../context/AgentViewProvider"
-import { ContentStreamContainer } from "./shared/ContentStreamContainer"
-import { EventList } from "./events/EventList"
-import { TopologySpinner } from "./ui/TopologySpinner"
+import { ContentStreamContainer } from "./ContentStreamContainer"
+import { EventList } from "./EventList"
+import { TopologySpinner } from "./TopologySpinner"
 import { cx } from "../cx"
 import type { ChatEvent, AgentViewContextValue } from "../types"
 

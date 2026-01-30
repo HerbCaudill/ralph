@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { IconMessageChatbot } from "@tabler/icons-react"
 import { EventDisplay } from "./EventDisplay"
-import type { ChatEvent } from "../../types"
+import type { ChatEvent } from "../types"
 
 const meta: Meta<typeof EventDisplay> = {
   title: "Collections/EventDisplay",

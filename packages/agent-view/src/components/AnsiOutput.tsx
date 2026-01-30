@@ -1,6 +1,6 @@
 import { useMemo } from "react"
-import { cn, stripAnsi } from "../../lib/utils"
-import { getPreviewInfo } from "../../lib/getPreviewInfo"
+import { cn, stripAnsi } from "../lib/utils"
+import { getPreviewInfo } from "../lib/getPreviewInfo"
 
 /**
  * Renders ANSI-formatted code output with optional line preview and expand functionality.

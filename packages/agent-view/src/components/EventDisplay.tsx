@@ -1,8 +1,8 @@
 import { useMemo } from "react"
-import { ContentStreamContainer } from "../shared/ContentStreamContainer"
-import { useStreamingState } from "../../hooks/useStreamingState"
-import { buildToolResultsMap, type ToolResult } from "../../lib/buildToolResultsMap"
-import type { ChatEvent, StreamingMessage } from "../../types"
+import { ContentStreamContainer } from "./ContentStreamContainer"
+import { useStreamingState } from "../hooks/useStreamingState"
+import { buildToolResultsMap, type ToolResult } from "../lib/buildToolResultsMap"
+import type { ChatEvent, StreamingMessage } from "../types"
 import { EventStreamEventItem } from "./EventStreamEventItem"
 import { StreamingContentRenderer } from "./StreamingContentRenderer"
 

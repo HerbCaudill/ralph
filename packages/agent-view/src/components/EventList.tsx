@@ -1,7 +1,7 @@
 import { useMemo } from "react"
-import { useStreamingState } from "../../hooks/useStreamingState"
-import { buildToolResultsMap, type ToolResult } from "../../lib/buildToolResultsMap"
-import type { ChatEvent, StreamingMessage } from "../../types"
+import { useStreamingState } from "../hooks/useStreamingState"
+import { buildToolResultsMap, type ToolResult } from "../lib/buildToolResultsMap"
+import type { ChatEvent, StreamingMessage } from "../types"
 import { EventStreamEventItem } from "./EventStreamEventItem"
 import { StreamingContentRenderer } from "./StreamingContentRenderer"
 

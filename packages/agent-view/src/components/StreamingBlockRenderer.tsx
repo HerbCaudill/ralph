@@ -3,10 +3,10 @@ import { ThinkingBlock } from "./ThinkingBlock"
 import { ToolUseCard } from "./ToolUseCard"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { PromiseCompleteEvent } from "./PromiseCompleteEvent"
-import { parseTaskLifecycleEvent } from "../../lib/parseTaskLifecycleEvent"
-import { parsePromiseCompleteEvent } from "../../lib/parsePromiseCompleteEvent"
-import { unescapeJsonString } from "../../lib/unescapeJsonString"
-import type { AssistantTextEvent, StreamingContentBlock, ToolUseEvent } from "../../types"
+import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycleEvent"
+import { parsePromiseCompleteEvent } from "../lib/parsePromiseCompleteEvent"
+import { unescapeJsonString } from "../lib/unescapeJsonString"
+import type { AssistantTextEvent, StreamingContentBlock, ToolUseEvent } from "../types"
 
 /**
  * Renders a single streaming content block (text or tool use) from the Claude API.

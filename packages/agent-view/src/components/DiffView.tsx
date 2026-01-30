@@ -1,6 +1,6 @@
-import { cn } from "../../lib/utils"
-import { parseDiff } from "../../lib/parseDiff"
-import { TOOL_OUTPUT_PREVIEW_LINES } from "../../constants"
+import { cn } from "../lib/utils"
+import { parseDiff } from "../lib/parseDiff"
+import { TOOL_OUTPUT_PREVIEW_LINES } from "../constants"
 import { HighlightedLine } from "./HighlightedLine"
 
 /**

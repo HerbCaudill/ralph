@@ -1,6 +1,6 @@
-import { cn } from "../../lib/utils"
+import { cn } from "../lib/utils"
 import { IconAlertTriangle } from "@tabler/icons-react"
-import type { ErrorEventData } from "../../types"
+import type { ErrorEventData } from "../types"
 
 /**  Renders an error event with red styling to indicate something went wrong. */
 export function ErrorEvent({ event, className }: Props) {

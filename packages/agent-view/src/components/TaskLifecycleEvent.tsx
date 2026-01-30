@@ -1,8 +1,8 @@
-import { cn } from "../../lib/utils"
+import { cn } from "../lib/utils"
 import { IconPlayerPlay, IconCheck } from "@tabler/icons-react"
-import { TextWithLinks } from "../ui/TextWithLinks"
-import { useAgentViewContext } from "../../context/useAgentViewContext"
-import type { TaskLifecycleEventData } from "../../types"
+import { TextWithLinks } from "./TextWithLinks"
+import { useAgentViewContext } from "../context/useAgentViewContext"
+import type { TaskLifecycleEventData } from "../types"
 
 /**  Renders a task lifecycle event (starting or completing a task) with special styling. */
 export function TaskLifecycleEvent({ event, className }: Props) {

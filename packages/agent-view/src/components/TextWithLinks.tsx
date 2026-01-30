@@ -1,6 +1,6 @@
 import type { ReactNode, MouseEvent } from "react"
-import { cx, stripTaskPrefix } from "../../lib/utils"
-import { useAgentViewContext } from "../../context/useAgentViewContext"
+import { cx, stripTaskPrefix } from "../lib/utils"
+import { useAgentViewContext } from "../context/useAgentViewContext"
 
 /**
  * Regex pattern that matches session references.

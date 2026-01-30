@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { IconBrain, IconChevronDown, IconChevronRight } from "@tabler/icons-react"
-import { cn } from "../../lib/utils"
-import { MarkdownContent } from "../ui/MarkdownContent"
+import { cn } from "../lib/utils"
+import { MarkdownContent } from "./MarkdownContent"
 
 /**
  * Renders Claude's extended thinking/internal monologue content.

@@ -1,5 +1,5 @@
 import { IconChevronDown } from "@tabler/icons-react"
-import { cn } from "../../lib/utils"
+import { cn } from "../lib/utils"
 
 /**
  * A floating button that scrolls the container to the bottom.

@@ -1,6 +1,6 @@
-import { cn } from "../../lib/utils"
+import { cn } from "../lib/utils"
 import { IconCircleCheck } from "@tabler/icons-react"
-import type { PromiseCompleteChatEvent } from "../../types"
+import type { PromiseCompleteChatEvent } from "../types"
 
 /** Renders a promise complete event with special styling, similar to task lifecycle events. */
 export function PromiseCompleteEvent({ event: _event, className }: Props) {

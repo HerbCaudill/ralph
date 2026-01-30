@@ -1,5 +1,5 @@
 import { StreamingBlockRenderer } from "./StreamingBlockRenderer"
-import type { StreamingMessage } from "../../types"
+import type { StreamingMessage } from "../types"
 
 /**
  * Renders all content blocks from a streaming message.

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react"
-import { cx } from "../../lib/utils"
+import { cx } from "../lib/utils"
 import {
   IconTopologyFull,
   IconTopologyFullHierarchy,

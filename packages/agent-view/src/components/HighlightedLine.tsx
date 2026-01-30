@@ -1,5 +1,5 @@
-import { cn } from "../../lib/utils"
-import { useHighlightedCode } from "../../hooks/useHighlightedCode"
+import { cn } from "../lib/utils"
+import { useHighlightedCode } from "../hooks/useHighlightedCode"
 
 /**
  * Renders a single line of code with syntax highlighting based on the current theme.

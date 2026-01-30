@@ -1,9 +1,9 @@
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { cx } from "../../lib/utils"
+import { cx } from "../lib/utils"
 import { TextWithLinks } from "./TextWithLinks"
 import { CodeBlock } from "./code-block"
-import { useAgentViewContext } from "../../context/useAgentViewContext"
+import { useAgentViewContext } from "../context/useAgentViewContext"
 import type { Components } from "react-markdown"
 import type { ReactNode } from "react"
 

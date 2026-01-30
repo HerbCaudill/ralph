@@ -1,6 +1,6 @@
-import { cn } from "../../lib/utils"
-import { MarkdownContent } from "../ui/MarkdownContent"
-import type { AssistantTextEvent } from "../../types"
+import { cn } from "../lib/utils"
+import { MarkdownContent } from "./MarkdownContent"
+import type { AssistantTextEvent } from "../types"
 
 /**  Renders assistant text content with markdown support. */
 export function AssistantText({ event, className }: Props) {

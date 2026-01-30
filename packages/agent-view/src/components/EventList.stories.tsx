@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { EventList } from "./EventList"
-import type { ChatEvent } from "../../types"
+import type { ChatEvent } from "../types"
 
 const meta: Meta<typeof EventList> = {
   title: "Collections/EventList",

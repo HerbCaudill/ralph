@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react"
-import { cx } from "../../lib/utils"
+import { cx } from "../lib/utils"
 import { highlight, normalizeLanguage } from "@herbcaudill/agent-view-theme"
-import { useAgentViewContext } from "../../context/useAgentViewContext"
+import { useAgentViewContext } from "../context/useAgentViewContext"
 import { IconCopy, IconCheck } from "@tabler/icons-react"
 
 export interface CodeBlockProps {
