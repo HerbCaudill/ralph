@@ -31,5 +31,4 @@ export const LAST_DARK_THEME_STORAGE_KEY = "ralph-ui-last-dark-theme"
 /** localStorage key for last used light theme ID (legacy, migrated to store in v4) */
 export const LAST_LIGHT_THEME_STORAGE_KEY = "ralph-ui-last-light-theme"
 
-/** Number of lines to show in tool output preview before expansion */
-export const TOOL_OUTPUT_PREVIEW_LINES = 5
+export { TOOL_OUTPUT_PREVIEW_LINES } from "@herbcaudill/agent-view"
