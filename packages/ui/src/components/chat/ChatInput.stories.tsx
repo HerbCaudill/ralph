@@ -86,7 +86,7 @@ export const AtBottomOfChat: Story = {
           </div>
         </div>
       </div>
-      <div className="border-border bg-background border-t p-3">
+      <div className="bg-background p-3">
         <ChatInput {...args} />
       </div>
     </div>

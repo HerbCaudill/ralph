@@ -47,6 +47,7 @@
     "@herbcaudill/agent-view-theme": "workspace:*",
     "@tabler/icons-react": "^3.36.1",
     "clsx": "^2.1.1",
+    "effect": "^3.19.14",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.4.0"

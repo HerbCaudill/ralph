@@ -36,7 +36,7 @@ export function EventStreamSessionBar({
 
   return (
     <div
-      className="bg-muted/50 border-border flex items-center justify-center border-b px-3 py-1.5"
+      className="bg-muted/50 flex items-center justify-center px-3 py-1.5"
       data-testid="session-bar"
     >
       <div className="flex w-full max-w-[36rem] min-w-0 items-center justify-center gap-1">

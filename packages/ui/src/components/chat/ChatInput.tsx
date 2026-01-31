@@ -103,7 +103,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   return (
     <form onSubmit={handleSubmit} className={className}>
-      <InputGroup data-disabled={disabled}>
+      <InputGroup data-disabled={disabled} className="border-0 shadow-none">
         <InputGroupTextarea
           ref={textareaRef}
           value={message}

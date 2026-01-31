@@ -2,8 +2,15 @@ import { useMemo } from "react"
 import { useEventStream } from "@/hooks/useEventStream"
 import { EventStream } from "./EventStream"
 import { AgentViewProvider } from "@herbcaudill/agent-view"
-import type { AgentViewContextValue } from "@herbcaudill/agent-view"
+import type {
+  AgentViewContextValue,
+  ChatEvent,
+  TaskLifecycleChatEvent,
+  PromiseCompleteChatEvent,
+} from "@herbcaudill/agent-view"
 import { useAppStore, selectTasks } from "@/store"
+import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+import { PromiseCompleteEvent } from "./PromiseCompleteEvent"
 
 /**
  * Controller component for the event stream display.
@@ -45,6 +52,14 @@ export function EventStreamController(
       linkHandlers: {
         taskIdPrefix: issuePrefix,
         buildTaskHref: (id: string) => `/issue/${id}`,
+      },
+      customEventRenderers: {
+        task_lifecycle: (event: ChatEvent) => (
+          <TaskLifecycleEvent event={event as TaskLifecycleChatEvent} />
+        ),
+        promise_complete: (event: ChatEvent) => (
+          <PromiseCompleteEvent event={event as PromiseCompleteChatEvent} />
+        ),
       },
     }),
     [tasks, issuePrefix],

@@ -54,7 +54,7 @@ export function TaskChat({
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
-      <div className="border-border flex items-center justify-between border-b px-4 py-2">
+      <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center gap-2">
           <IconMessageChatbot className="text-muted-foreground size-4" />
           <span className="text-sm font-medium">Task Chat</span>
