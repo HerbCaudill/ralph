@@ -56,6 +56,7 @@ pnpm workspace with three packages:
 - **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
 - **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with Express server and React frontend
 - **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
+- Planned: **`packages/beads-view/`** - Task management UI/state extraction (see `plans/018-beads-view.md`)
 
 ### Project structure
 
