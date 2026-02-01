@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { SessionLinks } from "./SessionLinks"
-import { useAppStore } from "@/store"
+import { beadsViewStore } from "@herbcaudill/beads-view"
 import { useEffect } from "react"
 
 const meta: Meta<typeof SessionLinks> = {
@@ -22,7 +22,7 @@ type Story = StoryObj<typeof meta>
 /** Helper to set up store state */
 function StoreSetter({ prefix }: { prefix: string }) {
   useEffect(() => {
-    useAppStore.getState().setIssuePrefix(prefix)
+    beadsViewStore.getState().setIssuePrefix(prefix)
   }, [prefix])
   return null
 }

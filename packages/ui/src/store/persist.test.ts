@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import type { RalphInstance, ChatEvent, Task } from "@/types"
+import type { RalphInstance, ChatEvent } from "@/types"
 import type { AppState, AppActions } from "./index"
 import {
   PERSIST_VERSION,
@@ -16,10 +16,6 @@ import {
   type PersistedState,
 } from "./persist"
 import {
-  TASK_LIST_STATUS_STORAGE_KEY,
-  TASK_LIST_PARENT_STORAGE_KEY,
-  TASK_INPUT_DRAFT_STORAGE_KEY,
-  TASK_CHAT_INPUT_DRAFT_STORAGE_KEY,
   THEME_STORAGE_KEY,
   VSCODE_THEME_STORAGE_KEY,
   LAST_DARK_THEME_STORAGE_KEY,
@@ -70,8 +66,6 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
   return {
     instances,
     activeInstanceId: DEFAULT_INSTANCE_ID,
-    initialTaskCount: null,
-    tasks: [],
     workspace: null,
     branch: null,
     issuePrefix: null,
@@ -87,10 +81,6 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     taskChatMessages: [],
     taskChatLoading: false,
     currentTaskChatSessionId: null,
-    taskSearchQuery: "",
-    selectedTaskId: null,
-    visibleTaskIds: [],
-    closedTimeFilter: "past_day",
     showToolOutput: false,
     isSearchVisible: false,
     hotkeysDialogOpen: false,
@@ -98,11 +88,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
     hasInitialSync: false,
     persistenceError: null,
     taskChatEvents: [],
-    statusCollapsedState: { open: false, deferred: true, closed: true },
-    parentCollapsedState: {},
-    taskInputDraft: "",
     taskChatInputDraft: "",
-    commentDrafts: {},
     ...overrides,
   } as AppState & AppActions
 }
@@ -110,7 +96,7 @@ function createMockAppState(overrides: Partial<AppState> = {}): AppState & AppAc
 describe("persist", () => {
   describe("constants", () => {
     it("exports PERSIST_VERSION", () => {
-      expect(PERSIST_VERSION).toBe(8)
+      expect(PERSIST_VERSION).toBe(9)
     })
 
     it("exports PERSIST_NAME", () => {
@@ -364,15 +350,11 @@ describe("persist", () => {
         taskChatWidth: 500,
         showToolOutput: true,
         theme: "dark",
-        closedTimeFilter: "past_week",
-        taskSearchQuery: "search term",
-        selectedTaskId: "task-123",
         isSearchVisible: true,
         workspace: "/path/to/workspace",
         branch: "main",
         issuePrefix: "TEST",
         accentColor: "#ff0000",
-        tasks: [{ id: "task-1", title: "Task 1", status: "open" } as Task],
       })
 
       const result = partialize(state)
@@ -383,24 +365,16 @@ describe("persist", () => {
         taskChatWidth: 500,
         showToolOutput: true,
         theme: "dark",
-        closedTimeFilter: "past_week",
         vscodeThemeId: null,
         lastDarkThemeId: null,
         lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        taskSearchQuery: "search term",
-        selectedTaskId: "task-123",
         isSearchVisible: true,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
         taskChatInputDraft: "",
-        commentDrafts: {},
         workspace: "/path/to/workspace",
         branch: "main",
         issuePrefix: "TEST",
         accentColor: "#ff0000",
-        tasks: [{ id: "task-1", title: "Task 1", status: "open" }],
         instances: expect.any(Array),
         activeInstanceId: DEFAULT_INSTANCE_ID,
       })
@@ -423,8 +397,6 @@ describe("persist", () => {
         taskChatLoading: true,
         taskChatEvents: [createMockEvent()],
         hotkeysDialogOpen: true,
-        visibleTaskIds: ["task-1", "task-2"],
-        initialTaskCount: 5,
         wasRunningBeforeDisconnect: true,
         disconnectedAt: Date.now(),
         hasInitialSync: true,
@@ -439,8 +411,6 @@ describe("persist", () => {
       expect(result).not.toHaveProperty("taskChatLoading")
       expect(result).not.toHaveProperty("taskChatEvents")
       expect(result).not.toHaveProperty("hotkeysDialogOpen")
-      expect(result).not.toHaveProperty("visibleTaskIds")
-      expect(result).not.toHaveProperty("initialTaskCount")
       expect(result).not.toHaveProperty("wasRunningBeforeDisconnect")
       expect(result).not.toHaveProperty("disconnectedAt")
       expect(result).not.toHaveProperty("hasInitialSync")
@@ -583,7 +553,7 @@ describe("persist", () => {
     })
 
     it("has correct version", () => {
-      expect(persistConfig.version).toBe(8)
+      expect(persistConfig.version).toBe(9)
     })
 
     it("has storage adapter", () => {
@@ -607,24 +577,16 @@ describe("persist", () => {
           taskChatWidth: 600,
           showToolOutput: true,
           theme: "dark",
-          closedTimeFilter: "past_week",
           vscodeThemeId: null,
           lastDarkThemeId: null,
           lastLightThemeId: null,
           currentTaskChatSessionId: null,
-          taskSearchQuery: "test",
-          selectedTaskId: "selected",
           isSearchVisible: true,
-          statusCollapsedState: { open: false, deferred: true, closed: true },
-          parentCollapsedState: {},
-          taskInputDraft: "",
           taskChatInputDraft: "",
-          commentDrafts: {},
           workspace: "/new/workspace",
           branch: "develop",
           issuePrefix: "DEV",
           accentColor: "#00ff00",
-          tasks: [{ id: "task-2", title: "Task 2", status: "closed" } as Task],
           instances: [
             {
               id: DEFAULT_INSTANCE_ID,
@@ -651,7 +613,6 @@ describe("persist", () => {
         expect(result.taskChatOpen).toBe(false)
         expect(result.theme).toBe("dark")
         expect(result.workspace).toBe("/new/workspace")
-        expect(result.tasks).toHaveLength(1)
         expect(result.instances).toBeInstanceOf(Map)
       })
 
@@ -877,7 +838,6 @@ describe("persist", () => {
     let mockStore: Record<string, string>
 
     beforeEach(() => {
-      // Create a mock localStorage
       mockStore = {}
       global.localStorage = {
         getItem: vi.fn((key: string) => mockStore[key] ?? null),
@@ -897,250 +857,51 @@ describe("persist", () => {
       global.localStorage = originalLocalStorage
     })
 
-    it("returns state unchanged when version >= 8", () => {
+    it("returns state unchanged when version >= 9", () => {
       const state: PersistedState = {
-        sidebarWidth: 25, // Now stored as percentage
+        sidebarWidth: 25,
         taskChatOpen: true,
-        taskChatWidth: 30, // Now stored as percentage
+        taskChatWidth: 30,
         showToolOutput: false,
         theme: "system",
-        closedTimeFilter: "past_day",
         vscodeThemeId: "my-theme",
         lastDarkThemeId: "dark-theme",
         lastLightThemeId: "light-theme",
         currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
         isSearchVisible: false,
-        statusCollapsedState: { open: true, deferred: false, closed: false },
-        parentCollapsedState: { "parent-1": true },
-        taskInputDraft: "my draft",
         taskChatInputDraft: "chat draft",
-        commentDrafts: {},
         workspace: null,
         branch: null,
         issuePrefix: null,
         accentColor: null,
-        tasks: [],
         instances: [],
         activeInstanceId: "default",
       }
 
-      const result = migrate(state, 8)
+      const result = migrate(state, 9)
 
-      expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
-      expect(result.parentCollapsedState).toEqual({ "parent-1": true })
-      expect(result.taskInputDraft).toBe("my draft")
-      expect(result.taskChatInputDraft).toBe("chat draft")
-      expect(result.vscodeThemeId).toBe("my-theme")
-      expect(result.lastDarkThemeId).toBe("dark-theme")
-      expect(result.lastLightThemeId).toBe("light-theme")
-      // Widths should remain as percentages (not converted again)
-      expect(result.sidebarWidth).toBe(25)
-      expect(result.taskChatWidth).toBe(30)
-    })
-
-    it("migrates from v1 by loading legacy localStorage keys", () => {
-      // Set up legacy localStorage data
-      mockStore[TASK_LIST_STATUS_STORAGE_KEY] = JSON.stringify({
-        open: true,
-        deferred: false,
-        closed: false,
-      })
-      mockStore[TASK_LIST_PARENT_STORAGE_KEY] = JSON.stringify({
-        "parent-1": true,
-        "parent-2": false,
-      })
-
-      // v1 state without collapsed states
-      const state = {
-        sidebarWidth: 400,
-        taskChatOpen: true,
-        taskChatWidth: 400,
-        showToolOutput: false,
-        theme: "system",
-        closedTimeFilter: "past_day",
-        currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
-        isSearchVisible: false,
-        workspace: null,
-        branch: null,
-        issuePrefix: null,
-        accentColor: null,
-        tasks: [],
-        instances: [],
-        activeInstanceId: "default",
-      } as unknown as PersistedState
-
-      const result = migrate(state, 1)
-
-      expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
-      expect(result.parentCollapsedState).toEqual({ "parent-1": true, "parent-2": false })
-      // Legacy keys should be removed
-      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_STATUS_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_PARENT_STORAGE_KEY)
-    })
-
-    it("uses defaults when no legacy localStorage data exists", () => {
-      // v1 state without collapsed states, no legacy localStorage data
-      const state = {
-        sidebarWidth: 400,
-        taskChatOpen: true,
-        taskChatWidth: 400,
-        showToolOutput: false,
-        theme: "system",
-        closedTimeFilter: "past_day",
-        currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
-        isSearchVisible: false,
-        workspace: null,
-        branch: null,
-        issuePrefix: null,
-        accentColor: null,
-        tasks: [],
-        instances: [],
-        activeInstanceId: "default",
-      } as unknown as PersistedState
-
-      const result = migrate(state, 1)
-
-      // Should use default values
-      expect(result.statusCollapsedState).toEqual({ open: false, deferred: true, closed: true })
-      expect(result.parentCollapsedState).toEqual({})
-    })
-
-    it("handles malformed legacy localStorage data gracefully", () => {
-      // Set up invalid JSON
-      mockStore[TASK_LIST_STATUS_STORAGE_KEY] = "invalid json"
-      mockStore[TASK_LIST_PARENT_STORAGE_KEY] = "also invalid"
-
-      const state = {
-        sidebarWidth: 400,
-      } as unknown as PersistedState
-
-      const result = migrate(state, 1)
-
-      // Should use defaults when parsing fails
-      expect(result.statusCollapsedState).toEqual({ open: false, deferred: true, closed: true })
-      expect(result.parentCollapsedState).toEqual({})
-    })
-
-    it("fills in missing status keys with defaults", () => {
-      // Partial status collapsed state
-      mockStore[TASK_LIST_STATUS_STORAGE_KEY] = JSON.stringify({
-        open: true,
-        // missing deferred and closed
-      })
-
-      const state = {} as unknown as PersistedState
-
-      const result = migrate(state, 1)
-
-      expect(result.statusCollapsedState).toEqual({
-        open: true,
-        deferred: true, // default
-        closed: true, // default
-      })
-    })
-
-    it("migrates from v2 by loading legacy input draft localStorage keys", () => {
-      // Set up legacy localStorage data for input drafts
-      mockStore[TASK_INPUT_DRAFT_STORAGE_KEY] = "My draft task"
-      mockStore[TASK_CHAT_INPUT_DRAFT_STORAGE_KEY] = "My chat draft"
-
-      // v2 state without input drafts
-      const state = {
-        sidebarWidth: 400,
-        taskChatOpen: true,
-        taskChatWidth: 400,
-        showToolOutput: false,
-        theme: "system",
-        closedTimeFilter: "past_day",
-        currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
-        isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        workspace: null,
-        branch: null,
-        issuePrefix: null,
-        accentColor: null,
-        tasks: [],
-        instances: [],
-        activeInstanceId: "default",
-      } as unknown as PersistedState
-
-      const result = migrate(state, 2)
-
-      expect(result.taskInputDraft).toBe("My draft task")
-      expect(result.taskChatInputDraft).toBe("My chat draft")
-      // Legacy keys should be removed
-      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_INPUT_DRAFT_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
-    })
-
-    it("uses empty strings when no legacy input draft localStorage data exists", () => {
-      // v2 state without input drafts, no legacy localStorage data
-      const state = {
-        sidebarWidth: 400,
-        taskChatOpen: true,
-        taskChatWidth: 400,
-        showToolOutput: false,
-        theme: "system",
-        closedTimeFilter: "past_day",
-        currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
-        isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        workspace: null,
-        branch: null,
-        issuePrefix: null,
-        accentColor: null,
-        tasks: [],
-        instances: [],
-        activeInstanceId: "default",
-      } as unknown as PersistedState
-
-      const result = migrate(state, 2)
-
-      // Should use empty strings as defaults
-      expect(result.taskInputDraft).toBe("")
-      expect(result.taskChatInputDraft).toBe("")
+      expect(result).toEqual(state)
     })
 
     it("migrates from v3 by loading legacy theme localStorage keys", () => {
-      // Set up legacy localStorage data for theme
       mockStore[THEME_STORAGE_KEY] = "dark"
       mockStore[VSCODE_THEME_STORAGE_KEY] = "my-vscode-theme"
       mockStore[LAST_DARK_THEME_STORAGE_KEY] = "my-dark-theme"
       mockStore[LAST_LIGHT_THEME_STORAGE_KEY] = "my-light-theme"
 
-      // v3 state without theme fields
       const state = {
         sidebarWidth: 400,
         taskChatOpen: true,
         taskChatWidth: 400,
         showToolOutput: false,
         theme: "system",
-        closedTimeFilter: "past_day",
         currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
         isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
         taskChatInputDraft: "",
         workspace: null,
         branch: null,
         issuePrefix: null,
         accentColor: null,
-        tasks: [],
         instances: [],
         activeInstanceId: "default",
       } as unknown as PersistedState
@@ -1151,7 +912,6 @@ describe("persist", () => {
       expect(result.vscodeThemeId).toBe("my-vscode-theme")
       expect(result.lastDarkThemeId).toBe("my-dark-theme")
       expect(result.lastLightThemeId).toBe("my-light-theme")
-      // Legacy keys should be removed
       expect(localStorage.removeItem).toHaveBeenCalledWith(THEME_STORAGE_KEY)
       expect(localStorage.removeItem).toHaveBeenCalledWith(VSCODE_THEME_STORAGE_KEY)
       expect(localStorage.removeItem).toHaveBeenCalledWith(LAST_DARK_THEME_STORAGE_KEY)
@@ -1159,34 +919,25 @@ describe("persist", () => {
     })
 
     it("uses null defaults when no legacy theme localStorage data exists", () => {
-      // v3 state without theme fields, no legacy localStorage data
       const state = {
         sidebarWidth: 400,
         taskChatOpen: true,
         taskChatWidth: 400,
         showToolOutput: false,
         theme: "system",
-        closedTimeFilter: "past_day",
         currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
         isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
         taskChatInputDraft: "",
         workspace: null,
         branch: null,
         issuePrefix: null,
         accentColor: null,
-        tasks: [],
         instances: [],
         activeInstanceId: "default",
       } as unknown as PersistedState
 
       const result = migrate(state, 3)
 
-      // Should use null as defaults for theme IDs
       expect(result.theme).toBe("system")
       expect(result.vscodeThemeId).toBeNull()
       expect(result.lastDarkThemeId).toBeNull()
@@ -1194,152 +945,80 @@ describe("persist", () => {
     })
 
     it("migrates from v5 to v6 by converting pixel widths to percentages", () => {
-      // Mock window.innerWidth
       Object.defineProperty(window, "innerWidth", {
         value: 1600,
         writable: true,
         configurable: true,
       })
 
-      // v5 state with pixel-based widths
       const state = {
-        sidebarWidth: 320, // pixels
+        sidebarWidth: 320,
         taskChatOpen: true,
-        taskChatWidth: 400, // pixels
+        taskChatWidth: 400,
         showToolOutput: false,
         theme: "system",
-        closedTimeFilter: "past_day",
         vscodeThemeId: null,
         lastDarkThemeId: null,
         lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
         isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
         taskChatInputDraft: "",
-        commentDrafts: {},
         workspace: null,
         branch: null,
         issuePrefix: null,
         accentColor: null,
-        tasks: [],
         instances: [],
         activeInstanceId: "default",
       } as unknown as PersistedState
 
       const result = migrate(state, 5)
 
-      // 320px / 1600px * 100 = 20%
       expect(result.sidebarWidth).toBe(20)
-      // 400px / 1600px * 100 = 25%
       expect(result.taskChatWidth).toBe(25)
     })
 
     it("does not convert widths that are already percentages (< 100)", () => {
-      // v5 state that somehow has percentage-like values
       const state = {
-        sidebarWidth: 25, // already looks like percentage
+        sidebarWidth: 25,
         taskChatOpen: true,
-        taskChatWidth: 30, // already looks like percentage
+        taskChatWidth: 30,
         showToolOutput: false,
         theme: "system",
-        closedTimeFilter: "past_day",
         vscodeThemeId: null,
         lastDarkThemeId: null,
         lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
         isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
         taskChatInputDraft: "",
-        commentDrafts: {},
         workspace: null,
         branch: null,
         issuePrefix: null,
         accentColor: null,
-        tasks: [],
         instances: [],
         activeInstanceId: "default",
       } as unknown as PersistedState
 
       const result = migrate(state, 5)
 
-      // Values < 100 are assumed to already be percentages
       expect(result.sidebarWidth).toBe(25)
       expect(result.taskChatWidth).toBe(30)
     })
 
-    it("migrates from v6 to v7 by removing viewingSessionIndex", () => {
-      // v6 state with old viewingSessionIndex field
+    it("removes viewingSessionIndex when version < 7", () => {
       const state = {
         sidebarWidth: 25,
         taskChatOpen: true,
         taskChatWidth: 30,
         showToolOutput: false,
         theme: "system",
-        closedTimeFilter: "past_day",
-        vscodeThemeId: null,
-        lastDarkThemeId: null,
-        lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        viewingSessionIndex: 2, // Old index-based field
-        taskSearchQuery: "",
-        selectedTaskId: null,
+        viewingSessionIndex: 2,
         isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
         taskChatInputDraft: "",
-        commentDrafts: {},
         workspace: null,
         branch: null,
         issuePrefix: null,
         accentColor: null,
-        tasks: [],
-        instances: [],
-        activeInstanceId: "default",
-      } as unknown as PersistedState
-
-      const result = migrate(state, 6)
-
-      // Old field should be removed
-      expect(result).not.toHaveProperty("viewingSessionIndex")
-      // viewingSessionId should also not be present (removed by v8 migration)
-      expect(result).not.toHaveProperty("viewingSessionId")
-    })
-
-    it("migrates from v6 to v7 when viewingSessionIndex is null", () => {
-      const state = {
-        sidebarWidth: 25,
-        taskChatOpen: true,
-        taskChatWidth: 30,
-        showToolOutput: false,
-        theme: "system",
-        closedTimeFilter: "past_day",
-        vscodeThemeId: null,
-        lastDarkThemeId: null,
-        lastLightThemeId: null,
-        currentTaskChatSessionId: null,
-        viewingSessionIndex: null, // Already null (viewing latest)
-        taskSearchQuery: "",
-        selectedTaskId: null,
-        isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
-        taskChatInputDraft: "",
-        commentDrafts: {},
-        workspace: null,
-        branch: null,
-        issuePrefix: null,
-        accentColor: null,
-        tasks: [],
         instances: [],
         activeInstanceId: "default",
       } as unknown as PersistedState
@@ -1350,138 +1029,67 @@ describe("persist", () => {
       expect(result).not.toHaveProperty("viewingSessionId")
     })
 
-    it("migrates from v7 to v8 by removing viewingSessionId", () => {
-      // v7 state with viewingSessionId field
+    it("removes viewingSessionId when version < 8", () => {
       const state = {
         sidebarWidth: 25,
         taskChatOpen: true,
         taskChatWidth: 30,
         showToolOutput: false,
         theme: "system",
-        closedTimeFilter: "past_day",
-        vscodeThemeId: null,
-        lastDarkThemeId: null,
-        lastLightThemeId: null,
         currentTaskChatSessionId: null,
         viewingSessionId: "some-session-id",
-        taskSearchQuery: "",
-        selectedTaskId: null,
         isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
         taskChatInputDraft: "",
-        commentDrafts: {},
         workspace: null,
         branch: null,
         issuePrefix: null,
         accentColor: null,
-        tasks: [],
         instances: [],
         activeInstanceId: "default",
       } as unknown as PersistedState
 
       const result = migrate(state, 7)
 
-      // viewingSessionId should be removed
       expect(result).not.toHaveProperty("viewingSessionId")
     })
 
-    it("migrates from v7 to v8 when viewingSessionId is null", () => {
+    it("removes task fields when version < 9", () => {
       const state = {
         sidebarWidth: 25,
         taskChatOpen: true,
         taskChatWidth: 30,
         showToolOutput: false,
         theme: "system",
-        closedTimeFilter: "past_day",
-        vscodeThemeId: null,
-        lastDarkThemeId: null,
-        lastLightThemeId: null,
         currentTaskChatSessionId: null,
-        viewingSessionId: null,
-        taskSearchQuery: "",
-        selectedTaskId: null,
         isSearchVisible: false,
-        statusCollapsedState: { open: false, deferred: true, closed: true },
-        parentCollapsedState: {},
-        taskInputDraft: "",
         taskChatInputDraft: "",
-        commentDrafts: {},
         workspace: null,
         branch: null,
         issuePrefix: null,
         accentColor: null,
-        tasks: [],
         instances: [],
         activeInstanceId: "default",
+        taskSearchQuery: "test",
+        selectedTaskId: "task-1",
+        closedTimeFilter: "past_day",
+        statusCollapsedState: { open: true, deferred: false, closed: false },
+        parentCollapsedState: {},
+        taskInputDraft: "draft",
+        commentDrafts: { "task-1": "comment" },
+        tasks: [{ id: "task-1", title: "Task 1", status: "open" }],
       } as unknown as PersistedState
 
-      const result = migrate(state, 7)
+      const result = migrate(state, 8)
 
-      expect(result).not.toHaveProperty("viewingSessionId")
-    })
-
-    it("migrates from v1 all the way to v8", () => {
-      // Mock window.innerWidth for v6 migration
-      Object.defineProperty(window, "innerWidth", {
-        value: 1600,
-        writable: true,
-        configurable: true,
-      })
-
-      // Set up legacy localStorage data for all migrations
-      mockStore[TASK_LIST_STATUS_STORAGE_KEY] = JSON.stringify({
-        open: true,
-        deferred: false,
-        closed: false,
-      })
-      mockStore[TASK_LIST_PARENT_STORAGE_KEY] = JSON.stringify({
-        "parent-1": true,
-      })
-      mockStore[TASK_INPUT_DRAFT_STORAGE_KEY] = "Full migration draft"
-      mockStore[TASK_CHAT_INPUT_DRAFT_STORAGE_KEY] = "Full migration chat"
-      mockStore[THEME_STORAGE_KEY] = "light"
-      mockStore[VSCODE_THEME_STORAGE_KEY] = "full-migration-theme"
-      mockStore[LAST_DARK_THEME_STORAGE_KEY] = "full-dark-theme"
-      mockStore[LAST_LIGHT_THEME_STORAGE_KEY] = "full-light-theme"
-
-      // v1 state (no collapsed states, no drafts, no theme IDs, old viewingSessionIndex)
-      const state = {
-        sidebarWidth: 400,
-        taskChatWidth: 400,
-        viewingSessionIndex: 3,
-      } as unknown as PersistedState
-
-      const result = migrate(state, 1)
-
-      // v1->v2 migration results
-      expect(result.statusCollapsedState).toEqual({ open: true, deferred: false, closed: false })
-      expect(result.parentCollapsedState).toEqual({ "parent-1": true })
-      // v2->v3 migration results
-      expect(result.taskInputDraft).toBe("Full migration draft")
-      expect(result.taskChatInputDraft).toBe("Full migration chat")
-      // v3->v4 migration results
-      expect(result.theme).toBe("light")
-      expect(result.vscodeThemeId).toBe("full-migration-theme")
-      expect(result.lastDarkThemeId).toBe("full-dark-theme")
-      expect(result.lastLightThemeId).toBe("full-light-theme")
-      // v5->v6 migration results (pixel to percentage conversion)
-      expect(result.sidebarWidth).toBe(25) // 400/1600*100
-      expect(result.taskChatWidth).toBe(25) // 400/1600*100
-      // v6->v7 migration results (viewingSessionIndex removed)
-      expect(result).not.toHaveProperty("viewingSessionIndex")
-      // v7->v8 migration results (viewingSessionId removed)
-      expect(result).not.toHaveProperty("viewingSessionId")
-      // All legacy keys should be removed
-      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_STATUS_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_LIST_PARENT_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_INPUT_DRAFT_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(THEME_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(VSCODE_THEME_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(LAST_DARK_THEME_STORAGE_KEY)
-      expect(localStorage.removeItem).toHaveBeenCalledWith(LAST_LIGHT_THEME_STORAGE_KEY)
+      const resultRecord = result as unknown as Record<string, unknown>
+      expect(resultRecord.taskSearchQuery).toBeUndefined()
+      expect(resultRecord.selectedTaskId).toBeUndefined()
+      expect(resultRecord.closedTimeFilter).toBeUndefined()
+      expect(resultRecord.statusCollapsedState).toBeUndefined()
+      expect(resultRecord.parentCollapsedState).toBeUndefined()
+      expect(resultRecord.taskInputDraft).toBeUndefined()
+      expect(resultRecord.commentDrafts).toBeUndefined()
+      expect(resultRecord.tasks).toBeUndefined()
     })
   })
 })

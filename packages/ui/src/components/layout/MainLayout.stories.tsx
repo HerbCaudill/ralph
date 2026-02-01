@@ -3,8 +3,7 @@ import { expect, within } from "storybook/test"
 import { MainLayout } from "./MainLayout"
 import { withStoreState, fullPageDecorator } from "../../../.storybook/decorators"
 import { StatusBar } from "./StatusBar"
-import { TaskList } from "../tasks/TaskList"
-import type { TaskCardTask } from "@/types"
+import { TaskList, type TaskCardTask } from "@herbcaudill/beads-view"
 
 const meta: Meta<typeof MainLayout> = {
   title: "Panels/MainLayout",

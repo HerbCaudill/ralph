@@ -1,15 +1,13 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { beadsViewStore } from "@herbcaudill/beads-view"
 import type {
-  ClosedTasksTimeFilter,
   MergeConflict,
   ChatEvent,
   RalphInstance,
   RalphStatus,
   SerializedInstance,
-  Task,
   TaskChatMessage,
-  TaskGroup,
   Theme,
   TokenUsage,
   ContextWindow,
@@ -17,22 +15,6 @@ import type {
 } from "@/types"
 import { persistConfig } from "./persist"
 import { isSystemEvent, aggregateTokenUsage } from "@herbcaudill/agent-view"
-
-/** Get the cutoff timestamp for a time filter */
-export function getTimeFilterCutoff(filter: ClosedTasksTimeFilter): Date | null {
-  if (filter === "all_time") return null
-  const now = new Date()
-  switch (filter) {
-    case "past_hour":
-      return new Date(now.getTime() - 60 * 60 * 1000)
-    case "past_4_hours":
-      return new Date(now.getTime() - 4 * 60 * 60 * 1000)
-    case "past_day":
-      return new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    case "past_week":
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  }
-}
 
 export const RALPH_STATUSES = [
   "stopped",
@@ -96,13 +78,6 @@ export interface AppState {
 
   // === Workspace state (shared across all instances) ===
 
-  // Task count at the start of a run (used to track new tasks)
-  // This is workspace-level state, not per-instance
-  initialTaskCount: number | null
-
-  // Tasks from ralph
-  tasks: Task[]
-
   // Current workspace path
   workspace: string | null
 
@@ -136,18 +111,6 @@ export interface AppState {
   taskChatLoading: boolean
   currentTaskChatSessionId: string | null
 
-  // Task search filter
-  taskSearchQuery: string
-
-  // Selected task for keyboard navigation
-  selectedTaskId: string | null
-
-  // Visible task IDs (for keyboard navigation through filtered/sorted tasks)
-  visibleTaskIds: string[]
-
-  // Closed tasks time filter
-  closedTimeFilter: ClosedTasksTimeFilter
-
   // Tool output visibility (global setting for all ToolUseCards)
   showToolOutput: boolean
 
@@ -157,16 +120,8 @@ export interface AppState {
   // Hotkeys dialog visibility
   hotkeysDialogOpen: boolean
 
-  // Task list collapsed states
-  statusCollapsedState: Record<TaskGroup, boolean>
-  parentCollapsedState: Record<string, boolean>
-
   // Input draft states (persisted to avoid losing unsent messages)
-  taskInputDraft: string
   taskChatInputDraft: string
-
-  // Comment drafts per task (taskId -> draft text)
-  commentDrafts: Record<string, string>
 
   // Task chat events (unified array like EventStream's events[])
   taskChatEvents: ChatEvent[]
@@ -202,14 +157,6 @@ export interface AppActions {
   /** Replace all events (no merge). Used for workspace switching. */
   replaceEvents: (events: ChatEvent[]) => void
   clearEvents: () => void
-
-  // Tasks
-  setTasks: (tasks: Task[]) => void
-  updateTask: (id: string, updates: Partial<Task>) => void
-  removeTask: (id: string) => void
-  clearTasks: () => void
-  /** Refresh tasks from API (debounced to coalesce rapid mutation events) */
-  refreshTasks: () => void
 
   // Workspace
   setWorkspace: (workspace: string | null) => void
@@ -264,18 +211,6 @@ export interface AppActions {
   addTaskChatEvent: (event: ChatEvent) => void
   clearTaskChatEvents: () => void
 
-  // Task search
-  setTaskSearchQuery: (query: string) => void
-  clearTaskSearchQuery: () => void
-
-  // Task selection (for keyboard navigation)
-  setSelectedTaskId: (id: string | null) => void
-  clearSelectedTaskId: () => void
-  setVisibleTaskIds: (ids: string[]) => void
-
-  // Closed time filter
-  setClosedTimeFilter: (filter: ClosedTasksTimeFilter) => void
-
   // Tool output visibility
   setShowToolOutput: (show: boolean) => void
   toggleToolOutput: () => void
@@ -290,19 +225,8 @@ export interface AppActions {
   openHotkeysDialog: () => void
   closeHotkeysDialog: () => void
 
-  // Task list collapsed states
-  setStatusCollapsedState: (state: Record<TaskGroup, boolean>) => void
-  toggleStatusGroup: (group: TaskGroup) => void
-  setParentCollapsedState: (state: Record<string, boolean>) => void
-  toggleParentGroup: (parentId: string) => void
-
   // Input draft states
-  setTaskInputDraft: (draft: string) => void
   setTaskChatInputDraft: (draft: string) => void
-
-  // Comment drafts per task
-  setCommentDraft: (taskId: string, draft: string) => void
-  clearCommentDraft: (taskId: string) => void
 
   // Reconnection state (for auto-resuming when reconnecting mid-session)
   /** Mark that Ralph was running before disconnect (called when connection is lost) */
@@ -563,25 +487,6 @@ const TASK_CHAT_EVENTS_BATCH_INTERVAL_MS = 16
 let taskChatEventsBatch: ChatEvent[] = []
 let taskChatEventsBatchTimeout: ReturnType<typeof setTimeout> | null = null
 
-// Task refresh debouncing configuration
-// Multiple rapid mutation events are coalesced into a single API call
-// Lower value = faster UI updates, higher value = better batching for bulk operations
-const TASK_REFRESH_DEBOUNCE_MS = 50
-let taskRefreshDebounceTimeout: ReturnType<typeof setTimeout> | null = null
-let taskRefreshPending = false
-
-/**
- * Clear any pending task refresh debounce.
- * Used primarily in tests to prevent cross-test interference.
- */
-export function clearTaskRefreshDebounce(): void {
-  taskRefreshPending = false
-  if (taskRefreshDebounceTimeout !== null) {
-    clearTimeout(taskRefreshDebounceTimeout)
-    taskRefreshDebounceTimeout = null
-  }
-}
-
 /**
  * Flush any pending batched task chat events to the store.
  * Called automatically after the batch interval, or can be called manually.
@@ -670,8 +575,6 @@ const initialState: AppState = {
   activeInstanceId: DEFAULT_INSTANCE_ID,
 
   // Workspace state (shared across instances)
-  initialTaskCount: null,
-  tasks: [],
   workspace: null,
   branch: null,
   issuePrefix: null,
@@ -687,10 +590,6 @@ const initialState: AppState = {
   taskChatMessages: [],
   taskChatLoading: false,
   currentTaskChatSessionId: null,
-  taskSearchQuery: "",
-  selectedTaskId: null,
-  visibleTaskIds: [],
-  closedTimeFilter: "past_day",
   showToolOutput: false,
   isSearchVisible: false,
   hotkeysDialogOpen: false,
@@ -699,15 +598,7 @@ const initialState: AppState = {
   hasInitialSync: false,
   persistenceError: null,
   taskChatEvents: [],
-  statusCollapsedState: {
-    open: false,
-    deferred: true,
-    closed: true,
-  },
-  parentCollapsedState: {},
-  taskInputDraft: "",
   taskChatInputDraft: "",
-  commentDrafts: {},
 }
 
 export const useAppStore = create<AppState & AppActions>()(
@@ -735,11 +626,11 @@ export const useAppStore = create<AppState & AppActions>()(
             : isStopping ? null
             : activeInstance.runStartedAt
 
-          // Calculate new initialTaskCount (workspace-level state, kept in flat field for now)
-          const newInitialTaskCount =
-            isTransitioningToRunning ? state.tasks.length
-            : isStopping ? null
-            : state.initialTaskCount
+          if (isTransitioningToRunning) {
+            beadsViewStore.getState().setInitialTaskCount(beadsViewStore.getState().tasks.length)
+          } else if (isStopping) {
+            beadsViewStore.getState().setInitialTaskCount(null)
+          }
 
           // Update active instance in the instances Map only
           const updatedInstances = new Map(state.instances)
@@ -750,7 +641,6 @@ export const useAppStore = create<AppState & AppActions>()(
           })
 
           return {
-            initialTaskCount: newInitialTaskCount,
             instances: updatedInstances,
           }
         }),
@@ -846,48 +736,6 @@ export const useAppStore = create<AppState & AppActions>()(
           }
         }),
 
-      // Tasks
-      setTasks: tasks => set({ tasks }),
-
-      updateTask: (id, updates) =>
-        set(state => ({
-          tasks: state.tasks.map(task => (task.id === id ? { ...task, ...updates } : task)),
-        })),
-
-      removeTask: id =>
-        set(state => ({
-          tasks: state.tasks.filter(task => task.id !== id),
-        })),
-
-      clearTasks: () => set({ tasks: [] }),
-
-      refreshTasks: () => {
-        // Debounce task refresh to coalesce multiple rapid mutation events
-        // This prevents hammering the API when many tasks are modified at once
-        taskRefreshPending = true
-
-        if (taskRefreshDebounceTimeout !== null) {
-          // Already have a pending refresh scheduled, it will pick up this request
-          return
-        }
-
-        taskRefreshDebounceTimeout = setTimeout(async () => {
-          taskRefreshDebounceTimeout = null
-          if (!taskRefreshPending) return
-
-          taskRefreshPending = false
-          try {
-            const response = await fetch("/api/tasks?all=true")
-            const data = (await response.json()) as { ok: boolean; issues?: Task[] }
-            if (data.ok && data.issues) {
-              set({ tasks: data.issues })
-            }
-          } catch (err) {
-            console.error("Failed to refresh tasks:", err)
-          }
-        }, TASK_REFRESH_DEBOUNCE_MS)
-      },
-
       // Workspace
       setWorkspace: workspace => set({ workspace }),
       clearWorkspaceData: () => {
@@ -897,12 +745,8 @@ export const useAppStore = create<AppState & AppActions>()(
           clearTimeout(taskChatEventsBatchTimeout)
           taskChatEventsBatchTimeout = null
         }
-        // Clear any pending task refresh
-        taskRefreshPending = false
-        if (taskRefreshDebounceTimeout !== null) {
-          clearTimeout(taskRefreshDebounceTimeout)
-          taskRefreshDebounceTimeout = null
-        }
+        beadsViewStore.getState().clearTasks()
+        beadsViewStore.getState().setInitialTaskCount(null)
         set(state => {
           // Clear events and runtime state from ALL instances, not just the active one.
           // This prevents stale events from old workspaces remaining in non-active instances.
@@ -920,10 +764,6 @@ export const useAppStore = create<AppState & AppActions>()(
           }
 
           return {
-            // Clear tasks immediately to avoid showing stale data
-            tasks: [],
-            // Reset workspace-level state
-            initialTaskCount: null,
             // Clear task chat messages and events
             taskChatMessages: [],
             taskChatLoading: false,
@@ -935,13 +775,19 @@ export const useAppStore = create<AppState & AppActions>()(
       },
 
       // Accent color
-      setAccentColor: color => set({ accentColor: color }),
+      setAccentColor: color => {
+        beadsViewStore.getState().setAccentColor(color)
+        set({ accentColor: color })
+      },
 
       // Branch
       setBranch: branch => set({ branch }),
 
       // Issue prefix
-      setIssuePrefix: prefix => set({ issuePrefix: prefix }),
+      setIssuePrefix: prefix => {
+        beadsViewStore.getState().setIssuePrefix(prefix)
+        set({ issuePrefix: prefix })
+      },
 
       // Token usage
       setTokenUsage: usage =>
@@ -1138,18 +984,6 @@ export const useAppStore = create<AppState & AppActions>()(
         set({ taskChatEvents: [] })
       },
 
-      // Task search
-      setTaskSearchQuery: query => set({ taskSearchQuery: query }),
-      clearTaskSearchQuery: () => set({ taskSearchQuery: "" }),
-
-      // Task selection (for keyboard navigation)
-      setSelectedTaskId: id => set({ selectedTaskId: id }),
-      clearSelectedTaskId: () => set({ selectedTaskId: null }),
-      setVisibleTaskIds: ids => set({ visibleTaskIds: ids }),
-
-      // Closed time filter
-      setClosedTimeFilter: filter => set({ closedTimeFilter: filter }),
-
       // Tool output visibility
       setShowToolOutput: show => set({ showToolOutput: show }),
       toggleToolOutput: () => set(state => ({ showToolOutput: !state.showToolOutput })),
@@ -1157,63 +991,17 @@ export const useAppStore = create<AppState & AppActions>()(
       // Search visibility
       setSearchVisible: visible => set({ isSearchVisible: visible }),
       showSearch: () => set({ isSearchVisible: true }),
-      hideSearch: () => set({ isSearchVisible: false, taskSearchQuery: "" }),
+      hideSearch: () => {
+        beadsViewStore.getState().clearTaskSearchQuery()
+        set({ isSearchVisible: false })
+      },
 
       // Hotkeys dialog
       setHotkeysDialogOpen: open => set({ hotkeysDialogOpen: open }),
       openHotkeysDialog: () => set({ hotkeysDialogOpen: true }),
       closeHotkeysDialog: () => set({ hotkeysDialogOpen: false }),
 
-      // Task list collapsed states
-      setStatusCollapsedState: state => set({ statusCollapsedState: state }),
-      toggleStatusGroup: group =>
-        set(state => ({
-          statusCollapsedState: {
-            ...state.statusCollapsedState,
-            [group]: !state.statusCollapsedState[group],
-          },
-        })),
-      setParentCollapsedState: state => set({ parentCollapsedState: state }),
-      toggleParentGroup: parentId =>
-        set(state => ({
-          parentCollapsedState: {
-            ...state.parentCollapsedState,
-            [parentId]: !state.parentCollapsedState[parentId],
-          },
-        })),
-
-      // Input draft states
-      setTaskInputDraft: draft => set({ taskInputDraft: draft }),
       setTaskChatInputDraft: draft => set({ taskChatInputDraft: draft }),
-
-      // Comment drafts per task (capped at 50 entries to prevent unbounded growth)
-      setCommentDraft: (taskId, draft) =>
-        set(state => {
-          if (!draft) {
-            // Remove the draft if empty
-            const { [taskId]: _, ...rest } = state.commentDrafts
-            return { commentDrafts: rest }
-          }
-          const updated = {
-            ...state.commentDrafts,
-            [taskId]: draft,
-          }
-          // Evict oldest entries (by insertion order) if over the cap
-          const MAX_COMMENT_DRAFTS = 50
-          const keys = Object.keys(updated)
-          if (keys.length > MAX_COMMENT_DRAFTS) {
-            const excess = keys.length - MAX_COMMENT_DRAFTS
-            for (let i = 0; i < excess; i++) {
-              delete updated[keys[i]]
-            }
-          }
-          return { commentDrafts: updated }
-        }),
-      clearCommentDraft: taskId =>
-        set(state => {
-          const { [taskId]: _, ...rest } = state.commentDrafts
-          return { commentDrafts: rest }
-        }),
 
       // Reconnection state (for auto-resuming when reconnecting mid-session)
       markRunningBeforeDisconnect: () =>
@@ -1333,15 +1121,10 @@ export const useAppStore = create<AppState & AppActions>()(
 
           // If cleaning up the active instance, also reset workspace-level state
           if (state.activeInstanceId === instanceId) {
-            return {
-              instances: updatedInstances,
-              initialTaskCount: null,
-            }
+            beadsViewStore.getState().setInitialTaskCount(null)
           }
 
-          return {
-            instances: updatedInstances,
-          }
+          return { instances: updatedInstances }
         }),
 
       hydrateInstances: serverInstances =>
@@ -1480,14 +1263,10 @@ export const useAppStore = create<AppState & AppActions>()(
 
           // If this is the active instance, also update workspace-level state
           if (state.activeInstanceId === instanceId) {
-            const newInitialTaskCount =
-              isTransitioningToRunning ? state.tasks.length
-              : isStopping ? null
-              : state.initialTaskCount
-
-            return {
-              instances: updatedInstances,
-              initialTaskCount: newInitialTaskCount,
+            if (isTransitioningToRunning) {
+              beadsViewStore.getState().setInitialTaskCount(beadsViewStore.getState().tasks.length)
+            } else if (isStopping) {
+              beadsViewStore.getState().setInitialTaskCount(null)
             }
           }
 
@@ -1656,8 +1435,6 @@ export const selectRunStartedAt = (state: AppState): number | null => {
   return activeInstance?.runStartedAt ?? null
 }
 
-export const selectInitialTaskCount = (state: AppState) => state.initialTaskCount
-
 /**
  * Get the events for the active instance.
  * Reads directly from the instances Map (single source of truth).
@@ -1667,7 +1444,6 @@ export const selectEvents = (state: AppState): ChatEvent[] => {
   return activeInstance?.events ?? []
 }
 
-export const selectTasks = (state: AppState) => state.tasks
 export const selectWorkspace = (state: AppState) => state.workspace
 export const selectBranch = (state: AppState) => state.branch
 export const selectIssuePrefix = (state: AppState) => state.issuePrefix
@@ -1720,8 +1496,6 @@ export const selectTheme = (state: AppState) => state.theme
 export const selectVSCodeThemeId = (state: AppState) => state.vscodeThemeId
 export const selectLastDarkThemeId = (state: AppState) => state.lastDarkThemeId
 export const selectLastLightThemeId = (state: AppState) => state.lastLightThemeId
-export const selectCurrentTask = (state: AppState) =>
-  state.tasks.find(t => t.status === "in_progress") ?? null
 export const selectTaskChatOpen = (state: AppState) => state.taskChatOpen
 export const selectTaskChatWidth = (state: AppState) => state.taskChatWidth
 export const selectTaskChatMessages = (state: AppState) => state.taskChatMessages
@@ -1729,10 +1503,6 @@ export const selectTaskChatLoading = (state: AppState) => state.taskChatLoading
 export const selectCurrentTaskChatSessionId = (state: AppState) => state.currentTaskChatSessionId
 export const selectTaskChatEvents = (state: AppState) => state.taskChatEvents
 export const selectSessionCount = (state: AppState) => countSessions(selectEvents(state))
-export const selectTaskSearchQuery = (state: AppState) => state.taskSearchQuery
-export const selectSelectedTaskId = (state: AppState) => state.selectedTaskId
-export const selectVisibleTaskIds = (state: AppState) => state.visibleTaskIds
-export const selectClosedTimeFilter = (state: AppState) => state.closedTimeFilter
 /**
  * Get the task ID for the current (latest) session.
  * Returns the task ID if found from ralph_task_started events, or falls back to the instance's currentTaskId.
@@ -1754,13 +1524,7 @@ export const selectSessionTask = (state: AppState): string | null => {
 }
 export const selectIsSearchVisible = (state: AppState) => state.isSearchVisible
 export const selectHotkeysDialogOpen = (state: AppState) => state.hotkeysDialogOpen
-export const selectStatusCollapsedState = (state: AppState) => state.statusCollapsedState
-export const selectParentCollapsedState = (state: AppState) => state.parentCollapsedState
-export const selectTaskInputDraft = (state: AppState) => state.taskInputDraft
 export const selectTaskChatInputDraft = (state: AppState) => state.taskChatInputDraft
-export const selectCommentDraft = (state: AppState, taskId: string) =>
-  state.commentDrafts[taskId] ?? ""
-export const selectCommentDrafts = (state: AppState) => state.commentDrafts
 
 export const selectInstanceStatus = (state: AppState, instanceId: string): RalphStatus => {
   const instance = state.instances.get(instanceId)

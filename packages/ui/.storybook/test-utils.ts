@@ -3,7 +3,7 @@
  * Provides helpers for mocking APIs and managing test state.
  */
 
-import { useAppStore } from "../src/store"
+import { beadsViewStore } from "@herbcaudill/beads-view"
 
 /**
  * Creates a mock fetch function that returns the specified response.
@@ -40,7 +40,7 @@ export function mockFetch(response: MockFetchResponse): () => void {
  * Clears task input draft from the store.
  */
 export function clearTaskInputStorage(): void {
-  useAppStore.getState().setTaskInputDraft("")
+  beadsViewStore.getState().setTaskInputDraft("")
 }
 
 /**

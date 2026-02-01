@@ -42,7 +42,7 @@ pnpm workspace with three packages:
 - **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
 - **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with Express server and React frontend
 - **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
-- Planned: **`packages/beads-view/`** - Task management UI/state extraction (see `plans/018-beads-view.md`)
+- **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state and hooks (see `plans/018-beads-view.md`)
 
 ### Project structure
 
@@ -133,6 +133,7 @@ Messages are delivered via `MessageQueue` (async iterable) through the Claude Ag
 
 - Components lead files; helper functions live in `packages/ui/src/lib` (one function per file)
 - Shared types in `types.ts`, constants in `constants.ts`
+- Task UI state and hooks live in `packages/beads-view`; UI re-exports via `@herbcaudill/beads-view`
 - Use discriminated `*ChatEvent` interfaces (e.g. `AssistantChatEvent`, `UserMessageChatEvent`) with type-guard functions in `packages/ui/src/lib/is*.ts`
 - Deprecated aliases (`ErrorEventData`, `UserMessageEvent`, etc.) exist for backward compatibility — don't use in new code
 

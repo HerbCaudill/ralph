@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useAppStore, selectWorkspace } from "@/store"
+import { useBeadsViewStore } from "@herbcaudill/beads-view"
 import {
   clearEventTimestamps,
   pauseMessageProcessing,
@@ -20,7 +21,7 @@ export function useWorkspaces(): UseWorkspacesReturn {
   const setBranch = useAppStore(state => state.setBranch)
   const setIssuePrefix = useAppStore(state => state.setIssuePrefix)
   const clearWorkspaceData = useAppStore(state => state.clearWorkspaceData)
-  const refreshTasks = useAppStore(state => state.refreshTasks)
+  const refreshTasks = useBeadsViewStore(state => state.refreshTasks)
 
   const hasFetched = useRef(false)
 

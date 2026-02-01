@@ -8,16 +8,19 @@ import {
   CommandPalette,
 } from "./components/layout"
 import { type ChatInputHandle } from "./components/chat/ChatInput"
-import { TaskDetailsController } from "./components/tasks/TaskDetailsController"
-import { type SearchInputHandle } from "./components/tasks/SearchInput"
+import { MarkdownEditor } from "./components/ui/MarkdownEditor"
+import { SessionLinks } from "./components/tasks/SessionLinks"
+import {
+  TaskDetailsController,
+  TaskSidebarController,
+  type SearchInputHandle,
+} from "@herbcaudill/beads-view"
 import {
   useAppStore,
   selectRalphStatus,
   selectIsConnected,
   selectTaskChatOpen,
   selectTaskChatWidth,
-  selectSelectedTaskId,
-  selectVisibleTaskIds,
   selectHotkeysDialogOpen,
   selectActiveInstanceId,
   selectWorkspace,
@@ -27,8 +30,14 @@ import {
   selectSession,
   selectTaskChatMessages,
   selectTaskChatEvents,
+  selectActivelyWorkingTaskIds,
 } from "./store"
 import { TaskChatController } from "./components/chat/TaskChatController"
+import {
+  useBeadsViewStore,
+  selectSelectedTaskId,
+  selectVisibleTaskIds,
+} from "@herbcaudill/beads-view"
 import {
   useHotkeys,
   useTheme,
@@ -41,6 +50,7 @@ import {
   useTaskChatPersistence,
   useFavicon,
   useDevStateExport,
+  useTasksWithSessions,
 } from "./hooks"
 import { startRalph } from "./lib/startRalph"
 import { stopRalph } from "./lib/stopRalph"
@@ -49,7 +59,6 @@ import { resumeRalph } from "./lib/resumeRalph"
 import { stopAfterCurrentRalph } from "./lib/stopAfterCurrentRalph"
 import { clearTaskChatHistory } from "./lib/clearTaskChatHistory"
 import { downloadStateExport } from "./lib/exportState"
-import { TaskSidebarController } from "./components/tasks/TaskSidebarController"
 import { AgentView } from "./components/AgentView"
 
 /**  Root application component. */
@@ -134,8 +143,14 @@ export function App() {
 
   // Get state for hotkey conditions
   const ralphStatus = useAppStore(selectRalphStatus)
+  const activelyWorkingTaskIds = useAppStore(useShallow(selectActivelyWorkingTaskIds))
+  const { taskIdsWithSessions } = useTasksWithSessions()
   const isConnected = useAppStore(selectIsConnected)
   const toggleTaskChat = useAppStore(state => state.toggleTaskChat)
+  const isRalphRunning =
+    ralphStatus === "running" ||
+    ralphStatus === "paused" ||
+    ralphStatus === "stopping_after_current"
 
   // Session navigation via custom events.
   // These dispatch events that useEventStream listens for, ensuring
@@ -156,9 +171,9 @@ export function App() {
   }, [])
 
   // Task navigation
-  const selectedTaskId = useAppStore(selectSelectedTaskId)
-  const visibleTaskIds = useAppStore(selectVisibleTaskIds)
-  const setSelectedTaskId = useAppStore(state => state.setSelectedTaskId)
+  const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
+  const visibleTaskIds = useBeadsViewStore(selectVisibleTaskIds)
+  const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
 
   // Handle task click - select the task and open the dialog
   const handleTaskClick = useCallback(
@@ -398,6 +413,9 @@ export function App() {
             searchInputRef={searchInputRef}
             onTaskClick={handleTaskClick}
             onOpenTask={handleTaskClick}
+            activelyWorkingTaskIds={activelyWorkingTaskIds}
+            taskIdsWithSessions={[...taskIdsWithSessions]}
+            isRunning={isRalphRunning}
           />
         }
         main={<AgentView chatInputRef={chatInputRef} />}
@@ -413,6 +431,24 @@ export function App() {
             onClose={taskDialogRouter.closeTaskDialog}
             onSave={taskDialog.saveTask}
             onDelete={taskDialog.deleteTask}
+            renderDescriptionEditor={({
+              value,
+              onChange,
+              placeholder,
+            }: {
+              value: string
+              onChange: (value: string) => void
+              placeholder?: string
+            }) => (
+              <MarkdownEditor
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                showToolbar={false}
+                size="sm"
+              />
+            )}
+            renderSessionLinks={(taskId: string) => <SessionLinks taskId={taskId} />}
           />
         }
         detailPanelOpen={taskDialog.isOpen}

@@ -4,6 +4,7 @@
  */
 import { useAppStore, selectRalphStatus, selectEvents } from "../store"
 import { isRalphStatus, isSessionBoundary } from "../store"
+import { beadsViewStore } from "@herbcaudill/beads-view"
 import { checkForSavedSessionState, restoreSessionState } from "./sessionStateApi"
 import { eventDatabase, writeQueue, type PersistedEvent } from "./persistence"
 import { BoundedMap } from "./BoundedMap"
@@ -809,7 +810,7 @@ function processMessage(event: MessageEvent): void {
         // Task was updated (e.g., via auto-titling) - update in store
         if (data.issue && typeof data.issue === "object") {
           const task = data.issue as { id: string; [key: string]: unknown }
-          store.updateTask(task.id, task)
+          beadsViewStore.getState().updateTask(task.id, task)
         }
         break
 
@@ -881,15 +882,17 @@ function processMessage(event: MessageEvent): void {
 
         if (mutationEvent.Type === "status" && mutationEvent.new_status && mutationEvent.IssueID) {
           // Optimistically update the task status in the store for instant UI feedback
-          store.updateTask(mutationEvent.IssueID, { status: mutationEvent.new_status })
+          beadsViewStore
+            .getState()
+            .updateTask(mutationEvent.IssueID, { status: mutationEvent.new_status })
         } else if (mutationEvent.Type === "delete" && mutationEvent.IssueID) {
           // Optimistically remove deleted tasks
-          store.removeTask(mutationEvent.IssueID)
+          beadsViewStore.getState().removeTask(mutationEvent.IssueID)
         }
 
         // Always refresh the full task list to ensure computed fields (blocked_by, etc.) are correct
         // The debounced refresh will coalesce rapid mutations into a single API call
-        store.refreshTasks()
+        beadsViewStore.getState().refreshTasks()
         break
       }
 

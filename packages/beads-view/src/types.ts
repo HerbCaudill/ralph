@@ -105,3 +105,31 @@ export interface TaskTreeNode {
   /** Child nodes (subtasks). */
   children: TaskTreeNode[]
 }
+
+/** Response payload for task list endpoints. */
+export interface TasksResponse {
+  /** Whether the request succeeded. */
+  ok: boolean
+  /** Tasks returned from the API. */
+  issues?: TaskCardTask[]
+  /** Error message when the request fails. */
+  error?: string
+}
+
+/** Response payload for task detail endpoints. */
+export interface TaskResponse {
+  /** Whether the request succeeded. */
+  ok: boolean
+  /** Task returned from the API. */
+  issue?: TaskCardTask
+  /** Error message when the request fails. */
+  error?: string
+}
+
+/** Response payload for delete operations. */
+export interface DeleteResponse {
+  /** Whether the request succeeded. */
+  ok: boolean
+  /** Error message when the request fails. */
+  error?: string
+}

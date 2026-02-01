@@ -4,6 +4,7 @@ import { EventStreamEventItem } from "@herbcaudill/agent-view"
 import { useAppStore } from "@/store"
 import { AgentViewTestWrapper } from "@/test/agentViewTestWrapper"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
+import { beadsViewStore } from "@herbcaudill/beads-view"
 
 const customEventRenderers = {
   task_lifecycle: (event: any) => <TaskLifecycleEvent event={event} />,
@@ -13,11 +14,12 @@ describe("EventStreamEventItem", () => {
   beforeEach(() => {
     useAppStore.getState().reset()
     useAppStore.getState().setIssuePrefix("r")
+    beadsViewStore.setState({ tasks: [] })
   })
 
   describe("ralph_task_started events", () => {
     it("renders a task lifecycle event with action 'starting'", () => {
-      useAppStore
+      beadsViewStore
         .getState()
         .setTasks([{ id: "r-abc1", title: "Implement feature", status: "in_progress" }])
 
@@ -61,7 +63,7 @@ describe("EventStreamEventItem", () => {
 
   describe("ralph_task_completed events", () => {
     it("renders a task lifecycle event with action 'completed'", () => {
-      useAppStore.getState().setTasks([{ id: "r-xyz9", title: "Fix bug", status: "closed" }])
+      beadsViewStore.getState().setTasks([{ id: "r-xyz9", title: "Fix bug", status: "closed" }])
 
       render(
         <AgentViewTestWrapper value={{ customEventRenderers }}>

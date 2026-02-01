@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import { linkSessionToTask, saveEventLogAndAddComment } from "./saveEventLogAndAddComment"
+import { linkSessionToTask } from "@herbcaudill/beads-view"
+import { saveEventLogAndAddComment } from "./saveEventLogAndAddComment"
 
 describe("linkSessionToTask", () => {
   beforeEach(() => {

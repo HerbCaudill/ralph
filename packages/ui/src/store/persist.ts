@@ -13,13 +13,9 @@
 
 import { createJSONStorage, type PersistOptions } from "zustand/middleware"
 import type { AppState, AppActions } from "./index"
-import type { RalphInstance, Theme, ClosedTasksTimeFilter, TaskGroup } from "@/types"
+import type { RalphInstance, Theme } from "@/types"
 import { DEFAULT_CONTEXT_WINDOW_MAX } from "./index"
 import {
-  TASK_LIST_STATUS_STORAGE_KEY,
-  TASK_LIST_PARENT_STORAGE_KEY,
-  TASK_INPUT_DRAFT_STORAGE_KEY,
-  TASK_CHAT_INPUT_DRAFT_STORAGE_KEY,
   THEME_STORAGE_KEY,
   VSCODE_THEME_STORAGE_KEY,
   LAST_DARK_THEME_STORAGE_KEY,
@@ -27,7 +23,7 @@ import {
 } from "@/constants"
 
 /** Current schema version for persistence format */
-export const PERSIST_VERSION = 8
+export const PERSIST_VERSION = 9
 
 /** Storage key for persisted state */
 export const PERSIST_NAME = "ralph-ui-store"
@@ -67,7 +63,6 @@ export interface PersistedState {
   taskChatWidth: number
   showToolOutput: boolean
   theme: Theme
-  closedTimeFilter: ClosedTasksTimeFilter
 
   // VS Code theme persistence
   vscodeThemeId: string | null
@@ -78,29 +73,16 @@ export interface PersistedState {
   currentTaskChatSessionId: string | null
 
   // View state
-  taskSearchQuery: string
-  selectedTaskId: string | null
   isSearchVisible: boolean
 
-  // Task list collapsed states
-  statusCollapsedState: Record<TaskGroup, boolean>
-  parentCollapsedState: Record<string, boolean>
-
   // Input draft states
-  taskInputDraft: string
   taskChatInputDraft: string
-
-  // Comment drafts per task (taskId -> draft text)
-  commentDrafts: Record<string, string>
 
   // Workspace metadata
   workspace: string | null
   branch: string | null
   issuePrefix: string | null
   accentColor: string | null
-
-  // Tasks (lightweight, will be resynced from server)
-  tasks: AppState["tasks"]
 
   // Instances (serialized from Map to array)
   instances: SerializedRalphInstance[]
@@ -188,7 +170,6 @@ export function deserializeInstances(
  * - UI preferences (sidebar, task chat, tool output, theme, filters)
  * - View state (session index, search, selection)
  * - Workspace metadata (path, branch, prefix, color)
- * - Tasks (will be resynced but provides faster initial render)
  * - Instances (serialized with events only for active instance)
  *
  * Excluded:
@@ -197,9 +178,7 @@ export function deserializeInstances(
  * - Event log viewer state (transient)
  * - Task chat messages/events (ephemeral)
  * - Hotkeys dialog state (transient UI)
- * - Visible task IDs (computed from tasks)
  * - Run timestamps (runtime)
- * - Initial task count (runtime)
  * - Reconnection state (runtime)
  */
 export function partialize(state: AppState): PersistedState {
@@ -210,7 +189,6 @@ export function partialize(state: AppState): PersistedState {
     taskChatWidth: state.taskChatWidth,
     showToolOutput: state.showToolOutput,
     theme: state.theme,
-    closedTimeFilter: state.closedTimeFilter,
 
     // VS Code theme persistence
     vscodeThemeId: state.vscodeThemeId,
@@ -221,29 +199,16 @@ export function partialize(state: AppState): PersistedState {
     currentTaskChatSessionId: state.currentTaskChatSessionId,
 
     // View state
-    taskSearchQuery: state.taskSearchQuery,
-    selectedTaskId: state.selectedTaskId,
     isSearchVisible: state.isSearchVisible,
 
-    // Task list collapsed states
-    statusCollapsedState: state.statusCollapsedState,
-    parentCollapsedState: state.parentCollapsedState,
-
     // Input draft states
-    taskInputDraft: state.taskInputDraft,
     taskChatInputDraft: state.taskChatInputDraft,
-
-    // Comment drafts per task
-    commentDrafts: state.commentDrafts,
 
     // Workspace metadata
     workspace: state.workspace,
     branch: state.branch,
     issuePrefix: state.issuePrefix,
     accentColor: state.accentColor,
-
-    // Tasks
-    tasks: state.tasks,
 
     // Instances (serialized)
     instances: serializeInstances(state.instances, state.activeInstanceId),
@@ -318,103 +283,19 @@ export function onRehydrateStorage(_state: AppState | undefined) {
   }
 }
 
-/** Default collapsed state for status groups */
-const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
-  open: false,
-  deferred: true,
-  closed: true,
-}
-
 /**
  * Migration function to handle schema version upgrades.
  * Migrates state from older versions to the current version.
  *
  * Version history:
  * - v1: Initial schema
- * - v2: Added statusCollapsedState and parentCollapsedState (consolidated from separate localStorage keys)
- * - v3: Added taskInputDraft and taskChatInputDraft (consolidated from separate localStorage keys)
  * - v4: Added vscodeThemeId, lastDarkThemeId, lastLightThemeId (consolidated from separate localStorage keys)
- * - v5: Added commentDrafts (per-task comment draft persistence)
  * - v6: Changed sidebarWidth and taskChatWidth from pixels to percentages of window width
  * - v7: Replaced viewingSessionIndex (number) with viewingSessionId (string) for stable session tracking
+ * - v9: Removed task UI state from UI store persistence (now in beads-view)
  */
 export function migrate(persistedState: unknown, version: number): PersistedState {
   let state = persistedState as PersistedState
-
-  if (version < 2) {
-    // Migrate from v1 to v2: Add collapsed states from separate localStorage keys
-    let statusCollapsedState = DEFAULT_STATUS_COLLAPSED_STATE
-    let parentCollapsedState: Record<string, boolean> = {}
-
-    // Try to load from legacy localStorage keys
-    try {
-      const statusStored = localStorage.getItem(TASK_LIST_STATUS_STORAGE_KEY)
-      if (statusStored) {
-        const parsed = JSON.parse(statusStored) as Record<TaskGroup, boolean>
-        statusCollapsedState = {
-          open: parsed.open ?? DEFAULT_STATUS_COLLAPSED_STATE.open,
-          deferred: parsed.deferred ?? DEFAULT_STATUS_COLLAPSED_STATE.deferred,
-          closed: parsed.closed ?? DEFAULT_STATUS_COLLAPSED_STATE.closed,
-        }
-        // Remove the legacy key after migration
-        localStorage.removeItem(TASK_LIST_STATUS_STORAGE_KEY)
-      }
-    } catch {
-      // Ignore errors, use defaults
-    }
-
-    try {
-      const parentStored = localStorage.getItem(TASK_LIST_PARENT_STORAGE_KEY)
-      if (parentStored) {
-        parentCollapsedState = JSON.parse(parentStored) as Record<string, boolean>
-        // Remove the legacy key after migration
-        localStorage.removeItem(TASK_LIST_PARENT_STORAGE_KEY)
-      }
-    } catch {
-      // Ignore errors, use defaults
-    }
-
-    state = {
-      ...state,
-      statusCollapsedState,
-      parentCollapsedState,
-    }
-  }
-
-  if (version < 3) {
-    // Migrate from v2 to v3: Add input draft states from separate localStorage keys
-    let taskInputDraft = ""
-    let taskChatInputDraft = ""
-
-    // Try to load from legacy localStorage keys
-    try {
-      const taskInputStored = localStorage.getItem(TASK_INPUT_DRAFT_STORAGE_KEY)
-      if (taskInputStored) {
-        taskInputDraft = taskInputStored
-        // Remove the legacy key after migration
-        localStorage.removeItem(TASK_INPUT_DRAFT_STORAGE_KEY)
-      }
-    } catch {
-      // Ignore errors, use defaults
-    }
-
-    try {
-      const taskChatInputStored = localStorage.getItem(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
-      if (taskChatInputStored) {
-        taskChatInputDraft = taskChatInputStored
-        // Remove the legacy key after migration
-        localStorage.removeItem(TASK_CHAT_INPUT_DRAFT_STORAGE_KEY)
-      }
-    } catch {
-      // Ignore errors, use defaults
-    }
-
-    state = {
-      ...state,
-      taskInputDraft,
-      taskChatInputDraft,
-    }
-  }
 
   if (version < 4) {
     // Migrate from v3 to v4: Add theme states from separate localStorage keys
@@ -477,14 +358,6 @@ export function migrate(persistedState: unknown, version: number): PersistedStat
     }
   }
 
-  if (version < 5) {
-    // Migrate from v4 to v5: Add commentDrafts (empty by default)
-    state = {
-      ...state,
-      commentDrafts: {},
-    }
-  }
-
   if (version < 6) {
     // Migrate from v5 to v6: Convert panel widths from pixels to percentages
     // Use the current window width for conversion, or a reasonable default
@@ -529,6 +402,31 @@ export function migrate(persistedState: unknown, version: number): PersistedStat
     // The in-memory viewingSessionId is no longer needed.
     const oldState = state as PersistedState & { viewingSessionId?: string | null }
     const { viewingSessionId: _, ...rest } = oldState
+    state = rest as PersistedState
+  }
+
+  if (version < 9) {
+    const oldState = state as PersistedState & {
+      closedTimeFilter?: unknown
+      taskSearchQuery?: unknown
+      selectedTaskId?: unknown
+      statusCollapsedState?: unknown
+      parentCollapsedState?: unknown
+      taskInputDraft?: unknown
+      commentDrafts?: unknown
+      tasks?: unknown
+    }
+    const {
+      closedTimeFilter: _closedTimeFilter,
+      taskSearchQuery: _taskSearchQuery,
+      selectedTaskId: _selectedTaskId,
+      statusCollapsedState: _statusCollapsedState,
+      parentCollapsedState: _parentCollapsedState,
+      taskInputDraft: _taskInputDraft,
+      commentDrafts: _commentDrafts,
+      tasks: _tasks,
+      ...rest
+    } = oldState
     state = rest as PersistedState
   }
 

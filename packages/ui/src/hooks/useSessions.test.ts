@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { useSessions } from "./useSessions"
 import { eventDatabase, type SessionMetadata } from "@/lib/persistence"
-import { useAppStore } from "@/store"
-import type { Task } from "@/types"
+import { beadsViewStore, type Task } from "@herbcaudill/beads-view"
 
 // Mock the eventDatabase
 vi.mock("@/lib/persistence", () => ({
@@ -44,13 +43,13 @@ describe("useSessions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset store state to ensure test isolation
-    useAppStore.setState({ tasks: [] })
+    beadsViewStore.setState({ tasks: [] })
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
     // Clean up store state
-    useAppStore.setState({ tasks: [] })
+    beadsViewStore.setState({ tasks: [] })
   })
 
   describe("initialization", () => {
@@ -78,7 +77,7 @@ describe("useSessions", () => {
       ])
 
       // Set up tasks in store for title lookup
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         {
           id: "task-1",
           title: "Test Task",
@@ -231,11 +230,11 @@ describe("useSessions", () => {
   describe("metadata handling", () => {
     beforeEach(() => {
       // Reset store to ensure clean state (no tasks from previous tests)
-      useAppStore.setState({ tasks: [] })
+      beadsViewStore.setState({ tasks: [] })
     })
 
     afterEach(() => {
-      useAppStore.setState({ tasks: [] })
+      beadsViewStore.setState({ tasks: [] })
     })
 
     it("returns undefined metadata when taskId is not present", async () => {
@@ -610,12 +609,12 @@ describe("useSessions", () => {
 
     beforeEach(() => {
       // Reset store state before each test
-      useAppStore.setState({ tasks: [] })
+      beadsViewStore.setState({ tasks: [] })
     })
 
     afterEach(() => {
       // Clean up store state
-      useAppStore.setState({ tasks: [] })
+      beadsViewStore.setState({ tasks: [] })
     })
 
     it("enriches session with task title from store when title matches taskId", async () => {
@@ -626,7 +625,7 @@ describe("useSessions", () => {
       ])
 
       // Store has the actual task with proper title
-      useAppStore.setState({
+      beadsViewStore.setState({
         tasks: [createTask("task-123", "Fix login bug")],
       })
 
@@ -649,7 +648,7 @@ describe("useSessions", () => {
       ])
 
       // Store has the actual task with proper title
-      useAppStore.setState({
+      beadsViewStore.setState({
         tasks: [createTask("task-456", "Add dark mode")],
       })
 
@@ -671,7 +670,7 @@ describe("useSessions", () => {
       ])
 
       // Store has the task with a title
-      useAppStore.setState({
+      beadsViewStore.setState({
         tasks: [createTask("task-789", "Task From Store")],
       })
 
@@ -690,7 +689,7 @@ describe("useSessions", () => {
       // Session has no taskId
       mockDatabase.listAllSessions.mockResolvedValue([createValidMetadata("session-1", timestamp)])
 
-      useAppStore.setState({
+      beadsViewStore.setState({
         tasks: [createTask("task-123", "Some Task")],
       })
 
@@ -709,7 +708,7 @@ describe("useSessions", () => {
       // Session has no taskId
       mockDatabase.listAllSessions.mockResolvedValue([createValidMetadata("session-1", timestamp)])
 
-      useAppStore.setState({
+      beadsViewStore.setState({
         tasks: [createTask("task-123", "Some Task")],
       })
 
@@ -732,7 +731,7 @@ describe("useSessions", () => {
       ])
 
       // Store has no tasks
-      useAppStore.setState({ tasks: [] })
+      beadsViewStore.setState({ tasks: [] })
 
       const { result } = renderHook(() => useSessions())
 
@@ -752,7 +751,7 @@ describe("useSessions", () => {
       ])
 
       // Store has different tasks, not the one we're looking for
-      useAppStore.setState({
+      beadsViewStore.setState({
         tasks: [createTask("task-other", "Other Task")],
       })
 
@@ -776,7 +775,7 @@ describe("useSessions", () => {
         createValidMetadata("session-4", timestamp + 3000, "task-unknown"),
       ])
 
-      useAppStore.setState({
+      beadsViewStore.setState({
         tasks: [
           createTask("task-1", "First Task Title"),
           createTask("task-2", "Second Task Title"),
@@ -809,7 +808,7 @@ describe("useSessions", () => {
         createValidMetadata("session-with-task-2", timestamp + 2000, "task-2"),
       ])
 
-      useAppStore.setState({
+      beadsViewStore.setState({
         tasks: [createTask("task-1", "First Task"), createTask("task-2", "Second Task")],
       })
 

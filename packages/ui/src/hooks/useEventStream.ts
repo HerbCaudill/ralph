@@ -3,15 +3,14 @@ import {
   useAppStore,
   selectEvents,
   selectRalphStatus,
-  selectTasks,
   selectInstanceEvents,
   selectInstanceStatus,
   selectActiveInstance,
   selectInstance,
-  selectIssuePrefix,
   selectIsConnected,
   getEventsForSessionId,
 } from "@/store"
+import { useBeadsViewStore, selectTasks, selectIssuePrefix } from "@herbcaudill/beads-view"
 import { useSessions, buildSessionPath, parseSessionIdFromUrl } from "@/hooks"
 import type { SessionSummary } from "@/hooks"
 import type { ChatEvent, Task, RalphStatus } from "@/types"
@@ -82,8 +81,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const ralphStatus = useAppStore(state =>
     instanceId ? selectInstanceStatus(state, instanceId) : selectRalphStatus(state),
   )
-  const tasks = useAppStore(selectTasks)
-  const issuePrefix = useAppStore(selectIssuePrefix)
+  const tasks = useBeadsViewStore(selectTasks)
+  const issuePrefix = useBeadsViewStore(selectIssuePrefix)
   const isConnected = useAppStore(selectIsConnected)
 
   // Get instance for currentTaskId fallback

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { eventDatabase, type PersistedSession } from "@/lib/persistence"
 import type { ChatEvent, Task } from "@/types"
-import { useAppStore, selectTasks } from "@/store"
+import { useBeadsViewStore, selectTasks } from "@herbcaudill/beads-view"
 
 /**
  * Summary of an session (without full event data).
@@ -261,7 +261,7 @@ export function useSessions(options: UseSessionsOptions = {}): UseSessionsResult
   }, [refresh])
 
   // Get current tasks from store for on-the-fly title lookup
-  const tasks = useAppStore(selectTasks)
+  const tasks = useBeadsViewStore(selectTasks)
 
   // Enrich sessions with task titles from the store
   // Task titles are always looked up on-the-fly from beads, never cached

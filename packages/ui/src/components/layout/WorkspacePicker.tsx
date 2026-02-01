@@ -8,6 +8,7 @@ import {
   selectBranch,
   selectIssuePrefix,
 } from "@/store"
+import { useBeadsViewStore } from "@herbcaudill/beads-view"
 import {
   clearEventTimestamps,
   pauseMessageProcessing,
@@ -36,7 +37,7 @@ export function WorkspacePicker({
   const setBranch = useAppStore(state => state.setBranch)
   const setIssuePrefix = useAppStore(state => state.setIssuePrefix)
   const clearWorkspaceData = useAppStore(state => state.clearWorkspaceData)
-  const refreshTasks = useAppStore(state => state.refreshTasks)
+  const refreshTasks = useBeadsViewStore(state => state.refreshTasks)
   const [isOpen, setIsOpen] = useState(false)
   const [workspaceInfo, setWorkspaceInfo] = useState<WorkspaceInfo | null>(null)
   const [allWorkspaces, setAllWorkspaces] = useState<WorkspaceListEntry[]>([])

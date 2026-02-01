@@ -8,7 +8,7 @@ import type {
   TaskLifecycleChatEvent,
   PromiseCompleteChatEvent,
 } from "@herbcaudill/agent-view"
-import { useAppStore, selectTasks } from "@/store"
+import { useBeadsViewStore, selectTasks } from "@herbcaudill/beads-view"
 import { TaskLifecycleEvent } from "./TaskLifecycleEvent"
 import { PromiseCompleteEvent } from "./PromiseCompleteEvent"
 
@@ -45,7 +45,7 @@ export function EventStreamController(
   } = useEventStream({ instanceId, maxEvents })
 
   // Provide tasks from store to agent-view context for task title lookups
-  const tasks = useAppStore(selectTasks)
+  const tasks = useBeadsViewStore(selectTasks)
   const agentViewContext = useMemo<Partial<AgentViewContextValue>>(
     () => ({
       tasks: tasks.map(t => ({ id: t.id, title: t.title })),

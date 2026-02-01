@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import {
   useAppStore,
-  selectCurrentTask,
   isSessionBoundary,
   getSessionBoundaries,
   countSessions,
@@ -52,8 +51,9 @@ import {
   getSessionId,
   getSessionIndexById,
 } from "./index"
-import type { ChatEvent, Task, TaskChatMessage } from "@/types"
-import { PERSIST_NAME, type PersistedState, serializeInstances } from "./persist"
+import type { ChatEvent, TaskChatMessage } from "@/types"
+import { beadsViewStore } from "@herbcaudill/beads-view"
+import { PERSIST_NAME, PERSIST_VERSION, type PersistedState, serializeInstances } from "./persist"
 
 /**
  * Helper to create a result event with token usage that `selectTokenUsage` can derive from.
@@ -83,36 +83,42 @@ function createPersistedState(overrides: Partial<PersistedState>): string {
     taskChatWidth: 25,
     showToolOutput: false,
     theme: "system",
-    closedTimeFilter: "past_day",
     vscodeThemeId: null,
     lastDarkThemeId: null,
     lastLightThemeId: null,
     currentTaskChatSessionId: null,
-    taskSearchQuery: "",
-    selectedTaskId: null,
     isSearchVisible: false,
-    statusCollapsedState: { open: false, deferred: true, closed: true },
-    parentCollapsedState: {},
-    taskInputDraft: "",
     taskChatInputDraft: "",
-    commentDrafts: {},
     workspace: null,
     branch: null,
     issuePrefix: null,
     accentColor: null,
-    tasks: [],
     instances: serializeInstances(defaultInstances, DEFAULT_INSTANCE_ID),
     activeInstanceId: DEFAULT_INSTANCE_ID,
     ...overrides,
   }
 
-  return JSON.stringify({ state, version: 6 })
+  return JSON.stringify({ state, version: PERSIST_VERSION })
 }
 
 describe("useAppStore", () => {
   beforeEach(() => {
     // Reset store to initial state before each test
     useAppStore.getState().reset()
+    beadsViewStore.setState({
+      issuePrefix: null,
+      accentColor: null,
+      initialTaskCount: null,
+      tasks: [],
+      taskSearchQuery: "",
+      selectedTaskId: null,
+      visibleTaskIds: [],
+      closedTimeFilter: "past_day",
+      statusCollapsedState: { open: false, deferred: true, closed: true },
+      parentCollapsedState: {},
+      taskInputDraft: "",
+      commentDrafts: {},
+    })
     // Silence console output during tests
     vi.spyOn(console, "log").mockImplementation(() => {})
     vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -133,7 +139,6 @@ describe("useAppStore", () => {
       expect(selectContextWindow(state)).toEqual({ used: 0, max: 200_000 })
       expect(selectSession(state)).toEqual({ current: 0, total: 0 })
       // Workspace state
-      expect(state.tasks).toEqual([])
       expect(state.workspace).toBeNull()
       expect(state.branch).toBeNull()
       expect(state.connectionStatus).toBe("disconnected")
@@ -870,7 +875,7 @@ describe("useAppStore", () => {
       expect(selectContextWindow(state).used).toBe(0)
       expect(selectSession(state)).toEqual({ current: 0, total: 0 })
       expect(selectRunStartedAt(state)).toBeNull()
-      expect(state.initialTaskCount).toBeNull()
+      expect(beadsViewStore.getState().initialTaskCount).toBeNull()
     })
 
     it("does not affect active instance when cleaning up a non-active instance", () => {
@@ -1435,62 +1440,62 @@ describe("useAppStore", () => {
 
     it("sets initialTaskCount when transitioning to running", () => {
       // Set up some tasks before running
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         { id: "1", title: "Task 1", status: "open" },
         { id: "2", title: "Task 2", status: "closed" },
         { id: "3", title: "Task 3", status: "in_progress" },
       ])
 
       // Initially null
-      expect(useAppStore.getState().initialTaskCount).toBeNull()
+      expect(beadsViewStore.getState().initialTaskCount).toBeNull()
 
       // Transition to running
       useAppStore.getState().setRalphStatus("running")
 
       // Should capture initial task count
-      expect(useAppStore.getState().initialTaskCount).toBe(3)
+      expect(beadsViewStore.getState().initialTaskCount).toBe(3)
     })
 
     it("clears initialTaskCount when transitioning to stopped", () => {
       // Set up and start
-      useAppStore.getState().setTasks([{ id: "1", title: "Task 1", status: "open" }])
+      beadsViewStore.getState().setTasks([{ id: "1", title: "Task 1", status: "open" }])
       useAppStore.getState().setRalphStatus("running")
-      expect(useAppStore.getState().initialTaskCount).toBe(1)
+      expect(beadsViewStore.getState().initialTaskCount).toBe(1)
 
       // Stop
       useAppStore.getState().setRalphStatus("stopped")
-      expect(useAppStore.getState().initialTaskCount).toBeNull()
+      expect(beadsViewStore.getState().initialTaskCount).toBeNull()
     })
 
     it("preserves initialTaskCount during paused/stopping_after_current states", () => {
       // Set up and start
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         { id: "1", title: "Task 1", status: "open" },
         { id: "2", title: "Task 2", status: "open" },
       ])
       useAppStore.getState().setRalphStatus("running")
-      expect(useAppStore.getState().initialTaskCount).toBe(2)
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
 
       // Pause - should preserve
       useAppStore.getState().setRalphStatus("paused")
-      expect(useAppStore.getState().initialTaskCount).toBe(2)
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
 
       // Stop after current - should preserve
       useAppStore.getState().setRalphStatus("stopping_after_current")
-      expect(useAppStore.getState().initialTaskCount).toBe(2)
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
     })
 
     it("does not update initialTaskCount when already running", () => {
       // Start with 2 tasks
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         { id: "1", title: "Task 1", status: "open" },
         { id: "2", title: "Task 2", status: "open" },
       ])
       useAppStore.getState().setRalphStatus("running")
-      expect(useAppStore.getState().initialTaskCount).toBe(2)
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
 
       // Add more tasks
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         { id: "1", title: "Task 1", status: "open" },
         { id: "2", title: "Task 2", status: "open" },
         { id: "3", title: "Task 3", status: "open" },
@@ -1498,7 +1503,7 @@ describe("useAppStore", () => {
 
       // Set running again (shouldn't change initial count)
       useAppStore.getState().setRalphStatus("running")
-      expect(useAppStore.getState().initialTaskCount).toBe(2)
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
     })
   })
 
@@ -1622,93 +1627,6 @@ describe("useAppStore", () => {
     })
   })
 
-  describe("tasks", () => {
-    const sampleTasks: Task[] = [
-      { id: "1", title: "Task 1", status: "open" },
-      { id: "2", title: "Task 2", status: "in_progress" },
-      { id: "3", title: "Task 3", status: "closed" },
-    ]
-
-    it("sets tasks", () => {
-      useAppStore.getState().setTasks(sampleTasks)
-
-      const tasks = useAppStore.getState().tasks
-      expect(tasks).toHaveLength(3)
-      expect(tasks).toEqual(sampleTasks)
-    })
-
-    it("updates a specific task", () => {
-      useAppStore.getState().setTasks(sampleTasks)
-      useAppStore.getState().updateTask("2", { status: "closed" })
-
-      const tasks = useAppStore.getState().tasks
-      const updatedTask = tasks.find(t => t.id === "2")
-      expect(updatedTask?.status).toBe("closed")
-    })
-
-    it("updates task title", () => {
-      useAppStore.getState().setTasks(sampleTasks)
-      useAppStore.getState().updateTask("1", { title: "Updated title" })
-
-      const tasks = useAppStore.getState().tasks
-      const updatedTask = tasks.find(t => t.id === "1")
-      expect(updatedTask?.title).toBe("Updated title")
-    })
-
-    it("does not modify other tasks when updating", () => {
-      useAppStore.getState().setTasks(sampleTasks)
-      useAppStore.getState().updateTask("2", { status: "closed" })
-
-      const tasks = useAppStore.getState().tasks
-      expect(tasks.find(t => t.id === "1")?.status).toBe("open")
-      expect(tasks.find(t => t.id === "3")?.status).toBe("closed")
-    })
-
-    it("clears all tasks", () => {
-      useAppStore.getState().setTasks(sampleTasks)
-      expect(useAppStore.getState().tasks).toHaveLength(3)
-
-      useAppStore.getState().clearTasks()
-      expect(useAppStore.getState().tasks).toEqual([])
-    })
-
-    describe("selectCurrentTask", () => {
-      it("returns task with in_progress status", () => {
-        useAppStore.getState().setTasks(sampleTasks)
-        const currentTask = selectCurrentTask(useAppStore.getState())
-        expect(currentTask).not.toBeNull()
-        expect(currentTask?.id).toBe("2")
-        expect(currentTask?.status).toBe("in_progress")
-      })
-
-      it("returns null when no task is in progress", () => {
-        const tasksWithoutInProgress: Task[] = [
-          { id: "1", title: "Task 1", status: "open" },
-          { id: "2", title: "Task 2", status: "closed" },
-        ]
-        useAppStore.getState().setTasks(tasksWithoutInProgress)
-        const currentTask = selectCurrentTask(useAppStore.getState())
-        expect(currentTask).toBeNull()
-      })
-
-      it("returns null when tasks are empty", () => {
-        useAppStore.getState().setTasks([])
-        const currentTask = selectCurrentTask(useAppStore.getState())
-        expect(currentTask).toBeNull()
-      })
-
-      it("returns first in_progress task when multiple exist", () => {
-        const tasksWithMultipleInProgress: Task[] = [
-          { id: "1", title: "Task 1", status: "in_progress" },
-          { id: "2", title: "Task 2", status: "in_progress" },
-        ]
-        useAppStore.getState().setTasks(tasksWithMultipleInProgress)
-        const currentTask = selectCurrentTask(useAppStore.getState())
-        expect(currentTask?.id).toBe("1")
-      })
-    })
-  })
-
   describe("workspace", () => {
     it("sets workspace path", () => {
       useAppStore.getState().setWorkspace("/path/to/project")
@@ -1723,10 +1641,9 @@ describe("useAppStore", () => {
 
     it("clears all workspace-specific data", () => {
       // Set up various workspace-specific state
-      const { addEvent, setTasks, setSession, addTaskChatMessage, addTaskChatEvent } =
-        useAppStore.getState()
+      const { addEvent, setSession, addTaskChatMessage, addTaskChatEvent } = useAppStore.getState()
       addEvent(makeResultEvent(100, 50))
-      setTasks([{ id: "1", title: "Task 1", status: "open" }])
+      beadsViewStore.getState().setTasks([{ id: "1", title: "Task 1", status: "open" }])
       setSession({ current: 2, total: 5 })
       addTaskChatMessage({ id: "msg-1", role: "user", content: "Hello", timestamp: 123 })
       addTaskChatEvent({ type: "stream_event", timestamp: 456, event: {} })
@@ -1734,7 +1651,7 @@ describe("useAppStore", () => {
 
       // Verify state was set (use selectors for instance-level data)
       expect(selectEvents(useAppStore.getState())).toHaveLength(1)
-      expect(useAppStore.getState().tasks).toHaveLength(1)
+      expect(beadsViewStore.getState().tasks).toHaveLength(1)
       expect(selectTokenUsage(useAppStore.getState()).input).toBe(100)
       expect(selectSession(useAppStore.getState()).current).toBe(2)
       expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
@@ -1745,7 +1662,7 @@ describe("useAppStore", () => {
 
       // Verify all workspace-specific state was cleared (use selectors for instance-level data)
       expect(selectEvents(useAppStore.getState())).toEqual([])
-      expect(useAppStore.getState().tasks).toEqual([])
+      expect(beadsViewStore.getState().tasks).toEqual([])
       expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
       expect(selectSession(useAppStore.getState())).toEqual({ current: 0, total: 0 })
       expect(useAppStore.getState().taskChatMessages).toEqual([])
@@ -3099,7 +3016,6 @@ describe("useAppStore", () => {
       const {
         setRalphStatus,
         addEvent,
-        setTasks,
         setWorkspace,
         setAccentColor,
         setBranch,
@@ -3114,7 +3030,6 @@ describe("useAppStore", () => {
 
       setRalphStatus("running")
       addEvent(makeResultEvent(1000, 500))
-      setTasks([{ id: "1", title: "Task", status: "open" }])
       setWorkspace("/path")
       setAccentColor("#4d9697")
       setBranch("feature/test")
@@ -3132,7 +3047,6 @@ describe("useAppStore", () => {
       let state = useAppStore.getState()
       expect(selectRalphStatus(state)).toBe("running")
       expect(selectEvents(state)).toHaveLength(1)
-      expect(state.tasks).toHaveLength(1)
       expect(state.workspace).toBe("/path")
       expect(state.accentColor).toBe("#4d9697")
       expect(state.branch).toBe("feature/test")
@@ -3153,7 +3067,6 @@ describe("useAppStore", () => {
       state = useAppStore.getState()
       expect(selectRalphStatus(state)).toBe("stopped")
       expect(selectEvents(state)).toEqual([])
-      expect(state.tasks).toEqual([])
       expect(state.workspace).toBeNull()
       expect(state.accentColor).toBeNull()
       expect(state.branch).toBeNull()
@@ -3196,14 +3109,14 @@ describe("useAppStore", () => {
     })
 
     it("hideSearch also clears the search query", () => {
-      useAppStore.getState().setTaskSearchQuery("test query")
+      beadsViewStore.getState().setTaskSearchQuery("test query")
       useAppStore.getState().showSearch()
 
-      expect(useAppStore.getState().taskSearchQuery).toBe("test query")
+      expect(beadsViewStore.getState().taskSearchQuery).toBe("test query")
       expect(useAppStore.getState().isSearchVisible).toBe(true)
 
       useAppStore.getState().hideSearch()
-      expect(useAppStore.getState().taskSearchQuery).toBe("")
+      expect(beadsViewStore.getState().taskSearchQuery).toBe("")
       expect(useAppStore.getState().isSearchVisible).toBe(false)
     })
   })

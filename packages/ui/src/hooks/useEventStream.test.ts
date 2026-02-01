@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { useEventStream } from "./useEventStream"
 import { useAppStore, DEFAULT_INSTANCE_ID } from "@/store"
+import { beadsViewStore } from "@herbcaudill/beads-view"
 
 // Mock useSessions
 const mockLoadSessionEvents = vi.fn()
@@ -48,6 +49,7 @@ describe("useEventStream", () => {
   beforeEach(() => {
     // Reset store state before each test
     useAppStore.getState().reset()
+    beadsViewStore.setState({ tasks: [] })
     // Reset mock functions and state
     mockLoadSessionEvents.mockClear()
     mockClearSelectedSession.mockClear()
@@ -161,7 +163,7 @@ describe("useEventStream", () => {
   describe("session task detection", () => {
     it("returns task from ralph_task_started event with title from store", () => {
       // Add task to store for title lookup
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         {
           id: "rui-123",
           title: "Fix the bug",
@@ -213,7 +215,7 @@ describe("useEventStream", () => {
     })
 
     it("looks up task title from store when event has taskId", () => {
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         {
           id: "rui-123",
           title: "Task from store",
@@ -235,7 +237,7 @@ describe("useEventStream", () => {
     })
 
     it("falls back to in-progress task from store when no ralph_task_started event", () => {
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         {
           id: "rui-456",
           title: "In progress task",
@@ -287,7 +289,7 @@ describe("useEventStream", () => {
 
     it("uses task from historical session metadata", () => {
       // Add task to store for title lookup
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         {
           id: "rui-historical",
           title: "Historical task title",
@@ -351,7 +353,7 @@ describe("useEventStream", () => {
       }
 
       // Add task to store for title lookup
-      useAppStore.getState().setTasks([
+      beadsViewStore.getState().setTasks([
         {
           id: "metadata-task",
           title: "Metadata Task",
