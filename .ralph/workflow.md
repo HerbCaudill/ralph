@@ -2,8 +2,6 @@
 
 Output your working directory before beginning.
 
-Precede every message with an emoji.
-
 ## Build and test
 
 Use the **run-tests** agent to check for errors, using `pnpm test:all`.
