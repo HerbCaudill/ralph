@@ -1,4 +1,5 @@
 import type { TasksResponse, TaskStatus } from "../types"
+import { apiFetch } from "./apiClient"
 
 /**
  * Fetch tasks from the API with optional filters.
@@ -19,10 +20,10 @@ export async function fetchTasks(
     params.set("all", "true")
   }
 
-  const url = `/api/tasks${params.toString() ? `?${params.toString()}` : ""}`
+  const path = `/api/tasks${params.toString() ? `?${params.toString()}` : ""}`
 
   try {
-    const response = await fetch(url)
+    const response = await apiFetch(path)
     return (await response.json()) as TasksResponse
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to fetch tasks" }

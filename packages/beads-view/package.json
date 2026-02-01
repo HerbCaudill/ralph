@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js"
     }
   },
   "files": [
@@ -38,8 +42,14 @@
     "access": "public"
   },
   "peerDependencies": {
+    "express": "^4.21.0 || ^5.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@herbcaudill/agent-view": "workspace:*",
@@ -55,6 +65,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@types/express": "^5.0.2",
     "@storybook/addon-vitest": "^10.2.0",
     "@storybook/react-vite": "^10.2.0",
     "@tailwindcss/typography": "^0.5.19",

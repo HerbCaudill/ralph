@@ -42,7 +42,7 @@ pnpm workspace with three packages:
 - **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
 - **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with Express server and React frontend
 - **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
-- **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state and hooks (see `plans/018-beads-view.md`)
+- **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
 
 ### Project structure
 
@@ -66,9 +66,16 @@ packages/cli/                       # CLI package
     core-prompt.md          # Bundled session protocol
     workflow.md             # Default workflow -> .ralph/workflow.md
 
+packages/beads-view/                   # Beads-view package
+  src/
+    lib/
+      apiClient.ts          # Configurable API client (configureApiClient, apiFetch)
+    server/
+      taskRoutes.ts         # Reusable Express task routes (registerTaskRoutes)
+
 packages/ui/                        # UI package
   server/                   # Express backend
-    index.ts                # Server entry + REST API + WebSocket
+    index.ts                # Server entry + REST API + WebSocket (imports task routes from beads-view)
     RalphManager.ts         # Spawns and manages Ralph CLI process
     BdProxy.ts              # Proxy for beads CLI commands
     ThemeDiscovery.ts       # Discovers VS Code themes
@@ -133,7 +140,7 @@ Messages are delivered via `MessageQueue` (async iterable) through the Claude Ag
 
 - Components lead files; helper functions live in `packages/ui/src/lib` (one function per file)
 - Shared types in `types.ts`, constants in `constants.ts`
-- Task UI state and hooks live in `packages/beads-view`; UI re-exports via `@herbcaudill/beads-view`
+- Task UI state, hooks, and API client live in `packages/beads-view`; UI re-exports via `@herbcaudill/beads-view`. Server-side task routes are imported from `@herbcaudill/beads-view/server`
 - Use discriminated `*ChatEvent` interfaces (e.g. `AssistantChatEvent`, `UserMessageChatEvent`) with type-guard functions in `packages/ui/src/lib/is*.ts`
 - Deprecated aliases (`ErrorEventData`, `UserMessageEvent`, etc.) exist for backward compatibility — don't use in new code
 

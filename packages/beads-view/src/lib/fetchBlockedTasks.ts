@@ -1,4 +1,5 @@
 import type { TasksResponse } from "../types"
+import { apiFetch } from "./apiClient"
 
 /**
  * Fetch blocked tasks from the API.
@@ -12,10 +13,10 @@ export async function fetchBlockedTasks(
     params.set("parent", parent)
   }
 
-  const url = `/api/tasks/blocked${params.toString() ? `?${params.toString()}` : ""}`
+  const path = `/api/tasks/blocked${params.toString() ? `?${params.toString()}` : ""}`
 
   try {
-    const response = await fetch(url)
+    const response = await apiFetch(path)
     return (await response.json()) as TasksResponse
   } catch (err) {
     return {

@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiClient"
+
 /**
  * Add a closing comment to a task with a link to the session.
  */
@@ -12,7 +14,7 @@ export async function linkSessionToTask(
   }
 
   try {
-    const commentResponse = await fetch(`/api/tasks/${taskId}/comments`, {
+    const commentResponse = await apiFetch(`/api/tasks/${taskId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

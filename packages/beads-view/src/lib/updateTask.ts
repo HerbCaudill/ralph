@@ -1,4 +1,5 @@
 import type { TaskResponse, TaskUpdateData } from "../types"
+import { apiFetch } from "./apiClient"
 
 /**
  * Update a task with new fields.
@@ -10,7 +11,7 @@ export async function updateTask(
   updates: TaskUpdateData,
 ): Promise<TaskResponse> {
   try {
-    const response = await fetch(`/api/tasks/${id}`, {
+    const response = await apiFetch(`/api/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),

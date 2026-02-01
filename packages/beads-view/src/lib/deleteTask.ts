@@ -1,4 +1,5 @@
 import type { DeleteResponse } from "../types"
+import { apiFetch } from "./apiClient"
 
 /**
  * Delete a task by ID.
@@ -8,7 +9,7 @@ export async function deleteTask(
   id: string,
 ): Promise<DeleteResponse> {
   try {
-    const response = await fetch(`/api/tasks/${id}`, {
+    const response = await apiFetch(`/api/tasks/${id}`, {
       method: "DELETE",
     })
 

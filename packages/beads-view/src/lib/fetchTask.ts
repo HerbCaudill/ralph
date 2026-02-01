@@ -1,4 +1,5 @@
 import type { TaskResponse } from "../types"
+import { apiFetch } from "./apiClient"
 
 /**
  * Fetch a single task by ID.
@@ -8,7 +9,7 @@ export async function fetchTask(
   id: string,
 ): Promise<TaskResponse> {
   try {
-    const response = await fetch(`/api/tasks/${id}`)
+    const response = await apiFetch(`/api/tasks/${id}`)
 
     const contentType = response.headers.get("content-type")
     if (!contentType?.includes("application/json")) {
