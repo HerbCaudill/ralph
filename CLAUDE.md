@@ -219,6 +219,10 @@ Reference docs for key libraries used in this project:
 - **Effect TS** — `vendor-docs/effect-ts.md` — Typed functional effects, error handling, dependency injection, concurrency, resource management
 - **Effect Schema** — `vendor-docs/effect-schema.md` — Type-safe data validation, parsing, transformation, encoding/decoding
 
+## Architecture documentation
+
+- **Server responsibilities map** — `docs/server-responsibilities-map.md` — All server routes, WebSocket channels, and types for the planned server split
+
 <!-- BEGIN BEADS INTEGRATION -->
 
 ## Issue Tracking with bd (beads)
