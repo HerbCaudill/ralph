@@ -9,8 +9,8 @@ Extract task management UI + state into `packages/beads-view` so it is testable 
 - Define beads-view scope: task list/sidebar, search, quick add, task details/editing, related tasks/graph, progress indicators; exclude task chat and ralph loop/event log.
 - Create a new workspace package `packages/beads-view` with its own `src/` structure (components, hooks, lib, store, types).
 - Move task-related hooks, lib utilities, and types into beads-view; keep one function per file and shared types/constants in `types.ts`/`constants.ts`.
-- Extract task-related store state into a beads-view slice (or local store) and have `packages/ui` compose it into the global store.
-- Add a beads-view task API client with a configurable fetch/base URL, and extract server task routes into a dedicated module to formalize the boundary.
+- Extract task-related store state into a beads-view local store owned by the package; `packages/ui` consumes it via provider/hooks.
+- Add a beads-view task API client with configurable `baseUrl` and `fetch`, and extract server task routes into a dedicated module to formalize the boundary.
 - Update `packages/ui` imports to consume beads-view exports; keep storybook/tests green and update docs/CLAUDE as needed.
 
 ## Tasks
@@ -23,8 +23,12 @@ Extract task management UI + state into `packages/beads-view` so it is testable 
 6. Extract server task routes into a module and introduce a beads-view task API client boundary.
 7. Update docs/CLAUDE, run format/build/tests.
 
-## Unresolved Questions
+## Decisions
 
-- What should the initial public export surface of beads-view include (components/hooks/store helpers)?
-- Should beads-view own its own store, or expose a slice for the host app to compose?
-- Do we need a configurable API client interface now (base URL, fetch injection), or keep it minimal and refactor later?
+- Export surface:
+  - components: `TaskSidebar`, `TaskList`, `TaskDetailsDialog`, `TaskDetails`, `TaskCard`, `RelatedTasks`, `RelationshipGraph`, `SearchInput`, `QuickTaskInput`, `TaskProgressBar`, `TaskGroupHeader`, `TaskListSkeleton`, `CommentsSection`
+  - hooks: `useTasks`, `useTaskDialog`, `useTaskDetails`, `useTasksWithSessions`, `useTaskDialogRouter`
+  - store: `BeadsViewProvider`, `useBeadsViewStore`, selectors/actions as named exports
+  - types/constants: `Task`, `TaskCardTask`, `TaskStatus`, task filters, keys
+- Store ownership: beads-view manages its own Zustand store (host app uses provider/hooks).
+- API client: configurable `baseUrl` + `fetch` injection now.
