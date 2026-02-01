@@ -1,0 +1,61 @@
+{
+  "name": "@herbcaudill/agent-server",
+  "version": "1.1.0",
+  "description": "Standalone agent server for managing AI coding agents with HTTP and WebSocket APIs",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:all": "pnpm -w test:all",
+    "test:watch": "vitest --watch",
+    "format": "prettier --write . --log-level silent"
+  },
+  "keywords": [
+    "agent",
+    "ai",
+    "server",
+    "api",
+    "claude",
+    "codex"
+  ],
+  "author": "Herb Caudill",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HerbCaudill/ralph.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.7",
+    "@herbcaudill/ralph-shared": "workspace:*",
+    "express": "^5.2.1",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "prettier": "^3.8.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.17"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,144 @@
+import express, { type Express, type Request, type Response } from "express"
+import { createServer, type Server } from "node:http"
+import { WebSocketServer, type WebSocket, type RawData } from "ws"
+import type { AgentServerConfig, WsClient } from "./types.js"
+
+export type { AgentServerConfig, WsClient } from "./types.js"
+
+// ── Module state ──────────────────────────────────────────────────────
+
+/** Connected WebSocket clients. */
+const wsClients = new Set<WsClient>()
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Check if a port is available by attempting to listen on it.
+ */
+async function isPortAvailable(host: string, port: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const tester = createServer()
+    tester.once("error", () => resolve(false))
+    tester.once("listening", () => {
+      tester.close(() => resolve(true))
+    })
+    tester.listen(port, host)
+  })
+}
+
+/**
+ * Find the first available port starting from the given port.
+ */
+export async function findAvailablePort(host: string, startPort: number): Promise<number> {
+  let port = startPort
+  while (!(await isPortAvailable(host, port))) {
+    port++
+    if (port > startPort + 100) {
+      throw new Error(`No available port found in range ${startPort}-${port}`)
+    }
+  }
+  return port
+}
+
+// ── Configuration ────────────────────────────────────────────────────
+
+/**
+ * Read agent server configuration from environment variables.
+ */
+export function getConfig(): AgentServerConfig {
+  return {
+    host: process.env.AGENT_SERVER_HOST ?? "localhost",
+    port: Number(process.env.AGENT_SERVER_PORT ?? 4244),
+    workspacePath: process.env.WORKSPACE_PATH ?? process.cwd(),
+  }
+}
+
+// ── Server ───────────────────────────────────────────────────────────
+
+/**
+ * Broadcast a message to all connected WebSocket clients.
+ */
+function broadcast(message: object): void {
+  const data = JSON.stringify(message)
+  for (const client of wsClients) {
+    if (client.ws.readyState === 1 /* OPEN */) {
+      client.ws.send(data)
+    }
+  }
+}
+
+/**
+ * Start the agent server with the given configuration.
+ * Returns an object with the Express app, HTTP server, and a close function.
+ */
+export async function startServer(config: AgentServerConfig): Promise<{
+  app: Express
+  server: Server
+  close: () => Promise<void>
+}> {
+  const app = express()
+  app.use(express.json())
+
+  const server = createServer(app)
+
+  // ── WebSocket server ────────────────────────────────────────────────
+  const wss = new WebSocketServer({ server, path: "/ws" })
+
+  wss.on("connection", (ws: WebSocket) => {
+    const client: WsClient = { ws, subscribedSessions: new Set() }
+    wsClients.add(client)
+
+    ws.on("message", (raw: RawData) => {
+      try {
+        const msg = JSON.parse(raw.toString())
+        if (msg.type === "ping") {
+          ws.send(JSON.stringify({ type: "pong" }))
+        }
+      } catch {
+        // ignore malformed messages
+      }
+    })
+
+    ws.on("close", () => {
+      wsClients.delete(client)
+    })
+
+    ws.send(JSON.stringify({ type: "connected" }))
+  })
+
+  // ── Health check ────────────────────────────────────────────────────
+  app.get("/healthz", (_req: Request, res: Response) => {
+    res.json({ ok: true, server: "agent-server" })
+  })
+
+  // ── Start listening ─────────────────────────────────────────────────
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject)
+    server.listen(config.port, config.host, () => {
+      console.log(`[agent-server] listening on http://${config.host}:${config.port}`)
+      resolve()
+    })
+  })
+
+  // ── Graceful shutdown ───────────────────────────────────────────────
+  const close = async () => {
+    console.log("[agent-server] shutting down...")
+    for (const client of wsClients) {
+      client.ws.close()
+    }
+    wsClients.clear()
+    wss.close()
+    await new Promise<void>((resolve, reject) => {
+      server.close(err => (err ? reject(err) : resolve()))
+    })
+    console.log("[agent-server] stopped")
+  }
+
+  const handleSignal = () => {
+    close().then(() => process.exit(0))
+  }
+  process.on("SIGINT", handleSignal)
+  process.on("SIGTERM", handleSignal)
+
+  return { app, server, close }
+}

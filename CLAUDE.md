@@ -37,13 +37,14 @@ Use `packages/ui/server/tsconfig.json` when editing UI server TypeScript files.
 
 ## Workspace structure
 
-pnpm workspace with five main packages:
+pnpm workspace with six main packages:
 
 - **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
 - **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with Express server and React frontend
 - **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
 - **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
+- **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Standalone server for managing AI coding agents with HTTP and WebSocket APIs. Extracts agent-related functionality from the UI server. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
 
 ### Project structure
 
@@ -96,6 +97,12 @@ packages/beads-server/                 # Beads server package
     BeadsClient.ts          # Wrapper around @herbcaudill/beads-sdk
     getAliveWorkspaces.ts   # Workspace registry helpers
     readRegistry.ts         # Read ~/.beads/registry.json
+
+packages/agent-server/                 # Agent server package
+  src/
+    index.ts                # Express server entry + WebSocket setup (startServer, getConfig, findAvailablePort)
+    main.ts                 # Dev entry point
+    types.ts                # AgentServerConfig, WsClient types
 
 packages/ui/                        # UI package
   server/                   # Express backend
@@ -215,6 +222,7 @@ Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Node-onl
 - `OPENAI_API_KEY` - Optional for Codex agent
 - `HOST` / `PORT` - Server host/port (defaults: 127.0.0.1 / 4242)
 - `BEADS_PORT` - Beads server port (default: 4243)
+- `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` - Agent server host/port (defaults: localhost / 4244)
 - `RALPH_DEBUG` - Debug logging (`1` for all, or comma-separated namespaces: `messagequeue`, `session`)
 - `RALPH_CWD` - Override base path for relative path rendering
 

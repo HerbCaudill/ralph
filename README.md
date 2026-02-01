@@ -12,6 +12,7 @@ This monorepo contains the following packages:
 | [`@herbcaudill/ralph-ui`](packages/ui/)           | Web UI with real-time event streaming            |
 | [`@herbcaudill/ralph-shared`](packages/shared/)   | Shared types and utilities                       |
 | [`@herbcaudill/beads-view`](packages/beads-view/) | Task management UI, state, hooks, and API client |
+| [`@herbcaudill/agent-server`](packages/agent-server/) | Standalone server for managing AI coding agents (HTTP + WebSocket) |
 
 ## Installation
 
@@ -97,6 +98,8 @@ The web client UX-only functional spec (with screenshots) lives in `spec/web-cli
 | `WORKSPACE_PATH`    | Workspace directory (default: repo root) | No             |
 | `HOST`              | Server bind address (default: 127.0.0.1) | No             |
 | `PORT`              | Server port (default: 4242)              | No             |
+| `AGENT_SERVER_HOST` | Agent server bind address (default: localhost) | No        |
+| `AGENT_SERVER_PORT` | Agent server port (default: 4244)        | No             |
 
 ## License
 
