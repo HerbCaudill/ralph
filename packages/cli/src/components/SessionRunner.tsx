@@ -374,9 +374,10 @@ export const SessionRunner = ({
     const messageQueue = new MessageQueue()
     messageQueueRef.current = messageQueue
 
-    // Push a brief kick-off message. The full protocol is in the system prompt;
-    // this just provides the required initial user turn to start the conversation.
-    messageQueue.push(createUserMessage("Begin."))
+    // Push the prompt as the initial user message to kick off the session.
+    // The protocol is also in the system prompt for reliability, but this
+    // message is what triggers the agent to start working.
+    messageQueue.push(createUserMessage(fullPrompt))
 
     /**
      * Execute a query to Claude and handle the streaming response.
