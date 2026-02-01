@@ -1,12 +1,10 @@
 import { describe, it, expect } from "vitest"
-import {
-  buildTaskTree,
-  findRootAncestor,
-  countDescendants,
-  countAllNodes,
-  flattenTree,
-} from "./buildTaskTree"
-import type { TaskCardTask } from "@/types"
+import { buildTaskTree } from "./buildTaskTree"
+import { countAllNodes } from "./countAllNodes"
+import { countDescendants } from "./countDescendants"
+import { findRootAncestor } from "./findRootAncestor"
+import { flattenTree } from "./flattenTree"
+import type { TaskCardTask } from "../types"
 
 describe("buildTaskTree", () => {
   describe("findRootAncestor", () => {

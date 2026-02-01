@@ -1,6 +1,12 @@
-import type { TaskCardTask } from "@/types"
+import type { TaskCardTask } from "../types"
 
-export function matchesSearchQuery(task: TaskCardTask, query: string): boolean {
+/** Check whether a task matches a free-text search query. */
+export function matchesSearchQuery(
+  /** Task to search. */
+  task: TaskCardTask,
+  /** Query string to match. */
+  query: string,
+): boolean {
   if (!query.trim()) return true
 
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)

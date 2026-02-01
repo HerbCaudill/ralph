@@ -116,7 +116,8 @@
     "shiki": "^3.21.0",
     "tailwind-merge": "^3.4.0",
     "ws": "^8.19.0",
-    "zustand": "^5.0.10"
+    "zustand": "^5.0.10",
+    "@herbcaudill/beads-view": "workspace:*"
   },
   "bin": {
     "ralph-ui": "./bin/ralph-ui.js"

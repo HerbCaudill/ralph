@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
 import { TaskCard } from "./TaskCard"
-import type { TaskTreeNode } from "@/lib/buildTaskTree"
-import { countDescendants } from "@/lib/buildTaskTree"
+import type { TaskTreeNode } from "@herbcaudill/beads-view"
+import { countDescendants } from "@herbcaudill/beads-view"
 import type { TaskStatus } from "@/types"
 
 /**

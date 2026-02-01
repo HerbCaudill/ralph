@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { matchesSearchQuery } from "./matchesSearchQuery"
-import type { TaskCardTask } from "@/types"
+import type { TaskCardTask } from "../types"
 
 const task = (overrides: Partial<TaskCardTask> = {}): TaskCardTask => ({
   id: "task-1",

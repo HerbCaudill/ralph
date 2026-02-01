@@ -45,6 +45,18 @@ export type {
   ErrorEventData,
   ToolUseEvent,
 } from "@herbcaudill/agent-view"
+export type {
+  ClosedTasksTimeFilter,
+  TaskStatus,
+  TaskDependency,
+  Task,
+  TaskCardTask,
+  TaskUpdateData,
+  TaskGroup,
+  RelatedTask,
+  Comment,
+  TaskTreeNode,
+} from "@herbcaudill/beads-view"
 
 // UI-specific imports
 import type { ThemeMeta } from "@herbcaudill/agent-view-theme"
@@ -52,12 +64,6 @@ import type { HotkeyAction, HotkeyConfig } from "@/config"
 
 // UI-specific types
 
-export type ClosedTasksTimeFilter =
-  | "past_hour"
-  | "past_4_hours"
-  | "past_day"
-  | "past_week"
-  | "all_time"
 
 export type RalphStatus =
   | "stopped"
@@ -70,34 +76,6 @@ export type RalphStatus =
 
 export type Theme = "system" | "light" | "dark"
 
-export type TaskStatus = "open" | "in_progress" | "blocked" | "deferred" | "closed"
-
-export interface TaskDependency {
-  id: string
-  status: TaskStatus
-  dependency_type: string
-}
-
-export interface Task {
-  id: string
-  title: string
-  description?: string
-  status: TaskStatus
-  priority?: number
-  issue_type?: string
-  parent?: string
-  created_at?: string
-  closed_at?: string
-  dependencies?: TaskDependency[]
-  /** IDs of issues that block this issue (from bd blocked command) */
-  blocked_by?: string[]
-  /** Number of issues blocking this issue (from bd blocked command) */
-  blocked_by_count?: number
-}
-
-export type TaskCardTask = Task & {
-  labels?: string[]
-}
 
 export interface SessionInfo {
   current: number
@@ -140,23 +118,6 @@ export interface TaskChatToolUse {
   sequence?: number
 }
 
-export type TaskUpdateData = {
-  title?: string
-  description?: string
-  status?: TaskStatus
-  priority?: number
-  type?: string
-  parent?: string | null
-}
-
-export type TaskGroup = "open" | "deferred" | "closed"
-
-export interface RelatedTask {
-  id: string
-  title: string
-  status: TaskStatus
-  dependency_type?: string
-}
 
 export interface ThemeGroup {
   type: "dark" | "light"
@@ -168,13 +129,6 @@ export interface HotkeyCategory {
   hotkeys: Array<{ action: HotkeyAction; config: HotkeyConfig }>
 }
 
-export interface Comment {
-  id: number
-  issue_id: string
-  author: string
-  text: string
-  created_at: string
-}
 
 export interface WorkspaceInfo {
   path: string

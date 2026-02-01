@@ -12,13 +12,13 @@ import {
 } from "@/store"
 import { TaskGroupHeader } from "./TaskGroupHeader"
 import { TaskSubtree } from "./TaskSubtree"
-import { matchesSearchQuery } from "@/lib/matchesSearchQuery"
+import { matchesSearchQuery } from "@herbcaudill/beads-view"
 import {
   buildTaskTree,
   findRootAncestor,
   countAllNodes,
   type TaskTreeNode,
-} from "@/lib/buildTaskTree"
+} from "@herbcaudill/beads-view"
 import { useTasksWithSessions } from "@/hooks/useTasksWithSessions"
 import type { TaskCardTask, TaskGroup, TaskStatus } from "@/types"
 import { TaskListSkeleton } from "./TaskListSkeleton"
