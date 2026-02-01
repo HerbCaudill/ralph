@@ -370,15 +370,20 @@ export const SessionRunner = ({
     sessionIdRef.current = sessionId
 
     // Create a message queue for this session
-    // This allows us to send user messages to Claude while it's running
+    // This allows us to send follow-up user messages to Claude while it's running
     const messageQueue = new MessageQueue()
     messageQueueRef.current = messageQueue
 
-    // Push the initial prompt as the first message
-    messageQueue.push(createUserMessage(fullPrompt))
+    // Push a brief kick-off message. The full protocol is in the system prompt;
+    // this just provides the required initial user turn to start the conversation.
+    messageQueue.push(createUserMessage("Begin."))
 
     /**
      * Execute a query to Claude and handle the streaming response.
+     *
+     * The prompt is delivered via systemPrompt.append (not as a user message)
+     * to ensure it's part of the CLI's initialization and reaches Claude reliably.
+     * The MessageQueue provides the required initial user turn and follow-up messages.
      */
     const runQuery = async () => {
       let finalResult = ""
@@ -389,6 +394,11 @@ export const SessionRunner = ({
         for await (const message of query({
           prompt: messageQueue,
           options: {
+            systemPrompt: {
+              type: "preset",
+              preset: "claude_code",
+              append: fullPrompt,
+            },
             abortController,
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,

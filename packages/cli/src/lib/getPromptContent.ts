@@ -16,7 +16,15 @@ export const getPromptContent = (): string => {
   const workspaceRoot = getWorkspaceRoot(process.cwd())
   const ralphDir = join(workspaceRoot, ".ralph")
   const promptFile = join(ralphDir, "prompt.md")
-  const templatesDir = join(__dirname, "..", "..", "templates")
+
+  // Resolve templates directory relative to this file's location.
+  // In source (src/lib/): ../../templates → packages/cli/templates ✓
+  // In bundle (dist/):    ../../templates → packages/templates ✗
+  // We try both paths to support both dev and bundled modes.
+  let templatesDir = join(__dirname, "..", "..", "templates")
+  if (!existsSync(join(templatesDir, "core-prompt.md"))) {
+    templatesDir = join(__dirname, "..", "templates")
+  }
 
   // First, try to read from .ralph/prompt.md (custom override)
   if (existsSync(promptFile)) {
