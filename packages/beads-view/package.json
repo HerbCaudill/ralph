@@ -1,0 +1,67 @@
+{
+  "name": "@herbcaudill/beads-view",
+  "version": "1.1.0",
+  "description": "Task management UI and state for beads",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "format": "prettier --write . --log-level silent"
+  },
+  "keywords": [
+    "beads",
+    "tasks",
+    "ui",
+    "react"
+  ],
+  "author": "Herb Caudill",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HerbCaudill/ralph.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "dependencies": {
+    "@tabler/icons-react": "^3.36.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.4.0",
+    "zustand": "^5.0.10"
+  },
+  "devDependencies": {
+    "@storybook/addon-vitest": "^10.2.0",
+    "@storybook/react-vite": "^10.2.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^24.10.9",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "prettier": "^3.5.3",
+    "storybook": "^10.2.0",
+    "tailwindcss": "^4.1.18",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.17"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
