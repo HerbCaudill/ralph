@@ -31,21 +31,18 @@ export function TaskSidebar({
     >
       {quickInput && <div className="border-border shrink-0 border-b px-4 py-3">{quickInput}</div>}
 
-      {/* Main content area with floating search input */}
-      <div className="relative min-h-0 flex-1">
-        {/* Floating search input */}
-        <div className="bg-background/95 absolute inset-x-0 top-0 z-10 px-3 py-2 backdrop-blur-sm">
-          <SearchInput ref={searchInputRef} onOpenTask={onOpenTask} />
-        </div>
+      {/* Search input */}
+      <div className="shrink-0 px-3 py-2">
+        <SearchInput ref={searchInputRef} onOpenTask={onOpenTask} />
+      </div>
 
-        {/* Task list with top padding to account for floating search */}
-        <div className="h-full overflow-y-auto pt-[52px]">
-          {taskList ?? (
-            <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">
-              No tasks yet
-            </div>
-          )}
-        </div>
+      {/* Scrollable task list */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {taskList ?? (
+          <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">
+            No tasks yet
+          </div>
+        )}
       </div>
 
       {progressBar}

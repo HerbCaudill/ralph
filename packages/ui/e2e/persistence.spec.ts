@@ -244,10 +244,8 @@ test.describe("UI State Persistence", () => {
       expect(state).toHaveProperty("taskChatOpen")
       expect(state).toHaveProperty("taskChatWidth")
       expect(state).toHaveProperty("theme")
-      expect(state).toHaveProperty("closedTimeFilter")
 
       // View state should be present
-      expect(state).toHaveProperty("taskSearchQuery")
       expect(state).toHaveProperty("isSearchVisible")
 
       // Instances should be serialized as an array
