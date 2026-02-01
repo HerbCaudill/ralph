@@ -374,17 +374,13 @@ export const SessionRunner = ({
     const messageQueue = new MessageQueue()
     messageQueueRef.current = messageQueue
 
-    // Push the prompt as the initial user message to kick off the session.
-    // The protocol is also in the system prompt for reliability, but this
-    // message is what triggers the agent to start working.
+    // Push the initial prompt as the first message
+    // eslint-disable-next-line no-console
+    console.error(`[RALPH PROMPT DEBUG]\n${fullPrompt}\n[END PROMPT]`)
     messageQueue.push(createUserMessage(fullPrompt))
 
     /**
      * Execute a query to Claude and handle the streaming response.
-     *
-     * The prompt is delivered via systemPrompt.append (not as a user message)
-     * to ensure it's part of the CLI's initialization and reaches Claude reliably.
-     * The MessageQueue provides the required initial user turn and follow-up messages.
      */
     const runQuery = async () => {
       let finalResult = ""
@@ -395,11 +391,6 @@ export const SessionRunner = ({
         for await (const message of query({
           prompt: messageQueue,
           options: {
-            systemPrompt: {
-              type: "preset",
-              preset: "claude_code",
-              append: fullPrompt,
-            },
             abortController,
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,
