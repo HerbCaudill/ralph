@@ -37,7 +37,7 @@ Use `packages/ui/server/tsconfig.json` when editing UI server TypeScript files.
 
 ## Workspace structure
 
-pnpm workspace with three packages:
+pnpm workspace with four main packages:
 
 - **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
 - **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with Express server and React frontend
@@ -66,12 +66,27 @@ packages/cli/                       # CLI package
     core-prompt.md          # Bundled session protocol
     workflow.md             # Default workflow -> .ralph/workflow.md
 
-packages/beads-view/                   # Beads-view package
+packages/beads-view/                   # Beads-view package (task management UI/state)
   src/
+    components/
+      tasks/                # Task UI components (TaskCard, TaskList, TaskSidebar, TaskDetails, etc.)
+      ui/                   # Shared UI primitives (button, input, popover, command, etc.)
+    hooks/
+      useTasks.ts           # Task list fetching and polling
+      useTaskDetails.ts     # Single-task fetching with comments/blockers
+      useTaskDialog.ts      # Dialog open/close state
+      useTaskDialogRouter.ts # URL hash ↔ task dialog sync
     lib/
       apiClient.ts          # Configurable API client (configureApiClient, apiFetch)
+      buildTaskTree.ts      # Flat tasks → nested tree structure
+      fetchTasks.ts         # API fetch helpers (fetchTasks, fetchTask, fetchBlockedTasks)
+      matchesSearchQuery.ts # Client-side task search/filter
     server/
       taskRoutes.ts         # Reusable Express task routes (registerTaskRoutes)
+    store/
+      beadsViewStore.ts     # Zustand store for task UI state
+      BeadsViewProvider.tsx  # React context provider for store
+      selectors.ts          # Store selectors
 
 packages/ui/                        # UI package
   server/                   # Express backend

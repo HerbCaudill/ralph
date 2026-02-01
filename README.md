@@ -4,13 +4,14 @@ Autonomous AI session engine for Claude CLI. Ralph spawns Claude CLI processes w
 
 ## Packages
 
-This monorepo contains three packages:
+This monorepo contains the following packages:
 
-| Package                                | Description                           |
-| -------------------------------------- | ------------------------------------- |
-| [`@herbcaudill/ralph`](packages/cli/)           | CLI tool for terminal-based sessions  |
-| [`@herbcaudill/ralph-ui`](packages/ui/)         | Web UI with real-time event streaming |
-| [`@herbcaudill/ralph-shared`](packages/shared/) | Shared types and utilities            |
+| Package                                           | Description                                      |
+| ------------------------------------------------- | ------------------------------------------------ |
+| [`@herbcaudill/ralph`](packages/cli/)             | CLI tool for terminal-based sessions             |
+| [`@herbcaudill/ralph-ui`](packages/ui/)           | Web UI with real-time event streaming            |
+| [`@herbcaudill/ralph-shared`](packages/shared/)   | Shared types and utilities                       |
+| [`@herbcaudill/beads-view`](packages/beads-view/) | Task management UI, state, hooks, and API client |
 
 ## Installation
 
