@@ -25,8 +25,11 @@ pnpm test:pw              # Playwright with dynamic ports
 
 pnpm cli                  # Run ralph CLI in development
 pnpm ui                   # Start UI dev server (Vite)
-pnpm serve                # Start server only
-pnpm dev                  # Start both server and UI
+pnpm serve                # Start server only (combined mode)
+pnpm dev                  # Start both server and UI (combined mode)
+pnpm dev:split            # Start beads-server + agent-server + UI as separate processes (split mode)
+pnpm serve:beads          # Start just the beads-server (port 4243)
+pnpm serve:agent          # Start just the agent-server (port 4244)
 pnpm storybook            # Start Storybook
 
 pnpm format               # Format with Prettier

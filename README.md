@@ -74,8 +74,11 @@ pnpm build
 # Run all tests
 pnpm test:all
 
-# Start UI in development
+# Start UI in development (combined server mode)
 pnpm dev
+
+# Start in split server mode (beads-server:4243 + agent-server:4244 + UI:5179)
+pnpm dev:split
 
 # Format code
 pnpm format
