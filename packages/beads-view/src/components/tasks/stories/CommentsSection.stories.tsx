@@ -4,22 +4,25 @@ import { mockFetch } from "../../../../.storybook/test-utils"
 
 const sampleComments = [
   {
-    id: "1",
+    id: 1,
+    issue_id: "rui-4rt",
     author: "Alice",
     text: "This looks good to me. Ready to merge?",
-    timestamp: Date.now() - 3600000,
+    created_at: new Date(Date.now() - 3600000).toISOString(),
   },
   {
-    id: "2",
+    id: 2,
+    issue_id: "rui-4rt",
     author: "Bob",
     text: "Let me test it first",
-    timestamp: Date.now() - 1800000,
+    created_at: new Date(Date.now() - 1800000).toISOString(),
   },
   {
-    id: "3",
+    id: 3,
+    issue_id: "rui-4rt",
     author: "Charlie",
     text: "All tests passing ✓",
-    timestamp: Date.now() - 900000,
+    created_at: new Date(Date.now() - 900000).toISOString(),
   },
 ]
 
