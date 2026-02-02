@@ -44,7 +44,7 @@ export function AgentView({
   const spinner =
     loadingIndicator !== undefined ? loadingIndicator : (
       isStreaming && (
-        <div className="flex justify-center py-4">
+        <div className="flex justify-start py-4">
           <TopologySpinner />
         </div>
       )
