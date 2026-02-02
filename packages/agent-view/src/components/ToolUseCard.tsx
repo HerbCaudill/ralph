@@ -21,8 +21,8 @@ export function ToolUseCard({
   event,
   /** Optional CSS class to apply to the root container */
   className,
-  /** Whether the output preview should start expanded (default: false) */
-  defaultExpanded = false,
+  /** Whether the output preview should start expanded (default: true) */
+  defaultExpanded = true,
 }: ToolUseCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const { workspacePath, toolOutput } = useAgentViewContext()
