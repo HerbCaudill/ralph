@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test"
 
-const agentServerPort = 4244
-const vitePort = 5180
+const agentServerPort = Number(process.env.AGENT_SERVER_PORT || "4244")
+const vitePort = Number(process.env.DEMO_AGENT_PORT || "5180")
 
 export default defineConfig({
   testDir: "./e2e",

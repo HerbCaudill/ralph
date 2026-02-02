@@ -4,10 +4,11 @@ import tailwindcss from "@tailwindcss/vite"
 import path from "path"
 
 const beadsServerPort = process.env.BEADS_PORT || process.env.PORT || "4243"
+const vitePort = Number(process.env.DEMO_BEADS_PORT || "5181")
 
 export default defineConfig({
   server: {
-    port: 5181,
+    port: vitePort,
     proxy: {
       "/api": {
         target: `http://localhost:${beadsServerPort}`,
