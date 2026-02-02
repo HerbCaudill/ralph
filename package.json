@@ -16,7 +16,7 @@
     "format": "git diff --name-only HEAD --diff-filter=ACMR | xargs -r prettier --write --ignore-unknown --log-level silent",
     "postinstall": "pnpm --filter ralph-shared build",
     "pub": "pnpm --filter ralph publish && pnpm --filter ralph-ui publish",
-    "ralph": "pnpm --filter ralph ralph",
+    "ralph": "pnpm cli",
     "serve": "pnpm --filter ralph-ui dev:server",
     "serve:agent": "pnpm --filter @herbcaudill/agent-server dev",
     "serve:ralph": "pnpm --filter @herbcaudill/ralph-server dev",
