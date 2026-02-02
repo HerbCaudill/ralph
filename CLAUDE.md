@@ -166,7 +166,7 @@ packages/ui/                        # UI package
 
 packages/shared/                    # Shared package
   src/
-    events/                 # Normalized agent event types and guards
+    events/                 # Agent event types (re-exported from @herbcaudill/agent-view) and guards
     prompts/                # Prompt loading utilities
     index.ts                # Package exports
 ```
@@ -213,7 +213,7 @@ The Vite dev server proxy also supports split mode: when `BEADS_PORT` and `AGENT
 
 ### Multi-agent support
 
-Agents implement `AgentAdapter` base class (`server/AgentAdapter.ts`). Available: **Claude** (default, requires `ANTHROPIC_API_KEY`) and **Codex** (`OPENAI_API_KEY` optional). Each adapter normalizes native events into `AgentEvent` types defined in `packages/shared/`.
+Agents implement `AgentAdapter` base class (`server/AgentAdapter.ts`). Available: **Claude** (default, requires `ANTHROPIC_API_KEY`) and **Codex** (`OPENAI_API_KEY` optional). Each adapter normalizes native events into `AgentEvent` types. Core event types (AgentEvent, AgentMessageEvent, etc.) are defined in `@herbcaudill/agent-view` and re-exported by `packages/shared/` for backward compatibility; wire protocol types remain defined locally in shared.
 
 ## Runtime interaction
 
@@ -275,7 +275,7 @@ Task closes → `saveEventLogAndAddComment()` saves to IndexedDB → closing com
 
 ## Shared package
 
-Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Node-only subpath (`@herbcaudill/ralph-shared/prompts`): prompt loading utilities. Beads types import from `@herbcaudill/beads-sdk`.
+Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Core event types (AgentEvent, AgentMessageEvent, etc.) are type aliases re-exported from `@herbcaudill/agent-view`; wire protocol types and event guards remain defined locally. Node-only subpath (`@herbcaudill/ralph-shared/prompts`): prompt loading utilities. Beads types import from `@herbcaudill/beads-sdk`.
 
 ## Environment variables
 

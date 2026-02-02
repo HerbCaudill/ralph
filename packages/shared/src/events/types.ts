@@ -1,85 +1,69 @@
-/**  Base properties for all agent events. */
-export interface AgentEventBase {
-  /** Event timestamp in milliseconds */
-  timestamp: number
-  /** Optional event ID for correlation */
+/**
+ * Event types for the Ralph wire protocol and backward-compatible re-exports.
+ *
+ * Core event types (AgentEvent, AgentMessageEvent, etc.) are now defined in
+ * @herbcaudill/agent-view using Effect Schema as the single source of truth.
+ * This module re-exports them under their original `Agent*` names for backward
+ * compatibility, and defines the wire protocol types (envelope, reconnection)
+ * that are specific to Ralph's WebSocket transport.
+ */
+
+import type {
+  CanonicalEventType,
+  MessageEventType,
+  ThinkingEventType,
+  ToolUseEventType,
+  ToolResultEventType,
+  ResultEventType,
+  ErrorEventType,
+  StatusEventType,
+  BaseEventType,
+  AgentStatus as CanonicalAgentStatus,
+} from "@herbcaudill/agent-view"
+
+// ---------------------------------------------------------------------------
+// Utility: make canonical types backward-compatible
+// ---------------------------------------------------------------------------
+
+/**
+ * Makes `id` optional and removes `readonly` modifiers for backward compatibility.
+ *
+ * The canonical types from agent-view require `id` (auto-generated via Effect
+ * Schema defaults during decoding) and use `readonly` properties. Existing code
+ * creates events without `id` and expects mutable properties, so the
+ * backward-compatible aliases relax these constraints.
+ */
+type BackwardCompat<T> = { -readonly [K in keyof T as K extends "id" ? never : K]: T[K] } & {
   id?: string
 }
 
+// ---------------------------------------------------------------------------
+// Re-export core event types from agent-view with backward-compatible names
+// ---------------------------------------------------------------------------
+
+/**  Base properties for all agent events. */
+export type AgentEventBase = BackwardCompat<BaseEventType>
+
 /**  A text message from the assistant. */
-export interface AgentMessageEvent extends AgentEventBase {
-  type: "message"
-  /** The message content */
-  content: string
-  /** Whether this is a partial/streaming message */
-  isPartial?: boolean
-}
-
-/**  A tool invocation by the assistant. */
-export interface AgentToolUseEvent extends AgentEventBase {
-  type: "tool_use"
-  /** Unique ID for this tool use (for correlating with tool_result) */
-  toolUseId: string
-  /** Name of the tool being used */
-  tool: string
-  /** Tool input parameters */
-  input: Record<string, unknown>
-}
-
-/**  The result of a tool invocation. */
-export interface AgentToolResultEvent extends AgentEventBase {
-  type: "tool_result"
-  /** ID of the corresponding tool_use event */
-  toolUseId: string
-  /** Tool output (success case) */
-  output?: string
-  /** Error message (error case) */
-  error?: string
-  /** Whether this result is an error */
-  isError: boolean
-}
-
-/**  Final result of an agent run. */
-export interface AgentResultEvent extends AgentEventBase {
-  type: "result"
-  /** The final text output from the agent */
-  content: string
-  /** Exit code if applicable */
-  exitCode?: number
-  /** Usage statistics */
-  usage?: {
-    inputTokens?: number
-    outputTokens?: number
-    totalTokens?: number
-  }
-}
-
-/**  An error from the agent. */
-export interface AgentErrorEvent extends AgentEventBase {
-  type: "error"
-  /** Error message */
-  message: string
-  /** Error code if applicable */
-  code?: string
-  /** Whether this error is fatal (agent cannot continue) */
-  fatal: boolean
-}
+export type AgentMessageEvent = BackwardCompat<MessageEventType>
 
 /**  A thinking block from the assistant (extended thinking). */
-export interface AgentThinkingEvent extends AgentEventBase {
-  type: "thinking"
-  /** The thinking content */
-  content: string
-  /** Whether this is a partial/streaming thinking block */
-  isPartial?: boolean
-}
+export type AgentThinkingEvent = BackwardCompat<ThinkingEventType>
+
+/**  A tool invocation by the assistant. */
+export type AgentToolUseEvent = BackwardCompat<ToolUseEventType>
+
+/**  The result of a tool invocation. */
+export type AgentToolResultEvent = BackwardCompat<ToolResultEventType>
+
+/**  Final result of an agent run. */
+export type AgentResultEvent = BackwardCompat<ResultEventType>
+
+/**  An error from the agent. */
+export type AgentErrorEvent = BackwardCompat<ErrorEventType>
 
 /**  Agent status changed. */
-export interface AgentStatusEvent extends AgentEventBase {
-  type: "status"
-  /** The new status */
-  status: AgentStatus
-}
+export type AgentStatusEvent = BackwardCompat<StatusEventType>
 
 /**  Union type for all normalized agent events. */
 export type AgentEvent =
@@ -92,7 +76,7 @@ export type AgentEvent =
   | AgentStatusEvent
 
 /**  Possible agent statuses. */
-export type AgentStatus = "idle" | "starting" | "running" | "paused" | "stopping" | "stopped"
+export type AgentStatus = CanonicalAgentStatus
 
 // ---------------------------------------------------------------------------
 // Unified wire message envelope

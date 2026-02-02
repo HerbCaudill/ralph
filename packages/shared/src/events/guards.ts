@@ -1,6 +1,13 @@
+/**
+ * Type guards for agent events and wire protocol messages.
+ *
+ * Core event type guards (isAgentMessageEvent, etc.) are thin wrappers that
+ * narrow the backward-compatible AgentEvent union from types.ts. Wire protocol
+ * guards (isAgentEventEnvelope, etc.) remain defined here.
+ */
+
 import type {
   AgentEvent,
-  AgentEventEnvelope,
   AgentMessageEvent,
   AgentThinkingEvent,
   AgentToolUseEvent,
@@ -8,9 +15,14 @@ import type {
   AgentResultEvent,
   AgentErrorEvent,
   AgentStatusEvent,
+  AgentEventEnvelope,
   AgentReconnectRequest,
   AgentPendingEventsResponse,
 } from "./types.js"
+
+// ---------------------------------------------------------------------------
+// Core event type guards (backward-compatible signatures)
+// ---------------------------------------------------------------------------
 
 /**  Check if an event is a message event. */
 export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
@@ -46,6 +58,10 @@ export function isAgentErrorEvent(event: AgentEvent): event is AgentErrorEvent {
 export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent {
   return event.type === "status"
 }
+
+// ---------------------------------------------------------------------------
+// Wire protocol guards (defined locally — these are Ralph-specific)
+// ---------------------------------------------------------------------------
 
 /**  Check if a wire message is an agent event envelope. */
 export function isAgentEventEnvelope(message: unknown): message is AgentEventEnvelope {
