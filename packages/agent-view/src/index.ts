@@ -1,7 +1,9 @@
-// Components: Top-levelexport { AgentView } from "./components/AgentView"
+// Components: Top-level
+export { AgentView } from "./components/AgentView"
 export type { AgentViewProps } from "./components/AgentView"
 
-// Components: Eventsexport { AnsiOutput } from "./components/AnsiOutput"
+// Components: Events
+export { AnsiOutput } from "./components/AnsiOutput"
 export { AssistantText } from "./components/AssistantText"
 export { DiffView } from "./components/DiffView"
 export { ErrorEvent } from "./components/ErrorEvent"
@@ -20,17 +22,20 @@ export { ToolUseCard } from "./components/ToolUseCard"
 export type { ToolUseCardProps } from "./components/ToolUseCard"
 export { UserMessage } from "./components/UserMessage"
 
-// Components: Indicatorsexport { TokenUsageDisplay } from "./components/TokenUsageDisplay"
+// Components: Indicators
+export { TokenUsageDisplay } from "./components/TokenUsageDisplay"
 export type { TokenUsageDisplayProps } from "./components/TokenUsageDisplay"
 export { ContextWindowProgress } from "./components/ContextWindowProgress"
 export type { ContextWindowProgressProps } from "./components/ContextWindowProgress"
 
-// Components: Sharedexport { AutoScroll } from "./components/AutoScroll"
+// Components: Shared
+export { AutoScroll } from "./components/AutoScroll"
 export type { AutoScrollProps } from "./components/AutoScroll"
 export { ScrollToBottomButton } from "./components/ScrollToBottomButton"
 export type { ScrollToBottomButtonProps } from "./components/ScrollToBottomButton"
 
-// Components: UIexport { CodeBlock } from "./components/CodeBlock"
+// Components: UI
+export { CodeBlock } from "./components/CodeBlock"
 export type { CodeBlockProps } from "./components/CodeBlock"
 export { MarkdownContent } from "./components/MarkdownContent"
 export type { MarkdownContentProps } from "./components/MarkdownContent"
@@ -39,17 +44,20 @@ export type { TextWithLinksProps } from "./components/TextWithLinks"
 export { TopologySpinner } from "./components/TopologySpinner"
 export type { TopologySpinnerProps } from "./components/TopologySpinner"
 
-// Contextexport { AgentViewContext, DEFAULT_AGENT_VIEW_CONTEXT } from "./context/AgentViewContext"
+// Context
+export { AgentViewContext, DEFAULT_AGENT_VIEW_CONTEXT } from "./context/AgentViewContext"
 export { AgentViewProvider } from "./context/AgentViewProvider"
 export { useAgentViewContext } from "./context/useAgentViewContext"
 
-// Hooksexport { useAutoScroll } from "./hooks/useAutoScroll"
+// Hooks
+export { useAutoScroll } from "./hooks/useAutoScroll"
 export type { UseAutoScrollOptions, UseAutoScrollReturn } from "./hooks/useAutoScroll"
 export { useHighlightedCode } from "./hooks/useHighlightedCode"
 export { useStreamingState } from "./hooks/useStreamingState"
 export { useTokenUsage, useContextWindow } from "./hooks/useTokenUsage"
 
-// Lib: Utilitiesexport { cx, cn, stripAnsi, hasAnsiCodes, stripTaskPrefix, toRelativePath } from "./lib/utils"
+// Lib: Utilities
+export { cx, cn, stripAnsi, hasAnsiCodes, stripTaskPrefix, toRelativePath } from "./lib/utils"
 export { buildToolResultsMap } from "./lib/buildToolResultsMap"
 export type { ToolResult, ToolResultsInfo } from "./lib/buildToolResultsMap"
 export { renderEventContentBlock } from "./lib/renderEventContentBlock"
@@ -65,7 +73,8 @@ export { parseTaskLifecycleEvent } from "./lib/parseTaskLifecycleEvent"
 export { parsePromiseCompleteEvent } from "./lib/parsePromiseCompleteEvent"
 export { unescapeJsonString } from "./lib/unescapeJsonString"
 
-// Lib: Type Guardsexport { isAssistantMessage } from "./lib/isAssistantMessage"
+// Lib: Type Guards
+export { isAssistantMessage } from "./lib/isAssistantMessage"
 export { isErrorEvent } from "./lib/isErrorEvent"
 export { isRalphTaskCompletedEvent } from "./lib/isRalphTaskCompletedEvent"
 export { isRalphTaskStartedEvent } from "./lib/isRalphTaskStartedEvent"
@@ -75,7 +84,8 @@ export { isToolUseChatEvent } from "./lib/isToolUseChatEvent"
 export { isToolResultEvent } from "./lib/isToolResultEvent"
 export { isUserMessageEvent } from "./lib/isUserMessageEvent"
 
-// Lib: Event Filter Pipelineexport {
+// Lib: Event Filter Pipeline
+export {
   shouldFilterEventByType,
   shouldFilterContentBlock,
   hasRenderableContent,
@@ -87,12 +97,15 @@ export { isUserMessageEvent } from "./lib/isUserMessageEvent"
 } from "./lib/EventFilterPipeline"
 export type { FilterResult, FilterContext } from "./lib/EventFilterPipeline"
 
-// Adapterexport { createBatchConverter } from "./adapter"
+// Adapter
+export { createBatchConverter } from "./adapter"
 export type { AgentAdapter, AgentMeta, ConvertEvent, ConvertEvents } from "./adapter"
 
-// Constantsexport { TOOL_OUTPUT_PREVIEW_LINES } from "./constants"
+// Constants
+export { TOOL_OUTPUT_PREVIEW_LINES } from "./constants"
 
-// Canonical Event Schemaexport {
+// Canonical Event Schema
+export {
   // Schema objects
   BaseEvent as BaseEventSchema,
   CanonicalEvent as CanonicalEventSchema,
@@ -130,7 +143,8 @@ export type {
   AgentStatus,
 } from "./events/index.js"
 
-// Typesexport type {
+// Types
+export type {
   // Base types
   ChatEvent,
   // Discriminated event types
