@@ -35,8 +35,8 @@ export { ScrollToBottomButton } from "./components/ScrollToBottomButton"
 export type { ScrollToBottomButtonProps } from "./components/ScrollToBottomButton"
 
 // ---- Components: UI ----
-export { CodeBlock } from "./components/code-block"
-export type { CodeBlockProps } from "./components/code-block"
+export { CodeBlock } from "./components/CodeBlock"
+export type { CodeBlockProps } from "./components/CodeBlock"
 export { MarkdownContent } from "./components/MarkdownContent"
 export type { MarkdownContentProps } from "./components/MarkdownContent"
 export { TextWithLinks } from "./components/TextWithLinks"
