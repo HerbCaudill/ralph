@@ -306,8 +306,7 @@ async function testAll(
   process.exit(exitCode)
 }
 
-// ---- CLI entry point ----
-
+// CLI entry point
 const configPath = path.join(process.cwd(), "test-all.config.js")
 const changed = process.argv.includes("--changed")
 
