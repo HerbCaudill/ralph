@@ -162,6 +162,14 @@ export type { AgentRouteContext } from "./routes/index.js"
 export { handleAgentWsMessage, sendWelcomeMessage } from "./AgentWsHandler.js"
 export type { AgentWsHandlerOptions, AgentWsClient } from "./AgentWsHandler.js"
 
+// ── Re-exports: workspace context modules ───────────────────────────
+
+export { AgentWorkspaceContext } from "./AgentWorkspaceContext.js"
+export type { AgentWorkspaceContextOptions } from "./AgentWorkspaceContext.js"
+
+export { AgentWorkspaceContextManager } from "./AgentWorkspaceContextManager.js"
+export type { AgentWorkspaceContextManagerOptions } from "./AgentWorkspaceContextManager.js"
+
 // ── Module state ──────────────────────────────────────────────────────
 
 /** Connected WebSocket clients. */
