@@ -12,9 +12,7 @@ import {
 import type { ChatEvent, AssistantContentBlock } from "@/types"
 
 describe("EventFilterPipeline", () => {
-  // ==========================================================================
   // Layer 3: Event Type Filtering (shouldFilterEventByType)
-  // ==========================================================================
   describe("shouldFilterEventByType", () => {
     describe("events that should be filtered", () => {
       it("filters tool_result events (type='user' with tool_use_result)", () => {
@@ -165,9 +163,7 @@ describe("EventFilterPipeline", () => {
     })
   })
 
-  // ==========================================================================
   // Layer 4: Content Block Filtering (shouldFilterContentBlock)
-  // ==========================================================================
   describe("shouldFilterContentBlock", () => {
     describe("blocks that should render", () => {
       it("renders thinking blocks", () => {
@@ -287,9 +283,7 @@ describe("EventFilterPipeline", () => {
     })
   })
 
-  // ==========================================================================
   // Aggregate: hasRenderableContent
-  // ==========================================================================
   describe("hasRenderableContent", () => {
     const mockParseLifecycle = (text: string): boolean => {
       return text.startsWith("[TASK_START:") || text.startsWith("[TASK_COMPLETE:")
@@ -378,9 +372,7 @@ describe("EventFilterPipeline", () => {
     })
   })
 
-  // ==========================================================================
   // Aggregate: getFilterStats
-  // ==========================================================================
   describe("getFilterStats", () => {
     it("correctly counts rendered events", () => {
       const events: ChatEvent[] = [
@@ -493,9 +485,7 @@ describe("EventFilterPipeline", () => {
     })
   })
 
-  // ==========================================================================
   // Integration-style tests
-  // ==========================================================================
   describe("integration scenarios", () => {
     it("filters duplicate lifecycle displays correctly", () => {
       // Scenario: Event has lifecycle text in assistant content AND separate structured events
@@ -553,9 +543,7 @@ describe("EventFilterPipeline", () => {
     })
   })
 
-  // ==========================================================================
   // Debug Mode Functions
-  // ==========================================================================
   describe("debug mode", () => {
     const originalLocalStorage = globalThis.localStorage
 
