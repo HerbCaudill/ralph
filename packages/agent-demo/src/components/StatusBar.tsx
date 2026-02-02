@@ -18,6 +18,7 @@ export function StatusBar({
   agentVersion,
   events,
   error,
+  sessionId,
 }: StatusBarProps) {
   const tokenUsage = useTokenUsage(events)
   const contextWindow = useContextWindow(events)
@@ -41,6 +42,16 @@ export function StatusBar({
           {agentType === "claude" ? "Claude Code" : "Codex"}
           {agentVersion && <span className="ml-1 text-muted-foreground/60">v{agentVersion}</span>}
         </span>
+
+        {/* Session ID */}
+        {sessionId && (
+          <>
+            <span className="text-muted-foreground/60">|</span>
+            <span className="font-mono text-muted-foreground/60" title={sessionId}>
+              {sessionId.slice(0, 8)}
+            </span>
+          </>
+        )}
 
         {/* Error */}
         {error && (
@@ -70,4 +81,6 @@ export type StatusBarProps = {
   agentVersion?: string
   events: ChatEvent[]
   error: string | null
+  /** Current session ID for debugging */
+  sessionId: string | null
 }

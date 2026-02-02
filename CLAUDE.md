@@ -155,7 +155,7 @@ packages/agent-demo/              # Agent chat demo
     components/
       AgentSelector.tsx     # Toggle buttons for Claude Code / Codex selection
       ChatInput.tsx         # Auto-resizing textarea with send button (Enter to send, Shift+Enter for newline)
-      StatusBar.tsx         # Connection status, streaming indicator, agent type, token usage display
+      StatusBar.tsx         # Connection status, streaming indicator, agent type, session ID, token usage display
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
 
 packages/beads-demo/                   # Beads task manager demo

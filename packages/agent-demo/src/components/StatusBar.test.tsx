@@ -28,6 +28,7 @@ describe("StatusBar", () => {
     agentType: "claude" as const,
     events: [] as ChatEvent[],
     error: null,
+    sessionId: null,
   }
 
   describe("connection status", () => {
@@ -85,6 +86,24 @@ describe("StatusBar", () => {
     it("does not show error when error is null", () => {
       render(<StatusBar {...defaultProps} error={null} />)
       expect(screen.queryByText("WebSocket connection failed")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("session ID", () => {
+    it("shows truncated session ID when provided", () => {
+      render(<StatusBar {...defaultProps} sessionId="abc12345-6789-def0-1234-567890abcdef" />)
+      expect(screen.getByText("abc12345")).toBeInTheDocument()
+    })
+
+    it("does not show session ID when null", () => {
+      render(<StatusBar {...defaultProps} sessionId={null} />)
+      expect(screen.queryByText(/^[a-f0-9]{8}$/)).not.toBeInTheDocument()
+    })
+
+    it("full session ID is available as title attribute", () => {
+      const fullId = "abc12345-6789-def0-1234-567890abcdef"
+      render(<StatusBar {...defaultProps} sessionId={fullId} />)
+      expect(screen.getByTitle(fullId)).toBeInTheDocument()
     })
   })
 

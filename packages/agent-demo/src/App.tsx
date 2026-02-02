@@ -9,7 +9,7 @@ import { useAdapterVersion } from "./hooks/useAdapterVersion"
 
 export function App() {
   const { state, actions, agentType } = useAgentChat("claude")
-  const { events, isStreaming, connectionStatus, error } = state
+  const { events, isStreaming, connectionStatus, error, sessionId } = state
   const { sendMessage, setAgentType, newSession } = actions
   const agentVersion = useAdapterVersion(agentType)
 
@@ -44,6 +44,7 @@ export function App() {
           agentVersion={agentVersion}
           events={events}
           error={error}
+          sessionId={sessionId}
         />
       }
     >
