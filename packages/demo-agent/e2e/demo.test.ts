@@ -20,9 +20,7 @@ test.describe("Agent Chat Demo", () => {
     await expect(page.getByRole("contentinfo")).toContainText("Processing")
 
     // the 'Processing' indicator should disappear when done
-    await expect(page.getByRole("contentinfo")).not.toContainText("Processing", {
-      timeout: 30000,
-    })
+    await expect(page.getByRole("contentinfo")).not.toContainText("Processing")
 
     // The agent's response should appear in the event display
     await expect(page.getByRole("log", { name: "Agent Events" })).toContainText("4")
