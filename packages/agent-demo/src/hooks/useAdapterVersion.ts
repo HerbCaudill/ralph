@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import type { AgentType } from "./useAgentChat"
+import type { AgentType } from "@herbcaudill/agent-view"
 
 interface AdapterInfo {
   id: string

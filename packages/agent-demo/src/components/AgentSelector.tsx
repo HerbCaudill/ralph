@@ -1,5 +1,5 @@
 import { IconMessageChatbot, IconBrandOpenai } from "@tabler/icons-react"
-import type { AgentType } from "../hooks/useAgentChat"
+import type { AgentType } from "@herbcaudill/agent-view"
 
 export type AgentSelectorProps = {
   value: AgentType

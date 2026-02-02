@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { IconSettings, IconMessageChatbot, IconBrandOpenai, IconCheck } from "@tabler/icons-react"
-import type { AgentType } from "../hooks/useAgentChat"
+import type { AgentType } from "@herbcaudill/agent-view"
 
 /**
  * Settings dropdown menu with agent type selection.

@@ -5,8 +5,7 @@ import {
   TokenUsageDisplay,
   ContextWindowProgress,
 } from "@herbcaudill/agent-view"
-import type { ChatEvent } from "@herbcaudill/agent-view"
-import type { ConnectionStatus, AgentType } from "../hooks/useAgentChat"
+import type { ChatEvent, ConnectionStatus, AgentType } from "@herbcaudill/agent-view"
 
 /**
  * Status bar showing connection state, agent type, token usage, and context window progress.

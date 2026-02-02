@@ -50,6 +50,13 @@ export { AgentViewProvider } from "./context/AgentViewProvider"
 export { useAgentViewContext } from "./context/useAgentViewContext"
 
 // Hooks
+export { useAgentChat } from "./hooks/useAgentChat"
+export type {
+  AgentType,
+  ConnectionStatus,
+  AgentChatState,
+  AgentChatActions,
+} from "./hooks/useAgentChat"
 export { useAutoScroll } from "./hooks/useAutoScroll"
 export type { UseAutoScrollOptions, UseAutoScrollReturn } from "./hooks/useAutoScroll"
 export { useHighlightedCode } from "./hooks/useHighlightedCode"

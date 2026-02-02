@@ -1,11 +1,10 @@
 import { useState } from "react"
 import { IconMessageChatbot, IconPlus, IconLoader2 } from "@tabler/icons-react"
-import { AgentView, AgentViewProvider } from "@herbcaudill/agent-view"
+import { AgentView, AgentViewProvider, useAgentChat } from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
 import { SettingsMenu } from "./components/SettingsMenu"
 import { ChatInput } from "./components/ChatInput"
 import { StatusBar } from "./components/StatusBar"
-import { useAgentChat } from "./hooks/useAgentChat"
 import { useAdapterVersion } from "./hooks/useAdapterVersion"
 
 export function App() {
