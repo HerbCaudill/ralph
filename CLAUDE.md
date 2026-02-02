@@ -150,8 +150,6 @@ packages/ralph-server/                 # Ralph-specific server package
 packages/agent-demo/              # Agent chat demo
   src/
     App.tsx                 # Main app with AgentView, session management, agent selector
-    hooks/
-      useAgentChat.ts       # Re-export shim (hook moved to @herbcaudill/agent-view)
     components/
       AgentSelector.tsx     # Toggle buttons for Claude Code / Codex selection
       ChatInput.tsx         # Auto-resizing textarea with send button (Enter to send, Shift+Enter for newline)
