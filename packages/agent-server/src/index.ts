@@ -172,12 +172,12 @@ export type { AgentWorkspaceContextOptions } from "./AgentWorkspaceContext.js"
 export { AgentWorkspaceContextManager } from "./AgentWorkspaceContextManager.js"
 export type { AgentWorkspaceContextManagerOptions } from "./AgentWorkspaceContextManager.js"
 
-// ── Module state ──────────────────────────────────────────────────────
+Module state
 
 /** Connected WebSocket clients. */
 const wsClients = new Set<WsClient>()
 
-// ── Helpers ───────────────────────────────────────────────────────────
+Helpers
 
 /**
  * Check if a port is available by attempting to listen on it.
@@ -207,7 +207,7 @@ export async function findAvailablePort(host: string, startPort: number): Promis
   return port
 }
 
-// ── Configuration ────────────────────────────────────────────────────
+Configuration
 
 /**
  * Read agent server configuration from environment variables.
@@ -220,7 +220,7 @@ export function getConfig(): AgentServerConfig {
   }
 }
 
-// ── Server ───────────────────────────────────────────────────────────
+Server
 
 /**
  * Broadcast a message to all connected WebSocket clients.
@@ -248,7 +248,7 @@ export async function startServer(config: AgentServerConfig): Promise<{
 
   const server = createServer(app)
 
-  // ── WebSocket server ────────────────────────────────────────────────
+  WebSocket server
   const wss = new WebSocketServer({ server, path: "/ws" })
 
   // ── TaskChatManager (shared across all WS clients) ─────────────────
@@ -360,7 +360,7 @@ export async function startServer(config: AgentServerConfig): Promise<{
     ws.send(JSON.stringify({ type: "connected" }))
   })
 
-  // ── Task chat REST routes ──────────────────────────────────────────
+  Task chat REST routes
   registerTaskChatRoutes(app, {
     getTaskChatManager: () => taskChatManager,
     getRalphRegistry: () => {
@@ -379,12 +379,12 @@ export async function startServer(config: AgentServerConfig): Promise<{
     setEventHistory: () => {},
   })
 
-  // ── Health check ────────────────────────────────────────────────────
+  Health check
   app.get("/healthz", (_req: Request, res: Response) => {
     res.json({ ok: true, server: "agent-server" })
   })
 
-  // ── Start listening ─────────────────────────────────────────────────
+  Start listening
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject)
     server.listen(config.port, config.host, () => {
@@ -393,7 +393,7 @@ export async function startServer(config: AgentServerConfig): Promise<{
     })
   })
 
-  // ── Graceful shutdown ───────────────────────────────────────────────
+  Graceful shutdown
   const close = async () => {
     console.log("[agent-server] shutting down...")
     for (const client of wsClients) {
