@@ -23,7 +23,7 @@ export function StatusBar({
   const contextWindow = useContextWindow(events)
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex w-full items-center justify-between">
       <div className="flex items-center gap-3">
         {/* Connection indicator */}
         <span className="flex items-center gap-1">
