@@ -91,7 +91,7 @@ export interface ClaudeAdapterOptions {
   /** Retry configuration for connection errors */
   retryConfig?: Partial<RetryConfig>
   /**
-   * Default model to use for queries (e.g., "claude-haiku-4-20250414", "claude-sonnet-4-20250514").
+   * Default model to use for queries (e.g., "claude-haiku-4-5-20251001", "claude-sonnet-4-20250514").
    * Can also be set via the CLAUDE_MODEL environment variable.
    * Can be overridden per-message via AgentStartOptions.model.
    */

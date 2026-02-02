@@ -865,7 +865,7 @@ describe("ClaudeAdapter", () => {
       adapter = new ClaudeAdapter({
         queryFn,
         apiKey: "test-key",
-        model: "claude-haiku-4-20250414",
+        model: "claude-haiku-4-5-20251001",
       })
 
       const events = collectEvents(adapter)
@@ -879,7 +879,7 @@ describe("ClaudeAdapter", () => {
 
       expect(capturedOpts).toBeDefined()
       const options = capturedOpts!.options as Record<string, unknown>
-      expect(options.model).toBe("claude-haiku-4-20250414")
+      expect(options.model).toBe("claude-haiku-4-5-20251001")
     })
 
     it("per-message model overrides the default model", async () => {
@@ -898,7 +898,7 @@ describe("ClaudeAdapter", () => {
       adapter = new ClaudeAdapter({
         queryFn,
         apiKey: "test-key",
-        model: "claude-haiku-4-20250414",
+        model: "claude-haiku-4-5-20251001",
       })
 
       const events = collectEvents(adapter)
@@ -981,7 +981,7 @@ describe("ClaudeAdapter", () => {
         adapter = new ClaudeAdapter({
           queryFn,
           apiKey: "test-key",
-          model: "claude-haiku-4-20250414",
+          model: "claude-haiku-4-5-20251001",
         })
 
         const events = collectEvents(adapter)
@@ -995,7 +995,7 @@ describe("ClaudeAdapter", () => {
 
         expect(capturedOpts).toBeDefined()
         const options = capturedOpts!.options as Record<string, unknown>
-        expect(options.model).toBe("claude-haiku-4-20250414")
+        expect(options.model).toBe("claude-haiku-4-5-20251001")
       } finally {
         if (originalEnv === undefined) {
           delete process.env.CLAUDE_MODEL
@@ -1052,11 +1052,11 @@ describe("ClaudeAdapter", () => {
       adapter = new ClaudeAdapter({
         queryFn: createMockQueryFn([]),
         apiKey: "test-key",
-        model: "claude-haiku-4-20250414",
+        model: "claude-haiku-4-5-20251001",
       })
 
       const info = adapter.getInfo()
-      expect(info.model).toBe("claude-haiku-4-20250414")
+      expect(info.model).toBe("claude-haiku-4-5-20251001")
     })
 
     it("getInfo() returns undefined model when no model is configured", () => {

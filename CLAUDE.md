@@ -336,7 +336,7 @@ Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Core eve
 - `VITE_SPLIT_SERVERS` - Set to `true` to enable split-server mode in the UI (Vite build-time)
 - `VITE_BEADS_SERVER_URL` - Full URL for beads-server in split mode (e.g., `http://localhost:4243`)
 - `VITE_AGENT_SERVER_URL` - Full URL for agent-server in split mode (e.g., `http://localhost:4244`)
-- `CLAUDE_MODEL` - Default Claude model for ClaudeAdapter (e.g., `claude-sonnet-4-20250514`). Can be overridden per-adapter via `ClaudeAdapterOptions.model`. Agent-demo Playwright tests default to `claude-haiku-4-20250414`
+- `CLAUDE_MODEL` - Default Claude model for ClaudeAdapter (e.g., `claude-sonnet-4-20250514`). Can be overridden per-adapter via `ClaudeAdapterOptions.model`. Agent-demo Playwright tests default to `claude-haiku-4-5-20251001`
 - `RALPH_DEBUG` - Debug logging (`1` for all, or comma-separated namespaces: `messagequeue`, `session`)
 - `RALPH_CWD` - Override base path for relative path rendering
 

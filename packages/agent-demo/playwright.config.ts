@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test"
 
 const agentServerPort = Number(process.env.AGENT_SERVER_PORT || "4244")
 const vitePort = Number(process.env.DEMO_AGENT_PORT || "5180")
-const claudeModel = process.env.CLAUDE_MODEL || "claude-haiku-4-20250414"
+const claudeModel = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001"
 
 export default defineConfig({
   testDir: "./e2e",
