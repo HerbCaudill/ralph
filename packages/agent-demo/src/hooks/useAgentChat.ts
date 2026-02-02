@@ -135,6 +135,11 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
         }
 
         if (message.type === "pending_events") {
+          // Only apply events if they match the current session
+          const msgSessionId = message.sessionId as string | undefined
+          if (msgSessionId && sessionIdRef.current && msgSessionId !== sessionIdRef.current) {
+            return
+          }
           const pendingEvents = message.events as ChatEvent[]
           if (pendingEvents?.length) {
             setEvents(pendingEvents)

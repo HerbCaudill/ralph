@@ -80,14 +80,14 @@ export function registerRoutes(
 
   // Get the latest session (must be registered before /:id to avoid shadowing)
   app.get("/api/sessions/latest", (_req: Request, res: Response) => {
-    const persister = ctx.getSessionManager().getPersister()
-    const sessionId = persister.getLatestSessionId()
-    if (!sessionId) {
+    const sessions = ctx.getSessionManager().listSessions()
+    if (sessions.length === 0) {
       res.status(404).json({ error: "No sessions found" })
       return
     }
-    const info = ctx.getSessionManager().getSessionInfo(sessionId)
-    res.json(info ?? { sessionId })
+    // Sort by createdAt descending, return the most recently created session
+    const latest = sessions.sort((a, b) => b.createdAt - a.createdAt)[0]
+    res.json(latest)
   })
 
   // Get session info

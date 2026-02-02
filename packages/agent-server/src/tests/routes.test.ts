@@ -74,20 +74,27 @@ async function request(
 describe("routes", () => {
   describe("GET /api/sessions/latest", () => {
     it("resolves to the latest session route, not the :id route", async () => {
-      const ctx = createMockContext()
+      const ctx = createMockContext({
+        sessionManager: {
+          listSessions: vi.fn().mockReturnValue([
+            { sessionId: "old-session", adapter: "stub", status: "idle", createdAt: 1000 },
+            { sessionId: "latest-session-abc", adapter: "stub", status: "idle", createdAt: 2000 },
+          ]),
+        },
+      })
       const app = createTestApp(ctx)
 
       const res = await request(app, "GET", "/api/sessions/latest")
 
       expect(res.status).toBe(200)
-      // The response should contain the session info for the latest session,
+      // The response should contain the session info for the most recently created session,
       // not a 404 from the /:id handler trying to look up a session called "latest"
       expect(res.body.sessionId).toBe("latest-session-abc")
     })
 
     it("returns 404 when no sessions exist", async () => {
       const ctx = createMockContext({
-        persister: { getLatestSessionId: vi.fn().mockReturnValue(null) },
+        sessionManager: { listSessions: vi.fn().mockReturnValue([]) },
       })
       const app = createTestApp(ctx)
 
@@ -125,14 +132,20 @@ describe("routes", () => {
     it("does not treat 'latest' as a session ID parameter", async () => {
       const getSessionInfo = vi.fn().mockReturnValue(null)
       const ctx = createMockContext({
-        sessionManager: { getSessionInfo },
+        sessionManager: {
+          getSessionInfo,
+          listSessions: vi
+            .fn()
+            .mockReturnValue([
+              { sessionId: "some-session", adapter: "stub", status: "idle", createdAt: 1000 },
+            ]),
+        },
       })
       const app = createTestApp(ctx)
 
       await request(app, "GET", "/api/sessions/latest")
 
-      // getSessionInfo should be called with the resolved latest session ID,
-      // NOT with the literal string "latest"
+      // getSessionInfo should NOT be called with the literal string "latest"
       expect(getSessionInfo).not.toHaveBeenCalledWith("latest")
     })
   })

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from "node:fs"
 import { appendFile, readFile } from "node:fs/promises"
 import { join } from "node:path"
 
@@ -66,17 +66,17 @@ export class SessionPersister {
       .map(f => f.replace(/\.jsonl$/, ""))
   }
 
-  /** Get the most recently modified session ID, or null if none. */
+  /** Get the most recently created session ID, or null if none. */
   getLatestSessionId(): string | null {
     const sessions = this.listSessions()
     if (sessions.length === 0) return null
 
-    let latest: { id: string; mtime: number } | null = null
+    let latest: { id: string; birthtime: number } | null = null
     for (const id of sessions) {
       const filePath = this.sessionPath(id)
       const stat = statSync(filePath)
-      if (!latest || stat.mtimeMs > latest.mtime) {
-        latest = { id, mtime: stat.mtimeMs }
+      if (!latest || stat.birthtimeMs > latest.birthtime) {
+        latest = { id, birthtime: stat.birthtimeMs }
       }
     }
     return latest?.id ?? null
@@ -90,6 +90,33 @@ export class SessionPersister {
     const filePath = this.sessionPath(sessionId)
     if (existsSync(filePath)) {
       unlinkSync(filePath)
+    }
+  }
+
+  /** Read session metadata from the first event (session_created) in the JSONL file. */
+  readSessionMetadata(
+    /** The session ID. */
+    sessionId: string,
+  ): { adapter: string; cwd?: string; createdAt: number } | null {
+    const filePath = this.sessionPath(sessionId)
+    if (!existsSync(filePath)) return null
+
+    try {
+      const content = readFileSync(filePath, "utf-8")
+      const firstLine = content.split("\n").find(line => line.trim())
+      if (!firstLine) return null
+
+      const event = JSON.parse(firstLine) as Record<string, unknown>
+      if (event.type === "session_created") {
+        return {
+          adapter: (event.adapter as string) ?? "claude",
+          cwd: event.cwd as string | undefined,
+          createdAt: (event.timestamp as number) ?? 0,
+        }
+      }
+      return null
+    } catch {
+      return null
     }
   }
 

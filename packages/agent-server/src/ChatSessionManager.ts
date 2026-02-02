@@ -289,13 +289,15 @@ export class ChatSessionManager extends EventEmitter {
   private restoreSessions(): void {
     const sessionIds = this.persister.listSessions()
     for (const sessionId of sessionIds) {
-      // We don't fully restore (no adapter instance), just track metadata
+      // Read creation event to get accurate metadata
+      const metadata = this.persister.readSessionMetadata(sessionId)
+
       this.sessions.set(sessionId, {
         sessionId,
-        adapter: "claude", // Will be overridden when we read the creation event
+        adapter: metadata?.adapter ?? "claude",
         status: "idle",
-        cwd: this.defaultCwd,
-        createdAt: Date.now(),
+        cwd: metadata?.cwd ?? this.defaultCwd,
+        createdAt: metadata?.createdAt ?? 0,
         adapterInstance: null,
         conversationContext: {
           messages: [],

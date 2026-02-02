@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { tmpdir } from "node:os"
-import { mkdtempSync } from "node:fs"
+import { mkdtempSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { ChatSessionManager } from ".././ChatSessionManager.js"
 import { clearRegistry, registerAdapter } from ".././AdapterRegistry.js"
@@ -90,6 +90,92 @@ describe("ChatSessionManager", () => {
       for (const event of userEvents) {
         expect(event).not.toHaveProperty("content")
       }
+    })
+  })
+
+  describe("restoreSessions restores metadata from persisted data", () => {
+    it("restores sessions with correct createdAt from session_created event", async () => {
+      // Phase 1: Create a session and persist some data
+      const manager1 = new ChatSessionManager({ storageDir })
+      const { sessionId } = await manager1.createSession({ adapter: "stub" })
+
+      // Get the original session info to compare
+      const originalInfo = manager1.getSessionInfo(sessionId)
+      expect(originalInfo).not.toBeNull()
+      const originalCreatedAt = originalInfo!.createdAt
+
+      // Phase 2: Create a new manager that reads from the same storage dir.
+      // This triggers restoreSessions() in the constructor.
+      const manager2 = new ChatSessionManager({ storageDir })
+
+      const restoredInfo = manager2.getSessionInfo(sessionId)
+      expect(restoredInfo).not.toBeNull()
+      expect(restoredInfo!.createdAt).toBe(originalCreatedAt)
+    })
+
+    it("restores sessions with correct adapter from session_created event", async () => {
+      const manager1 = new ChatSessionManager({ storageDir })
+      const { sessionId } = await manager1.createSession({ adapter: "stub" })
+
+      const manager2 = new ChatSessionManager({ storageDir })
+
+      const restoredInfo = manager2.getSessionInfo(sessionId)
+      expect(restoredInfo).not.toBeNull()
+      expect(restoredInfo!.adapter).toBe("stub")
+    })
+
+    it("restores sessions with correct cwd from session_created event", async () => {
+      const manager1 = new ChatSessionManager({ storageDir, cwd: "/custom/cwd" })
+      const { sessionId } = await manager1.createSession({ cwd: "/project/dir" })
+
+      const manager2 = new ChatSessionManager({ storageDir, cwd: "/different/default" })
+
+      const restoredInfo = manager2.getSessionInfo(sessionId)
+      expect(restoredInfo).not.toBeNull()
+      expect(restoredInfo!.cwd).toBe("/project/dir")
+    })
+
+    it("restores multiple sessions from disk", async () => {
+      const manager1 = new ChatSessionManager({ storageDir })
+      const { sessionId: id1 } = await manager1.createSession({ adapter: "stub" })
+      const { sessionId: id2 } = await manager1.createSession({ adapter: "stub" })
+
+      const manager2 = new ChatSessionManager({ storageDir })
+      const sessions = manager2.listSessions()
+
+      expect(sessions).toHaveLength(2)
+      const restoredIds = sessions.map(s => s.sessionId).sort()
+      expect(restoredIds).toEqual([id1, id2].sort())
+    })
+
+    it("falls back to defaults when session_created event is missing", () => {
+      // Manually write a JSONL file without a session_created event
+      const sessionId = "manual-session"
+      const filePath = join(storageDir, `${sessionId}.jsonl`)
+      writeFileSync(
+        filePath,
+        JSON.stringify({ type: "user_message", message: "Hello", timestamp: 5000 }) + "\n",
+      )
+
+      const manager = new ChatSessionManager({ storageDir, cwd: "/fallback/cwd" })
+      const info = manager.getSessionInfo(sessionId)
+
+      expect(info).not.toBeNull()
+      // Falls back to defaults when metadata is null
+      expect(info!.adapter).toBe("claude")
+      expect(info!.cwd).toBe("/fallback/cwd")
+      expect(info!.createdAt).toBe(0)
+    })
+
+    it("restored sessions have idle status", async () => {
+      const manager1 = new ChatSessionManager({ storageDir })
+      const { sessionId } = await manager1.createSession({ adapter: "stub" })
+
+      const manager2 = new ChatSessionManager({ storageDir })
+
+      const restoredInfo = manager2.getSessionInfo(sessionId)
+      expect(restoredInfo).not.toBeNull()
+      expect(restoredInfo!.status).toBe("idle")
     })
   })
 })
