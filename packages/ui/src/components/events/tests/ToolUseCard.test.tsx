@@ -153,6 +153,7 @@ describe("ToolUseCard", () => {
       const longOutput = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8"
       renderWithContext(
         <ToolUseCard
+          defaultExpanded={false}
           event={createToolEvent("Bash", {
             input: { command: "echo test" },
             output: longOutput,
@@ -232,6 +233,7 @@ describe("ToolUseCard", () => {
         "new line 1\nnew line 2\nnew line 3\nnew line 4\nnew line 5\nnew line 6\nnew line 7"
       renderWithContext(
         <ToolUseCard
+          defaultExpanded={false}
           event={createToolEvent("Edit", {
             input: {
               file_path: "/test.ts",
@@ -303,6 +305,7 @@ describe("ToolUseCard", () => {
       const manyFiles = Array.from({ length: 10 }, (_, i) => `src/file${i}.tsx`).join("\n")
       renderWithContext(
         <ToolUseCard
+          defaultExpanded={false}
           event={createToolEvent("Glob", {
             input: { pattern: "**/*.tsx" },
             output: manyFiles,
@@ -339,6 +342,7 @@ describe("ToolUseCard", () => {
       const longOutput = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7"
       renderWithContext(
         <ToolUseCard
+          defaultExpanded={false}
           event={createToolEvent("Bash", {
             input: { command: "test" },
             output: longOutput,
@@ -437,6 +441,7 @@ describe("ToolUseCard", () => {
       )
       const { container } = renderWithContext(
         <ToolUseCard
+          defaultExpanded={false}
           event={createToolEvent("Bash", {
             input: { command: "npm test" },
             output: lines,
