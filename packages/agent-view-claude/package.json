@@ -37,7 +37,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.7",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.29",
     "@herbcaudill/agent-view": "workspace:*"
   },
   "devDependencies": {

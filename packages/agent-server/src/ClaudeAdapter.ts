@@ -572,11 +572,15 @@ export class ClaudeAdapter extends AgentAdapter {
         this.pendingToolUses.set(block.id, { tool: block.name, input })
         if (this.currentAssistantMessage) {
           this.currentAssistantMessage.toolUses = this.currentAssistantMessage.toolUses ?? []
-          this.currentAssistantMessage.toolUses.push({
-            id: block.id,
-            name: block.name,
-            input,
-          })
+          // Deduplicate: only add if this tool_use ID hasn't been tracked yet
+          const alreadyTracked = this.currentAssistantMessage.toolUses.some(t => t.id === block.id)
+          if (!alreadyTracked) {
+            this.currentAssistantMessage.toolUses.push({
+              id: block.id,
+              name: block.name,
+              input,
+            })
+          }
         }
       }
     }
@@ -627,14 +631,19 @@ export class ClaudeAdapter extends AgentAdapter {
             } else if (block.type === "tool_use" && block.id && block.name) {
               const input = (block.input as Record<string, unknown>) ?? {}
               this.pendingToolUses.set(block.id, { tool: block.name, input })
-              // Track in conversation context
+              // Track in conversation context (deduplicate by tool_use ID)
               if (this.currentAssistantMessage) {
                 this.currentAssistantMessage.toolUses = this.currentAssistantMessage.toolUses ?? []
-                this.currentAssistantMessage.toolUses.push({
-                  id: block.id,
-                  name: block.name,
-                  input,
-                })
+                const alreadyTracked = this.currentAssistantMessage.toolUses.some(
+                  t => t.id === block.id,
+                )
+                if (!alreadyTracked) {
+                  this.currentAssistantMessage.toolUses.push({
+                    id: block.id,
+                    name: block.name,
+                    input,
+                  })
+                }
               }
               const event: AgentToolUseEvent = {
                 type: "tool_use",
@@ -713,14 +722,19 @@ export class ClaudeAdapter extends AgentAdapter {
 
         if (toolUseId && tool) {
           this.pendingToolUses.set(toolUseId, { tool, input })
-          // Track in conversation context
+          // Track in conversation context (deduplicate by tool_use ID)
           if (this.currentAssistantMessage) {
             this.currentAssistantMessage.toolUses = this.currentAssistantMessage.toolUses ?? []
-            this.currentAssistantMessage.toolUses.push({
-              id: toolUseId,
-              name: tool,
-              input,
-            })
+            const alreadyTracked = this.currentAssistantMessage.toolUses.some(
+              t => t.id === toolUseId,
+            )
+            if (!alreadyTracked) {
+              this.currentAssistantMessage.toolUses.push({
+                id: toolUseId,
+                name: tool,
+                input,
+              })
+            }
           }
           const event: AgentToolUseEvent = {
             type: "tool_use",

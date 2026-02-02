@@ -366,6 +366,69 @@ describe("ClaudeAdapter", () => {
       expect(context.usage.totalTokens).toBe(150)
     })
 
+    it("deduplicates tool_use blocks when stream_event and top-level assistant both contain the same tool_use ID", async () => {
+      const toolUseBlock = {
+        type: "tool_use",
+        id: "tool_dup",
+        name: "bash",
+        input: { command: "echo hello" },
+      }
+
+      const assistantMessage = {
+        role: "assistant",
+        content: [toolUseBlock],
+      }
+
+      const sdkMessages = [
+        // 1. SDK sends a stream_event with an inner assistant event containing the tool_use
+        {
+          type: "stream_event",
+          event: {
+            type: "assistant",
+            message: { content: [toolUseBlock] },
+          },
+        },
+        // 2. SDK sends a top-level assistant message with the SAME tool_use block
+        { type: "assistant", message: assistantMessage },
+        // 3. SDK sends a result message
+        {
+          type: "result",
+          subtype: "success",
+          result: "",
+          usage: { input_tokens: 10, output_tokens: 5 },
+        },
+      ]
+
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn(sdkMessages),
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Run a command" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      const context = adapter.getConversationContext()
+
+      // Find the assistant message in context
+      const assistantMsg = context.messages.find(m => m.role === "assistant")
+      expect(assistantMsg).toBeDefined()
+
+      // The assistant message should have exactly ONE tool_use entry, not two
+      expect(assistantMsg!.toolUses).toHaveLength(1)
+      expect(assistantMsg!.toolUses![0]).toMatchObject({
+        id: "tool_dup",
+        name: "bash",
+        input: { command: "echo hello" },
+      })
+    })
+
+
     it("handles assistant messages with no content blocks gracefully", async () => {
       const sdkMessages = [
         { type: "assistant", message: { role: "assistant" } },
