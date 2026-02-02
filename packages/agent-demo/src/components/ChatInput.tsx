@@ -4,7 +4,6 @@ import { IconSend2 } from "@tabler/icons-react"
 export type ChatInputProps = {
   onSend: (message: string) => void
   disabled?: boolean
-  isStreaming?: boolean
   placeholder?: string
 }
 
@@ -15,7 +14,6 @@ export type ChatInputProps = {
 export function ChatInput({
   onSend,
   disabled = false,
-  isStreaming = false,
   placeholder = "Send a message…",
 }: ChatInputProps) {
   const [value, setValue] = useState("")
@@ -62,11 +60,6 @@ export function ChatInput({
 
   return (
     <div className="flex items-end gap-2 border-t border-border bg-background px-4 py-3">
-      {isStreaming && (
-        <div className="flex h-10 items-center">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-        </div>
-      )}
       <textarea
         ref={textareaRef}
         value={value}

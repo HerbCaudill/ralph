@@ -82,7 +82,6 @@ export function App() {
         <ChatInput
           onSend={sendMessage}
           disabled={!isConnected}
-          isStreaming={isStreaming}
           placeholder={isConnected ? "Send a message…" : "Waiting for connection to agent server…"}
         />
       </div>
