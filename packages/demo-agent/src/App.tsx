@@ -1,7 +1,7 @@
 import { IconEraser, IconMessageChatbot } from "@tabler/icons-react"
 import { AgentView, AgentViewProvider } from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
-import { AgentSelector } from "./components/AgentSelector"
+import { SettingsMenu } from "./components/SettingsMenu"
 import { ChatInput } from "./components/ChatInput"
 import { StatusBar } from "./components/StatusBar"
 import { useAgentChat } from "./hooks/useAgentChat"
@@ -18,7 +18,6 @@ export function App() {
       title="Agent Chat Demo"
       headerActions={
         <div className="flex items-center gap-2">
-          <AgentSelector value={agentType} onChange={setAgentType} disabled={isStreaming} />
           <button
             onClick={clearHistory}
             disabled={isStreaming || events.length === 0}
@@ -28,6 +27,11 @@ export function App() {
             <IconEraser size={16} stroke={1.5} />
             Clear
           </button>
+          <SettingsMenu
+            agentType={agentType}
+            onAgentTypeChange={setAgentType}
+            disabled={isStreaming}
+          />
         </div>
       }
       statusBar={
@@ -48,9 +52,7 @@ export function App() {
               <div className="flex flex-col items-center gap-4 text-muted-foreground">
                 <IconMessageChatbot size={48} stroke={1.5} />
                 <p className="text-center text-sm">
-                  {isConnected ?
-                    "Select an agent and start chatting."
-                  : "Connecting to agent server…"}
+                  {isConnected ? "Start chatting with an AI agent." : "Connecting to agent server…"}
                 </p>
               </div>
             </div>
