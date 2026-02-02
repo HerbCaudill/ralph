@@ -1,4 +1,4 @@
-import { IconEraser, IconMessageChatbot, IconPlus } from "@tabler/icons-react"
+import { IconMessageChatbot, IconPlus } from "@tabler/icons-react"
 import { AgentView, AgentViewProvider } from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
 import { SettingsMenu } from "./components/SettingsMenu"
@@ -9,7 +9,7 @@ import { useAgentChat } from "./hooks/useAgentChat"
 export function App() {
   const { state, actions, agentType } = useAgentChat("claude")
   const { events, isStreaming, connectionStatus, error } = state
-  const { sendMessage, clearHistory, setAgentType, newSession } = actions
+  const { sendMessage, setAgentType, newSession } = actions
 
   const isConnected = connectionStatus === "connected"
 
@@ -26,15 +26,6 @@ export function App() {
           >
             <IconPlus size={16} stroke={1.5} />
             New session
-          </button>
-          <button
-            onClick={clearHistory}
-            disabled={isStreaming || events.length === 0}
-            title="Clear conversation"
-            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-30"
-          >
-            <IconEraser size={16} stroke={1.5} />
-            Clear
           </button>
           <SettingsMenu
             agentType={agentType}
