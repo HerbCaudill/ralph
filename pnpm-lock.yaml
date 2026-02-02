@@ -10,6 +10,9 @@ importers:
       concurrently:
         specifier: ^9.2.1
         version: 9.2.1
+      get-port:
+        specifier: ^7.1.0
+        version: 7.1.0
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -5645,6 +5648,13 @@ packages:
       {
         integrity: sha512-I0UBV/XOz1XkIJHEUDMZAbzCThU/H8DxmSfmdGcKPnVhu2VfFqr34jr9777IyaTYvxjedWhqVIilEDsCdP5G6g==,
       }
+
+  get-port@7.1.0:
+    resolution:
+      {
+        integrity: sha512-QB9NKEeDg3xxVwCCwJQ9+xycaz6pBB6iQ76wiWMl1927n0Kir6alPiP+yuiICLLU4jpMe08dXfpebuQppFA2zw==,
+      }
+    engines: { node: ">=16" }
 
   get-proto@1.0.1:
     resolution:
@@ -13068,6 +13078,8 @@ snapshots:
   get-nonce@1.0.1: {}
 
   get-own-enumerable-property-symbols@3.0.2: {}
+
+  get-port@7.1.0: {}
 
   get-proto@1.0.1:
     dependencies:

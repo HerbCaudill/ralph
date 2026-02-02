@@ -5,7 +5,7 @@
  * and running multi-service dev environments. Used by dev.js, dev-split.js,
  * and playwright.js.
  */
-import { createServer } from "node:net"
+import getPort, { portNumbers } from "get-port"
 import { spawn } from "node:child_process"
 import { setTimeout as delay } from "node:timers/promises"
 
@@ -18,13 +18,8 @@ export async function checkPortAvailable(
   /** The port number to check */
   port,
 ) {
-  return new Promise(resolve => {
-    const server = createServer()
-    server.once("error", () => resolve(false))
-    server.listen(port, "localhost", () => {
-      server.close(() => resolve(true))
-    })
-  })
+  const available = await getPort({ port })
+  return available === port
 }
 
 /**
@@ -34,21 +29,8 @@ export async function checkPortAvailable(
 export async function findAvailablePort(
   /** The port to start searching from */
   startPort,
-  /** Optional label for log messages */
-  label,
 ) {
-  for (let i = 0; i < MAX_PORT_ATTEMPTS; i++) {
-    const port = startPort + i
-    if (await checkPortAvailable(port)) {
-      return port
-    }
-    if (label) {
-      console.log(`[${label}] Port ${port} in use, trying ${port + 1}...`)
-    }
-  }
-  throw new Error(
-    `No available port found after ${MAX_PORT_ATTEMPTS} attempts starting from ${startPort}`,
-  )
+  return getPort({ port: portNumbers(startPort, startPort + MAX_PORT_ATTEMPTS - 1) })
 }
 
 /**
@@ -63,8 +45,6 @@ export async function resolvePort(
   defaultPort,
   /** Human-readable name for error messages */
   name,
-  /** Log label prefix */
-  label,
 ) {
   const requested = process.env[envVar] ? Number(process.env[envVar]) : undefined
   if (requested !== undefined) {
@@ -73,7 +53,7 @@ export async function resolvePort(
     }
     return requested
   }
-  return findAvailablePort(defaultPort, label)
+  return findAvailablePort(defaultPort)
 }
 
 /**
@@ -141,10 +121,10 @@ export async function runDev(
   // Resolve all ports
   const ports = {}
   for (const svc of services) {
-    ports[svc.name] = await resolvePort(svc.portEnv, svc.defaultPort, svc.name, label)
+    ports[svc.name] = await resolvePort(svc.portEnv, svc.defaultPort, svc.name)
   }
   if (frontend) {
-    ports._frontend = await resolvePort(frontend.portEnv, frontend.defaultPort, "frontend", label)
+    ports._frontend = await resolvePort(frontend.portEnv, frontend.defaultPort, "frontend")
   }
 
   // Build env with resolved ports
