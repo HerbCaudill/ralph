@@ -383,7 +383,8 @@ export class ClaudeAdapter extends AgentAdapter {
         })) {
           this.handleSDKMessage(message)
         }
-        // Success - reset inFlight and exit the retry loop
+        // Success - signal idle so ChatSessionManager can resolve
+        this.setStatus("idle")
         this.inFlight = null
         return
       } catch (err) {
@@ -453,7 +454,25 @@ export class ClaudeAdapter extends AgentAdapter {
 
     switch (message.type) {
       case "assistant":
-        this.translateEvent({ type: "assistant", message: message.message })
+        // Emit the structured assistant event for UI rendering (preserves message.content blocks)
+        this.emit("event", {
+          type: "assistant",
+          timestamp: this.now(),
+          message: message.message,
+        })
+        // Track conversation context and pending tool uses (without re-emitting events)
+        this.trackAssistantMessage(
+          message.message as {
+            content?: Array<{
+              type: string
+              text?: string
+              thinking?: string
+              id?: string
+              name?: string
+              input?: unknown
+            }>
+          },
+        )
         break
       case "stream_event":
         this.translateEvent(message.event as ClaudeNativeEvent)
@@ -505,6 +524,42 @@ export class ClaudeAdapter extends AgentAdapter {
         break
       default:
         break
+    }
+  }
+
+  /**
+   * Track assistant message content for conversation context and pending tool uses
+   * without emitting individual events (the structured "assistant" event is emitted separately).
+   */
+  private trackAssistantMessage(message: {
+    content?: Array<{
+      type: string
+      text?: string
+      thinking?: string
+      id?: string
+      name?: string
+      input?: unknown
+    }>
+  }): void {
+    if (!message?.content) return
+    for (const block of message.content) {
+      if (block.type === "text" && block.text) {
+        this.currentMessageContent = block.text
+        if (this.currentAssistantMessage) {
+          this.currentAssistantMessage.content = block.text
+        }
+      } else if (block.type === "tool_use" && block.id && block.name) {
+        const input = (block.input as Record<string, unknown>) ?? {}
+        this.pendingToolUses.set(block.id, { tool: block.name, input })
+        if (this.currentAssistantMessage) {
+          this.currentAssistantMessage.toolUses = this.currentAssistantMessage.toolUses ?? []
+          this.currentAssistantMessage.toolUses.push({
+            id: block.id,
+            name: block.name,
+            input,
+          })
+        }
+      }
     }
   }
 
