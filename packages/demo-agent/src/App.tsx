@@ -1,5 +1,5 @@
 import { IconEraser, IconMessageChatbot } from "@tabler/icons-react"
-import { AgentView } from "@herbcaudill/agent-view"
+import { AgentView, AgentViewProvider } from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
 import { AgentSelector } from "./components/AgentSelector"
 import { ChatInput } from "./components/ChatInput"
@@ -55,7 +55,12 @@ export function App() {
                 </p>
               </div>
             </div>
-          : <AgentView events={events} isStreaming={isStreaming} context={{ isDark: false }} />}
+          : <AgentViewProvider
+              value={{ isDark: false, toolOutput: { isVisible: true, onToggle: () => {} } }}
+            >
+              <AgentView events={events} isStreaming={isStreaming} context={{ isDark: false }} />
+            </AgentViewProvider>
+          }
         </div>
 
         {/* Chat input */}

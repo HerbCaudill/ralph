@@ -19,12 +19,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./styles.css": "./src/styles.css"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src/styles.css"
   ],
   "scripts": {
     "build": "tsc",
@@ -48,7 +50,6 @@
   "devDependencies": {
     "@storybook/addon-vitest": "^10.2.0",
     "@storybook/react-vite": "^10.2.0",
-    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^24.10.9",
     "@types/react": "^19.2.5",
@@ -60,6 +61,7 @@
     "vitest": "^4.0.17"
   },
   "peerDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
