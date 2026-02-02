@@ -21,10 +21,12 @@ export function ChatInput({
   const [value, setValue] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  /** Focus the textarea on mount and after each send. */
+  /** Focus the textarea on mount and whenever it becomes enabled. */
   useEffect(() => {
-    textareaRef.current?.focus()
-  }, [])
+    if (!disabled) {
+      textareaRef.current?.focus()
+    }
+  }, [disabled])
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim()

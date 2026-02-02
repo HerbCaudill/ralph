@@ -6,9 +6,7 @@ describe("ChatInput", () => {
   describe("rendering", () => {
     it("renders textarea with default placeholder", () => {
       render(<ChatInput onSend={() => {}} />)
-      expect(
-        screen.getByPlaceholderText("Send a message\u2026")
-      ).toBeInTheDocument()
+      expect(screen.getByPlaceholderText("Send a message\u2026")).toBeInTheDocument()
     })
 
     it("renders textarea with custom placeholder", () => {
@@ -114,6 +112,24 @@ describe("ChatInput", () => {
     it("disables textarea when disabled prop is true", () => {
       render(<ChatInput onSend={() => {}} disabled />)
       expect(screen.getByRole("textbox")).toBeDisabled()
+    })
+
+    it("focuses textarea when rendered with disabled=false", () => {
+      render(<ChatInput onSend={() => {}} />)
+      expect(screen.getByRole("textbox")).toHaveFocus()
+    })
+
+    it("does not focus textarea when rendered with disabled=true", () => {
+      render(<ChatInput onSend={() => {}} disabled />)
+      expect(screen.getByRole("textbox")).not.toHaveFocus()
+    })
+
+    it("focuses textarea when disabled changes from true to false", () => {
+      const { rerender } = render(<ChatInput onSend={() => {}} disabled />)
+      expect(screen.getByRole("textbox")).not.toHaveFocus()
+
+      rerender(<ChatInput onSend={() => {}} disabled={false} />)
+      expect(screen.getByRole("textbox")).toHaveFocus()
     })
 
     it("disables send button when input is empty", () => {
