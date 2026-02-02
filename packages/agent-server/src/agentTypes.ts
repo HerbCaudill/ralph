@@ -202,22 +202,3 @@ export abstract class AgentAdapter extends EventEmitter {
   }
 }
 
-// ── BdProxy type (re-export from beads-sdk) ──────────────────────────
-
-// BdProxy is just a re-export of BeadsClient from beads-sdk.
-// We define a minimal interface here to avoid a direct dependency on beads-sdk.
-
-/**
- * Minimal interface for the BdProxy (BeadsClient) used by agent-server modules.
- * This avoids a direct dependency on beads-sdk while allowing TaskChatManager
- * and RalphRegistry to interact with the issue tracker.
- */
-export interface BdProxy {
-  /** Add a comment to an issue */
-  addComment(issueId: string, text: string, author?: string): Promise<void>
-  /** List issues with optional filters */
-  list(options?: {
-    status?: string
-    limit?: number
-  }): Promise<Array<{ id: string; title: string; priority: number }>>
-}

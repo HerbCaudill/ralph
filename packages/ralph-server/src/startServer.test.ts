@@ -28,7 +28,7 @@ describe("startServer", () => {
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body).toEqual({ ok: true, server: "agent-server" })
+    expect(body).toEqual({ ok: true, server: "ralph-server" })
   })
 
   it("accepts WebSocket connections and sends connected message", async () => {

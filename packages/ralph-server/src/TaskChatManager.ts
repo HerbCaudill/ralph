@@ -2,8 +2,7 @@ import { EventEmitter } from "node:events"
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { loadTaskChatSkill } from "./systemPrompt.js"
 import type { BdProxy } from "./agentTypes.js"
-import { findClaudeExecutable } from "./findClaudeExecutable.js"
-import { buildCwdContext } from "./ClaudeAdapter.js"
+import { findClaudeExecutable, buildCwdContext } from "@herbcaudill/agent-server"
 
 /**
  * Manages task chat conversations with Claude Agent SDK.
