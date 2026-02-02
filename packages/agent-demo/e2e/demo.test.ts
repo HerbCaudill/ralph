@@ -16,11 +16,11 @@ test.describe("Agent Chat Demo", () => {
     // The user message should appear in the event display
     await expect(page.getByRole("log", { name: "Agent Events" })).toContainText(prompt)
 
-    // The 'Processing' indicator should appear
-    await expect(page.getByRole("contentinfo")).toContainText("Processing")
+    // The spinner should appear while streaming
+    await expect(page.locator(".animate-spin")).toBeVisible()
 
-    // the 'Processing' indicator should disappear when done
-    await expect(page.getByRole("contentinfo")).not.toContainText("Processing")
+    // The spinner should disappear when done
+    await expect(page.locator(".animate-spin")).not.toBeVisible()
 
     // The agent's response should appear in the event display
     await expect(page.getByRole("log", { name: "Agent Events" })).toContainText("4")

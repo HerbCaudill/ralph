@@ -51,32 +51,26 @@ describe("StatusBar", () => {
   })
 
   describe("streaming indicator", () => {
-    it("shows processing indicator when streaming", () => {
-      render(<StatusBar {...defaultProps} isStreaming={true} />)
-      expect(screen.getByText("Processing")).toBeInTheDocument()
+    it("shows spinner when streaming", () => {
+      const { container } = render(<StatusBar {...defaultProps} isStreaming={true} />)
+      expect(container.querySelector(".animate-spin")).toBeInTheDocument()
     })
 
-    it("does not show processing indicator when not streaming", () => {
-      render(<StatusBar {...defaultProps} isStreaming={false} />)
-      expect(screen.queryByText("Processing")).not.toBeInTheDocument()
+    it("does not show spinner when not streaming", () => {
+      const { container } = render(<StatusBar {...defaultProps} isStreaming={false} />)
+      expect(container.querySelector(".animate-spin")).not.toBeInTheDocument()
     })
   })
 
   describe("error display", () => {
     it("shows error message when error is present", () => {
-      render(
-        <StatusBar {...defaultProps} error="WebSocket connection failed" />
-      )
-      expect(
-        screen.getByText("WebSocket connection failed")
-      ).toBeInTheDocument()
+      render(<StatusBar {...defaultProps} error="WebSocket connection failed" />)
+      expect(screen.getByText("WebSocket connection failed")).toBeInTheDocument()
     })
 
     it("does not show error when error is null", () => {
       render(<StatusBar {...defaultProps} error={null} />)
-      expect(
-        screen.queryByText("WebSocket connection failed")
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText("WebSocket connection failed")).not.toBeInTheDocument()
     })
   })
 
@@ -121,16 +115,9 @@ describe("StatusBar", () => {
   describe("combined states", () => {
     it("shows all indicators together when streaming with tokens and error", () => {
       mockUseTokenUsage.mockReturnValue({ input: 1000, output: 500 })
-      render(
-        <StatusBar
-          {...defaultProps}
-          isStreaming={true}
-          error="Partial failure"
-        />
-      )
+      render(<StatusBar {...defaultProps} isStreaming={true} error="Partial failure" />)
       expect(screen.getByText("connected")).toBeInTheDocument()
       expect(screen.getByText("Claude Code")).toBeInTheDocument()
-      expect(screen.getByText("Processing")).toBeInTheDocument()
       expect(screen.getByText("Partial failure")).toBeInTheDocument()
       expect(screen.getByText("1.0k in / 500 out")).toBeInTheDocument()
     })

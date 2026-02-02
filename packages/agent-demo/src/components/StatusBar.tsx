@@ -43,9 +43,8 @@ export function StatusBar({
         {isStreaming && (
           <>
             <span className="text-muted-foreground/60">|</span>
-            <span className="flex items-center gap-1 text-amber-600">
+            <span className="flex items-center text-amber-600">
               <IconLoader2 size={12} stroke={1.5} className="animate-spin" />
-              Processing
             </span>
           </>
         )}
