@@ -12,7 +12,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest --watch",
-    "test:e2e": "playwright test",
+    "test:pw": "playwright test",
     "format": "prettier --write . --log-level silent"
   },
   "dependencies": {

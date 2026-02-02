@@ -16,7 +16,7 @@ const TEST_WORKSPACE = join(__dirname, "../../.test-workspace")
  * 2. Claude CLI to be configured with API key
  * 3. Network access to Claude API
  *
- * To run these tests: pnpm test:e2e
+ * To run these tests: pnpm test:pw
  */
 describe("Ralph E2E Tests", () => {
   beforeAll(() => {
