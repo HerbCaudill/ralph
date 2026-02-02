@@ -426,6 +426,9 @@ importers:
       "@anthropic-ai/claude-agent-sdk":
         specifier: ^0.2.7
         version: 0.2.19(zod@4.3.5)
+      "@herbcaudill/agent-server":
+        specifier: workspace:*
+        version: link:../agent-server
       "@herbcaudill/agent-view":
         specifier: workspace:*
         version: link:../agent-view

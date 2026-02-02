@@ -33,7 +33,7 @@ pnpm format               # Format with Prettier
 pnpm pub                  # Publish CLI + UI packages
 ```
 
-Use `packages/ui/server/tsconfig.json` when editing UI server TypeScript files.
+Use `packages/ui/server/tsconfig.json` when editing UI server TypeScript files. Use `packages/agent-server/tsconfig.json` when editing agent-server TypeScript files.
 
 ## Workspace structure
 
@@ -100,14 +100,34 @@ packages/beads-server/                 # Beads server package
 
 packages/agent-server/                 # Agent server package
   src/
-    index.ts                # Express server entry + WebSocket setup (startServer, getConfig, findAvailablePort)
+    index.ts                # Express server entry + WebSocket setup + re-exports all modules
     main.ts                 # Dev entry point
     types.ts                # AgentServerConfig, WsClient types
+    agentTypes.ts           # AgentAdapter base class, ConversationContext, BdProxy interface
+    RalphManager.ts         # Spawns and manages Ralph CLI process
+    RalphRegistry.ts        # Registry of all Ralph instances per workspace
+    InstanceStore.ts        # JSON persistence for instance metadata
+    SessionEventPersister.ts # Append-only event log persistence
+    SessionStateStore.ts    # JSON persistence for session state
+    SessionRunner.ts        # Orchestrates agent sessions (prompt, spawn, events)
+    WorktreeManager.ts      # Git worktree creation, merge, cleanup
+    findClaudeExecutable.ts # Locates the Claude CLI binary
+    systemPrompt.ts         # Loads system prompt and task-chat skill config
+    loadSkill.ts            # Loads custom skill definitions from .ralph/skills/
 
 packages/ui/                        # UI package
   server/                   # Express backend
     index.ts                # Server entry + REST API + WebSocket (imports task routes from beads-view)
-    RalphManager.ts         # Spawns and manages Ralph CLI process
+    RalphManager.ts         # Re-export from @herbcaudill/agent-server
+    RalphRegistry.ts        # Re-export from @herbcaudill/agent-server
+    InstanceStore.ts        # Re-export from @herbcaudill/agent-server
+    SessionEventPersister.ts # Re-export from @herbcaudill/agent-server
+    SessionStateStore.ts    # Re-export from @herbcaudill/agent-server
+    SessionRunner.ts        # Re-export from @herbcaudill/agent-server
+    WorktreeManager.ts      # Re-export from @herbcaudill/agent-server
+    findClaudeExecutable.ts # Re-export from @herbcaudill/agent-server
+    systemPrompt.ts         # Re-export from @herbcaudill/agent-server
+    loadSkill.ts            # Re-export from @herbcaudill/agent-server
     BdProxy.ts              # Proxy for beads CLI commands
     ThemeDiscovery.ts       # Discovers VS Code themes
   src/                      # React frontend
@@ -149,6 +169,10 @@ Two-tier prompt system:
 Ralph expects `--output-format stream-json` with `--include-partial-messages`, exit code 0 on success.
 
 Claude outputs: `<start_task>{id}</start_task>` when starting, `<end_task>{id}</end_task>` when done, `<promise>COMPLETE</promise>` if no issues ready.
+
+### Agent server extraction
+
+Agent management modules (RalphManager, RalphRegistry, InstanceStore, SessionEventPersister, SessionStateStore, SessionRunner, WorktreeManager, findClaudeExecutable, systemPrompt, loadSkill) live in `packages/agent-server/` (`@herbcaudill/agent-server`). The UI server files re-export from this package for backward compatibility. Type definitions for AgentAdapter, ConversationContext, ConversationMessage, and BdProxy are in `agent-server/src/agentTypes.ts`.
 
 ### Multi-agent support
 

@@ -117,7 +117,8 @@
     "tailwind-merge": "^3.4.0",
     "ws": "^8.19.0",
     "zustand": "^5.0.10",
-    "@herbcaudill/beads-view": "workspace:*"
+    "@herbcaudill/beads-view": "workspace:*",
+    "@herbcaudill/agent-server": "workspace:*"
   },
   "bin": {
     "ralph-ui": "./bin/ralph-ui.js"

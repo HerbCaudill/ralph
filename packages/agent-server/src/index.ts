@@ -5,6 +5,91 @@ import type { AgentServerConfig, WsClient } from "./types.js"
 
 export type { AgentServerConfig, WsClient } from "./types.js"
 
+// ── Re-exports: extracted agent manager modules ─────────────────────
+
+export { RalphManager } from "./RalphManager.js"
+export type { RalphStatus, RalphEvent, SpawnFn, RalphManagerOptions } from "./RalphManager.js"
+
+export { RalphRegistry, eventsToConversationContext } from "./RalphRegistry.js"
+export type {
+  MergeConflict,
+  RalphInstanceState,
+  CreateInstanceOptions,
+  RalphRegistryOptions,
+} from "./RalphRegistry.js"
+
+export { InstanceStore, getInstanceStore, resetInstanceStores } from "./InstanceStore.js"
+export type { PersistedInstance } from "./InstanceStore.js"
+
+export {
+  SessionEventPersister,
+  getSessionEventPersister,
+  resetSessionEventPersisters,
+} from "./SessionEventPersister.js"
+
+export {
+  SessionStateStore,
+  getSessionStateStore,
+  resetSessionStateStores,
+} from "./SessionStateStore.js"
+export type { PersistedSessionState } from "./SessionStateStore.js"
+
+export { SessionRunner } from "./SessionRunner.js"
+export type { SessionStatus, SessionRunnerOptions, SessionRunnerEvents } from "./SessionRunner.js"
+
+export { WorktreeManager } from "./WorktreeManager.js"
+export type {
+  WorktreeInfo,
+  CreateWorktreeOptions,
+  MergeResult,
+  CleanupResult,
+  PostSessionResult,
+  WorktreeStatus,
+} from "./WorktreeManager.js"
+
+export { findClaudeExecutable } from "./findClaudeExecutable.js"
+
+export {
+  loadSystemPrompt,
+  loadTaskChatSkill,
+  getTaskChatAllowedTools,
+  getTaskChatModel,
+} from "./systemPrompt.js"
+
+export { loadSkill, hasCustomSkill, getCustomSkillPath } from "./loadSkill.js"
+export type { SkillMetadata, LoadSkillResult } from "./loadSkill.js"
+
+// Re-export agent types
+export { AgentAdapter } from "./agentTypes.js"
+export type {
+  ConversationContext,
+  ConversationMessage,
+  AgentStartOptions,
+  AgentMessage,
+  AgentInfo,
+  AgentAdapterEvents,
+  AgentEvent,
+  AgentMessageEvent,
+  AgentThinkingEvent,
+  AgentToolUseEvent,
+  AgentToolResultEvent,
+  AgentResultEvent,
+  AgentErrorEvent,
+  AgentStatusEvent,
+  AgentStatus,
+  BdProxy,
+} from "./agentTypes.js"
+
+export {
+  isAgentMessageEvent,
+  isAgentThinkingEvent,
+  isAgentToolUseEvent,
+  isAgentToolResultEvent,
+  isAgentResultEvent,
+  isAgentErrorEvent,
+  isAgentStatusEvent,
+} from "./agentTypes.js"
+
 // ── Module state ──────────────────────────────────────────────────────
 
 /** Connected WebSocket clients. */
