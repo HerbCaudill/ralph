@@ -283,6 +283,9 @@ importers:
 
   packages/beads-demo:
     dependencies:
+      "@herbcaudill/agent-view":
+        specifier: workspace:*
+        version: link:../agent-view
       "@herbcaudill/beads-view":
         specifier: workspace:*
         version: link:../beads-view
@@ -302,6 +305,9 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
     devDependencies:
+      "@tailwindcss/typography":
+        specifier: ^0.5.19
+        version: 0.5.19(tailwindcss@4.1.18)
       "@tailwindcss/vite":
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0))
