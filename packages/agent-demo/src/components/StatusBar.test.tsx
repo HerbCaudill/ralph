@@ -59,18 +59,6 @@ describe("StatusBar", () => {
     })
   })
 
-  describe("streaming indicator", () => {
-    it("shows spinner when streaming", () => {
-      const { container } = render(<StatusBar {...defaultProps} isStreaming={true} />)
-      expect(container.querySelector(".animate-spin")).toBeInTheDocument()
-    })
-
-    it("does not show spinner when not streaming", () => {
-      const { container } = render(<StatusBar {...defaultProps} isStreaming={false} />)
-      expect(container.querySelector(".animate-spin")).not.toBeInTheDocument()
-    })
-  })
-
   describe("error display", () => {
     it("shows error message when error is present", () => {
       render(<StatusBar {...defaultProps} error="WebSocket connection failed" />)

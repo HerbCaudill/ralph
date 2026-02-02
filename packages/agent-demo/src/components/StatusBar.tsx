@@ -9,8 +9,7 @@ import type { ChatEvent } from "@herbcaudill/agent-view"
 import type { ConnectionStatus, AgentType } from "../hooks/useAgentChat"
 
 /**
- * Status bar showing connection state, streaming indicator, agent type, token usage, and context
- * window progress.
+ * Status bar showing connection state, agent type, token usage, and context window progress.
  */
 export function StatusBar({
   connectionStatus,
@@ -38,16 +37,6 @@ export function StatusBar({
         {/* Agent type */}
         <span className="text-muted-foreground/60">|</span>
         <span className="capitalize">{agentType === "claude" ? "Claude Code" : "Codex"}</span>
-
-        {/* Streaming indicator */}
-        {isStreaming && (
-          <>
-            <span className="text-muted-foreground/60">|</span>
-            <span className="flex items-center text-amber-600">
-              <IconLoader2 size={12} stroke={1.5} className="animate-spin" />
-            </span>
-          </>
-        )}
 
         {/* Error */}
         {error && (
