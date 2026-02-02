@@ -1,4 +1,4 @@
-import { IconMessageChatbot, IconPlus } from "@tabler/icons-react"
+import { IconMessageChatbot, IconPlus, IconLoader2 } from "@tabler/icons-react"
 import { AgentView, AgentViewProvider } from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
 import { SettingsMenu } from "./components/SettingsMenu"
@@ -62,7 +62,18 @@ export function App() {
           : <AgentViewProvider
               value={{ isDark: false, toolOutput: { isVisible: true, onToggle: () => {} } }}
             >
-              <AgentView events={events} isStreaming={isStreaming} context={{ isDark: false }} />
+              <AgentView
+                events={events}
+                isStreaming={isStreaming}
+                context={{ isDark: false }}
+                loadingIndicator={
+                  isStreaming && (
+                    <div className="flex justify-center py-4">
+                      <IconLoader2 className="text-repo-accent size-6 animate-spin" />
+                    </div>
+                  )
+                }
+              />
             </AgentViewProvider>
           }
         </div>
