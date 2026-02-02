@@ -146,6 +146,22 @@ export { createEventStream } from "./lib/createEventStream.js"
 export { createMessageStream } from "./lib/createMessageStream.js"
 export { generateId } from "./lib/generateId.js"
 
+// ── Re-exports: HTTP route modules ──────────────────────────────────
+
+export {
+  registerAgentRoutes,
+  registerAgentControlRoutes,
+  registerInstanceRoutes,
+  registerTaskChatRoutes,
+  serializeInstanceState,
+} from "./routes/index.js"
+export type { AgentRouteContext } from "./routes/index.js"
+
+// ── Re-exports: WebSocket handler module ────────────────────────────
+
+export { handleAgentWsMessage, sendWelcomeMessage } from "./AgentWsHandler.js"
+export type { AgentWsHandlerOptions, AgentWsClient } from "./AgentWsHandler.js"
+
 // ── Module state ──────────────────────────────────────────────────────
 
 /** Connected WebSocket clients. */
