@@ -10,7 +10,7 @@
     "cli:build": "pnpm --filter ralph build",
     "cli:test": "pnpm --filter ralph test",
     "demo:agent": "concurrently -n agent-server,demo -c blue,green \"pnpm serve:agent\" \"pnpm --filter @herbcaudill/demo-agent dev\"",
-    "demo:beads": "pnpm --filter @herbcaudill/demo-beads dev",
+    "demo:beads": "concurrently -n beads-server,demo -c blue,green \"pnpm serve:beads\" \"pnpm --filter @herbcaudill/demo-beads dev\"",
     "dev": "node scripts/dev.js",
     "dev:split": "node scripts/dev-split.js",
     "format": "git diff --name-only HEAD --diff-filter=ACMR | xargs -r prettier --write --ignore-unknown --log-level silent",

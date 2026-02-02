@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import path from "path"
 
-const agentServerPort = process.env.AGENT_SERVER_PORT || process.env.PORT || "4242"
+const agentServerPort = process.env.AGENT_SERVER_PORT || process.env.PORT || "4244"
 
 export default defineConfig({
   server: {

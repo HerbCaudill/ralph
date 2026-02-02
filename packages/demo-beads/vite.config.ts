@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import path from "path"
 
-const beadsServerPort = process.env.BEADS_PORT || process.env.PORT || "4242"
+const beadsServerPort = process.env.BEADS_PORT || process.env.PORT || "4243"
 
 export default defineConfig({
   server: {
