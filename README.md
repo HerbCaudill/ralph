@@ -6,16 +6,16 @@ Autonomous AI session engine for Claude CLI. Ralph spawns Claude CLI processes w
 
 This monorepo contains the following packages:
 
-| Package                                                     | Description                                                                           |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [`@herbcaudill/ralph`](packages/cli/)                       | CLI tool for terminal-based sessions                                                  |
-| [`@herbcaudill/ralph-ui`](packages/ui/)                     | Web UI with real-time event streaming                                                 |
-| [`@herbcaudill/ralph-shared`](packages/shared/)             | Shared types and utilities                                                            |
-| [`@herbcaudill/beads-view`](packages/beads-view/)           | Task management UI, state, hooks, and API client                                      |
-| [`@herbcaudill/beads-server`](packages/beads-server/)       | Standalone server for beads task management (HTTP + WebSocket)                        |
-| [`@herbcaudill/agent-server`](packages/agent-server/)       | Standalone server for managing AI coding agents (HTTP + WebSocket)                    |
-| [`@herbcaudill/demo-agent-chat`](packages/demo-agent-chat/) | Agent chat demo: WebSocket streaming, AgentView rendering, Claude Code/Codex selector |
-| [`@herbcaudill/demo-beads`](packages/demo-beads/)           | Beads task manager demo: task list, detail editing, workspace switching               |
+| Package                                               | Description                                                                           |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [`@herbcaudill/ralph`](packages/cli/)                 | CLI tool for terminal-based sessions                                                  |
+| [`@herbcaudill/ralph-ui`](packages/ui/)               | Web UI with real-time event streaming                                                 |
+| [`@herbcaudill/ralph-shared`](packages/shared/)       | Shared types and utilities                                                            |
+| [`@herbcaudill/beads-view`](packages/beads-view/)     | Task management UI, state, hooks, and API client                                      |
+| [`@herbcaudill/beads-server`](packages/beads-server/) | Standalone server for beads task management (HTTP + WebSocket)                        |
+| [`@herbcaudill/agent-server`](packages/agent-server/) | Standalone server for managing AI coding agents (HTTP + WebSocket)                    |
+| [`@herbcaudill/demo-agent`](packages/demo-agent/)     | Agent chat demo: WebSocket streaming, AgentView rendering, Claude Code/Codex selector |
+| [`@herbcaudill/demo-beads`](packages/demo-beads/)     | Beads task manager demo: task list, detail editing, workspace switching               |
 
 ## Installation
 

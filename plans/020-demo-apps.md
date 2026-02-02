@@ -6,7 +6,7 @@ Create minimal demo apps that showcase beads tasks and agent chat wrappers for C
 
 ## Approach
 
-- Add two demo packages: `demo-agent-chat` (Claude Code + Codex options) and `demo-beads`.
+- Add two demo packages: `demo-agent` (Claude Code + Codex options) and `demo-beads`.
 - The chat demo exercises send/stream and clear-context for both agents.
 - The beads demo talks to real local beads instances and includes a workspace chooser that queries the beads registry.
 

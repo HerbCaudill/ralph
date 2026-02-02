@@ -1,5 +1,5 @@
 {
-  "name": "@herbcaudill/demo-agent-chat",
+  "name": "@herbcaudill/demo-agent",
   "version": "1.1.0",
   "private": true,
   "description": "Demo app for agent chat with Claude Code and Codex",
