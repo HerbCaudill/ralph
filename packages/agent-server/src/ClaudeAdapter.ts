@@ -360,7 +360,7 @@ export class ClaudeAdapter extends AgentAdapter {
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,
             includePartialMessages: true,
-            maxTurns: options.maxSessions ?? 1,
+            maxTurns: options.maxSessions ?? 100,
             abortController: this.abortController,
             // Resume from the session if we have one from a previous attempt
             resume: sessionToResume,
