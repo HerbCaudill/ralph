@@ -372,6 +372,7 @@ export class ClaudeAdapter extends AgentAdapter {
               Array.isArray(options.allowedTools) ? (options.allowedTools as string[]) : undefined,
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,
+            hooks: {}, // Disable hooks to avoid tool use concurrency errors
             includePartialMessages: true,
             maxTurns: options.maxSessions ?? 100,
             abortController: this.abortController,

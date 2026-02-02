@@ -396,6 +396,39 @@ describe("ClaudeAdapter", () => {
       expect(assistantEvents.length).toBe(1)
     })
 
+    it("passes hooks: {} to queryFn to prevent tool use concurrency issues", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = (async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      }) as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      expect(capturedOpts).toBeDefined()
+      const options = capturedOpts!.options as Record<string, unknown>
+      expect(options).toBeDefined()
+      expect(options.hooks).toEqual({})
+    })
+
     it("captures session ID from SDK messages", async () => {
       const sdkMessages = [
         {
