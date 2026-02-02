@@ -196,6 +196,13 @@ export class ClaudeAdapter extends AgentAdapter {
    */
   async start(options?: AgentStartOptions): Promise<void> {
     if (this.startOptions) {
+      // Allow restarting if the adapter is idle (between messages)
+      if (!this.inFlight) {
+        // Adapter was previously started but is idle; allow re-initialization
+        this.startOptions = options ?? {}
+        this.setStatus("running")
+        return
+      }
       throw new Error("Claude adapter is already running")
     }
 

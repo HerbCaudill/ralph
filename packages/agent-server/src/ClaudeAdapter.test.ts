@@ -484,6 +484,127 @@ describe("ClaudeAdapter", () => {
     })
   })
 
+  describe("start() re-initialization behavior", () => {
+    it("allows calling start() a second time when adapter is idle (no in-flight request)", async () => {
+      const sdkMessages = [
+        {
+          type: "result",
+          subtype: "success",
+          result: "Hello!",
+          usage: { input_tokens: 10, output_tokens: 5 },
+        },
+      ]
+
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn(sdkMessages),
+        apiKey: "test-key",
+      })
+
+      const statuses = collectStatuses(adapter)
+
+      // First start
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Wait for the query to complete and adapter to become idle
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      // Second start should NOT throw (adapter is idle, no in-flight request)
+      await expect(adapter.start({ cwd: "/tmp" })).resolves.toBeUndefined()
+
+      // Status should be "running" after the second start
+      expect(adapter.status).toBe("running")
+    })
+
+    it("throws when calling start() while adapter has an in-flight request", async () => {
+      // Create a queryFn that never resolves (simulates an in-flight request)
+      let resolveQuery: (() => void) | undefined
+      const queryFn = (async function* (_opts: unknown) {
+        await new Promise<void>(resolve => {
+          resolveQuery = resolve
+        })
+        // yield nothing - the query is stuck
+      }) as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Now there's an in-flight request; start() should throw
+      await expect(adapter.start({ cwd: "/tmp" })).rejects.toThrow(
+        "Claude adapter is already running",
+      )
+
+      // Clean up: resolve the hanging query and stop
+      resolveQuery?.()
+      await adapter.stop()
+    })
+
+    it("supports the full flow: start → send → idle → start again → send (second message works)", async () => {
+      let callCount = 0
+
+      // Create a queryFn that returns different results on each call
+      const queryFn = (async function* (_opts: unknown) {
+        callCount++
+        yield {
+          type: "result",
+          subtype: "success",
+          result: callCount === 1 ? "First response" : "Second response",
+          usage: { input_tokens: 10, output_tokens: 5 },
+        } as never
+      }) as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+      const statuses = collectStatuses(adapter)
+
+      // First message
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "First" })
+
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      // Verify first result was received
+      const firstResults = events.filter(
+        e => e.type === "result" && (e as { content?: string }).content === "First response",
+      )
+      expect(firstResults).toHaveLength(1)
+
+      // Clear events tracking for second message
+      events.length = 0
+      statuses.length = 0
+
+      // Second message: start again, then send
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Second" })
+
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      // Verify second result was received
+      const secondResults = events.filter(
+        e => e.type === "result" && (e as { content?: string }).content === "Second response",
+      )
+      expect(secondResults).toHaveLength(1)
+
+      // Verify the queryFn was called twice total
+      expect(callCount).toBe(2)
+    })
+  })
+
   describe("parseCliVersionOutput", () => {
     it("parses standard claude --version output", () => {
       expect(parseCliVersionOutput("2.1.29 (Claude Code)")).toBe("2.1.29")
