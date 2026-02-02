@@ -2,6 +2,8 @@ import express, { type Express, type Request, type Response } from "express"
 import { createServer, type Server } from "node:http"
 import { WebSocketServer, type WebSocket, type RawData } from "ws"
 import type { AgentServerConfig, WsClient } from "./types.js"
+import { TaskChatManager } from "./TaskChatManager.js"
+import { registerTaskChatRoutes } from "./routes/taskChatRoutes.js"
 
 export type { AgentServerConfig, WsClient } from "./types.js"
 
@@ -249,6 +251,71 @@ export async function startServer(config: AgentServerConfig): Promise<{
   // ── WebSocket server ────────────────────────────────────────────────
   const wss = new WebSocketServer({ server, path: "/ws" })
 
+  // ── TaskChatManager (shared across all WS clients) ─────────────────
+  const taskChatManager = new TaskChatManager({
+    cwd: config.workspacePath,
+  })
+
+  // Forward TaskChatManager events to all connected WS clients
+  taskChatManager.on("status", (status: string) => {
+    broadcast({ type: "status", status })
+  })
+
+  taskChatManager.on("message", (msg: { role: string; content: string; timestamp: number }) => {
+    if (msg.role === "assistant") {
+      broadcast({
+        type: "event",
+        event: { type: "assistant_text", text: msg.content, timestamp: msg.timestamp },
+      })
+    }
+  })
+
+  taskChatManager.on("chunk", (text: string) => {
+    broadcast({
+      type: "event",
+      event: { type: "assistant_text", text, timestamp: Date.now() },
+    })
+  })
+
+  taskChatManager.on(
+    "tool_use",
+    (toolUse: {
+      toolUseId: string
+      tool: string
+      input: Record<string, unknown>
+      status: string
+      timestamp: number
+      sequence: number
+    }) => {
+      broadcast({
+        type: "event",
+        event: { type: "tool_use", ...toolUse },
+      })
+    },
+  )
+
+  taskChatManager.on(
+    "tool_result",
+    (toolResult: {
+      toolUseId: string
+      tool: string
+      output?: string
+      error?: string
+      status: string
+      timestamp: number
+      sequence: number
+    }) => {
+      broadcast({
+        type: "event",
+        event: { type: "tool_result", ...toolResult },
+      })
+    },
+  )
+
+  taskChatManager.on("error", (err: Error) => {
+    broadcast({ type: "error", error: err.message })
+  })
+
   wss.on("connection", (ws: WebSocket) => {
     const client: WsClient = { ws, subscribedSessions: new Set() }
     wsClients.add(client)
@@ -256,8 +323,22 @@ export async function startServer(config: AgentServerConfig): Promise<{
     ws.on("message", (raw: RawData) => {
       try {
         const msg = JSON.parse(raw.toString())
+
         if (msg.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }))
+          return
+        }
+
+        if (msg.type === "chat_message" && typeof msg.message === "string") {
+          taskChatManager.sendMessage(msg.message).catch((err: Error) => {
+            ws.send(JSON.stringify({ type: "error", error: err.message }))
+          })
+          return
+        }
+
+        if (msg.type === "clear_history") {
+          taskChatManager.clearHistory()
+          return
         }
       } catch {
         // ignore malformed messages
@@ -269,6 +350,25 @@ export async function startServer(config: AgentServerConfig): Promise<{
     })
 
     ws.send(JSON.stringify({ type: "connected" }))
+  })
+
+  // ── Task chat REST routes ──────────────────────────────────────────
+  registerTaskChatRoutes(app, {
+    getTaskChatManager: () => taskChatManager,
+    getRalphRegistry: () => {
+      throw new Error("Not available in standalone agent-server")
+    },
+    getWorkspacePath: () => config.workspacePath ?? process.cwd(),
+    logRalphEvents: false,
+    isDevMode: () => false,
+    getRalphManager: () => {
+      throw new Error("Not available in standalone agent-server")
+    },
+    getTaskChatEventPersister: () => {
+      throw new Error("Not available in standalone agent-server")
+    },
+    getEventHistory: () => [],
+    setEventHistory: () => {},
   })
 
   // ── Health check ────────────────────────────────────────────────────
