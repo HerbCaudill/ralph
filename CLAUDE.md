@@ -51,7 +51,7 @@ pnpm workspace with these main packages:
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Standalone server for managing AI coding agents with HTTP and WebSocket APIs. Extracts agent-related functionality from the UI server. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/demo-agent-chat/`** (`@herbcaudill/demo-agent-chat`) - Functional chat demo connecting to agent-server via WebSocket (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents
-- **`packages/demo-beads/`** (`@herbcaudill/demo-beads`) - Demo app for beads task manager UI
+- **`packages/demo-beads/`** (`@herbcaudill/demo-beads`) - Functional task manager demo using beads-view controller components (TaskSidebarController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Vite proxy forwards /api requests to the beads-server
 
 ### Project structure
 
@@ -146,8 +146,13 @@ packages/demo-agent-chat/              # Agent chat demo
 
 packages/demo-beads/                   # Beads task manager demo
   src/
-    App.tsx                 # Uses DemoShell with workspace selector, sidebar, and status bar
+    App.tsx                 # Main app wrapping BeadsViewProvider, TaskSidebarController, task dialog, workspace selector
+    hooks/
+      useWorkspace.ts       # Fetches workspace info and switching via /api/workspace endpoints
     components/
+      WorkspaceSelector.tsx # Dropdown button for switching workspaces
+      TaskDetailPanel.tsx   # Panel displaying task details with inline editing (wraps TaskDetailsController)
+      TaskStatusBar.tsx     # Connection status, workspace path, task counts (open/closed/total)
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
 
 packages/ui/                        # UI package
