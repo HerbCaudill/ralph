@@ -36,29 +36,23 @@ export function StatusBar({
         </span>
 
         {/* Agent type & version */}
-        <span className="text-muted-foreground/60">|</span>
-        <span className="capitalize">
+        <span className="border-l border-border pl-3 capitalize">
           {agentType === "claude" ? "Claude Code" : "Codex"}
           {agentVersion && <span className="ml-1 text-muted-foreground/60">v{agentVersion}</span>}
         </span>
 
         {/* Session ID */}
         {sessionId && (
-          <>
-            <span className="text-muted-foreground/60">|</span>
-            <span className="font-mono text-muted-foreground/60" title={sessionId}>
-              {sessionId.slice(0, 8)}
-            </span>
-          </>
+          <span
+            className="border-l border-border pl-3 font-mono text-muted-foreground/60"
+            title={sessionId}
+          >
+            {sessionId.slice(0, 8)}
+          </span>
         )}
 
         {/* Error */}
-        {error && (
-          <>
-            <span className="text-muted-foreground/60">|</span>
-            <span className="text-red-500">{error}</span>
-          </>
-        )}
+        {error && <span className="border-l border-border pl-3 text-red-500">{error}</span>}
       </div>
 
       {/* Token usage & context window */}
