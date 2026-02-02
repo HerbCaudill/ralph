@@ -375,8 +375,6 @@ export const SessionRunner = ({
     messageQueueRef.current = messageQueue
 
     // Push the initial prompt as the first message
-    // eslint-disable-next-line no-console
-    console.error(`[RALPH PROMPT DEBUG]\n${fullPrompt}\n[END PROMPT]`)
     messageQueue.push(createUserMessage(fullPrompt))
 
     /**
