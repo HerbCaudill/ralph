@@ -80,6 +80,7 @@ export { isRalphTaskCompletedEvent } from "./lib/isRalphTaskCompletedEvent"
 export { isRalphTaskStartedEvent } from "./lib/isRalphTaskStartedEvent"
 export { isStreamEvent } from "./lib/isStreamEvent"
 export { isSystemEvent } from "./lib/isSystemEvent"
+export { isToolUseChatEvent } from "./lib/isToolUseChatEvent"
 export { isToolResultEvent } from "./lib/isToolResultEvent"
 export { isUserMessageEvent } from "./lib/isUserMessageEvent"
 

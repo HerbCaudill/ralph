@@ -23,6 +23,7 @@ export function buildToolResultsMap(events: ChatEvent[]): ToolResultsInfo {
   let hasLifecycleEvents = false
 
   for (const event of events) {
+    // Legacy format: type="user" with tool_use_result containing message.content[]
     if (isToolResultEvent(event)) {
       const content = event.message?.content
       if (Array.isArray(content)) {
@@ -41,10 +42,34 @@ export function buildToolResultsMap(events: ChatEvent[]): ToolResultsInfo {
         }
       }
     }
+
+    // Standalone tool_result events from agent-server
+    if (isStandaloneToolResult(event)) {
+      results.set(event.toolUseId, {
+        output: event.output,
+        error: event.error,
+      })
+    }
+
     if (isRalphTaskStartedEvent(event) || isRalphTaskCompletedEvent(event)) {
       hasLifecycleEvents = true
     }
   }
 
   return { toolResults: results, hasStructuredLifecycleEvents: hasLifecycleEvents }
+}
+
+/** Standalone tool_result event shape from agent-server. */
+type StandaloneToolResult = ChatEvent & {
+  type: "tool_result"
+  toolUseId: string
+  output?: string
+  error?: string
+}
+
+/** Check if an event is a standalone tool_result from the agent-server. */
+function isStandaloneToolResult(event: ChatEvent): event is StandaloneToolResult {
+  return (
+    event.type === "tool_result" && typeof (event as StandaloneToolResult).toolUseId === "string"
+  )
 }

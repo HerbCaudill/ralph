@@ -142,6 +142,7 @@ const RENDERABLE_EVENT_TYPES = new Set<string>([
   "ralph_task_started",
   "ralph_task_completed",
   "assistant",
+  "tool_use",
   "error",
   "server_error",
 ])
@@ -153,12 +154,16 @@ const RENDERABLE_EVENT_TYPES = new Set<string>([
 export function shouldFilterEventByType(event: ChatEvent): FilterResult {
   const { type } = event
 
-  // Tool result events (type="user" with tool_use_result) are filtered
-  // because results are shown inline in the tool_use card
+  // Tool result events are filtered because results are shown inline in the tool_use card.
+  // This handles both legacy format (type="user" with tool_use_result) and
+  // standalone tool_result events from the agent-server.
   if (
     type === "user" &&
     typeof (event as Record<string, unknown>).tool_use_result !== "undefined"
   ) {
+    return { shouldRender: false, reason: "tool_result_rendered_inline" }
+  }
+  if (type === "tool_result") {
     return { shouldRender: false, reason: "tool_result_rendered_inline" }
   }
 

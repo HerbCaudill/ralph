@@ -1,6 +1,7 @@
 import { useContext } from "react"
 import { UserMessage } from "./UserMessage"
 import { ErrorEvent } from "./ErrorEvent"
+import { ToolUseCard } from "./ToolUseCard"
 import type { ToolResult } from "../lib/buildToolResultsMap"
 import { renderEventContentBlock } from "../lib/renderEventContentBlock"
 import {
@@ -12,9 +13,10 @@ import { isAssistantMessage } from "../lib/isAssistantMessage"
 import { isErrorEvent } from "../lib/isErrorEvent"
 import { isRalphTaskCompletedEvent } from "../lib/isRalphTaskCompletedEvent"
 import { isRalphTaskStartedEvent } from "../lib/isRalphTaskStartedEvent"
+import { isToolUseChatEvent } from "../lib/isToolUseChatEvent"
 import { isUserMessageEvent } from "../lib/isUserMessageEvent"
 import { AgentViewContext } from "../context/AgentViewContext"
-import type { ChatEvent, TaskLifecycleEventData, ErrorEventData } from "../types"
+import type { ChatEvent, TaskLifecycleEventData, ErrorEventData, ToolUseChatEvent } from "../types"
 
 /**
  * Renders different types of Ralph events (user messages, task lifecycle events, assistant messages, errors).
@@ -90,6 +92,26 @@ export function EventStreamEventItem({
           }),
         )}
       </>
+    )
+  }
+
+  if (isToolUseChatEvent(event)) {
+    const toolUseId = (event as ToolUseChatEvent & { toolUseId?: string }).toolUseId
+    const result = toolUseId ? toolResults.get(toolUseId) : undefined
+    return (
+      <ToolUseCard
+        event={{
+          ...event,
+          output: event.output ?? result?.output,
+          error: event.error ?? result?.error,
+          status:
+            result ?
+              result.error ?
+                "error"
+              : "success"
+            : event.status,
+        }}
+      />
     )
   }
 
