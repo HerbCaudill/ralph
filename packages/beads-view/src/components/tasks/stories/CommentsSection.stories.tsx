@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { CommentsSection } from ".././CommentsSection"
+import { CommentsSection } from "../CommentsSection"
+import { mockFetch } from "../../../.storybook/test-utils"
+import { useEffect } from "react"
 
 const meta: Meta<typeof CommentsSection> = {
   title: "Collections/CommentsSection",
@@ -17,30 +19,79 @@ const meta: Meta<typeof CommentsSection> = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-// Note: CommentsSection fetches comments from /api/tasks/{id}/comments
-// In Storybook without a backend, it will show loading state
+const sampleComments = [
+  {
+    id: "1",
+    author: "Alice",
+    text: "This looks good to me. Ready to merge?",
+    timestamp: Date.now() - 3600000,
+  },
+  {
+    id: "2",
+    author: "Bob",
+    text: "Let me test it first",
+    timestamp: Date.now() - 1800000,
+  },
+  {
+    id: "3",
+    author: "Charlie",
+    text: "All tests passing ✓",
+    timestamp: Date.now() - 900000,
+  },
+]
+
+/**
+ * Story wrapper that mocks the comments API with sample data.
+ */
+function WithMockedComments({ taskId, ...props }: { taskId: string; readOnly?: boolean; className?: string }) {
+  useEffect(() => {
+    const cleanup = mockFetch({
+      url: `/api/tasks/${taskId}/comments`,
+      method: "GET",
+      status: 200,
+      body: {
+        ok: true,
+        comments: sampleComments,
+      },
+    })
+    return cleanup
+  }, [taskId])
+
+  return <CommentsSection taskId={taskId} {...props} />
+}
+
+/**
+ * Story wrapper that mocks empty comments response.
+ */
+function WithEmptyComments({ taskId, ...props }: { taskId: string; readOnly?: boolean; className?: string }) {
+  useEffect(() => {
+    const cleanup = mockFetch({
+      url: `/api/tasks/${taskId}/comments`,
+      method: "GET",
+      status: 200,
+      body: {
+        ok: true,
+        comments: [],
+      },
+    })
+    return cleanup
+  }, [taskId])
+
+  return <CommentsSection taskId={taskId} {...props} />
+}
 
 export const Default: Story = {
-  args: {
-    taskId: "rui-4rt",
-  },
+  render: () => <WithMockedComments taskId="rui-4rt" />,
 }
 
 export const ReadOnly: Story = {
-  args: {
-    taskId: "rui-4rt",
-    readOnly: true,
-  },
+  render: () => <WithMockedComments taskId="rui-4rt" readOnly />,
+}
+
+export const Empty: Story = {
+  render: () => <WithEmptyComments taskId="rui-empty" />,
 }
 
 export const WithCustomClassName: Story = {
-  args: {
-    taskId: "rui-4rt",
-    className: "p-4 border rounded-lg",
-  },
+  render: () => <WithMockedComments taskId="rui-4rt" className="p-4 border rounded-lg" />,
 }
-
-// Note: To see the full functionality with comments, you would need to:
-// 1. Mock the fetch calls
-// 2. Or run Storybook with a real backend
-// The component handles loading and error states gracefully
