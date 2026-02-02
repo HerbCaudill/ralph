@@ -50,7 +50,7 @@ pnpm workspace with these main packages:
 - **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Standalone server for managing AI coding agents with HTTP and WebSocket APIs. Extracts agent-related functionality from the UI server. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
-- **`packages/demo-agent-chat/`** (`@herbcaudill/demo-agent-chat`) - Demo app for agent chat with Claude Code and Codex
+- **`packages/demo-agent-chat/`** (`@herbcaudill/demo-agent-chat`) - Functional chat demo connecting to agent-server via WebSocket (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents
 - **`packages/demo-beads/`** (`@herbcaudill/demo-beads`) - Demo app for beads task manager UI
 
 ### Project structure
@@ -135,8 +135,13 @@ packages/agent-server/                 # Agent server package
 
 packages/demo-agent-chat/              # Agent chat demo
   src/
-    App.tsx                 # Uses DemoShell with agent type selector (Claude Code / Codex)
+    App.tsx                 # Main app connecting AgentView, WebSocket chat, agent selector, clear button
+    hooks/
+      useAgentChat.ts       # WebSocket hook managing connection, events, streaming state, send/clear
     components/
+      AgentSelector.tsx     # Toggle buttons for Claude Code / Codex selection
+      ChatInput.tsx         # Auto-resizing textarea with send button (Enter to send, Shift+Enter for newline)
+      StatusBar.tsx         # Connection status, streaming indicator, agent type, token usage display
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
 
 packages/demo-beads/                   # Beads task manager demo
