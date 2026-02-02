@@ -133,6 +133,18 @@ packages/agent-server/                 # Agent server package
     createEventStream.ts    # SSE event stream factory
     createMessageStream.ts  # Message stream factory
 
+packages/demo-agent-chat/              # Agent chat demo
+  src/
+    App.tsx                 # Uses DemoShell with agent type selector (Claude Code / Codex)
+    components/
+      DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
+
+packages/demo-beads/                   # Beads task manager demo
+  src/
+    App.tsx                 # Uses DemoShell with workspace selector, sidebar, and status bar
+    components/
+      DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
+
 packages/ui/                        # UI package
   server/                   # Express backend
     index.ts                # Server entry + REST API + WebSocket (imports task routes from beads-view)
