@@ -5,11 +5,13 @@ import { SettingsMenu } from "./components/SettingsMenu"
 import { ChatInput } from "./components/ChatInput"
 import { StatusBar } from "./components/StatusBar"
 import { useAgentChat } from "./hooks/useAgentChat"
+import { useAdapterVersion } from "./hooks/useAdapterVersion"
 
 export function App() {
   const { state, actions, agentType } = useAgentChat("claude")
   const { events, isStreaming, connectionStatus, error } = state
   const { sendMessage, setAgentType, newSession } = actions
+  const agentVersion = useAdapterVersion(agentType)
 
   const isConnected = connectionStatus === "connected"
 
@@ -39,6 +41,7 @@ export function App() {
           connectionStatus={connectionStatus}
           isStreaming={isStreaming}
           agentType={agentType}
+          agentVersion={agentVersion}
           events={events}
           error={error}
         />

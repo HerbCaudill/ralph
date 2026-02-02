@@ -15,6 +15,7 @@ export function StatusBar({
   connectionStatus,
   isStreaming: _isStreaming,
   agentType,
+  agentVersion,
   events,
   error,
 }: StatusBarProps) {
@@ -34,9 +35,12 @@ export function StatusBar({
           <span className="capitalize">{connectionStatus}</span>
         </span>
 
-        {/* Agent type */}
+        {/* Agent type & version */}
         <span className="text-muted-foreground/60">|</span>
-        <span className="capitalize">{agentType === "claude" ? "Claude Code" : "Codex"}</span>
+        <span className="capitalize">
+          {agentType === "claude" ? "Claude Code" : "Codex"}
+          {agentVersion && <span className="ml-1 text-muted-foreground/60">v{agentVersion}</span>}
+        </span>
 
         {/* Error */}
         {error && (
@@ -62,6 +66,8 @@ export type StatusBarProps = {
   connectionStatus: ConnectionStatus
   isStreaming: boolean
   agentType: AgentType
+  /** Version string for the current agent (e.g. "0.2.19") */
+  agentVersion?: string
   events: ChatEvent[]
   error: string | null
 }

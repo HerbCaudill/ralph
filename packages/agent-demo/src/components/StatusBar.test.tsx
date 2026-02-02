@@ -59,6 +59,23 @@ describe("StatusBar", () => {
     })
   })
 
+  describe("agent version", () => {
+    it("shows version next to agent name when provided", () => {
+      render(<StatusBar {...defaultProps} agentType="claude" agentVersion="0.2.19" />)
+      expect(screen.getByText("v0.2.19")).toBeInTheDocument()
+    })
+
+    it("does not show version when agentVersion is undefined", () => {
+      render(<StatusBar {...defaultProps} agentType="claude" />)
+      expect(screen.queryByText(/^v\d/)).not.toBeInTheDocument()
+    })
+
+    it("shows version for codex agent", () => {
+      render(<StatusBar {...defaultProps} agentType="codex" agentVersion="0.87.0" />)
+      expect(screen.getByText("v0.87.0")).toBeInTheDocument()
+    })
+  })
+
   describe("error display", () => {
     it("shows error message when error is present", () => {
       render(<StatusBar {...defaultProps} error="WebSocket connection failed" />)

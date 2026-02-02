@@ -5,6 +5,7 @@ import {
   type ThreadEvent,
   type ThreadItem,
 } from "@openai/codex-sdk"
+import { createRequire } from "node:module"
 import {
   AgentAdapter,
   type AgentInfo,
@@ -39,6 +40,18 @@ import type {
  * adapter.send({ type: "user_message", content: "Hello!" })
  * ```
  */
+
+/** Read the @openai/codex-sdk version from its package.json. */
+function getCodexSdkVersion(): string | undefined {
+  try {
+    const require = createRequire(import.meta.url)
+    const pkg = require("@openai/codex-sdk/package.json") as { version?: string }
+    return pkg.version
+  } catch {
+    return undefined
+  }
+}
+
 export class CodexAdapter extends AgentAdapter {
   private accumulatedMessage = ""
   private codex: Codex | null = null
@@ -64,6 +77,7 @@ export class CodexAdapter extends AgentAdapter {
       id: "codex",
       name: "Codex",
       description: "OpenAI Codex via SDK",
+      version: getCodexSdkVersion(),
       features: {
         streaming: true,
         tools: true,

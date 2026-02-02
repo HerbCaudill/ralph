@@ -1,4 +1,5 @@
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
+import { createRequire } from "node:module"
 import {
   AgentAdapter,
   type AgentInfo,
@@ -42,6 +43,17 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 
 /** Default thinking budget in tokens. Set to 0 to disable extended thinking. */
 const DEFAULT_MAX_THINKING_TOKENS = 0
+
+/** Read the @anthropic-ai/claude-agent-sdk version from its package.json. */
+function getClaudeSdkVersion(): string | undefined {
+  try {
+    const require = createRequire(import.meta.url)
+    const pkg = require("@anthropic-ai/claude-agent-sdk/package.json") as { version?: string }
+    return pkg.version
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * Build the working directory context string for system prompts.
@@ -151,6 +163,7 @@ export class ClaudeAdapter extends AgentAdapter {
       id: "claude",
       name: "Claude",
       description: "Anthropic Claude via SDK",
+      version: getClaudeSdkVersion(),
       features: {
         streaming: true,
         tools: true,
