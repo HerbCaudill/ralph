@@ -24,7 +24,7 @@ export { isProcessRunning } from "./isProcessRunning.js"
 
 const execFileAsync = promisify(execFile)
 
-Module state
+// Module state
 
 /** Active BdProxy instance for the current workspace. */
 let bdProxy: BdProxy | null = null
@@ -38,7 +38,7 @@ let stopMutationWatcher: (() => void) | null = null
 /** Connected WebSocket clients. */
 const wsClients = new Set<WsClient>()
 
-Helpers
+// Helpers
 
 /**
  * Get the current git branch name for a workspace.
@@ -103,7 +103,7 @@ async function switchWorkspace(
   }
 }
 
-Mutation polling
+// Mutation polling
 
 /** Start polling the beads daemon for mutation events and broadcast them via WebSocket. */
 function startMutationPolling(interval: number = 1000): void {
@@ -124,7 +124,7 @@ function startMutationPolling(interval: number = 1000): void {
   )
 }
 
-WebSocket
+// WebSocket
 
 /** Broadcast a message to all connected WebSocket clients. */
 function broadcast(message: Record<string, unknown>): void {
@@ -207,7 +207,7 @@ function attachWsServer(server: Server): void {
   })
 }
 
-Server config
+// Server config
 
 /** Build a default server configuration from environment variables. */
 export function getConfig(): BeadsServerConfig {
@@ -220,7 +220,7 @@ export function getConfig(): BeadsServerConfig {
   }
 }
 
-Express app
+// Express app
 
 /** Create an Express application with all beads API endpoints configured. */
 function createApp(config: BeadsServerConfig): Express {
@@ -232,13 +232,13 @@ function createApp(config: BeadsServerConfig): Express {
   // Parse JSON bodies
   app.use(express.json())
 
-  Health
+  // Health
   app.get("/healthz", (_req: Request, res: Response) => {
     res.type("application/json")
     res.status(200).json({ ok: true, server: "beads-server" })
   })
 
-  Workspace info
+  // Workspace info
   app.get("/api/workspace", async (_req: Request, res: Response) => {
     try {
       const proxy = getBdProxy()
@@ -287,7 +287,7 @@ function createApp(config: BeadsServerConfig): Express {
     }
   })
 
-  List workspaces
+  // List workspaces
   app.get("/api/workspaces", async (_req: Request, res: Response) => {
     try {
       const proxy = getBdProxy()
@@ -337,7 +337,7 @@ function createApp(config: BeadsServerConfig): Express {
     }
   })
 
-  Switch workspace
+  // Switch workspace
   app.post("/api/workspace/switch", async (req: Request, res: Response) => {
     try {
       const { path: workspacePath } = req.body as { path?: string }
@@ -416,7 +416,7 @@ function createApp(config: BeadsServerConfig): Express {
   return app
 }
 
-Port checking
+// Port checking
 
 /** Check if a port is available for listening. */
 function checkPortAvailable(host: string, port: number): Promise<boolean> {
@@ -452,7 +452,7 @@ export async function findAvailablePort(
   )
 }
 
-Graceful shutdown
+// Graceful shutdown
 
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`\n[beads-server] Received ${signal}, shutting down gracefully...`)
@@ -473,7 +473,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   process.exit(0)
 }
 
-Start server
+// Start server
 
 /** Start the beads server with the given configuration. */
 export async function startServer(config: BeadsServerConfig): Promise<Server> {
