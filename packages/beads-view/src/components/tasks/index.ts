@@ -11,7 +11,6 @@ export {
 export { TaskProgressBar, type TaskProgressBarProps } from "./TaskProgressBar"
 export { RelatedTasks, type RelatedTasksProps } from "./RelatedTasks"
 export { BlockerCombobox } from "./BlockerCombobox"
-export { RelationshipGraph, type RelationshipGraphProps } from "./RelationshipGraph"
 export { TaskDetailsController, type TaskDetailsControllerProps } from "./TaskDetailsController"
 export { type SearchInputHandle } from "./SearchInput"
 export type { TaskCardTask, TaskStatus, TaskGroup } from "../../types"
