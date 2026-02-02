@@ -41,9 +41,7 @@
 
 import type { ChatEvent, AssistantContentBlock } from "../types"
 
-// =============================================================================
 // Debug Mode
-// =============================================================================
 
 const FILTER_DEBUG_KEY = "ralph-filter-debug"
 
@@ -133,10 +131,8 @@ export interface FilterContext {
   hasStructuredLifecycleEvents?: boolean
 }
 
-// =============================================================================
 // Layer 3: Event Type Filters
 // These determine which event types should be rendered vs filtered
-// =============================================================================
 
 /**
  * Event types that have dedicated renderers and should be rendered.
@@ -185,10 +181,8 @@ export function shouldFilterEventByType(event: ChatEvent): FilterResult {
   return { shouldRender: false, reason: "unrecognized_event_type" }
 }
 
-// =============================================================================
 // Layer 4: Content Block Filters
 // These determine which content blocks within assistant messages should render
-// =============================================================================
 
 /**
  * Content block types that have dedicated renderers.
@@ -223,9 +217,7 @@ export function shouldFilterContentBlock(
   return { shouldRender: false, reason: "unrecognized_content_block_type" }
 }
 
-// =============================================================================
 // Aggregate Filter Functions
-// =============================================================================
 
 /**
  * Check if an assistant event has any renderable content.
