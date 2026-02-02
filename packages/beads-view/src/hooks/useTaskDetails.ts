@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { useBeadsViewStore, selectIssuePrefix, selectTasks } from "../store"
 import { linkSessionToTask } from "../lib/linkSessionToTask"
-import type { TaskCardTask, TaskStatus, TaskUpdateData } from "../types"
+import type { TaskCardTask, TaskStatus, TaskUpdateData, Comment } from "../types"
 
 /**
  * Hook to manage task details form state and API interactions.
@@ -41,6 +41,10 @@ export function useTaskDetails(
   const [newLabel, setNewLabel] = useState("")
   const [showLabelInput, setShowLabelInput] = useState(false)
 
+  const [comments, setComments] = useState<Comment[]>([])
+  const [isLoadingComments, setIsLoadingComments] = useState(false)
+  const [commentsError, setCommentsError] = useState<string | null>(null)
+
   const lastSavedRef = useRef<TaskFormValues | null>(null)
   const lastTaskIdRef = useRef<string | null>(null)
   const wasOpenRef = useRef(false)
@@ -57,6 +61,25 @@ export function useTaskDetails(
         })
         .catch(err => {
           console.error("Failed to fetch labels:", err)
+        })
+
+      setIsLoadingComments(true)
+      setCommentsError(null)
+      fetch(`/api/tasks/${task.id}/comments`)
+        .then(res => res.json())
+        .then((data: { ok: boolean; comments?: Comment[]; error?: string }) => {
+          if (data.ok && data.comments) {
+            setComments(data.comments)
+          } else {
+            setCommentsError(data.error || "Failed to load comments")
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch comments:", err)
+          setCommentsError(err instanceof Error ? err.message : "Failed to load comments")
+        })
+        .finally(() => {
+          setIsLoadingComments(false)
         })
     }
   }, [task, open])
@@ -311,6 +334,39 @@ export function useTaskDetails(
     [task, readOnly],
   )
 
+  const handleAddComment = useCallback(
+    async (comment: string) => {
+      if (!task || readOnly) return
+
+      try {
+        const response = await fetch(`/api/tasks/${task.id}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ comment }),
+        })
+
+        const data = (await response.json()) as { ok: boolean; error?: string }
+        if (data.ok) {
+          const commentsRes = await fetch(`/api/tasks/${task.id}/comments`)
+          const commentsData = (await commentsRes.json()) as {
+            ok: boolean
+            comments?: Comment[]
+            error?: string
+          }
+          if (commentsData.ok && commentsData.comments) {
+            setComments(commentsData.comments)
+          }
+        } else {
+          throw new Error(data.error || "Failed to add comment")
+        }
+      } catch (err) {
+        console.error("Failed to add comment:", err)
+        throw err
+      }
+    },
+    [task, readOnly],
+  )
+
   return {
     formValues,
     labels,
@@ -323,6 +379,9 @@ export function useTaskDetails(
     deleteError,
     newLabel,
     showLabelInput,
+    comments,
+    isLoadingComments,
+    commentsError,
     updateTitle,
     updateDescription,
     updateStatus,
@@ -333,6 +392,7 @@ export function useTaskDetails(
     setShowLabelInput,
     handleAddLabel,
     handleRemoveLabel,
+    handleAddComment,
     startDelete,
     cancelDelete,
     confirmDelete,
@@ -397,6 +457,12 @@ export interface UseTaskDetailsResult {
   newLabel: string
   /** Whether label input is visible. */
   showLabelInput: boolean
+  /** Current comments. */
+  comments: Comment[]
+  /** Whether comments are loading. */
+  isLoadingComments: boolean
+  /** Error for comment operations. */
+  commentsError: string | null
   /** Update task title. */
   updateTitle: (title: string) => void
   /** Update task description. */
@@ -417,6 +483,8 @@ export interface UseTaskDetailsResult {
   handleAddLabel: () => Promise<void>
   /** Remove a label from the task. */
   handleRemoveLabel: (label: string) => Promise<void>
+  /** Add a comment to the task. */
+  handleAddComment: (comment: string) => Promise<void>
   /** Start delete confirmation. */
   startDelete: () => void
   /** Cancel delete confirmation. */

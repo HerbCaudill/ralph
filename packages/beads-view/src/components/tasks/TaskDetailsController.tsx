@@ -31,6 +31,9 @@ export function TaskDetailsController({
     deleteError,
     newLabel,
     showLabelInput,
+    comments,
+    isLoadingComments,
+    commentsError,
     updateTitle,
     updateDescription,
     updateStatus,
@@ -41,6 +44,7 @@ export function TaskDetailsController({
     setShowLabelInput,
     handleAddLabel,
     handleRemoveLabel,
+    handleAddComment,
     startDelete,
     cancelDelete,
     confirmDelete,
@@ -70,6 +74,9 @@ export function TaskDetailsController({
       deleteError={deleteError}
       newLabel={newLabel}
       showLabelInput={showLabelInput}
+      comments={comments}
+      isLoadingComments={isLoadingComments}
+      commentsError={commentsError}
       canDelete={!!onDelete}
       onUpdateTitle={updateTitle}
       onUpdateDescription={updateDescription}
@@ -81,6 +88,7 @@ export function TaskDetailsController({
       onSetShowLabelInput={setShowLabelInput}
       onAddLabel={handleAddLabel}
       onRemoveLabel={handleRemoveLabel}
+      onAddComment={handleAddComment}
       onStartDelete={startDelete}
       onCancelDelete={cancelDelete}
       onConfirmDelete={confirmDelete}

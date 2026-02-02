@@ -7,10 +7,15 @@ import { CommentItem } from "./CommentItem"
 import { useBeadsViewStore, selectCommentDraft } from "../../store"
 import type { Comment } from "../../types"
 
-export function CommentsSection({ taskId, readOnly = false, className }: CommentsSectionProps) {
-  const [comments, setComments] = useState<Comment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export function CommentsSection({
+  taskId,
+  comments = [],
+  isLoading = false,
+  error = null,
+  readOnly = false,
+  onAddComment,
+  className,
+}: CommentsSectionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -25,66 +30,17 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
     [setCommentDraft, taskId],
   )
 
-  const fetchComments = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      const response = await fetch(`/api/tasks/${taskId}/comments`)
-
-      const contentType = response.headers.get("content-type")
-      if (!response.ok || !contentType?.includes("application/json")) {
-        setError(`Server error: ${response.status} ${response.statusText}`)
-        return
-      }
-
-      const data = (await response.json()) as { ok: boolean; comments?: Comment[]; error?: string }
-
-      if (data.ok && data.comments) {
-        setComments(data.comments)
-      } else {
-        setError(data.error || "Failed to fetch comments")
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch comments")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [taskId])
-
-  useEffect(() => {
-    fetchComments()
-  }, [fetchComments])
-
   const handleAddComment = useCallback(async () => {
-    if (!newComment.trim() || isSubmitting) return
+    if (!newComment.trim() || isSubmitting || !onAddComment) return
 
     setIsSubmitting(true)
     try {
-      const response = await fetch(`/api/tasks/${taskId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comment: newComment.trim() }),
-      })
-
-      const contentType = response.headers.get("content-type")
-      if (!response.ok || !contentType?.includes("application/json")) {
-        setError(`Server error: ${response.status} ${response.statusText}`)
-        return
-      }
-
-      const data = (await response.json()) as { ok: boolean; error?: string }
-      if (data.ok) {
-        setNewComment("")
-        await fetchComments()
-      } else {
-        setError(data.error || "Failed to add comment")
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add comment")
+      await onAddComment(newComment.trim())
+      setNewComment("")
     } finally {
       setIsSubmitting(false)
     }
-  }, [taskId, newComment, isSubmitting, fetchComments, setNewComment])
+  }, [newComment, isSubmitting, onAddComment, setNewComment])
 
   const handleSubmit = useCallback(() => {
     if (newComment.trim() && !isSubmitting) {
@@ -188,6 +144,10 @@ export function CommentsSection({ taskId, readOnly = false, className }: Comment
 
 type CommentsSectionProps = {
   taskId: string
+  comments?: Comment[]
+  isLoading?: boolean
+  error?: string | null
   readOnly?: boolean
+  onAddComment?: (comment: string) => Promise<void>
   className?: string
 }

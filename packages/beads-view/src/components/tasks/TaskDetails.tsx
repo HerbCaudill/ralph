@@ -20,7 +20,7 @@ import { Label } from "../ui/label"
 import { Textarea } from "../ui/textarea"
 import { cn } from "../../lib/cn"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
-import type { TaskCardTask, TaskStatus } from "../../types"
+import type { TaskCardTask, TaskStatus, Comment } from "../../types"
 import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@herbcaudill/agent-view"
 import { RelatedTasks } from "./RelatedTasks"
@@ -50,6 +50,9 @@ export function TaskDetails({
   deleteError,
   newLabel,
   showLabelInput,
+  comments,
+  isLoadingComments,
+  commentsError,
   canDelete,
   onUpdateTitle,
   onUpdateDescription,
@@ -61,6 +64,7 @@ export function TaskDetails({
   onSetShowLabelInput,
   onAddLabel,
   onRemoveLabel,
+  onAddComment,
   onStartDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -484,7 +488,14 @@ export function TaskDetails({
         <RelatedTasks taskId={task.id} task={task} readOnly={readOnly} />
 
         {/* Comments Section - more space */}
-        <CommentsSection taskId={task.id} readOnly={readOnly} />
+        <CommentsSection
+          taskId={task.id}
+          comments={comments}
+          isLoading={isLoadingComments}
+          error={commentsError}
+          readOnly={readOnly}
+          onAddComment={onAddComment}
+        />
       </div>
 
       {!readOnly && (
@@ -708,6 +719,12 @@ export type TaskDetailsProps = {
   newLabel: string
   /** Whether label input is showing */
   showLabelInput: boolean
+  /** Current comments */
+  comments: Comment[]
+  /** Whether comments are loading */
+  isLoadingComments: boolean
+  /** Comments error message */
+  commentsError: string | null
   /** Whether delete is allowed */
   canDelete: boolean
   /** Handler for title changes */
@@ -730,6 +747,8 @@ export type TaskDetailsProps = {
   onAddLabel: () => void
   /** Handler for removing a label */
   onRemoveLabel: (label: string) => void
+  /** Handler for adding a comment */
+  onAddComment: (comment: string) => Promise<void>
   /** Handler for starting delete confirmation */
   onStartDelete: () => void
   /** Handler for canceling delete */

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CommentsSection } from "../CommentsSection"
-import { mockFetch } from "../../../../.storybook/test-utils"
 
 const sampleComments = [
   {
@@ -45,69 +44,52 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   args: {
     taskId: "rui-4rt",
-  },
-  beforeEach: () => {
-    return mockFetch({
-      url: "/api/tasks/",
-      method: "GET",
-      status: 200,
-      body: {
-        ok: true,
-        comments: sampleComments,
-      },
-    })
+    comments: sampleComments,
+    onAddComment: async (comment: string) => {
+      console.log("Adding comment:", comment)
+    },
   },
 }
 
 export const ReadOnly: Story = {
   args: {
     taskId: "rui-4rt",
+    comments: sampleComments,
     readOnly: true,
-  },
-  beforeEach: () => {
-    return mockFetch({
-      url: "/api/tasks/",
-      method: "GET",
-      status: 200,
-      body: {
-        ok: true,
-        comments: sampleComments,
-      },
-    })
   },
 }
 
 export const Empty: Story = {
   args: {
     taskId: "rui-empty",
+    comments: [],
+    onAddComment: async (comment: string) => {
+      console.log("Adding comment:", comment)
+    },
   },
-  beforeEach: () => {
-    return mockFetch({
-      url: "/api/tasks/",
-      method: "GET",
-      status: 200,
-      body: {
-        ok: true,
-        comments: [],
-      },
-    })
+}
+
+export const Loading: Story = {
+  args: {
+    taskId: "rui-loading",
+    isLoading: true,
+  },
+}
+
+export const Error: Story = {
+  args: {
+    taskId: "rui-error",
+    error: "Failed to load comments",
   },
 }
 
 export const WithCustomClassName: Story = {
   args: {
     taskId: "rui-4rt",
+    comments: sampleComments,
     className: "p-4 border rounded-lg",
-  },
-  beforeEach: () => {
-    return mockFetch({
-      url: "/api/tasks/",
-      method: "GET",
-      status: 200,
-      body: {
-        ok: true,
-        comments: sampleComments,
-      },
-    })
+    onAddComment: async (comment: string) => {
+      console.log("Adding comment:", comment)
+    },
   },
 }
