@@ -30,6 +30,8 @@ pnpm dev                  # Start both server and UI (combined mode)
 pnpm dev:split            # Start beads-server + agent-server + UI as separate processes (split mode)
 pnpm serve:beads          # Start just the beads-server (port 4243)
 pnpm serve:agent          # Start just the agent-server (port 4244)
+pnpm demo:agent-chat      # Run agent chat demo dev server (port 5180)
+pnpm demo:beads           # Run beads task manager demo dev server (port 5181)
 pnpm storybook            # Start Storybook
 
 pnpm format               # Format with Prettier
@@ -48,6 +50,8 @@ pnpm workspace with these main packages:
 - **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Standalone server for managing AI coding agents with HTTP and WebSocket APIs. Extracts agent-related functionality from the UI server. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
+- **`packages/demo-agent-chat/`** (`@herbcaudill/demo-agent-chat`) - Demo app for agent chat with Claude Code and Codex
+- **`packages/demo-beads/`** (`@herbcaudill/demo-beads`) - Demo app for beads task manager UI
 
 ### Project structure
 

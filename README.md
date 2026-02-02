@@ -14,6 +14,8 @@ This monorepo contains the following packages:
 | [`@herbcaudill/beads-view`](packages/beads-view/)     | Task management UI, state, hooks, and API client                   |
 | [`@herbcaudill/beads-server`](packages/beads-server/) | Standalone server for beads task management (HTTP + WebSocket)     |
 | [`@herbcaudill/agent-server`](packages/agent-server/) | Standalone server for managing AI coding agents (HTTP + WebSocket) |
+| [`@herbcaudill/demo-agent-chat`](packages/demo-agent-chat/) | Demo app for agent chat with Claude Code and Codex |
+| [`@herbcaudill/demo-beads`](packages/demo-beads/) | Demo app for beads task manager UI |
 
 ## Installation
 
@@ -84,6 +86,10 @@ pnpm dev:split
 # Start individual servers
 pnpm serve:beads    # Beads server only (port 4243)
 pnpm serve:agent    # Agent server only (port 4244)
+
+# Run demo apps
+pnpm demo:agent-chat  # Agent chat demo (port 5180)
+pnpm demo:beads       # Beads task manager demo (port 5181)
 
 # Format code
 pnpm format
