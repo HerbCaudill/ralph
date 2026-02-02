@@ -9,7 +9,7 @@
     "cli": "tsx packages/cli/src/index.ts",
     "cli:build": "pnpm --filter ralph build",
     "cli:test": "pnpm --filter ralph test",
-    "demo:agent": "pnpm --filter @herbcaudill/demo-agent dev",
+    "demo:agent": "concurrently -n agent-server,demo -c blue,green \"pnpm serve:agent\" \"pnpm --filter @herbcaudill/demo-agent dev\"",
     "demo:beads": "pnpm --filter @herbcaudill/demo-beads dev",
     "dev": "node scripts/dev.js",
     "dev:split": "node scripts/dev-split.js",
