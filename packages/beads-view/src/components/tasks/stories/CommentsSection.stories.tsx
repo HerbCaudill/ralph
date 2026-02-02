@@ -1,23 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CommentsSection } from "../CommentsSection"
 import { mockFetch } from "../../../../.storybook/test-utils"
-import { useEffect } from "react"
-
-const meta: Meta<typeof CommentsSection> = {
-  title: "Collections/CommentsSection",
-  component: CommentsSection,
-  parameters: {},
-  decorators: [
-    Story => (
-      <div className="max-w-md">
-        <Story />
-      </div>
-    ),
-  ],
-}
-
-export default meta
-type Story = StoryObj<typeof meta>
 
 const sampleComments = [
   {
@@ -40,13 +23,29 @@ const sampleComments = [
   },
 ]
 
-/**
- * Story wrapper that mocks the comments API with sample data.
- */
-function WithMockedComments({ taskId, ...props }: { taskId: string; readOnly?: boolean; className?: string }) {
-  useEffect(() => {
-    const cleanup = mockFetch({
-      url: `/api/tasks/${taskId}/comments`,
+const meta: Meta<typeof CommentsSection> = {
+  title: "Collections/CommentsSection",
+  component: CommentsSection,
+  parameters: {},
+  decorators: [
+    Story => (
+      <div className="max-w-md">
+        <Story />
+      </div>
+    ),
+  ],
+}
+
+export default meta
+type Story = StoryObj<typeof meta>
+
+export const Default: Story = {
+  args: {
+    taskId: "rui-4rt",
+  },
+  beforeEach: () => {
+    return mockFetch({
+      url: "/api/tasks/",
       method: "GET",
       status: 200,
       body: {
@@ -54,19 +53,34 @@ function WithMockedComments({ taskId, ...props }: { taskId: string; readOnly?: b
         comments: sampleComments,
       },
     })
-    return cleanup
-  }, [taskId])
-
-  return <CommentsSection taskId={taskId} {...props} />
+  },
 }
 
-/**
- * Story wrapper that mocks empty comments response.
- */
-function WithEmptyComments({ taskId, ...props }: { taskId: string; readOnly?: boolean; className?: string }) {
-  useEffect(() => {
-    const cleanup = mockFetch({
-      url: `/api/tasks/${taskId}/comments`,
+export const ReadOnly: Story = {
+  args: {
+    taskId: "rui-4rt",
+    readOnly: true,
+  },
+  beforeEach: () => {
+    return mockFetch({
+      url: "/api/tasks/",
+      method: "GET",
+      status: 200,
+      body: {
+        ok: true,
+        comments: sampleComments,
+      },
+    })
+  },
+}
+
+export const Empty: Story = {
+  args: {
+    taskId: "rui-empty",
+  },
+  beforeEach: () => {
+    return mockFetch({
+      url: "/api/tasks/",
       method: "GET",
       status: 200,
       body: {
@@ -74,24 +88,23 @@ function WithEmptyComments({ taskId, ...props }: { taskId: string; readOnly?: bo
         comments: [],
       },
     })
-    return cleanup
-  }, [taskId])
-
-  return <CommentsSection taskId={taskId} {...props} />
-}
-
-export const Default: Story = {
-  render: () => <WithMockedComments taskId="rui-4rt" />,
-}
-
-export const ReadOnly: Story = {
-  render: () => <WithMockedComments taskId="rui-4rt" readOnly />,
-}
-
-export const Empty: Story = {
-  render: () => <WithEmptyComments taskId="rui-empty" />,
+  },
 }
 
 export const WithCustomClassName: Story = {
-  render: () => <WithMockedComments taskId="rui-4rt" className="p-4 border rounded-lg" />,
+  args: {
+    taskId: "rui-4rt",
+    className: "p-4 border rounded-lg",
+  },
+  beforeEach: () => {
+    return mockFetch({
+      url: "/api/tasks/",
+      method: "GET",
+      status: 200,
+      body: {
+        ok: true,
+        comments: sampleComments,
+      },
+    })
+  },
 }
