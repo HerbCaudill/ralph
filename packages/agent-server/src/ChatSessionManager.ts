@@ -152,7 +152,7 @@ export class ChatSessionManager extends EventEmitter {
     // Persist user message as a generic record (not a typed AgentEvent)
     const userEvent = {
       type: "user_message",
-      content: message,
+      message,
       timestamp: Date.now(),
     }
     await this.persister.appendEvent(sessionId, userEvent)
