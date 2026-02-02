@@ -25,8 +25,7 @@ export type AgentChatActions = {
 export function useAgentChat(initialAgent: AgentType = "claude") {
   const [events, setEvents] = useState<ChatEvent[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  const [connectionStatus, setConnectionStatus] =
-    useState<ConnectionStatus>("disconnected")
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
   const [error, setError] = useState<string | null>(null)
   const [agentType, setAgentType] = useState<AgentType>(initialAgent)
 
@@ -51,7 +50,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
       setError(null)
     }
 
-    ws.onmessage = (e) => {
+    ws.onmessage = e => {
       try {
         const message = JSON.parse(e.data as string) as Record<string, unknown>
 
@@ -68,22 +67,40 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
         }
 
         if (message.type === "event" && message.event) {
-          setEvents((prev) => [...prev, message.event as ChatEvent])
+          const event = message.event as ChatEvent & { toolUseId?: string }
+
+          // For tool_use events with the same toolUseId, replace the earlier version
+          // (the initial event has empty input; the update has the full input)
+          if (event.type === "tool_use" && event.toolUseId) {
+            setEvents(prev => {
+              const existingIndex = prev.findIndex(
+                e =>
+                  e.type === "tool_use" &&
+                  (e as ChatEvent & { toolUseId?: string }).toolUseId === event.toolUseId,
+              )
+              if (existingIndex >= 0) {
+                const updated = [...prev]
+                updated[existingIndex] = event
+                return updated
+              }
+              return [...prev, event]
+            })
+            return
+          }
+
+          setEvents(prev => [...prev, event])
           return
         }
 
         // Handle legacy message format
         if (message.type === "message") {
           const chatEvent: ChatEvent = {
-            type:
-              (message.role as string) === "user"
-                ? "user_message"
-                : "assistant_text",
+            type: (message.role as string) === "user" ? "user_message" : "assistant_text",
             message: message.content as string,
             text: message.content as string,
             timestamp: Date.now(),
           }
-          setEvents((prev) => [...prev, chatEvent])
+          setEvents(prev => [...prev, chatEvent])
         }
       } catch {
         // Ignore unparseable messages
@@ -138,7 +155,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
         message: message.trim(),
         timestamp: Date.now(),
       }
-      setEvents((prev) => [...prev, userEvent])
+      setEvents(prev => [...prev, userEvent])
 
       // Send via WebSocket
       if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -147,7 +164,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
             type: "chat_message",
             message: message.trim(),
             agentType,
-          })
+          }),
         )
         setIsStreaming(true)
         setError(null)
@@ -162,7 +179,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
         })
       }
     },
-    [agentType]
+    [agentType],
   )
 
   const clearHistory = useCallback(() => {

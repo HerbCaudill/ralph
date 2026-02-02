@@ -303,6 +303,23 @@ export async function startServer(config: AgentServerConfig): Promise<{
   )
 
   taskChatManager.on(
+    "tool_update",
+    (toolUse: {
+      toolUseId: string
+      tool: string
+      input: Record<string, unknown>
+      status: string
+      timestamp: number
+      sequence: number
+    }) => {
+      broadcast({
+        type: "event",
+        event: { type: "tool_use", ...toolUse },
+      })
+    },
+  )
+
+  taskChatManager.on(
     "tool_result",
     (toolResult: {
       toolUseId: string
