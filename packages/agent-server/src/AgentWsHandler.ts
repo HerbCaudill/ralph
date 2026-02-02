@@ -1,15 +1,10 @@
-import type { WebSocket, RawData } from "ws"
+import type { AgentEventSource, AgentPendingEventsResponse } from "@herbcaudill/ralph-shared"
+import type { RawData, WebSocket } from "ws"
 import type { RalphEvent } from "./RalphManager.js"
-import type { RalphRegistry, RalphInstanceState } from "./RalphRegistry.js"
-import type { TaskChatEvent } from "./TaskChatManager.js"
-import type { TaskChatEventPersister } from "./TaskChatEventPersister.js"
-import type {
-  AgentEventEnvelope,
-  AgentEventSource,
-  AgentPendingEventsResponse,
-} from "@herbcaudill/ralph-shared"
-import { envelopeToLegacy } from "@herbcaudill/ralph-shared"
+import type { RalphRegistry } from "./RalphRegistry.js"
 import { serializeInstanceState } from "./routes/types.js"
+import type { TaskChatEventPersister } from "./TaskChatEventPersister.js"
+import type { TaskChatEvent } from "./TaskChatManager.js"
 
 /**
  * Options for creating an AgentWsHandler.
