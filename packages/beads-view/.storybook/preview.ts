@@ -1,7 +1,7 @@
 import type { Preview } from "@storybook/react-vite"
 import React from "react"
 import { TestProviders } from "../src/components/TestProviders"
-import "./preview.css"
+import "../src/index.css"
 
 const preview: Preview = {
   parameters: {
