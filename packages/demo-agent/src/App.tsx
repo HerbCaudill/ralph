@@ -16,7 +16,6 @@ export function App() {
   return (
     <DemoShell
       title="Agent Chat Demo"
-      subtitle="Claude Code + Codex"
       headerActions={
         <div className="flex items-center gap-2">
           <AgentSelector value={agentType} onChange={setAgentType} disabled={isStreaming} />
@@ -66,7 +65,8 @@ export function App() {
         {/* Chat input */}
         <ChatInput
           onSend={sendMessage}
-          disabled={!isConnected || isStreaming}
+          disabled={!isConnected}
+          isStreaming={isStreaming}
           placeholder={isConnected ? "Send a message…" : "Waiting for connection to agent server…"}
         />
       </div>
