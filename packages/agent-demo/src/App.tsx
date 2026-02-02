@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { IconMessageChatbot, IconPlus, IconLoader2 } from "@tabler/icons-react"
 import { AgentView, AgentViewProvider } from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
@@ -12,6 +13,7 @@ export function App() {
   const { events, isStreaming, connectionStatus, error, sessionId } = state
   const { sendMessage, setAgentType, newSession } = actions
   const agentVersion = useAdapterVersion(agentType)
+  const [showToolOutput, setShowToolOutput] = useState(true)
 
   const isConnected = connectionStatus === "connected"
 
@@ -61,7 +63,13 @@ export function App() {
               </div>
             </div>
           : <AgentViewProvider
-              value={{ isDark: false, toolOutput: { isVisible: true, onToggle: () => {} } }}
+              value={{
+                isDark: false,
+                toolOutput: {
+                  isVisible: showToolOutput,
+                  onToggle: () => setShowToolOutput(prev => !prev),
+                },
+              }}
             >
               <AgentView
                 events={events}
