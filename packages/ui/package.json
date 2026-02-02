@@ -61,6 +61,7 @@
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",
     "@types/express": "^5.0.6",
+    "@types/http-proxy": "^1.17.17",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
@@ -86,10 +87,12 @@
   "description": "Web UI for Ralph - React frontend and server for the autonomous AI session engine",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.7",
+    "@herbcaudill/agent-server": "workspace:*",
     "@herbcaudill/agent-view": "workspace:*",
     "@herbcaudill/agent-view-claude": "workspace:*",
     "@herbcaudill/agent-view-codex": "workspace:*",
     "@herbcaudill/agent-view-theme": "workspace:*",
+    "@herbcaudill/beads-view": "workspace:*",
     "@mdxeditor/editor": "^3.52.3",
     "@openai/codex-sdk": "^0.87.0",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -116,9 +119,7 @@
     "shiki": "^3.21.0",
     "tailwind-merge": "^3.4.0",
     "ws": "^8.19.0",
-    "zustand": "^5.0.10",
-    "@herbcaudill/beads-view": "workspace:*",
-    "@herbcaudill/agent-server": "workspace:*"
+    "zustand": "^5.0.10"
   },
   "bin": {
     "ralph-ui": "./bin/ralph-ui.js"

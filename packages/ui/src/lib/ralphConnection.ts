@@ -1,6 +1,10 @@
 /**
  * Singleton WebSocket manager for Ralph connection.
  * Lives outside React to survive HMR and StrictMode remounts.
+ *
+ * Manages two WebSocket connections:
+ * - **Agent WebSocket** (`/ws` → agent-server): Agent events, task chat, instance lifecycle
+ * - **Beads WebSocket** (`/beads-ws` → beads-server): Mutation events, workspace changes
  */
 import { useAppStore, selectRalphStatus, selectEvents } from "../store"
 import { isRalphStatus, isSessionBoundary } from "../store"
@@ -12,6 +16,7 @@ import type { ChatEvent } from "@/types"
 import { isSystemEvent } from "@herbcaudill/agent-view"
 import { isAgentEventEnvelope, isAgentPendingEventsResponse } from "@herbcaudill/ralph-shared"
 import type { AgentEventSource, AgentReconnectRequest } from "@herbcaudill/ralph-shared"
+import { getServerUrls } from "./serverConfig"
 
 // Connection status constants and type guard
 export const CONNECTION_STATUSES = ["disconnected", "connecting", "connected"] as const
@@ -23,6 +28,8 @@ export function isConnectionStatus(value: unknown): value is ConnectionStatus {
 
 interface RalphConnectionManager {
   status: ConnectionStatus
+  /** Connection status for the beads-server WebSocket */
+  beadsStatus: ConnectionStatus
   connect: () => void
   disconnect: () => void
   send: (message: unknown) => void
@@ -32,22 +39,32 @@ interface RalphConnectionManager {
   readonly maxReconnectAttempts: number
 }
 
-// Singleton state
+// Singleton state — Agent WebSocket (agent-server)
 let ws: WebSocket | null = null
 let status: ConnectionStatus = "disconnected"
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 let intentionalClose = false
 let initialized = false
 
-// Reconnection configuration
+// Singleton state — Beads WebSocket (beads-server)
+let beadsWs: WebSocket | null = null
+let beadsStatus: ConnectionStatus = "disconnected"
+let beadsReconnectTimeout: ReturnType<typeof setTimeout> | null = null
+let beadsIntentionalClose = false
+
+// Reconnection configuration (shared between both connections)
 const INITIAL_RECONNECT_DELAY = 1000 // 1 second
 const MAX_RECONNECT_DELAY = 30000 // 30 seconds
 const MAX_RECONNECT_ATTEMPTS = 10
 const JITTER_FACTOR = 0.3 // +/- 30% jitter
 
-// Reconnection state
+// Reconnection state — Agent WebSocket
 let reconnectAttempts = 0
 let currentReconnectDelay = INITIAL_RECONNECT_DELAY
+
+// Reconnection state — Beads WebSocket
+let beadsReconnectAttempts = 0
+let beadsCurrentReconnectDelay = INITIAL_RECONNECT_DELAY
 
 // Workspace switch guard: pause WebSocket message processing during workspace switches.
 // Messages arriving while paused are queued and replayed (or discarded) once the switch completes.
@@ -180,9 +197,12 @@ function resetReconnectState(): void {
   currentReconnectDelay = INITIAL_RECONNECT_DELAY
 }
 
-function getDefaultUrl(): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-  return `${protocol}//${window.location.host}/ws`
+function getAgentWsUrl(): string {
+  return getServerUrls().agentWs
+}
+
+function getBeadsWsUrl(): string | null {
+  return getServerUrls().beadsWs
 }
 
 function clearReconnectTimeout(): void {
@@ -192,9 +212,38 @@ function clearReconnectTimeout(): void {
   }
 }
 
+function clearBeadsReconnectTimeout(): void {
+  if (beadsReconnectTimeout) {
+    clearTimeout(beadsReconnectTimeout)
+    beadsReconnectTimeout = null
+  }
+}
+
 function setStatus(newStatus: ConnectionStatus): void {
   status = newStatus
+  // The overall connection status reflects the agent connection (primary)
   useAppStore.getState().setConnectionStatus(newStatus)
+}
+
+function setBeadsStatus(newStatus: ConnectionStatus): void {
+  beadsStatus = newStatus
+  // Beads connection status is tracked separately but not exposed to the UI store
+  // (the agent connection is the primary indicator for the user)
+}
+
+/** Calculate reconnect delay for the beads WebSocket. */
+function calculateBeadsReconnectDelay(): number {
+  const baseDelay = Math.min(
+    INITIAL_RECONNECT_DELAY * Math.pow(2, beadsReconnectAttempts),
+    MAX_RECONNECT_DELAY,
+  )
+  const jitter = baseDelay * JITTER_FACTOR * (Math.random() * 2 - 1)
+  return Math.max(INITIAL_RECONNECT_DELAY, Math.round(baseDelay + jitter))
+}
+
+function resetBeadsReconnectState(): void {
+  beadsReconnectAttempts = 0
+  beadsCurrentReconnectDelay = INITIAL_RECONNECT_DELAY
 }
 
 /**
@@ -904,6 +953,74 @@ function processMessage(event: MessageEvent): void {
   }
 }
 
+/**
+ * Connect the beads-server WebSocket for mutation events and workspace changes.
+ * This is a secondary connection that runs alongside the main agent WebSocket.
+ * In combined mode (when beadsWs URL is null), this function is a no-op since
+ * the single agent WebSocket handles all events.
+ */
+function connectBeads(): void {
+  const url = getBeadsWsUrl()
+  if (!url) {
+    // Combined mode — no separate beads WebSocket needed
+    return
+  }
+
+  if (beadsWs?.readyState === WebSocket.CONNECTING || beadsWs?.readyState === WebSocket.OPEN) {
+    return
+  }
+
+  clearBeadsReconnectTimeout()
+  beadsIntentionalClose = false
+
+  setBeadsStatus("connecting")
+
+  beadsWs = new WebSocket(url)
+
+  beadsWs.onopen = () => {
+    setBeadsStatus("connected")
+    resetBeadsReconnectState()
+    console.log("[ralphConnection] Beads WebSocket connected")
+  }
+
+  beadsWs.onmessage = handleMessage
+
+  beadsWs.onerror = () => {
+    // Error handling - close will fire after this
+  }
+
+  beadsWs.onclose = () => {
+    setBeadsStatus("disconnected")
+
+    if (!beadsIntentionalClose) {
+      if (beadsReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error(
+          `[ralphConnection] Beads WebSocket: max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached.`,
+        )
+        return
+      }
+
+      clearBeadsReconnectTimeout()
+      beadsCurrentReconnectDelay = calculateBeadsReconnectDelay()
+      beadsReconnectAttempts++
+
+      if (!(globalThis as Record<string, unknown>).__vitest_worker__) {
+        console.log(
+          `[ralphConnection] Beads WebSocket reconnecting in ${beadsCurrentReconnectDelay}ms (attempt ${beadsReconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`,
+        )
+      }
+
+      beadsReconnectTimeout = setTimeout(() => {
+        connectBeads()
+      }, beadsCurrentReconnectDelay)
+    }
+  }
+}
+
+/**
+ * Connect the agent-server WebSocket for agent events, task chat, and instance lifecycle.
+ * This is the primary connection that drives the overall connection status.
+ */
 function connect(): void {
   // Don't connect if already connecting or connected
   if (ws?.readyState === WebSocket.CONNECTING || ws?.readyState === WebSocket.OPEN) {
@@ -913,7 +1030,7 @@ function connect(): void {
   clearReconnectTimeout()
   intentionalClose = false
 
-  const url = getDefaultUrl()
+  const url = getAgentWsUrl()
   setStatus("connecting")
 
   ws = new WebSocket(url)
@@ -1061,6 +1178,7 @@ function connect(): void {
 }
 
 function disconnect(): void {
+  // Disconnect agent WebSocket
   clearReconnectTimeout()
   intentionalClose = true
 
@@ -1070,6 +1188,17 @@ function disconnect(): void {
   }
 
   setStatus("disconnected")
+
+  // Disconnect beads WebSocket
+  clearBeadsReconnectTimeout()
+  beadsIntentionalClose = true
+
+  if (beadsWs) {
+    beadsWs.close()
+    beadsWs = null
+  }
+
+  setBeadsStatus("disconnected")
 }
 
 function send(message: unknown): void {
@@ -1081,6 +1210,8 @@ function send(message: unknown): void {
 
 function reset(): void {
   // For testing - reset all singleton state
+
+  // Reset agent WebSocket
   clearReconnectTimeout()
   intentionalClose = true
   if (ws) {
@@ -1088,9 +1219,22 @@ function reset(): void {
     ws = null
   }
   status = "disconnected"
-  initialized = false
   intentionalClose = false
   resetReconnectState()
+
+  // Reset beads WebSocket
+  clearBeadsReconnectTimeout()
+  beadsIntentionalClose = true
+  if (beadsWs) {
+    beadsWs.close()
+    beadsWs = null
+  }
+  beadsStatus = "disconnected"
+  beadsIntentionalClose = false
+  resetBeadsReconnectState()
+
+  // Reset shared state
+  initialized = false
   lastEventTimestamps.clear()
   currentSessions.clear()
   messageProcessingPaused = false
@@ -1100,10 +1244,13 @@ function reset(): void {
 /**
  * Manual reconnection - resets backoff state and attempts to connect immediately.
  * Use this when the user explicitly wants to retry after a failed connection.
+ * Reconnects both agent and beads WebSockets.
  */
 function reconnect(): void {
   resetReconnectState()
+  resetBeadsReconnectState()
   connect()
+  connectBeads()
 }
 
 /**
@@ -1190,13 +1337,19 @@ export const ralphConnection: RalphConnectionManager = {
   get status() {
     return status
   },
+  get beadsStatus() {
+    return beadsStatus
+  },
   get reconnectAttempts() {
     return reconnectAttempts
   },
   get maxReconnectAttempts() {
     return MAX_RECONNECT_ATTEMPTS
   },
-  connect,
+  connect() {
+    connect()
+    connectBeads()
+  },
   disconnect,
   send,
   reset,
@@ -1216,7 +1369,9 @@ export function initRalphConnection(): void {
     })
   })
 
+  // Connect to both servers
   connect()
+  connectBeads()
 }
 
 // For HMR: preserve connection across hot reloads.
@@ -1230,6 +1385,7 @@ if (import.meta.hot) {
   // Restore state from previous module version (if available)
   const prevData = hot.data
   if (prevData?.ws) {
+    // Restore agent WebSocket state
     ws = prevData.ws as WebSocket
     status = prevData.status as ConnectionStatus
     initialized = prevData.initialized as boolean
@@ -1238,6 +1394,21 @@ if (import.meta.hot) {
     intentionalClose = prevData.intentionalClose as boolean
     messageProcessingPaused = prevData.messageProcessingPaused as boolean
     queuedMessages = (prevData.queuedMessages as MessageEvent[]) ?? []
+
+    // Restore beads WebSocket state
+    if (prevData.beadsWs) {
+      beadsWs = prevData.beadsWs as WebSocket
+      beadsStatus = (prevData.beadsStatus as ConnectionStatus) ?? "disconnected"
+      beadsReconnectAttempts = (prevData.beadsReconnectAttempts as number) ?? 0
+      beadsCurrentReconnectDelay =
+        (prevData.beadsCurrentReconnectDelay as number) ?? INITIAL_RECONNECT_DELAY
+      beadsIntentionalClose = (prevData.beadsIntentionalClose as boolean) ?? false
+
+      // Re-attach message handler for beads WebSocket
+      if (beadsWs && beadsWs.readyState === WebSocket.OPEN) {
+        beadsWs.onmessage = handleMessage
+      }
+    }
 
     // Re-attach message handler to use the new module's handleMessage function
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1267,6 +1438,7 @@ if (import.meta.hot) {
 
   // Save state for the next module version
   hot.dispose(data => {
+    // Agent WebSocket state
     data.ws = ws
     data.status = status
     data.initialized = initialized
@@ -1277,5 +1449,12 @@ if (import.meta.hot) {
     data.queuedMessages = queuedMessages
     data.lastEventTimestamps = new Map(lastEventTimestamps)
     data.currentSessions = new Map(currentSessions)
+
+    // Beads WebSocket state
+    data.beadsWs = beadsWs
+    data.beadsStatus = beadsStatus
+    data.beadsReconnectAttempts = beadsReconnectAttempts
+    data.beadsCurrentReconnectDelay = beadsCurrentReconnectDelay
+    data.beadsIntentionalClose = beadsIntentionalClose
   })
 }

@@ -4,8 +4,13 @@ import tailwindcss from "@tailwindcss/vite"
 import { VitePWA } from "vite-plugin-pwa"
 import path from "path"
 
-// Server port - matches the default in server/index.ts
+// Server ports for the dual-server architecture:
+// - beads-server: Task/label management, workspace info, mutation events
+// - agent-server: Agent control, instance management, task chat, agent events
+// When split server ports are not set, all traffic goes to the combined server (backward compat).
 const serverPort = process.env.PORT || "4242"
+const beadsServerPort = process.env.BEADS_PORT || serverPort
+const agentServerPort = process.env.AGENT_SERVER_PORT || serverPort
 
 // Custom logger that filters out proxy errors during tests
 // These errors occur when tests make API calls without a backend server
@@ -36,59 +41,147 @@ logger.warn = (msg, options) => {
   originalWarn(msg, options)
 }
 
+/** Create a WebSocket proxy error handler to suppress expected connection errors. */
+function configureWsProxy(label: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (proxy: any) => {
+    proxy.on("error", (err: NodeJS.ErrnoException, _req: unknown, res: unknown) => {
+      const isExpectedError =
+        err.code === "EPIPE" ||
+        err.code === "ECONNRESET" ||
+        err.code === "ECONNREFUSED" ||
+        err.constructor?.name === "AggregateError" ||
+        (err as Error).name === "AggregateError"
+      if (isExpectedError) {
+        const httpRes = res as {
+          writeHead?: (code: number) => void
+          end?: () => void
+          headersSent?: boolean
+        }
+        if (httpRes && typeof httpRes.writeHead === "function" && !httpRes.headersSent) {
+          httpRes.writeHead(502)
+          httpRes.end?.()
+        }
+        return
+      }
+      console.error(label, err.message)
+    })
+    proxy.on(
+      "proxyReqWs",
+      (
+        _proxyReq: unknown,
+        _req: unknown,
+        socket: { on: (event: string, handler: () => void) => void },
+      ) => {
+        socket.on("error", () => {})
+      },
+    )
+    proxy.on("open", (proxySocket: { on: (event: string, handler: () => void) => void }) => {
+      proxySocket.on("error", () => {})
+    })
+    proxy.on("close", (_req: unknown, socket: { destroy?: () => void } | null) => {
+      if (socket && typeof socket.destroy === "function") {
+        socket.destroy()
+      }
+    })
+  }
+}
+
 export default defineConfig({
   customLogger: logger,
   server: {
     port: 5179,
     proxy: {
+      // --- Beads-server API routes (tasks, labels, workspaces) ---
+      "/api/tasks": {
+        target: `http://localhost:${beadsServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/labels": {
+        target: `http://localhost:${beadsServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/workspace": {
+        target: `http://localhost:${beadsServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/workspaces": {
+        target: `http://localhost:${beadsServerPort}`,
+        changeOrigin: true,
+      },
+
+      // --- Agent-server API routes (ralph control, instances, task-chat) ---
+      // Specific agent paths are listed first; the catch-all "/api" below
+      // handles any remaining routes via the legacy combined server.
+      "/api/ralph": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/task-chat": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/instances": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/start": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/stop": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/pause": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/resume": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/status": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/message": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/stop-after-current": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/cancel-stop-after-current": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+      "/api/state": {
+        target: `http://localhost:${agentServerPort}`,
+        changeOrigin: true,
+      },
+
+      // --- Fallback: any unmatched /api/* routes go to the legacy combined server ---
       "/api": {
         target: `http://localhost:${serverPort}`,
         changeOrigin: true,
       },
-      "/ws": {
-        target: `http://localhost:${serverPort}`,
+
+      // --- Beads-server WebSocket (mutation events) ---
+      // Client connects to /beads-ws, proxy rewrites to /ws on beads-server
+      "/beads-ws": {
+        target: `http://localhost:${beadsServerPort}`,
         ws: true,
-        configure: proxy => {
-          // Suppress connection errors that occur when backend isn't running or clients disconnect
-          proxy.on("error", (err: NodeJS.ErrnoException, _req, res) => {
-            // EPIPE/ECONNRESET: rapid reconnects
-            // ECONNREFUSED: backend not running
-            // AggregateError: connection failed (no backend) - check constructor name
-            const isExpectedError =
-              err.code === "EPIPE" ||
-              err.code === "ECONNRESET" ||
-              err.code === "ECONNREFUSED" ||
-              err.constructor?.name === "AggregateError" ||
-              (err as Error).name === "AggregateError"
-            if (isExpectedError) {
-              // Silently ignore - these errors are expected during tests without backend
-              // End the response if it exists and hasn't been sent
-              if (res && "writeHead" in res && !res.headersSent) {
-                res.writeHead(502)
-                res.end()
-              }
-              return
-            }
-            console.error("[ws proxy]", err.message)
-          })
-          proxy.on("proxyReqWs", (_proxyReq, _req, socket) => {
-            socket.on("error", (_err: NodeJS.ErrnoException) => {
-              // Silently ignore - these errors are expected during rapid reconnects
-            })
-          })
-          // Also handle errors on the target socket
-          proxy.on("open", proxySocket => {
-            proxySocket.on("error", (_err: NodeJS.ErrnoException) => {
-              // Silently ignore
-            })
-          })
-          // Handle close events to prevent error propagation
-          proxy.on("close", (_req, socket) => {
-            if (socket && typeof socket.destroy === "function") {
-              socket.destroy()
-            }
-          })
-        },
+        rewrite: path => path.replace(/^\/beads-ws/, "/ws"),
+        configure: configureWsProxy("[beads-ws proxy]"),
+      },
+
+      // --- Agent-server WebSocket (agent events, task chat) ---
+      "/ws": {
+        target: `http://localhost:${agentServerPort}`,
+        ws: true,
+        configure: configureWsProxy("[ws proxy]"),
       },
     },
   },

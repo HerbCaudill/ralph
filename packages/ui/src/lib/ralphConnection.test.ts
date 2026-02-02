@@ -97,6 +97,17 @@ vi.mock("./sessionStateApi", () => ({
   restoreSessionState: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
+// Mock serverConfig to provide predictable WebSocket URLs.
+// Default: combined mode (beadsWs: null) — only one WebSocket connection.
+vi.mock("./serverConfig", () => ({
+  getServerUrls: () => ({
+    beadsHttp: "",
+    agentHttp: "",
+    beadsWs: null, // Combined mode — no separate beads WebSocket
+    agentWs: "ws://localhost/ws",
+  }),
+}))
+
 // Create tracked mocks for eventDatabase and writeQueue methods
 const mockSaveEvent = vi.fn().mockResolvedValue(undefined)
 const mockUpdateSessionTaskId = vi.fn().mockResolvedValue(true)
@@ -1647,6 +1658,7 @@ describe("ralphConnection event timestamp tracking", () => {
       ralphConnection.connect()
       await new Promise(resolve => setTimeout(resolve, 10))
 
+      // In combined mode, instances[0]=first WS, [1]=second WS after reconnect
       const ws2 = MockWebSocket.instances[1]
       ws2.simulateOpen()
 
@@ -1747,6 +1759,7 @@ describe("ralphConnection event timestamp tracking", () => {
       ralphConnection.connect()
       await new Promise(resolve => setTimeout(resolve, 10))
 
+      // In combined mode: instances[0]=first WS, [1]=second WS after reconnect
       const ws2 = MockWebSocket.instances[1]
       ws2.simulateOpen()
 
@@ -2503,7 +2516,7 @@ describe("ralphConnection event timestamp tracking", () => {
 
       initRalphConnection()
 
-      // A WebSocket should have been created
+      // In combined mode, only one WebSocket (agent) is created
       expect(MockWebSocket.instances).toHaveLength(1)
     })
 
@@ -2602,7 +2615,7 @@ describe("ralphConnection event timestamp tracking", () => {
       ralphConnection.connect()
       ralphConnection.connect()
 
-      // Only one WebSocket should have been created
+      // Only one WebSocket should have been created (combined mode)
       expect(MockWebSocket.instances).toHaveLength(1)
     })
 

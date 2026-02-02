@@ -157,6 +157,7 @@ packages/ui/                        # UI package
     store/                  # Zustand global state
     hooks/                  # Custom React hooks
     lib/                    # Utilities and theme management
+      serverConfig.ts       # Server URL config for dual-server architecture (combined vs split mode)
     constants.ts            # Shared UI constants
     types.ts                # Shared UI types
 
@@ -195,6 +196,17 @@ Claude outputs: `<start_task>{id}</start_task>` when starting, `<end_task>{id}</
 ### Agent server extraction
 
 Agent management modules (RalphManager, RalphRegistry, InstanceStore, SessionEventPersister, SessionStateStore, SessionRunner, WorktreeManager, findClaudeExecutable, systemPrompt, loadSkill), adapter modules (ClaudeAdapter, CodexAdapter, AdapterRegistry), task chat modules (TaskChatManager, TaskChatEventLog, TaskChatEventPersister), and utility functions (isRetryableError, calculateBackoffDelay, generateId, createEventStream, createMessageStream) live in `packages/agent-server/` (`@herbcaudill/agent-server`). The UI server files re-export from this package for backward compatibility. Type definitions for AgentAdapter, ConversationContext, ConversationMessage, and BdProxy are in `agent-server/src/agentTypes.ts`.
+
+### Dual-server mode (UI client)
+
+The UI client supports two deployment modes:
+
+- **Combined mode** (default): A single server on port 4242 handles everything. One WebSocket at `/ws`, all HTTP requests to the same origin. No configuration needed.
+- **Split mode**: The UI connects to separate beads-server (port 4243) and agent-server (port 4244). Enabled by setting `VITE_SPLIT_SERVERS=true` or providing explicit server URLs via `VITE_BEADS_SERVER_URL` / `VITE_AGENT_SERVER_URL`.
+
+In split mode, the UI creates two WebSocket connections: one to the agent-server (`/ws`) for agent control/chat events, and one to the beads-server (`/beads-ws` or direct URL) for task/mutation events. HTTP API paths are routed by prefix: `/api/tasks`, `/api/labels`, `/api/workspace` go to beads-server; `/api/ralph`, `/api/task-chat`, `/api/instances`, and agent control paths go to agent-server. See `packages/ui/src/lib/serverConfig.ts` for the routing logic.
+
+The Vite dev server proxy also supports split mode: when `BEADS_PORT` and `AGENT_SERVER_PORT` env vars are set alongside `VITE_SPLIT_SERVERS=true`, Vite routes `/api/*` and `/ws` paths to the correct backend port.
 
 ### Multi-agent support
 
@@ -269,6 +281,9 @@ Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Node-onl
 - `HOST` / `PORT` - Server host/port (defaults: 127.0.0.1 / 4242)
 - `BEADS_PORT` - Beads server port (default: 4243)
 - `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` - Agent server host/port (defaults: localhost / 4244)
+- `VITE_SPLIT_SERVERS` - Set to `true` to enable split-server mode in the UI (Vite build-time)
+- `VITE_BEADS_SERVER_URL` - Full URL for beads-server in split mode (e.g., `http://localhost:4243`)
+- `VITE_AGENT_SERVER_URL` - Full URL for agent-server in split mode (e.g., `http://localhost:4244`)
 - `RALPH_DEBUG` - Debug logging (`1` for all, or comma-separated namespaces: `messagequeue`, `session`)
 - `RALPH_CWD` - Override base path for relative path rendering
 

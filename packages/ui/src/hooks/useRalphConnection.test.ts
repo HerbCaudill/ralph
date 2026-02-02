@@ -68,8 +68,18 @@ class MockWebSocket {
 // Install mock using window (DOM environment)
 const originalWebSocket = window.WebSocket
 
-// Helper to get the current WebSocket instance
+// Helper to get the current agent WebSocket instance (connected to /ws, not /beads-ws).
+// With dual-server architecture, each connect() creates two WebSocket instances:
+// one for the agent-server (/ws) and one for the beads-server (/beads-ws).
 function getWs(): MockWebSocket | undefined {
+  // Find the most recent agent WebSocket (URL ends with /ws but not /beads-ws)
+  for (let i = MockWebSocket.instances.length - 1; i >= 0; i--) {
+    const instance = MockWebSocket.instances[i]
+    if (instance.url.endsWith("/ws") && !instance.url.includes("/beads-ws")) {
+      return instance
+    }
+  }
+  // Fallback to last instance for backward compatibility
   return MockWebSocket.instances[MockWebSocket.instances.length - 1]
 }
 
