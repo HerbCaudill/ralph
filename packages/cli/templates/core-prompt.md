@@ -18,7 +18,7 @@ Run `bd ready --assignee {agentName} --assignee ""` to list issues that are eith
 - Unassigned, or
 - Assigned to you
 
-If no issues are ready, output `<promise>COMPLETE</promise>` and end your turn.
+If no issues are ready, output `<promise>COMPLETE</promise>` and end your session.
 
 ### Step 3: Claim and work on one task
 
@@ -27,7 +27,7 @@ Select the highest-priority issue. Finish in-progress tasks first. Bugs take pri
 - Output `<start_task>{id}</start_task>`
 - Assign the issue to yourself: `bd update {id} --status=in_progress --assignee={agentName}`
 - Work only on this single task.
-- If the task is complex, break it into subtasks and end your turn.
+- If the task is complex, break it into subtasks and end your session.
 
 ### Step 4: Complete the task
 
