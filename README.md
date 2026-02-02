@@ -6,16 +6,16 @@ Autonomous AI session engine for Claude CLI. Ralph spawns Claude CLI processes w
 
 This monorepo contains the following packages:
 
-| Package                                               | Description                                                        |
-| ----------------------------------------------------- | ------------------------------------------------------------------ |
-| [`@herbcaudill/ralph`](packages/cli/)                 | CLI tool for terminal-based sessions                               |
-| [`@herbcaudill/ralph-ui`](packages/ui/)               | Web UI with real-time event streaming                              |
-| [`@herbcaudill/ralph-shared`](packages/shared/)       | Shared types and utilities                                         |
-| [`@herbcaudill/beads-view`](packages/beads-view/)     | Task management UI, state, hooks, and API client                   |
-| [`@herbcaudill/beads-server`](packages/beads-server/) | Standalone server for beads task management (HTTP + WebSocket)     |
-| [`@herbcaudill/agent-server`](packages/agent-server/) | Standalone server for managing AI coding agents (HTTP + WebSocket) |
-| [`@herbcaudill/demo-agent-chat`](packages/demo-agent-chat/) | Demo app for agent chat with Claude Code and Codex |
-| [`@herbcaudill/demo-beads`](packages/demo-beads/) | Demo app for beads task manager UI |
+| Package                                                     | Description                                                                           |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [`@herbcaudill/ralph`](packages/cli/)                       | CLI tool for terminal-based sessions                                                  |
+| [`@herbcaudill/ralph-ui`](packages/ui/)                     | Web UI with real-time event streaming                                                 |
+| [`@herbcaudill/ralph-shared`](packages/shared/)             | Shared types and utilities                                                            |
+| [`@herbcaudill/beads-view`](packages/beads-view/)           | Task management UI, state, hooks, and API client                                      |
+| [`@herbcaudill/beads-server`](packages/beads-server/)       | Standalone server for beads task management (HTTP + WebSocket)                        |
+| [`@herbcaudill/agent-server`](packages/agent-server/)       | Standalone server for managing AI coding agents (HTTP + WebSocket)                    |
+| [`@herbcaudill/demo-agent-chat`](packages/demo-agent-chat/) | Agent chat demo: WebSocket streaming, AgentView rendering, Claude Code/Codex selector |
+| [`@herbcaudill/demo-beads`](packages/demo-beads/)           | Beads task manager demo: task list, detail editing, workspace switching               |
 
 ## Installation
 
@@ -53,6 +53,22 @@ ralph-ui start --open
 ```
 
 The UI provides real-time monitoring, task management, and support for multiple AI agents (Claude, Codex).
+
+### Demo apps
+
+The demo packages are minimal standalone apps that exercise the `agent-view` and `beads-view` libraries.
+
+```bash
+# Agent chat demo — connect to an agent server, send messages, stream responses
+# Requires agent-server running on port 4242 (or set AGENT_SERVER_PORT)
+pnpm demo:agent-chat    # opens http://localhost:5180
+
+# Beads task manager demo — browse tasks, edit details, switch workspaces
+# Requires beads-server running on port 4242 (or set BEADS_PORT)
+pnpm demo:beads          # opens http://localhost:5181
+```
+
+Each demo proxies `/api` and `/ws` requests to its backend server via Vite dev server.
 
 ## How it works
 
