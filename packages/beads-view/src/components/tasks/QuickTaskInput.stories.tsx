@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, within, userEvent, fn, waitFor } from "storybook/test"
 import { QuickTaskInput } from "./QuickTaskInput"
 import { clearTaskInputStorage, mockFetch, wait } from "../../../.storybook/test-utils"
-import { beadsViewStore } from "@herbcaudill/beads-view"
+import { beadsViewStore } from "../../store/beadsViewStore"
 
 const meta: Meta<typeof QuickTaskInput> = {
   title: "Inputs/QuickTaskInput",
