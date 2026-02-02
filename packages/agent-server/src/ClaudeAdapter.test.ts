@@ -668,6 +668,190 @@ describe("ClaudeAdapter", () => {
     })
   })
 
+  describe("multi-turn conversation resume behavior", () => {
+    it("passes resume with session ID from first message when sending a second message", async () => {
+      const capturedCalls: Array<{ prompt: unknown; options: Record<string, unknown> }> = []
+      let callCount = 0
+
+      const queryFn = (async function* (opts: unknown) {
+        callCount++
+        const typedOpts = opts as { prompt: unknown; options: Record<string, unknown> }
+        capturedCalls.push({ prompt: typedOpts.prompt, options: typedOpts.options })
+
+        // First call returns a session_id, second call does not need to
+        if (callCount === 1) {
+          yield {
+            type: "assistant",
+            session_id: "sess_abc123",
+            message: { role: "assistant", content: [{ type: "text", text: "First reply" }] },
+          } as never
+        } else {
+          yield {
+            type: "assistant",
+            message: { role: "assistant", content: [{ type: "text", text: "Second reply" }] },
+          } as never
+        }
+        yield {
+          type: "result",
+          subtype: "success",
+          result: callCount === 1 ? "First reply" : "Second reply",
+          usage: { input_tokens: 10, output_tokens: 5 },
+        } as never
+      }) as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const statuses = collectStatuses(adapter)
+
+      // First message
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hello" })
+
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      // First call should have no resume (no session yet)
+      expect(capturedCalls[0].options.resume).toBeUndefined()
+      expect(capturedCalls[0].prompt).toBe("Hello")
+
+      // Reset statuses for second message
+      statuses.length = 0
+
+      // Second message in the same conversation
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Follow up" })
+
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      // Second call should pass the session ID from the first message as resume
+      expect(capturedCalls[1].options.resume).toBe("sess_abc123")
+    })
+
+    it("passes the prompt (not empty) for second+ messages in a conversation", async () => {
+      const capturedCalls: Array<{ prompt: unknown; options: Record<string, unknown> }> = []
+      let callCount = 0
+
+      const queryFn = (async function* (opts: unknown) {
+        callCount++
+        const typedOpts = opts as { prompt: unknown; options: Record<string, unknown> }
+        capturedCalls.push({ prompt: typedOpts.prompt, options: typedOpts.options })
+
+        if (callCount === 1) {
+          yield {
+            type: "assistant",
+            session_id: "sess_xyz789",
+            message: { role: "assistant", content: [{ type: "text", text: "OK" }] },
+          } as never
+        } else {
+          yield {
+            type: "assistant",
+            message: { role: "assistant", content: [{ type: "text", text: "Got it" }] },
+          } as never
+        }
+        yield {
+          type: "result",
+          subtype: "success",
+          result: callCount === 1 ? "OK" : "Got it",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      }) as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const statuses = collectStatuses(adapter)
+
+      // First message
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "First question" })
+
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      statuses.length = 0
+
+      // Second message
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Second question" })
+
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      // Both calls should have their full prompt, not empty
+      expect(capturedCalls[0].prompt).toBe("First question")
+      expect(capturedCalls[1].prompt).toBe("Second question")
+    })
+
+    it("does not emit RESUMING event for normal multi-turn messages (only retries)", async () => {
+      let callCount = 0
+
+      const queryFn = (async function* (_opts: unknown) {
+        callCount++
+
+        if (callCount === 1) {
+          yield {
+            type: "assistant",
+            session_id: "sess_resume_test",
+            message: { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+          } as never
+        } else {
+          yield {
+            type: "assistant",
+            message: { role: "assistant", content: [{ type: "text", text: "Hi again" }] },
+          } as never
+        }
+        yield {
+          type: "result",
+          subtype: "success",
+          result: callCount === 1 ? "Hi" : "Hi again",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      }) as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+      const statuses = collectStatuses(adapter)
+
+      // First message
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hello" })
+
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      statuses.length = 0
+
+      // Second message (multi-turn, not a retry)
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "More" })
+
+      await vi.waitFor(() => {
+        expect(statuses).toContain("idle")
+      })
+
+      // No RESUMING error events should have been emitted
+      const resumingEvents = events.filter(
+        e => e.type === "error" && (e as { code?: string }).code === "RESUMING",
+      )
+      expect(resumingEvents).toHaveLength(0)
+    })
+  })
+
   describe("parseCliVersionOutput", () => {
     it("parses standard claude --version output", () => {
       expect(parseCliVersionOutput("2.1.29 (Claude Code)")).toBe("2.1.29")

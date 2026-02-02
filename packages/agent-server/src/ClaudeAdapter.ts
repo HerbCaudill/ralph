@@ -354,13 +354,13 @@ export class ClaudeAdapter extends AgentAdapter {
     while (attempt <= maxRetries) {
       this.abortController = new AbortController()
 
-      // On retry attempts with an existing session, use resume to continue from where we left off
+      // Resume from existing session if we have one (for multi-turn conversations or retries)
       const isRetry = attempt > 0
-      const sessionToResume = isRetry && this.currentSessionId ? this.currentSessionId : undefined
+      const sessionToResume = this.currentSessionId ?? undefined
 
       try {
-        // If resuming, emit a status event to inform the UI
-        if (sessionToResume) {
+        // If retrying with an existing session, emit a status event to inform the UI
+        if (isRetry && sessionToResume) {
           const resumingEvent: AgentErrorEvent = {
             type: "error",
             timestamp: this.now(),
@@ -372,7 +372,7 @@ export class ClaudeAdapter extends AgentAdapter {
         }
 
         for await (const message of this.options.queryFn({
-          prompt: sessionToResume ? "" : prompt, // Empty prompt when resuming - SDK continues from last state
+          prompt: isRetry && sessionToResume ? "" : prompt, // Empty prompt only on retry - SDK continues from last state
           options: {
             model: options.model,
             cwd: options.cwd,
@@ -394,7 +394,7 @@ export class ClaudeAdapter extends AgentAdapter {
             includePartialMessages: true,
             maxTurns: options.maxSessions ?? 100,
             abortController: this.abortController,
-            // Resume from the session if we have one from a previous attempt
+            // Resume from existing session for multi-turn conversation or retry
             resume: sessionToResume,
             // Enable extended thinking with the configured token budget (0 = disabled)
             ...(this.maxThinkingTokens > 0 && { maxThinkingTokens: this.maxThinkingTokens }),
