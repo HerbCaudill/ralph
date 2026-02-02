@@ -1,9 +1,9 @@
-// Re-exported from @herbcaudill/agent-server
-export { eventsToConversationContext, RalphRegistry } from "@herbcaudill/agent-server"
+// Re-exported from @herbcaudill/ralph-server
+export { eventsToConversationContext, RalphRegistry } from "@herbcaudill/ralph-server"
 
 export type {
   MergeConflict,
   RalphInstanceState,
   CreateInstanceOptions,
   RalphRegistryOptions,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"

@@ -1,2 +1,2 @@
-/** Re-export from @herbcaudill/agent-server */
-export { calculateBackoffDelay } from "@herbcaudill/agent-server"
+/** Re-export from @herbcaudill/ralph-server */
+export { calculateBackoffDelay } from "@herbcaudill/ralph-server"

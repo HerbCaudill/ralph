@@ -24,6 +24,12 @@ runDev({
       portEnv: "AGENT_SERVER_PORT",
       defaultPort: 4244,
     },
+    {
+      name: "ralph-server",
+      command: "pnpm --filter @herbcaudill/ralph-server dev",
+      portEnv: "RALPH_SERVER_PORT",
+      defaultPort: 4245,
+    },
   ],
   frontend: {
     package: "@herbcaudill/ralph-ui",

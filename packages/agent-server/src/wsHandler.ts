@@ -95,9 +95,7 @@ export function handleWsConnection(
               model: msg.model as string | undefined,
             })
             .catch(err => {
-              ws.send(
-                JSON.stringify({ type: "error", sessionId, error: (err as Error).message }),
-              )
+              ws.send(JSON.stringify({ type: "error", sessionId, error: (err as Error).message }))
             })
           break
         }
@@ -111,8 +109,9 @@ export function handleWsConnection(
           client.subscribedSessions.add(sessionId)
           const lastTimestamp = msg.lastEventTimestamp as number | undefined
           const persister = manager.getPersister()
-          const eventsPromise = lastTimestamp
-            ? persister.readEventsSince(sessionId, lastTimestamp)
+          const eventsPromise =
+            lastTimestamp ?
+              persister.readEventsSince(sessionId, lastTimestamp)
             : persister.readEvents(sessionId)
 
           eventsPromise
@@ -120,9 +119,7 @@ export function handleWsConnection(
               ws.send(JSON.stringify({ type: "pending_events", sessionId, events }))
             })
             .catch(err => {
-              ws.send(
-                JSON.stringify({ type: "error", sessionId, error: (err as Error).message }),
-              )
+              ws.send(JSON.stringify({ type: "error", sessionId, error: (err as Error).message }))
             })
           break
         }
@@ -140,9 +137,7 @@ export function handleWsConnection(
               ws.send(JSON.stringify({ type: "session_cleared", sessionId }))
             })
             .catch(err => {
-              ws.send(
-                JSON.stringify({ type: "error", sessionId, error: (err as Error).message }),
-              )
+              ws.send(JSON.stringify({ type: "error", sessionId, error: (err as Error).message }))
             })
           break
         }

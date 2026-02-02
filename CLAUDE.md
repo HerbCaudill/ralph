@@ -27,9 +27,10 @@ pnpm cli                  # Run ralph CLI in development
 pnpm ui                   # Start UI dev server (Vite)
 pnpm serve                # Start server only (combined mode)
 pnpm dev                  # Start both server and UI (combined mode)
-pnpm dev:split            # Start beads-server + agent-server + UI as separate processes (split mode)
+pnpm dev:split            # Start beads-server + agent-server + ralph-server + UI as separate processes (split mode)
 pnpm serve:beads          # Start just the beads-server (port 4243)
-pnpm serve:agent          # Start just the agent-server (port 4244)
+pnpm serve:agent          # Start just the generic agent-server (port 4244)
+pnpm serve:ralph          # Start just the ralph-server (port 4245)
 pnpm demo:agent-chat      # Run agent chat demo dev server (port 5180)
 pnpm demo:beads           # Run beads task manager demo dev server (port 5181)
 pnpm storybook            # Start Storybook
@@ -38,7 +39,7 @@ pnpm format               # Format with Prettier
 pnpm pub                  # Publish CLI + UI packages
 ```
 
-Use `packages/ui/server/tsconfig.json` when editing UI server TypeScript files. Use `packages/agent-server/tsconfig.json` when editing agent-server TypeScript files.
+Use `packages/ui/server/tsconfig.json` when editing UI server TypeScript files. Use `packages/ralph-server/tsconfig.json` when editing ralph-server TypeScript files. Use `packages/agent-server/tsconfig.json` when editing the generic agent-server TypeScript files.
 
 ## Workspace structure
 
@@ -49,8 +50,9 @@ pnpm workspace with these main packages:
 - **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
 - **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
-- **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Standalone server for managing AI coding agents with HTTP and WebSocket APIs. Extracts agent-related functionality from the UI server. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
-- **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) - Functional chat demo connecting to agent-server via WebSocket (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents
+- **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Generic agent chat server with JSONL persistence, multi-adapter support (Claude, Codex), session-based WebSocket protocol, and no built-in system prompt. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
+- **`packages/ralph-server/`** (`@herbcaudill/ralph-server`) - Ralph-specific server for managing AI coding agent sessions, worktrees, and task chats. Depends on `@herbcaudill/agent-server` for adapters and utilities. Includes RalphManager, RalphRegistry, WorktreeManager, SessionRunner, TaskChatManager, and workspace context modules. Default port 4245 (configurable via `RALPH_SERVER_PORT`). Dev: `pnpm dev` (tsx)
+- **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) - Functional chat demo connecting to agent-server via session-based WebSocket protocol (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents, session persistence across page reloads
 - **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) - Functional task manager demo using beads-view controller components (TaskSidebarController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Vite proxy forwards /api requests to the beads-server
 
 ### Project structure
@@ -105,12 +107,33 @@ packages/beads-server/                 # Beads server package
     getAliveWorkspaces.ts   # Workspace registry helpers
     readRegistry.ts         # Read ~/.beads/registry.json
 
-packages/agent-server/                 # Agent server package
+packages/agent-server/                 # Generic agent server package
   src/
-    index.ts                # Express server entry + WebSocket setup + re-exports all modules
-    main.ts                 # Dev entry point
+    index.ts                # Barrel exports + startServer()
+    main.ts                 # Dev entry point (port 4244)
+    types.ts                # AgentServerConfig
+    agentTypes.ts           # AgentAdapter base class, ConversationContext (no BdProxy)
+    ClaudeAdapter.ts        # Claude agent adapter (Anthropic API)
+    CodexAdapter.ts         # Codex agent adapter (OpenAI API)
+    AdapterRegistry.ts      # Registry mapping agent names to adapter classes
+    SessionPersister.ts     # JSONL event persistence by session ID
+    ChatSessionManager.ts   # Multi-session management, no built-in system prompt
+    routes.ts               # HTTP routes (/api/sessions, /api/adapters, /healthz)
+    wsHandler.ts            # Session-based WebSocket protocol
+    findClaudeExecutable.ts # Locates the Claude CLI binary
+    lib/
+      isRetryableError.ts   # Retry classification for API errors
+      calculateBackoffDelay.ts # Exponential backoff delay calculation
+      generateId.ts         # Unique ID generation utility
+      createEventStream.ts  # SSE event stream factory
+      createMessageStream.ts # Message stream factory
+
+packages/ralph-server/                 # Ralph-specific server package
+  src/
+    index.ts                # Express server entry + re-exports from agent-server
+    main.ts                 # Dev entry point (port 4245)
     types.ts                # AgentServerConfig, WsClient types
-    agentTypes.ts           # AgentAdapter base class, ConversationContext, BdProxy interface
+    agentTypes.ts           # Re-exports from agent-server + BdProxy interface
     RalphManager.ts         # Spawns and manages Ralph CLI process
     RalphRegistry.ts        # Registry of all Ralph instances per workspace
     InstanceStore.ts        # JSON persistence for instance metadata
@@ -118,26 +141,17 @@ packages/agent-server/                 # Agent server package
     SessionStateStore.ts    # JSON persistence for session state
     SessionRunner.ts        # Orchestrates agent sessions (prompt, spawn, events)
     WorktreeManager.ts      # Git worktree creation, merge, cleanup
-    findClaudeExecutable.ts # Locates the Claude CLI binary
     systemPrompt.ts         # Loads system prompt and task-chat skill config
     loadSkill.ts            # Loads custom skill definitions from .ralph/skills/
-    ClaudeAdapter.ts        # Claude agent adapter (Anthropic API)
-    CodexAdapter.ts         # Codex agent adapter (OpenAI API)
-    AdapterRegistry.ts      # Registry mapping agent names to adapter classes
     TaskChatManager.ts      # Manages task chat conversations
     TaskChatEventLog.ts     # In-memory event log for task chats
     TaskChatEventPersister.ts # Persistence for task chat events
-    isRetryableError.ts     # Retry classification for API errors
-    calculateBackoffDelay.ts # Exponential backoff delay calculation
-    generateId.ts           # Unique ID generation utility
-    createEventStream.ts    # SSE event stream factory
-    createMessageStream.ts  # Message stream factory
 
 packages/agent-demo/              # Agent chat demo
   src/
-    App.tsx                 # Main app connecting AgentView, WebSocket chat, agent selector, clear button
+    App.tsx                 # Main app with AgentView, session management, agent selector
     hooks/
-      useAgentChat.ts       # WebSocket hook managing connection, events, streaming state, send/clear
+      useAgentChat.ts       # Session-based WebSocket hook with persistence across reloads
     components/
       AgentSelector.tsx     # Toggle buttons for Claude Code / Codex selection
       ChatInput.tsx         # Auto-resizing textarea with send button (Enter to send, Shift+Enter for newline)
@@ -222,9 +236,15 @@ Ralph expects `--output-format stream-json` with `--include-partial-messages`, e
 
 Claude outputs: `<start_task>{id}</start_task>` when starting, `<end_task>{id}</end_task>` when done, `<promise>COMPLETE</promise>` if no issues ready.
 
-### Agent server extraction
+### Server architecture
 
-Agent management modules (RalphManager, RalphRegistry, InstanceStore, SessionEventPersister, SessionStateStore, SessionRunner, WorktreeManager, findClaudeExecutable, systemPrompt, loadSkill), adapter modules (ClaudeAdapter, CodexAdapter, AdapterRegistry), task chat modules (TaskChatManager, TaskChatEventLog, TaskChatEventPersister), and utility functions (isRetryableError, calculateBackoffDelay, generateId, createEventStream, createMessageStream) live in `packages/agent-server/` (`@herbcaudill/agent-server`). The UI server files re-export from this package for backward compatibility. Type definitions for AgentAdapter, ConversationContext, ConversationMessage, and BdProxy are in `agent-server/src/agentTypes.ts`.
+The server layer is split into two packages:
+
+- **`@herbcaudill/agent-server`** (generic) — Agent adapters (ClaudeAdapter, CodexAdapter, AdapterRegistry), the AgentAdapter base class, session management (ChatSessionManager, SessionPersister), utility functions (isRetryableError, calculateBackoffDelay, generateId), and findClaudeExecutable. This package has no Ralph-specific dependencies and can be used independently.
+
+- **`@herbcaudill/ralph-server`** (Ralph-specific) — Depends on agent-server. Contains Ralph-specific modules: RalphManager, RalphRegistry, InstanceStore, SessionEventPersister, SessionStateStore, SessionRunner, WorktreeManager, systemPrompt, loadSkill, TaskChatManager, TaskChatEventLog, TaskChatEventPersister. Also defines the BdProxy interface. Re-exports all agent-server exports for backward compatibility.
+
+The UI server (`packages/ui/server/`) re-exports from `@herbcaudill/ralph-server` for backward compatibility.
 
 ### Dual-server mode (UI client)
 
@@ -309,7 +329,8 @@ Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Core eve
 - `OPENAI_API_KEY` - Optional for Codex agent
 - `HOST` / `PORT` - Server host/port (defaults: 127.0.0.1 / 4242)
 - `BEADS_PORT` - Beads server port (default: 4243)
-- `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` - Agent server host/port (defaults: localhost / 4244)
+- `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` - Generic agent server host/port (defaults: localhost / 4244)
+- `RALPH_SERVER_HOST` / `RALPH_SERVER_PORT` - Ralph server host/port (defaults: localhost / 4245)
 - `VITE_SPLIT_SERVERS` - Set to `true` to enable split-server mode in the UI (Vite build-time)
 - `VITE_BEADS_SERVER_URL` - Full URL for beads-server in split mode (e.g., `http://localhost:4243`)
 - `VITE_AGENT_SERVER_URL` - Full URL for agent-server in split mode (e.g., `http://localhost:4244`)

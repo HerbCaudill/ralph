@@ -1,2 +1,2 @@
-/** Re-export from @herbcaudill/agent-server */
-export { createMessageStream } from "@herbcaudill/agent-server"
+/** Re-export from @herbcaudill/ralph-server */
+export { createMessageStream } from "@herbcaudill/ralph-server"

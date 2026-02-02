@@ -67,8 +67,9 @@ export function registerRoutes(
       const since = req.query.since ? Number(req.query.since) : undefined
       const persister = ctx.getSessionManager().getPersister()
 
-      const events = since
-        ? await persister.readEventsSince(sessionId, since)
+      const events =
+        since ?
+          await persister.readEventsSince(sessionId, since)
         : await persister.readEvents(sessionId)
 
       res.json({ events })

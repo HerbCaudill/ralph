@@ -1,2 +1,2 @@
-/** Re-export from @herbcaudill/agent-server */
-export { generateId } from "@herbcaudill/agent-server"
+/** Re-export from @herbcaudill/ralph-server */
+export { generateId } from "@herbcaudill/ralph-server"

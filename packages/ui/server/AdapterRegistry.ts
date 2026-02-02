@@ -1,5 +1,5 @@
 /**
- * Re-export AdapterRegistry functions and types from @herbcaudill/agent-server.
+ * Re-export AdapterRegistry functions and types from @herbcaudill/ralph-server.
  * These were extracted to agent-server as the canonical location.
  */
 export {
@@ -17,4 +17,4 @@ export {
   type AdapterFactory,
   type AdapterRegistration,
   type AdapterAvailability,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"

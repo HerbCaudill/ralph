@@ -1,5 +1,5 @@
-// Re-exported from @herbcaudill/agent-server
-export { WorktreeManager } from "@herbcaudill/agent-server"
+// Re-exported from @herbcaudill/ralph-server
+export { WorktreeManager } from "@herbcaudill/ralph-server"
 
 export type {
   WorktreeInfo,
@@ -8,4 +8,4 @@ export type {
   CleanupResult,
   PostSessionResult,
   WorktreeStatus,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"

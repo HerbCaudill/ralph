@@ -1,5 +1,5 @@
 /**
- * Re-export TaskChatEventLog and related types from @herbcaudill/agent-server.
+ * Re-export TaskChatEventLog and related types from @herbcaudill/ralph-server.
  * These were extracted to agent-server as the canonical location.
  */
 export {
@@ -7,4 +7,4 @@ export {
   type TaskChatLogEntry,
   type TaskChatLogSummary,
   type TaskChatEventLogOptions,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"

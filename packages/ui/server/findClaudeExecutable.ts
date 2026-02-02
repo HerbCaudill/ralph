@@ -1,2 +1,2 @@
-// Re-exported from @herbcaudill/agent-server
-export { findClaudeExecutable } from "@herbcaudill/agent-server"
+// Re-exported from @herbcaudill/ralph-server
+export { findClaudeExecutable } from "@herbcaudill/ralph-server"

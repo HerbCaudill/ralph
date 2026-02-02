@@ -1,2 +1,2 @@
-/** Re-export from @herbcaudill/agent-server */
-export { isRetryableError } from "@herbcaudill/agent-server"
+/** Re-export from @herbcaudill/ralph-server */
+export { isRetryableError } from "@herbcaudill/ralph-server"

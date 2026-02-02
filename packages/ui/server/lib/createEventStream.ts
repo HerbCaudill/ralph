@@ -1,2 +1,2 @@
-/** Re-export from @herbcaudill/agent-server */
-export { createEventStream } from "@herbcaudill/agent-server"
+/** Re-export from @herbcaudill/ralph-server */
+export { createEventStream } from "@herbcaudill/ralph-server"

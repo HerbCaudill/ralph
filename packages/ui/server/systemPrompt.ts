@@ -1,9 +1,9 @@
-// Re-exported from @herbcaudill/agent-server
+// Re-exported from @herbcaudill/ralph-server
 export {
   loadSystemPrompt,
   loadTaskChatSkill,
   getTaskChatAllowedTools,
   getTaskChatModel,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"
 
-export type { LoadSkillResult, SkillMetadata } from "@herbcaudill/agent-server"
+export type { LoadSkillResult, SkillMetadata } from "@herbcaudill/ralph-server"

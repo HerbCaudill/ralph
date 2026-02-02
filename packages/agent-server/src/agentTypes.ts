@@ -201,4 +201,3 @@ export abstract class AgentAdapter extends EventEmitter {
     return Date.now()
   }
 }
-

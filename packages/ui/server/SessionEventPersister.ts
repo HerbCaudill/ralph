@@ -1,6 +1,6 @@
-// Re-exported from @herbcaudill/agent-server
+// Re-exported from @herbcaudill/ralph-server
 export {
   SessionEventPersister,
   getSessionEventPersister,
   resetSessionEventPersisters,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"

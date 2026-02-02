@@ -18,6 +18,8 @@
     "pub": "pnpm --filter ralph publish && pnpm --filter ralph-ui publish",
     "ralph": "pnpm --filter ralph ralph",
     "serve": "pnpm --filter ralph-ui dev:server",
+    "serve:agent": "pnpm --filter @herbcaudill/agent-server dev",
+    "serve:ralph": "pnpm --filter @herbcaudill/ralph-server dev",
     "storybook": "pnpm --filter ralph-ui storybook",
     "storybook:agent": "pnpm --filter agent-view storybook",
     "test": "pnpm --filter ralph-shared test && pnpm --filter ralph test && pnpm --filter ralph-ui test",

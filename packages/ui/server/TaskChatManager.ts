@@ -1,5 +1,5 @@
 /**
- * Re-export TaskChatManager and related types from @herbcaudill/agent-server.
+ * Re-export TaskChatManager and related types from @herbcaudill/ralph-server.
  * These were extracted to agent-server as the canonical location.
  */
 export {
@@ -10,4 +10,4 @@ export {
   type TaskChatToolUse,
   type GetBdProxyFn,
   type TaskChatManagerOptions,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"

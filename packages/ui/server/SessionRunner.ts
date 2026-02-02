@@ -1,8 +1,8 @@
-// Re-exported from @herbcaudill/agent-server
-export { SessionRunner } from "@herbcaudill/agent-server"
+// Re-exported from @herbcaudill/ralph-server
+export { SessionRunner } from "@herbcaudill/ralph-server"
 
 export type {
   SessionStatus,
   SessionRunnerOptions,
   SessionRunnerEvents,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"

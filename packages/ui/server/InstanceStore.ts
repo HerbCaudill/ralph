@@ -1,4 +1,4 @@
-// Re-exported from @herbcaudill/agent-server
-export { InstanceStore, getInstanceStore, resetInstanceStores } from "@herbcaudill/agent-server"
+// Re-exported from @herbcaudill/ralph-server
+export { InstanceStore, getInstanceStore, resetInstanceStores } from "@herbcaudill/ralph-server"
 
-export type { PersistedInstance } from "@herbcaudill/agent-server"
+export type { PersistedInstance } from "@herbcaudill/ralph-server"

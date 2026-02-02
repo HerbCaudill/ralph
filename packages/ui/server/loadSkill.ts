@@ -1,4 +1,4 @@
-// Re-exported from @herbcaudill/agent-server
-export { loadSkill, hasCustomSkill, getCustomSkillPath } from "@herbcaudill/agent-server"
+// Re-exported from @herbcaudill/ralph-server
+export { loadSkill, hasCustomSkill, getCustomSkillPath } from "@herbcaudill/ralph-server"
 
-export type { SkillMetadata, LoadSkillResult } from "@herbcaudill/agent-server"
+export type { SkillMetadata, LoadSkillResult } from "@herbcaudill/ralph-server"

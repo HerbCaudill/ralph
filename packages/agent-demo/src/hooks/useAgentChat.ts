@@ -10,17 +10,19 @@ export type AgentChatState = {
   isStreaming: boolean
   connectionStatus: ConnectionStatus
   error: string | null
+  sessionId: string | null
 }
 
 export type AgentChatActions = {
   sendMessage: (message: string) => void
   clearHistory: () => void
   setAgentType: (type: AgentType) => void
+  newSession: () => void
 }
 
 /**
  * Hook that manages the WebSocket connection to the agent server
- * and provides chat state + actions.
+ * and provides chat state + actions using the session-based protocol.
  */
 export function useAgentChat(initialAgent: AgentType = "claude") {
   const [events, setEvents] = useState<ChatEvent[]>([])
@@ -28,9 +30,61 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
   const [error, setError] = useState<string | null>(null)
   const [agentType, setAgentType] = useState<AgentType>(initialAgent)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sessionIdRef = useRef<string | null>(null)
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    sessionIdRef.current = sessionId
+  }, [sessionId])
+
+  /** Create a new session via REST, then subscribe via WS. */
+  const createSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adapter: agentType }),
+      })
+      const data = (await res.json()) as { sessionId: string }
+      setSessionId(data.sessionId)
+      setEvents([])
+      setError(null)
+      return data.sessionId
+    } catch {
+      setError("Failed to create session")
+      return null
+    }
+  }, [agentType])
+
+  /** Try to restore the latest session, or create a new one. */
+  const initSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/sessions/latest")
+      if (res.ok) {
+        const data = (await res.json()) as { sessionId: string }
+        setSessionId(data.sessionId)
+
+        // Reconnect to get pending events
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({
+              type: "reconnect",
+              sessionId: data.sessionId,
+            }),
+          )
+        }
+        return
+      }
+    } catch {
+      // No existing session, create new one
+    }
+
+    await createSession()
+  }, [createSession])
 
   const connect = useCallback(() => {
     // Clean up existing connection
@@ -48,6 +102,8 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     ws.onopen = () => {
       setConnectionStatus("connected")
       setError(null)
+      // Initialize session after WebSocket connects
+      initSession()
     }
 
     ws.onmessage = e => {
@@ -56,8 +112,20 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
 
         if (message.type === "pong") return
 
+        if (message.type === "session_created") {
+          setSessionId(message.sessionId as string)
+          return
+        }
+
+        if (message.type === "session_cleared") {
+          setEvents([])
+          setSessionId(null)
+          return
+        }
+
         if (message.type === "status") {
-          setIsStreaming((message.status as string) === "processing")
+          const status = message.status as string
+          setIsStreaming(status === "processing")
           return
         }
 
@@ -66,11 +134,18 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
           return
         }
 
+        if (message.type === "pending_events") {
+          const pendingEvents = message.events as ChatEvent[]
+          if (pendingEvents?.length) {
+            setEvents(pendingEvents)
+          }
+          return
+        }
+
         if (message.type === "event" && message.event) {
           const event = message.event as ChatEvent & { toolUseId?: string }
 
           // For tool_use events with the same toolUseId, replace the earlier version
-          // (the initial event has empty input; the update has the full input)
           if (event.type === "tool_use" && event.toolUseId) {
             setEvents(prev => {
               const existingIndex = prev.findIndex(
@@ -120,7 +195,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     }
 
     wsRef.current = ws
-  }, [])
+  }, [initSession])
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {
@@ -157,8 +232,21 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
       }
       setEvents(prev => [...prev, userEvent])
 
-      // Send via WebSocket
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
+      const currentSessionId = sessionIdRef.current
+
+      // Send via WebSocket using session protocol
+      if (wsRef.current?.readyState === WebSocket.OPEN && currentSessionId) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "message",
+            sessionId: currentSessionId,
+            message: message.trim(),
+          }),
+        )
+        setIsStreaming(true)
+        setError(null)
+      } else if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // No session yet — use legacy protocol as fallback
         wsRef.current.send(
           JSON.stringify({
             type: "chat_message",
@@ -170,32 +258,47 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
         setError(null)
       } else {
         // Fallback to REST
-        fetch("/api/task-chat/message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: message.trim(), agentType }),
-        }).catch(() => {
-          setError("Failed to send message")
-        })
+        if (currentSessionId) {
+          fetch(`/api/sessions/${currentSessionId}/messages`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: message.trim() }),
+          }).catch(() => {
+            setError("Failed to send message")
+          })
+        }
       }
     },
     [agentType],
   )
 
   const clearHistory = useCallback(() => {
+    const currentSessionId = sessionIdRef.current
     setEvents([])
     setIsStreaming(false)
     setError(null)
 
-    // Notify server
-    fetch("/api/task-chat/clear", { method: "POST" }).catch(() => {
-      // Ignore errors
-    })
+    if (currentSessionId) {
+      // Clear the session via REST
+      fetch(`/api/sessions/${currentSessionId}`, { method: "DELETE" }).catch(() => {
+        // Ignore errors
+      })
+    }
+
+    setSessionId(null)
   }, [])
 
+  const newSession = useCallback(() => {
+    setEvents([])
+    setIsStreaming(false)
+    setError(null)
+    setSessionId(null)
+    createSession()
+  }, [createSession])
+
   return {
-    state: { events, isStreaming, connectionStatus, error },
-    actions: { sendMessage, clearHistory, setAgentType },
+    state: { events, isStreaming, connectionStatus, error, sessionId },
+    actions: { sendMessage, clearHistory, setAgentType, newSession },
     agentType,
   }
 }

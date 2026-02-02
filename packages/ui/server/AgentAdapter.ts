@@ -1,5 +1,5 @@
 /**
- * Re-export AgentAdapter and related types from @herbcaudill/agent-server.
+ * Re-export AgentAdapter and related types from @herbcaudill/ralph-server.
  * These were extracted to agent-server as the canonical location.
  */
 export {
@@ -10,7 +10,7 @@ export {
   type AgentAdapterEvents,
   type ConversationContext,
   type ConversationMessage,
-} from "@herbcaudill/agent-server"
+} from "@herbcaudill/ralph-server"
 
 // Re-export event types from shared package for backward compatibility
 export type {
