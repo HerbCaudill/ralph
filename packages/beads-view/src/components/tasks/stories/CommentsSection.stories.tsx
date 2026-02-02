@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CommentsSection } from "../CommentsSection"
-import { mockFetch } from "../../../.storybook/test-utils"
+import { mockFetch } from "../../../../.storybook/test-utils"
 import { useEffect } from "react"
 
 const meta: Meta<typeof CommentsSection> = {
