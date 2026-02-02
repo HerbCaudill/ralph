@@ -13,7 +13,7 @@ import type { ConnectionStatus, AgentType } from "../hooks/useAgentChat"
  */
 export function StatusBar({
   connectionStatus,
-  isStreaming,
+  isStreaming: _isStreaming,
   agentType,
   events,
   error,
