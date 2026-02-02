@@ -78,6 +78,18 @@ export function registerRoutes(
     }
   })
 
+  // Get the latest session (must be registered before /:id to avoid shadowing)
+  app.get("/api/sessions/latest", (_req: Request, res: Response) => {
+    const persister = ctx.getSessionManager().getPersister()
+    const sessionId = persister.getLatestSessionId()
+    if (!sessionId) {
+      res.status(404).json({ error: "No sessions found" })
+      return
+    }
+    const info = ctx.getSessionManager().getSessionInfo(sessionId)
+    res.json(info ?? { sessionId })
+  })
+
   // Get session info
   app.get("/api/sessions/:id", (req: Request, res: Response) => {
     const info = ctx.getSessionManager().getSessionInfo(param(req, "id"))
@@ -91,18 +103,6 @@ export function registerRoutes(
   // List all sessions
   app.get("/api/sessions", (_req: Request, res: Response) => {
     res.json({ sessions: ctx.getSessionManager().listSessions() })
-  })
-
-  // Get the latest session
-  app.get("/api/sessions/latest", (_req: Request, res: Response) => {
-    const persister = ctx.getSessionManager().getPersister()
-    const sessionId = persister.getLatestSessionId()
-    if (!sessionId) {
-      res.status(404).json({ error: "No sessions found" })
-      return
-    }
-    const info = ctx.getSessionManager().getSessionInfo(sessionId)
-    res.json(info ?? { sessionId })
   })
 
   // Delete/clear a session
