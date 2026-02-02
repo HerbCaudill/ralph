@@ -69,9 +69,7 @@ describe("AgentSelector", () => {
 
     it("does not call onChange when disabled", () => {
       const handleChange = vi.fn()
-      render(
-        <AgentSelector value="claude" onChange={handleChange} disabled />
-      )
+      render(<AgentSelector value="claude" onChange={handleChange} disabled />)
       fireEvent.click(screen.getByTitle("Codex"))
       expect(handleChange).not.toHaveBeenCalled()
     })

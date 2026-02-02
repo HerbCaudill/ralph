@@ -10,11 +10,7 @@ export type AgentSelectorProps = {
 /**
  * Toggle buttons for selecting the agent backend (Claude Code or Codex).
  */
-export function AgentSelector({
-  value,
-  onChange,
-  disabled = false,
-}: AgentSelectorProps) {
+export function AgentSelector({ value, onChange, disabled = false }: AgentSelectorProps) {
   const agents: { type: AgentType; label: string; icon: React.ReactNode }[] = [
     {
       type: "claude",
@@ -39,9 +35,9 @@ export function AgentSelector({
             disabled={disabled}
             title={label}
             className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
-              isActive
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border hover:bg-muted"
+              isActive ?
+                "border-primary bg-primary text-primary-foreground"
+              : "border-border hover:bg-muted"
             } disabled:opacity-50`}
           >
             {icon}

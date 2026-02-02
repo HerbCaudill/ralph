@@ -5,7 +5,11 @@ import type { AgentType } from "../hooks/useAgentChat"
 /**
  * Settings dropdown menu with agent type selection.
  */
-export function SettingsMenu({ agentType, onAgentTypeChange, disabled = false }: SettingsMenuProps) {
+export function SettingsMenu({
+  agentType,
+  onAgentTypeChange,
+  disabled = false,
+}: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
