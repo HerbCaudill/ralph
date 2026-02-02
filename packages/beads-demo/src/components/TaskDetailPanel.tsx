@@ -1,9 +1,5 @@
 import { IconChecklist } from "@tabler/icons-react"
-import {
-  TaskDetailsController,
-  updateTask,
-  deleteTask,
-} from "@herbcaudill/beads-view"
+import { TaskDetailsController, updateTask, deleteTask } from "@herbcaudill/beads-view"
 import type { TaskCardTask, TaskUpdateData } from "@herbcaudill/beads-view"
 
 export type TaskDetailPanelProps = {
@@ -17,12 +13,7 @@ export type TaskDetailPanelProps = {
  * Panel displaying task details with inline editing.
  * Wraps the TaskDetailsController from beads-view.
  */
-export function TaskDetailPanel({
-  task,
-  open,
-  onClose,
-  onChanged,
-}: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, open, onClose, onChanged }: TaskDetailPanelProps) {
   if (!open || !task) {
     return <EmptyState />
   }
@@ -39,7 +30,7 @@ export function TaskDetailPanel({
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full">
       <TaskDetailsController
         task={task}
         open={open}
@@ -56,9 +47,7 @@ function EmptyState() {
     <div className="flex h-full items-center justify-center p-8">
       <div className="flex flex-col items-center gap-4 text-muted-foreground">
         <IconChecklist size={48} stroke={1.5} />
-        <p className="text-center text-sm">
-          Select a task from the sidebar to view details.
-        </p>
+        <p className="text-center text-sm">Select a task from the sidebar to view details.</p>
       </div>
     </div>
   )
