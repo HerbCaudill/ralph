@@ -91,6 +91,12 @@ export interface ClaudeAdapterOptions {
   /** Retry configuration for connection errors */
   retryConfig?: Partial<RetryConfig>
   /**
+   * Default model to use for queries (e.g., "claude-haiku-4-20250414", "claude-sonnet-4-20250514").
+   * Can also be set via the CLAUDE_MODEL environment variable.
+   * Can be overridden per-message via AgentStartOptions.model.
+   */
+  model?: string
+  /**
    * Maximum number of tokens for extended thinking.
    * When set to a positive number, enables extended thinking with the specified token budget.
    * Can also be set via the CLAUDE_MAX_THINKING_TOKENS environment variable.
@@ -137,6 +143,7 @@ export class ClaudeAdapter extends AgentAdapter {
   private startOptions: AgentStartOptions | undefined
   private retryConfig: RetryConfig
   private maxThinkingTokens: number
+  private defaultModel: string | undefined
   private options: Required<Pick<ClaudeAdapterOptions, "queryFn">> &
     Omit<ClaudeAdapterOptions, "queryFn">
 
@@ -159,6 +166,8 @@ export class ClaudeAdapter extends AgentAdapter {
       ...DEFAULT_RETRY_CONFIG,
       ...options.retryConfig,
     }
+    // Resolve default model: explicit option > env var > undefined (SDK default)
+    this.defaultModel = options.model ?? process.env.CLAUDE_MODEL ?? undefined
     // Resolve thinking tokens: explicit option > env var > default
     const envThinkingTokens = process.env.CLAUDE_MAX_THINKING_TOKENS
     this.maxThinkingTokens =
@@ -175,6 +184,7 @@ export class ClaudeAdapter extends AgentAdapter {
       name: "Claude",
       description: "Anthropic Claude via SDK",
       version: cachedCliVersion,
+      model: this.defaultModel,
       features: {
         streaming: true,
         tools: true,
@@ -374,7 +384,7 @@ export class ClaudeAdapter extends AgentAdapter {
         for await (const message of this.options.queryFn({
           prompt: isRetry && sessionToResume ? "" : prompt, // Empty prompt only on retry - SDK continues from last state
           options: {
-            model: options.model,
+            model: options.model ?? this.defaultModel,
             cwd: options.cwd,
             ...(options.env || this.options.apiKey ?
               {

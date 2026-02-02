@@ -141,6 +141,7 @@ In split mode, the UI automatically routes API requests and WebSocket connection
 | `AGENT_SERVER_HOST`     | Agent server bind address (default: localhost) | No             |
 | `AGENT_SERVER_PORT`     | Agent server port (default: 4244)              | No             |
 | `VITE_SPLIT_SERVERS`    | Enable split-server mode in the UI             | No             |
+| `CLAUDE_MODEL`          | Default Claude model for ClaudeAdapter         | No             |
 | `VITE_BEADS_SERVER_URL` | Explicit beads-server URL in split mode        | No             |
 | `VITE_AGENT_SERVER_URL` | Explicit agent-server URL in split mode        | No             |
 

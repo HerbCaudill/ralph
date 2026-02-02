@@ -118,6 +118,8 @@ export interface AgentInfo {
   description?: string
   /** Version of the agent/CLI */
   version?: string
+  /** Default model being used (if configured) */
+  model?: string
   /** Supported features */
   features: {
     /** Supports streaming responses */

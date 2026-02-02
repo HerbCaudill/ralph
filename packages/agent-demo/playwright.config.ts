@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test"
 
 const agentServerPort = Number(process.env.AGENT_SERVER_PORT || "4244")
 const vitePort = Number(process.env.DEMO_AGENT_PORT || "5180")
+const claudeModel = process.env.CLAUDE_MODEL || "claude-haiku-4-20250414"
 
 export default defineConfig({
   testDir: "./e2e",
@@ -33,6 +34,7 @@ export default defineConfig({
       timeout: 30000,
       env: {
         AGENT_SERVER_PORT: String(agentServerPort),
+        CLAUDE_MODEL: claudeModel,
       },
     },
     {

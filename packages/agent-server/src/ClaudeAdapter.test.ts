@@ -7,11 +7,11 @@ import type { AgentEvent, AgentStatusEvent } from "./agentTypes.js"
  * The returned async generator yields each message in order.
  */
 function createMockQueryFn(messages: Array<Record<string, unknown>>): QueryFn {
-  return (async function* (_opts: unknown) {
+  return async function* (_opts: unknown) {
     for (const msg of messages) {
       yield msg as never
     }
-  }) as unknown as QueryFn
+  } as unknown as QueryFn
 }
 
 /**
@@ -73,16 +73,17 @@ describe("ClaudeAdapter", () => {
 
       // Verify there is a status event with status "idle" in the emitted events
       const idleStatusEvents = events.filter(
-        (e): e is AgentStatusEvent => e.type === "status" && (e as AgentStatusEvent).status === "idle",
+        (e): e is AgentStatusEvent =>
+          e.type === "status" && (e as AgentStatusEvent).status === "idle",
       )
       expect(idleStatusEvents.length).toBe(1)
       expect(idleStatusEvents[0].status).toBe("idle")
     })
 
     it("does not emit idle status when the query throws a non-retryable error", async () => {
-      const queryFn = (async function* (_opts: unknown) {
+      const queryFn = async function* (_opts: unknown) {
         throw new Error("invalid API key")
-      }) as unknown as QueryFn
+      } as unknown as QueryFn
 
       adapter = new ClaudeAdapter({
         queryFn,
@@ -169,9 +170,7 @@ describe("ClaudeAdapter", () => {
     it("does not emit individual 'message' type events for SDK assistant messages", async () => {
       const assistantMessage = {
         role: "assistant",
-        content: [
-          { type: "text", text: "Hello there." },
-        ],
+        content: [{ type: "text", text: "Hello there." }],
       }
 
       const sdkMessages = [
@@ -210,9 +209,7 @@ describe("ClaudeAdapter", () => {
     it("tracks text content in conversation context", async () => {
       const assistantMessage = {
         role: "assistant",
-        content: [
-          { type: "text", text: "The answer is 42." },
-        ],
+        content: [{ type: "text", text: "The answer is 42." }],
       }
 
       const sdkMessages = [
@@ -428,7 +425,6 @@ describe("ClaudeAdapter", () => {
       })
     })
 
-
     it("handles assistant messages with no content blocks gracefully", async () => {
       const sdkMessages = [
         { type: "assistant", message: { role: "assistant" } },
@@ -462,7 +458,7 @@ describe("ClaudeAdapter", () => {
     it("passes hooks: {} to queryFn to prevent tool use concurrency issues", async () => {
       let capturedOpts: Record<string, unknown> | undefined
 
-      const queryFn = (async function* (opts: unknown) {
+      const queryFn = async function* (opts: unknown) {
         capturedOpts = opts as Record<string, unknown>
         yield {
           type: "result",
@@ -470,7 +466,7 @@ describe("ClaudeAdapter", () => {
           result: "Done",
           usage: { input_tokens: 5, output_tokens: 2 },
         } as never
-      }) as unknown as QueryFn
+      } as unknown as QueryFn
 
       adapter = new ClaudeAdapter({
         queryFn,
@@ -584,12 +580,12 @@ describe("ClaudeAdapter", () => {
     it("throws when calling start() while adapter has an in-flight request", async () => {
       // Create a queryFn that never resolves (simulates an in-flight request)
       let resolveQuery: (() => void) | undefined
-      const queryFn = (async function* (_opts: unknown) {
+      const queryFn = async function* (_opts: unknown) {
         await new Promise<void>(resolve => {
           resolveQuery = resolve
         })
         // yield nothing - the query is stuck
-      }) as unknown as QueryFn
+      } as unknown as QueryFn
 
       adapter = new ClaudeAdapter({
         queryFn,
@@ -613,7 +609,7 @@ describe("ClaudeAdapter", () => {
       let callCount = 0
 
       // Create a queryFn that returns different results on each call
-      const queryFn = (async function* (_opts: unknown) {
+      const queryFn = async function* (_opts: unknown) {
         callCount++
         yield {
           type: "result",
@@ -621,7 +617,7 @@ describe("ClaudeAdapter", () => {
           result: callCount === 1 ? "First response" : "Second response",
           usage: { input_tokens: 10, output_tokens: 5 },
         } as never
-      }) as unknown as QueryFn
+      } as unknown as QueryFn
 
       adapter = new ClaudeAdapter({
         queryFn,
@@ -673,7 +669,7 @@ describe("ClaudeAdapter", () => {
       const capturedCalls: Array<{ prompt: unknown; options: Record<string, unknown> }> = []
       let callCount = 0
 
-      const queryFn = (async function* (opts: unknown) {
+      const queryFn = async function* (opts: unknown) {
         callCount++
         const typedOpts = opts as { prompt: unknown; options: Record<string, unknown> }
         capturedCalls.push({ prompt: typedOpts.prompt, options: typedOpts.options })
@@ -697,7 +693,7 @@ describe("ClaudeAdapter", () => {
           result: callCount === 1 ? "First reply" : "Second reply",
           usage: { input_tokens: 10, output_tokens: 5 },
         } as never
-      }) as unknown as QueryFn
+      } as unknown as QueryFn
 
       adapter = new ClaudeAdapter({
         queryFn,
@@ -737,7 +733,7 @@ describe("ClaudeAdapter", () => {
       const capturedCalls: Array<{ prompt: unknown; options: Record<string, unknown> }> = []
       let callCount = 0
 
-      const queryFn = (async function* (opts: unknown) {
+      const queryFn = async function* (opts: unknown) {
         callCount++
         const typedOpts = opts as { prompt: unknown; options: Record<string, unknown> }
         capturedCalls.push({ prompt: typedOpts.prompt, options: typedOpts.options })
@@ -760,7 +756,7 @@ describe("ClaudeAdapter", () => {
           result: callCount === 1 ? "OK" : "Got it",
           usage: { input_tokens: 5, output_tokens: 2 },
         } as never
-      }) as unknown as QueryFn
+      } as unknown as QueryFn
 
       adapter = new ClaudeAdapter({
         queryFn,
@@ -795,7 +791,7 @@ describe("ClaudeAdapter", () => {
     it("does not emit RESUMING event for normal multi-turn messages (only retries)", async () => {
       let callCount = 0
 
-      const queryFn = (async function* (_opts: unknown) {
+      const queryFn = async function* (_opts: unknown) {
         callCount++
 
         if (callCount === 1) {
@@ -816,7 +812,7 @@ describe("ClaudeAdapter", () => {
           result: callCount === 1 ? "Hi" : "Hi again",
           usage: { input_tokens: 5, output_tokens: 2 },
         } as never
-      }) as unknown as QueryFn
+      } as unknown as QueryFn
 
       adapter = new ClaudeAdapter({
         queryFn,
@@ -849,6 +845,260 @@ describe("ClaudeAdapter", () => {
         e => e.type === "error" && (e as { code?: string }).code === "RESUMING",
       )
       expect(resumingEvents).toHaveLength(0)
+    })
+  })
+
+  describe("model option", () => {
+    it("uses default model from options when no per-message model is specified", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+        model: "claude-haiku-4-20250414",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      expect(capturedOpts).toBeDefined()
+      const options = capturedOpts!.options as Record<string, unknown>
+      expect(options.model).toBe("claude-haiku-4-20250414")
+    })
+
+    it("per-message model overrides the default model", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+        model: "claude-haiku-4-20250414",
+      })
+
+      const events = collectEvents(adapter)
+
+      // Start with a per-message model override
+      await adapter.start({ cwd: "/tmp", model: "claude-sonnet-4-20250514" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      expect(capturedOpts).toBeDefined()
+      const options = capturedOpts!.options as Record<string, unknown>
+      expect(options.model).toBe("claude-sonnet-4-20250514")
+    })
+
+    it("uses CLAUDE_MODEL env var as fallback when no explicit model is set", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      // Set env var and create adapter without explicit model
+      const originalEnv = process.env.CLAUDE_MODEL
+      try {
+        process.env.CLAUDE_MODEL = "claude-sonnet-4-20250514"
+
+        adapter = new ClaudeAdapter({
+          queryFn,
+          apiKey: "test-key",
+        })
+
+        const events = collectEvents(adapter)
+
+        await adapter.start({ cwd: "/tmp" })
+        adapter.send({ type: "user_message", content: "Hi" })
+
+        await vi.waitFor(() => {
+          expect(events.some(e => e.type === "result")).toBe(true)
+        })
+
+        expect(capturedOpts).toBeDefined()
+        const options = capturedOpts!.options as Record<string, unknown>
+        expect(options.model).toBe("claude-sonnet-4-20250514")
+      } finally {
+        // Restore original env
+        if (originalEnv === undefined) {
+          delete process.env.CLAUDE_MODEL
+        } else {
+          process.env.CLAUDE_MODEL = originalEnv
+        }
+      }
+    })
+
+    it("explicit model option takes precedence over CLAUDE_MODEL env var", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      const originalEnv = process.env.CLAUDE_MODEL
+      try {
+        process.env.CLAUDE_MODEL = "claude-sonnet-4-20250514"
+
+        adapter = new ClaudeAdapter({
+          queryFn,
+          apiKey: "test-key",
+          model: "claude-haiku-4-20250414",
+        })
+
+        const events = collectEvents(adapter)
+
+        await adapter.start({ cwd: "/tmp" })
+        adapter.send({ type: "user_message", content: "Hi" })
+
+        await vi.waitFor(() => {
+          expect(events.some(e => e.type === "result")).toBe(true)
+        })
+
+        expect(capturedOpts).toBeDefined()
+        const options = capturedOpts!.options as Record<string, unknown>
+        expect(options.model).toBe("claude-haiku-4-20250414")
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.CLAUDE_MODEL
+        } else {
+          process.env.CLAUDE_MODEL = originalEnv
+        }
+      }
+    })
+
+    it("model is undefined when neither option nor env var is set", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      const originalEnv = process.env.CLAUDE_MODEL
+      try {
+        delete process.env.CLAUDE_MODEL
+
+        adapter = new ClaudeAdapter({
+          queryFn,
+          apiKey: "test-key",
+        })
+
+        const events = collectEvents(adapter)
+
+        await adapter.start({ cwd: "/tmp" })
+        adapter.send({ type: "user_message", content: "Hi" })
+
+        await vi.waitFor(() => {
+          expect(events.some(e => e.type === "result")).toBe(true)
+        })
+
+        expect(capturedOpts).toBeDefined()
+        const options = capturedOpts!.options as Record<string, unknown>
+        expect(options.model).toBeUndefined()
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.CLAUDE_MODEL
+        } else {
+          process.env.CLAUDE_MODEL = originalEnv
+        }
+      }
+    })
+
+    it("getInfo() returns the configured model", () => {
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn([]),
+        apiKey: "test-key",
+        model: "claude-haiku-4-20250414",
+      })
+
+      const info = adapter.getInfo()
+      expect(info.model).toBe("claude-haiku-4-20250414")
+    })
+
+    it("getInfo() returns undefined model when no model is configured", () => {
+      const originalEnv = process.env.CLAUDE_MODEL
+      try {
+        delete process.env.CLAUDE_MODEL
+
+        adapter = new ClaudeAdapter({
+          queryFn: createMockQueryFn([]),
+          apiKey: "test-key",
+        })
+
+        const info = adapter.getInfo()
+        expect(info.model).toBeUndefined()
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.CLAUDE_MODEL
+        } else {
+          process.env.CLAUDE_MODEL = originalEnv
+        }
+      }
+    })
+
+    it("getInfo() returns model from CLAUDE_MODEL env var when no explicit model is set", () => {
+      const originalEnv = process.env.CLAUDE_MODEL
+      try {
+        process.env.CLAUDE_MODEL = "claude-sonnet-4-20250514"
+
+        adapter = new ClaudeAdapter({
+          queryFn: createMockQueryFn([]),
+          apiKey: "test-key",
+        })
+
+        const info = adapter.getInfo()
+        expect(info.model).toBe("claude-sonnet-4-20250514")
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.CLAUDE_MODEL
+        } else {
+          process.env.CLAUDE_MODEL = originalEnv
+        }
+      }
     })
   })
 

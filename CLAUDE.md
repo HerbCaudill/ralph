@@ -113,7 +113,7 @@ packages/agent-server/                 # Generic agent server package
     main.ts                 # Dev entry point (port 4244)
     types.ts                # AgentServerConfig
     agentTypes.ts           # AgentAdapter base class, ConversationContext (no BdProxy)
-    ClaudeAdapter.ts        # Claude agent adapter (Anthropic API)
+    ClaudeAdapter.ts        # Claude agent adapter (Anthropic API, supports model option)
     CodexAdapter.ts         # Codex agent adapter (OpenAI API)
     AdapterRegistry.ts      # Registry mapping agent names to adapter classes
     SessionPersister.ts     # JSONL event persistence by session ID
@@ -261,6 +261,8 @@ The Vite dev server proxy also supports split mode: when `BEADS_PORT` and `AGENT
 
 Agents implement `AgentAdapter` base class (`server/AgentAdapter.ts`). Available: **Claude** (default, requires `ANTHROPIC_API_KEY`) and **Codex** (`OPENAI_API_KEY` optional). Each adapter normalizes native events into `AgentEvent` types. Core event types (AgentEvent, AgentMessageEvent, etc.) are defined in `@herbcaudill/agent-view` and re-exported by `packages/shared/` for backward compatibility; wire protocol types remain defined locally in shared.
 
+ClaudeAdapter accepts an optional `model` in `ClaudeAdapterOptions`, falling back to the `CLAUDE_MODEL` environment variable. Per-message model overrides the default. `AgentInfo` (returned by `getInfo()`) includes a `model` field showing the configured default.
+
 ## Runtime interaction
 
 - **Escape** - Send a message to Claude
@@ -334,6 +336,7 @@ Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Core eve
 - `VITE_SPLIT_SERVERS` - Set to `true` to enable split-server mode in the UI (Vite build-time)
 - `VITE_BEADS_SERVER_URL` - Full URL for beads-server in split mode (e.g., `http://localhost:4243`)
 - `VITE_AGENT_SERVER_URL` - Full URL for agent-server in split mode (e.g., `http://localhost:4244`)
+- `CLAUDE_MODEL` - Default Claude model for ClaudeAdapter (e.g., `claude-sonnet-4-20250514`). Can be overridden per-adapter via `ClaudeAdapterOptions.model`. Agent-demo Playwright tests default to `claude-haiku-4-20250414`
 - `RALPH_DEBUG` - Debug logging (`1` for all, or comma-separated namespaces: `messagequeue`, `session`)
 - `RALPH_CWD` - Override base path for relative path rendering
 
