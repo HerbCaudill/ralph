@@ -271,7 +271,7 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           {/* Subtask count - flush against title */}
           {hasSubtasks && (
             <span
-              className="text-muted-foreground bg-muted shrink-0 rounded px-1.5 py-0.5 text-[10px] leading-none"
+              className="text-muted-foreground bg-muted shrink-0 rounded px-1.5 py-0.5 text-xs"
               title={`${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`}
               aria-label={`${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`}
             >
