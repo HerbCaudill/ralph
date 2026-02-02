@@ -9,12 +9,16 @@ import { getTimeFilterCutoff } from "../../lib/getTimeFilterCutoff"
 import { matchesSearchQuery } from "../../lib/matchesSearchQuery"
 import {
   useBeadsViewStore,
-  selectTaskSearchQuery,
-  selectClosedTimeFilter,
   selectStatusCollapsedState,
   selectParentCollapsedState,
 } from "../../store"
-import type { TaskCardTask, TaskGroup, TaskStatus, TaskTreeNode } from "../../types"
+import type {
+  TaskCardTask,
+  TaskGroup,
+  TaskStatus,
+  TaskTreeNode,
+  ClosedTasksTimeFilter,
+} from "../../types"
 import { TaskListSkeleton } from "./TaskListSkeleton"
 
 /**
@@ -46,11 +50,15 @@ export function TaskList({
   activelyWorkingTaskIds: activelyWorkingTaskIdsList = [],
   /** Task IDs with saved sessions */
   taskIdsWithSessions: taskIdsWithSessionsList = [],
+  /** Search query to filter tasks */
+  searchQuery = "",
+  /** Time filter for closed tasks */
+  closedTimeFilter = "past_day",
+  /** Callback when closed time filter changes */
+  onClosedTimeFilterChange,
+  /** Callback when visible task IDs change */
+  onVisibleTaskIdsChange,
 }: TaskListProps) {
-  const searchQuery = useBeadsViewStore(selectTaskSearchQuery)
-  const closedTimeFilter = useBeadsViewStore(selectClosedTimeFilter)
-  const setClosedTimeFilter = useBeadsViewStore(state => state.setClosedTimeFilter)
-  const setVisibleTaskIds = useBeadsViewStore(state => state.setVisibleTaskIds)
   const activelyWorkingTaskIds = useMemo(
     () => new Set(activelyWorkingTaskIdsList),
     [activelyWorkingTaskIdsList],
@@ -443,8 +451,8 @@ export function TaskList({
   }, [visibleStatusGroups, statusCollapsedState, parentCollapsedState])
 
   useEffect(() => {
-    setVisibleTaskIds(visibleTaskIds)
-  }, [visibleTaskIds, setVisibleTaskIds])
+    onVisibleTaskIdsChange?.(visibleTaskIds)
+  }, [visibleTaskIds, onVisibleTaskIdsChange])
 
   const hasTasks = statusGroups.some(g => g.totalCount > 0)
 
@@ -481,7 +489,7 @@ export function TaskList({
               isCollapsed={isStatusCollapsed}
               onToggle={() => handleToggleStatusGroup(config.key)}
               timeFilter={config.key === "closed" ? closedTimeFilter : undefined}
-              onTimeFilterChange={config.key === "closed" ? setClosedTimeFilter : undefined}
+              onTimeFilterChange={config.key === "closed" ? onClosedTimeFilterChange : undefined}
             />
             {!isStatusCollapsed && (
               <div role="group" aria-label={`${config.label} tasks`}>
@@ -562,6 +570,14 @@ export type TaskListProps = {
   activelyWorkingTaskIds?: string[]
   /** Task IDs with saved sessions */
   taskIdsWithSessions?: string[]
+  /** Search query to filter tasks */
+  searchQuery?: string
+  /** Time filter for closed tasks */
+  closedTimeFilter?: ClosedTasksTimeFilter
+  /** Callback when closed time filter changes */
+  onClosedTimeFilterChange?: (filter: ClosedTasksTimeFilter) => void
+  /** Callback when visible task IDs change */
+  onVisibleTaskIdsChange?: (ids: string[]) => void
 }
 
 /**  Configuration for a task status group. */

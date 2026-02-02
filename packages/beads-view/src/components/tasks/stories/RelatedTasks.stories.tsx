@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { RelatedTasks } from ".././RelatedTasks"
-import { beadsViewStore } from "@herbcaudill/beads-view"
-import { useEffect } from "react"
-import type { Task, TaskCardTask } from "../../../types"
+import type { TaskCardTask } from "../../../types"
 
 const meta: Meta<typeof RelatedTasks> = {
   title: "Collections/RelatedTasks",
@@ -20,16 +18,6 @@ const meta: Meta<typeof RelatedTasks> = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Helper to set up store state */
-function StoreSetter({ tasks, prefix }: { tasks: Task[]; prefix: string }) {
-  useEffect(() => {
-    const store = beadsViewStore.getState()
-    store.setTasks(tasks)
-    store.setIssuePrefix(prefix)
-  }, [tasks, prefix])
-  return null
-}
-
 const currentTask: TaskCardTask = {
   id: "rui-current",
   title: "Current Task",
@@ -38,7 +26,7 @@ const currentTask: TaskCardTask = {
   parent: "rui-parent",
 }
 
-const childTasks: Task[] = [
+const childTasks: TaskCardTask[] = [
   { id: "rui-child-1", title: "Child Task 1", status: "open", priority: 2, parent: "rui-current" },
   {
     id: "rui-child-2",
@@ -50,43 +38,48 @@ const childTasks: Task[] = [
 ]
 
 export const WithChildren: Story = {
-  render: () => (
-    <>
-      <StoreSetter tasks={[currentTask, ...childTasks]} prefix="rui" />
-      <RelatedTasks taskId="rui-current" task={currentTask} />
-    </>
-  ),
+  args: {
+    taskId: "rui-current",
+    task: currentTask,
+    allTasks: [currentTask, ...childTasks],
+    issuePrefix: "rui",
+  },
 }
 
 export const ReadOnly: Story = {
-  render: () => (
-    <>
-      <StoreSetter tasks={[currentTask, ...childTasks]} prefix="rui" />
-      <RelatedTasks taskId="rui-current" task={currentTask} readOnly />
-    </>
-  ),
+  args: {
+    taskId: "rui-current",
+    task: currentTask,
+    allTasks: [currentTask, ...childTasks],
+    issuePrefix: "rui",
+    readOnly: true,
+  },
 }
 
 export const NoRelationships: Story = {
-  render: () => {
-    const standaloneTask: TaskCardTask = {
+  args: {
+    taskId: "rui-standalone",
+    task: {
       id: "rui-standalone",
       title: "Standalone Task",
       status: "open",
       priority: 2,
-    }
-    return (
-      <>
-        <StoreSetter tasks={[standaloneTask]} prefix="rui" />
-        <RelatedTasks taskId="rui-standalone" task={standaloneTask} />
-      </>
-    )
+    },
+    allTasks: [
+      {
+        id: "rui-standalone",
+        title: "Standalone Task",
+        status: "open",
+        priority: 2,
+      },
+    ],
+    issuePrefix: "rui",
   },
 }
 
 export const ManyChildren: Story = {
   render: () => {
-    const manyChildren: Task[] = Array.from({ length: 6 }, (_, i) => ({
+    const manyChildren: TaskCardTask[] = Array.from({ length: 6 }, (_, i) => ({
       id: `rui-child-${i + 1}`,
       title: `Child Task ${i + 1}: ${["Implement", "Test", "Review", "Deploy", "Document", "Monitor"][i]}`,
       status:
@@ -97,17 +90,19 @@ export const ManyChildren: Story = {
       parent: "rui-current",
     }))
     return (
-      <>
-        <StoreSetter tasks={[currentTask, ...manyChildren]} prefix="rui" />
-        <RelatedTasks taskId="rui-current" task={currentTask} />
-      </>
+      <RelatedTasks
+        taskId="rui-current"
+        task={currentTask}
+        allTasks={[currentTask, ...manyChildren]}
+        issuePrefix="rui"
+      />
     )
   },
 }
 
 export const DifferentStatuses: Story = {
   render: () => {
-    const statusVariety: Task[] = [
+    const statusVariety: TaskCardTask[] = [
       { id: "rui-open", title: "Open child", status: "open", priority: 2, parent: "rui-current" },
       {
         id: "rui-progress",
@@ -139,19 +134,20 @@ export const DifferentStatuses: Story = {
       },
     ]
     return (
-      <>
-        <StoreSetter tasks={[currentTask, ...statusVariety]} prefix="rui" />
-        <RelatedTasks taskId="rui-current" task={currentTask} />
-      </>
+      <RelatedTasks
+        taskId="rui-current"
+        task={currentTask}
+        allTasks={[currentTask, ...statusVariety]}
+        issuePrefix="rui"
+      />
     )
   },
 }
 
 export const WithoutTask: Story = {
-  render: () => (
-    <>
-      <StoreSetter tasks={[currentTask, ...childTasks]} prefix="rui" />
-      <RelatedTasks taskId="rui-current" />
-    </>
-  ),
+  args: {
+    taskId: "rui-current",
+    allTasks: [currentTask, ...childTasks],
+    issuePrefix: "rui",
+  },
 }

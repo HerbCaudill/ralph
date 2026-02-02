@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { TaskProgressBar } from ".././TaskProgressBar"
-import { beadsViewStore } from "@herbcaudill/beads-view"
-import { useEffect, type ReactNode } from "react"
-import type { Task } from "../../../types"
+import type { TaskCardTask } from "../../../types"
 
 const meta: Meta<typeof TaskProgressBar> = {
   title: "Indicators/TaskProgressBar",
@@ -20,18 +18,8 @@ const meta: Meta<typeof TaskProgressBar> = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Helper to set up store state for TaskProgressBar */
-function TaskProgressSetter({ tasks, children }: { tasks: Task[]; children: ReactNode }) {
-  useEffect(() => {
-    const store = beadsViewStore.getState()
-    store.setTasks(tasks)
-    store.setInitialTaskCount(tasks.length)
-  }, [tasks])
-  return <>{children}</>
-}
-
-const createTasks = (open: number, closed: number): Task[] => {
-  const tasks: Task[] = []
+const createTasks = (open: number, closed: number): TaskCardTask[] => {
+  const tasks: TaskCardTask[] = []
   for (let i = 0; i < open; i++) {
     tasks.push({
       id: `task-open-${i}`,
@@ -52,123 +40,52 @@ const createTasks = (open: number, closed: number): Task[] => {
   return tasks
 }
 
+/** Helper to create story args with consistent task/initialTaskCount pairing. */
+const progressArgs = (open: number, closed: number) => {
+  const tasks = createTasks(open, closed)
+  return { isRunning: true, tasks, initialTaskCount: tasks.length }
+}
+
 export const NoProgress: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(10, 0)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(10, 0),
 }
 
 export const QuarterProgress: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(9, 3)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(9, 3),
 }
 
 export const HalfProgress: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(5, 5)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(5, 5),
 }
 
 export const ThreeQuarterProgress: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(3, 9)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(3, 9),
 }
 
 export const NearlyComplete: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(1, 9)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(1, 9),
 }
 
 export const FullProgress: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(0, 10)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(0, 10),
 }
 
 export const WhenPaused: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(5, 5)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(5, 5),
 }
 
 export const WhenStopped: Story = {
-  args: { isRunning: false },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(5, 5)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: { ...progressArgs(5, 5), isRunning: false },
 }
 
 export const SingleTask: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(0, 1)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(0, 1),
 }
 
 export const ManyTasks: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={createTasks(25, 75)}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: progressArgs(25, 75),
 }
 
 export const NoTasks: Story = {
-  args: { isRunning: true },
-  decorators: [
-    Story => (
-      <TaskProgressSetter tasks={[]}>
-        <Story />
-      </TaskProgressSetter>
-    ),
-  ],
+  args: { isRunning: true, tasks: [], initialTaskCount: 0 },
 }

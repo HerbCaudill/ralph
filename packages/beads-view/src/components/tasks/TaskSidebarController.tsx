@@ -1,8 +1,18 @@
+import { useCallback } from "react"
 import { TaskSidebar } from "./TaskSidebar"
 import { TaskList } from "./TaskList"
 import { type SearchInputHandle } from "./SearchInput"
 import { TaskProgressBar } from "./TaskProgressBar"
 import { useTasks } from "../../hooks"
+import {
+  useBeadsViewStore,
+  selectTaskSearchQuery,
+  selectClosedTimeFilter,
+  selectTasks,
+  selectInitialTaskCount,
+  selectAccentColor,
+} from "../../store"
+import type { ClosedTasksTimeFilter } from "../../types"
 
 /**
  * Controller component for TaskSidebar.
@@ -25,6 +35,23 @@ export function TaskSidebarController({
   isRunning = false,
 }: TaskSidebarControllerProps) {
   const { tasks, isLoading } = useTasks({ all: true })
+  const searchQuery = useBeadsViewStore(selectTaskSearchQuery)
+  const closedTimeFilter = useBeadsViewStore(selectClosedTimeFilter)
+  const setClosedTimeFilter = useBeadsViewStore(state => state.setClosedTimeFilter)
+  const setVisibleTaskIds = useBeadsViewStore(state => state.setVisibleTaskIds)
+  const allStoreTasks = useBeadsViewStore(selectTasks)
+  const initialTaskCount = useBeadsViewStore(selectInitialTaskCount)
+  const accentColor = useBeadsViewStore(selectAccentColor)
+
+  const handleClosedTimeFilterChange = useCallback(
+    (filter: ClosedTasksTimeFilter) => setClosedTimeFilter(filter),
+    [setClosedTimeFilter],
+  )
+
+  const handleVisibleTaskIdsChange = useCallback(
+    (ids: string[]) => setVisibleTaskIds(ids),
+    [setVisibleTaskIds],
+  )
 
   return (
     <TaskSidebar
@@ -35,11 +62,23 @@ export function TaskSidebarController({
           isLoading={isLoading}
           activelyWorkingTaskIds={activelyWorkingTaskIds}
           taskIdsWithSessions={taskIdsWithSessions}
+          searchQuery={searchQuery}
+          closedTimeFilter={closedTimeFilter}
+          onClosedTimeFilterChange={handleClosedTimeFilterChange}
+          onVisibleTaskIdsChange={handleVisibleTaskIdsChange}
         />
       }
       searchInputRef={searchInputRef}
       onOpenTask={onOpenTask}
-      progressBar={<TaskProgressBar isRunning={isRunning} />}
+      progressBar={
+        <TaskProgressBar
+          isRunning={isRunning}
+          tasks={allStoreTasks}
+          initialTaskCount={initialTaskCount}
+          accentColor={accentColor}
+          closedTimeFilter={closedTimeFilter}
+        />
+      }
     />
   )
 }

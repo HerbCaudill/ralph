@@ -485,7 +485,13 @@ export function TaskDetails({
         {renderSessionLinks ? renderSessionLinks(task.id) : null}
 
         {/* Related Tasks (text list - children and blockers) */}
-        <RelatedTasks taskId={task.id} task={task} readOnly={readOnly} />
+        <RelatedTasks
+          taskId={task.id}
+          task={task}
+          readOnly={readOnly}
+          allTasks={allTasks}
+          issuePrefix={issuePrefix}
+        />
 
         {/* Comments Section - more space */}
         <CommentsSection

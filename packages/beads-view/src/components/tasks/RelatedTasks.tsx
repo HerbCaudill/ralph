@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react"
-import { useBeadsViewStore, selectTasks, selectIssuePrefix } from "../../store"
 import { Label } from "../ui/label"
 import { CollapsibleSection } from "./CollapsibleSection"
 import { BlockerCombobox } from "./BlockerCombobox"
@@ -10,9 +9,13 @@ import type { RelatedTask, Task, TaskCardTask } from "../../types"
  * Shows collapsible sections for children and blockers.
  * When not in read-only mode, allows adding and removing blockers.
  */
-export function RelatedTasks({ taskId, task, readOnly = false }: RelatedTasksProps) {
-  const allTasks = useBeadsViewStore(selectTasks)
-  const issuePrefix = useBeadsViewStore(selectIssuePrefix)
+export function RelatedTasks({
+  taskId,
+  task,
+  readOnly = false,
+  allTasks = [],
+  issuePrefix = null,
+}: RelatedTasksProps) {
   const [blockers, setBlockers] = useState<RelatedTask[]>([])
   const [dependents, setDependents] = useState<RelatedTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -211,4 +214,8 @@ export type RelatedTasksProps = {
   taskId: string
   task?: TaskCardTask
   readOnly?: boolean
+  /** All tasks, used to find children and populate the blocker combobox. */
+  allTasks?: TaskCardTask[]
+  /** Issue prefix for display (e.g. "rui"). */
+  issuePrefix?: string | null
 }

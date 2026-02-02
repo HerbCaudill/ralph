@@ -7,24 +7,7 @@ import type { Task } from "../../../types"
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
-// Mock beads-view store
-vi.mock("@herbcaudill/beads-view", async importOriginal => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return {
-    ...actual,
-    useBeadsViewStore: (selector: (state: unknown) => unknown) => {
-      const mockState = {
-        tasks: mockTasks,
-        issuePrefix: "rui",
-      }
-      return selector(mockState)
-    },
-    selectTasks: (state: { tasks: Task[] }) => state.tasks,
-    selectIssuePrefix: (state: { issuePrefix: string | null }) => state.issuePrefix,
-  }
-})
-
-// Mock tasks for the store
+// Mock tasks passed as props
 let mockTasks: Task[] = []
 
 // Sample API response with dependencies
@@ -68,7 +51,7 @@ describe("RelatedTasks", () => {
   })
 
   const renderWithContext = (taskId: string) => {
-    return render(<RelatedTasks taskId={taskId} />)
+    return render(<RelatedTasks taskId={taskId} allTasks={mockTasks} issuePrefix="rui" />)
   }
 
   describe("loading state", () => {
@@ -337,7 +320,15 @@ describe("RelatedTasks", () => {
     }
 
     const renderWithTask = (taskId: string, task: typeof mockTask, readOnly = false) => {
-      return render(<RelatedTasks taskId={taskId} task={task} readOnly={readOnly} />)
+      return render(
+        <RelatedTasks
+          taskId={taskId}
+          task={task}
+          readOnly={readOnly}
+          allTasks={mockTasks}
+          issuePrefix="rui"
+        />,
+      )
     }
 
     it("shows add blocker button when not read-only and task is provided", async () => {

@@ -1,6 +1,7 @@
 import type { Preview } from "@storybook/react-vite"
 import React from "react"
 import { TestProviders } from "../src/components/TestProviders"
+import { beadsViewStore } from "../src/store"
 import "../src/index.css"
 
 const preview: Preview = {
@@ -18,6 +19,20 @@ const preview: Preview = {
   },
   decorators: [
     Story => {
+      // Reset store state so no persisted localStorage leaks between stories
+      const store = beadsViewStore.getState()
+      store.setTasks([])
+      store.setTaskSearchQuery("")
+      store.setClosedTimeFilter("past_day")
+      store.setIssuePrefix(null)
+      store.setAccentColor(null)
+      store.setInitialTaskCount(null)
+      store.setSelectedTaskId(null)
+      store.setVisibleTaskIds([])
+      store.setStatusCollapsedState({ open: false, deferred: true, closed: true })
+      store.setParentCollapsedState({})
+      store.setTaskInputDraft("")
+
       // Build the inline style object with repo accent color
       const style = {
         "--repo-accent": "#14b8a6",

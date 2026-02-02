@@ -4,8 +4,6 @@ import { TaskList } from ".././TaskList"
 import type { TaskCardTask } from "../../../types"
 import { beadsViewStore } from "@herbcaudill/beads-view"
 import type { TaskGroup } from "../../../types"
-/** LocalStorage key for beads-view persisted state. */
-const BEADS_VIEW_PERSIST_NAME = "beads-view-store"
 
 // Helper to get recent date (for closed tasks to be visible with default filter)
 const getRecentDate = () => new Date().toISOString()
@@ -411,9 +409,6 @@ describe("TaskList", () => {
     })
 
     it("treats undefined closed_at as oldest for closed tasks", () => {
-      // Need to set all_time filter to see task without closed_at
-      beadsViewStore.getState().setClosedTimeFilter("all_time")
-
       const tasks: TaskCardTask[] = [
         {
           id: "task-no-date",
@@ -432,15 +427,13 @@ describe("TaskList", () => {
           tasks={tasks}
           defaultCollapsed={{ closed: false }}
           persistCollapsedState={false}
+          closedTimeFilter="all_time"
         />,
       )
 
       // Task with closed_at should come first, undefined should be last
       const taskTitles = screen.getAllByText(/^(Has|No) close date$/).map(el => el.textContent)
       expect(taskTitles).toEqual(["Has close date", "No close date"])
-
-      // Reset to default
-      beadsViewStore.getState().setClosedTimeFilter("past_day")
     })
 
     it("sorts closed parent groups by most recently closed first", () => {
@@ -947,18 +940,6 @@ describe("TaskList", () => {
   })
 
   describe("closed tasks time filter", () => {
-    beforeEach(() => {
-      localStorage.clear()
-      // Reset to default filter before each test
-      beadsViewStore.getState().setClosedTimeFilter("past_day")
-    })
-
-    afterEach(() => {
-      localStorage.clear()
-      // Reset to default filter after each test
-      beadsViewStore.getState().setClosedTimeFilter("past_day")
-    })
-
     it("shows time filter dropdown in closed group header", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Closed task", status: "closed", closed_at: getRecentDate() },
@@ -979,7 +960,7 @@ describe("TaskList", () => {
       expect(filterDropdown).toHaveValue("past_day")
     })
 
-    it("filters closed tasks based on time selection", () => {
+    it("filters closed tasks based on closedTimeFilter prop", () => {
       const now = new Date()
       const hourAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString() // 30 mins ago
       const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString()
@@ -988,28 +969,35 @@ describe("TaskList", () => {
         { id: "task-recent", title: "Recent task", status: "closed", closed_at: hourAgo },
         { id: "task-old", title: "Old task", status: "closed", closed_at: twoDaysAgo },
       ]
-      render(
+
+      // With past_day, only recent task should appear
+      const { rerender } = render(
         <TaskList
           tasks={tasks}
           defaultCollapsed={{ closed: false }}
           persistCollapsedState={false}
+          closedTimeFilter="past_day"
         />,
       )
 
-      // With past_day (default), only recent task should appear
       expect(screen.getByText("Recent task")).toBeInTheDocument()
       expect(screen.queryByText("Old task")).not.toBeInTheDocument()
 
-      // Change to past_week
-      const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
-      fireEvent.change(filterDropdown, { target: { value: "past_week" } })
+      // Re-render with past_week — both tasks should appear
+      rerender(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+          closedTimeFilter="past_week"
+        />,
+      )
 
-      // Now both tasks should appear
       expect(screen.getByText("Recent task")).toBeInTheDocument()
       expect(screen.getByText("Old task")).toBeInTheDocument()
     })
 
-    it("shows all closed tasks when all_time is selected", () => {
+    it("shows all closed tasks when closedTimeFilter is all_time", () => {
       const now = new Date()
       const oldDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
 
@@ -1021,64 +1009,34 @@ describe("TaskList", () => {
           tasks={tasks}
           defaultCollapsed={{ closed: false }}
           persistCollapsedState={false}
-          showEmptyGroups={true}
+          closedTimeFilter="all_time"
         />,
       )
 
-      // Initially with past_day, no tasks visible (but group header with dropdown is visible)
-      expect(screen.queryByText("Very old task")).not.toBeInTheDocument()
-
-      // Change to all_time - get all comboboxes and use the first one
-      const filterDropdowns = screen.getAllByRole("combobox", {
-        name: "Filter closed tasks by time",
-      })
-      fireEvent.change(filterDropdowns[0], { target: { value: "all_time" } })
-
-      // Now task should appear
       expect(screen.getByText("Very old task")).toBeInTheDocument()
     })
 
-    it("persists time filter selection to localStorage via store", () => {
+    it("calls onClosedTimeFilterChange when dropdown value changes", () => {
+      const onClosedTimeFilterChange = vi.fn()
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Closed task", status: "closed", closed_at: getRecentDate() },
       ]
-      render(<TaskList tasks={tasks} />)
+      render(<TaskList tasks={tasks} onClosedTimeFilterChange={onClosedTimeFilterChange} />)
 
       const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
       fireEvent.change(filterDropdown, { target: { value: "past_week" } })
 
-      // Store persists to localStorage automatically via persist middleware
-      const stored = JSON.parse(localStorage.getItem(BEADS_VIEW_PERSIST_NAME) ?? "{}")
-      expect(stored.state?.closedTimeFilter).toBe("past_week")
-      expect(beadsViewStore.getState().closedTimeFilter).toBe("past_week")
+      expect(onClosedTimeFilterChange).toHaveBeenCalledWith("past_week")
     })
 
-    it("uses store value for time filter", () => {
-      // Set the store value directly
-      beadsViewStore.getState().setClosedTimeFilter("all_time")
-
+    it("uses closedTimeFilter prop value in dropdown", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Closed task", status: "closed", closed_at: getRecentDate() },
       ]
-      render(<TaskList tasks={tasks} />)
+      render(<TaskList tasks={tasks} closedTimeFilter="all_time" />)
 
       const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
       expect(filterDropdown).toHaveValue("all_time")
-    })
-
-    it("time filter is global state (always persisted)", () => {
-      // Note: persistCollapsedState no longer affects time filter since it's global state
-      const tasks: TaskCardTask[] = [
-        { id: "task-1", title: "Closed task", status: "closed", closed_at: getRecentDate() },
-      ]
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
-
-      const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
-      fireEvent.change(filterDropdown, { target: { value: "past_week" } })
-
-      // Time filter is stored via the global store, which always persists
-      const stored = JSON.parse(localStorage.getItem(BEADS_VIEW_PERSIST_NAME) ?? "{}")
-      expect(stored.state?.closedTimeFilter).toBe("past_week")
     })
 
     it("updates task count when filter changes", () => {
@@ -1090,14 +1048,18 @@ describe("TaskList", () => {
         { id: "task-1", title: "Task 1", status: "closed", closed_at: hourAgo },
         { id: "task-2", title: "Task 2", status: "closed", closed_at: twoDaysAgo },
       ]
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+
+      const { rerender } = render(
+        <TaskList tasks={tasks} persistCollapsedState={false} closedTimeFilter="past_day" />,
+      )
 
       // Initially should show 1 task with past_day filter
       expect(screen.getByLabelText("Closed section, 1 task")).toBeInTheDocument()
 
-      // Change to past_week
-      const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
-      fireEvent.change(filterDropdown, { target: { value: "past_week" } })
+      // Re-render with past_week
+      rerender(
+        <TaskList tasks={tasks} persistCollapsedState={false} closedTimeFilter="past_week" />,
+      )
 
       // Now should show 2 tasks
       expect(screen.getByLabelText("Closed section, 2 tasks")).toBeInTheDocument()
@@ -1117,22 +1079,13 @@ describe("TaskList", () => {
   })
 
   describe("search filtering", () => {
-    beforeEach(() => {
-      beadsViewStore.getState().clearTaskSearchQuery()
-    })
-
-    afterEach(() => {
-      beadsViewStore.getState().clearTaskSearchQuery()
-    })
-
     it("filters tasks by title", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Fix authentication bug", status: "open" },
         { id: "task-2", title: "Add new feature", status: "open" },
         { id: "task-3", title: "Update documentation", status: "open" },
       ]
-      beadsViewStore.getState().setTaskSearchQuery("auth")
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      render(<TaskList tasks={tasks} persistCollapsedState={false} searchQuery="auth" />)
 
       expect(screen.getByText("Fix authentication bug")).toBeInTheDocument()
       expect(screen.queryByText("Add new feature")).not.toBeInTheDocument()
@@ -1144,8 +1097,7 @@ describe("TaskList", () => {
         { id: "rui-abc", title: "First task", status: "open" },
         { id: "rui-xyz", title: "Second task", status: "open" },
       ]
-      beadsViewStore.getState().setTaskSearchQuery("xyz")
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      render(<TaskList tasks={tasks} persistCollapsedState={false} searchQuery="xyz" />)
 
       expect(screen.getByText("Second task")).toBeInTheDocument()
       expect(screen.queryByText("First task")).not.toBeInTheDocument()
@@ -1161,8 +1113,7 @@ describe("TaskList", () => {
           description: "This is about Vue components",
         },
       ]
-      beadsViewStore.getState().setTaskSearchQuery("React")
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      render(<TaskList tasks={tasks} persistCollapsedState={false} searchQuery="React" />)
 
       expect(screen.getByText("Task 1")).toBeInTheDocument()
       expect(screen.queryByText("Task 2")).not.toBeInTheDocument()
@@ -1173,8 +1124,7 @@ describe("TaskList", () => {
         { id: "task-1", title: "FIX AUTHENTICATION", status: "open" },
         { id: "task-2", title: "Add Feature", status: "open" },
       ]
-      beadsViewStore.getState().setTaskSearchQuery("fix")
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      render(<TaskList tasks={tasks} persistCollapsedState={false} searchQuery="fix" />)
 
       expect(screen.getByText("FIX AUTHENTICATION")).toBeInTheDocument()
       expect(screen.queryByText("Add Feature")).not.toBeInTheDocument()
@@ -1185,8 +1135,7 @@ describe("TaskList", () => {
         { id: "task-1", title: "Task 1", status: "open" },
         { id: "task-2", title: "Task 2", status: "open" },
       ]
-      beadsViewStore.getState().setTaskSearchQuery("")
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      render(<TaskList tasks={tasks} persistCollapsedState={false} searchQuery="" />)
 
       expect(screen.getByText("Task 1")).toBeInTheDocument()
       expect(screen.getByText("Task 2")).toBeInTheDocument()
@@ -1197,8 +1146,7 @@ describe("TaskList", () => {
         { id: "task-1", title: "Task 1", status: "open" },
         { id: "task-2", title: "Task 2", status: "open" },
       ]
-      beadsViewStore.getState().setTaskSearchQuery("   ")
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      render(<TaskList tasks={tasks} persistCollapsedState={false} searchQuery="   " />)
 
       expect(screen.getByText("Task 1")).toBeInTheDocument()
       expect(screen.getByText("Task 2")).toBeInTheDocument()
@@ -1209,8 +1157,7 @@ describe("TaskList", () => {
         { id: "task-1", title: "Task 1", status: "open" },
         { id: "task-2", title: "Task 2", status: "open" },
       ]
-      beadsViewStore.getState().setTaskSearchQuery("nonexistent")
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      render(<TaskList tasks={tasks} persistCollapsedState={false} searchQuery="nonexistent" />)
 
       expect(screen.getByText("No matching tasks")).toBeInTheDocument()
     })
@@ -1221,16 +1168,14 @@ describe("TaskList", () => {
         { id: "task-2", title: "Add feature", status: "open" },
       ]
 
-      // Start with one search
-      beadsViewStore.getState().setTaskSearchQuery("bug")
-      const { rerender } = render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      const { rerender } = render(
+        <TaskList tasks={tasks} persistCollapsedState={false} searchQuery="bug" />,
+      )
 
       expect(screen.getByText("Fix bug")).toBeInTheDocument()
       expect(screen.queryByText("Add feature")).not.toBeInTheDocument()
 
-      // Change query
-      beadsViewStore.getState().setTaskSearchQuery("feature")
-      rerender(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      rerender(<TaskList tasks={tasks} persistCollapsedState={false} searchQuery="feature" />)
 
       expect(screen.queryByText("Fix bug")).not.toBeInTheDocument()
       expect(screen.getByText("Add feature")).toBeInTheDocument()
@@ -1243,12 +1188,12 @@ describe("TaskList", () => {
         { id: "task-3", title: "Blocked other task", status: "blocked" },
         { id: "task-4", title: "Closed auth task", status: "closed", closed_at: getRecentDate() },
       ]
-      beadsViewStore.getState().setTaskSearchQuery("auth")
       render(
         <TaskList
           tasks={tasks}
           defaultCollapsed={{ open: false, closed: false }}
           persistCollapsedState={false}
+          searchQuery="auth"
         />,
       )
 
@@ -1269,36 +1214,31 @@ describe("TaskList", () => {
         { id: "task-other", title: "Old other task", status: "closed", closed_at: twoDaysAgo },
       ]
 
-      // Default filter is past_day, so old tasks would normally be hidden
-      beadsViewStore.getState().setClosedTimeFilter("past_day")
-
-      // Without search, old task should not appear
-      render(
+      // Without search, old task should not appear (past_day filter)
+      const { rerender } = render(
         <TaskList
           tasks={tasks}
           defaultCollapsed={{ closed: false }}
           persistCollapsedState={false}
+          closedTimeFilter="past_day"
         />,
       )
       expect(screen.getByText("Recent auth task")).toBeInTheDocument()
       expect(screen.queryByText("Old auth task")).not.toBeInTheDocument()
 
-      // Now search for "auth" - should include both recent and old auth tasks
-      beadsViewStore.getState().setTaskSearchQuery("auth")
-
-      // Re-render to apply search
-      render(
+      // Now search for "auth" — both recent and old auth tasks should appear
+      rerender(
         <TaskList
           tasks={tasks}
           defaultCollapsed={{ closed: false }}
           persistCollapsedState={false}
+          closedTimeFilter="past_day"
+          searchQuery="auth"
         />,
       )
 
-      // Both auth tasks should now be visible (bypassing time filter)
-      expect(screen.getAllByText("Recent auth task").length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText("Old auth task").length).toBeGreaterThanOrEqual(1)
-      // But non-matching task should not appear
+      expect(screen.getByText("Recent auth task")).toBeInTheDocument()
+      expect(screen.getByText("Old auth task")).toBeInTheDocument()
       expect(screen.queryByText("Old other task")).not.toBeInTheDocument()
     })
   })

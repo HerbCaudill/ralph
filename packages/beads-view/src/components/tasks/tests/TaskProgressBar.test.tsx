@@ -1,38 +1,9 @@
 import { render, screen } from "@testing-library/react"
-import { describe, it, expect, beforeEach, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { TaskProgressBar } from ".././TaskProgressBar"
-import { useBeadsViewStore } from "@herbcaudill/beads-view"
-import type { Task, ClosedTasksTimeFilter } from "../../../types"
+import type { TaskCardTask, ClosedTasksTimeFilter } from "../../../types"
 
-vi.mock("@herbcaudill/beads-view", async () => {
-  const actual =
-    await vi.importActual<typeof import("@herbcaudill/beads-view")>("@herbcaudill/beads-view")
-  return {
-    ...actual,
-    useBeadsViewStore: vi.fn(),
-  }
-})
-
-const mockUseBeadsViewStore = vi.mocked(useBeadsViewStore)
-
-function setupMock(config: {
-  tasks: Task[]
-  initialTaskCount: number | null
-  accentColor?: string | null
-  closedTimeFilter?: ClosedTasksTimeFilter
-}) {
-  mockUseBeadsViewStore.mockImplementation(selector => {
-    const beadsState = {
-      tasks: config.tasks,
-      initialTaskCount: config.initialTaskCount,
-      accentColor: config.accentColor ?? null,
-      closedTimeFilter: config.closedTimeFilter ?? "all_time",
-    }
-    return selector(beadsState as any)
-  })
-}
-
-function createTask(overrides: Partial<Task> = {}): Task {
+function createTask(overrides: Partial<TaskCardTask> = {}): TaskCardTask {
   return {
     id: `task-${Math.random().toString(36).slice(2)}`,
     title: "Test task",
@@ -41,66 +12,74 @@ function createTask(overrides: Partial<Task> = {}): Task {
   }
 }
 
-describe("TaskProgressBar", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+/** Render TaskProgressBar with the given config via props. */
+function renderProgressBar(config: {
+  tasks: TaskCardTask[]
+  initialTaskCount: number | null
+  accentColor?: string | null
+  closedTimeFilter?: ClosedTasksTimeFilter
+  isRunning?: boolean
+  className?: string
+}) {
+  return render(
+    <TaskProgressBar
+      isRunning={config.isRunning ?? true}
+      tasks={config.tasks}
+      initialTaskCount={config.initialTaskCount}
+      accentColor={config.accentColor ?? null}
+      closedTimeFilter={config.closedTimeFilter ?? "all_time"}
+      className={config.className}
+    />,
+  )
+}
 
+describe("TaskProgressBar", () => {
   describe("visibility", () => {
     it("does not render when the host marks it as not running", () => {
-      setupMock({
+      const { container } = renderProgressBar({
         tasks: [createTask({ status: "closed" })],
         initialTaskCount: 1,
+        isRunning: false,
       })
-
-      const { container } = render(<TaskProgressBar isRunning={false} />)
       expect(container.firstChild).toBeNull()
     })
 
     it("does not render when initialTaskCount is null", () => {
-      setupMock({
+      const { container } = renderProgressBar({
         tasks: [createTask()],
         initialTaskCount: null,
       })
-
-      const { container } = render(<TaskProgressBar isRunning={true} />)
       expect(container.firstChild).toBeNull()
     })
 
     it("does not render when there are no tasks", () => {
-      setupMock({
+      const { container } = renderProgressBar({
         tasks: [],
         initialTaskCount: 0,
       })
-
-      const { container } = render(<TaskProgressBar isRunning={true} />)
       expect(container.firstChild).toBeNull()
     })
 
     it("renders when the host marks it as running and has tasks", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask()],
         initialTaskCount: 1,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       expect(screen.getByTestId("task-progress-bar")).toBeInTheDocument()
     })
   })
 
   describe("progress calculation", () => {
     it("shows 0 closed when no tasks are closed", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask({ status: "open" }), createTask({ status: "in_progress" })],
         initialTaskCount: 2,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       expect(screen.getByText("0/2")).toBeInTheDocument()
     })
 
     it("shows correct count when some tasks are closed", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [
           createTask({ status: "closed" }),
           createTask({ status: "open" }),
@@ -108,33 +87,26 @@ describe("TaskProgressBar", () => {
         ],
         initialTaskCount: 3,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       expect(screen.getByText("2/3")).toBeInTheDocument()
     })
 
     it("shows correct count when all tasks are closed", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask({ status: "closed" }), createTask({ status: "closed" })],
         initialTaskCount: 2,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       expect(screen.getByText("2/2")).toBeInTheDocument()
     })
 
     it("uses visible task count (excludes epics)", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [
           createTask({ status: "closed" }),
           createTask({ status: "open" }),
-          createTask({ status: "open", issue_type: "epic" }), // Epic should be excluded
+          createTask({ status: "open", issue_type: "epic" }),
         ],
         initialTaskCount: 3,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
-      // Total should be 2 (excluding epic), not 3
       expect(screen.getByText("1/2")).toBeInTheDocument()
     })
 
@@ -143,18 +115,15 @@ describe("TaskProgressBar", () => {
       const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString()
       const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString()
 
-      setupMock({
+      renderProgressBar({
         tasks: [
-          createTask({ status: "closed", closed_at: twoHoursAgo }), // Closed 2 hours ago
-          createTask({ status: "closed", closed_at: thirtyMinutesAgo }), // Closed 30 mins ago
+          createTask({ status: "closed", closed_at: twoHoursAgo }),
+          createTask({ status: "closed", closed_at: thirtyMinutesAgo }),
           createTask({ status: "open" }),
         ],
         initialTaskCount: 3,
-        closedTimeFilter: "past_hour", // Only show tasks closed in past hour
+        closedTimeFilter: "past_hour",
       })
-
-      render(<TaskProgressBar isRunning={true} />)
-      // Total should be 2 (1 recent closed + 1 open), closed count should be 1
       expect(screen.getByText("1/2")).toBeInTheDocument()
     })
 
@@ -163,40 +132,33 @@ describe("TaskProgressBar", () => {
       const weekAgo = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString()
       const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString()
 
-      setupMock({
+      renderProgressBar({
         tasks: [
-          createTask({ status: "closed", closed_at: weekAgo }), // Closed over a week ago
-          createTask({ status: "closed", closed_at: thirtyMinutesAgo }), // Closed 30 mins ago
+          createTask({ status: "closed", closed_at: weekAgo }),
+          createTask({ status: "closed", closed_at: thirtyMinutesAgo }),
           createTask({ status: "open" }),
         ],
         initialTaskCount: 3,
         closedTimeFilter: "all_time",
       })
-
-      render(<TaskProgressBar isRunning={true} />)
-      // All tasks should be visible
       expect(screen.getByText("2/3")).toBeInTheDocument()
     })
   })
 
   describe("accessibility", () => {
     it("has progressbar role", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask({ status: "closed" }), createTask({ status: "open" })],
         initialTaskCount: 2,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       expect(screen.getByRole("progressbar")).toBeInTheDocument()
     })
 
     it("has correct aria attributes", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask({ status: "closed" }), createTask({ status: "open" })],
         initialTaskCount: 2,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       const progressbar = screen.getByRole("progressbar")
       expect(progressbar).toHaveAttribute("aria-valuenow", "1")
       expect(progressbar).toHaveAttribute("aria-valuemin", "0")
@@ -207,46 +169,39 @@ describe("TaskProgressBar", () => {
 
   describe("styling", () => {
     it("applies custom className", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask()],
         initialTaskCount: 1,
+        className: "custom-class",
       })
-
-      render(<TaskProgressBar className="custom-class" isRunning={true} />)
       expect(screen.getByTestId("task-progress-bar")).toHaveClass("custom-class")
     })
 
     it("has border-t class for top border", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask()],
         initialTaskCount: 1,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       expect(screen.getByTestId("task-progress-bar")).toHaveClass("border-t")
     })
 
     it("uses accent color for progress bar fill when set", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask({ status: "closed" })],
         initialTaskCount: 1,
         accentColor: "#ff0000",
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       const progressBar = screen.getByTestId("task-progress-bar")
       const fillElement = progressBar.querySelector(".h-full")
       expect(fillElement).toHaveStyle({ backgroundColor: "#ff0000" })
     })
 
     it("uses default accent color when peacock color is not set", () => {
-      setupMock({
+      renderProgressBar({
         tasks: [createTask({ status: "closed" })],
         initialTaskCount: 1,
         accentColor: null,
       })
-
-      render(<TaskProgressBar isRunning={true} />)
       const progressBar = screen.getByTestId("task-progress-bar")
       const fillElement = progressBar.querySelector(".h-full")
       expect(fillElement).toHaveStyle({ backgroundColor: "#374151" })

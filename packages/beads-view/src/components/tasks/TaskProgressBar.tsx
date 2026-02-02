@@ -1,13 +1,7 @@
 import { cn } from "../../lib/cn"
-import {
-  useBeadsViewStore,
-  selectTasks,
-  selectInitialTaskCount,
-  selectAccentColor,
-  selectClosedTimeFilter,
-} from "../../store"
 import { getTimeFilterCutoff } from "../../lib/getTimeFilterCutoff"
 import { DEFAULT_ACCENT_COLOR } from "../../constants"
+import type { TaskCardTask, ClosedTasksTimeFilter } from "../../types"
 
 /**
  * Shows task completion progress at the bottom of the sidebar.
@@ -16,11 +10,14 @@ import { DEFAULT_ACCENT_COLOR } from "../../constants"
  * after applying the closed tasks time filter.
  * Only visible when Ralph is running.
  */
-export function TaskProgressBar({ className, isRunning = false }: TaskProgressBarProps) {
-  const tasks = useBeadsViewStore(selectTasks)
-  const initialTaskCount = useBeadsViewStore(selectInitialTaskCount)
-  const accentColor = useBeadsViewStore(selectAccentColor)
-  const closedTimeFilter = useBeadsViewStore(selectClosedTimeFilter)
+export function TaskProgressBar({
+  className,
+  isRunning = false,
+  tasks = [],
+  initialTaskCount = null,
+  accentColor = null,
+  closedTimeFilter = "past_day",
+}: TaskProgressBarProps) {
   const progressColor = accentColor ?? DEFAULT_ACCENT_COLOR
 
   if (!isRunning || initialTaskCount === null) return null
@@ -76,4 +73,12 @@ export type TaskProgressBarProps = {
   className?: string
   /** Whether to show progress (host decides if Ralph is running). */
   isRunning?: boolean
+  /** All tasks to calculate progress from. */
+  tasks?: TaskCardTask[]
+  /** Initial task count (progress is hidden when null). */
+  initialTaskCount?: number | null
+  /** Accent color for the progress bar. */
+  accentColor?: string | null
+  /** Time filter for closed tasks. */
+  closedTimeFilter?: ClosedTasksTimeFilter
 }
