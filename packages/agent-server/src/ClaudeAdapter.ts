@@ -345,10 +345,15 @@ export class ClaudeAdapter extends AgentAdapter {
           options: {
             model: options.model,
             cwd: options.cwd,
-            env: {
-              ...options.env,
-              ...(this.options.apiKey ? { ANTHROPIC_API_KEY: this.options.apiKey } : {}),
-            },
+            ...(options.env || this.options.apiKey ?
+              {
+                env: {
+                  ...process.env,
+                  ...options.env,
+                  ...(this.options.apiKey ? { ANTHROPIC_API_KEY: this.options.apiKey } : {}),
+                },
+              }
+            : {}),
             systemPrompt,
             tools:
               Array.isArray(options.allowedTools) ? (options.allowedTools as string[]) : undefined,
