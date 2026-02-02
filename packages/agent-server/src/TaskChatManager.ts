@@ -194,10 +194,14 @@ export class TaskChatManager extends EventEmitter {
       let errorMessage = ""
 
       // Build query options - resume existing session if available
+      const hasCustomEnv = Object.keys(this.options.env).length > 0
       const queryOptions: Record<string, unknown> = {
         model: skillModel ?? this.options.model,
         cwd: this.options.cwd,
-        env: this.options.env,
+        // Only pass env if there are custom vars to add; the SDK replaces the
+        // entire process environment when env is provided, so an empty object
+        // would strip PATH, HOME, etc. from the spawned Claude CLI process.
+        ...(hasCustomEnv ? { env: this.options.env } : {}),
         // Use Claude Code's default system prompt (includes CLAUDE.md, cwd awareness)
         // and append our task chat instructions
         systemPrompt: {

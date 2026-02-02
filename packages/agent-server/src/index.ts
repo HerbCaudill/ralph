@@ -263,9 +263,17 @@ export async function startServer(config: AgentServerConfig): Promise<{
 
   taskChatManager.on("message", (msg: { role: string; content: string; timestamp: number }) => {
     if (msg.role === "assistant") {
+      // Broadcast in the "assistant" format that AgentView expects
+      // (structured message with content blocks)
       broadcast({
         type: "event",
-        event: { type: "assistant_text", text: msg.content, timestamp: msg.timestamp },
+        event: {
+          type: "assistant",
+          timestamp: msg.timestamp,
+          message: {
+            content: [{ type: "text", text: msg.content }],
+          },
+        },
       })
     }
   })
