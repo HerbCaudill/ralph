@@ -90,6 +90,62 @@ export {
   isAgentStatusEvent,
 } from "./agentTypes.js"
 
+// ── Re-exports: extracted adapter modules ────────────────────────────
+
+export { ClaudeAdapter, buildCwdContext } from "./ClaudeAdapter.js"
+export type { ClaudeAdapterOptions, QueryFn, RetryConfig } from "./ClaudeAdapter.js"
+
+export { CodexAdapter } from "./CodexAdapter.js"
+export type { CodexAdapterOptions, CodexFactory } from "./CodexAdapter.js"
+
+export {
+  registerAdapter,
+  unregisterAdapter,
+  getRegisteredAdapters,
+  isAdapterRegistered,
+  getAdapterRegistration,
+  createAdapter,
+  isAdapterAvailable,
+  getAvailableAdapters,
+  getFirstAvailableAdapter,
+  registerDefaultAdapters,
+  clearRegistry,
+} from "./AdapterRegistry.js"
+export type { AdapterFactory, AdapterRegistration, AdapterAvailability } from "./AdapterRegistry.js"
+
+// ── Re-exports: extracted task chat modules ──────────────────────────
+
+export { TaskChatManager } from "./TaskChatManager.js"
+export type {
+  TaskChatStatus,
+  TaskChatMessage,
+  TaskChatEvent,
+  TaskChatToolUse,
+  GetBdProxyFn,
+  TaskChatManagerOptions,
+} from "./TaskChatManager.js"
+
+export { TaskChatEventLog } from "./TaskChatEventLog.js"
+export type {
+  TaskChatLogEntry,
+  TaskChatLogSummary,
+  TaskChatEventLogOptions,
+} from "./TaskChatEventLog.js"
+
+export {
+  TaskChatEventPersister,
+  getTaskChatEventPersister,
+  resetTaskChatEventPersisters,
+} from "./TaskChatEventPersister.js"
+
+// ── Re-exports: utility functions ────────────────────────────────────
+
+export { isRetryableError } from "./lib/isRetryableError.js"
+export { calculateBackoffDelay } from "./lib/calculateBackoffDelay.js"
+export { createEventStream } from "./lib/createEventStream.js"
+export { createMessageStream } from "./lib/createMessageStream.js"
+export { generateId } from "./lib/generateId.js"
+
 // ── Module state ──────────────────────────────────────────────────────
 
 /** Connected WebSocket clients. */

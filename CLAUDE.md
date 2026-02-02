@@ -114,6 +114,17 @@ packages/agent-server/                 # Agent server package
     findClaudeExecutable.ts # Locates the Claude CLI binary
     systemPrompt.ts         # Loads system prompt and task-chat skill config
     loadSkill.ts            # Loads custom skill definitions from .ralph/skills/
+    ClaudeAdapter.ts        # Claude agent adapter (Anthropic API)
+    CodexAdapter.ts         # Codex agent adapter (OpenAI API)
+    AdapterRegistry.ts      # Registry mapping agent names to adapter classes
+    TaskChatManager.ts      # Manages task chat conversations
+    TaskChatEventLog.ts     # In-memory event log for task chats
+    TaskChatEventPersister.ts # Persistence for task chat events
+    isRetryableError.ts     # Retry classification for API errors
+    calculateBackoffDelay.ts # Exponential backoff delay calculation
+    generateId.ts           # Unique ID generation utility
+    createEventStream.ts    # SSE event stream factory
+    createMessageStream.ts  # Message stream factory
 
 packages/ui/                        # UI package
   server/                   # Express backend
@@ -128,6 +139,17 @@ packages/ui/                        # UI package
     findClaudeExecutable.ts # Re-export from @herbcaudill/agent-server
     systemPrompt.ts         # Re-export from @herbcaudill/agent-server
     loadSkill.ts            # Re-export from @herbcaudill/agent-server
+    ClaudeAdapter.ts        # Re-export from @herbcaudill/agent-server
+    CodexAdapter.ts         # Re-export from @herbcaudill/agent-server
+    AdapterRegistry.ts      # Re-export from @herbcaudill/agent-server
+    TaskChatManager.ts      # Re-export from @herbcaudill/agent-server
+    TaskChatEventLog.ts     # Re-export from @herbcaudill/agent-server
+    TaskChatEventPersister.ts # Re-export from @herbcaudill/agent-server
+    isRetryableError.ts     # Re-export from @herbcaudill/agent-server
+    calculateBackoffDelay.ts # Re-export from @herbcaudill/agent-server
+    generateId.ts           # Re-export from @herbcaudill/agent-server
+    createEventStream.ts    # Re-export from @herbcaudill/agent-server
+    createMessageStream.ts  # Re-export from @herbcaudill/agent-server
     BdProxy.ts              # Proxy for beads CLI commands
     ThemeDiscovery.ts       # Discovers VS Code themes
   src/                      # React frontend
@@ -172,7 +194,7 @@ Claude outputs: `<start_task>{id}</start_task>` when starting, `<end_task>{id}</
 
 ### Agent server extraction
 
-Agent management modules (RalphManager, RalphRegistry, InstanceStore, SessionEventPersister, SessionStateStore, SessionRunner, WorktreeManager, findClaudeExecutable, systemPrompt, loadSkill) live in `packages/agent-server/` (`@herbcaudill/agent-server`). The UI server files re-export from this package for backward compatibility. Type definitions for AgentAdapter, ConversationContext, ConversationMessage, and BdProxy are in `agent-server/src/agentTypes.ts`.
+Agent management modules (RalphManager, RalphRegistry, InstanceStore, SessionEventPersister, SessionStateStore, SessionRunner, WorktreeManager, findClaudeExecutable, systemPrompt, loadSkill), adapter modules (ClaudeAdapter, CodexAdapter, AdapterRegistry), task chat modules (TaskChatManager, TaskChatEventLog, TaskChatEventPersister), and utility functions (isRetryableError, calculateBackoffDelay, generateId, createEventStream, createMessageStream) live in `packages/agent-server/` (`@herbcaudill/agent-server`). The UI server files re-export from this package for backward compatibility. Type definitions for AgentAdapter, ConversationContext, ConversationMessage, and BdProxy are in `agent-server/src/agentTypes.ts`.
 
 ### Multi-agent support
 

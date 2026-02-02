@@ -28,6 +28,9 @@ importers:
       "@herbcaudill/ralph-shared":
         specifier: workspace:*
         version: link:../shared
+      "@openai/codex-sdk":
+        specifier: ^0.87.0
+        version: 0.87.0
       express:
         specifier: ^5.2.1
         version: 5.2.1

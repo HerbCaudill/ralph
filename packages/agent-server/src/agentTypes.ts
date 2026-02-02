@@ -208,13 +208,16 @@ export abstract class AgentAdapter extends EventEmitter {
 // We define a minimal interface here to avoid a direct dependency on beads-sdk.
 
 /**
- * Minimal interface for the BdProxy (BeadsClient) used by RalphRegistry.
- * RalphRegistry only stores and retrieves the proxy; it does not call methods
- * directly. This interface is intentionally permissive to allow any BeadsClient
- * implementation to satisfy it.
+ * Minimal interface for the BdProxy (BeadsClient) used by agent-server modules.
+ * This avoids a direct dependency on beads-sdk while allowing TaskChatManager
+ * and RalphRegistry to interact with the issue tracker.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface BdProxy {
   /** Add a comment to an issue */
   addComment(issueId: string, text: string, author?: string): Promise<void>
+  /** List issues with optional filters */
+  list(options?: {
+    status?: string
+    limit?: number
+  }): Promise<Array<{ id: string; title: string; priority: number }>>
 }
