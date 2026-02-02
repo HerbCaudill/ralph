@@ -70,6 +70,7 @@ export function ChatInput({
         value={value}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
+        disabled={disabled}
         placeholder={placeholder}
         rows={1}
         className="max-h-[200px] min-h-[40px] flex-1 resize-none rounded-lg border border-border bg-muted px-3 py-2 font-sans text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/40"

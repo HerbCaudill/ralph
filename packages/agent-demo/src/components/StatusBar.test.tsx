@@ -6,6 +6,15 @@ import type { ChatEvent } from "@herbcaudill/agent-view"
 // Mock useTokenUsage so we can control its return value without real events
 vi.mock("@herbcaudill/agent-view", () => ({
   useTokenUsage: vi.fn(() => ({ input: 0, output: 0 })),
+  useContextWindow: vi.fn(() => ({ used: 0, max: 200_000 })),
+  TokenUsageDisplay: ({ tokenUsage }: { tokenUsage: { input: number; output: number } }) => {
+    const fmt = (n: number) =>
+      n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M`
+      : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k`
+      : String(n)
+    return <span>{`${fmt(tokenUsage.input)} in / ${fmt(tokenUsage.output)} out`}</span>
+  },
+  ContextWindowProgress: () => <div data-testid="context-window-progress" />,
 }))
 
 // Import the mock so we can change its return value per test
