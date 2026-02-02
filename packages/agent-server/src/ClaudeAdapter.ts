@@ -1,5 +1,5 @@
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
-import { createRequire } from "node:module"
+import { execSync } from "node:child_process"
 import {
   AgentAdapter,
   type AgentInfo,
@@ -44,16 +44,27 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 /** Default thinking budget in tokens. Set to 0 to disable extended thinking. */
 const DEFAULT_MAX_THINKING_TOKENS = 0
 
-/** Read the @anthropic-ai/claude-agent-sdk version from its package.json. */
-function getClaudeSdkVersion(): string | undefined {
+/**
+ * Parse a version string from `claude --version` output.
+ * Expected format: "2.1.29 (Claude Code)" -> "2.1.29"
+ */
+export function parseCliVersionOutput(output: string): string | undefined {
+  const match = output.trim().match(/^([\d.]+)/)
+  return match ? match[1] : undefined
+}
+
+/** Read the Claude CLI version by running `claude --version`. */
+function getClaudeCliVersion(): string | undefined {
   try {
-    const require = createRequire(import.meta.url)
-    const pkg = require("@anthropic-ai/claude-agent-sdk/package.json") as { version?: string }
-    return pkg.version
+    const output = execSync("claude --version", { timeout: 5000 }).toString().trim()
+    return parseCliVersionOutput(output)
   } catch {
     return undefined
   }
 }
+
+// Cache the CLI version at module load time to avoid repeated exec calls
+const cachedCliVersion = getClaudeCliVersion()
 
 /**
  * Build the working directory context string for system prompts.
@@ -163,7 +174,7 @@ export class ClaudeAdapter extends AgentAdapter {
       id: "claude",
       name: "Claude",
       description: "Anthropic Claude via SDK",
-      version: getClaudeSdkVersion(),
+      version: cachedCliVersion,
       features: {
         streaming: true,
         tools: true,

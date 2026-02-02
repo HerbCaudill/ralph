@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
-import { ClaudeAdapter, type QueryFn } from "./ClaudeAdapter.js"
+import { ClaudeAdapter, type QueryFn, parseCliVersionOutput } from "./ClaudeAdapter.js"
 import type { AgentEvent, AgentStatusEvent } from "./agentTypes.js"
 
 /**
@@ -459,6 +459,66 @@ describe("ClaudeAdapter", () => {
       })
 
       expect(adapter.getSessionId()).toBe("sess_12345")
+    })
+  })
+
+  describe("getInfo", () => {
+    it("returns the expected agent info shape", () => {
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn([]),
+        apiKey: "test-key",
+      })
+
+      const info = adapter.getInfo()
+      expect(info.id).toBe("claude")
+      expect(info.name).toBe("Claude")
+      expect(info.description).toBe("Anthropic Claude via SDK")
+      expect(info.features).toEqual({
+        streaming: true,
+        tools: true,
+        pauseResume: false,
+        systemPrompt: true,
+      })
+      // version may be a string or undefined depending on whether claude CLI is installed
+      expect(info.version === undefined || typeof info.version === "string").toBe(true)
+    })
+  })
+
+  describe("parseCliVersionOutput", () => {
+    it("parses standard claude --version output", () => {
+      expect(parseCliVersionOutput("2.1.29 (Claude Code)")).toBe("2.1.29")
+    })
+
+    it("parses version with only major.minor.patch", () => {
+      expect(parseCliVersionOutput("1.0.0")).toBe("1.0.0")
+    })
+
+    it("parses version with four segments", () => {
+      expect(parseCliVersionOutput("2.1.29.1 (Claude Code)")).toBe("2.1.29.1")
+    })
+
+    it("parses version with leading/trailing whitespace", () => {
+      expect(parseCliVersionOutput("  2.1.29 (Claude Code)  ")).toBe("2.1.29")
+    })
+
+    it("returns undefined for empty string", () => {
+      expect(parseCliVersionOutput("")).toBeUndefined()
+    })
+
+    it("returns undefined for non-version output", () => {
+      expect(parseCliVersionOutput("command not found")).toBeUndefined()
+    })
+
+    it("returns undefined for whitespace-only string", () => {
+      expect(parseCliVersionOutput("   ")).toBeUndefined()
+    })
+
+    it("parses version without suffix text", () => {
+      expect(parseCliVersionOutput("3.0.0")).toBe("3.0.0")
+    })
+
+    it("parses version followed by newline", () => {
+      expect(parseCliVersionOutput("2.1.29 (Claude Code)\n")).toBe("2.1.29")
     })
   })
 })
