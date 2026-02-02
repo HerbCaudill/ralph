@@ -7,6 +7,7 @@ export default {
     { name: "ui-vitest", command: "pnpm --filter ralph-ui test" },
     { name: "agent-demo", command: "pnpm --filter agent-demo test" },
     { name: "beads-demo", command: "pnpm --filter beads-demo test" },
+    { name: "agent-demo-pw", command: "pnpm --filter agent-demo test:pw" },
     { name: "ui-playwright", command: "pnpm --filter ralph-ui test:pw" },
   ],
 }
