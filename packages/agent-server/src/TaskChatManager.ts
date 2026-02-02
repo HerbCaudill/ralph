@@ -53,7 +53,7 @@ export class TaskChatManager extends EventEmitter {
     this.options = {
       cwd: options.cwd ?? process.cwd(),
       env: options.env ?? {},
-      model: options.model ?? "haiku",
+      model: options.model ?? "sonnet",
       timeout: options.timeout ?? 600000, // 10 minute default
       pathToClaudeCodeExecutable: claudePath,
     }

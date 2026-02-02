@@ -1,20 +1,15 @@
 import { EventEmitter } from "node:events"
-import {
-  RalphManager,
-  type RalphEvent,
-  type RalphStatus,
-  type RalphManagerOptions,
-} from "./RalphManager.js"
+import { RalphManager, type RalphEvent, type RalphStatus } from "./RalphManager.js"
+import { TaskChatEventLog } from "./TaskChatEventLog.js"
+import { TaskChatEventPersister } from "./TaskChatEventPersister.js"
 import {
   TaskChatManager,
   type TaskChatEvent,
+  type TaskChatManagerOptions,
   type TaskChatMessage,
   type TaskChatStatus,
   type TaskChatToolUse,
-  type TaskChatManagerOptions,
 } from "./TaskChatManager.js"
-import { TaskChatEventLog, type TaskChatEventLogOptions } from "./TaskChatEventLog.js"
-import { TaskChatEventPersister } from "./TaskChatEventPersister.js"
 import type { BdProxy } from "./agentTypes.js"
 
 /**  Maximum number of events to store in history buffer. */
