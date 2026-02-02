@@ -6,12 +6,13 @@ Autonomous AI session engine for Claude CLI. Ralph spawns Claude CLI processes w
 
 This monorepo contains the following packages:
 
-| Package                                           | Description                                      |
-| ------------------------------------------------- | ------------------------------------------------ |
-| [`@herbcaudill/ralph`](packages/cli/)             | CLI tool for terminal-based sessions             |
-| [`@herbcaudill/ralph-ui`](packages/ui/)           | Web UI with real-time event streaming            |
-| [`@herbcaudill/ralph-shared`](packages/shared/)   | Shared types and utilities                       |
-| [`@herbcaudill/beads-view`](packages/beads-view/) | Task management UI, state, hooks, and API client |
+| Package                                               | Description                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------ |
+| [`@herbcaudill/ralph`](packages/cli/)                 | CLI tool for terminal-based sessions                               |
+| [`@herbcaudill/ralph-ui`](packages/ui/)               | Web UI with real-time event streaming                              |
+| [`@herbcaudill/ralph-shared`](packages/shared/)       | Shared types and utilities                                         |
+| [`@herbcaudill/beads-view`](packages/beads-view/)     | Task management UI, state, hooks, and API client                   |
+| [`@herbcaudill/beads-server`](packages/beads-server/) | Standalone server for beads task management (HTTP + WebSocket)     |
 | [`@herbcaudill/agent-server`](packages/agent-server/) | Standalone server for managing AI coding agents (HTTP + WebSocket) |
 
 ## Installation
@@ -80,6 +81,10 @@ pnpm dev
 # Start in split server mode (beads-server:4243 + agent-server:4244 + UI:5179)
 pnpm dev:split
 
+# Start individual servers
+pnpm serve:beads    # Beads server only (port 4243)
+pnpm serve:agent    # Agent server only (port 4244)
+
 # Format code
 pnpm format
 ```
@@ -92,17 +97,30 @@ UI components follow the controller/presentational pattern: connected components
 
 The web client UX-only functional spec (with screenshots) lives in `spec/web-client-ux-functional-spec.md`.
 
+## Server architecture
+
+Ralph supports two deployment modes:
+
+- **Combined mode** (default): A single server on port 4242 handles all API routes and WebSocket connections. Use `pnpm dev` or `pnpm serve`.
+- **Split mode**: Two separate servers run independently — a **beads-server** (port 4243) for task/workspace management, and an **agent-server** (port 4244) for AI agent control and chat. Use `pnpm dev:split`.
+
+In split mode, the UI automatically routes API requests and WebSocket connections to the correct server based on path prefixes (`/api/tasks`, `/api/labels`, `/api/workspace` → beads-server; `/api/ralph`, `/api/task-chat`, `/api/instances` → agent-server).
+
 ## Environment variables
 
-| Variable            | Description                              | Required       |
-| ------------------- | ---------------------------------------- | -------------- |
-| `ANTHROPIC_API_KEY` | API key for Claude                       | Yes for Claude |
-| `OPENAI_API_KEY`    | API key for Codex                        | Optional       |
-| `WORKSPACE_PATH`    | Workspace directory (default: repo root) | No             |
-| `HOST`              | Server bind address (default: 127.0.0.1) | No             |
-| `PORT`              | Server port (default: 4242)              | No             |
-| `AGENT_SERVER_HOST` | Agent server bind address (default: localhost) | No        |
-| `AGENT_SERVER_PORT` | Agent server port (default: 4244)        | No             |
+| Variable                | Description                                    | Required       |
+| ----------------------- | ---------------------------------------------- | -------------- |
+| `ANTHROPIC_API_KEY`     | API key for Claude                             | Yes for Claude |
+| `OPENAI_API_KEY`        | API key for Codex                              | Optional       |
+| `WORKSPACE_PATH`        | Workspace directory (default: repo root)       | No             |
+| `HOST`                  | Server bind address (default: 127.0.0.1)       | No             |
+| `PORT`                  | Server port (default: 4242)                    | No             |
+| `BEADS_PORT`            | Beads server port (default: 4243)              | No             |
+| `AGENT_SERVER_HOST`     | Agent server bind address (default: localhost) | No             |
+| `AGENT_SERVER_PORT`     | Agent server port (default: 4244)              | No             |
+| `VITE_SPLIT_SERVERS`    | Enable split-server mode in the UI             | No             |
+| `VITE_BEADS_SERVER_URL` | Explicit beads-server URL in split mode        | No             |
+| `VITE_AGENT_SERVER_URL` | Explicit agent-server URL in split mode        | No             |
 
 ## License
 

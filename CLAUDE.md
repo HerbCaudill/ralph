@@ -40,7 +40,7 @@ Use `packages/ui/server/tsconfig.json` when editing UI server TypeScript files. 
 
 ## Workspace structure
 
-pnpm workspace with six main packages:
+pnpm workspace with these main packages:
 
 - **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
 - **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with Express server and React frontend
