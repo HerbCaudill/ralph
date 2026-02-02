@@ -1,4 +1,11 @@
-@plugin "@tailwindcss/typography";
+/*
+ * Base styles for @herbcaudill/agent-view components.
+ *
+ * Consumer CSS must also include:
+ *   @import "tailwindcss";
+ *   @plugin "@tailwindcss/typography";
+ *   @source "../node_modules/@herbcaudill/agent-view/dist";
+ */
 
 @custom-variant dark (&:is(.dark *));
 
