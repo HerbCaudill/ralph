@@ -3,7 +3,7 @@
 import { runDev } from "./lib/devRunner.js"
 
 runDev({
-  label: "demo-agent",
+  label: "agent-demo",
   services: [
     {
       name: "agent-server",
@@ -13,13 +13,13 @@ runDev({
     },
   ],
   frontend: {
-    package: "@herbcaudill/demo-agent",
+    package: "@herbcaudill/agent-demo",
     portEnv: "DEMO_AGENT_PORT",
     defaultPort: 5180,
     open: true,
   },
   env: { WORKSPACE_PATH: process.env.WORKSPACE_PATH ?? process.cwd() },
 }).catch(err => {
-  console.error("[demo-agent] Error:", err.message)
+  console.error("[agent-demo] Error:", err.message)
   process.exit(1)
 })

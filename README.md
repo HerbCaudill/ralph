@@ -14,8 +14,8 @@ This monorepo contains the following packages:
 | [`@herbcaudill/beads-view`](packages/beads-view/)     | Task management UI, state, hooks, and API client                                      |
 | [`@herbcaudill/beads-server`](packages/beads-server/) | Standalone server for beads task management (HTTP + WebSocket)                        |
 | [`@herbcaudill/agent-server`](packages/agent-server/) | Standalone server for managing AI coding agents (HTTP + WebSocket)                    |
-| [`@herbcaudill/demo-agent`](packages/demo-agent/)     | Agent chat demo: WebSocket streaming, AgentView rendering, Claude Code/Codex selector |
-| [`@herbcaudill/demo-beads`](packages/demo-beads/)     | Beads task manager demo: task list, detail editing, workspace switching               |
+| [`@herbcaudill/agent-demo`](packages/agent-demo/)     | Agent chat demo: WebSocket streaming, AgentView rendering, Claude Code/Codex selector |
+| [`@herbcaudill/beads-demo`](packages/beads-demo/)     | Beads task manager demo: task list, detail editing, workspace switching               |
 
 ## Installation
 

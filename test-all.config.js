@@ -5,8 +5,8 @@ export default {
     { name: "shared", command: "pnpm --filter ralph-shared test" },
     { name: "cli", command: "pnpm --filter ralph test" },
     { name: "ui-vitest", command: "pnpm --filter ralph-ui test" },
-    { name: "demo-agent", command: "pnpm --filter demo-agent test" },
-    { name: "demo-beads", command: "pnpm --filter demo-beads test" },
+    { name: "agent-demo", command: "pnpm --filter agent-demo test" },
+    { name: "beads-demo", command: "pnpm --filter beads-demo test" },
     { name: "ui-playwright", command: "pnpm --filter ralph-ui test:pw" },
   ],
 }
