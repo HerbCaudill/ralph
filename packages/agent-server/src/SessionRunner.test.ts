@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { SessionRunner, type SessionStatus } from "./SessionRunner.js"
-import { AgentAdapter, type AgentInfo, type AgentStartOptions, type AgentMessage } from "./agentTypes.js"
+import {
+  AgentAdapter,
+  type AgentInfo,
+  type AgentStartOptions,
+  type AgentMessage,
+} from "./agentTypes.js"
 
 /**
  * Concrete mock implementation of AgentAdapter for testing.
@@ -197,9 +202,7 @@ describe("SessionRunner", () => {
         timestamp: Date.now(),
       })
 
-      expect(completeHandler).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false }),
-      )
+      expect(completeHandler).toHaveBeenCalledWith(expect.objectContaining({ success: false }))
     })
 
     it("emits complete on agent exit with non-zero code", async () => {
@@ -210,9 +213,7 @@ describe("SessionRunner", () => {
 
       adapter.emit("exit", { code: 1 })
 
-      expect(completeHandler).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false }),
-      )
+      expect(completeHandler).toHaveBeenCalledWith(expect.objectContaining({ success: false }))
     })
 
     it("forwards adapter status changes", async () => {

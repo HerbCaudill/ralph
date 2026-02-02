@@ -1,5 +1,10 @@
 import { EventEmitter } from "node:events"
-import { RalphManager, type RalphEvent, type RalphStatus, type RalphManagerOptions } from "./RalphManager.js"
+import {
+  RalphManager,
+  type RalphEvent,
+  type RalphStatus,
+  type RalphManagerOptions,
+} from "./RalphManager.js"
 import {
   TaskChatManager,
   type TaskChatEvent,

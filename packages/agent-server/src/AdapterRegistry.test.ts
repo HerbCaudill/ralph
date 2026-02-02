@@ -8,7 +8,12 @@ import {
   clearRegistry,
   registerDefaultAdapters,
 } from "./AdapterRegistry.js"
-import { AgentAdapter, type AgentInfo, type AgentStartOptions, type AgentMessage } from "./agentTypes.js"
+import {
+  AgentAdapter,
+  type AgentInfo,
+  type AgentStartOptions,
+  type AgentMessage,
+} from "./agentTypes.js"
 
 class StubAdapter extends AgentAdapter {
   options: unknown
@@ -19,7 +24,11 @@ class StubAdapter extends AgentAdapter {
   }
 
   getInfo(): AgentInfo {
-    return { id: "stub", name: "Stub", features: { streaming: false, tools: false, pauseResume: false, systemPrompt: false } }
+    return {
+      id: "stub",
+      name: "Stub",
+      features: { streaming: false, tools: false, pauseResume: false, systemPrompt: false },
+    }
   }
 
   async isAvailable() {
@@ -56,7 +65,7 @@ describe("AdapterRegistry", () => {
     registerAdapter({ id: "stub", name: "Stub", factory: () => new StubAdapter() })
     expect(() =>
       registerAdapter({ id: "stub", name: "Stub 2", factory: () => new StubAdapter() }),
-    ).toThrow('already registered')
+    ).toThrow("already registered")
   })
 
   it("creates an adapter via factory", () => {

@@ -393,7 +393,10 @@ describe("AgentWorkspaceContext", () => {
     })
 
     it("stops ralph manager if running during dispose", async () => {
-      const rm = context.ralphManager as unknown as { _status: string; stop: ReturnType<typeof vi.fn> }
+      const rm = context.ralphManager as unknown as {
+        _status: string
+        stop: ReturnType<typeof vi.fn>
+      }
       rm._status = "running"
 
       await context.dispose()
@@ -402,7 +405,10 @@ describe("AgentWorkspaceContext", () => {
     })
 
     it("stops ralph manager if paused during dispose", async () => {
-      const rm = context.ralphManager as unknown as { _status: string; stop: ReturnType<typeof vi.fn> }
+      const rm = context.ralphManager as unknown as {
+        _status: string
+        stop: ReturnType<typeof vi.fn>
+      }
       rm._status = "paused"
 
       await context.dispose()
@@ -448,7 +454,10 @@ describe("AgentWorkspaceContext", () => {
 
       context.taskChatManager.emit("event", { type: "test", timestamp: Date.now() })
 
-      expect(persister.appendEvent).toHaveBeenCalledWith("default", expect.objectContaining({ type: "test" }))
+      expect(persister.appendEvent).toHaveBeenCalledWith(
+        "default",
+        expect.objectContaining({ type: "test" }),
+      )
     })
 
     it("clears persisted events on historyCleared", () => {

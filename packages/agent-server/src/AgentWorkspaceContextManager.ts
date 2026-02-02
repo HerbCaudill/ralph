@@ -167,10 +167,7 @@ export class AgentWorkspaceContextManager extends EventEmitter {
     this._contexts.clear()
   }
 
-  private bindActiveContextEvents(
-    context: AgentWorkspaceContext,
-    workspacePath: string,
-  ): void {
+  private bindActiveContextEvents(context: AgentWorkspaceContext, workspacePath: string): void {
     this._boundEventHandler = (eventType: string, ...args: unknown[]) => {
       this.emit("context:event", workspacePath, eventType, ...args)
     }

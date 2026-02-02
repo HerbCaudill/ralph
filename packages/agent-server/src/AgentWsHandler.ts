@@ -3,7 +3,11 @@ import type { RalphEvent } from "./RalphManager.js"
 import type { RalphRegistry, RalphInstanceState } from "./RalphRegistry.js"
 import type { TaskChatEvent } from "./TaskChatManager.js"
 import type { TaskChatEventPersister } from "./TaskChatEventPersister.js"
-import type { AgentEventEnvelope, AgentEventSource, AgentPendingEventsResponse } from "@herbcaudill/ralph-shared"
+import type {
+  AgentEventEnvelope,
+  AgentEventSource,
+  AgentPendingEventsResponse,
+} from "@herbcaudill/ralph-shared"
 import { envelopeToLegacy } from "@herbcaudill/ralph-shared"
 import { serializeInstanceState } from "./routes/types.js"
 

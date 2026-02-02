@@ -1,11 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
-import { RalphRegistry, eventsToConversationContext, type CreateInstanceOptions } from "./RalphRegistry.js"
+import {
+  RalphRegistry,
+  eventsToConversationContext,
+  type CreateInstanceOptions,
+} from "./RalphRegistry.js"
 import type { RalphEvent } from "./RalphManager.js"
 
 describe("RalphRegistry", () => {
   let registry: RalphRegistry
 
-  const createOptions = (overrides: Partial<CreateInstanceOptions> = {}): CreateInstanceOptions => ({
+  const createOptions = (
+    overrides: Partial<CreateInstanceOptions> = {},
+  ): CreateInstanceOptions => ({
     id: "test-1",
     name: "TestInstance",
     agentName: "Ralph-1",
@@ -222,9 +228,7 @@ describe("eventsToConversationContext", () => {
   })
 
   it("extracts user messages", () => {
-    const events: RalphEvent[] = [
-      { type: "user_message", message: "hello", timestamp: 1000 },
-    ]
+    const events: RalphEvent[] = [{ type: "user_message", message: "hello", timestamp: 1000 }]
 
     const context = eventsToConversationContext(events)
     expect(context.messages).toHaveLength(1)

@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
-import { InstanceStore, getInstanceStore, resetInstanceStores, type PersistedInstance } from "./InstanceStore.js"
+import {
+  InstanceStore,
+  getInstanceStore,
+  resetInstanceStores,
+  type PersistedInstance,
+} from "./InstanceStore.js"
 import { mkdtemp, rm } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"

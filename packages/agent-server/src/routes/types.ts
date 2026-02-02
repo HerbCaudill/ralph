@@ -24,7 +24,18 @@ export interface AgentRouteContext {
   isDevMode: () => boolean
 
   /** Get the legacy singleton RalphManager (for backward compat) */
-  getRalphManager: () => { isRunning: boolean; status: RalphStatus; canAcceptMessages: boolean; start(sessions?: number): Promise<void>; stop(): Promise<void>; pause(): void; resume(): void; stopAfterCurrent(): void; cancelStopAfterCurrent(): Promise<void>; send(payload: unknown): void }
+  getRalphManager: () => {
+    isRunning: boolean
+    status: RalphStatus
+    canAcceptMessages: boolean
+    start(sessions?: number): Promise<void>
+    stop(): Promise<void>
+    pause(): void
+    resume(): void
+    stopAfterCurrent(): void
+    cancelStopAfterCurrent(): Promise<void>
+    send(payload: unknown): void
+  }
 
   /** Get the TaskChatManager for the active workspace */
   getTaskChatManager: () => TaskChatManager
