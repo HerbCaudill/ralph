@@ -84,6 +84,7 @@ export const SessionRunner = ({
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
+  const taskCompletedAbortRef = useRef(false) // Tracks abort triggered by task completion
 
   // Track static items that have been rendered (for Ink's Static component)
   const [staticItems, setStaticItems] = useState<StaticItem[]>([
@@ -363,6 +364,7 @@ export const SessionRunner = ({
       : `${roundHeader}${promptContent}`
 
     const abortController = new AbortController()
+    taskCompletedAbortRef.current = false
     setIsRunning(true)
 
     // Generate a session ID for this session (used in log file events)
@@ -442,7 +444,12 @@ export const SessionRunner = ({
                         sessionId: sessionIdRef.current,
                       }
                       appendFileSync(logFile, JSON.stringify(taskCompletedEvent) + "\n")
-                      // Keep tracking the same task until a new one starts
+                      // Abort the current query to enforce one-task-per-session.
+                      // Without this, Claude may ignore "end your turn" and loop
+                      // through bd ready to pick up additional tasks in one session.
+                      log(`Aborting session after task completion to enforce session boundary`)
+                      taskCompletedAbortRef.current = true
+                      abortController.abort()
                     }
                   }
                 }
@@ -512,8 +519,27 @@ export const SessionRunner = ({
         messageQueue.close()
         messageQueueRef.current = null
         if (abortController.signal.aborted) {
+          // Check if the abort was triggered by task completion
+          if (taskCompletedAbortRef.current) {
+            log(`Session aborted after task completion — advancing to next session`)
+            taskCompletedAbortRef.current = false
+
+            if (stopAfterCurrentRef.current) {
+              log(`Stop after current requested - exiting gracefully`)
+              exit()
+              process.exit(0)
+              return
+            }
+            if (isPausedRef.current) {
+              log(`Paused after session ${currentSession}`)
+              return
+            }
+            // Advance to the next session
+            setTimeout(() => setCurrentSession(i => i + 1), 500)
+            return
+          }
           log(`Abort signal detected`)
-          return // Intentionally aborted
+          return // Intentionally aborted (e.g. cleanup)
         }
         setError(`Error running Claude: ${err instanceof Error ? err.message : String(err)}`)
         setTimeout(() => {
