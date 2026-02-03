@@ -164,6 +164,7 @@ packages/ui/                           # UI package (new, rebuilt)
     components/
       MainLayout.tsx        # Main layout with sidebar and content
       RalphRunner.tsx       # Ralph session display with AgentView
+      RalphLoopPanel.tsx    # Full-featured Ralph loop panel with session history, controls, and status bar
       TaskChatPanel.tsx     # Task chat panel with AgentView
       TaskDetailPanel.tsx   # Task detail panel with inline editing (wraps TaskDetailsController)
       StatusBar.tsx         # Status bar with connection/session info

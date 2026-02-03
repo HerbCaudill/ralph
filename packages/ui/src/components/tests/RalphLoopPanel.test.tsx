@@ -1,0 +1,296 @@
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { render, screen, fireEvent } from "@testing-library/react"
+import { RalphLoopPanel } from "../RalphLoopPanel"
+import type { ChatEvent, SessionIndexEntry, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
+
+// Mock agent-view components
+vi.mock("@herbcaudill/agent-view", () => ({
+  AgentView: ({ events, isStreaming, header, footer, emptyState }: any) => (
+    <div data-testid="agent-view">
+      {header}
+      <div data-testid="events-container">
+        {events.length === 0 ? emptyState : (
+          events.map((e: ChatEvent, i: number) => (
+            <div key={i} data-testid={`event-${i}`}>{e.type}</div>
+          ))
+        )}
+      </div>
+      {isStreaming && <div data-testid="streaming-indicator">Streaming...</div>}
+      {footer}
+    </div>
+  ),
+  AgentViewProvider: ({ children }: any) => <div data-testid="agent-view-provider">{children}</div>,
+  AgentControls: ({ state, onPause, onResume, onStop, onNewSession, disabled }: any) => (
+    <div data-testid="agent-controls" data-state={state} data-disabled={disabled}>
+      <button onClick={onPause} data-testid="pause-btn">Pause</button>
+      <button onClick={onResume} data-testid="resume-btn">Resume</button>
+      <button onClick={onStop} data-testid="stop-btn">Stop</button>
+      <button onClick={onNewSession} data-testid="new-session-btn">New Session</button>
+    </div>
+  ),
+  SessionPicker: ({ sessions, currentSessionId, onSelectSession, disabled }: any) => (
+    <div data-testid="session-picker" data-disabled={disabled}>
+      <select
+        value={currentSessionId || ""}
+        onChange={(e) => onSelectSession(e.target.value)}
+        data-testid="session-select"
+      >
+        <option value="">Select session</option>
+        {sessions.map((s: SessionIndexEntry) => (
+          <option key={s.sessionId} value={s.sessionId}>
+            {s.firstUserMessage}
+          </option>
+        ))}
+      </select>
+    </div>
+  ),
+  ChatInput: ({ onSend, disabled, placeholder }: any) => (
+    <div data-testid="chat-input">
+      <input
+        data-testid="chat-input-field"
+        placeholder={placeholder}
+        disabled={disabled}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            onSend((e.target as HTMLInputElement).value)
+          }
+        }}
+      />
+    </div>
+  ),
+  TokenUsageDisplay: ({ tokenUsage }: any) => (
+    <div data-testid="token-usage">
+      Input: {tokenUsage.input} Output: {tokenUsage.output}
+    </div>
+  ),
+  ContextWindowProgress: ({ contextWindow }: any) => (
+    <div data-testid="context-window">
+      {contextWindow.used}/{contextWindow.max}
+    </div>
+  ),
+  useTokenUsage: () => ({ input: 1000, output: 500 }),
+  useContextWindow: () => ({ used: 50000, max: 200000 }),
+}))
+
+const mockSessions: SessionIndexEntry[] = [
+  {
+    sessionId: "session-1",
+    adapter: "claude",
+    firstMessageAt: Date.now() - 3600000, // 1 hour ago
+    lastMessageAt: Date.now() - 1800000, // 30 min ago
+    firstUserMessage: "First session message",
+    hasResponse: true,
+  },
+  {
+    sessionId: "session-2",
+    adapter: "claude",
+    firstMessageAt: Date.now() - 7200000, // 2 hours ago
+    lastMessageAt: Date.now() - 3600000, // 1 hour ago
+    firstUserMessage: "Second session message",
+    hasResponse: true,
+  },
+]
+
+const mockEvents: ChatEvent[] = [
+  { type: "user", role: "user", content: "Hello" } as ChatEvent,
+  {
+    type: "assistant",
+    role: "assistant",
+    content: [{ type: "text", text: "Hi there!" }],
+  } as ChatEvent,
+]
+
+const defaultProps = {
+  events: mockEvents,
+  isStreaming: false,
+  controlState: "idle" as ControlState,
+  connectionStatus: "connected" as ConnectionStatus,
+  sessionId: "session-1",
+  sessions: mockSessions,
+  error: null,
+  onSendMessage: vi.fn(),
+  onPause: vi.fn(),
+  onResume: vi.fn(),
+  onStop: vi.fn(),
+  onNewSession: vi.fn(),
+  onSelectSession: vi.fn(),
+}
+
+describe("RalphLoopPanel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe("header", () => {
+    it("renders session picker in header", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.getByTestId("session-picker")).toBeInTheDocument()
+    })
+
+    it("passes sessions to session picker", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      const select = screen.getByTestId("session-select")
+      expect(select.querySelectorAll("option")).toHaveLength(3) // 2 sessions + empty option
+    })
+
+    it("passes current session id to session picker", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      const select = screen.getByTestId("session-select") as HTMLSelectElement
+      expect(select.value).toBe("session-1")
+    })
+
+    it("calls onSelectSession when session is selected", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      const select = screen.getByTestId("session-select")
+      fireEvent.change(select, { target: { value: "session-2" } })
+      expect(defaultProps.onSelectSession).toHaveBeenCalledWith("session-2")
+    })
+
+    it("disables session picker when streaming", () => {
+      render(<RalphLoopPanel {...defaultProps} isStreaming={true} />)
+      expect(screen.getByTestId("session-picker")).toHaveAttribute("data-disabled", "true")
+    })
+
+    it("renders Ralph Loop title in header", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.getByText("Ralph Loop")).toBeInTheDocument()
+    })
+  })
+
+  describe("main body", () => {
+    it("renders AgentView with events", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.getByTestId("agent-view")).toBeInTheDocument()
+      expect(screen.getByTestId("event-0")).toBeInTheDocument()
+      expect(screen.getByTestId("event-1")).toBeInTheDocument()
+    })
+
+    it("shows streaming indicator when streaming", () => {
+      render(<RalphLoopPanel {...defaultProps} isStreaming={true} />)
+      expect(screen.getByTestId("streaming-indicator")).toBeInTheDocument()
+    })
+
+    it("shows empty state when no events", () => {
+      render(<RalphLoopPanel {...defaultProps} events={[]} />)
+      expect(screen.getByText(/start the ralph loop/i)).toBeInTheDocument()
+    })
+  })
+
+  describe("chat input", () => {
+    it("renders chat input", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.getByTestId("chat-input")).toBeInTheDocument()
+    })
+
+    it("enables chat input when viewing current session and not streaming", () => {
+      render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={false} />)
+      const input = screen.getByTestId("chat-input-field")
+      expect(input).not.toBeDisabled()
+    })
+
+    it("disables chat input when viewing historical session", () => {
+      render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={true} />)
+      const input = screen.getByTestId("chat-input-field")
+      expect(input).toBeDisabled()
+    })
+
+    it("disables chat input when streaming", () => {
+      render(<RalphLoopPanel {...defaultProps} isStreaming={true} />)
+      const input = screen.getByTestId("chat-input-field")
+      expect(input).toBeDisabled()
+    })
+
+    it("calls onSendMessage when enter is pressed", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      const input = screen.getByTestId("chat-input-field")
+      fireEvent.change(input, { target: { value: "test message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+      expect(defaultProps.onSendMessage).toHaveBeenCalledWith("test message")
+    })
+  })
+
+  describe("agent controls", () => {
+    it("renders agent controls", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.getByTestId("agent-controls")).toBeInTheDocument()
+    })
+
+    it("passes control state to agent controls", () => {
+      render(<RalphLoopPanel {...defaultProps} controlState="running" />)
+      expect(screen.getByTestId("agent-controls")).toHaveAttribute("data-state", "running")
+    })
+
+    it("calls onPause when pause button is clicked", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      fireEvent.click(screen.getByTestId("pause-btn"))
+      expect(defaultProps.onPause).toHaveBeenCalled()
+    })
+
+    it("calls onResume when resume button is clicked", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      fireEvent.click(screen.getByTestId("resume-btn"))
+      expect(defaultProps.onResume).toHaveBeenCalled()
+    })
+
+    it("calls onStop when stop button is clicked", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      fireEvent.click(screen.getByTestId("stop-btn"))
+      expect(defaultProps.onStop).toHaveBeenCalled()
+    })
+
+    it("calls onNewSession when new session button is clicked", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      fireEvent.click(screen.getByTestId("new-session-btn"))
+      expect(defaultProps.onNewSession).toHaveBeenCalled()
+    })
+
+    it("disables controls when disconnected", () => {
+      render(<RalphLoopPanel {...defaultProps} connectionStatus="disconnected" />)
+      expect(screen.getByTestId("agent-controls")).toHaveAttribute("data-disabled", "true")
+    })
+  })
+
+  describe("status bar footer", () => {
+    it("renders connection status indicator", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.getByText("connected")).toBeInTheDocument()
+    })
+
+    it("renders connecting status", () => {
+      render(<RalphLoopPanel {...defaultProps} connectionStatus="connecting" />)
+      expect(screen.getByText("connecting")).toBeInTheDocument()
+    })
+
+    it("renders disconnected status", () => {
+      render(<RalphLoopPanel {...defaultProps} connectionStatus="disconnected" />)
+      expect(screen.getByText("disconnected")).toBeInTheDocument()
+    })
+
+    it("renders token usage display", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.getByTestId("token-usage")).toBeInTheDocument()
+    })
+
+    it("renders context window progress", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.getByTestId("context-window")).toBeInTheDocument()
+    })
+
+    it("renders error when present", () => {
+      render(<RalphLoopPanel {...defaultProps} error="Connection failed" />)
+      expect(screen.getByText("Connection failed")).toBeInTheDocument()
+    })
+  })
+
+  describe("historical session viewing", () => {
+    it("shows indicator when viewing historical session", () => {
+      render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={true} />)
+      expect(screen.getByText(/viewing history/i)).toBeInTheDocument()
+    })
+
+    it("does not show indicator when viewing current session", () => {
+      render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={false} />)
+      expect(screen.queryByText(/viewing history/i)).not.toBeInTheDocument()
+    })
+  })
+})
