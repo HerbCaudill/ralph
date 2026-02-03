@@ -8,7 +8,8 @@ import {
 import type { ChatEvent, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
 import { useSessionTimer } from "@/hooks/useSessionTimer"
 import { ControlBar } from "@/components/controls/ControlBar"
-import { RepoBranch, RunDuration, StatusIndicator } from "@/components/layout"
+import { RepoBranch, RunDuration, SessionProgress, StatusIndicator } from "@/components/layout"
+import type { TaskCardTask } from "@herbcaudill/beads-view"
 
 /**
  * Footer status bar showing connection status, workspace path, current task, agent controls, token usage, and context window progress.
@@ -30,6 +31,8 @@ export function StatusBar({
   currentTaskTitle,
   workspaceName,
   branch,
+  tasks,
+  accentColor,
 }: StatusBarProps) {
   const tokenUsage = useTokenUsage(events)
   const contextWindow = useContextWindow(events)
@@ -99,8 +102,17 @@ export function StatusBar({
         {error && <span className="border-l border-border pl-3 text-red-500">{error}</span>}
       </div>
 
-      {/* Right section: session timer, token usage, and context window */}
+      {/* Right section: session progress, session timer, token usage, and context window */}
       <div className="flex items-center pr-4">
+        {/* Session progress - task completion progress bar */}
+        {tasks && tasks.length > 0 && (
+          <SessionProgress
+            tasks={tasks}
+            accentColor={accentColor}
+            className="border-r border-border pr-4"
+          />
+        )}
+
         {/* Session timer */}
         <RunDuration elapsedMs={elapsedMs} className="border-r border-border pr-4" />
 
@@ -153,4 +165,8 @@ export type StatusBarProps = {
   workspaceName?: string | null
   /** Git branch name. */
   branch?: string | null
+  /** Tasks for session progress calculation. */
+  tasks?: TaskCardTask[]
+  /** Accent color for the progress bar. */
+  accentColor?: string | null
 }

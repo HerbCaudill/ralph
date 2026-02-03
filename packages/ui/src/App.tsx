@@ -73,7 +73,7 @@ function AppContent() {
   useAccentColor(workspace?.accentColor)
 
   // Task state from beads-view
-  const { error: tasksError, refresh } = useTasks()
+  const { tasks, error: tasksError, refresh } = useTasks()
   const { selectedTask, openDialogById, closeDialog } = useTaskDialog({
     onTaskUpdated: refresh,
     onTaskDeleted: refresh,
@@ -317,6 +317,8 @@ function AppContent() {
         workspaceName={workspace?.name}
         workspacePath={workspace?.path}
         branch={workspace?.branch}
+        tasks={tasks}
+        accentColor={workspace?.accentColor}
       />
       {/* Task detail sheet overlay */}
       <TaskDetailSheet
