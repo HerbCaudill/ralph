@@ -23,6 +23,8 @@ export function StatusBar({
   onStop,
   currentTaskId,
   currentTaskTitle,
+  workspaceName,
+  branch,
 }: StatusBarProps) {
   const tokenUsage = useTokenUsage(events)
   const contextWindow = useContextWindow(events)
@@ -68,13 +70,22 @@ export function StatusBar({
           </span>
         )}
 
-        {/* Workspace path */}
-        {workspacePath && (
-          <span
-            className="max-w-[300px] truncate border-l border-border pl-3 font-mono text-[10px]"
-            title={workspacePath}
-          >
-            {workspacePath}
+        {/* Workspace name and branch */}
+        {(workspaceName || branch) && (
+          <span className="flex items-center gap-1.5 border-l border-border pl-3">
+            {workspaceName && (
+              <span
+                className="max-w-[150px] truncate text-[10px]"
+                title={workspacePath ?? undefined}
+              >
+                {workspaceName}
+              </span>
+            )}
+            {branch && (
+              <span className="text-[10px] text-muted-foreground" title={`Branch: ${branch}`}>
+                ({branch})
+              </span>
+            )}
           </span>
         )}
 
@@ -128,4 +139,8 @@ export type StatusBarProps = {
   currentTaskId?: string | null
   /** Title of the current task being worked on. */
   currentTaskTitle?: string | null
+  /** Workspace name. */
+  workspaceName?: string | null
+  /** Git branch name. */
+  branch?: string | null
 }

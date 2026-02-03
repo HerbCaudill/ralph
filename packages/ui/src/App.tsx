@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useRef, useState } from "react"
 import { MainLayout } from "./components/MainLayout"
 import { Header } from "./components/layout"
 import { RalphRunner } from "./components/RalphRunner"
@@ -9,6 +9,7 @@ import { useRalphLoop } from "./hooks/useRalphLoop"
 import { useAccentColor } from "./hooks/useAccentColor"
 import { useTaskChat } from "./hooks/useTaskChat"
 import { useCurrentTask } from "./hooks/useCurrentTask"
+import { useUiStore } from "./stores/uiStore"
 import {
   TaskSidebarController,
   BeadsViewProvider,
@@ -17,8 +18,12 @@ import {
   useTaskDialog,
   useBeadsViewStore,
   selectSelectedTaskId,
+  selectVisibleTaskIds,
   useWorkspace,
+  useBeadsHotkeys,
+  type SearchInputHandle,
 } from "@herbcaudill/beads-view"
+import { useAgentHotkeys, type ChatInputHandle } from "@herbcaudill/agent-view"
 
 // Configure API client for beads-view
 configureApiClient({ baseUrl: "" }) // Uses relative URLs, proxied by Vite
@@ -75,6 +80,78 @@ function AppContent() {
   // Selected task ID from store
   const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
   const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
+  const visibleTaskIds = useBeadsViewStore(selectVisibleTaskIds)
+
+  // Refs for hotkey targets
+  const searchInputRef = useRef<SearchInputHandle>(null)
+  const taskChatInputRef = useRef<ChatInputHandle>(null)
+
+  // Hotkey handlers - Agent actions
+  const handleFocusChatInput = useCallback(() => {
+    // Focus task chat or Ralph input depending on which is visible
+    if (selectedTaskId !== null) {
+      // Task detail is open, no chat visible
+      return
+    }
+    taskChatInputRef.current?.focus()
+  }, [selectedTaskId])
+
+  const handleToggleToolOutput = useCallback(() => {
+    useUiStore.getState().toggleToolOutput()
+  }, [])
+
+  const handleShowHotkeys = useCallback(() => {
+    setHotkeysDialogOpen(true)
+  }, [])
+
+  // Hotkey handlers - Beads actions
+  const handleFocusSearch = useCallback(() => {
+    searchInputRef.current?.focus()
+  }, [])
+
+  const handlePreviousTask = useCallback(() => {
+    if (visibleTaskIds.length === 0) return
+    const currentIndex =
+      selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : visibleTaskIds.length
+    const prevIndex = Math.max(currentIndex - 1, 0)
+    const prevId = visibleTaskIds[prevIndex]
+    if (prevId) setSelectedTaskId(prevId)
+  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
+
+  const handleNextTask = useCallback(() => {
+    if (visibleTaskIds.length === 0) return
+    const currentIndex = selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : -1
+    const nextIndex = Math.min(currentIndex + 1, visibleTaskIds.length - 1)
+    const nextId = visibleTaskIds[nextIndex]
+    if (nextId) setSelectedTaskId(nextId)
+  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
+
+  const handleOpenTask = useCallback(() => {
+    if (selectedTaskId) {
+      openDialogById(selectedTaskId)
+    }
+  }, [selectedTaskId, openDialogById])
+
+  // Register hotkeys
+  useAgentHotkeys({
+    handlers: {
+      focusChatInput: handleFocusChatInput,
+      toggleToolOutput: handleToggleToolOutput,
+      showHotkeys: handleShowHotkeys,
+      // Note: newSession and scrollToBottom not implemented yet
+    },
+  })
+
+  useBeadsHotkeys({
+    handlers: {
+      focusSearch: handleFocusSearch,
+      focusTaskInput: handleFocusSearch,
+      previousTask: handlePreviousTask,
+      nextTask: handleNextTask,
+      openTask: handleOpenTask,
+      showHotkeys: handleShowHotkeys,
+    },
+  })
 
   // Handle task click from sidebar
   const handleTaskClick = useCallback(
@@ -172,7 +249,11 @@ function AppContent() {
       />
       <MainLayout sidebar={sidebar} rightPanel={rightPanel}>
         {/* Tasks panel (center) */}
-        <TaskSidebarController onTaskClick={handleTaskClick} onOpenTask={handleTaskClick} />
+        <TaskSidebarController
+          searchInputRef={searchInputRef}
+          onTaskClick={handleTaskClick}
+          onOpenTask={handleTaskClick}
+        />
       </MainLayout>
       <StatusBar
         connectionStatus={connectionStatus}
@@ -184,6 +265,9 @@ function AppContent() {
         onStop={stop}
         currentTaskId={currentTaskId}
         currentTaskTitle={currentTaskTitle}
+        workspaceName={workspace?.name}
+        workspacePath={workspace?.path}
+        branch={workspace?.branch}
       />
     </div>
   )
