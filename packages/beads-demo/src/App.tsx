@@ -110,7 +110,6 @@ function AppContent() {
     <>
       <DemoShell
         title="Beads Task Manager Demo"
-        subtitle="Task management UI"
         headerActions={
           <WorkspaceSelector
             current={ws.current}
