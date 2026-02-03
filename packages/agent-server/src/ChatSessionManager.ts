@@ -111,6 +111,7 @@ export class ChatSessionManager extends EventEmitter {
         usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
         timestamp: Date.now(),
       },
+      messageQueue: [],
     }
 
     this.sessions.set(sessionId, session)
@@ -141,9 +142,23 @@ export class ChatSessionManager extends EventEmitter {
       throw new Error(`Session not found: ${sessionId}`)
     }
 
+    // If already processing, queue the message and return a promise
     if (session.status === "processing") {
-      throw new Error("Session is already processing a message")
+      return new Promise<void>((resolve, reject) => {
+        session.messageQueue.push({ message, options, resolve, reject })
+      })
     }
+
+    await this.processMessage(session, message, options)
+  }
+
+  /** Process a single message and then process any queued messages. */
+  private async processMessage(
+    session: SessionState,
+    message: string,
+    options: SendMessageOptions,
+  ): Promise<void> {
+    const sessionId = session.sessionId
 
     session.status = "processing"
     session.lastMessageAt = Date.now()
@@ -226,16 +241,43 @@ export class ChatSessionManager extends EventEmitter {
         adapter.on("error", onErr)
       })
 
-      session.status = "idle"
-      this.emit("status", sessionId, "idle")
+      // Process next queued message if any
+      await this.processQueue(session)
     } catch (err) {
       session.status = "error"
       this.emit("error", sessionId, err as Error)
       this.emit("status", sessionId, "error")
+
+      // Reject all queued messages on error
+      this.rejectQueue(session, err as Error)
     } finally {
       adapter.off("event", onEvent)
       adapter.off("error", onError)
     }
+  }
+
+  /** Process the next message in the queue, or set status to idle if empty. */
+  private async processQueue(session: SessionState): Promise<void> {
+    const next = session.messageQueue.shift()
+    if (next) {
+      try {
+        await this.processMessage(session, next.message, next.options)
+        next.resolve()
+      } catch (err) {
+        next.reject(err as Error)
+      }
+    } else {
+      session.status = "idle"
+      this.emit("status", session.sessionId, "idle")
+    }
+  }
+
+  /** Reject all queued messages with an error. */
+  private rejectQueue(session: SessionState, error: Error): void {
+    for (const queued of session.messageQueue) {
+      queued.reject(error)
+    }
+    session.messageQueue = []
   }
 
   /** Get info about a session. */
@@ -304,9 +346,18 @@ export class ChatSessionManager extends EventEmitter {
           usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
           timestamp: Date.now(),
         },
+        messageQueue: [],
       })
     }
   }
+}
+
+/** A queued message waiting to be processed. */
+interface QueuedMessage {
+  message: string
+  options: SendMessageOptions
+  resolve: () => void
+  reject: (error: Error) => void
 }
 
 /** Internal session state. */
@@ -319,4 +370,6 @@ interface SessionState {
   lastMessageAt?: number
   adapterInstance: AgentAdapter | null
   conversationContext: ConversationContext
+  /** Queue of messages waiting to be processed. */
+  messageQueue: QueuedMessage[]
 }

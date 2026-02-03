@@ -39,6 +39,45 @@ class StubAdapter extends AgentAdapter {
   }
 }
 
+/** A stub adapter with configurable delay to test concurrent message handling. */
+class DelayedStubAdapter extends AgentAdapter {
+  private delay: number
+  messagesReceived: string[] = []
+
+  constructor(delay = 50) {
+    super()
+    this.delay = delay
+  }
+
+  getInfo(): AgentInfo {
+    return {
+      id: "delayed-stub",
+      name: "Delayed Stub",
+      features: { streaming: false, tools: false, pauseResume: false, systemPrompt: false },
+    }
+  }
+
+  async isAvailable() {
+    return true
+  }
+
+  async start(_options?: AgentStartOptions) {
+    this.setStatus("running")
+  }
+
+  send(message: AgentMessage) {
+    if (message.type === "user_message") {
+      this.messagesReceived.push(message.content)
+    }
+    // Simulate processing delay before going idle
+    setTimeout(() => this.setStatus("idle"), this.delay)
+  }
+
+  async stop() {
+    this.setStatus("stopped")
+  }
+}
+
 describe("ChatSessionManager", () => {
   let storageDir: string
 
@@ -176,6 +215,72 @@ describe("ChatSessionManager", () => {
       const restoredInfo = manager2.getSessionInfo(sessionId)
       expect(restoredInfo).not.toBeNull()
       expect(restoredInfo!.status).toBe("idle")
+    })
+  })
+
+  describe("message queueing", () => {
+    let delayedAdapter: DelayedStubAdapter
+
+    beforeEach(() => {
+      delayedAdapter = new DelayedStubAdapter(50)
+      registerAdapter({
+        id: "delayed-stub",
+        name: "Delayed Stub",
+        factory: () => delayedAdapter,
+      })
+    })
+
+    it("queues messages sent while agent is processing", async () => {
+      const manager = new ChatSessionManager({ storageDir })
+      const { sessionId } = await manager.createSession({ adapter: "delayed-stub" })
+
+      // Start first message (takes 50ms to process)
+      const firstPromise = manager.sendMessage(sessionId, "First message")
+
+      // Immediately send second message while first is processing
+      const secondPromise = manager.sendMessage(sessionId, "Second message")
+
+      // Both should eventually resolve without throwing
+      await expect(Promise.all([firstPromise, secondPromise])).resolves.not.toThrow()
+
+      // Verify both messages were persisted
+      const events = await manager.getPersister().readEvents(sessionId)
+      const userEvents = events.filter(e => e.type === "user_message")
+      expect(userEvents).toHaveLength(2)
+      expect(userEvents[0].message).toBe("First message")
+      expect(userEvents[1].message).toBe("Second message")
+    })
+
+    it("processes queued messages in order", async () => {
+      const manager = new ChatSessionManager({ storageDir })
+      const { sessionId } = await manager.createSession({ adapter: "delayed-stub" })
+
+      // Send multiple messages in rapid succession
+      const promises = [
+        manager.sendMessage(sessionId, "First"),
+        manager.sendMessage(sessionId, "Second"),
+        manager.sendMessage(sessionId, "Third"),
+      ]
+
+      await Promise.all(promises)
+
+      // All messages should have been received by the adapter in order
+      expect(delayedAdapter.messagesReceived).toEqual(["First", "Second", "Third"])
+    })
+
+    it("returns to idle status after processing queued messages", async () => {
+      const manager = new ChatSessionManager({ storageDir })
+      const { sessionId } = await manager.createSession({ adapter: "delayed-stub" })
+
+      const promises = [
+        manager.sendMessage(sessionId, "First"),
+        manager.sendMessage(sessionId, "Second"),
+      ]
+
+      await Promise.all(promises)
+
+      const info = manager.getSessionInfo(sessionId)
+      expect(info!.status).toBe("idle")
     })
   })
 })
