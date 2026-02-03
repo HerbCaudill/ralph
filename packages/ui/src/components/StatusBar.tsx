@@ -8,7 +8,7 @@ import {
 import type { ChatEvent, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
 import { useSessionTimer } from "@/hooks/useSessionTimer"
 import { ControlBar } from "@/components/controls/ControlBar"
-import { StatusIndicator } from "@/components/layout/StatusIndicator"
+import { RunDuration, StatusIndicator } from "@/components/layout"
 
 /**
  * Footer status bar showing connection status, workspace path, current task, agent controls, token usage, and context window progress.
@@ -33,7 +33,7 @@ export function StatusBar({
 }: StatusBarProps) {
   const tokenUsage = useTokenUsage(events)
   const contextWindow = useContextWindow(events)
-  const { formatted: sessionDuration } = useSessionTimer(events)
+  const { elapsedMs } = useSessionTimer(events)
 
   return (
     <div className="flex w-full items-center justify-between">
@@ -111,11 +111,7 @@ export function StatusBar({
       {/* Right section: session timer, token usage, and context window */}
       <div className="flex items-center pr-4">
         {/* Session timer */}
-        {sessionDuration !== "00:00" && (
-          <span className="border-r border-border pr-4 font-mono text-[10px]">
-            {sessionDuration}
-          </span>
-        )}
+        <RunDuration elapsedMs={elapsedMs} className="border-r border-border pr-4" />
 
         {/* Token usage */}
         {(tokenUsage.input > 0 || tokenUsage.output > 0) && (
