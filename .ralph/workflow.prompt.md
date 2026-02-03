@@ -28,7 +28,7 @@ When choosing which task to work on:
 
 Before completing a task:
 
-1. Run `pnpm test:all --changed` to verify everything works.
+1. Run `pnpm test:all` again to verify everything works.
 2. Use the **write-docs** agent to update CLAUDE.md or README.md with relevant changes.
 3. Run `pnpm format` to format code.
 4. Commit and push your changes. If you come across unrelated changes, probably the user or another agent is working in the codebase at the same time. Be careful just to commit the changes you made.
