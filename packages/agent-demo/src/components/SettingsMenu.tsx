@@ -45,6 +45,7 @@ export function SettingsMenu({
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Settings"
+        aria-label="Settings"
         className="flex items-center justify-center rounded-md border border-border p-1.5 transition-colors hover:bg-muted"
       >
         <IconSettings size={16} stroke={1.5} />

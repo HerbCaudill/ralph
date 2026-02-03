@@ -58,7 +58,7 @@ export function AgentView({
       <div className={cx("flex h-full flex-col", className)}>
         {header}
         <AutoScroll
-          ariaLabel="Agent events"
+          ariaLabel="Agent Events"
           dependencies={[events]}
           emptyState={emptyState}
           autoScrollEnabled={isStreaming}

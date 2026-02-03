@@ -11,7 +11,7 @@ test.describe("Agent Chat Demo", () => {
   })
 
   test("user can type and send a message", async ({ page }) => {
-    await expect(page.getByText("Connected")).toBeVisible()
+    await expect(page.getByText("connected")).toBeVisible()
 
     const input = page.getByPlaceholder("Send a message…")
     await expect(input).toBeVisible()
@@ -52,7 +52,7 @@ test.describe("Agent Chat Demo", () => {
   })
 
   test("session persists across page reload", async ({ page }) => {
-    await expect(page.getByText("Connected")).toBeVisible()
+    await expect(page.getByText("connected")).toBeVisible()
 
     const input = page.getByPlaceholder("Send a message…")
     await expect(input).toBeVisible()
@@ -74,7 +74,7 @@ test.describe("Agent Chat Demo", () => {
     await page.reload()
 
     // Wait for reconnection
-    await expect(page.getByText("Connected")).toBeVisible()
+    await expect(page.getByText("connected")).toBeVisible()
 
     // Previous events should still be visible after reload
     await expect(eventLog).toContainText(prompt)
@@ -82,7 +82,7 @@ test.describe("Agent Chat Demo", () => {
   })
 
   test("input receives focus after clicking New session button", async ({ page }) => {
-    await expect(page.getByText("Connected")).toBeVisible()
+    await expect(page.getByText("connected")).toBeVisible()
 
     const input = page.getByPlaceholder("Send a message…")
     await expect(input).toBeVisible()
