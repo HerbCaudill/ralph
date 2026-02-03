@@ -75,7 +75,14 @@ export function createBeadsViewStore(
         clearTaskSearchQuery: () => set({ taskSearchQuery: "" }),
         setSelectedTaskId: id => set({ selectedTaskId: id }),
         clearSelectedTaskId: () => set({ selectedTaskId: null }),
-        setVisibleTaskIds: ids => set({ visibleTaskIds: ids }),
+        setVisibleTaskIds: ids => {
+          const current = get().visibleTaskIds
+          // Only update if the arrays actually differ to prevent infinite loops
+          if (current.length === ids.length && current.every((id, i) => id === ids[i])) {
+            return
+          }
+          set({ visibleTaskIds: ids })
+        },
         setClosedTimeFilter: filter => set({ closedTimeFilter: filter }),
         setStatusCollapsedState: state => set({ statusCollapsedState: state }),
         toggleStatusGroup: group =>
