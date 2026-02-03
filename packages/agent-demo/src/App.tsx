@@ -51,6 +51,8 @@ export function App() {
   const handleNewSession = useCallback(() => {
     if (!isStreaming) {
       newSession()
+      // Focus the chat input after creating a new session
+      chatInputRef.current?.focus()
     }
   }, [isStreaming, newSession])
 
@@ -89,7 +91,7 @@ export function App() {
         headerActions={
           <div className="flex items-center gap-2">
             <button
-              onClick={newSession}
+              onClick={handleNewSession}
               disabled={isStreaming}
               title="New session"
               className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-30"

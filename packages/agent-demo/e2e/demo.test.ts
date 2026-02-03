@@ -80,4 +80,25 @@ test.describe("Agent Chat Demo", () => {
     await expect(eventLog).toContainText(prompt)
     await expect(eventLog).toContainText("Berlin")
   })
+
+  test("input receives focus after clicking New session button", async ({ page }) => {
+    await expect(page.getByText("Connected")).toBeVisible()
+
+    const input = page.getByPlaceholder("Send a message…")
+    await expect(input).toBeVisible()
+
+    // Click on something else first to ensure input doesn't have focus
+    await page.getByRole("button", { name: "Settings" }).click()
+    // Close the menu by pressing Escape
+    await page.keyboard.press("Escape")
+
+    // Verify input is not focused
+    await expect(input).not.toBeFocused()
+
+    // Click the New session button
+    await page.getByRole("button", { name: "New session" }).click()
+
+    // Input should be focused after clicking New session
+    await expect(input).toBeFocused()
+  })
 })
