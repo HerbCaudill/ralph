@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   IconCircle,
   IconCircleDot,
@@ -78,6 +78,12 @@ export function TaskDetails({
   // Title textarea ref for auto-sizing
   const titleTextareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Description textarea ref for auto-focus
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Track whether description is in edit mode (click-to-edit)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+
   // Handles Enter and Escape keys in the label input field
   const handleLabelInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -106,6 +112,11 @@ export function TaskDetails({
       titleTextareaRef.current.style.height = `${titleTextareaRef.current.scrollHeight}px`
     }
   }, [formValues.title, open])
+
+  // Reset description editing state when task changes or dialog closes
+  useEffect(() => {
+    setIsEditingDescription(false)
+  }, [task?.id, open])
 
   // Handle global keyboard shortcuts
   useEffect(() => {
@@ -214,12 +225,31 @@ export function TaskDetails({
               onChange: onUpdateDescription,
               placeholder: "Add description...",
             })
-          : <Textarea
+          : isEditingDescription || !formValues.description ?
+            <Textarea
+              ref={descriptionTextareaRef}
               value={formValues.description}
               onChange={e => onUpdateDescription(e.target.value)}
+              onBlur={() => setIsEditingDescription(false)}
+              onKeyDown={e => {
+                if (e.key === "Escape") {
+                  e.stopPropagation()
+                  setIsEditingDescription(false)
+                }
+              }}
               placeholder="Add description..."
               className="min-h-[100px]"
+              autoFocus={isEditingDescription}
             />
+          : <button
+              type="button"
+              onClick={() => setIsEditingDescription(true)}
+              className="text-muted-foreground hover:bg-muted/50 w-full cursor-pointer rounded-md p-2 text-left text-sm transition-colors"
+            >
+              <MarkdownContent className="text-muted-foreground text-sm">
+                {formValues.description}
+              </MarkdownContent>
+            </button>
           }
         </div>
 

@@ -603,7 +603,31 @@ describe("TaskDetailsDialog", () => {
   })
 
   describe("description editing", () => {
-    it("shows description input with value", async () => {
+    it("shows description as markdown when not editing", async () => {
+      const taskWithMarkdown: TaskCardTask = {
+        id: "test-123",
+        title: "Test Task",
+        description: "This is **bold** and *italic*",
+        status: "open",
+        priority: 2,
+      }
+
+      await renderAndWait(
+        <TaskDetailsController
+          task={taskWithMarkdown}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      )
+
+      // Description should be rendered as markdown, not a textarea
+      expect(screen.queryByPlaceholderText("Add description...")).not.toBeInTheDocument()
+      // The markdown content should be visible
+      expect(screen.getByText("bold")).toBeInTheDocument()
+    })
+
+    it("switches to edit mode when description is clicked", async () => {
       await renderAndWait(
         <TaskDetailsController
           task={mockTask}
@@ -613,7 +637,14 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      const descInput = screen.getByPlaceholderText("Add description...")
+      // Click on the description text to enter edit mode
+      const descriptionText = screen.getByText("This is a test description")
+      act(() => {
+        fireEvent.click(descriptionText)
+      })
+
+      // Now the textarea should appear
+      const descInput = await screen.findByPlaceholderText("Add description...")
       expect(descInput).toBeInTheDocument()
       expect(descInput).toHaveValue("This is a test description")
     })
@@ -649,10 +680,17 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      // Enable fake timers after render
+      // Click on description to enter edit mode
+      const descriptionText = screen.getByText("This is a test description")
+      act(() => {
+        fireEvent.click(descriptionText)
+      })
+
+      const descInput = await screen.findByPlaceholderText("Add description...")
+
+      // Enable fake timers after async operations complete
       vi.useFakeTimers()
 
-      const descInput = screen.getByPlaceholderText("Add description...")
       typeInInput(descInput, "Updated description")
 
       // Advance past 500ms debounce
