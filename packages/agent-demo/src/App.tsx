@@ -8,13 +8,14 @@ import {
   SessionPicker,
   listSessions,
   ChatInput,
+  useAdapterInfo,
+  formatModelName,
   type ChatInputHandle,
 } from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
 import { SettingsMenu } from "./components/SettingsMenu"
 import { HotkeysDialog } from "./components/HotkeysDialog"
 import { StatusBar } from "./components/StatusBar"
-import { useAdapterInfo, formatModelName } from "./hooks/useAdapterVersion"
 
 export function App() {
   const { state, actions, agentType } = useAgentChat("claude")

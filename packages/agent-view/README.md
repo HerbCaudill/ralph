@@ -78,9 +78,19 @@ import {
 
 ## Utilities
 
-| Function             | Description                                                       |
-| -------------------- | ----------------------------------------------------------------- |
-| `formatRelativeTime` | Format a timestamp as a relative time string (e.g. "2 hours ago") |
+| Function             | Description                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| `formatRelativeTime` | Format a timestamp as a relative time string (e.g. "2 hours ago")                             |
+| `formatModelName`    | Format a Claude model ID for display (e.g. `"claude-sonnet-4-20250514"` becomes `"Sonnet 4"`) |
+
+## Hooks
+
+| Hook                | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+| `useAgentChat`      | WebSocket connection and chat session management            |
+| `useAdapterInfo`    | Fetch adapter info (version, model) from `/api/adapters`    |
+| `useAdapterVersion` | Convenience hook returning just the adapter version string  |
+| `useAgentHotkeys`   | Register global keyboard listeners for agent hotkey actions |
 
 ## Context
 

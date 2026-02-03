@@ -33,6 +33,16 @@ The `hotkeys/` directory provides a hotkey registration system for host applicat
 
 Host applications provide handler callbacks; the hook handles platform-aware key matching and input element filtering.
 
+## Adapter info hooks
+
+Hooks for fetching adapter version and model information from the `/api/adapters` endpoint.
+
+**Exports** (from `@herbcaudill/agent-view`):
+
+- `useAdapterInfo(agentType, serverUrl?)` — Fetches full adapter info (version, model) for the given agent type
+- `useAdapterVersion(agentType, serverUrl?)` — Convenience hook returning just the version string
+- `formatModelName(modelId)` — Formats a Claude model ID for display (e.g., `"claude-sonnet-4-20250514"` becomes `"Sonnet 4"`)
+
 ## Effect Schema cheat sheet
 
 Effect Schema is used for the canonical event schema (single source of truth for types + runtime validation). Import from `effect/Schema`:

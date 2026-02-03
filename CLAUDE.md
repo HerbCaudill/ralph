@@ -110,13 +110,16 @@ packages/agent-view/                   # Agent-view package (chat UI components,
     components/             # Agent chat UI components (AgentView, MessageBlock, ToolUseBlock, etc.)
     context/                # React context providers
     events/                 # Canonical event schema (Effect Schema)
-    hooks/                  # React hooks (useAgentChat, etc.)
+    hooks/
+      useAgentChat.ts       # WebSocket connection and chat session management
+      useAdapterInfo.ts     # useAdapterInfo, useAdapterVersion hooks for /api/adapters endpoint
     hotkeys/
       config.ts             # Hotkey config parser, types (AgentHotkeyAction, HotkeyConfig, AgentHotkeysConfig)
       hotkeys.json          # Hotkey definitions (key bindings, descriptions, categories)
       useHotkeys.ts         # useAgentHotkeys hook, getHotkeyDisplayString utility
       index.ts              # Barrel exports
-    lib/                    # Utility functions
+    lib/
+      formatModelName.ts    # Formats Claude model IDs for display (e.g., "claude-sonnet-4-20250514" → "Sonnet 4")
     tests/                  # Test files
 
 packages/beads-server/                 # Beads server package
@@ -175,8 +178,6 @@ packages/agent-demo/              # Agent chat demo
       HotkeysDialog.tsx     # Dialog showing available keyboard shortcuts (triggered by showHotkeys action)
       StatusBar.tsx         # Connection status, streaming indicator, agent type, model name, session ID, token usage display
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
-    hooks/
-      useAdapterVersion.ts  # useAdapterInfo hook (version + model from /api/adapters), formatModelName utility
 
 packages/beads-demo/                   # Beads task manager demo
   src/

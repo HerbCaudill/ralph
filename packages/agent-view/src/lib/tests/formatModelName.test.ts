@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatModelName } from "../useAdapterVersion"
+import { formatModelName } from "../formatModelName"
 
 describe("formatModelName", () => {
   it("returns undefined for undefined input", () => {

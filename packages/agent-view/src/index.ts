@@ -65,6 +65,7 @@ export type {
   AgentChatState,
   AgentChatActions,
 } from "./hooks/useAgentChat"
+export { useAdapterInfo, useAdapterVersion } from "./hooks/useAdapterInfo"
 export { useAutoScroll } from "./hooks/useAutoScroll"
 export type { UseAutoScrollOptions, UseAutoScrollReturn } from "./hooks/useAutoScroll"
 export { useHighlightedCode } from "./hooks/useHighlightedCode"
@@ -83,6 +84,7 @@ export {
 export type { SessionIndexEntry } from "./lib/sessionIndex"
 
 // Lib: Utilities
+export { formatModelName } from "./lib/formatModelName"
 export { formatRelativeTime } from "./lib/formatRelativeTime"
 export { cx, cn, stripAnsi, hasAnsiCodes, stripTaskPrefix, toRelativePath } from "./lib/utils"
 export { buildToolResultsMap } from "./lib/buildToolResultsMap"
