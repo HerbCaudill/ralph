@@ -16,10 +16,16 @@ export type WorkspaceState = {
   error: string | null
 }
 
+export type UseWorkspaceOptions = {
+  /** Callback fired immediately when a workspace switch starts, before the API call. */
+  onSwitchStart?: () => void
+}
+
 /**
  * Hook that fetches workspace info and provides workspace switching.
  */
-export function useWorkspace() {
+export function useWorkspace(options: UseWorkspaceOptions = {}) {
+  const { onSwitchStart } = options
   const [current, setCurrent] = useState<Workspace | null>(null)
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -61,6 +67,7 @@ export function useWorkspace() {
     async (path: string) => {
       try {
         setIsLoading(true)
+        onSwitchStart?.()
         const res = await fetch("/api/workspace/switch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -74,7 +81,7 @@ export function useWorkspace() {
         setIsLoading(false)
       }
     },
-    [fetchWorkspace],
+    [fetchWorkspace, onSwitchStart],
   )
 
   useEffect(() => {

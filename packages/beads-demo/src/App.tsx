@@ -26,7 +26,8 @@ export function App() {
 }
 
 function AppContent() {
-  const { state: ws, actions: wsActions } = useWorkspace()
+  const clearTasks = useBeadsViewStore(state => state.clearTasks)
+  const { state: ws, actions: wsActions } = useWorkspace({ onSwitchStart: clearTasks })
   const { tasks, isLoading, error, refresh } = useTasks({ all: true })
   const dialog = useTaskDialog({
     onTaskUpdated: refresh,
@@ -123,6 +124,7 @@ function AppContent() {
             searchInputRef={searchInputRef}
             onTaskClick={handleTaskClick}
             onOpenTask={handleTaskClick}
+            isLoadingExternal={ws.isLoading}
           />
         }
         sidebarWidth={340}

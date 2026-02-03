@@ -184,7 +184,11 @@ describe("useWorkspace", () => {
         // Refresh after switch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ ok: true, workspace: { ...mockWorkspace, path: "/home/user/other", name: "other" } }),
+          json: () =>
+            Promise.resolve({
+              ok: true,
+              workspace: { ...mockWorkspace, path: "/home/user/other", name: "other" },
+            }),
         })
 
       const { result } = renderHook(() => useWorkspace())
@@ -202,6 +206,55 @@ describe("useWorkspace", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: "/home/user/other" }),
       })
+    })
+
+    it("calls onSwitchStart callback immediately when switching workspaces", async () => {
+      const onSwitchStart = vi.fn()
+
+      mockFetch
+        // Initial fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+        })
+        // Switch call - use a delayed promise to verify onSwitchStart is called before fetch completes
+        .mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              // Verify callback was already called before fetch completes
+              expect(onSwitchStart).toHaveBeenCalledTimes(1)
+              resolve({
+                ok: true,
+                json: () => Promise.resolve({ ok: true }),
+              })
+            }),
+        )
+        // Refresh after switch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ok: true,
+              workspace: { ...mockWorkspace, path: "/home/user/other", name: "other" },
+            }),
+        })
+
+      const { result } = renderHook(() => useWorkspace({ onSwitchStart }))
+
+      await waitFor(() => {
+        expect(result.current.state.isLoading).toBe(false)
+      })
+
+      await act(async () => {
+        await result.current.actions.switchWorkspace("/home/user/other")
+      })
+
+      // Callback should have been called exactly once
+      expect(onSwitchStart).toHaveBeenCalledTimes(1)
     })
   })
 })

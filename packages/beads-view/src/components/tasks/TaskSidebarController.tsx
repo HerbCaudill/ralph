@@ -33,8 +33,11 @@ export function TaskSidebarController({
   taskIdsWithSessions,
   /** Whether to show progress (host decides if Ralph is running). */
   isRunning = false,
+  /** External loading state (e.g., when workspace is switching). */
+  isLoadingExternal = false,
 }: TaskSidebarControllerProps) {
-  const { tasks, isLoading } = useTasks({ all: true })
+  const { tasks, isLoading: isLoadingTasks } = useTasks({ all: true })
+  const isLoading = isLoadingTasks || isLoadingExternal
   const searchQuery = useBeadsViewStore(selectTaskSearchQuery)
   const closedTimeFilter = useBeadsViewStore(selectClosedTimeFilter)
   const setClosedTimeFilter = useBeadsViewStore(state => state.setClosedTimeFilter)
@@ -97,4 +100,6 @@ export interface TaskSidebarControllerProps {
   taskIdsWithSessions?: string[]
   /** Whether to show progress (host decides if Ralph is running). */
   isRunning?: boolean
+  /** External loading state (e.g., when workspace is switching). */
+  isLoadingExternal?: boolean
 }
