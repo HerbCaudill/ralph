@@ -53,7 +53,7 @@ pnpm workspace with these main packages:
 - **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Generic agent chat server with JSONL persistence, multi-adapter support (Claude, Codex), session-based WebSocket protocol, and no built-in system prompt. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/ralph-server/`** (`@herbcaudill/ralph-server`) - Ralph-specific server for managing AI coding agent sessions, worktrees, and task chats. Depends on `@herbcaudill/agent-server` for adapters and utilities. Includes RalphManager, RalphRegistry, WorktreeManager, SessionRunner, TaskChatManager, and workspace context modules. Default port 4245 (configurable via `RALPH_SERVER_PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) - Functional chat demo connecting to agent-server via session-based WebSocket protocol (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents, session persistence across page reloads via localStorage session index (falls back to `/api/sessions/latest`), session switching via SessionPicker and `useAgentChat.restoreSession`, displays model name in status bar via `/api/adapters` endpoint
-- **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) - Functional task manager demo using beads-view controller components (TaskSidebarController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Vite proxy forwards /api requests to the beads-server
+- **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) - Functional task manager demo using beads-view controller components (TaskSidebarController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Registers handlers for all beads-view hotkey actions (focusSearch, focusTaskInput, previousTask, nextTask, openTask, showHotkeys) and includes a HotkeysDialog component. Vite proxy forwards /api requests to the beads-server
 
 ### Project structure
 
@@ -172,6 +172,7 @@ packages/beads-demo/                   # Beads task manager demo
       WorkspaceSelector.tsx # Dropdown button for switching workspaces
       TaskDetailPanel.tsx   # Panel displaying task details with inline editing (wraps TaskDetailsController)
       TaskStatusBar.tsx     # Connection status, workspace path, task counts (open/closed/total)
+      HotkeysDialog.tsx     # Dialog showing available keyboard shortcuts (triggered by showHotkeys action)
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
 
 packages/ui/                        # UI package
