@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { MainLayout } from "./components/MainLayout"
 import { RalphRunner } from "./components/RalphRunner"
 import { TaskChatPanel } from "./components/TaskChatPanel"
+import { TaskDetailPanel } from "./components/TaskDetailPanel"
 import { StatusBar } from "./components/StatusBar"
 import { useRalphLoop } from "./hooks/useRalphLoop"
 import {
@@ -10,6 +11,8 @@ import {
   configureApiClient,
   useTasks,
   useTaskDialog,
+  useBeadsViewStore,
+  selectSelectedTaskId,
 } from "@herbcaudill/beads-view"
 
 // Configure API client for beads-view
@@ -43,15 +46,23 @@ function AppContent() {
   } = useRalphLoop()
 
   // Task state from beads-view
-  const { error: tasksError } = useTasks()
-  const { selectedTask, openDialogById, closeDialog } = useTaskDialog()
+  const { error: tasksError, refresh } = useTasks()
+  const { selectedTask, openDialogById, closeDialog } = useTaskDialog({
+    onTaskUpdated: refresh,
+    onTaskDeleted: refresh,
+  })
+
+  // Selected task ID from store
+  const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
+  const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
 
   // Handle task click from sidebar
   const handleTaskClick = useCallback(
     (taskId: string) => {
+      setSelectedTaskId(taskId)
       openDialogById(taskId)
     },
-    [openDialogById],
+    [openDialogById, setSelectedTaskId],
   )
 
   // Handle Ralph message send
@@ -74,17 +85,34 @@ function AppContent() {
     // TODO: Connect to task-specific chat functionality
   }, [])
 
-  // Task chat panel (left side)
-  const sidebar = (
-    <TaskChatPanel
-      taskId={selectedTask?.id ?? null}
-      taskTitle={selectedTask?.title}
-      events={[]} // TODO: Connect to task-specific chat events
-      isStreaming={false}
-      onSendMessage={handleTaskChatSend}
-      onClose={closeDialog}
-    />
-  )
+  // Handle closing the task detail panel
+  const handleCloseDetail = useCallback(() => {
+    setSelectedTaskId(null)
+    closeDialog()
+  }, [setSelectedTaskId, closeDialog])
+
+  // Handle task changes (updates/deletes)
+  const handleChanged = useCallback(() => {
+    void refresh()
+  }, [refresh])
+
+  // Left sidebar: show TaskDetailPanel when a task is selected, otherwise TaskChatPanel
+  const sidebar =
+    selectedTaskId !== null ?
+      <TaskDetailPanel
+        task={selectedTask}
+        open={selectedTaskId !== null}
+        onClose={handleCloseDetail}
+        onChanged={handleChanged}
+      />
+    : <TaskChatPanel
+        taskId={null}
+        taskTitle={undefined}
+        events={[]} // TODO: Connect to task-specific chat events
+        isStreaming={false}
+        onSendMessage={handleTaskChatSend}
+        onClose={closeDialog}
+      />
 
   // Ralph loop panel (right side)
   const rightPanel = (

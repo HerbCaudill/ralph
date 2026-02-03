@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { App } from "../../App"
 
@@ -17,17 +17,42 @@ vi.mock("../../hooks/useRalphLoop", () => ({
   }),
 }))
 
+// Track selected task ID for testing
+let mockSelectedTaskId: string | null = null
+const mockSetSelectedTaskId = vi.fn((id: string | null) => {
+  mockSelectedTaskId = id
+})
+
 vi.mock("@herbcaudill/beads-view", () => ({
   TaskSidebarController: () => <div data-testid="task-sidebar">Tasks Sidebar</div>,
   BeadsViewProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   configureApiClient: vi.fn(),
   useTasks: () => ({ error: null, refresh: vi.fn() }),
   useTaskDialog: () => ({
-    selectedTask: null,
-    isOpen: false,
+    selectedTask:
+      mockSelectedTaskId ?
+        {
+          id: mockSelectedTaskId,
+          title: "Test Task",
+          description: "Test description",
+          status: "open",
+          issue_type: "task",
+          priority: 2,
+        }
+      : null,
+    isOpen: mockSelectedTaskId !== null,
     openDialogById: vi.fn(),
     closeDialog: vi.fn(),
   }),
+  useBeadsViewStore: (selector: (state: unknown) => unknown) => {
+    // Mock store with selectedTaskId state
+    const state = {
+      selectedTaskId: mockSelectedTaskId,
+      setSelectedTaskId: mockSetSelectedTaskId,
+    }
+    return selector(state)
+  },
+  selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
 }))
 
 vi.mock("@herbcaudill/agent-view", () => ({
@@ -41,7 +66,30 @@ vi.mock("@herbcaudill/agent-view", () => ({
   ContextWindowProgress: () => <div data-testid="context-progress">Context Progress</div>,
 }))
 
+// Mock TaskDetailPanel to verify it gets rendered
+vi.mock("../TaskDetailPanel", () => ({
+  TaskDetailPanel: ({
+    task,
+    open,
+  }: {
+    task: { id: string; title: string } | null
+    open: boolean
+  }) => {
+    if (!open || !task) return <div data-testid="task-detail-empty">No task selected</div>
+    return (
+      <div data-testid="task-detail-panel">
+        <span data-testid="task-detail-title">{task.title}</span>
+      </div>
+    )
+  },
+}))
+
 describe("App", () => {
+  beforeEach(() => {
+    // Reset selected task before each test
+    mockSelectedTaskId = null
+  })
+
   describe("panel layout order", () => {
     it("renders panels in the correct order: task chat (left), tasks (center), ralph loop (right)", () => {
       const { container } = render(<App />)
@@ -74,6 +122,35 @@ describe("App", () => {
 
       // With no task selected, TaskChatPanel returns null, so we should have just the right panel
       expect(asides.length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  describe("TaskDetailPanel rendering", () => {
+    it("renders TaskDetailPanel in the left sidebar when a task is selected", () => {
+      // Set a selected task
+      mockSelectedTaskId = "task-123"
+
+      render(<App />)
+
+      // TaskDetailPanel should be rendered with the task
+      expect(screen.getByTestId("task-detail-panel")).toBeInTheDocument()
+      expect(screen.getByTestId("task-detail-title")).toHaveTextContent("Test Task")
+    })
+
+    it("renders TaskChatPanel when no task is selected", () => {
+      // Ensure no task is selected
+      mockSelectedTaskId = null
+
+      const { container } = render(<App />)
+
+      // TaskDetailPanel should NOT be rendered when no task is selected
+      expect(screen.queryByTestId("task-detail-panel")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("task-detail-empty")).not.toBeInTheDocument()
+
+      // Left sidebar should be empty (TaskChatPanel returns null when no task)
+      // The aside with border-r class is the left sidebar
+      const leftSidebar = container.querySelector("aside.border-r")
+      expect(leftSidebar).toBeInTheDocument()
     })
   })
 })
