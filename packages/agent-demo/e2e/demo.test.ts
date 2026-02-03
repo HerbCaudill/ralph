@@ -1,6 +1,20 @@
 import { test, expect } from "@playwright/test"
 
 test.describe("Agent Chat Demo", () => {
+  // Clear all server-side sessions before each test to ensure test isolation.
+  // When using reuseExistingServer, sessions persist across tests on the server side.
+  test.beforeEach(async ({ request }) => {
+    // Fetch all sessions and delete them
+    const sessionsResponse = await request.get("/api/sessions")
+    const { sessions } = (await sessionsResponse.json()) as {
+      sessions: Array<{ sessionId: string }>
+    }
+
+    for (const session of sessions) {
+      await request.delete(`/api/sessions/${session.sessionId}`)
+    }
+  })
+
   test("user can type and send a message", async ({ page }) => {
     await page.goto("/")
     await expect(page.getByText("Connected")).toBeVisible()
@@ -22,6 +36,10 @@ test.describe("Agent Chat Demo", () => {
     // The agent's response should include "Madrid"
     await expect(page.getByRole("log", { name: "Agent Events" })).toContainText("Madrid")
 
+    // Wait for streaming to complete before sending the next message
+    // The spinner should disappear when streaming is done
+    await expect(page.locator(".animate-spin")).toBeHidden({ timeout: 30000 })
+
     const prompt2 = "what about France"
 
     await input.fill(prompt2)
@@ -34,7 +52,9 @@ test.describe("Agent Chat Demo", () => {
     await expect(input).toHaveValue("")
 
     // The agent's response should include "Paris"
-    await expect(page.getByRole("log", { name: "Agent Events" })).toContainText("Paris")
+    await expect(page.getByRole("log", { name: "Agent Events" })).toContainText("Paris", {
+      timeout: 30000,
+    })
   })
 
   test("session persists across page reload", async ({ page }) => {

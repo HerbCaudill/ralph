@@ -307,6 +307,24 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
             return
           }
 
+          // For user_message events, deduplicate based on message content
+          // (the client adds the message optimistically, then the server echoes it back)
+          if (event.type === "user_message") {
+            setEvents(prev => {
+              const messageText = (event as ChatEvent & { message?: string }).message
+              const alreadyExists = prev.some(
+                e =>
+                  e.type === "user_message" &&
+                  (e as ChatEvent & { message?: string }).message === messageText,
+              )
+              if (alreadyExists) {
+                return prev
+              }
+              return [...prev, event]
+            })
+            return
+          }
+
           setEvents(prev => [...prev, event])
           return
         }
