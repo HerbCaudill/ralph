@@ -36,21 +36,18 @@ export function TaskStatusBar({ workspace, tasks, isLoading, error }: TaskStatus
 
         {/* Workspace path */}
         {workspace?.path && (
-          <>
-            <span className="text-muted-foreground/60">|</span>
-            <span className="max-w-[300px] truncate font-mono text-[10px]">{workspace.path}</span>
-          </>
+          <span className="max-w-[300px] truncate border-l border-border pl-3 font-mono text-[10px]">
+            {workspace.path}
+          </span>
         )}
       </div>
 
       {/* Task counts */}
       {totalCount > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <span>{openCount} open</span>
-          <span className="text-muted-foreground/60">|</span>
-          <span>{closedCount} closed</span>
-          <span className="text-muted-foreground/60">|</span>
-          <span>{totalCount} total</span>
+          <span className="border-l border-border pl-3">{closedCount} closed</span>
+          <span className="border-l border-border pl-3">{totalCount} total</span>
         </div>
       )}
     </div>
