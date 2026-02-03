@@ -24,15 +24,21 @@ function App() {
 
 ```tsx
 import { AgentView } from "@herbcaudill/agent-view"
+import { useState } from "react"
 
 function App() {
+  const [showToolOutput, setShowToolOutput] = useState(true)
+
   return (
     <AgentView
       events={events}
       isStreaming={false}
       context={{
         isDark: true,
-        toolOutput: { showOutput: true },
+        toolOutput: {
+          isVisible: showToolOutput,
+          onToggle: () => setShowToolOutput(v => !v),
+        },
         workspacePath: "/my/project",
       }}
       header={<h2>Session log</h2>}
@@ -102,7 +108,7 @@ import { AgentViewProvider } from "@herbcaudill/agent-view"
 // ...
 
 return (
-  <AgentViewProvider value={{ isDark: true, toolOutput: { showOutput: true } }}>
+  <AgentViewProvider value={{ isDark: true, toolOutput: { isVisible: true, onToggle: () => {} } }}>
     <EventList events={events} />
   </AgentViewProvider>
 )
@@ -110,13 +116,13 @@ return (
 
 ### Context options
 
-| Property        | Type                      | Description                              |
-| --------------- | ------------------------- | ---------------------------------------- |
-| `isDark`        | `boolean`                 | Dark mode flag                           |
-| `toolOutput`    | `{ showOutput: boolean }` | Whether to show tool output content      |
-| `workspacePath` | `string \| null`          | Base path for relative path display      |
-| `linkHandlers`  | `AgentViewLinkHandlers`   | Click handlers for task/session links    |
-| `tasks`         | `AgentViewTask[]`         | Task list for lifecycle event enrichment |
+| Property        | Type                         | Description                                          |
+| --------------- | ---------------------------- | ---------------------------------------------------- |
+| `isDark`        | `boolean`                    | Dark mode flag                                       |
+| `toolOutput`    | `AgentViewToolOutputControl` | Visibility state and toggle callback for tool output |
+| `workspacePath` | `string \| null`             | Base path for relative path display                  |
+| `linkHandlers`  | `AgentViewLinkHandlers`      | Click handlers for task/session links                |
+| `tasks`         | `AgentViewTask[]`            | Task list for lifecycle event enrichment             |
 
 ## Agent adapters
 
