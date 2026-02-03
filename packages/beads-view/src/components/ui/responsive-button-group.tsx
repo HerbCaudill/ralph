@@ -27,7 +27,10 @@ export function ResponsiveButtonGroup({
   ...props
 }: React.ComponentProps<typeof ButtonGroup>) {
   return (
-    <div className="@container min-w-0 shrink">
+    // The container must fill available width for container queries to measure available space.
+    // Without flex-1, the container would only be as wide as its content (due to ButtonGroup's w-fit),
+    // and container queries would measure content width instead of available width.
+    <div className="@container min-w-0 flex-1">
       <ButtonGroup
         className={cn(
           "bg-background h-8 overflow-hidden",
