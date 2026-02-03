@@ -5,13 +5,14 @@ import { DemoShell } from "./components/DemoShell"
 import { SettingsMenu } from "./components/SettingsMenu"
 import { ChatInput } from "./components/ChatInput"
 import { StatusBar } from "./components/StatusBar"
-import { useAdapterVersion } from "./hooks/useAdapterVersion"
+import { useAdapterInfo, formatModelName } from "./hooks/useAdapterVersion"
 
 export function App() {
   const { state, actions, agentType } = useAgentChat("claude")
   const { events, isStreaming, connectionStatus, error, sessionId } = state
   const { sendMessage, setAgentType, newSession } = actions
-  const agentVersion = useAdapterVersion(agentType)
+  const { version: agentVersion, model } = useAdapterInfo(agentType)
+  const modelName = formatModelName(model)
   const [showToolOutput, setShowToolOutput] = useState(true)
 
   const isConnected = connectionStatus === "connected"
@@ -43,6 +44,7 @@ export function App() {
           isStreaming={isStreaming}
           agentType={agentType}
           agentVersion={agentVersion}
+          modelName={modelName}
           events={events}
           error={error}
           sessionId={sessionId}
