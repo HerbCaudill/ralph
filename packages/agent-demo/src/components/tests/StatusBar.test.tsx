@@ -92,6 +92,7 @@ describe("StatusBar", () => {
   describe("session ID", () => {
     it("shows truncated session ID when provided", () => {
       render(<StatusBar {...defaultProps} sessionId="abc12345-6789-def0-1234-567890abcdef" />)
+      expect(screen.getByText(/Session/)).toBeInTheDocument()
       expect(screen.getByText("abc12345")).toBeInTheDocument()
     })
 

@@ -31,35 +31,37 @@ export function DemoShell({
   statusBar,
 }: DemoShellProps) {
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-3">
-          <h1 className="font-sans text-base font-semibold">{title}</h1>
-          {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}
+    <div className="flex h-screen justify-center bg-muted/30">
+      <div className="flex w-full max-w-5xl flex-col overflow-hidden border-x border-border bg-background">
+        {/* Header */}
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+          <div className="flex items-center gap-3">
+            <h1 className="font-sans text-base font-semibold">{title}</h1>
+            {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}
+          </div>
+          {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
+        </header>
+
+        {/* Body: sidebar + main */}
+        <div className="flex min-h-0 flex-1">
+          {sidebar && (
+            <aside
+              className="shrink-0 overflow-y-auto border-r border-border"
+              style={{ width: sidebarWidth }}
+            >
+              {sidebar}
+            </aside>
+          )}
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
         </div>
-        {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
-      </header>
 
-      {/* Body: sidebar + main */}
-      <div className="flex min-h-0 flex-1">
-        {sidebar && (
-          <aside
-            className="shrink-0 overflow-y-auto border-r border-border"
-            style={{ width: sidebarWidth }}
-          >
-            {sidebar}
-          </aside>
+        {/* Status bar */}
+        {statusBar && (
+          <footer className="flex h-8 shrink-0 items-center border-t border-border text-xs text-muted-foreground">
+            {statusBar}
+          </footer>
         )}
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
       </div>
-
-      {/* Status bar */}
-      {statusBar && (
-        <footer className="flex h-8 shrink-0 items-center border-t border-border text-xs text-muted-foreground">
-          {statusBar}
-        </footer>
-      )}
     </div>
   )
 }

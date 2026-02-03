@@ -28,7 +28,7 @@ export function App() {
 function AppContent() {
   const clearTasks = useBeadsViewStore(state => state.clearTasks)
   const { state: ws, actions: wsActions } = useWorkspace({ onSwitchStart: clearTasks })
-  const { tasks, isLoading, error, refresh } = useTasks({ all: true })
+  const { isLoading, error, refresh } = useTasks({ all: true })
   const dialog = useTaskDialog({
     onTaskUpdated: refresh,
     onTaskDeleted: refresh,
@@ -127,9 +127,7 @@ function AppContent() {
           />
         }
         sidebarWidth={340}
-        statusBar={
-          <TaskStatusBar workspace={ws.current} tasks={tasks} isLoading={isLoading} error={error} />
-        }
+        statusBar={<TaskStatusBar workspace={ws.current} isLoading={isLoading} error={error} />}
       >
         <TaskDetailPanel
           task={dialog.selectedTask}

@@ -1,24 +1,13 @@
 import { IconPlugConnected, IconPlugConnectedX, IconLoader2 } from "@tabler/icons-react"
-import type { Workspace, TaskCardTask } from "@herbcaudill/beads-view"
-
-export type TaskStatusBarProps = {
-  workspace: Workspace | null
-  tasks: TaskCardTask[]
-  isLoading: boolean
-  error: string | null
-}
+import type { Workspace } from "@herbcaudill/beads-view"
 
 /**
- * Status bar showing workspace info and task counts.
+ * Status bar showing connection status and workspace path.
  */
-export function TaskStatusBar({ workspace, tasks, isLoading, error }: TaskStatusBarProps) {
-  const openCount = tasks.filter(t => t.status === "open" || t.status === "in_progress").length
-  const closedCount = tasks.filter(t => t.status === "closed").length
-  const totalCount = tasks.length
-
+export function TaskStatusBar({ workspace, isLoading, error }: TaskStatusBarProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
+    <div className="flex w-full items-center justify-between">
+      <div className="flex items-center gap-3 pl-4">
         {/* Connection status */}
         <span className="flex items-center gap-1">
           {error ?
@@ -32,23 +21,20 @@ export function TaskStatusBar({ workspace, tasks, isLoading, error }: TaskStatus
             "Loading…"
           : "Connected"}
         </span>
-
-        {/* Workspace path */}
-        {workspace?.path && (
-          <span className="max-w-[300px] truncate border-l border-border pl-3 font-mono text-[10px]">
-            {workspace.path}
-          </span>
-        )}
       </div>
 
-      {/* Task counts */}
-      {totalCount > 0 && (
-        <div className="flex items-center gap-3">
-          <span>{openCount} open</span>
-          <span className="border-l border-border pl-3">{closedCount} closed</span>
-          <span className="border-l border-border pl-3">{totalCount} total</span>
+      {/* Workspace path - right aligned */}
+      {workspace?.path && (
+        <div className="flex items-center pr-4">
+          <span className="max-w-[300px] truncate font-mono text-[10px]">{workspace.path}</span>
         </div>
       )}
     </div>
   )
+}
+
+export type TaskStatusBarProps = {
+  workspace: Workspace | null
+  isLoading: boolean
+  error: string | null
 }
