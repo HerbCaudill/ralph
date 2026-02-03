@@ -25,7 +25,7 @@ export function StatusBar({
 
   return (
     <div className="flex w-full items-center justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pl-4">
         {/* Connection indicator */}
         <span className="flex items-center gap-1">
           {connectionStatus === "connected" ?
@@ -58,7 +58,7 @@ export function StatusBar({
       </div>
 
       {/* Token usage & context window */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 pr-4">
         {(tokenUsage.input > 0 || tokenUsage.output > 0) && (
           <TokenUsageDisplay tokenUsage={tokenUsage} />
         )}

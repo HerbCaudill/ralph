@@ -56,7 +56,7 @@ export function DemoShell({
 
       {/* Status bar */}
       {statusBar && (
-        <footer className="flex h-8 shrink-0 items-center border-t border-border px-4 text-xs text-muted-foreground">
+        <footer className="flex h-8 shrink-0 items-center border-t border-border text-xs text-muted-foreground">
           {statusBar}
         </footer>
       )}
