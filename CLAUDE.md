@@ -197,6 +197,19 @@ packages/beads-demo/                   # Beads task manager demo
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
 
 packages/ui/                        # UI package
+  src/
+    assets/
+      logo.svg              # Ralph robot icon (uses currentColor for theming)
+    components/
+      layout/               # Layout components
+        Header.tsx          # App header (logo, workspace selector, settings)
+        Logo.tsx            # Ralph logo component
+        SettingsDropdown.tsx # Settings dropdown (placeholder)
+        index.ts            # Barrel exports
+    lib/
+      getContrastingColor.ts # WCAG-compliant foreground color calculator
+      utils.ts              # Utility functions (cn for class merging)
+    constants.ts            # UI constants (DEFAULT_ACCENT_COLOR, storage keys)
   server/                   # Express backend
     index.ts                # Server entry + REST API + WebSocket (imports task routes from beads-view)
     RalphManager.ts         # Re-export from @herbcaudill/agent-server

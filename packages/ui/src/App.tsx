@@ -1,5 +1,6 @@
 import { useCallback } from "react"
 import { MainLayout } from "./components/MainLayout"
+import { Header } from "./components/layout"
 import { RalphRunner } from "./components/RalphRunner"
 import { TaskChatPanel } from "./components/TaskChatPanel"
 import { TaskDetailPanel } from "./components/TaskDetailPanel"
@@ -13,6 +14,7 @@ import {
   useTaskDialog,
   useBeadsViewStore,
   selectSelectedTaskId,
+  useWorkspace,
 } from "@herbcaudill/beads-view"
 
 // Configure API client for beads-view
@@ -44,6 +46,12 @@ function AppContent() {
     stop,
     sendMessage,
   } = useRalphLoop()
+
+  // Workspace state from beads-view
+  const {
+    state: { current: workspace, workspaces, isLoading: isWorkspaceLoading },
+    actions: { switchWorkspace },
+  } = useWorkspace()
 
   // Task state from beads-view
   const { error: tasksError, refresh } = useTasks()
@@ -130,6 +138,13 @@ function AppContent() {
 
   return (
     <div className="flex h-screen flex-col">
+      <Header
+        accentColor={workspace?.accentColor ?? null}
+        workspace={workspace}
+        workspaces={workspaces}
+        isWorkspaceLoading={isWorkspaceLoading}
+        onWorkspaceSwitch={switchWorkspace}
+      />
       <MainLayout sidebar={sidebar} rightPanel={rightPanel}>
         {/* Tasks panel (center) */}
         <TaskSidebarController onTaskClick={handleTaskClick} onOpenTask={handleTaskClick} />

@@ -53,6 +53,19 @@ vi.mock("@herbcaudill/beads-view", () => ({
     return selector(state)
   },
   selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
+  useWorkspace: () => ({
+    state: {
+      current: { path: "/test/workspace", name: "Test Workspace", accentColor: "#007ACC" },
+      workspaces: [],
+      isLoading: false,
+      error: null,
+    },
+    actions: {
+      switchWorkspace: vi.fn(),
+      refresh: vi.fn(),
+    },
+  }),
+  WorkspaceSelector: () => <div data-testid="workspace-selector">Workspace Selector</div>,
 }))
 
 vi.mock("@herbcaudill/agent-view", () => ({
