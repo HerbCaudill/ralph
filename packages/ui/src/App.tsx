@@ -7,6 +7,7 @@ import { TaskDetailPanel } from "./components/TaskDetailPanel"
 import { StatusBar } from "./components/StatusBar"
 import { useRalphLoop } from "./hooks/useRalphLoop"
 import { useAccentColor } from "./hooks/useAccentColor"
+import { useTaskChat } from "./hooks/useTaskChat"
 import {
   TaskSidebarController,
   BeadsViewProvider,
@@ -47,6 +48,9 @@ function AppContent() {
     stop,
     sendMessage,
   } = useRalphLoop()
+
+  // Task chat state from agent-server
+  const { state: taskChatState, actions: taskChatActions } = useTaskChat()
 
   // Workspace state from beads-view
   const {
@@ -92,10 +96,13 @@ function AppContent() {
     setTimeout(start, 100)
   }, [stop, start])
 
-  // Handle task chat message send (placeholder - will be connected to task-specific chat)
-  const handleTaskChatSend = useCallback((_message: string) => {
-    // TODO: Connect to task-specific chat functionality
-  }, [])
+  // Handle task chat message send
+  const handleTaskChatSend = useCallback(
+    (message: string) => {
+      taskChatActions.sendMessage(message)
+    },
+    [taskChatActions],
+  )
 
   // Handle closing the task detail panel
   const handleCloseDetail = useCallback(() => {
@@ -120,8 +127,8 @@ function AppContent() {
     : <TaskChatPanel
         taskId={null}
         taskTitle={undefined}
-        events={[]} // TODO: Connect to task-specific chat events
-        isStreaming={false}
+        events={taskChatState.events}
+        isStreaming={taskChatState.isStreaming}
         onSendMessage={handleTaskChatSend}
         onClose={closeDialog}
       />
