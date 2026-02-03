@@ -169,10 +169,11 @@ packages/ralph-server/                 # Ralph-specific server package
 
 packages/agent-demo/              # Agent chat demo
   src/
-    App.tsx                 # Main app with AgentView, session management, agent selector, SessionPicker for switching sessions
+    App.tsx                 # Main app with AgentView, session management, agent selector, SessionPicker, hotkey handlers
     components/
       AgentSelector.tsx     # Toggle buttons for Claude Code / Codex selection
-      ChatInput.tsx         # Auto-resizing textarea with send button (Enter to send, Shift+Enter for newline)
+      ChatInput.tsx         # Auto-resizing textarea with send button, forwardRef for focus (ChatInputHandle)
+      HotkeysDialog.tsx     # Dialog showing available keyboard shortcuts (triggered by showHotkeys action)
       StatusBar.tsx         # Connection status, streaming indicator, agent type, model name, session ID, token usage display
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
     hooks/

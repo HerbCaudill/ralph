@@ -1,6 +1,8 @@
+import { createRef } from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
 import { ChatInput } from ".././ChatInput"
+import type { ChatInputHandle } from ".././ChatInput"
 
 describe("ChatInput", () => {
   describe("rendering", () => {
@@ -160,6 +162,28 @@ describe("ChatInput", () => {
       fireEvent.keyDown(textarea, { key: "Enter" })
 
       expect(handleSend).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("ref forwarding", () => {
+    it("exposes a focus method via ref", () => {
+      const ref = createRef<ChatInputHandle>()
+      render(<ChatInput ref={ref} onSend={() => {}} />)
+      expect(ref.current).not.toBeNull()
+      expect(typeof ref.current!.focus).toBe("function")
+    })
+
+    it("focus() moves focus to the textarea", () => {
+      const ref = createRef<ChatInputHandle>()
+      render(<ChatInput ref={ref} onSend={() => {}} />)
+      const textarea = screen.getByRole("textbox")
+
+      // blur it first so we can verify the imperative focus call works
+      textarea.blur()
+      expect(textarea).not.toHaveFocus()
+
+      ref.current!.focus()
+      expect(textarea).toHaveFocus()
     })
   })
 

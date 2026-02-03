@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { IconSend2 } from "@tabler/icons-react"
+
+export type ChatInputHandle = {
+  focus: () => void
+}
 
 export type ChatInputProps = {
   onSend: (message: string) => void
@@ -11,13 +15,16 @@ export type ChatInputProps = {
  * Chat input with auto-resizing textarea and send button.
  * Submits on Enter (Shift+Enter for newline).
  */
-export function ChatInput({
-  onSend,
-  disabled = false,
-  placeholder = "Send a message…",
-}: ChatInputProps) {
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
+  { onSend, disabled = false, placeholder = "Send a message…" },
+  ref,
+) {
   const [value, setValue] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useImperativeHandle(ref, () => ({
+    focus: () => textareaRef.current?.focus(),
+  }))
 
   /** Focus the textarea on mount and whenever it becomes enabled. */
   useEffect(() => {
@@ -80,4 +87,4 @@ export function ChatInput({
       </button>
     </div>
   )
-}
+})
