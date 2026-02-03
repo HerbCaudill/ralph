@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { ChatInput } from ".././ChatInput"
+import { ChatInput, type ChatInputHandle } from ".././ChatInput"
+import { createRef } from "react"
 
 const TEST_STORAGE_KEY = "test-chat-input-draft"
 
@@ -270,6 +271,230 @@ describe("ChatInput", () => {
       render(<ChatInput />)
 
       const input = screen.getByRole("textbox")
+      expect(input).toHaveValue("")
+    })
+  })
+
+  describe("message history navigation", () => {
+    it("stores submitted messages in history", () => {
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox")
+
+      // Send first message
+      fireEvent.change(input, { target: { value: "First message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Send second message
+      fireEvent.change(input, { target: { value: "Second message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Press ArrowUp to recall last message
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("Second message")
+
+      // Press ArrowUp again to recall first message
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("First message")
+    })
+
+    it("navigates forward through history with ArrowDown", () => {
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox")
+
+      // Send two messages
+      fireEvent.change(input, { target: { value: "First message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+      fireEvent.change(input, { target: { value: "Second message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Navigate back through history
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("First message")
+
+      // Navigate forward
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+      expect(input).toHaveValue("Second message")
+    })
+
+    it("returns to empty input when navigating past newest message", () => {
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox")
+
+      // Send a message
+      fireEvent.change(input, { target: { value: "Test message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Navigate to history
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("Test message")
+
+      // Navigate forward past newest - should return to empty
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+      expect(input).toHaveValue("")
+    })
+
+    it("preserves current draft when navigating history", () => {
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox") as HTMLTextAreaElement
+
+      // Send a message
+      fireEvent.change(input, { target: { value: "Sent message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Start typing a draft
+      fireEvent.change(input, { target: { value: "My draft" } })
+
+      // Position cursor at start (like pressing Home key)
+      input.setSelectionRange(0, 0)
+
+      // Navigate to history
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("Sent message")
+
+      // Navigate back to current
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+      expect(input).toHaveValue("My draft")
+    })
+
+    it("does not navigate history when input is empty and no history exists", () => {
+      render(<ChatInput />)
+      const input = screen.getByRole("textbox")
+
+      // Try to navigate with no history
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("")
+
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+      expect(input).toHaveValue("")
+    })
+
+    it("stops at oldest message when pressing ArrowUp", () => {
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox")
+
+      // Send a message
+      fireEvent.change(input, { target: { value: "Only message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Navigate to history
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("Only message")
+
+      // Try to navigate past oldest
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("Only message")
+    })
+
+    it("restores draft on Escape during history navigation", () => {
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox") as HTMLTextAreaElement
+
+      // Send a message
+      fireEvent.change(input, { target: { value: "History message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Start typing a draft
+      fireEvent.change(input, { target: { value: "Current draft" } })
+
+      // Position cursor at start (like pressing Home key)
+      input.setSelectionRange(0, 0)
+
+      // Navigate to history
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("History message")
+
+      // Press Escape to exit history and restore draft
+      fireEvent.keyDown(input, { key: "Escape" })
+      expect(input).toHaveValue("Current draft")
+    })
+
+    it("clears input on Escape when not navigating history and input has content", () => {
+      render(<ChatInput />)
+      const input = screen.getByRole("textbox")
+
+      // Type something
+      fireEvent.change(input, { target: { value: "Some text" } })
+
+      // Press Escape - should clear
+      fireEvent.keyDown(input, { key: "Escape" })
+      expect(input).toHaveValue("")
+    })
+
+    it("only responds to ArrowUp when cursor is at start of input", () => {
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox") as HTMLTextAreaElement
+
+      // Send a message
+      fireEvent.change(input, { target: { value: "History message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Type new content and position cursor in middle
+      fireEvent.change(input, { target: { value: "Some text" } })
+      // Simulate cursor in middle of text
+      Object.defineProperty(input, "selectionStart", { value: 5, writable: true })
+      Object.defineProperty(input, "selectionEnd", { value: 5, writable: true })
+
+      // ArrowUp should not navigate history when cursor is not at start
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("Some text")
+    })
+
+    it("ArrowDown navigates forward in history regardless of cursor position", () => {
+      // Terminal-like behavior: once in history mode, ArrowDown always navigates
+      const handleSubmit = vi.fn()
+      render(<ChatInput onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox") as HTMLTextAreaElement
+
+      // Send two messages
+      fireEvent.change(input, { target: { value: "First" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+      fireEvent.change(input, { target: { value: "Second" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Navigate to first message
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("First")
+
+      // Position cursor at middle
+      input.setSelectionRange(2, 2)
+
+      // ArrowDown still navigates forward because we're in history mode
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+      expect(input).toHaveValue("Second")
+    })
+
+    it("clears history when clearHistory is called on ref", () => {
+      const handleSubmit = vi.fn()
+      const ref = createRef<ChatInputHandle>()
+      render(<ChatInput ref={ref} onSubmit={handleSubmit} />)
+      const input = screen.getByRole("textbox")
+
+      // Send a message
+      fireEvent.change(input, { target: { value: "Message" } })
+      fireEvent.keyDown(input, { key: "Enter" })
+
+      // Verify message is in history
+      fireEvent.keyDown(input, { key: "ArrowUp" })
+      expect(input).toHaveValue("Message")
+
+      // Clear history via ref - use type assertion since method will be added
+      const handle = ref.current as ChatInputHandle & { clearHistory?: () => void }
+      handle.clearHistory?.()
+
+      // Navigate back to empty
+      fireEvent.keyDown(input, { key: "ArrowDown" })
+
+      // Try to navigate history again - should be empty
+      fireEvent.keyDown(input, { key: "ArrowUp" })
       expect(input).toHaveValue("")
     })
   })

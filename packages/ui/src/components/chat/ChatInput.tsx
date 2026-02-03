@@ -14,6 +14,7 @@ import { TASK_CHAT_INPUT_DRAFT_STORAGE_KEY } from "@/constants"
 /**
  * Text area input for sending messages to a running agent.
  * Submits on Enter key (Shift+Enter for new line), clears after send.
+ * Supports message history navigation with ArrowUp/ArrowDown keys (like terminal).
  */
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
   {
@@ -44,6 +45,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Message history state - stores all submitted messages
+  const [history, setHistory] = useState<string[]>([])
+  // Current position in history (-1 means not navigating, at the draft)
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  // Draft message saved when starting history navigation
+  const [savedDraft, setSavedDraft] = useState("")
+
   /** Persist message when it changes. */
   useEffect(() => {
     if (useStore) {
@@ -59,10 +67,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     }
   }, [message, storageKey, useStore, setTaskChatInputDraft])
 
-  /** Expose focus method to parent components via ref. */
+  /** Expose focus and clearHistory methods to parent components via ref. */
   useImperativeHandle(ref, () => ({
     focus: () => {
       textareaRef.current?.focus()
+    },
+    clearHistory: () => {
+      setHistory([])
+      setHistoryIndex(-1)
+      setSavedDraft("")
     },
   }))
 
@@ -79,6 +92,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       const trimmedMessage = message.trim()
       if (!trimmedMessage || disabled) return
 
+      // Add message to history
+      setHistory(prev => [...prev, trimmedMessage])
+
+      // Reset history navigation state
+      setHistoryIndex(-1)
+      setSavedDraft("")
+
       onSubmit?.(trimmedMessage)
       setMessage("")
     },
@@ -86,19 +106,84 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   )
 
   /**
-   * Handle keydown events on the textarea, specifically Enter key for submission.
+   * Handle keydown events on the textarea.
+   * - Enter: Submit message
+   * - Shift+Enter: New line
+   * - ArrowUp: Navigate to previous message in history
+   * - ArrowDown: Navigate to next message in history
+   * - Escape: Clear input or exit history navigation
    */
   const handleKeyDown = useCallback(
     (
       /** Keyboard event from the textarea */
       e: KeyboardEvent<HTMLTextAreaElement>,
     ) => {
+      const textarea = textareaRef.current
+      const inputValue = textarea?.value ?? ""
+      const cursorAtStart = textarea?.selectionStart === 0 && textarea?.selectionEnd === 0
+
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault()
         handleSubmit()
+        return
+      }
+
+      // ArrowUp: Navigate to older messages in history
+      // - When not navigating (historyIndex === -1): only trigger if cursor is at start
+      // - When already navigating: always allow moving to older messages
+      if (e.key === "ArrowUp" && history.length > 0) {
+        const canNavigate = historyIndex !== -1 || cursorAtStart
+        if (canNavigate) {
+          e.preventDefault()
+
+          if (historyIndex === -1) {
+            // Starting navigation - save current input as draft
+            setSavedDraft(inputValue)
+            // Go to most recent message
+            setHistoryIndex(history.length - 1)
+            setMessage(history[history.length - 1])
+          } else if (historyIndex > 0) {
+            // Move to older message
+            setHistoryIndex(historyIndex - 1)
+            setMessage(history[historyIndex - 1])
+          }
+          // If at oldest message, stay there
+          return
+        }
+      }
+
+      // ArrowDown: Navigate to newer messages in history
+      // - Only active when navigating history (historyIndex !== -1)
+      // - When not navigating and cursor at end, no action needed
+      if (e.key === "ArrowDown" && historyIndex !== -1) {
+        e.preventDefault()
+
+        if (historyIndex < history.length - 1) {
+          // Move to newer message
+          setHistoryIndex(historyIndex + 1)
+          setMessage(history[historyIndex + 1])
+        } else {
+          // At newest message, return to draft
+          setHistoryIndex(-1)
+          setMessage(savedDraft)
+        }
+        return
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault()
+        if (historyIndex !== -1) {
+          // Exit history navigation and restore draft
+          setHistoryIndex(-1)
+          setMessage(savedDraft)
+        } else if (inputValue) {
+          // Clear input when not navigating history
+          setMessage("")
+        }
+        return
       }
     },
-    [handleSubmit],
+    [handleSubmit, history, historyIndex, savedDraft],
   )
 
   return (
@@ -154,4 +239,6 @@ export type ChatInputProps = {
 export type ChatInputHandle = {
   /** Focus the input element */
   focus: () => void
+  /** Clear the message history */
+  clearHistory: () => void
 }
