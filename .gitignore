@@ -13,5 +13,4 @@
 **/playwright-report
 **/storybook-static
 **/test-results
-.agent-sessions
 benchmark-results

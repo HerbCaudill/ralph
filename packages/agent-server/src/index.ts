@@ -1,11 +1,11 @@
 import express, { type Express } from "express"
 import { createServer, type Server } from "node:http"
-import { join } from "node:path"
 import { WebSocketServer, type WebSocket } from "ws"
 import type { AgentServerConfig } from "./types.js"
 import { ChatSessionManager } from "./ChatSessionManager.js"
 import { registerRoutes } from "./routes.js"
 import { handleWsConnection, type WsClient } from "./wsHandler.js"
+import { getDefaultStorageDir } from "./lib/getDefaultStorageDir.js"
 
 // ── Type exports ─────────────────────────────────────────────────────
 
@@ -98,6 +98,7 @@ export { createEventStream } from "./lib/createEventStream.js"
 export { createMessageStream } from "./lib/createMessageStream.js"
 export { loadClaudeMd, loadClaudeMdSync, CLAUDE_MD_FILENAME } from "./lib/loadClaudeMd.js"
 export type { LoadClaudeMdOptions } from "./lib/loadClaudeMd.js"
+export { getDefaultStorageDir } from "./lib/getDefaultStorageDir.js"
 
 // ── Server ───────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ export async function startServer(config: AgentServerConfig): Promise<{
   const wss = new WebSocketServer({ server, path: "/ws" })
 
   // Session manager
-  const storageDir = config.storageDir ?? join(config.cwd ?? process.cwd(), ".agent-sessions")
+  const storageDir = config.storageDir ?? getDefaultStorageDir()
   const sessionManager = new ChatSessionManager({
     storageDir,
     cwd: config.cwd,
