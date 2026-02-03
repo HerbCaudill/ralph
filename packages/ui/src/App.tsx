@@ -8,6 +8,7 @@ import { StatusBar } from "./components/StatusBar"
 import { useRalphLoop } from "./hooks/useRalphLoop"
 import { useAccentColor } from "./hooks/useAccentColor"
 import { useTaskChat } from "./hooks/useTaskChat"
+import { useCurrentTask } from "./hooks/useCurrentTask"
 import {
   TaskSidebarController,
   BeadsViewProvider,
@@ -51,6 +52,9 @@ function AppContent() {
 
   // Task chat state from agent-server
   const { state: taskChatState, actions: taskChatActions } = useTaskChat()
+
+  // Current task from Ralph events
+  const { taskId: currentTaskId, taskTitle: currentTaskTitle } = useCurrentTask(events)
 
   // Workspace state from beads-view
   const {
@@ -104,6 +108,14 @@ function AppContent() {
     [taskChatActions],
   )
 
+  // Handle task chat session select
+  const handleTaskChatSessionSelect = useCallback(
+    (sessionId: string) => {
+      taskChatActions.restoreSession(sessionId)
+    },
+    [taskChatActions],
+  )
+
   // Handle closing the task detail panel
   const handleCloseDetail = useCallback(() => {
     setSelectedTaskId(null)
@@ -129,7 +141,9 @@ function AppContent() {
         taskTitle={undefined}
         events={taskChatState.events}
         isStreaming={taskChatState.isStreaming}
+        sessionId={taskChatState.sessionId}
         onSendMessage={handleTaskChatSend}
+        onSessionSelect={handleTaskChatSessionSelect}
         onClose={closeDialog}
       />
 
@@ -160,7 +174,17 @@ function AppContent() {
         {/* Tasks panel (center) */}
         <TaskSidebarController onTaskClick={handleTaskClick} onOpenTask={handleTaskClick} />
       </MainLayout>
-      <StatusBar connectionStatus={connectionStatus} events={events} error={tasksError} />
+      <StatusBar
+        connectionStatus={connectionStatus}
+        events={events}
+        error={tasksError}
+        controlState={controlState}
+        onPause={pause}
+        onResume={resume}
+        onStop={stop}
+        currentTaskId={currentTaskId}
+        currentTaskTitle={currentTaskTitle}
+      />
     </div>
   )
 }

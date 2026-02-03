@@ -1,6 +1,13 @@
 import { IconMessage, IconX } from "@tabler/icons-react"
-import { AgentView, AgentViewProvider, ChatInput } from "@herbcaudill/agent-view"
+import {
+  AgentView,
+  AgentViewProvider,
+  ChatInput,
+  SessionPicker,
+  listSessions,
+} from "@herbcaudill/agent-view"
 import type { ChatEvent } from "@herbcaudill/agent-view"
+import { useMemo } from "react"
 
 /**
  * Side panel for task-focused chat with the agent.
@@ -11,12 +18,21 @@ export function TaskChatPanel({
   taskTitle,
   events,
   isStreaming,
+  sessionId,
   onSendMessage,
+  onSessionSelect,
   onClose,
 }: TaskChatPanelProps) {
   if (!taskId) {
     return null
   }
+
+  // Get session list for the SessionPicker
+  // Filter out empty sessions (no messages or only user message with no response)
+  const sessions = useMemo(
+    () => listSessions().filter(s => s.hasResponse === true),
+    [sessionId, events.length],
+  )
 
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -31,13 +47,23 @@ export function TaskChatPanel({
           )}
         </div>
       </div>
-      <button
-        onClick={onClose}
-        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        aria-label="Close chat panel"
-      >
-        <IconX size={18} stroke={1.5} />
-      </button>
+      <div className="flex items-center gap-2">
+        {sessions.length > 0 && (
+          <SessionPicker
+            sessions={sessions}
+            currentSessionId={sessionId ?? undefined}
+            onSelectSession={onSessionSelect}
+            disabled={isStreaming}
+          />
+        )}
+        <button
+          onClick={onClose}
+          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          aria-label="Close chat panel"
+        >
+          <IconX size={18} stroke={1.5} />
+        </button>
+      </div>
     </div>
   )
 
@@ -81,8 +107,12 @@ export type TaskChatPanelProps = {
   events: ChatEvent[]
   /** Whether the agent is currently streaming a response. */
   isStreaming: boolean
+  /** Current session ID. */
+  sessionId: string | null
   /** Callback when user sends a message. */
   onSendMessage: (message: string) => void
+  /** Callback when a session is selected from the picker. */
+  onSessionSelect: (sessionId: string) => void
   /** Callback to close the panel. */
   onClose: () => void
 }

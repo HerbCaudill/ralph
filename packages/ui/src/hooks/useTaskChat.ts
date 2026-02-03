@@ -109,8 +109,18 @@ Priority: 0-4 or P0-P4 (0=critical, 2=medium, 4=backlog).`
  * Separate storage from the main Ralph chat.
  */
 export function useTaskChat() {
-  return useAgentChat({
+  const { state, actions, agentType } = useAgentChat({
     systemPrompt: MANAGE_TASKS_SYSTEM_PROMPT,
     storageKey: "ralph-task-chat",
   })
+
+  return {
+    state: {
+      ...state,
+    },
+    actions: {
+      ...actions,
+    },
+    agentType,
+  }
 }
