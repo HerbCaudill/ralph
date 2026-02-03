@@ -1,98 +1,89 @@
 import type { ReactNode } from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Group, Panel, Separator } from "react-resizable-panels"
 import { cn } from "../lib/utils"
 
 /**
- * Main application layout with three panels:
- * - Left sidebar (resizable, min 200px, max 400px)
- * - Center panel (main content)
- * - Right panel (optional, toggleable)
+ * Main application layout with three resizable panels:
+ * - Left sidebar (resizable, min 10%, max 25%, default 20%)
+ * - Center panel (main content, flexible)
+ * - Right panel (optional, resizable, min 15%, max 50%, default 30%)
+ *
+ * Uses react-resizable-panels for all resize functionality.
  */
 export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
-  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
-  const [isResizing, setIsResizing] = useState(false)
-  const sidebarRef = useRef<HTMLElement>(null)
-
-  const handleMouseDown = useCallback(() => {
-    setIsResizing(true)
-  }, [])
-
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isResizing) return
-      const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, e.clientX))
-      setSidebarWidth(newWidth)
-    },
-    [isResizing],
-  )
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false)
-  }, [])
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove)
-      document.addEventListener("mouseup", handleMouseUp)
-      document.body.style.userSelect = "none"
-      document.body.style.cursor = "col-resize"
-    } else {
-      document.body.style.userSelect = ""
-      document.body.style.cursor = ""
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp])
-
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <Group orientation="horizontal" className="h-screen w-screen overflow-hidden">
       {/* Left sidebar */}
       {sidebar && (
-        <aside
-          ref={sidebarRef}
-          className="bg-background relative flex h-full shrink-0 flex-col overflow-hidden border-r border-border"
-          style={{ width: sidebarWidth }}
-        >
-          {sidebar}
-          <div
+        <>
+          <Panel
+            defaultSize={DEFAULT_SIDEBAR_PERCENT}
+            minSize={MIN_SIDEBAR_PERCENT}
+            maxSize={MAX_SIDEBAR_PERCENT}
+          >
+            <aside className="bg-background flex h-full flex-col overflow-hidden border-r border-border">
+              {sidebar}
+            </aside>
+          </Panel>
+          <Separator
             className={cn(
-              "absolute top-0 right-0 h-full w-1 cursor-col-resize",
+              "w-1 cursor-col-resize transition-colors",
               "hover:bg-primary/20 hover:w-2",
-              isResizing && "bg-primary/30 w-2",
+              "data-[resize-handle-state=drag]:bg-primary/30 data-[resize-handle-state=drag]:w-2",
             )}
-            onMouseDown={handleMouseDown}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize sidebar"
             data-testid="sidebar-resize-handle"
           />
-        </aside>
+        </>
       )}
 
       {/* Center panel */}
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">{children}</main>
+      <Panel minSize={20}>
+        <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">{children}</main>
+      </Panel>
 
       {/* Right panel */}
       {rightPanel && (
-        <aside className="bg-background flex h-full shrink-0 flex-col overflow-hidden border-l border-border">
-          {rightPanel}
-        </aside>
+        <>
+          <Separator
+            className={cn(
+              "w-1 cursor-col-resize transition-colors",
+              "hover:bg-primary/20 hover:w-2",
+              "data-[resize-handle-state=drag]:bg-primary/30 data-[resize-handle-state=drag]:w-2",
+            )}
+            data-testid="right-panel-resize-handle"
+          />
+          <Panel
+            defaultSize={DEFAULT_RIGHT_PANEL_PERCENT}
+            minSize={MIN_RIGHT_PANEL_PERCENT}
+            maxSize={MAX_RIGHT_PANEL_PERCENT}
+          >
+            <aside className="bg-background flex h-full flex-col overflow-hidden border-l border-border">
+              {rightPanel}
+            </aside>
+          </Panel>
+        </>
       )}
-    </div>
+    </Group>
   )
 }
 
-/** Minimum width for the sidebar in pixels. */
-const MIN_SIDEBAR_WIDTH = 200
+/** Minimum width for the sidebar as percentage. */
+const MIN_SIDEBAR_PERCENT = 10
 
-/** Maximum width for the sidebar in pixels. */
-const MAX_SIDEBAR_WIDTH = 400
+/** Maximum width for the sidebar as percentage. */
+const MAX_SIDEBAR_PERCENT = 25
 
-/** Default width for the sidebar in pixels. */
-const DEFAULT_SIDEBAR_WIDTH = 320
+/** Default width for the sidebar as percentage. */
+const DEFAULT_SIDEBAR_PERCENT = 20
+
+/** Minimum width for the right panel as percentage. */
+const MIN_RIGHT_PANEL_PERCENT = 15
+
+/** Maximum width for the right panel as percentage. */
+const MAX_RIGHT_PANEL_PERCENT = 50
+
+/** Default width for the right panel as percentage. */
+const DEFAULT_RIGHT_PANEL_PERCENT = 30
 
 export type MainLayoutProps = {
   /** Optional sidebar content (left panel, resizable). */
