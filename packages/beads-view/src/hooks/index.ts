@@ -12,3 +12,9 @@ export {
   type UseTaskDetailsResult,
 } from "./useTaskDetails"
 export { useTasks, type UseTasksOptions, type UseTasksResult } from "./useTasks"
+export {
+  useWorkspace,
+  type Workspace,
+  type WorkspaceState,
+  type UseWorkspaceOptions,
+} from "./useWorkspace"

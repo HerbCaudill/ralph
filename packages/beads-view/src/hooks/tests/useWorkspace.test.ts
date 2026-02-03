@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
-import { useWorkspace } from ".././useWorkspace"
+import { useWorkspace } from "../useWorkspace"
 
 // Mock fetch
 const mockFetch = vi.fn()

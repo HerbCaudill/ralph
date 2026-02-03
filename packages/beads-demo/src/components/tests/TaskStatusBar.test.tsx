@@ -1,8 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect } from "vitest"
 import { TaskStatusBar } from ".././TaskStatusBar"
-import type { Workspace } from "../../hooks/useWorkspace"
-import type { TaskCardTask } from "@herbcaudill/beads-view"
+import type { Workspace, TaskCardTask } from "@herbcaudill/beads-view"
 
 const makeWorkspace = (overrides: Partial<Workspace> = {}): Workspace => ({
   path: "/home/user/project",

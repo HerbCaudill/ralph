@@ -88,6 +88,7 @@ packages/beads-view/                   # Beads-view package (task management UI/
       useTaskDetails.ts     # Single-task fetching with comments/blockers
       useTaskDialog.ts      # Dialog open/close state
       useTaskDialogRouter.ts # URL hash ↔ task dialog sync
+      useWorkspace.ts       # Fetches workspace info and switching via /api/workspace endpoints
     lib/
       apiClient.ts          # Configurable API client (configureApiClient, apiFetch)
       buildTaskTree.ts      # Flat tasks → nested tree structure
@@ -182,8 +183,6 @@ packages/agent-demo/              # Agent chat demo
 packages/beads-demo/                   # Beads task manager demo
   src/
     App.tsx                 # Main app wrapping BeadsViewProvider, TaskSidebarController, task dialog, workspace selector
-    hooks/
-      useWorkspace.ts       # Fetches workspace info and switching via /api/workspace endpoints
     components/
       WorkspaceSelector.tsx # Dropdown button for switching workspaces
       TaskDetailPanel.tsx   # Panel displaying task details with inline editing (wraps TaskDetailsController)

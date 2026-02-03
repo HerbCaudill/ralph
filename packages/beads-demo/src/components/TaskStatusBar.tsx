@@ -1,6 +1,5 @@
 import { IconPlugConnected, IconPlugConnectedX, IconLoader2 } from "@tabler/icons-react"
-import type { Workspace } from "../hooks/useWorkspace"
-import type { TaskCardTask } from "@herbcaudill/beads-view"
+import type { Workspace, TaskCardTask } from "@herbcaudill/beads-view"
 
 export type TaskStatusBarProps = {
   workspace: Workspace | null

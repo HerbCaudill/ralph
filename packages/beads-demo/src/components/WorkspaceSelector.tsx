@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { IconLayoutList, IconCheck, IconLoader2 } from "@tabler/icons-react"
-import type { Workspace } from "../hooks/useWorkspace"
+import type { Workspace } from "@herbcaudill/beads-view"
 
 export type WorkspaceSelectorProps = {
   current: Workspace | null

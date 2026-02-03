@@ -6,6 +6,7 @@ import {
   useTaskDialog,
   useBeadsHotkeys,
   useBeadsViewStore,
+  useWorkspace,
   selectSelectedTaskId,
   selectVisibleTaskIds,
   type SearchInputHandle,
@@ -15,7 +16,6 @@ import { WorkspaceSelector } from "./components/WorkspaceSelector"
 import { TaskDetailPanel } from "./components/TaskDetailPanel"
 import { TaskStatusBar } from "./components/TaskStatusBar"
 import { HotkeysDialog } from "./components/HotkeysDialog"
-import { useWorkspace } from "./hooks/useWorkspace"
 
 export function App() {
   return (
