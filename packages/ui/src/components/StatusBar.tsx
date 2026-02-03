@@ -8,6 +8,7 @@ import {
 import type { ChatEvent, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
 import { useSessionTimer } from "@/hooks/useSessionTimer"
 import { ControlBar } from "@/components/controls/ControlBar"
+import { StatusIndicator } from "@/components/layout/StatusIndicator"
 
 /**
  * Footer status bar showing connection status, workspace path, current task, agent controls, token usage, and context window progress.
@@ -63,6 +64,15 @@ export function StatusBar({
               onCancelStopAfterCurrent={onCancelStopAfterCurrent}
             />
           </div>
+        )}
+
+        {/* Status indicator - shows Running/Paused/Stopped with colored dot */}
+        {controlState && (
+          <StatusIndicator
+            controlState={controlState}
+            isStoppingAfterCurrent={isStoppingAfterCurrent}
+            className="border-l border-border pl-3"
+          />
         )}
 
         {/* Current task indicator */}
