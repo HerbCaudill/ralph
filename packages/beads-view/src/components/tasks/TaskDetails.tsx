@@ -15,6 +15,7 @@ import {
 } from "@tabler/icons-react"
 import { Button } from "../ui/button"
 import { ButtonGroup } from "../ui/button-group"
+import { ResponsiveButtonGroup } from "../ui/responsive-button-group"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Textarea } from "../ui/textarea"
@@ -265,7 +266,7 @@ export function TaskDetails({
                 <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[formValues.status].color)} />
                 <span className="text-sm">{statusConfig[formValues.status].label}</span>
               </div>
-            : <ButtonGroup className="bg-background h-8 overflow-hidden">
+            : <ResponsiveButtonGroup>
                 {statusOptions.map(s => {
                   const config = statusConfig[s]
                   const Icon = config.icon
@@ -298,12 +299,12 @@ export function TaskDetails({
                       )}
                       aria-pressed={isSelected}
                     >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span>{config.label}</span>
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span data-label>{config.label}</span>
                     </button>
                   )
                 })}
-              </ButtonGroup>
+              </ResponsiveButtonGroup>
             }
           </div>
 
@@ -376,7 +377,7 @@ export function TaskDetails({
                   )
                 })()}
               </div>
-            : <ButtonGroup className="bg-background h-8 overflow-hidden">
+            : <ResponsiveButtonGroup>
                 {issueTypeOptions.map(t => {
                   const Icon = t.icon
                   const isSelected = formValues.issueType === t.value
@@ -412,12 +413,12 @@ export function TaskDetails({
                       )}
                       aria-pressed={isSelected}
                     >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span>{t.label}</span>
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span data-label>{t.label}</span>
                     </button>
                   )
                 })}
-              </ButtonGroup>
+              </ResponsiveButtonGroup>
             }
           </div>
 

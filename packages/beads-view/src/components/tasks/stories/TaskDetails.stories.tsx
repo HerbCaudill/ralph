@@ -215,6 +215,118 @@ export const BlockedTask: Story = {
   ),
 }
 
+/**
+ * Demonstrates the responsive behavior of status and type button groups.
+ * When the panel is narrow, the button groups show only icons.
+ * When the panel is wider, the button groups show icons with text labels.
+ */
+export const ResponsiveButtonGroups: Story = {
+  render: () => {
+    const NarrowDemo = () => {
+      const [open, setOpen] = useState(true)
+      const [task] = useState(sampleTask)
+      const [formValues, setFormValues] = useState<TaskFormValues>({
+        title: sampleTask.title,
+        description: sampleTask.description ?? "",
+        status: sampleTask.status,
+        priority: sampleTask.priority ?? 2,
+        issueType: (sampleTask.issue_type as IssueType) ?? "task",
+        parent: sampleTask.parent ?? null,
+      })
+      const [labels] = useState<string[]>([])
+      const [newLabel, setNewLabel] = useState("")
+      const [showLabelInput, setShowLabelInput] = useState(false)
+
+      const handleSave = useCallback((field: keyof TaskFormValues, value: unknown) => {
+        setFormValues(prev => ({ ...prev, [field]: value }))
+      }, [])
+
+      return (
+        <div className="flex h-screen gap-4 p-4">
+          {/* Narrow panel - should show icon-only buttons */}
+          <div className="flex h-full w-[280px] flex-col">
+            <h2 className="text-muted-foreground mb-2 text-sm font-medium">
+              Narrow (280px) - Icon only
+            </h2>
+            <div className="border-border flex-1 overflow-hidden rounded-lg border">
+              <TaskDetails
+                task={task}
+                open={open}
+                formValues={formValues}
+                labels={labels}
+                issuePrefix="rui-"
+                allTasks={allTasks}
+                isSaving={false}
+                isDeleting={false}
+                isAddingLabel={false}
+                isConfirmingDelete={false}
+                deleteError={null}
+                newLabel={newLabel}
+                showLabelInput={showLabelInput}
+                canDelete={true}
+                onUpdateTitle={title => handleSave("title", title)}
+                onUpdateDescription={desc => handleSave("description", desc)}
+                onUpdateStatus={status => handleSave("status", status)}
+                onUpdatePriority={priority => handleSave("priority", priority)}
+                onUpdateIssueType={type => handleSave("issueType", type)}
+                onUpdateParent={parent => handleSave("parent", parent)}
+                onSetNewLabel={setNewLabel}
+                onSetShowLabelInput={setShowLabelInput}
+                onAddLabel={() => {}}
+                onRemoveLabel={() => {}}
+                onStartDelete={() => {}}
+                onCancelDelete={() => {}}
+                onConfirmDelete={() => {}}
+                onClose={() => setOpen(false)}
+              />
+            </div>
+          </div>
+
+          {/* Wide panel - should show icons with text labels */}
+          <div className="flex h-full w-[400px] flex-col">
+            <h2 className="text-muted-foreground mb-2 text-sm font-medium">
+              Wide (400px) - Icon + text
+            </h2>
+            <div className="border-border flex-1 overflow-hidden rounded-lg border">
+              <TaskDetails
+                task={task}
+                open={open}
+                formValues={formValues}
+                labels={labels}
+                issuePrefix="rui-"
+                allTasks={allTasks}
+                isSaving={false}
+                isDeleting={false}
+                isAddingLabel={false}
+                isConfirmingDelete={false}
+                deleteError={null}
+                newLabel={newLabel}
+                showLabelInput={showLabelInput}
+                canDelete={true}
+                onUpdateTitle={title => handleSave("title", title)}
+                onUpdateDescription={desc => handleSave("description", desc)}
+                onUpdateStatus={status => handleSave("status", status)}
+                onUpdatePriority={priority => handleSave("priority", priority)}
+                onUpdateIssueType={type => handleSave("issueType", type)}
+                onUpdateParent={parent => handleSave("parent", parent)}
+                onSetNewLabel={setNewLabel}
+                onSetShowLabelInput={setShowLabelInput}
+                onAddLabel={() => {}}
+                onRemoveLabel={() => {}}
+                onStartDelete={() => {}}
+                onCancelDelete={() => {}}
+                onConfirmDelete={() => {}}
+                onClose={() => setOpen(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )
+    }
+    return <NarrowDemo />
+  },
+}
+
 // Interaction Test Stories
 
 // Default form values for interaction tests
