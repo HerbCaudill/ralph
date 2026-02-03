@@ -99,6 +99,17 @@ export { createMessageStream } from "./lib/createMessageStream.js"
 export { loadClaudeMd, loadClaudeMdSync, CLAUDE_MD_FILENAME } from "./lib/loadClaudeMd.js"
 export type { LoadClaudeMdOptions } from "./lib/loadClaudeMd.js"
 export { getDefaultStorageDir } from "./lib/getDefaultStorageDir.js"
+export {
+  loadContextFile,
+  loadContextFileSync,
+  getContextFilename,
+  getGlobalConfigDir,
+} from "./lib/loadContextFile.js"
+export type { AdapterType, LoadContextFileOptions } from "./lib/loadContextFile.js"
+export { assemblePrompt, buildCwdContext as buildPromptCwdContext } from "./lib/loadPrompt.js"
+export type { AssemblePromptOptions } from "./lib/loadPrompt.js"
+export { registerPromptRoutes } from "./routes/promptRoutes.js"
+export type { PromptRouteContext } from "./routes/promptRoutes.js"
 
 // ── Server ───────────────────────────────────────────────────────────
 

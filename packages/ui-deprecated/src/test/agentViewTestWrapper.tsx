@@ -21,10 +21,7 @@ export const defaultTestContext: Partial<AgentViewContextValue> = {
 }
 
 /** Wraps children in an AgentViewProvider with test defaults. Overrides are merged shallowly. */
-export function AgentViewTestWrapper({
-  children,
-  value,
-}: AgentViewTestWrapperProps) {
+export function AgentViewTestWrapper({ children, value }: AgentViewTestWrapperProps) {
   const merged: Partial<AgentViewContextValue> = {
     ...defaultTestContext,
     ...value,

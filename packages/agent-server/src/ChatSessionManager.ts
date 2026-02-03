@@ -30,6 +30,8 @@ export interface SessionInfo {
   lastMessageAt?: number
   /** App namespace for this session. */
   app?: string
+  /** System prompt stored at session creation. */
+  systemPrompt?: string
 }
 
 /** Options for creating a new session. */
@@ -40,6 +42,8 @@ export interface CreateSessionOptions {
   cwd?: string
   /** App namespace for the session (e.g., "ralph", "task-chat"). */
   app?: string
+  /** System prompt to store with the session (used as default for all messages). */
+  systemPrompt?: string
 }
 
 /** Options for sending a message. */
@@ -117,6 +121,7 @@ export class ChatSessionManager extends EventEmitter {
       },
       messageQueue: [],
       app: options.app,
+      systemPrompt: options.systemPrompt,
     }
 
     this.sessions.set(sessionId, session)
@@ -130,6 +135,7 @@ export class ChatSessionManager extends EventEmitter {
         adapter,
         cwd: session.cwd,
         app: options.app,
+        systemPrompt: options.systemPrompt,
         timestamp: Date.now(),
       },
       options.app,
@@ -206,10 +212,10 @@ export class ChatSessionManager extends EventEmitter {
     adapter.on("error", onError)
 
     try {
-      // Build start options
+      // Build start options (per-message systemPrompt overrides session-level)
       const startOptions: AgentStartOptions = {
         cwd: session.cwd,
-        systemPrompt: options.systemPrompt,
+        systemPrompt: options.systemPrompt ?? session.systemPrompt,
         model: options.model,
       }
 
@@ -305,6 +311,7 @@ export class ChatSessionManager extends EventEmitter {
       createdAt: session.createdAt,
       lastMessageAt: session.lastMessageAt,
       app: session.app,
+      systemPrompt: session.systemPrompt,
     }
   }
 
@@ -323,6 +330,7 @@ export class ChatSessionManager extends EventEmitter {
         createdAt: s.createdAt,
         lastMessageAt: s.lastMessageAt,
         app: s.app,
+        systemPrompt: s.systemPrompt,
       }))
   }
 
@@ -365,6 +373,7 @@ export class ChatSessionManager extends EventEmitter {
         },
         messageQueue: [],
         app,
+        systemPrompt: metadata?.systemPrompt,
       })
     }
   }
@@ -392,4 +401,6 @@ interface SessionState {
   messageQueue: QueuedMessage[]
   /** App namespace for this session. */
   app?: string
+  /** System prompt stored at session creation. */
+  systemPrompt?: string
 }

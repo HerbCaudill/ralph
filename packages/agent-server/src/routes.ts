@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express"
 import type { ChatSessionManager } from "./ChatSessionManager.js"
 import { getAvailableAdapters } from "./AdapterRegistry.js"
+import { registerPromptRoutes } from "./routes/promptRoutes.js"
 
 /** Context for route handlers. */
 export interface RouteContext {
@@ -24,8 +25,15 @@ export function registerRoutes(
   // Create a new session
   app.post("/api/sessions", async (req: Request, res: Response) => {
     try {
-      const { adapter, cwd, app } = req.body as { adapter?: string; cwd?: string; app?: string }
-      const result = await ctx.getSessionManager().createSession({ adapter, cwd, app })
+      const { adapter, cwd, app, systemPrompt } = req.body as {
+        adapter?: string
+        cwd?: string
+        app?: string
+        systemPrompt?: string
+      }
+      const result = await ctx
+        .getSessionManager()
+        .createSession({ adapter, cwd, app, systemPrompt })
       res.status(201).json(result)
     } catch (err) {
       res.status(400).json({ error: (err as Error).message })
@@ -125,4 +133,7 @@ export function registerRoutes(
   app.get("/healthz", (_req: Request, res: Response) => {
     res.json({ ok: true, server: "agent-server" })
   })
+
+  // Register prompt routes
+  registerPromptRoutes(app, ctx)
 }

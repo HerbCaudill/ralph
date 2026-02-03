@@ -142,8 +142,10 @@ packages/agent-server/                 # Generic agent server package
     CodexAdapter.ts         # Codex agent adapter (OpenAI API)
     AdapterRegistry.ts      # Registry mapping agent names to adapter classes
     SessionPersister.ts     # JSONL event persistence by session ID
-    ChatSessionManager.ts   # Multi-session management, no built-in system prompt
+    ChatSessionManager.ts   # Multi-session management, supports systemPrompt storage
     routes.ts               # HTTP routes (/api/sessions, /api/adapters, /healthz)
+    routes/
+      promptRoutes.ts       # Prompt assembly endpoint (GET /api/sessions/:id/prompt)
     wsHandler.ts            # Session-based WebSocket protocol
     findClaudeExecutable.ts # Locates the Claude CLI binary
     lib/
@@ -152,6 +154,9 @@ packages/agent-server/                 # Generic agent server package
       generateId.ts         # Unique ID generation utility
       createEventStream.ts  # SSE event stream factory
       createMessageStream.ts # Message stream factory
+      loadContextFile.ts    # Adapter-specific context file loading (CLAUDE.md, AGENTS.md)
+      loadPrompt.ts         # Prompt assembly (context file + cwd context + system prompt)
+      loadClaudeMd.ts       # Claude-specific context loading (legacy, still exported)
 
 packages/ralph-server/                 # Ralph-specific server package
   src/
@@ -284,16 +289,21 @@ Agents implement `AgentAdapter` base class (`server/AgentAdapter.ts`). Available
 
 ClaudeAdapter accepts an optional `model` in `ClaudeAdapterOptions`, falling back to the `CLAUDE_MODEL` environment variable. Per-message model overrides the default. `AgentInfo` (returned by `getInfo()`) includes a `model` field showing the configured default.
 
-### CLAUDE.md auto-loading
+### Context file loading
 
-ClaudeAdapter automatically loads CLAUDE.md files and prepends their content to the system prompt. This mirrors Claude CLI behavior for consistent context across tools.
+The agent-server loads adapter-specific context files (CLAUDE.md for Claude, AGENTS.md for Codex) and prepends their content to system prompts.
 
-**Configuration:** Set `loadClaudeMd: false` in `ClaudeAdapterOptions` to disable (default: `true`).
+**Adapter-specific files:**
+
+| Adapter  | Context file | Global directory |
+| -------- | ------------ | ---------------- |
+| `claude` | CLAUDE.md    | `~/.claude/`     |
+| `codex`  | AGENTS.md    | `~/.codex/`      |
 
 **Load order:**
 
-1. User global: `~/.claude/CLAUDE.md`
-2. Workspace: `{cwd}/CLAUDE.md`
+1. User global: `~/{globalDir}/{filename}` (e.g., `~/.claude/CLAUDE.md`)
+2. Workspace: `{cwd}/{filename}` (e.g., `/project/CLAUDE.md`)
 3. Working directory context (injected automatically)
 4. Caller-provided `systemPrompt`
 
@@ -301,10 +311,32 @@ If both global and workspace files exist, their contents are combined (global fi
 
 **Exported utilities** (from `@herbcaudill/agent-server`):
 
-- `loadClaudeMd(options?)` - Async function to load CLAUDE.md content
+- `loadContextFile(options?)` - Load adapter-specific context file content
+- `loadContextFileSync(options?)` - Sync version
+- `getContextFilename(adapter)` - Get filename for adapter (e.g., `"CLAUDE.md"`)
+- `getGlobalConfigDir(adapter)` - Get global config dir (e.g., `".claude"`)
+- `assemblePrompt(options?)` - Assemble complete prompt (context file + cwd context + system prompt)
+- `AdapterType` - Type for adapter IDs (`"claude" | "codex" | string`)
+
+**Legacy utilities** (still exported for backward compatibility):
+
+- `loadClaudeMd(options?)` - Claude-specific context loading
 - `loadClaudeMdSync(options?)` - Sync version
 - `CLAUDE_MD_FILENAME` - The constant `"CLAUDE.md"`
-- `LoadClaudeMdOptions` - Type for options (`{ cwd?: string }`)
+
+**ClaudeAdapter configuration:** Set `loadClaudeMd: false` in `ClaudeAdapterOptions` to disable auto-loading (default: `true`).
+
+### System prompt injection
+
+Sessions can store a system prompt at creation time, which is used as the default for all messages in that session.
+
+**API support:**
+
+- `POST /api/sessions` - Accepts `systemPrompt` in request body
+- `GET /api/sessions/:id/prompt` - Returns assembled prompt for a session (context file + cwd context + system prompt)
+- WebSocket `create_session` message - Accepts `systemPrompt` field
+- `CreateSessionOptions.systemPrompt` - Stored with the session
+- `SendMessageOptions.systemPrompt` - Per-message override (takes precedence over session-level)
 
 ## Runtime interaction
 

@@ -155,7 +155,13 @@ export class SessionPersister {
     sessionId: string,
     /** Optional app namespace. */
     app?: string,
-  ): { adapter: string; cwd?: string; createdAt: number; app?: string } | null {
+  ): {
+    adapter: string
+    cwd?: string
+    createdAt: number
+    app?: string
+    systemPrompt?: string
+  } | null {
     const filePath = this.sessionPath(sessionId, app)
     if (!existsSync(filePath)) return null
 
@@ -171,6 +177,7 @@ export class SessionPersister {
           cwd: event.cwd as string | undefined,
           createdAt: (event.timestamp as number) ?? 0,
           app: event.app as string | undefined,
+          systemPrompt: event.systemPrompt as string | undefined,
         }
       }
       return null

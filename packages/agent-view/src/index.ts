@@ -38,6 +38,10 @@ export type { ScrollToBottomButtonProps } from "./components/ScrollToBottomButto
 export { SessionPicker } from "./components/SessionPicker"
 export type { SessionPickerProps } from "./components/SessionPicker"
 
+// Components: Controls
+export { AgentControls } from "./components/AgentControls"
+export type { AgentControlsProps } from "./components/AgentControls"
+
 // Components: Input
 export { ChatInput } from "./components/ChatInput"
 export type { ChatInputProps, ChatInputHandle } from "./components/ChatInput"
@@ -65,6 +69,12 @@ export type {
   AgentChatState,
   AgentChatActions,
 } from "./hooks/useAgentChat"
+export { useAgentControl } from "./hooks/useAgentControl"
+export type {
+  ControlState,
+  UseAgentControlOptions,
+  UseAgentControlReturn,
+} from "./hooks/useAgentControl"
 export { useAdapterInfo, useAdapterVersion } from "./hooks/useAdapterInfo"
 export { useAutoScroll } from "./hooks/useAutoScroll"
 export type { UseAutoScrollOptions, UseAutoScrollReturn } from "./hooks/useAutoScroll"

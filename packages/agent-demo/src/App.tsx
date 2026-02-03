@@ -1,10 +1,12 @@
 import { useState, useCallback, useMemo, useRef } from "react"
-import { IconMessageChatbot, IconPlus, IconLoader2 } from "@tabler/icons-react"
+import { IconMessageChatbot, IconLoader2 } from "@tabler/icons-react"
 import {
   AgentView,
   AgentViewProvider,
   useAgentChat,
+  useAgentControl,
   useAgentHotkeys,
+  AgentControls,
   SessionPicker,
   listSessions,
   ChatInput,
@@ -21,6 +23,12 @@ export function App() {
   const { state, actions, agentType } = useAgentChat("claude")
   const { events, isStreaming, connectionStatus, error, sessionId } = state
   const { sendMessage, setAgentType, newSession, restoreSession } = actions
+
+  // Agent control state (integrates with isStreaming from useAgentChat)
+  const control = useAgentControl({
+    isStreaming,
+    onNewSession: newSession,
+  })
 
   // Session list for the SessionPicker — re-read on every render so it stays
   // in sync after newSession / restoreSession / sendMessage mutations.
@@ -94,15 +102,13 @@ export function App() {
         title="Agent Chat Demo"
         headerActions={
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleNewSession}
-              disabled={isStreaming}
-              title="New session"
-              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-30"
-            >
-              <IconPlus size={16} stroke={1.5} />
-              New session
-            </button>
+            <AgentControls
+              state={control.state}
+              disabled={!isConnected}
+              onNewSession={handleNewSession}
+              showPauseResume={false}
+              showStop={false}
+            />
             <SessionPicker
               sessions={sessions}
               currentSessionId={sessionId}
