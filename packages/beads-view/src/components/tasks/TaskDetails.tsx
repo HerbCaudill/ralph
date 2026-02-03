@@ -452,7 +452,7 @@ export function TaskDetails({
               {labels.map(label => (
                 <span
                   key={label}
-                  className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium"
                 >
                   {label}
                   {!readOnly && (
@@ -493,7 +493,7 @@ export function TaskDetails({
                       }
                     }}
                     placeholder="Label name"
-                    className="h-6 w-24 px-2 text-xs"
+                    className="h-7 w-24 px-2.5 text-sm"
                     disabled={isAddingLabel}
                   />
                   <Button

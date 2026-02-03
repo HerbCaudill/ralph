@@ -1267,6 +1267,62 @@ describe("TaskDetailsDialog", () => {
     })
   })
 
+  describe("label styling", () => {
+    it("label badges and input have consistent styling (text-sm, matching dimensions)", async () => {
+      // Mock fetch to return labels
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (typeof url === "string" && url.includes("/labels")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, labels: ["urgent"] }),
+          })
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true }),
+        })
+      })
+
+      const taskWithLabel: TaskCardTask = {
+        ...mockTask,
+        labels: ["urgent"],
+      }
+
+      await renderAndWait(
+        <TaskDetailsController
+          task={taskWithLabel}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      )
+
+      // Wait for labels to be displayed
+      await waitFor(() => {
+        expect(screen.getByText("urgent")).toBeInTheDocument()
+      })
+
+      // Verify label badge has text-sm class (improved readability)
+      const labelBadge = screen.getByText("urgent").closest("span")
+      expect(labelBadge?.className).toContain("text-sm")
+
+      // Click "Add label" button to show the input
+      const addButton = screen.getByText("Add label")
+      act(() => {
+        fireEvent.click(addButton)
+      })
+
+      // Wait for input to appear
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Label name")).toBeInTheDocument()
+      })
+
+      // Verify label input has text-sm class (matching badge dimensions)
+      const labelInput = screen.getByPlaceholderText("Label name")
+      expect(labelInput.className).toContain("text-sm")
+    })
+  })
+
   describe("event log capture on close", () => {
     it("does not save event log when task is already closed", async () => {
       // Track POST calls to eventlogs endpoint (creating new event logs)
