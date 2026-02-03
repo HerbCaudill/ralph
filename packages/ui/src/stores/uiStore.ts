@@ -13,6 +13,8 @@ interface UiState {
   rightPanelWidth: number
   /** Whether to show tool output in the event stream. */
   showToolOutput: boolean
+  /** Current theme preference. */
+  theme: "system" | "light" | "dark"
 
   /** Set the sidebar width. */
   setSidebarWidth: (width: number) => void
@@ -22,6 +24,8 @@ interface UiState {
   setRightPanelWidth: (width: number) => void
   /** Toggle whether tool output is shown. */
   toggleToolOutput: () => void
+  /** Set the theme preference. */
+  setTheme: (theme: "system" | "light" | "dark") => void
 }
 
 /**
@@ -33,9 +37,16 @@ export const useUiStore = create<UiState>()(set => ({
   rightPanelOpen: false,
   rightPanelWidth: 400,
   showToolOutput: true,
+  theme: "system",
 
   setSidebarWidth: width => set({ sidebarWidth: width }),
   toggleRightPanel: () => set(state => ({ rightPanelOpen: !state.rightPanelOpen })),
   setRightPanelWidth: width => set({ rightPanelWidth: width }),
   toggleToolOutput: () => set(state => ({ showToolOutput: !state.showToolOutput })),
+  setTheme: theme => set({ theme }),
 }))
+
+/**
+ * Select the current theme preference.
+ */
+export const selectTheme = (state: UiState) => state.theme
