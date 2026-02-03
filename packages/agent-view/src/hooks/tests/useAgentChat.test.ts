@@ -200,6 +200,142 @@ describe("useAgentChat localStorage persistence", () => {
     })
   })
 
+  // ── initSession restores streaming state and agent type ──────────────
+
+  describe("initSession restores session state on reconnect", () => {
+    it("sets isStreaming to true when stored session has status 'processing'", async () => {
+      localStorage.setItem(SESSION_ID_KEY, "processing-session")
+
+      // Mock fetch to return session info with status: "processing"
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/processing-session") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "processing-session",
+              status: "processing",
+              adapter: "claude",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat()
+
+      // Trigger the WebSocket onopen (setTimeout 0) which calls initSession
+      // Use advanceTimersByTime(1) + flush microtasks to avoid infinite timer loop
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        // Flush the promise chain from fetch
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.isStreaming).toBe(true)
+      expect(result.current.state.sessionId).toBe("processing-session")
+    })
+
+    it("restores agentType to 'codex' when stored session has adapter 'codex'", async () => {
+      localStorage.setItem(SESSION_ID_KEY, "codex-session")
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/codex-session") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "codex-session",
+              status: "idle",
+              adapter: "codex",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      // Start with claude as default
+      const { result } = renderUseAgentChat("claude")
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.agentType).toBe("codex")
+      expect(localStorage.getItem(AGENT_TYPE_KEY)).toBe("codex")
+    })
+
+    it("restores both isStreaming and agentType from /api/sessions/latest fallback", async () => {
+      // No stored session ID — forces fallback to /api/sessions/latest
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/latest") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "latest-session",
+              status: "processing",
+              adapter: "codex",
+            }),
+          })
+        }
+        // createSession fallback — should not be reached
+        if (url === "/api/sessions") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ sessionId: "new-session" }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat("claude")
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.isStreaming).toBe(true)
+      expect(result.current.agentType).toBe("codex")
+      expect(result.current.state.sessionId).toBe("latest-session")
+    })
+
+    it("does not set isStreaming when session status is not 'processing'", async () => {
+      localStorage.setItem(SESSION_ID_KEY, "idle-session")
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/idle-session") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "idle-session",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat()
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.isStreaming).toBe(false)
+    })
+  })
+
   // ── localStorage error resilience ─────────────────────────────────────
 
   describe("localStorage error resilience", () => {

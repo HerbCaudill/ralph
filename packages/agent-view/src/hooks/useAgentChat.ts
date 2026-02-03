@@ -111,13 +111,29 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
 
   /** Try to restore from localStorage, then /api/sessions/latest, or create new. */
   const initSession = useCallback(async () => {
+    // Helper to restore streaming state and agent type from session info
+    const restoreSessionState = (info: { status?: string; adapter?: string }) => {
+      if (info.status === "processing") {
+        setIsStreaming(true)
+      }
+      if (info.adapter === "claude" || info.adapter === "codex") {
+        setAgentType(info.adapter)
+      }
+    }
+
     // Try restoring from localStorage first
     const storedSessionId = loadSessionId()
     if (storedSessionId) {
       try {
         const res = await fetch(`/api/sessions/${storedSessionId}`)
         if (res.ok) {
+          const sessionInfo = (await res.json()) as {
+            sessionId: string
+            status?: string
+            adapter?: string
+          }
           setSessionId(storedSessionId)
+          restoreSessionState(sessionInfo)
 
           // Reconnect to get pending events
           if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -139,8 +155,13 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     try {
       const res = await fetch("/api/sessions/latest")
       if (res.ok) {
-        const data = (await res.json()) as { sessionId: string }
+        const data = (await res.json()) as {
+          sessionId: string
+          status?: string
+          adapter?: string
+        }
         setSessionId(data.sessionId)
+        restoreSessionState(data)
 
         // Reconnect to get pending events
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -158,7 +179,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     }
 
     await createSession()
-  }, [createSession, setSessionId])
+  }, [createSession, setSessionId, setAgentType])
 
   const connect = useCallback(() => {
     // Clean up existing connection
