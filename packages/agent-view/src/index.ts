@@ -63,6 +63,17 @@ export { useHighlightedCode } from "./hooks/useHighlightedCode"
 export { useStreamingState } from "./hooks/useStreamingState"
 export { useTokenUsage, useContextWindow } from "./hooks/useTokenUsage"
 
+// Lib: Session Index
+export {
+  listSessions,
+  getSession,
+  addSession,
+  updateSession,
+  removeSession,
+  clearSessionIndex,
+} from "./lib/sessionIndex"
+export type { SessionIndexEntry } from "./lib/sessionIndex"
+
 // Lib: Utilities
 export { cx, cn, stripAnsi, hasAnsiCodes, stripTaskPrefix, toRelativePath } from "./lib/utils"
 export { buildToolResultsMap } from "./lib/buildToolResultsMap"
