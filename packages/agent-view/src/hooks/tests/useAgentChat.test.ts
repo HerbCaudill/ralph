@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { renderHook, act, cleanup } from "@testing-library/react"
 import { useAgentChat } from "../useAgentChat"
 import type { AgentType } from "../useAgentChat"
+import { listSessions, addSession, clearSessionIndex } from "../../lib/sessionIndex"
+import type { SessionIndexEntry } from "../../lib/sessionIndex"
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -333,6 +335,259 @@ describe("useAgentChat localStorage persistence", () => {
       })
 
       expect(result.current.state.isStreaming).toBe(false)
+    })
+  })
+
+  // ── session index integration ─────────────────────────────────────────
+
+  describe("session index integration", () => {
+    const SESSION_INDEX_KEY = "agent-view-session-index"
+
+    afterEach(() => {
+      clearSessionIndex()
+    })
+
+    it("createSession adds a session to the index", async () => {
+      // Mock fetch: POST /api/sessions returns a sessionId, everything else fails
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === "/api/sessions" && init?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ sessionId: "new-session-abc" }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat("claude")
+
+      // Trigger WebSocket onopen -> initSession
+      // initSession: no stored session, no index entries, /api/sessions/latest fails -> calls createSession
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      const sessions = listSessions()
+      expect(sessions).toHaveLength(1)
+      expect(sessions[0].sessionId).toBe("new-session-abc")
+      expect(sessions[0].adapter).toBe("claude")
+      expect(sessions[0].firstUserMessage).toBe("")
+    })
+
+    it("sendMessage updates lastMessageAt and sets firstUserMessage on first message", async () => {
+      // Pre-populate the session index so we have a known entry
+      const initialTime = 1000
+      addSession({
+        sessionId: "msg-session",
+        adapter: "claude",
+        firstMessageAt: initialTime,
+        lastMessageAt: initialTime,
+        firstUserMessage: "",
+      })
+
+      // Store session in localStorage so hook picks it up
+      localStorage.setItem(SESSION_ID_KEY, "msg-session")
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/msg-session") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "msg-session",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat("claude")
+
+      // Let WebSocket connect and initSession complete
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.sessionId).toBe("msg-session")
+
+      // Send first message
+      act(() => {
+        result.current.actions.sendMessage("Hello world")
+      })
+
+      const sessionsAfterFirst = listSessions()
+      const entry = sessionsAfterFirst.find(s => s.sessionId === "msg-session")!
+      expect(entry).toBeDefined()
+      expect(entry.firstUserMessage).toBe("Hello world")
+      expect(entry.lastMessageAt).toBeGreaterThan(initialTime)
+    })
+
+    it("sendMessage only updates lastMessageAt (not firstUserMessage) on subsequent messages", async () => {
+      const initialTime = 1000
+      addSession({
+        sessionId: "msg-session-2",
+        adapter: "claude",
+        firstMessageAt: initialTime,
+        lastMessageAt: initialTime,
+        firstUserMessage: "",
+      })
+
+      localStorage.setItem(SESSION_ID_KEY, "msg-session-2")
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/msg-session-2") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "msg-session-2",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat("claude")
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // Send first message
+      act(() => {
+        result.current.actions.sendMessage("First message")
+      })
+
+      const afterFirst = listSessions().find(s => s.sessionId === "msg-session-2")!
+      expect(afterFirst.firstUserMessage).toBe("First message")
+      const firstLastMessageAt = afterFirst.lastMessageAt
+
+      // Advance time so timestamps differ
+      vi.advanceTimersByTime(100)
+
+      // Send second message
+      act(() => {
+        result.current.actions.sendMessage("Second message")
+      })
+
+      const afterSecond = listSessions().find(s => s.sessionId === "msg-session-2")!
+      // firstUserMessage should remain "First message" (not overwritten)
+      expect(afterSecond.firstUserMessage).toBe("First message")
+      // lastMessageAt should be updated
+      expect(afterSecond.lastMessageAt).toBeGreaterThanOrEqual(firstLastMessageAt)
+    })
+
+    it("clearHistory removes the session from the index", async () => {
+      addSession({
+        sessionId: "clear-session",
+        adapter: "claude",
+        firstMessageAt: 1000,
+        lastMessageAt: 1000,
+        firstUserMessage: "hi",
+      })
+
+      localStorage.setItem(SESSION_ID_KEY, "clear-session")
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === "/api/sessions/clear-session" && (!init || !init.method || init.method === "GET")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "clear-session",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        if (url === "/api/sessions/clear-session" && init?.method === "DELETE") {
+          return Promise.resolve({ ok: true, json: async () => ({}) })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat()
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.sessionId).toBe("clear-session")
+      expect(listSessions()).toHaveLength(1)
+
+      act(() => {
+        result.current.actions.clearHistory()
+      })
+
+      expect(listSessions()).toHaveLength(0)
+    })
+
+    it("initSession uses the session index to find most recent session when localStorage has no stored session", async () => {
+      // No stored session in localStorage — but the session index has an entry
+      addSession({
+        sessionId: "indexed-session-xyz",
+        adapter: "codex",
+        firstMessageAt: 2000,
+        lastMessageAt: 3000,
+        firstUserMessage: "previous question",
+      })
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/indexed-session-xyz") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "indexed-session-xyz",
+              status: "idle",
+              adapter: "codex",
+            }),
+          })
+        }
+        // /api/sessions/latest should NOT be called since the index has an entry
+        if (url === "/api/sessions/latest") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "latest-fallback",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat("claude")
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // Should have picked up the indexed session, NOT the /api/sessions/latest one
+      expect(result.current.state.sessionId).toBe("indexed-session-xyz")
+      expect(result.current.agentType).toBe("codex")
+
+      // Verify /api/sessions/latest was NOT called
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
+      const latestCalls = fetchCalls.filter(([url]: [string]) => url === "/api/sessions/latest")
+      expect(latestCalls).toHaveLength(0)
     })
   })
 

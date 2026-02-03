@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { ChatEvent } from "../types"
+import { addSession, listSessions, removeSession, updateSession } from "../lib/sessionIndex"
 
 export type AgentType = "claude" | "codex"
 
@@ -102,6 +103,17 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
       setSessionId(data.sessionId)
       setEvents([])
       setError(null)
+
+      // Write new session to the session index
+      const now = Date.now()
+      addSession({
+        sessionId: data.sessionId,
+        adapter: agentType,
+        firstMessageAt: now,
+        lastMessageAt: now,
+        firstUserMessage: "",
+      })
+
       return data.sessionId
     } catch {
       setError("Failed to create session")
@@ -151,7 +163,38 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
       }
     }
 
-    // Fall back to /api/sessions/latest
+    // Fall back to session index (most recent session)
+    const indexedSessions = listSessions()
+    if (indexedSessions.length > 0) {
+      const mostRecent = indexedSessions[0]
+      try {
+        const res = await fetch(`/api/sessions/${mostRecent.sessionId}`)
+        if (res.ok) {
+          const sessionInfo = (await res.json()) as {
+            sessionId: string
+            status?: string
+            adapter?: string
+          }
+          setSessionId(mostRecent.sessionId)
+          restoreSessionState(sessionInfo)
+
+          // Reconnect to get pending events
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(
+              JSON.stringify({
+                type: "reconnect",
+                sessionId: mostRecent.sessionId,
+              }),
+            )
+          }
+          return
+        }
+      } catch {
+        // Session no longer valid on server, fall through
+      }
+    }
+
+    // Fall back to /api/sessions/latest (for sessions created before index existed)
     try {
       const res = await fetch("/api/sessions/latest")
       if (res.ok) {
@@ -324,13 +367,30 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     (message: string) => {
       if (!message.trim()) return
 
+      const trimmedMessage = message.trim()
+      const now = Date.now()
+
       // Add user message event locally
       const userEvent: ChatEvent = {
         type: "user_message",
-        message: message.trim(),
-        timestamp: Date.now(),
+        message: trimmedMessage,
+        timestamp: now,
       }
-      setEvents(prev => [...prev, userEvent])
+      setEvents(prev => {
+        // Update session index: set lastMessageAt, and firstUserMessage if this is the first
+        const currentSid = sessionIdRef.current
+        if (currentSid) {
+          const isFirstUserMessage = !prev.some(e => e.type === "user_message")
+          const updates: { lastMessageAt: number; firstUserMessage?: string } = {
+            lastMessageAt: now,
+          }
+          if (isFirstUserMessage) {
+            updates.firstUserMessage = trimmedMessage
+          }
+          updateSession(currentSid, updates)
+        }
+        return [...prev, userEvent]
+      })
 
       const currentSessionId = sessionIdRef.current
 
@@ -340,7 +400,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
           JSON.stringify({
             type: "message",
             sessionId: currentSessionId,
-            message: message.trim(),
+            message: trimmedMessage,
           }),
         )
         setIsStreaming(true)
@@ -350,7 +410,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
         wsRef.current.send(
           JSON.stringify({
             type: "chat_message",
-            message: message.trim(),
+            message: trimmedMessage,
             agentType,
           }),
         )
@@ -362,7 +422,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
           fetch(`/api/sessions/${currentSessionId}/messages`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: message.trim() }),
+            body: JSON.stringify({ message: trimmedMessage }),
           }).catch(() => {
             setError("Failed to send message")
           })
@@ -379,6 +439,9 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     setError(null)
 
     if (currentSessionId) {
+      // Remove from session index
+      removeSession(currentSessionId)
+
       // Clear the session via REST
       fetch(`/api/sessions/${currentSessionId}`, { method: "DELETE" }).catch(() => {
         // Ignore errors
