@@ -30,7 +30,7 @@ describe("Message max-width for readability", () => {
       )
 
       const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv.className).toContain("max-w-prose")
+      expect(outerDiv.className).toContain("max-w-[100ch]")
     })
   })
 
@@ -50,19 +50,18 @@ describe("Message max-width for readability", () => {
       )
 
       const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv.className).toContain("max-w-prose")
+      expect(outerDiv.className).toContain("max-w-[100ch]")
     })
   })
 
   describe("ThinkingBlock", () => {
     it("has max-width constraint for readability", () => {
-      const { container } = render(
-        <ThinkingBlock content="Thinking about the problem..." />,
-        { wrapper },
-      )
+      const { container } = render(<ThinkingBlock content="Thinking about the problem..." />, {
+        wrapper,
+      })
 
       const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv.className).toContain("max-w-prose")
+      expect(outerDiv.className).toContain("max-w-[100ch]")
     })
   })
 })
