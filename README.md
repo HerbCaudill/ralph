@@ -11,7 +11,7 @@ This monorepo contains the following packages:
 | [`@herbcaudill/ralph`](packages/cli/)                 | CLI tool for terminal-based sessions                                                                      |
 | [`@herbcaudill/ralph-ui`](packages/ui/)               | Web UI with real-time event streaming                                                                     |
 | [`@herbcaudill/ralph-shared`](packages/shared/)       | Shared types and utilities                                                                                |
-| [`@herbcaudill/beads-view`](packages/beads-view/)     | Task management UI, state, hooks, and API client                                                          |
+| [`@herbcaudill/beads-view`](packages/beads-view/)     | Task management UI, state, hooks, hotkey registration, and API client                                     |
 | [`@herbcaudill/beads-server`](packages/beads-server/) | Standalone server for beads task management (HTTP + WebSocket)                                            |
 | [`@herbcaudill/agent-server`](packages/agent-server/) | Standalone server for managing AI coding agents (HTTP + WebSocket)                                        |
 | [`@herbcaudill/agent-demo`](packages/agent-demo/)     | Agent chat demo: WebSocket streaming, AgentView rendering, Claude Code/Codex selector, model name display |

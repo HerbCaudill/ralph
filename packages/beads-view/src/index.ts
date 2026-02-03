@@ -1,4 +1,5 @@
 export * from "./constants"
+export * from "./hotkeys"
 export * from "./hooks"
 export * from "./types"
 export * from "./components/tasks"

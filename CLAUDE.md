@@ -48,7 +48,7 @@ pnpm workspace with these main packages:
 - **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
 - **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with Express server and React frontend
 - **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
-- **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
+- **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, hotkey registration, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Generic agent chat server with JSONL persistence, multi-adapter support (Claude, Codex), session-based WebSocket protocol, and no built-in system prompt. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/ralph-server/`** (`@herbcaudill/ralph-server`) - Ralph-specific server for managing AI coding agent sessions, worktrees, and task chats. Depends on `@herbcaudill/agent-server` for adapters and utilities. Includes RalphManager, RalphRegistry, WorktreeManager, SessionRunner, TaskChatManager, and workspace context modules. Default port 4245 (configurable via `RALPH_SERVER_PORT`). Dev: `pnpm dev` (tsx)
@@ -94,6 +94,11 @@ packages/beads-view/                   # Beads-view package (task management UI/
       matchesSearchQuery.ts # Client-side task search/filter
     server/
       taskRoutes.ts         # Reusable Express task routes (registerTaskRoutes)
+    hotkeys/
+      config.ts             # Hotkey config parser, types (BeadsHotkeyAction, HotkeyConfig, HotkeysConfig)
+      hotkeys.json          # Hotkey definitions (key bindings, descriptions, categories)
+      useHotkeys.ts         # useBeadsHotkeys hook, getHotkeyDisplayString utility
+      index.ts              # Barrel exports
     store/
       beadsViewStore.ts     # Zustand store for task UI state
       BeadsViewProvider.tsx  # React context provider for store
