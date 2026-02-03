@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import type { ChatEvent } from "@herbcaudill/agent-view"
+import type { ChatEvent, ControlState, ConnectionStatus } from "@herbcaudill/agent-view"
 
 /**
  * Hook that communicates with the SharedWorker (ralphWorker.ts) to control the Ralph loop.
@@ -9,7 +9,7 @@ import type { ChatEvent } from "@herbcaudill/agent-view"
 export function useRalphLoop(): UseRalphLoopReturn {
   const [events, setEvents] = useState<ChatEvent[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  const [controlState, setControlState] = useState<ControlState>("stopped")
+  const [controlState, setControlState] = useState<ControlState>("idle")
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
 
   const workerRef = useRef<SharedWorker | null>(null)
@@ -139,11 +139,8 @@ export function useRalphLoop(): UseRalphLoopReturn {
   }
 }
 
-/** State of the Ralph loop control. */
-export type ControlState = "stopped" | "running" | "paused"
-
-/** Status of the connection to the SharedWorker. */
-export type ConnectionStatus = "disconnected" | "connecting" | "connected"
+// Re-export types from agent-view for convenience
+export type { ControlState, ConnectionStatus }
 
 /** Return type of the useRalphLoop hook. */
 export interface UseRalphLoopReturn {

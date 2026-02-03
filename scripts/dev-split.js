@@ -2,8 +2,8 @@
 /**
  * Development script that runs beads-server + agent-server + UI as separate processes.
  *
- * This is the "split server" alternative to dev.js (which runs the combined server).
- * Each server gets its own port and the Vite dev proxy routes requests accordingly.
+ * This is an alias for dev.js - both now run the same split-server architecture.
+ * Kept for backward compatibility.
  */
 import { runDev } from "./lib/devRunner.js"
 
@@ -24,19 +24,12 @@ runDev({
       portEnv: "AGENT_SERVER_PORT",
       defaultPort: 4244,
     },
-    {
-      name: "ralph-server",
-      command: "pnpm --filter @herbcaudill/ralph-server dev",
-      portEnv: "RALPH_SERVER_PORT",
-      defaultPort: 4245,
-    },
   ],
   frontend: {
     package: "@herbcaudill/ralph-ui",
     portEnv: "RALPH_UI_PORT",
     defaultPort: 5179,
     open: true,
-    env: { VITE_SPLIT_SERVERS: "true" },
   },
   env: { WORKSPACE_PATH: workspacePath },
 }).catch(err => {

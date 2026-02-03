@@ -2,7 +2,7 @@
  * SharedWorker for managing the Ralph loop WebSocket connection.
  *
  * This worker owns the WebSocket connection to the agent server (app=ralph),
- * manages ralph loop state (running/paused/stopped), and broadcasts events
+ * manages ralph loop state (running/paused/idle), and broadcasts events
  * to all connected browser tabs.
  */
 
@@ -19,8 +19,8 @@ interface SharedWorkerGlobalScope {
   location: WorkerLocation
 }
 
-/** Control state for the Ralph loop. */
-export type ControlState = "stopped" | "running" | "paused"
+/** Control state for the Ralph loop. Matches agent-view ControlState. */
+export type ControlState = "idle" | "running" | "paused"
 
 /** Messages sent from browser tabs to the worker. */
 export type WorkerMessage =
@@ -45,7 +45,7 @@ export type WorkerEvent =
 const ports: Set<MessagePort> = new Set()
 
 /** Current control state of the Ralph loop. */
-let controlState: ControlState = "stopped"
+let controlState: ControlState = "idle"
 
 /** WebSocket connection to the agent server. */
 let ws: WebSocket | null = null
@@ -197,7 +197,7 @@ function connect(): void {
       }
 
       // Auto-reconnect after 3 seconds if we were running
-      if (controlState !== "stopped") {
+      if (controlState !== "idle") {
         reconnectTimer = setTimeout(connect, 3000)
       }
     }
@@ -288,7 +288,7 @@ function sendMessage(text: string): void {
 function handlePortMessage(message: WorkerMessage, port: MessagePort): void {
   switch (message.type) {
     case "start":
-      if (controlState === "stopped") {
+      if (controlState === "idle") {
         setControlState("running")
         connect()
         // Wait for connection, then create/resume session
@@ -318,13 +318,13 @@ function handlePortMessage(message: WorkerMessage, port: MessagePort): void {
       break
 
     case "stop":
-      setControlState("stopped")
+      setControlState("idle")
       currentSessionId = null
       disconnect()
       break
 
     case "message":
-      if (controlState !== "stopped") {
+      if (controlState !== "idle") {
         sendMessage(message.text)
       } else {
         broadcast({ type: "error", error: "Ralph is not running" })
