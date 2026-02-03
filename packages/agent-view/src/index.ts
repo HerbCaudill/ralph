@@ -38,6 +38,10 @@ export type { ScrollToBottomButtonProps } from "./components/ScrollToBottomButto
 export { SessionPicker } from "./components/SessionPicker"
 export type { SessionPickerProps } from "./components/SessionPicker"
 
+// Components: Input
+export { ChatInput } from "./components/ChatInput"
+export type { ChatInputProps, ChatInputHandle } from "./components/ChatInput"
+
 // Components: UI
 export { CodeBlock } from "./components/CodeBlock"
 export type { CodeBlockProps } from "./components/CodeBlock"

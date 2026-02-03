@@ -1,14 +1,14 @@
 import { createRef } from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
-import { ChatInput } from ".././ChatInput"
-import type { ChatInputHandle } from ".././ChatInput"
+import { ChatInput } from "../ChatInput"
+import type { ChatInputHandle } from "../ChatInput"
 
 describe("ChatInput", () => {
   describe("rendering", () => {
     it("renders textarea with default placeholder", () => {
       render(<ChatInput onSend={() => {}} />)
-      expect(screen.getByPlaceholderText("Send a message\u2026")).toBeInTheDocument()
+      expect(screen.getByPlaceholderText("Send a message…")).toBeInTheDocument()
     })
 
     it("renders textarea with custom placeholder", () => {

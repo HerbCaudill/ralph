@@ -172,7 +172,6 @@ packages/agent-demo/              # Agent chat demo
     App.tsx                 # Main app with AgentView, session management, agent selector, SessionPicker, hotkey handlers
     components/
       AgentSelector.tsx     # Toggle buttons for Claude Code / Codex selection
-      ChatInput.tsx         # Auto-resizing textarea with send button, forwardRef for focus (ChatInputHandle)
       HotkeysDialog.tsx     # Dialog showing available keyboard shortcuts (triggered by showHotkeys action)
       StatusBar.tsx         # Connection status, streaming indicator, agent type, model name, session ID, token usage display
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
@@ -292,6 +291,7 @@ ClaudeAdapter automatically loads CLAUDE.md files and prepends their content to 
 **Configuration:** Set `loadClaudeMd: false` in `ClaudeAdapterOptions` to disable (default: `true`).
 
 **Load order:**
+
 1. User global: `~/.claude/CLAUDE.md`
 2. Workspace: `{cwd}/CLAUDE.md`
 3. Working directory context (injected automatically)
@@ -300,6 +300,7 @@ ClaudeAdapter automatically loads CLAUDE.md files and prepends their content to 
 If both global and workspace files exist, their contents are combined (global first, then workspace, separated by a blank line).
 
 **Exported utilities** (from `@herbcaudill/agent-server`):
+
 - `loadClaudeMd(options?)` - Async function to load CLAUDE.md content
 - `loadClaudeMdSync(options?)` - Sync version
 - `CLAUDE_MD_FILENAME` - The constant `"CLAUDE.md"`

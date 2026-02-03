@@ -7,10 +7,11 @@ import {
   useAgentHotkeys,
   SessionPicker,
   listSessions,
+  ChatInput,
+  type ChatInputHandle,
 } from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
 import { SettingsMenu } from "./components/SettingsMenu"
-import { ChatInput, type ChatInputHandle } from "./components/ChatInput"
 import { HotkeysDialog } from "./components/HotkeysDialog"
 import { StatusBar } from "./components/StatusBar"
 import { useAdapterInfo, formatModelName } from "./hooks/useAdapterVersion"

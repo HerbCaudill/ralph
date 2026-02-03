@@ -74,6 +74,7 @@ import {
 | `TaskLifecycleEvent`   | Task start/complete lifecycle card                                       |
 | `PromiseCompleteEvent` | Session complete indicator                                               |
 | `SessionPicker`        | Popover listing past sessions with relative timestamps                   |
+| `ChatInput`            | Auto-resizing textarea with send button and imperative focus handle      |
 
 ## Utilities
 
