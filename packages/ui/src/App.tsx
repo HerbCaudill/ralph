@@ -6,6 +6,7 @@ import { TaskChatPanel } from "./components/TaskChatPanel"
 import { TaskDetailPanel } from "./components/TaskDetailPanel"
 import { StatusBar } from "./components/StatusBar"
 import { useRalphLoop } from "./hooks/useRalphLoop"
+import { useAccentColor } from "./hooks/useAccentColor"
 import {
   TaskSidebarController,
   BeadsViewProvider,
@@ -52,6 +53,9 @@ function AppContent() {
     state: { current: workspace, workspaces, isLoading: isWorkspaceLoading },
     actions: { switchWorkspace },
   } = useWorkspace()
+
+  // Inject accent color as CSS custom property
+  useAccentColor(workspace?.accentColor)
 
   // Task state from beads-view
   const { error: tasksError, refresh } = useTasks()
