@@ -270,10 +270,12 @@ describe("useAgentChat localStorage persistence", () => {
       expect(localStorage.getItem(AGENT_TYPE_KEY)).toBe("codex")
     })
 
-    it("restores both isStreaming and agentType from /api/sessions/latest fallback", async () => {
-      // No stored session ID — forces fallback to /api/sessions/latest
+    it("creates new session when localStorage is empty (no server fallback to /api/sessions/latest)", async () => {
+      // No stored session ID, no session index entries
+      // Should create a new session but NOT call /api/sessions/latest
 
-      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        // This should NOT be called
         if (url === "/api/sessions/latest") {
           return Promise.resolve({
             ok: true,
@@ -284,11 +286,11 @@ describe("useAgentChat localStorage persistence", () => {
             }),
           })
         }
-        // createSession fallback — should not be reached
-        if (url === "/api/sessions") {
+        // This SHOULD be called — create new session
+        if (url === "/api/sessions" && init?.method === "POST") {
           return Promise.resolve({
             ok: true,
-            json: async () => ({ sessionId: "new-session" }),
+            json: async () => ({ sessionId: "new-session-xyz" }),
           })
         }
         return Promise.resolve({ ok: false, json: async () => ({}) })
@@ -301,11 +303,21 @@ describe("useAgentChat localStorage persistence", () => {
         await Promise.resolve()
         await Promise.resolve()
         await Promise.resolve()
+        await Promise.resolve()
       })
 
-      expect(result.current.state.isStreaming).toBe(true)
-      expect(result.current.agentType).toBe("codex")
-      expect(result.current.state.sessionId).toBe("latest-session")
+      // Should have created a new session
+      expect(result.current.state.sessionId).toBe("new-session-xyz")
+      expect(result.current.agentType).toBe("claude")
+
+      // Verify /api/sessions/latest was NOT called, but POST /api/sessions WAS called
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
+      const latestCalls = fetchCalls.filter(([url]: [string]) => url === "/api/sessions/latest")
+      const createCalls = fetchCalls.filter(
+        ([url, init]: [string, RequestInit?]) => url === "/api/sessions" && init?.method === "POST",
+      )
+      expect(latestCalls).toHaveLength(0)
+      expect(createCalls).toHaveLength(1)
     })
 
     it("does not set isStreaming when session status is not 'processing'", async () => {
@@ -362,7 +374,7 @@ describe("useAgentChat localStorage persistence", () => {
       const { result } = renderUseAgentChat("claude")
 
       // Trigger WebSocket onopen -> initSession
-      // initSession: no stored session, no index entries, /api/sessions/latest fails -> calls createSession
+      // initSession: no stored session, no index entries -> calls createSession
       await act(async () => {
         vi.advanceTimersByTime(1)
         await Promise.resolve()

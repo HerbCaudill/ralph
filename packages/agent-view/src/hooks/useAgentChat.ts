@@ -195,33 +195,8 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
       }
     }
 
-    // Fall back to /api/sessions/latest (for sessions created before index existed)
-    try {
-      const res = await fetch("/api/sessions/latest")
-      if (res.ok) {
-        const data = (await res.json()) as {
-          sessionId: string
-          status?: string
-          adapter?: string
-        }
-        setSessionId(data.sessionId)
-        restoreSessionState(data)
-
-        // Reconnect to get pending events
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(
-            JSON.stringify({
-              type: "reconnect",
-              sessionId: data.sessionId,
-            }),
-          )
-        }
-        return
-      }
-    } catch {
-      // No existing session, create new one
-    }
-
+    // No localStorage session found — create a new session.
+    // Don't fall back to server's /api/sessions/latest.
     await createSession()
   }, [createSession, setSessionId, setAgentType])
 
