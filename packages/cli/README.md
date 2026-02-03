@@ -42,7 +42,7 @@ By default, Ralph runs `ceil(openIssues * 1.2)` sessions, bounded between 10 and
 
 ## How it works
 
-1. Ralph combines a core prompt with your repo's `.ralph/workflow.md` to build the session instructions
+1. Ralph combines a core prompt with your repo's `.ralph/workflow.prompt.md` to build the session instructions
 2. Spawns the agent CLI with `--output-format stream-json`
 3. The agent checks build/tests, finds available issues via `bd ready`, claims one, completes it, and closes it
 4. Events are streamed to the terminal UI and logged to `.ralph/events-*.jsonl`
@@ -68,12 +68,12 @@ By default, Ralph runs `ceil(openIssues * 1.2)` sessions, bounded between 10 and
 
 ## Configuration
 
-After `ralph init`, customize `.ralph/workflow.md` with your repo's build commands, test commands, and task prioritization rules.
+After `ralph init`, customize `.ralph/workflow.prompt.md` with your repo's build commands, test commands, and task prioritization rules.
 
 ## Template system
 
 - **Core prompt** (bundled) - Session lifecycle, task assignment, output tokens
-- **Workflow** (`.ralph/workflow.md`) - Repo-specific build/test commands and workflow rules
+- **Workflow** (`.ralph/workflow.prompt.md`) - Repo-specific build/test commands and workflow rules
 
 ## Environment variables
 

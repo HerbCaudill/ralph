@@ -101,10 +101,10 @@ export function hasCustomPrompt(
 }
 
 /**
- * Load the session prompt by combining core-prompt.md with workflow.md.
+ * Load the session prompt by combining core.prompt.md with workflow.prompt.md.
  *
  * The core prompt is always loaded from templates (bundled).
- * The workflow is loaded from .ralph/workflow.md if it exists, otherwise from templates.
+ * The workflow is loaded from .ralph/workflow.prompt.md if it exists, otherwise from templates.
  * The workflow content replaces {WORKFLOW} placeholder in the core prompt.
  */
 export function loadSessionPrompt(
@@ -115,15 +115,15 @@ export function loadSessionPrompt(
   const workspaceRoot = getWorkspaceRoot(cwd)
 
   // Load core prompt (always from templates)
-  const corePromptPath = join(templatesDir, "core-prompt.md")
+  const corePromptPath = join(templatesDir, "core.prompt.md")
   if (!existsSync(corePromptPath)) {
     throw new Error(`Core prompt not found at ${corePromptPath}`)
   }
   const corePrompt = readFileSync(corePromptPath, "utf-8")
 
   // Try custom workflow first, then fall back to template
-  const customWorkflowPath = join(workspaceRoot, ".ralph", "workflow.md")
-  const defaultWorkflowPath = join(templatesDir, "workflow.md")
+  const customWorkflowPath = join(workspaceRoot, ".ralph", "workflow.prompt.md")
+  const defaultWorkflowPath = join(templatesDir, "workflow.prompt.md")
 
   let workflowContent: string
   let hasCustomWorkflow: boolean
@@ -156,7 +156,7 @@ export function hasCustomWorkflow(
   /** Working directory (defaults to process.cwd()) */
   cwd: string = process.cwd(),
 ): boolean {
-  return existsSync(join(getWorkspaceRoot(cwd), ".ralph", "workflow.md"))
+  return existsSync(join(getWorkspaceRoot(cwd), ".ralph", "workflow.prompt.md"))
 }
 
 /**  Get the path to the custom workflow file. */
@@ -164,12 +164,12 @@ export function getCustomWorkflowPath(
   /** Working directory (defaults to process.cwd()) */
   cwd: string = process.cwd(),
 ): string {
-  return join(getWorkspaceRoot(cwd), ".ralph", "workflow.md")
+  return join(getWorkspaceRoot(cwd), ".ralph", "workflow.prompt.md")
 }
 
 /**  Configuration for loading a prompt file. */
 export type LoadPromptOptions = {
-  /** Name of the prompt file (e.g., "prompt.md" or "task-chat-system.md") */
+  /** Name of the prompt file (e.g., "prompt.prompt.md" or "task-chat-system.prompt.md") */
   filename: string
   /** Path to the custom prompt directory (e.g., ".ralph") */
   customDir: string
@@ -191,7 +191,7 @@ export type LoadPromptResult = {
 
 /**  Configuration for loading session prompts. */
 export type LoadSessionPromptOptions = {
-  /** Path to the templates directory containing core-prompt.md and workflow.md */
+  /** Path to the templates directory containing core.prompt.md and workflow.prompt.md */
   templatesDir: string
   /** Working directory to search for custom workflow (defaults to process.cwd()) */
   cwd?: string

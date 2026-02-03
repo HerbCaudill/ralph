@@ -53,7 +53,7 @@ describe("Ralph E2E Tests", () => {
       })
 
       expect(result.exitCode).toBe(0)
-      expect(existsSync(join(workspacePath, ".ralph/prompt.md"))).toBe(true)
+      expect(existsSync(join(workspacePath, ".ralph/prompt.prompt.md"))).toBe(true)
       expect(existsSync(join(workspacePath, ".ralph/todo.md"))).toBe(true)
     })
 
@@ -71,7 +71,7 @@ describe("Ralph E2E Tests", () => {
 
       expect(result.exitCode).toBe(0)
       // Should preserve existing prompt.md
-      const promptContent = readFileSync(join(workspacePath, ".ralph/prompt.md"), "utf-8")
+      const promptContent = readFileSync(join(workspacePath, ".ralph/prompt.prompt.md"), "utf-8")
       expect(promptContent).toContain("only has prompt.md")
       // Should create missing files
       expect(existsSync(join(workspacePath, ".ralph/todo.md"))).toBe(true)
@@ -82,7 +82,7 @@ describe("Ralph E2E Tests", () => {
       const workspacePath = join(TEST_WORKSPACE, "valid-test")
       cpSync(fixturePath, workspacePath, { recursive: true })
 
-      const originalPrompt = readFileSync(join(workspacePath, ".ralph/prompt.md"), "utf-8")
+      const originalPrompt = readFileSync(join(workspacePath, ".ralph/prompt.prompt.md"), "utf-8")
 
       const result = await runRalph({
         args: ["init"],
@@ -92,7 +92,7 @@ describe("Ralph E2E Tests", () => {
       })
 
       expect(result.exitCode).toBe(0)
-      const currentPrompt = readFileSync(join(workspacePath, ".ralph/prompt.md"), "utf-8")
+      const currentPrompt = readFileSync(join(workspacePath, ".ralph/prompt.prompt.md"), "utf-8")
       expect(currentPrompt).toBe(originalPrompt)
     })
   })

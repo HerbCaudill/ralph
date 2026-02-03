@@ -106,9 +106,9 @@ function handleEvent(event: AgentEvent) {
 
 // Load prompt with customization (Node.js only)
 const result = loadPrompt({
-  filename: "prompt.md",
+  filename: "prompt.prompt.md",
   customDir: ".ralph",
-  defaultPath: "/path/to/default/prompt.md",
+  defaultPath: "/path/to/default/prompt.prompt.md",
 })
 console.log(result.content, result.isCustom)
 ```

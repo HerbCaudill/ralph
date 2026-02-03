@@ -75,8 +75,8 @@ packages/cli/                       # CLI package
       MessageQueue.ts       # Async iterable message queue
       rel.ts                # Convert absolute -> relative paths
   templates/                # Template files for ralph init
-    core-prompt.md          # Bundled session protocol
-    workflow.md             # Default workflow -> .ralph/workflow.md
+    core.prompt.md          # Bundled session protocol
+    workflow.prompt.md             # Default workflow -> .ralph/workflow.prompt.md
 
 packages/beads-view/                   # Beads-view package (task management UI/state)
   src/
@@ -239,7 +239,7 @@ packages/shared/                    # Shared package
 
 1. **CLI entry** (`cli.ts`): Main mode (`ralph [sessions]`), watch mode (`--watch`), agent selection (`--agent <name>`), init mode (`ralph init`), replay mode (`--replay [file]`)
 
-2. **Session runner** (`SessionRunner.tsx`): Combines `core-prompt.md` with `.ralph/workflow.md`, spawns `claude` CLI with `--output-format stream-json`, parses streaming JSON events, appends to `.ralph/events-*.jsonl`, detects `<promise>COMPLETE</promise>` to exit or enter watch mode
+2. **Session runner** (`SessionRunner.tsx`): Combines `core.prompt.md` with `.ralph/workflow.prompt.md`, spawns `claude` CLI with `--output-format stream-json`, parses streaming JSON events, appends to `.ralph/events-*.jsonl`, detects `<promise>COMPLETE</promise>` to exit or enter watch mode
 
 3. **Event processing** (`eventToBlocks.ts`): Transforms raw JSON events into display blocks (tool calls, file paths, React keys)
 
@@ -249,8 +249,8 @@ packages/shared/                    # Shared package
 
 Two-tier prompt system:
 
-- **Core prompt** (`packages/cli/templates/core-prompt.md`) - Session lifecycle, task assignment, output tokens
-- **Workflow** (`.ralph/workflow.md`) - Repo-specific build/test commands, prioritization, wrap-up steps
+- **Core prompt** (`packages/cli/templates/core.prompt.md`) - Session lifecycle, task assignment, output tokens
+- **Workflow** (`.ralph/workflow.prompt.md`) - Repo-specific build/test commands, prioritization, wrap-up steps
 
 ### Contract with Claude CLI
 

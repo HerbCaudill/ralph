@@ -212,15 +212,15 @@ describe("loadPrompt", () => {
       mkdirSync(nested, { recursive: true })
       mkdirSync(templatesDir, { recursive: true })
 
-      writeFileSync(join(templatesDir, "core-prompt.md"), "CORE\\n\\n{WORKFLOW}")
-      writeFileSync(join(templatesDir, "workflow.md"), "DEFAULT WORKFLOW")
+      writeFileSync(join(templatesDir, "core.prompt.md"), "CORE\\n\\n{WORKFLOW}")
+      writeFileSync(join(templatesDir, "workflow.prompt.md"), "DEFAULT WORKFLOW")
       mkdirSync(join(repoRoot, ".ralph"), { recursive: true })
-      writeFileSync(join(repoRoot, ".ralph", "workflow.md"), "CUSTOM WORKFLOW")
+      writeFileSync(join(repoRoot, ".ralph", "workflow.prompt.md"), "CUSTOM WORKFLOW")
 
       const result = loadSessionPrompt({ templatesDir, cwd: nested })
       expect(result.content).toBe("CORE\\n\\nCUSTOM WORKFLOW")
       expect(result.hasCustomWorkflow).toBe(true)
-      expect(result.workflowPath).toBe(join(repoRoot, ".ralph", "workflow.md"))
+      expect(result.workflowPath).toBe(join(repoRoot, ".ralph", "workflow.prompt.md"))
     })
 
     it("falls back to default workflow when no custom workflow exists", () => {
@@ -231,13 +231,13 @@ describe("loadPrompt", () => {
       mkdirSync(nested, { recursive: true })
       mkdirSync(templatesDir, { recursive: true })
 
-      writeFileSync(join(templatesDir, "core-prompt.md"), "CORE\\n\\n{WORKFLOW}")
-      writeFileSync(join(templatesDir, "workflow.md"), "DEFAULT WORKFLOW")
+      writeFileSync(join(templatesDir, "core.prompt.md"), "CORE\\n\\n{WORKFLOW}")
+      writeFileSync(join(templatesDir, "workflow.prompt.md"), "DEFAULT WORKFLOW")
 
       const result = loadSessionPrompt({ templatesDir, cwd: nested })
       expect(result.content).toBe("CORE\\n\\nDEFAULT WORKFLOW")
       expect(result.hasCustomWorkflow).toBe(false)
-      expect(result.workflowPath).toBe(join(templatesDir, "workflow.md"))
+      expect(result.workflowPath).toBe(join(templatesDir, "workflow.prompt.md"))
     })
   })
 })

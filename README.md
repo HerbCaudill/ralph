@@ -72,7 +72,7 @@ Each demo proxies `/api` and `/ws` requests to its backend server via Vite dev s
 
 ## How it works
 
-1. Ralph combines a core prompt with your project's `.ralph/workflow.md` (resolved from the repo root)
+1. Ralph combines a core prompt with your project's `.ralph/workflow.prompt.md` (resolved from the repo root)
 2. Spawns Claude CLI with `--output-format stream-json`
 3. Claude checks for errors, finds available tasks via `bd ready`, and works through them
 4. Outputs `<start_task>` and `<end_task>` markers as it works
