@@ -60,6 +60,7 @@ export type AgentChatActions = {
   clearHistory: () => void
   setAgentType: (type: AgentType) => void
   newSession: () => void
+  restoreSession: (sessionId: string) => void
 }
 
 /**
@@ -459,9 +460,49 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     createSession()
   }, [createSession, setSessionId])
 
+  /** Switch to an existing session by ID. Fetches session info and reconnects the WebSocket. */
+  const restoreSession = useCallback(
+    async (targetSessionId: string) => {
+      // Don't restore if it's already the current session
+      if (targetSessionId === sessionIdRef.current) return
+
+      setEvents([])
+      setIsStreaming(false)
+      setError(null)
+      setSessionId(targetSessionId)
+
+      // Fetch session info to restore adapter/streaming state
+      try {
+        const res = await fetch(`/api/sessions/${targetSessionId}`)
+        if (res.ok) {
+          const info = (await res.json()) as { status?: string; adapter?: string }
+          if (info.status === "processing") {
+            setIsStreaming(true)
+          }
+          if (info.adapter === "claude" || info.adapter === "codex") {
+            setAgentType(info.adapter)
+          }
+        }
+      } catch {
+        // Continue even if fetch fails — we still have the session ID
+      }
+
+      // Ask the WebSocket to send pending events for this session
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "reconnect",
+            sessionId: targetSessionId,
+          }),
+        )
+      }
+    },
+    [setSessionId, setAgentType],
+  )
+
   return {
     state: { events, isStreaming, connectionStatus, error, sessionId },
-    actions: { sendMessage, clearHistory, setAgentType, newSession },
+    actions: { sendMessage, clearHistory, setAgentType, newSession, restoreSession },
     agentType,
   }
 }

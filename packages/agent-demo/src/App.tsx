@@ -1,6 +1,12 @@
-import { useState } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { IconMessageChatbot, IconPlus, IconLoader2 } from "@tabler/icons-react"
-import { AgentView, AgentViewProvider, useAgentChat } from "@herbcaudill/agent-view"
+import {
+  AgentView,
+  AgentViewProvider,
+  useAgentChat,
+  SessionPicker,
+  listSessions,
+} from "@herbcaudill/agent-view"
 import { DemoShell } from "./components/DemoShell"
 import { SettingsMenu } from "./components/SettingsMenu"
 import { ChatInput } from "./components/ChatInput"
@@ -10,7 +16,18 @@ import { useAdapterInfo, formatModelName } from "./hooks/useAdapterVersion"
 export function App() {
   const { state, actions, agentType } = useAgentChat("claude")
   const { events, isStreaming, connectionStatus, error, sessionId } = state
-  const { sendMessage, setAgentType, newSession } = actions
+  const { sendMessage, setAgentType, newSession, restoreSession } = actions
+
+  // Session list for the SessionPicker — re-read on every render so it stays
+  // in sync after newSession / restoreSession / sendMessage mutations.
+  const sessions = useMemo(() => listSessions(), [sessionId, events.length])
+
+  const handleSelectSession = useCallback(
+    (id: string) => {
+      restoreSession(id)
+    },
+    [restoreSession],
+  )
   const { version: agentVersion, model } = useAdapterInfo(agentType)
   const modelName = formatModelName(model)
   const [showToolOutput, setShowToolOutput] = useState(true)
@@ -31,6 +48,12 @@ export function App() {
             <IconPlus size={16} stroke={1.5} />
             New session
           </button>
+          <SessionPicker
+            sessions={sessions}
+            currentSessionId={sessionId}
+            onSelectSession={handleSelectSession}
+            disabled={isStreaming}
+          />
           <SettingsMenu
             agentType={agentType}
             onAgentTypeChange={setAgentType}
