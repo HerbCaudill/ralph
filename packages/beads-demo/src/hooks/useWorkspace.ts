@@ -29,9 +29,12 @@ export function useWorkspace() {
     try {
       const res = await fetch("/api/workspace")
       if (!res.ok) throw new Error("Failed to fetch workspace")
-      const data = (await res.json()) as Workspace & { ok: boolean }
-      if (data.ok !== false) {
-        setCurrent(data)
+      const data = (await res.json()) as {
+        ok: boolean
+        workspace?: Workspace
+      }
+      if (data.ok !== false && data.workspace) {
+        setCurrent(data.workspace)
       }
     } catch (e) {
       setError((e as Error).message)
