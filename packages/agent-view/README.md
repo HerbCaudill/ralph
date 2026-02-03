@@ -73,6 +73,13 @@ import {
 | `MarkdownContent`      | Markdown renderer with prose styling                                     |
 | `TaskLifecycleEvent`   | Task start/complete lifecycle card                                       |
 | `PromiseCompleteEvent` | Session complete indicator                                               |
+| `SessionPicker`        | Popover listing past sessions with relative timestamps                   |
+
+## Utilities
+
+| Function             | Description                                                       |
+| -------------------- | ----------------------------------------------------------------- |
+| `formatRelativeTime` | Format a timestamp as a relative time string (e.g. "2 hours ago") |
 
 ## Context
 

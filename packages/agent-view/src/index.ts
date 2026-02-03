@@ -34,6 +34,10 @@ export type { AutoScrollProps } from "./components/AutoScroll"
 export { ScrollToBottomButton } from "./components/ScrollToBottomButton"
 export type { ScrollToBottomButtonProps } from "./components/ScrollToBottomButton"
 
+// Components: Session
+export { SessionPicker } from "./components/SessionPicker"
+export type { SessionPickerProps } from "./components/SessionPicker"
+
 // Components: UI
 export { CodeBlock } from "./components/CodeBlock"
 export type { CodeBlockProps } from "./components/CodeBlock"
@@ -75,6 +79,7 @@ export {
 export type { SessionIndexEntry } from "./lib/sessionIndex"
 
 // Lib: Utilities
+export { formatRelativeTime } from "./lib/formatRelativeTime"
 export { cx, cn, stripAnsi, hasAnsiCodes, stripTaskPrefix, toRelativePath } from "./lib/utils"
 export { buildToolResultsMap } from "./lib/buildToolResultsMap"
 export type { ToolResult, ToolResultsInfo } from "./lib/buildToolResultsMap"
