@@ -49,13 +49,15 @@ vi.mock("@herbcaudill/beads-view", () => ({
     const state = {
       selectedTaskId: mockSelectedTaskId,
       setSelectedTaskId: mockSetSelectedTaskId,
+      visibleTaskIds: [],
     }
     return selector(state)
   },
   selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
+  selectVisibleTaskIds: (state: { visibleTaskIds: string[] }) => state.visibleTaskIds,
   useWorkspace: () => ({
     state: {
-      current: { path: "/test/workspace", name: "Test Workspace", accentColor: "#007ACC" },
+      current: { path: "/test/workspace", name: "Test Workspace", accentColor: "#007ACC", branch: "main" },
       workspaces: [],
       isLoading: false,
       error: null,
@@ -66,6 +68,9 @@ vi.mock("@herbcaudill/beads-view", () => ({
     },
   }),
   WorkspaceSelector: () => <div data-testid="workspace-selector">Workspace Selector</div>,
+  useBeadsHotkeys: vi.fn(),
+  hotkeys: {},
+  getHotkeyDisplayString: () => "",
 }))
 
 vi.mock("@herbcaudill/agent-view", () => ({
@@ -77,6 +82,16 @@ vi.mock("@herbcaudill/agent-view", () => ({
   useContextWindow: () => ({ used: 0, max: 100000 }),
   TokenUsageDisplay: () => <div data-testid="token-usage">Token Usage</div>,
   ContextWindowProgress: () => <div data-testid="context-progress">Context Progress</div>,
+  useAgentChat: () => ({
+    state: { events: [], isStreaming: false, connectionStatus: "disconnected", sessionId: null },
+    actions: { sendMessage: vi.fn(), restoreSession: vi.fn() },
+    agentType: "claude",
+  }),
+  useAgentHotkeys: vi.fn(),
+  SessionPicker: () => <div data-testid="session-picker">Session Picker</div>,
+  listSessions: vi.fn(() => []),
+  hotkeys: {},
+  getHotkeyDisplayString: () => "",
 }))
 
 // Mock TaskDetailPanel to verify it gets rendered
