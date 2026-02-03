@@ -8,7 +8,7 @@ import {
 import type { ChatEvent, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
 import { useSessionTimer } from "@/hooks/useSessionTimer"
 import { ControlBar } from "@/components/controls/ControlBar"
-import { RunDuration, StatusIndicator } from "@/components/layout"
+import { RepoBranch, RunDuration, StatusIndicator } from "@/components/layout"
 
 /**
  * Footer status bar showing connection status, workspace path, current task, agent controls, token usage, and context window progress.
@@ -87,21 +87,12 @@ export function StatusBar({
 
         {/* Workspace name and branch */}
         {(workspaceName || branch) && (
-          <span className="flex items-center gap-1.5 border-l border-border pl-3">
-            {workspaceName && (
-              <span
-                className="max-w-[150px] truncate text-[10px]"
-                title={workspacePath ?? undefined}
-              >
-                {workspaceName}
-              </span>
-            )}
-            {branch && (
-              <span className="text-[10px] text-muted-foreground" title={`Branch: ${branch}`}>
-                ({branch})
-              </span>
-            )}
-          </span>
+          <RepoBranch
+            workspaceName={workspaceName}
+            branch={branch}
+            workspacePath={workspacePath}
+            className="border-l border-border pl-3"
+          />
         )}
 
         {/* Error */}

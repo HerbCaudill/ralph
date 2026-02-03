@@ -202,8 +202,14 @@ packages/ui/                        # UI package
     components/
       layout/               # Layout components
         Header.tsx          # App header (logo, workspace selector, settings)
+        HelpButton.tsx      # Help button for opening hotkeys dialog
         Logo.tsx            # Ralph logo component
+        RepoBranch.tsx      # Workspace name and git branch with branch icon (status bar footer)
+        RunDuration.tsx     # Session timer display
         SettingsDropdown.tsx # Settings dropdown (placeholder)
+        StatusIndicator.tsx # Connection/status indicator
+        ThemePicker.tsx     # Theme color picker
+        ThemeToggle.tsx     # Light/dark mode toggle
         index.ts            # Barrel exports
     lib/
       getContrastingColor.ts # WCAG-compliant foreground color calculator

@@ -1,6 +1,7 @@
 export { Header, type HeaderProps } from "./Header"
 export { HelpButton, type HelpButtonProps } from "./HelpButton"
 export { Logo } from "./Logo"
+export { RepoBranch, type RepoBranchProps } from "./RepoBranch"
 export { RunDuration, type RunDurationProps } from "./RunDuration"
 export { SettingsDropdown, type SettingsDropdownProps } from "./SettingsDropdown"
 export { StatusIndicator, type StatusIndicatorProps } from "./StatusIndicator"
