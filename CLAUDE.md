@@ -83,6 +83,7 @@ packages/beads-view/                   # Beads-view package (task management UI/
     components/
       tasks/                # Task UI components (TaskCard, TaskList, TaskSidebar, TaskDetails, etc.)
       ui/                   # Shared UI primitives (button, input, popover, command, etc.)
+      workspace/            # Workspace UI components (WorkspaceSelector for switching workspaces)
     hooks/
       useTasks.ts           # Task list fetching and polling
       useTaskDetails.ts     # Single-task fetching with comments/blockers
@@ -184,7 +185,6 @@ packages/beads-demo/                   # Beads task manager demo
   src/
     App.tsx                 # Main app wrapping BeadsViewProvider, TaskSidebarController, task dialog, workspace selector
     components/
-      WorkspaceSelector.tsx # Dropdown button for switching workspaces
       TaskDetailPanel.tsx   # Panel displaying task details with inline editing (wraps TaskDetailsController)
       TaskStatusBar.tsx     # Connection status, workspace path, task counts (open/closed/total)
       HotkeysDialog.tsx     # Dialog showing available keyboard shortcuts (triggered by showHotkeys action)

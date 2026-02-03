@@ -9,10 +9,10 @@ import {
   useWorkspace,
   selectSelectedTaskId,
   selectVisibleTaskIds,
+  WorkspaceSelector,
   type SearchInputHandle,
 } from "@herbcaudill/beads-view"
 import { DemoShell } from "./components/DemoShell"
-import { WorkspaceSelector } from "./components/WorkspaceSelector"
 import { TaskDetailPanel } from "./components/TaskDetailPanel"
 import { TaskStatusBar } from "./components/TaskStatusBar"
 import { HotkeysDialog } from "./components/HotkeysDialog"

@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
-import { WorkspaceSelector } from ".././WorkspaceSelector"
-import type { Workspace } from "@herbcaudill/beads-view"
+import { WorkspaceSelector } from "../WorkspaceSelector"
+import type { Workspace } from "../../../hooks/useWorkspace"
 
 const makeWorkspace = (overrides: Partial<Workspace> = {}): Workspace => ({
   path: "/home/user/project",
