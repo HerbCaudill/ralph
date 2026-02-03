@@ -5,6 +5,47 @@ export type AgentType = "claude" | "codex"
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected"
 
+const SESSION_ID_KEY = "agent-chat-session-id"
+const AGENT_TYPE_KEY = "agent-chat-agent-type"
+
+function loadSessionId(): string | null {
+  try {
+    return localStorage.getItem(SESSION_ID_KEY)
+  } catch {
+    return null
+  }
+}
+
+function saveSessionId(id: string | null) {
+  try {
+    if (id) {
+      localStorage.setItem(SESSION_ID_KEY, id)
+    } else {
+      localStorage.removeItem(SESSION_ID_KEY)
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function loadAgentType(): AgentType | null {
+  try {
+    const stored = localStorage.getItem(AGENT_TYPE_KEY)
+    if (stored === "claude" || stored === "codex") return stored
+    return null
+  } catch {
+    return null
+  }
+}
+
+function saveAgentType(type: AgentType) {
+  try {
+    localStorage.setItem(AGENT_TYPE_KEY, type)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export type AgentChatState = {
   events: ChatEvent[]
   isStreaming: boolean
@@ -29,17 +70,25 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
   const [isStreaming, setIsStreaming] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
   const [error, setError] = useState<string | null>(null)
-  const [agentType, setAgentType] = useState<AgentType>(initialAgent)
-  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [agentType, _setAgentType] = useState<AgentType>(() => loadAgentType() ?? initialAgent)
+  const [sessionId, _setSessionId] = useState<string | null>(() => loadSessionId())
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const sessionIdRef = useRef<string | null>(null)
+  const sessionIdRef = useRef<string | null>(sessionId)
 
-  // Keep ref in sync with state
-  useEffect(() => {
-    sessionIdRef.current = sessionId
-  }, [sessionId])
+  // Wrapper that persists sessionId to localStorage
+  const setSessionId = useCallback((id: string | null) => {
+    _setSessionId(id)
+    sessionIdRef.current = id
+    saveSessionId(id)
+  }, [])
+
+  // Wrapper that persists agentType to localStorage
+  const setAgentType = useCallback((type: AgentType) => {
+    _setAgentType(type)
+    saveAgentType(type)
+  }, [])
 
   /** Create a new session via REST, then subscribe via WS. */
   const createSession = useCallback(async () => {
@@ -58,10 +107,35 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
       setError("Failed to create session")
       return null
     }
-  }, [agentType])
+  }, [agentType, setSessionId])
 
-  /** Try to restore the latest session, or create a new one. */
+  /** Try to restore from localStorage, then /api/sessions/latest, or create new. */
   const initSession = useCallback(async () => {
+    // Try restoring from localStorage first
+    const storedSessionId = loadSessionId()
+    if (storedSessionId) {
+      try {
+        const res = await fetch(`/api/sessions/${storedSessionId}`)
+        if (res.ok) {
+          setSessionId(storedSessionId)
+
+          // Reconnect to get pending events
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(
+              JSON.stringify({
+                type: "reconnect",
+                sessionId: storedSessionId,
+              }),
+            )
+          }
+          return
+        }
+      } catch {
+        // Stored session no longer valid, fall through
+      }
+    }
+
+    // Fall back to /api/sessions/latest
     try {
       const res = await fetch("/api/sessions/latest")
       if (res.ok) {
@@ -84,7 +158,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     }
 
     await createSession()
-  }, [createSession])
+  }, [createSession, setSessionId])
 
   const connect = useCallback(() => {
     // Clean up existing connection
@@ -291,7 +365,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     }
 
     setSessionId(null)
-  }, [])
+  }, [setSessionId])
 
   const newSession = useCallback(() => {
     setEvents([])
@@ -299,7 +373,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     setError(null)
     setSessionId(null)
     createSession()
-  }, [createSession])
+  }, [createSession, setSessionId])
 
   return {
     state: { events, isStreaming, connectionStatus, error, sessionId },
