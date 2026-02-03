@@ -79,7 +79,7 @@ function matchesHotkey(event: KeyboardEvent, config: HotkeyConfig): boolean {
 
   // On Mac, "cmd" maps to metaKey; on Windows/Linux, "cmd" maps to ctrlKey
   const cmdPressed = mac ? event.metaKey : event.ctrlKey
-  const ctrlPressed = mac ? event.ctrlKey : false
+  const ctrlPressed = event.ctrlKey
 
   if (cmdRequired && !cmdPressed) return false
   if (ctrlRequired && !ctrlPressed) return false
@@ -87,8 +87,17 @@ function matchesHotkey(event: KeyboardEvent, config: HotkeyConfig): boolean {
   if (shiftRequired !== event.shiftKey) return false
 
   // Check if no extra modifiers are pressed
-  if (!cmdRequired && cmdPressed) return false
-  if (!ctrlRequired && ctrlPressed) return false
+  // On Mac, cmd (metaKey) and ctrl (ctrlKey) are separate physical keys
+  // On non-Mac, cmd maps to ctrlKey, so cmd and ctrl share the same physical key
+  // This means: on non-Mac, if either cmd or ctrl is required, pressing ctrlKey is expected
+  if (mac) {
+    if (!cmdRequired && cmdPressed) return false
+    if (!ctrlRequired && ctrlPressed) return false
+  } else {
+    // On non-Mac, both cmdPressed and ctrlPressed come from event.ctrlKey
+    // Only reject if ctrl is pressed but neither cmd nor ctrl is required
+    if (!cmdRequired && !ctrlRequired && ctrlPressed) return false
+  }
 
   const eventKey = event.key.toLowerCase()
   const configKey = config.key.toLowerCase()

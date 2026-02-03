@@ -321,7 +321,7 @@ describe("useAgentHotkeys", () => {
       expect(handler).not.toHaveBeenCalled()
     })
 
-    it("calls handler for toggleToolOutput (ctrl+o)", () => {
+    it("calls handler for toggleToolOutput (ctrl+o) on non-Mac", () => {
       const handler = vi.fn()
       renderHook(() =>
         useAgentHotkeys({
@@ -329,13 +329,9 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      // toggleToolOutput is ctrl+o; on non-Mac ctrl maps to ctrlKey
-      // but note: "ctrl" modifier uses event.ctrlKey on Mac, and is false on non-Mac
-      // In jsdom (non-Mac), ctrlRequired uses ctrlPressed which is false on non-Mac
-      // Actually looking at the code: ctrlPressed = mac ? event.ctrlKey : false
-      // So on non-Mac, ctrlPressed is always false, meaning ctrl modifier can never match on non-Mac
-      // This is by design -- ctrl+o only works on macOS where ctrl is the Control key
-      // Let's skip this and test scrollToBottom instead
+      // toggleToolOutput is ctrl+o; on Windows/Linux ctrl maps to ctrlKey
+      fireKey({ key: "o", ctrlKey: true })
+      expect(handler).toHaveBeenCalledTimes(1)
     })
 
     it("calls handler for scrollToBottom (cmd+ArrowDown)", () => {
@@ -481,9 +477,9 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      // toggleToolOutput is ctrl+o; on non-Mac ctrlPressed is always false
-      // so this hotkey won't match on non-Mac at all. Let's verify the
-      // ALLOWED_IN_INPUT list by checking showHotkeys instead.
+      // toggleToolOutput is ctrl+o and is in ALLOWED_IN_INPUT
+      fireKey({ key: "o", ctrlKey: true, target: inputEl })
+      expect(handler).toHaveBeenCalledTimes(1)
     })
 
     it("allows showHotkeys when target is an input element", () => {
@@ -551,36 +547,28 @@ describe("useAgentHotkeys", () => {
 
   describe("getHotkeyDisplay return value", () => {
     it("returns display string for focusChatInput", () => {
-      const { result } = renderHook(() =>
-        useAgentHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
       // focusChatInput is cmd+l => on non-Mac: "Ctrl+L"
       expect(result.current.getHotkeyDisplay("focusChatInput")).toBe("Ctrl+L")
     })
 
     it("returns display string for newSession", () => {
-      const { result } = renderHook(() =>
-        useAgentHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
       // newSession is cmd+Backspace => on non-Mac: "Ctrl+⌫"
       expect(result.current.getHotkeyDisplay("newSession")).toBe("Ctrl+\u232B")
     })
 
     it("returns display string for scrollToBottom", () => {
-      const { result } = renderHook(() =>
-        useAgentHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
       // scrollToBottom is cmd+ArrowDown => on non-Mac: "Ctrl+↓"
       expect(result.current.getHotkeyDisplay("scrollToBottom")).toBe("Ctrl+\u2193")
     })
 
     it("returns display string for showHotkeys", () => {
-      const { result } = renderHook(() =>
-        useAgentHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
       // showHotkeys is cmd+/ => on non-Mac: "Ctrl+/"
       expect(result.current.getHotkeyDisplay("showHotkeys")).toBe("Ctrl+/")
@@ -589,14 +577,12 @@ describe("useAgentHotkeys", () => {
 
   describe("registeredHotkeys", () => {
     it("returns all hotkey actions with display and description", () => {
-      const { result } = renderHook(() =>
-        useAgentHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
       const registered = result.current.registeredHotkeys
       expect(registered).toHaveLength(5)
 
-      const actions = registered.map((r) => r.action)
+      const actions = registered.map(r => r.action)
       expect(actions).toContain("focusChatInput")
       expect(actions).toContain("newSession")
       expect(actions).toContain("toggleToolOutput")
@@ -605,9 +591,7 @@ describe("useAgentHotkeys", () => {
     })
 
     it("each entry has a non-empty display string", () => {
-      const { result } = renderHook(() =>
-        useAgentHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
       for (const entry of result.current.registeredHotkeys) {
         expect(entry.display.length).toBeGreaterThan(0)
@@ -615,9 +599,7 @@ describe("useAgentHotkeys", () => {
     })
 
     it("each entry has a non-empty description", () => {
-      const { result } = renderHook(() =>
-        useAgentHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
       for (const entry of result.current.registeredHotkeys) {
         expect(entry.description.length).toBeGreaterThan(0)
