@@ -1,22 +1,16 @@
 import { test, expect } from "@playwright/test"
 
 test.describe("Agent Chat Demo", () => {
-  // Clear all server-side sessions before each test to ensure test isolation.
-  // When using reuseExistingServer, sessions persist across tests on the server side.
-  test.beforeEach(async ({ request }) => {
-    // Fetch all sessions and delete them
-    const sessionsResponse = await request.get("/api/sessions")
-    const { sessions } = (await sessionsResponse.json()) as {
-      sessions: Array<{ sessionId: string }>
-    }
-
-    for (const session of sessions) {
-      await request.delete(`/api/sessions/${session.sessionId}`)
-    }
+  // Clear localStorage before each test to ensure test isolation
+  test.beforeEach(async ({ page }) => {
+    // Navigate first so we have access to localStorage for this origin
+    await page.goto("/")
+    await page.evaluate(() => localStorage.clear())
+    // Reload so the app initializes with cleared storage
+    await page.reload()
   })
 
   test("user can type and send a message", async ({ page }) => {
-    await page.goto("/")
     await expect(page.getByText("Connected")).toBeVisible()
 
     const input = page.getByPlaceholder("Send a message…")
@@ -58,7 +52,6 @@ test.describe("Agent Chat Demo", () => {
   })
 
   test("session persists across page reload", async ({ page }) => {
-    await page.goto("/")
     await expect(page.getByText("Connected")).toBeVisible()
 
     const input = page.getByPlaceholder("Send a message…")
