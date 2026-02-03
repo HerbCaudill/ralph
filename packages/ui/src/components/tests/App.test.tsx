@@ -97,6 +97,8 @@ vi.mock("@herbcaudill/agent-view", () => ({
   listSessions: vi.fn(() => []),
   hotkeys: {},
   getHotkeyDisplayString: () => "",
+  // Utility functions used by ControlBar
+  cn: (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(" "),
 }))
 
 // Mock TaskDetailPanel to verify it gets rendered

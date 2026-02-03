@@ -92,6 +92,9 @@ function AppContent() {
   const [showHotkeysDialog, setShowHotkeysDialog] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
 
+  // Stop-after-current state (temporary local state until worker supports it)
+  const [isStoppingAfterCurrent, setIsStoppingAfterCurrent] = useState(false)
+
   // Command palette keyboard listener (Cmd+K or Cmd+;)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -244,6 +247,17 @@ function AppContent() {
     console.log("Cycle theme")
   }, [])
 
+  // Stop after current task handlers
+  const handleStopAfterCurrent = useCallback(() => {
+    setIsStoppingAfterCurrent(true)
+    // TODO: Implement in SharedWorker to actually stop after current task
+    // For now this just sets a flag that will be used for UI state
+  }, [])
+
+  const handleCancelStopAfterCurrent = useCallback(() => {
+    setIsStoppingAfterCurrent(false)
+  }, [])
+
   // Left sidebar: show TaskDetailPanel when a task is selected, otherwise TaskChatPanel
   const sidebar =
     selectedTaskId !== null ?
@@ -300,9 +314,13 @@ function AppContent() {
         events={events}
         error={tasksError}
         controlState={controlState}
+        isStoppingAfterCurrent={isStoppingAfterCurrent}
+        onStart={start}
         onPause={pause}
         onResume={resume}
         onStop={stop}
+        onStopAfterCurrent={handleStopAfterCurrent}
+        onCancelStopAfterCurrent={handleCancelStopAfterCurrent}
         currentTaskId={currentTaskId}
         currentTaskTitle={currentTaskTitle}
         workspaceName={workspace?.name}

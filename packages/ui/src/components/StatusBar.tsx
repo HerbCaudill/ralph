@@ -4,10 +4,10 @@ import {
   useContextWindow,
   TokenUsageDisplay,
   ContextWindowProgress,
-  AgentControls,
 } from "@herbcaudill/agent-view"
 import type { ChatEvent, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
 import { useSessionTimer } from "@/hooks/useSessionTimer"
+import { ControlBar } from "@/components/controls/ControlBar"
 
 /**
  * Footer status bar showing connection status, workspace path, current task, agent controls, token usage, and context window progress.
@@ -18,9 +18,13 @@ export function StatusBar({
   events,
   error,
   controlState,
+  isStoppingAfterCurrent,
+  onStart,
   onPause,
   onResume,
   onStop,
+  onStopAfterCurrent,
+  onCancelStopAfterCurrent,
   currentTaskId,
   currentTaskTitle,
   workspaceName,
@@ -44,18 +48,19 @@ export function StatusBar({
           <span className="capitalize">{connectionStatus}</span>
         </span>
 
-        {/* Agent controls - only show when connected and callbacks provided */}
-        {connectionStatus === "connected" && controlState && onPause && onResume && onStop && (
+        {/* Agent controls - full ControlBar with Start/Pause/Stop/Stop-after-current */}
+        {controlState && (
           <div className="border-l border-border pl-3">
-            <AgentControls
-              state={controlState}
+            <ControlBar
+              controlState={controlState}
+              isConnected={connectionStatus === "connected"}
+              isStoppingAfterCurrent={isStoppingAfterCurrent}
+              onStart={onStart}
               onPause={onPause}
               onResume={onResume}
               onStop={onStop}
-              showNewSession={false}
-              showPauseResume={true}
-              showStop={true}
-              size="sm"
+              onStopAfterCurrent={onStopAfterCurrent}
+              onCancelStopAfterCurrent={onCancelStopAfterCurrent}
             />
           </div>
         )}
@@ -129,12 +134,20 @@ export type StatusBarProps = {
   error: string | null
   /** Current agent control state. */
   controlState?: ControlState
+  /** Whether currently stopping after the current task. */
+  isStoppingAfterCurrent?: boolean
+  /** Called when start button is clicked. */
+  onStart?: () => void
   /** Called when pause button is clicked. */
   onPause?: () => void
   /** Called when resume button is clicked. */
   onResume?: () => void
   /** Called when stop button is clicked. */
   onStop?: () => void
+  /** Called when stop-after-current button is clicked. */
+  onStopAfterCurrent?: () => void
+  /** Called when cancel-stop-after-current button is clicked. */
+  onCancelStopAfterCurrent?: () => void
   /** ID of the current task being worked on. */
   currentTaskId?: string | null
   /** Title of the current task being worked on. */
