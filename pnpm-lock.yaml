@@ -364,8 +364,8 @@ importers:
   packages/beads-server:
     dependencies:
       '@herbcaudill/beads-sdk':
-        specifier: link:../../../beads-sdk
-        version: link:../../../beads-sdk
+        specifier: ^0.1.0
+        version: 0.1.0
       '@herbcaudill/beads-view':
         specifier: workspace:*
         version: link:../beads-view
@@ -529,8 +529,8 @@ importers:
         version: 19.2.3
     devDependencies:
       '@herbcaudill/beads-sdk':
-        specifier: link:../../../beads-sdk
-        version: link:../../../beads-sdk
+        specifier: ^0.1.0
+        version: 0.1.0
       '@herbcaudill/ralph-shared':
         specifier: workspace:*
         version: link:../shared
@@ -615,8 +615,8 @@ importers:
         version: link:../agent-view
     devDependencies:
       '@herbcaudill/beads-sdk':
-        specifier: link:../../../beads-sdk
-        version: link:../../../beads-sdk
+        specifier: ^0.1.0
+        version: 0.1.0
       '@types/node':
         specifier: ^24.10.9
         version: 24.10.9
@@ -833,8 +833,8 @@ importers:
         version: 5.0.10(@types/react@19.2.8)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
     devDependencies:
       '@herbcaudill/beads-sdk':
-        specifier: link:../../../beads-sdk
-        version: link:../../../beads-sdk
+        specifier: ^0.1.0
+        version: 0.1.0
       '@herbcaudill/ralph-shared':
         specifier: workspace:*
         version: link:../shared
@@ -1816,6 +1816,10 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@herbcaudill/beads-sdk@0.1.0':
+    resolution: {integrity: sha512-B0GZAUC87mqTB5/HmM0zYSyjfhJcIwAgc/jx8kAnmbdKFIaCcVDvqiQG7DjZqUdtWshFaO3vL4Oy03bAV3UF7Q==}
+    engines: {node: '>=18.0.0'}
 
   '@img/sharp-darwin-arm64@0.33.5':
     resolution: {integrity: sha512-UT4p+iz/2H4twwAoLCqfA9UH5pI6DggwKEGuaPy7nCVQ8ZsiY5PIcrRvD1DzuY3qYL07NtIQcWnBSY/heikIFQ==}
@@ -7361,6 +7365,8 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
+  '@herbcaudill/beads-sdk@0.1.0': {}
+
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
       '@img/sharp-libvips-darwin-arm64': 1.0.4
@@ -8792,7 +8798,7 @@ snapshots:
       '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0))
       playwright: 1.58.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
+      vitest: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(jsdom@28.0.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
     transitivePeerDependencies:
       - bufferutil
       - msw
