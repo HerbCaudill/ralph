@@ -69,9 +69,7 @@ describe("HotkeysDialog", () => {
 
   describe("empty hotkeys", () => {
     it("renders the dialog with no hotkey rows when the list is empty", () => {
-      const { container } = render(
-        <HotkeysDialog open={true} onClose={() => {}} hotkeys={[]} />,
-      )
+      const { container } = render(<HotkeysDialog open={true} onClose={() => {}} hotkeys={[]} />)
       expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument()
       const kbdElements = container.querySelectorAll("kbd")
       expect(kbdElements).toHaveLength(0)
