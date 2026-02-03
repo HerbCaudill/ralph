@@ -49,7 +49,7 @@ export function StatusBar({
             className="border-l border-border pl-3 font-mono text-muted-foreground/60"
             title={sessionId}
           >
-            {sessionId.slice(0, 8)}
+            Session {sessionId.slice(0, 8)}
           </span>
         )}
 
@@ -58,11 +58,15 @@ export function StatusBar({
       </div>
 
       {/* Token usage & context window */}
-      <div className="flex items-center gap-4 pr-4">
+      <div className="flex items-center pr-4">
         {(tokenUsage.input > 0 || tokenUsage.output > 0) && (
-          <TokenUsageDisplay tokenUsage={tokenUsage} />
+          <div className="border-r border-border pr-4">
+            <TokenUsageDisplay tokenUsage={tokenUsage} />
+          </div>
         )}
-        <ContextWindowProgress contextWindow={contextWindow} />
+        <div className="pl-4">
+          <ContextWindowProgress contextWindow={contextWindow} />
+        </div>
       </div>
     </div>
   )
