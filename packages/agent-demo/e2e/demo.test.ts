@@ -28,7 +28,10 @@ test.describe("Agent Chat Demo", () => {
     await expect(input).toHaveValue("")
 
     // The agent's response should include "Madrid"
-    await expect(page.getByRole("log", { name: "Agent Events" })).toContainText("Madrid")
+    // Use longer timeout for API responses which may take time depending on load
+    await expect(page.getByRole("log", { name: "Agent Events" })).toContainText("Madrid", {
+      timeout: 30000,
+    })
 
     // Wait for streaming to complete before sending the next message
     // The spinner should disappear when streaming is done
@@ -68,7 +71,8 @@ test.describe("Agent Chat Demo", () => {
     await expect(eventLog).toContainText(prompt)
 
     // Wait for the agent's response
-    await expect(eventLog).toContainText("Berlin")
+    // Use longer timeout for API responses which may take time depending on load
+    await expect(eventLog).toContainText("Berlin", { timeout: 30000 })
 
     // Reload the page
     await page.reload()

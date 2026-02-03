@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test"
 
-const agentServerPort = Number(process.env.AGENT_SERVER_PORT || "4244")
-const vitePort = Number(process.env.DEMO_AGENT_PORT || "5180")
+// Use dedicated test ports to avoid conflicts with development servers.
+// This allows tests to run reliably even when dev servers are active.
+const agentServerTestPort = Number(process.env.AGENT_SERVER_TEST_PORT || "4254")
+const viteTestPort = Number(process.env.DEMO_AGENT_TEST_PORT || "5190")
 const claudeModel = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001"
 
 export default defineConfig({
@@ -16,7 +18,7 @@ export default defineConfig({
     timeout: 15000,
   },
   use: {
-    baseURL: `http://localhost:${vitePort}`,
+    baseURL: `http://localhost:${viteTestPort}`,
     trace: "on-first-retry",
     actionTimeout: 10000,
   },
@@ -28,22 +30,26 @@ export default defineConfig({
   ],
   webServer: [
     {
+      // Use a dedicated test port for the agent server to avoid conflicts with
+      // development servers (e.g., beads-server may be running on 4244).
       command: "pnpm --filter @herbcaudill/agent-server dev",
-      url: `http://localhost:${agentServerPort}/healthz`,
-      reuseExistingServer: !process.env.CI,
+      url: `http://localhost:${agentServerTestPort}/healthz`,
+      reuseExistingServer: false,
       timeout: 30000,
       env: {
-        AGENT_SERVER_PORT: String(agentServerPort),
+        AGENT_SERVER_PORT: String(agentServerTestPort),
         CLAUDE_MODEL: claudeModel,
       },
     },
     {
-      command: `pnpm dev:headless --port ${vitePort}`,
-      url: `http://localhost:${vitePort}`,
-      reuseExistingServer: !process.env.CI,
+      // Use a dedicated test port for the Vite server to avoid conflicts with
+      // development servers (e.g., ralph-ui may be running on 5180).
+      command: `pnpm dev:headless --port ${viteTestPort}`,
+      url: `http://localhost:${viteTestPort}`,
+      reuseExistingServer: false,
       timeout: 30000,
       env: {
-        AGENT_SERVER_PORT: String(agentServerPort),
+        AGENT_SERVER_PORT: String(agentServerTestPort),
       },
     },
   ],
