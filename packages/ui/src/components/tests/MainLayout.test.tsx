@@ -23,14 +23,13 @@ describe("MainLayout", () => {
     })
 
     it("does not render sidebar when not provided", () => {
-      const { container } = render(
+      render(
         <MainLayout>
           <div>Main content</div>
         </MainLayout>,
       )
-      // When only main content is provided, there should be only one panel and no separators
-      const separators = container.querySelectorAll("[data-separator]")
-      expect(separators.length).toBe(0)
+      // When only main content is provided, there should be no resize handles
+      expect(screen.queryByTestId("sidebar-resize-handle")).not.toBeInTheDocument()
     })
 
     it("renders right panel when provided", () => {
@@ -43,63 +42,54 @@ describe("MainLayout", () => {
     })
 
     it("does not render right panel when not provided", () => {
-      const { container } = render(
+      render(
         <MainLayout sidebar={<div>Sidebar</div>}>
           <div>Main content</div>
         </MainLayout>,
       )
-      // When sidebar is provided but not right panel, there should be only one separator
-      const separators = container.querySelectorAll("[data-separator]")
-      expect(separators.length).toBe(1)
+      // When sidebar is provided but not right panel, there should be only sidebar resize handle
+      expect(screen.getByTestId("sidebar-resize-handle")).toBeInTheDocument()
+      expect(screen.queryByTestId("right-panel-resize-handle")).not.toBeInTheDocument()
     })
   })
 
   describe("resizable panels", () => {
-    it("renders resize handle (separator) between sidebar and main when sidebar is provided", () => {
-      const { container } = render(
+    it("renders resize handle between sidebar and main when sidebar is provided", () => {
+      render(
         <MainLayout sidebar={<div>Sidebar</div>}>
           <div>Main</div>
         </MainLayout>,
       )
-      // Separators have role="separator" and data-separator attribute
-      const separators = container.querySelectorAll('[role="separator"]')
-      expect(separators.length).toBe(1)
+      expect(screen.getByTestId("sidebar-resize-handle")).toBeInTheDocument()
     })
 
     it("renders resize handle between main and right panel when right panel is provided", () => {
-      const { container } = render(
+      render(
         <MainLayout rightPanel={<div>Right panel</div>}>
           <div>Main</div>
         </MainLayout>,
       )
-      // Should have one separator for the right panel
-      const separators = container.querySelectorAll('[role="separator"]')
-      expect(separators.length).toBe(1)
+      expect(screen.getByTestId("right-panel-resize-handle")).toBeInTheDocument()
     })
 
     it("renders two resize handles when both sidebar and right panel are provided", () => {
-      const { container } = render(
+      render(
         <MainLayout sidebar={<div>Sidebar</div>} rightPanel={<div>Right panel</div>}>
           <div>Main</div>
         </MainLayout>,
       )
-      // Should have two separators: one for sidebar, one for right panel
-      const separators = container.querySelectorAll('[role="separator"]')
-      expect(separators.length).toBe(2)
+      expect(screen.getByTestId("sidebar-resize-handle")).toBeInTheDocument()
+      expect(screen.getByTestId("right-panel-resize-handle")).toBeInTheDocument()
     })
 
     it("resize handles have proper cursor styling", () => {
-      const { container } = render(
+      render(
         <MainLayout sidebar={<div>Sidebar</div>} rightPanel={<div>Right panel</div>}>
           <div>Main</div>
         </MainLayout>,
       )
-      const separators = container.querySelectorAll('[role="separator"]')
-      expect(separators.length).toBe(2)
-
-      separators.forEach(separator => {
-        expect(separator).toHaveClass("cursor-col-resize")
-      })
+      expect(screen.getByTestId("sidebar-resize-handle")).toHaveClass("cursor-col-resize")
+      expect(screen.getByTestId("right-panel-resize-handle")).toHaveClass("cursor-col-resize")
     })
   })
 
@@ -116,27 +106,29 @@ describe("MainLayout", () => {
       expect(screen.getByText("Right panel")).toBeInTheDocument()
     })
 
-    it("uses react-resizable-panels Group", () => {
+    it("uses flexbox layout with proper structure", () => {
       const { container } = render(
         <MainLayout sidebar={<div>Sidebar</div>} rightPanel={<div>Right panel</div>}>
           <div>Main</div>
         </MainLayout>,
       )
 
-      // Group renders a div with data-group attribute
-      expect(container.querySelector("[data-group]")).toBeInTheDocument()
+      // Layout uses a flex container
+      const layoutContainer = container.firstChild as HTMLElement
+      expect(layoutContainer).toHaveClass("flex")
     })
 
-    it("panels have proper data attributes from react-resizable-panels", () => {
+    it("renders sidebar in aside element and main in main element", () => {
       const { container } = render(
         <MainLayout sidebar={<div>Sidebar</div>} rightPanel={<div>Right panel</div>}>
           <div>Main</div>
         </MainLayout>,
       )
 
-      // Panels should have data-panel attribute
-      const panels = container.querySelectorAll("[data-panel]")
-      expect(panels.length).toBe(3) // sidebar, main, right panel
+      // Sidebar should be in aside, main content in main
+      const asides = container.querySelectorAll("aside")
+      expect(asides.length).toBe(2) // sidebar and right panel
+      expect(container.querySelector("main")).toBeInTheDocument()
     })
   })
 })

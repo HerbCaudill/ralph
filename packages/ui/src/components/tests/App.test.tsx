@@ -57,7 +57,12 @@ vi.mock("@herbcaudill/beads-view", () => ({
   selectVisibleTaskIds: (state: { visibleTaskIds: string[] }) => state.visibleTaskIds,
   useWorkspace: () => ({
     state: {
-      current: { path: "/test/workspace", name: "Test Workspace", accentColor: "#007ACC", branch: "main" },
+      current: {
+        path: "/test/workspace",
+        name: "Test Workspace",
+        accentColor: "#007ACC",
+        branch: "main",
+      },
       workspaces: [],
       isLoading: false,
       error: null,
@@ -112,6 +117,16 @@ vi.mock("../TaskDetailPanel", () => ({
   },
 }))
 
+// Mock TaskChatPanel to avoid multiple AgentView instances
+vi.mock("../TaskChatPanel", () => ({
+  TaskChatPanel: () => <div data-testid="task-chat-panel">Task Chat Panel</div>,
+}))
+
+// Mock RalphRunner to have a distinct testid
+vi.mock("../RalphRunner", () => ({
+  RalphRunner: () => <div data-testid="ralph-runner">Ralph Runner</div>,
+}))
+
 describe("App", () => {
   beforeEach(() => {
     // Reset selected task before each test
@@ -129,9 +144,8 @@ describe("App", () => {
       // Verify the task sidebar (tasks) is in the main/center area
       expect(main).toContainElement(screen.getByTestId("task-sidebar"))
 
-      // Verify ralph loop components are rendered (in the right panel)
-      // The agent-view should be in the DOM
-      expect(screen.getByTestId("agent-view")).toBeInTheDocument()
+      // Verify ralph runner is rendered (in the right panel)
+      expect(screen.getByTestId("ralph-runner")).toBeInTheDocument()
 
       // Verify there is an aside for the right panel
       // (TaskChatPanel returns null when no task selected, so only right panel aside exists)
