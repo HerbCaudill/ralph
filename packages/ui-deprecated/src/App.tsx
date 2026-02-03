@@ -1,0 +1,477 @@
+import { useRef, useCallback, useState, useEffect } from "react"
+import { useShallow } from "zustand/react/shallow"
+import {
+  MainLayout,
+  type MainLayoutHandle,
+  StatusBarController,
+  HotkeysDialog,
+  CommandPalette,
+} from "./components/layout"
+import { type ChatInputHandle } from "./components/chat/ChatInput"
+import { MarkdownEditor } from "./components/ui/MarkdownEditor"
+import { SessionLinks } from "./components/tasks/SessionLinks"
+import {
+  TaskDetailsController,
+  TaskSidebarController,
+  type SearchInputHandle,
+} from "@herbcaudill/beads-view"
+import {
+  useAppStore,
+  selectRalphStatus,
+  selectIsConnected,
+  selectTaskChatOpen,
+  selectTaskChatWidth,
+  selectHotkeysDialogOpen,
+  selectActiveInstanceId,
+  selectWorkspace,
+  selectEvents,
+  selectTokenUsage,
+  selectContextWindow,
+  selectSession,
+  selectTaskChatMessages,
+  selectTaskChatEvents,
+  selectActivelyWorkingTaskIds,
+} from "./store"
+import { TaskChatController } from "./components/chat/TaskChatController"
+import {
+  useBeadsViewStore,
+  selectSelectedTaskId,
+  selectVisibleTaskIds,
+} from "@herbcaudill/beads-view"
+import {
+  useHotkeys,
+  useTheme,
+  useTasks,
+  useTaskDialog,
+  useTaskDialogRouter,
+  useWorkspaces,
+  useStoreHydration,
+  useSessionPersistence,
+  useTaskChatPersistence,
+  useFavicon,
+  useDevStateExport,
+  useTasksWithSessions,
+} from "./hooks"
+import { startRalph } from "./lib/startRalph"
+import { stopRalph } from "./lib/stopRalph"
+import { pauseRalph } from "./lib/pauseRalph"
+import { resumeRalph } from "./lib/resumeRalph"
+import { stopAfterCurrentRalph } from "./lib/stopAfterCurrentRalph"
+import { clearTaskChatHistory } from "./lib/clearTaskChatHistory"
+import { downloadStateExport } from "./lib/exportState"
+import { AgentView } from "./components/AgentView"
+
+/**  Root application component. */
+export function App() {
+  const layoutRef = useRef<MainLayoutHandle>(null)
+  const chatInputRef = useRef<ChatInputHandle>(null)
+  const searchInputRef = useRef<SearchInputHandle>(null)
+
+  // Initialize theme management (applies dark class and listens for system changes)
+  const { cycleTheme } = useTheme()
+
+  // Set favicon from logo.svg
+  useFavicon()
+
+  // Get active instance ID and workspace for hydration
+  const activeInstanceId = useAppStore(selectActiveInstanceId)
+  const workspaceId = useAppStore(selectWorkspace)
+
+  // Hydrate store from IndexedDB on startup (restores events and task chat from last session)
+  // Pass workspaceId to ensure only sessions from the current workspace are restored
+  const { isHydrated } = useStoreHydration({ instanceId: activeInstanceId, workspaceId })
+
+  // Subscribe to state for session persistence
+  const events = useAppStore(selectEvents)
+  const tokenUsage = useAppStore(useShallow(selectTokenUsage))
+  const contextWindow = useAppStore(useShallow(selectContextWindow))
+  const session = useAppStore(selectSession)
+
+  // Persist session metadata to IndexedDB (auto-saves on session boundaries and completion)
+  useSessionPersistence({
+    instanceId: activeInstanceId,
+    events,
+    tokenUsage,
+    contextWindow,
+    session,
+  })
+
+  // Export server state to .ralph/state.latest.json on session transitions (dev mode only)
+  useDevStateExport({ events })
+
+  // Events are persisted to IndexedDB directly in ralphConnection.ts as they arrive
+  // (see r-5fspp for context)
+
+  // Subscribe to state for task chat persistence
+  const taskChatMessages = useAppStore(selectTaskChatMessages)
+  const taskChatEvents = useAppStore(selectTaskChatEvents)
+
+  // Persist task chat sessions to IndexedDB (auto-saves on new messages/events)
+  // Session is based solely on instance ID and continues until explicitly cleared
+  // Pass isHydrated to prevent race conditions between hydration and session creation
+  useTaskChatPersistence({
+    instanceId: activeInstanceId,
+    messages: taskChatMessages,
+    events: taskChatEvents,
+    isHydrated,
+    workspaceId,
+  })
+
+  // Task list refresh
+  const { refresh: refreshTaskList } = useTasks({ all: true })
+
+  // Task dialog state
+  const taskDialog = useTaskDialog({
+    onTaskUpdated: async () => {
+      await refreshTaskList()
+    },
+  })
+
+  // Task dialog URL routing - handles /issue/{taskId} path parsing and navigation
+  const taskDialogRouter = useTaskDialogRouter({ taskDialog })
+
+  // Workspace navigation
+  const { goToPreviousWorkspace, goToNextWorkspace } = useWorkspaces()
+
+  // Hotkeys dialog state from store
+  const hotkeysDialogOpen = useAppStore(selectHotkeysDialogOpen)
+  const openHotkeysDialog = useAppStore(state => state.openHotkeysDialog)
+  const closeHotkeysDialog = useAppStore(state => state.closeHotkeysDialog)
+
+  // Command palette state
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+
+  // Get state for hotkey conditions
+  const ralphStatus = useAppStore(selectRalphStatus)
+  const activelyWorkingTaskIds = useAppStore(useShallow(selectActivelyWorkingTaskIds))
+  const { taskIdsWithSessions } = useTasksWithSessions()
+  const isConnected = useAppStore(selectIsConnected)
+  const toggleTaskChat = useAppStore(state => state.toggleTaskChat)
+  const isRalphRunning =
+    ralphStatus === "running" ||
+    ralphStatus === "paused" ||
+    ralphStatus === "stopping_after_current"
+
+  // Session navigation via custom events.
+  // These dispatch events that useEventStream listens for, ensuring
+  // navigation uses the URL + IndexedDB path consistently.
+  const goToPreviousSession = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("session-navigate-previous"))
+  }, [])
+  const goToNextSession = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("session-navigate-next"))
+  }, [])
+
+  // Return to live session via URL-based navigation.
+  // Clears the URL and dispatches popstate so useEventStream's listener
+  // picks up the change and clears the selected historical session.
+  const goToLatestSession = useCallback(() => {
+    window.history.pushState(null, "", "/")
+    window.dispatchEvent(new PopStateEvent("popstate"))
+  }, [])
+
+  // Task navigation
+  const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
+  const visibleTaskIds = useBeadsViewStore(selectVisibleTaskIds)
+  const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
+
+  // Handle task click - select the task and open the dialog
+  const handleTaskClick = useCallback(
+    (taskId: string) => {
+      setSelectedTaskId(taskId)
+      taskDialog.openDialogById(taskId)
+    },
+    [setSelectedTaskId, taskDialog],
+  )
+
+  // Tool output visibility
+  const toggleToolOutput = useAppStore(state => state.toggleToolOutput)
+
+  // Task chat panel state
+  const taskChatOpen = useAppStore(selectTaskChatOpen)
+  const taskChatWidth = useAppStore(selectTaskChatWidth)
+  const setTaskChatWidth = useAppStore(state => state.setTaskChatWidth)
+  const clearTaskChatMessages = useAppStore(state => state.clearTaskChatMessages)
+
+  // Handle task chat panel width change
+  const handleTaskChatWidthChange = useCallback(
+    (width: number) => {
+      setTaskChatWidth(width)
+    },
+    [setTaskChatWidth],
+  )
+
+  // Handle task chat panel close
+  const handleTaskChatClose = useCallback(() => {
+    toggleTaskChat()
+  }, [toggleTaskChat])
+
+  // Hotkey handlers
+  const handleAgentStart = useCallback(async () => {
+    // Only start if stopped and connected
+    if (ralphStatus !== "stopped" || !isConnected) return
+    await startRalph()
+  }, [ralphStatus, isConnected])
+
+  const handleAgentStop = useCallback(async () => {
+    // Only stop if running and connected
+    if (ralphStatus !== "running" || !isConnected) return
+    await stopRalph()
+  }, [ralphStatus, isConnected])
+
+  const handleAgentPause = useCallback(async () => {
+    // Toggle between pause and resume based on current status
+    if (ralphStatus === "paused") {
+      await resumeRalph()
+    } else if (ralphStatus === "running" && isConnected) {
+      await pauseRalph()
+    }
+  }, [ralphStatus, isConnected])
+
+  const handleAgentStopAfterCurrent = useCallback(async () => {
+    // Only stop-after-current if running or paused and connected
+    if ((ralphStatus !== "running" && ralphStatus !== "paused") || !isConnected) return
+    await stopAfterCurrentRalph()
+  }, [ralphStatus, isConnected])
+
+  const handleFocusSidebar = useCallback(() => {
+    layoutRef.current?.focusSidebar()
+  }, [])
+
+  const handleFocusMain = useCallback(() => {
+    layoutRef.current?.focusMain()
+  }, [])
+
+  const handleFocusTaskInput = useCallback(() => {
+    // Focus the search input (it's always visible now)
+    searchInputRef.current?.focus()
+  }, [])
+
+  const handleFocusChatInput = useCallback(() => {
+    chatInputRef.current?.focus()
+  }, [])
+
+  // Toggle focus between search input and chat input
+  const handleToggleInputFocus = useCallback(() => {
+    const activeElement = document.activeElement
+    const searchInput = document.querySelector('[aria-label="Search tasks"]')
+
+    // Toggle between search input and chat input
+    if (activeElement === searchInput) {
+      chatInputRef.current?.focus()
+    } else {
+      searchInputRef.current?.focus()
+    }
+  }, [])
+
+  const handleCycleTheme = useCallback(() => {
+    cycleTheme()
+  }, [cycleTheme])
+
+  const handleShowHotkeys = useCallback(() => {
+    openHotkeysDialog()
+  }, [openHotkeysDialog])
+
+  const handleCloseHotkeysDialog = useCallback(() => {
+    closeHotkeysDialog()
+  }, [closeHotkeysDialog])
+
+  const handleShowCommandPalette = useCallback(() => {
+    setCommandPaletteOpen(true)
+  }, [])
+
+  const handleCloseCommandPalette = useCallback(() => {
+    setCommandPaletteOpen(false)
+  }, [])
+
+  const handleToggleTaskChat = useCallback(() => {
+    const isCurrentlyOpen = useAppStore.getState().taskChatOpen
+    const taskChatInput = document.querySelector('[aria-label="Task chat input"]') as HTMLElement
+    const isInputFocused = taskChatInput && document.activeElement === taskChatInput
+
+    if (isCurrentlyOpen && !isInputFocused) {
+      // Panel is open but input is not focused: focus the input
+      taskChatInput?.focus()
+    } else if (isCurrentlyOpen && isInputFocused) {
+      // Panel is open and input is focused: close the panel
+      toggleTaskChat()
+    } else {
+      // Panel is closed: open it and focus the input
+      toggleTaskChat()
+      setTimeout(() => {
+        const input = document.querySelector('[aria-label="Task chat input"]') as HTMLElement
+        input?.focus()
+      }, 50)
+    }
+  }, [toggleTaskChat])
+
+  const handleFocusTaskChatInput = useCallback(() => {
+    // Focus the task chat input element
+    // First ensure the panel is open
+    const taskChatOpen = useAppStore.getState().taskChatOpen
+    if (!taskChatOpen) {
+      toggleTaskChat()
+    }
+    // Focus the input after a brief delay to allow panel to render
+    setTimeout(() => {
+      const taskChatInput = document.querySelector('[aria-label="Task chat input"]') as HTMLElement
+      taskChatInput?.focus()
+    }, 50)
+  }, [toggleTaskChat])
+
+  const handleFocusSearch = useCallback(() => {
+    // Focus the search input (it's always visible now)
+    searchInputRef.current?.focus()
+  }, [])
+
+  const handleNewChat = useCallback(async () => {
+    const result = await clearTaskChatHistory()
+    if (result.ok) {
+      clearTaskChatMessages()
+    }
+  }, [clearTaskChatMessages])
+
+  // Task navigation handlers
+  const handlePreviousTask = useCallback(() => {
+    if (visibleTaskIds.length === 0) return
+    const currentIndex =
+      selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : visibleTaskIds.length
+    const prevIndex = Math.max(currentIndex - 1, 0)
+    const prevId = visibleTaskIds[prevIndex]
+    if (prevId) setSelectedTaskId(prevId)
+  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
+
+  const handleNextTask = useCallback(() => {
+    if (visibleTaskIds.length === 0) return
+    const currentIndex = selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : -1
+    const nextIndex = Math.min(currentIndex + 1, visibleTaskIds.length - 1)
+    const nextId = visibleTaskIds[nextIndex]
+    if (nextId) setSelectedTaskId(nextId)
+  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
+
+  const handleOpenTask = useCallback(() => {
+    if (selectedTaskId) {
+      taskDialog.openDialogById(selectedTaskId)
+    }
+  }, [selectedTaskId, taskDialog])
+
+  const handleExportState = useCallback(async () => {
+    try {
+      await downloadStateExport()
+    } catch (err) {
+      console.error("[App] Failed to export state:", err)
+    }
+  }, [])
+
+  // Register hotkeys
+  useHotkeys({
+    handlers: {
+      agentStart: handleAgentStart,
+      agentStop: handleAgentStop,
+      agentPause: handleAgentPause,
+      agentStopAfterCurrent: handleAgentStopAfterCurrent,
+      focusSidebar: handleFocusSidebar,
+      focusMain: handleFocusMain,
+      focusTaskInput: handleFocusTaskInput,
+      focusChatInput: handleFocusChatInput,
+      cycleTheme: handleCycleTheme,
+      showHotkeys: handleShowHotkeys,
+      toggleInputFocus: handleToggleInputFocus,
+      toggleTaskChat: handleToggleTaskChat,
+      focusTaskChatInput: handleFocusTaskChatInput,
+      showCommandPalette: handleShowCommandPalette,
+      previousSession: goToPreviousSession,
+      nextSession: goToNextSession,
+      latestSession: goToLatestSession,
+      focusSearch: handleFocusSearch,
+      previousWorkspace: goToPreviousWorkspace,
+      nextWorkspace: goToNextWorkspace,
+      toggleToolOutput: toggleToolOutput,
+      newChat: handleNewChat,
+      previousTask: handlePreviousTask,
+      nextTask: handleNextTask,
+      openTask: handleOpenTask,
+      exportState: handleExportState,
+    },
+  })
+
+  // Auto-focus chat input on mount
+  useEffect(() => {
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      chatInputRef.current?.focus()
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <>
+      <MainLayout
+        ref={layoutRef}
+        sidebar={
+          <TaskSidebarController
+            searchInputRef={searchInputRef}
+            onTaskClick={handleTaskClick}
+            onOpenTask={handleTaskClick}
+            activelyWorkingTaskIds={activelyWorkingTaskIds}
+            taskIdsWithSessions={[...taskIdsWithSessions]}
+            isRunning={isRalphRunning}
+          />
+        }
+        main={<AgentView chatInputRef={chatInputRef} />}
+        statusBar={<StatusBarController />}
+        leftPanel={<TaskChatController onClose={handleTaskChatClose} />}
+        leftPanelOpen={taskChatOpen}
+        leftPanelWidth={taskChatWidth}
+        onLeftPanelWidthChange={handleTaskChatWidthChange}
+        detailPanel={
+          <TaskDetailsController
+            task={taskDialog.selectedTask}
+            open={taskDialog.isOpen}
+            onClose={taskDialogRouter.closeTaskDialog}
+            onSave={taskDialog.saveTask}
+            onDelete={taskDialog.deleteTask}
+            renderDescriptionEditor={({
+              value,
+              onChange,
+              placeholder,
+            }: {
+              value: string
+              onChange: (value: string) => void
+              placeholder?: string
+            }) => (
+              <MarkdownEditor
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                showToolbar={false}
+                size="sm"
+              />
+            )}
+            renderSessionLinks={(taskId: string) => <SessionLinks taskId={taskId} />}
+          />
+        }
+        detailPanelOpen={taskDialog.isOpen}
+        onDetailPanelClose={taskDialogRouter.closeTaskDialog}
+      />
+      <HotkeysDialog open={hotkeysDialogOpen} onClose={handleCloseHotkeysDialog} />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={handleCloseCommandPalette}
+        handlers={{
+          agentStart: handleAgentStart,
+          agentStop: handleAgentStop,
+          agentPause: handleAgentPause,
+          cycleTheme: handleCycleTheme,
+          showHotkeys: handleShowHotkeys,
+          focusTaskInput: handleFocusTaskInput,
+          focusChatInput: handleFocusChatInput,
+          toggleTaskChat: handleToggleTaskChat,
+          exportState: handleExportState,
+        }}
+        ralphStatus={ralphStatus}
+        isConnected={isConnected}
+      />
+    </>
+  )
+}

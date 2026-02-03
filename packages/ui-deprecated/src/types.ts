@@ -64,7 +64,6 @@ import type { HotkeyAction, HotkeyConfig } from "@/config"
 
 // UI-specific types
 
-
 export type RalphStatus =
   | "stopped"
   | "starting"
@@ -75,7 +74,6 @@ export type RalphStatus =
   | "stopping_after_current"
 
 export type Theme = "system" | "light" | "dark"
-
 
 export interface SessionInfo {
   current: number
@@ -118,7 +116,6 @@ export interface TaskChatToolUse {
   sequence?: number
 }
 
-
 export interface ThemeGroup {
   type: "dark" | "light"
   themes: ThemeMeta[]
@@ -128,7 +125,6 @@ export interface HotkeyCategory {
   name: string
   hotkeys: Array<{ action: HotkeyAction; config: HotkeyConfig }>
 }
-
 
 export interface WorkspaceInfo {
   path: string

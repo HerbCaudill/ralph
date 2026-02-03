@@ -1,9 +1,7 @@
-export {
-  cn,
-  stripAnsi,
-  hasAnsiCodes,
-  stripTaskPrefix,
-  toRelativePath,
-} from "@herbcaudill/agent-view"
-export { ansiToHtml } from "./ansiToHtml"
-export { getContrastingColor } from "./getContrastingColor"
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+/** Merge Tailwind CSS classes with clsx. */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
