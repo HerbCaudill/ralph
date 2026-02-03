@@ -71,7 +71,7 @@ export function useWorkspace() {
         setIsLoading(false)
       }
     },
-    [fetchWorkspace]
+    [fetchWorkspace],
   )
 
   useEffect(() => {
