@@ -35,17 +35,19 @@ export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
     }
   }, [open])
 
-  // Combine hotkeys from both packages
+  // Combine hotkeys from both packages with unique keys
   const allHotkeys = [
-    // Agent hotkeys
+    // Agent hotkeys (prefixed with "agent-" for unique keys)
     ...Object.entries(agentHotkeys).map(([action, config]) => ({
+      key: `agent-${action}`,
       action: action as AgentHotkeyAction,
       display: getHotkeyDisplayString(config),
       description: config.description,
       category: config.category,
     })),
-    // Beads hotkeys
+    // Beads hotkeys (prefixed with "beads-" for unique keys)
     ...Object.entries(beadsHotkeys).map(([action, config]) => ({
+      key: `beads-${action}`,
       action: action as BeadsHotkeyAction,
       display: getBeadsHotkeyDisplayString(config),
       description: config.description,
@@ -83,8 +85,8 @@ export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
                 {category}
               </h3>
               <div className="space-y-1">
-                {hotkeys.map(({ action, display, description }) => (
-                  <div key={action} className="flex items-center justify-between py-1.5">
+                {hotkeys.map(({ key, display, description }) => (
+                  <div key={key} className="flex items-center justify-between py-1.5">
                     <span className="text-sm text-foreground">{description}</span>
                     <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                       {display}

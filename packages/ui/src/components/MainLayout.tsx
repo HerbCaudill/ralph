@@ -37,7 +37,7 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
       )}
 
       {/* Center panel */}
-      <Panel minSize={20}>
+      <Panel minSize={15}>
         <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">{children}</main>
       </Panel>
 
@@ -71,19 +71,19 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
 const MIN_SIDEBAR_PERCENT = 10
 
 /** Maximum width for the sidebar as percentage. */
-const MAX_SIDEBAR_PERCENT = 25
+const MAX_SIDEBAR_PERCENT = 40
 
 /** Default width for the sidebar as percentage. */
-const DEFAULT_SIDEBAR_PERCENT = 20
+const DEFAULT_SIDEBAR_PERCENT = 25
 
 /** Minimum width for the right panel as percentage. */
 const MIN_RIGHT_PANEL_PERCENT = 15
 
 /** Maximum width for the right panel as percentage. */
-const MAX_RIGHT_PANEL_PERCENT = 50
+const MAX_RIGHT_PANEL_PERCENT = 60
 
 /** Default width for the right panel as percentage. */
-const DEFAULT_RIGHT_PANEL_PERCENT = 30
+const DEFAULT_RIGHT_PANEL_PERCENT = 35
 
 export type MainLayoutProps = {
   /** Optional sidebar content (left panel, resizable). */
