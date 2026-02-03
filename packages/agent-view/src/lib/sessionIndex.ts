@@ -9,6 +9,8 @@ export type SessionIndexEntry = {
   firstMessageAt: number
   lastMessageAt: number
   firstUserMessage: string
+  /** Whether the session has received at least one assistant response. */
+  hasResponse?: boolean
 }
 
 /** Read all entries from localStorage, sorted by recency (most recent first). */

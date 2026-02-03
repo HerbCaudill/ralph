@@ -24,7 +24,11 @@ export function App() {
 
   // Session list for the SessionPicker — re-read on every render so it stays
   // in sync after newSession / restoreSession / sendMessage mutations.
-  const sessions = useMemo(() => listSessions(), [sessionId, events.length])
+  // Filter out empty sessions (no messages or only user message with no response).
+  const sessions = useMemo(
+    () => listSessions().filter(s => s.hasResponse === true),
+    [sessionId, events.length],
+  )
 
   const handleSelectSession = useCallback(
     (id: string) => {
