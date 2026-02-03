@@ -25,34 +25,32 @@ pnpm test:pw              # Playwright with dynamic ports
 
 pnpm cli                  # Run ralph CLI in development
 pnpm ui                   # Start UI dev server (Vite)
-pnpm serve                # Start server only (combined mode)
-pnpm dev                  # Start both server and UI (combined mode)
-pnpm dev:split            # Start beads-server + agent-server + ralph-server + UI as separate processes (split mode)
+pnpm dev                  # Start UI dev server (alias)
+pnpm dev:split            # Start beads-server + agent-server + UI as separate processes
 pnpm serve:beads          # Start just the beads-server (port 4243)
-pnpm serve:agent          # Start just the generic agent-server (port 4244)
-pnpm serve:ralph          # Start just the ralph-server (port 4245)
+pnpm serve:agent          # Start just the agent-server (port 4244)
 pnpm demo:agent-chat      # Run agent chat demo dev server (port 5180)
 pnpm demo:beads           # Run beads task manager demo dev server (port 5181)
-pnpm storybook            # Start Storybook
+pnpm storybook:agent      # Start agent-view Storybook
+pnpm storybook:beads      # Start beads-view Storybook
 
 pnpm format               # Format with Prettier
 pnpm pub                  # Publish CLI + UI packages
 ```
 
-Use `packages/ui/server/tsconfig.json` when editing UI server TypeScript files. Use `packages/ralph-server/tsconfig.json` when editing ralph-server TypeScript files. Use `packages/agent-server/tsconfig.json` when editing the generic agent-server TypeScript files.
+Use `packages/agent-server/tsconfig.json` when editing agent-server TypeScript files.
 
 ## Workspace structure
 
 pnpm workspace with these main packages:
 
 - **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
-- **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web app with Express server and React frontend
+- **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web UI for Ralph with React frontend and SharedWorker for loop orchestration
 - **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
 - **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, hotkey registration, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
-- **`packages/agent-view/`** (`@herbcaudill/agent-view`) - Agent chat UI components, canonical event schema (Effect Schema), hotkey registration, hooks (useAgentChat, useAgentHotkeys), and reusable React context. Exports event types consumed by shared and UI packages
+- **`packages/agent-view/`** (`@herbcaudill/agent-view`) - Agent chat UI components, canonical event schema (Effect Schema), hotkey registration, hooks (useAgentChat, useAgentHotkeys, useAgentControl), and reusable React context. Exports event types consumed by shared and UI packages
 - **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Generic agent chat server with JSONL persistence, multi-adapter support (Claude, Codex), session-based WebSocket protocol, and no built-in system prompt. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
-- **`packages/ralph-server/`** (`@herbcaudill/ralph-server`) - Ralph-specific server for managing AI coding agent sessions, worktrees, and task chats. Depends on `@herbcaudill/agent-server` for adapters and utilities. Includes RalphManager, RalphRegistry, WorktreeManager, SessionRunner, TaskChatManager, and workspace context modules. Default port 4245 (configurable via `RALPH_SERVER_PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) - Functional chat demo connecting to agent-server via session-based WebSocket protocol (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents, session persistence across page reloads via localStorage session index (falls back to `/api/sessions/latest`), session switching via SessionPicker and `useAgentChat.restoreSession`, displays model name in status bar via `/api/adapters` endpoint. Registers handlers for agent-view hotkey actions (focusChatInput, newSession, toggleToolOutput, scrollToBottom, showHotkeys)
 - **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) - Functional task manager demo using beads-view controller components (TaskSidebarController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Registers handlers for all beads-view hotkey actions (focusSearch, focusTaskInput, previousTask, nextTask, openTask, showHotkeys) and includes a HotkeysDialog component. Vite proxy forwards /api requests to the beads-server
 
@@ -158,24 +156,24 @@ packages/agent-server/                 # Generic agent server package
       loadPrompt.ts         # Prompt assembly (context file + cwd context + system prompt)
       loadClaudeMd.ts       # Claude-specific context loading (legacy, still exported)
 
-packages/ralph-server/                 # Ralph-specific server package
+packages/ui/                           # UI package (new, rebuilt)
   src/
-    index.ts                # Express server entry + re-exports from agent-server
-    main.ts                 # Dev entry point (port 4245)
-    types.ts                # AgentServerConfig, WsClient types
-    agentTypes.ts           # Re-exports from agent-server + BdProxy interface
-    RalphManager.ts         # Spawns and manages Ralph CLI process
-    RalphRegistry.ts        # Registry of all Ralph instances per workspace
-    InstanceStore.ts        # JSON persistence for instance metadata
-    SessionEventPersister.ts # Append-only event log persistence
-    SessionStateStore.ts    # JSON persistence for session state
-    SessionRunner.ts        # Orchestrates agent sessions (prompt, spawn, events)
-    WorktreeManager.ts      # Git worktree creation, merge, cleanup
-    systemPrompt.ts         # Loads system prompt and task-chat skill config
-    loadSkill.ts            # Loads custom skill definitions from .ralph/skills/
-    TaskChatManager.ts      # Manages task chat conversations
-    TaskChatEventLog.ts     # In-memory event log for task chats
-    TaskChatEventPersister.ts # Persistence for task chat events
+    main.tsx                # App entry point
+    App.tsx                 # Root component
+    index.css               # Tailwind CSS entry
+    components/
+      MainLayout.tsx        # Main layout with sidebar and content
+      RalphRunner.tsx       # Ralph session display with AgentView
+      TaskChatPanel.tsx     # Task chat panel with AgentView
+      StatusBar.tsx         # Status bar with connection/session info
+    hooks/
+      useRalphLoop.ts       # Hook connecting to SharedWorker for Ralph loop
+    stores/
+      uiStore.ts            # Zustand store for UI state
+    workers/
+      ralphWorker.ts        # SharedWorker for Ralph loop orchestration
+    lib/
+      utils.ts              # Utility functions (cn for class merging)
 
 packages/agent-demo/              # Agent chat demo
   src/
@@ -264,24 +262,22 @@ Claude outputs: `<start_task>{id}</start_task>` when starting, `<end_task>{id}</
 
 ### Server architecture
 
-The server layer is split into two packages:
+The server layer consists of two independent packages:
 
-- **`@herbcaudill/agent-server`** (generic) — Agent adapters (ClaudeAdapter, CodexAdapter, AdapterRegistry), the AgentAdapter base class, session management (ChatSessionManager, SessionPersister), utility functions (isRetryableError, calculateBackoffDelay, generateId), and findClaudeExecutable. This package has no Ralph-specific dependencies and can be used independently.
+- **`@herbcaudill/beads-server`** — Task management server. Provides REST API for tasks/labels/workspace, WebSocket for mutation events. Port 4243.
 
-- **`@herbcaudill/ralph-server`** (Ralph-specific) — Depends on agent-server. Contains Ralph-specific modules: RalphManager, RalphRegistry, InstanceStore, SessionEventPersister, SessionStateStore, SessionRunner, WorktreeManager, systemPrompt, loadSkill, TaskChatManager, TaskChatEventLog, TaskChatEventPersister. Also defines the BdProxy interface. Re-exports all agent-server exports for backward compatibility.
+- **`@herbcaudill/agent-server`** — Generic agent chat server. Agent adapters (ClaudeAdapter, CodexAdapter, AdapterRegistry), the AgentAdapter base class, session management (ChatSessionManager, SessionPersister), utility functions (isRetryableError, calculateBackoffDelay, generateId), and findClaudeExecutable. Port 4244.
 
-The UI server (`packages/ui/server/`) re-exports from `@herbcaudill/ralph-server` for backward compatibility.
+The UI is a frontend-only package that connects to these servers. Ralph-specific loop orchestration happens client-side in a SharedWorker.
 
-### Dual-server mode (UI client)
+### Server connectivity
 
-The UI client supports two deployment modes:
+The UI connects to:
 
-- **Combined mode** (default): A single server on port 4242 handles everything. One WebSocket at `/ws`, all HTTP requests to the same origin. No configuration needed.
-- **Split mode**: The UI connects to separate beads-server (port 4243) and agent-server (port 4244). Enabled by setting `VITE_SPLIT_SERVERS=true` or providing explicit server URLs via `VITE_BEADS_SERVER_URL` / `VITE_AGENT_SERVER_URL`.
+- **beads-server** (port 4243) for task management via HTTP and WebSocket
+- **agent-server** (port 4244) for chat sessions via HTTP and WebSocket
 
-In split mode, the UI creates two WebSocket connections: one to the agent-server (`/ws`) for agent control/chat events, and one to the beads-server (`/beads-ws` or direct URL) for task/mutation events. HTTP API paths are routed by prefix: `/api/tasks`, `/api/labels`, `/api/workspace` go to beads-server; `/api/ralph`, `/api/task-chat`, `/api/instances`, and agent control paths go to agent-server. See `packages/ui/src/lib/serverConfig.ts` for the routing logic.
-
-The Vite dev server proxy also supports split mode: when `BEADS_PORT` and `AGENT_SERVER_PORT` env vars are set alongside `VITE_SPLIT_SERVERS=true`, Vite routes `/api/*` and `/ws` paths to the correct backend port.
+Set server URLs via environment variables: `VITE_BEADS_SERVER_URL` and `VITE_AGENT_SERVER_URL`.
 
 ### Multi-agent support
 
@@ -404,13 +400,10 @@ Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Core eve
 
 - `ANTHROPIC_API_KEY` - Required for Claude agent
 - `OPENAI_API_KEY` - Optional for Codex agent
-- `HOST` / `PORT` - Server host/port (defaults: 127.0.0.1 / 4242)
 - `BEADS_PORT` - Beads server port (default: 4243)
-- `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` - Generic agent server host/port (defaults: localhost / 4244)
-- `RALPH_SERVER_HOST` / `RALPH_SERVER_PORT` - Ralph server host/port (defaults: localhost / 4245)
-- `VITE_SPLIT_SERVERS` - Set to `true` to enable split-server mode in the UI (Vite build-time)
-- `VITE_BEADS_SERVER_URL` - Full URL for beads-server in split mode (e.g., `http://localhost:4243`)
-- `VITE_AGENT_SERVER_URL` - Full URL for agent-server in split mode (e.g., `http://localhost:4244`)
+- `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` - Agent server host/port (defaults: localhost / 4244)
+- `VITE_BEADS_SERVER_URL` - Full URL for beads-server (e.g., `http://localhost:4243`)
+- `VITE_AGENT_SERVER_URL` - Full URL for agent-server (e.g., `http://localhost:4244`)
 - `CLAUDE_MODEL` - Default Claude model for ClaudeAdapter (e.g., `claude-sonnet-4-20250514`). Can be overridden per-adapter via `ClaudeAdapterOptions.model`. Agent-demo Playwright tests default to `claude-haiku-4-5-20251001`
 - `RALPH_DEBUG` - Debug logging (`1` for all, or comma-separated namespaces: `messagequeue`, `session`)
 - `RALPH_CWD` - Override base path for relative path rendering
