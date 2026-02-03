@@ -185,7 +185,7 @@ describe("useTaskDialog", () => {
       })
 
       // API should have been called
-      expect(mockFetch).toHaveBeenCalledWith("/api/tasks/task-123")
+      expect(mockFetch).toHaveBeenCalledWith("/api/tasks/task-123", undefined)
 
       // Dialog should be open with fetched task
       expect(result.current.isOpen).toBe(true)
@@ -339,7 +339,7 @@ describe("useTaskDialog", () => {
       })
 
       // Should have fetched from API
-      expect(mockFetch).toHaveBeenCalledWith("/api/tasks/task-123")
+      expect(mockFetch).toHaveBeenCalledWith("/api/tasks/task-123", undefined)
       // Should have the server title, not the mockTask title
       expect(result.current.selectedTask?.title).toBe("Server Title")
     })

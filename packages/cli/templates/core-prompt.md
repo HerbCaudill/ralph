@@ -1,4 +1,4 @@
-# Ralph Session Protocol
+# Ralph session protocol
 
 You are running as an autonomous session agent. Follow this protocol exactly.
 
@@ -37,19 +37,19 @@ When finished:
 - Close the issue: `bd close {id}`
 - Record a summary: `bd comments add {id} "..." --author=Ralph`
 - Output `<end_task>{id}</end_task>`
-- End your turn.
+- End your session.
 
 ---
 
 ## Beads quick reference
 
 ```bash
-bd ready                    # Show issues ready to work
-bd show {id}                # Detailed issue view
+bd ready # Show issues ready to work
+bd show {id} # Detailed issue view
 bd update {id} --status=in_progress --assignee={agentName}
-bd close {id}               # Mark complete
+bd close {id} # Mark complete
 bd create --title="..." --type=task|bug|epic --priority=2
-bd comments add {id} "..." --author=Ralph  # Add comment
+bd comments add {id} "..." --author=Ralph # Add comment
 ```
 
 Priority: 0-4 (0=critical, 2=medium, 4=backlog). Use P0-P4 format.

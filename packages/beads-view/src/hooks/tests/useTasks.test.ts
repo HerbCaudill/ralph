@@ -74,7 +74,7 @@ describe("useTasks", () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/tasks?all=true")
+      expect(mockFetch).toHaveBeenCalledWith("/api/tasks?all=true", undefined)
     })
 
     it("sets isLoading while fetching", async () => {
@@ -255,7 +255,7 @@ describe("useTasks", () => {
         await result.current.refresh()
       })
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/tasks?all=true")
+      expect(mockFetch).toHaveBeenCalledWith("/api/tasks?all=true", undefined)
       const storeState = beadsViewStore.getState()
       expect(storeState.tasks).toHaveLength(6)
     })
@@ -385,7 +385,7 @@ describe("fetchBlockedTasks", () => {
 
     const result = await fetchBlockedTasks()
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/blocked")
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/blocked", undefined)
     expect(result.ok).toBe(true)
     expect(result.issues).toEqual(blockedTasks)
   })
@@ -398,7 +398,7 @@ describe("fetchBlockedTasks", () => {
 
     await fetchBlockedTasks("parent-123")
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/blocked?parent=parent-123")
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/blocked?parent=parent-123", undefined)
   })
 
   it("handles errors", async () => {
