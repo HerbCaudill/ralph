@@ -192,8 +192,8 @@ describe("RelatedTasks", () => {
     })
   })
 
-  describe("collapsible sections", () => {
-    it("collapses section when header is clicked", async () => {
+  describe("section headers", () => {
+    it("section headers are not collapsible - content is always visible", async () => {
       mockTasks = [{ id: "rui-123.1", title: "Child task", status: "open", parent: "rui-123" }]
 
       mockFetch.mockResolvedValueOnce({
@@ -206,39 +206,14 @@ describe("RelatedTasks", () => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
       })
 
-      // Click the header to collapse
-      act(() => {
-        fireEvent.click(screen.getByText("Children (1)"))
-      })
-
-      // Task should be hidden after collapse
-      expect(screen.queryByText("Child task")).not.toBeInTheDocument()
-    })
-
-    it("expands section when header is clicked again", async () => {
-      mockTasks = [{ id: "rui-123.1", title: "Child task", status: "open", parent: "rui-123" }]
-
-      mockFetch.mockResolvedValueOnce({
-        json: () => Promise.resolve({ ok: true, issue: { id: "rui-123", dependencies: [] } }),
-      })
-
-      renderWithContext("rui-123")
-
-      await waitFor(() => {
-        expect(screen.getByText("Child task")).toBeInTheDocument()
-      })
-
-      // Click to collapse
-      act(() => {
-        fireEvent.click(screen.getByText("Children (1)"))
-      })
-      expect(screen.queryByText("Child task")).not.toBeInTheDocument()
-
-      // Click to expand
-      act(() => {
-        fireEvent.click(screen.getByText("Children (1)"))
-      })
+      // Verify header is visible
+      expect(screen.getByText("Children (1)")).toBeInTheDocument()
+      // Verify content is always visible
       expect(screen.getByText("Child task")).toBeInTheDocument()
+
+      // Header should not be a button (not clickable)
+      const header = screen.getByText("Children (1)")
+      expect(header.tagName).not.toBe("BUTTON")
     })
   })
 

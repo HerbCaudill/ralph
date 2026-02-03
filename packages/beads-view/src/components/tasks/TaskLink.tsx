@@ -19,7 +19,7 @@ export function TaskLink({ task, issuePrefix }: Props) {
     <a
       href={buildTaskIdPath(task.id)}
       className={cn(
-        "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm transition-colors",
+        "flex w-full items-center gap-2 rounded py-1 text-left text-sm transition-colors",
         "hover:bg-muted",
         task.status === "closed" && "opacity-60",
       )}

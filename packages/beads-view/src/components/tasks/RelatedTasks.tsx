@@ -187,7 +187,7 @@ export function RelatedTasks({
             removableIds={editableBlockers.map(b => b.id)}
           />
           {!readOnly && task && (
-            <div className="pl-4">
+            <div>
               <BlockerCombobox
                 task={task}
                 allTasks={allTasks}
