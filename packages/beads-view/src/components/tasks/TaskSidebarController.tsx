@@ -1,6 +1,7 @@
 import { useCallback } from "react"
 import { TaskSidebar } from "./TaskSidebar"
 import { TaskList } from "./TaskList"
+import { QuickTaskInput } from "./QuickTaskInput"
 import { type SearchInputHandle } from "./SearchInput"
 import { TaskProgressBar } from "./TaskProgressBar"
 import { useTasks } from "../../hooks"
@@ -35,8 +36,10 @@ export function TaskSidebarController({
   isRunning = false,
   /** External loading state (e.g., when workspace is switching). */
   isLoadingExternal = false,
+  /** Hide quick task input */
+  hideQuickInput = false,
 }: TaskSidebarControllerProps) {
-  const { tasks, isLoading: isLoadingTasks } = useTasks({ all: true })
+  const { tasks, isLoading: isLoadingTasks, refresh } = useTasks({ all: true })
   const isLoading = isLoadingTasks || isLoadingExternal
   const searchQuery = useBeadsViewStore(selectTaskSearchQuery)
   const closedTimeFilter = useBeadsViewStore(selectClosedTimeFilter)
@@ -56,8 +59,13 @@ export function TaskSidebarController({
     [setVisibleTaskIds],
   )
 
+  const handleTaskCreated = useCallback(() => {
+    void refresh()
+  }, [refresh])
+
   return (
     <TaskSidebar
+      quickInput={hideQuickInput ? undefined : <QuickTaskInput onTaskCreated={handleTaskCreated} />}
       taskList={
         <TaskList
           tasks={tasks}
@@ -102,4 +110,6 @@ export interface TaskSidebarControllerProps {
   isRunning?: boolean
   /** External loading state (e.g., when workspace is switching). */
   isLoadingExternal?: boolean
+  /** Hide quick task input */
+  hideQuickInput?: boolean
 }
