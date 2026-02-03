@@ -1,10 +1,12 @@
-import { useCallback, useRef } from "react"
+import { useCallback, useRef, useState, useEffect } from "react"
 import { MainLayout } from "./components/MainLayout"
 import { Header } from "./components/layout"
 import { RalphRunner } from "./components/RalphRunner"
 import { TaskChatPanel } from "./components/TaskChatPanel"
 import { TaskDetailPanel } from "./components/TaskDetailPanel"
 import { StatusBar } from "./components/StatusBar"
+import { HotkeysDialog } from "./components/HotkeysDialog"
+import { CommandPalette } from "./components/CommandPalette"
 import { useRalphLoop } from "./hooks/useRalphLoop"
 import { useAccentColor } from "./hooks/useAccentColor"
 import { useTaskChat } from "./hooks/useTaskChat"
@@ -86,6 +88,22 @@ function AppContent() {
   const searchInputRef = useRef<SearchInputHandle>(null)
   const taskChatInputRef = useRef<ChatInputHandle>(null)
 
+  // Dialog state
+  const [showHotkeysDialog, setShowHotkeysDialog] = useState(false)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
+
+  // Command palette keyboard listener (Cmd+K or Cmd+;)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === ";")) {
+        e.preventDefault()
+        setShowCommandPalette(true)
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
   // Hotkey handlers - Agent actions
   const handleFocusChatInput = useCallback(() => {
     // Focus task chat or Ralph input depending on which is visible
@@ -101,8 +119,7 @@ function AppContent() {
   }, [])
 
   const handleShowHotkeys = useCallback(() => {
-    // TODO: Implement hotkeys dialog
-    console.log("Show hotkeys dialog")
+    setShowHotkeysDialog(true)
   }, [])
 
   // Hotkey handlers - Beads actions
@@ -205,6 +222,28 @@ function AppContent() {
     void refresh()
   }, [refresh])
 
+  // Command palette handlers
+  const handleAgentStart = useCallback(() => {
+    start()
+  }, [start])
+
+  const handleAgentStop = useCallback(() => {
+    stop()
+  }, [stop])
+
+  const handleAgentPause = useCallback(() => {
+    if (controlState === "paused") {
+      resume()
+    } else {
+      pause()
+    }
+  }, [controlState, pause, resume])
+
+  const handleCycleTheme = useCallback(() => {
+    // TODO: Implement theme cycling
+    console.log("Cycle theme")
+  }, [])
+
   // Left sidebar: show TaskDetailPanel when a task is selected, otherwise TaskChatPanel
   const sidebar =
     selectedTaskId !== null ?
@@ -269,6 +308,20 @@ function AppContent() {
         workspaceName={workspace?.name}
         workspacePath={workspace?.path}
         branch={workspace?.branch}
+      />
+      <HotkeysDialog open={showHotkeysDialog} onClose={() => setShowHotkeysDialog(false)} />
+      <CommandPalette
+        open={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        handlers={{
+          agentStart: handleAgentStart,
+          agentStop: handleAgentStop,
+          agentPause: handleAgentPause,
+          cycleTheme: handleCycleTheme,
+          showHotkeys: handleShowHotkeys,
+        }}
+        controlState={controlState}
+        isConnected={connectionStatus === "connected"}
       />
     </div>
   )
