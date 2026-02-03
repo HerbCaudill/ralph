@@ -70,6 +70,7 @@ export function handleWsConnection(
             .createSession({
               adapter: msg.adapter as string | undefined,
               cwd: msg.cwd as string | undefined,
+              app: msg.app as string | undefined,
             })
             .then(result => {
               client.subscribedSessions.add(result.sessionId)
@@ -156,7 +157,10 @@ export function handleWsConnection(
           } else {
             // Auto-create session then send
             manager
-              .createSession({ adapter: msg.agentType as string | undefined })
+              .createSession({
+                adapter: msg.agentType as string | undefined,
+                app: msg.app as string | undefined,
+              })
               .then(result => {
                 client.subscribedSessions.add(result.sessionId)
                 return manager.sendMessage(result.sessionId, message)

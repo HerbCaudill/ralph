@@ -24,8 +24,8 @@ export function registerRoutes(
   // Create a new session
   app.post("/api/sessions", async (req: Request, res: Response) => {
     try {
-      const { adapter, cwd } = req.body as { adapter?: string; cwd?: string }
-      const result = await ctx.getSessionManager().createSession({ adapter, cwd })
+      const { adapter, cwd, app } = req.body as { adapter?: string; cwd?: string; app?: string }
+      const result = await ctx.getSessionManager().createSession({ adapter, cwd, app })
       res.status(201).json(result)
     } catch (err) {
       res.status(400).json({ error: (err as Error).message })
@@ -100,9 +100,10 @@ export function registerRoutes(
     res.json(info)
   })
 
-  // List all sessions
-  app.get("/api/sessions", (_req: Request, res: Response) => {
-    res.json({ sessions: ctx.getSessionManager().listSessions() })
+  // List all sessions (optionally filtered by app)
+  app.get("/api/sessions", (req: Request, res: Response) => {
+    const app = req.query.app as string | undefined
+    res.json({ sessions: ctx.getSessionManager().listSessions(app) })
   })
 
   // Delete/clear a session

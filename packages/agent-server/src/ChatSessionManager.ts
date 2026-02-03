@@ -28,6 +28,8 @@ export interface SessionInfo {
   createdAt: number
   /** When the last message was sent. */
   lastMessageAt?: number
+  /** App namespace for this session. */
+  app?: string
 }
 
 /** Options for creating a new session. */
@@ -36,6 +38,8 @@ export interface CreateSessionOptions {
   adapter?: string
   /** Working directory for the agent. */
   cwd?: string
+  /** App namespace for the session (e.g., "ralph", "task-chat"). */
+  app?: string
 }
 
 /** Options for sending a message. */
@@ -112,18 +116,24 @@ export class ChatSessionManager extends EventEmitter {
         timestamp: Date.now(),
       },
       messageQueue: [],
+      app: options.app,
     }
 
     this.sessions.set(sessionId, session)
 
     // Persist creation event
-    await this.persister.appendEvent(sessionId, {
-      type: "session_created",
+    await this.persister.appendEvent(
       sessionId,
-      adapter,
-      cwd: session.cwd,
-      timestamp: Date.now(),
-    })
+      {
+        type: "session_created",
+        sessionId,
+        adapter,
+        cwd: session.cwd,
+        app: options.app,
+        timestamp: Date.now(),
+      },
+      options.app,
+    )
 
     return { sessionId }
   }
@@ -170,7 +180,7 @@ export class ChatSessionManager extends EventEmitter {
       message,
       timestamp: Date.now(),
     }
-    await this.persister.appendEvent(sessionId, userEvent)
+    await this.persister.appendEvent(sessionId, userEvent, session.app)
     this.emit("event", sessionId, userEvent)
 
     // Create adapter if needed
@@ -182,7 +192,7 @@ export class ChatSessionManager extends EventEmitter {
 
     // Wire up event forwarding
     const onEvent = async (event: AgentEvent) => {
-      await this.persister.appendEvent(sessionId, event)
+      await this.persister.appendEvent(sessionId, event, session.app)
       this.emit("event", sessionId, event)
     }
 
@@ -294,19 +304,26 @@ export class ChatSessionManager extends EventEmitter {
       cwd: session.cwd,
       createdAt: session.createdAt,
       lastMessageAt: session.lastMessageAt,
+      app: session.app,
     }
   }
 
-  /** List all sessions. */
-  listSessions(): SessionInfo[] {
-    return Array.from(this.sessions.values()).map(s => ({
-      sessionId: s.sessionId,
-      adapter: s.adapter,
-      status: s.status,
-      cwd: s.cwd,
-      createdAt: s.createdAt,
-      lastMessageAt: s.lastMessageAt,
-    }))
+  /**
+   * List all sessions, optionally filtered by app.
+   * @param app If provided, only return sessions for this app.
+   */
+  listSessions(app?: string): SessionInfo[] {
+    return Array.from(this.sessions.values())
+      .filter(s => app === undefined || s.app === app)
+      .map(s => ({
+        sessionId: s.sessionId,
+        adapter: s.adapter,
+        status: s.status,
+        cwd: s.cwd,
+        createdAt: s.createdAt,
+        lastMessageAt: s.lastMessageAt,
+        app: s.app,
+      }))
   }
 
   /** Clear a session (stop adapter, remove from memory, delete persisted data). */
@@ -319,7 +336,7 @@ export class ChatSessionManager extends EventEmitter {
       await session.adapterInstance.stop()
     }
     this.sessions.delete(sessionId)
-    this.persister.deleteSession(sessionId)
+    this.persister.deleteSession(sessionId, session?.app)
   }
 
   /** Get the persister for direct event access. */
@@ -329,10 +346,10 @@ export class ChatSessionManager extends EventEmitter {
 
   /** Restore sessions from persisted JSONL files. */
   private restoreSessions(): void {
-    const sessionIds = this.persister.listSessions()
-    for (const sessionId of sessionIds) {
-      // Read creation event to get accurate metadata
-      const metadata = this.persister.readSessionMetadata(sessionId)
+    const sessions = this.persister.listSessionsWithApp()
+    for (const { sessionId, app } of sessions) {
+      // Read creation event to get accurate metadata (pass app to find the file)
+      const metadata = this.persister.readSessionMetadata(sessionId, app)
 
       this.sessions.set(sessionId, {
         sessionId,
@@ -347,6 +364,7 @@ export class ChatSessionManager extends EventEmitter {
           timestamp: Date.now(),
         },
         messageQueue: [],
+        app,
       })
     }
   }
@@ -372,4 +390,6 @@ interface SessionState {
   conversationContext: ConversationContext
   /** Queue of messages waiting to be processed. */
   messageQueue: QueuedMessage[]
+  /** App namespace for this session. */
+  app?: string
 }
