@@ -6,32 +6,41 @@ export type AgentType = "claude" | "codex"
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected"
 
-const SESSION_ID_KEY = "agent-chat-session-id"
-const AGENT_TYPE_KEY = "agent-chat-agent-type"
+const DEFAULT_SESSION_ID_KEY = "agent-chat-session-id"
+const DEFAULT_AGENT_TYPE_KEY = "agent-chat-agent-type"
 
-function loadSessionId(): string | null {
+function getSessionIdKey(storageKey?: string): string {
+  return storageKey ? `${storageKey}-session-id` : DEFAULT_SESSION_ID_KEY
+}
+
+function getAgentTypeKey(storageKey?: string): string {
+  return storageKey ? `${storageKey}-agent-type` : DEFAULT_AGENT_TYPE_KEY
+}
+
+function loadSessionId(storageKey?: string): string | null {
   try {
-    return localStorage.getItem(SESSION_ID_KEY)
+    return localStorage.getItem(getSessionIdKey(storageKey))
   } catch {
     return null
   }
 }
 
-function saveSessionId(id: string | null) {
+function saveSessionId(id: string | null, storageKey?: string) {
   try {
+    const key = getSessionIdKey(storageKey)
     if (id) {
-      localStorage.setItem(SESSION_ID_KEY, id)
+      localStorage.setItem(key, id)
     } else {
-      localStorage.removeItem(SESSION_ID_KEY)
+      localStorage.removeItem(key)
     }
   } catch {
     // Ignore storage errors
   }
 }
 
-function loadAgentType(): AgentType | null {
+function loadAgentType(storageKey?: string): AgentType | null {
   try {
-    const stored = localStorage.getItem(AGENT_TYPE_KEY)
+    const stored = localStorage.getItem(getAgentTypeKey(storageKey))
     if (stored === "claude" || stored === "codex") return stored
     return null
   } catch {
@@ -39,9 +48,9 @@ function loadAgentType(): AgentType | null {
   }
 }
 
-function saveAgentType(type: AgentType) {
+function saveAgentType(type: AgentType, storageKey?: string) {
   try {
-    localStorage.setItem(AGENT_TYPE_KEY, type)
+    localStorage.setItem(getAgentTypeKey(storageKey), type)
   } catch {
     // Ignore storage errors
   }
@@ -67,30 +76,51 @@ export type AgentChatActions = {
  * Hook that manages the WebSocket connection to the agent server
  * and provides chat state + actions using the session-based protocol.
  */
-export function useAgentChat(initialAgent: AgentType = "claude") {
+export type UseAgentChatOptions = {
+  /** Initial agent type, defaults to "claude" */
+  initialAgent?: AgentType
+  /** System prompt to use when creating sessions */
+  systemPrompt?: string
+  /** Unique key for localStorage persistence (allows multiple independent chat instances) */
+  storageKey?: string
+}
+
+export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "claude") {
+  // Support both legacy AgentType argument and new options object
+  const options: UseAgentChatOptions =
+    typeof optionsOrAgent === "string" ? { initialAgent: optionsOrAgent } : optionsOrAgent
+  const { initialAgent = "claude", systemPrompt, storageKey } = options
   const [events, setEvents] = useState<ChatEvent[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
   const [error, setError] = useState<string | null>(null)
-  const [agentType, _setAgentType] = useState<AgentType>(() => loadAgentType() ?? initialAgent)
-  const [sessionId, _setSessionId] = useState<string | null>(() => loadSessionId())
+  const [agentType, _setAgentType] = useState<AgentType>(
+    () => loadAgentType(storageKey) ?? initialAgent,
+  )
+  const [sessionId, _setSessionId] = useState<string | null>(() => loadSessionId(storageKey))
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sessionIdRef = useRef<string | null>(sessionId)
 
   // Wrapper that persists sessionId to localStorage
-  const setSessionId = useCallback((id: string | null) => {
-    _setSessionId(id)
-    sessionIdRef.current = id
-    saveSessionId(id)
-  }, [])
+  const setSessionId = useCallback(
+    (id: string | null) => {
+      _setSessionId(id)
+      sessionIdRef.current = id
+      saveSessionId(id, storageKey)
+    },
+    [storageKey],
+  )
 
   // Wrapper that persists agentType to localStorage
-  const setAgentType = useCallback((type: AgentType) => {
-    _setAgentType(type)
-    saveAgentType(type)
-  }, [])
+  const setAgentType = useCallback(
+    (type: AgentType) => {
+      _setAgentType(type)
+      saveAgentType(type, storageKey)
+    },
+    [storageKey],
+  )
 
   /** Create a new session via REST, then subscribe via WS. */
   const createSession = useCallback(async () => {
@@ -98,7 +128,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adapter: agentType }),
+        body: JSON.stringify({ adapter: agentType, systemPrompt }),
       })
       const data = (await res.json()) as { sessionId: string }
       setSessionId(data.sessionId)
@@ -120,7 +150,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
       setError("Failed to create session")
       return null
     }
-  }, [agentType, setSessionId])
+  }, [agentType, systemPrompt, setSessionId])
 
   /** Try to restore from localStorage, then /api/sessions/latest, or create new. */
   const initSession = useCallback(async () => {
@@ -135,7 +165,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     }
 
     // Try restoring from localStorage first
-    const storedSessionId = loadSessionId()
+    const storedSessionId = loadSessionId(storageKey)
     if (storedSessionId) {
       try {
         const res = await fetch(`/api/sessions/${storedSessionId}`)
@@ -198,7 +228,7 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
     // No localStorage session found — create a new session.
     // Don't fall back to server's /api/sessions/latest.
     await createSession()
-  }, [createSession, setSessionId, setAgentType])
+  }, [createSession, setSessionId, setAgentType, storageKey])
 
   const connect = useCallback(() => {
     // Clean up existing connection

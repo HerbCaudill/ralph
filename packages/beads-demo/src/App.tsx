@@ -14,6 +14,7 @@ import {
 } from "@herbcaudill/beads-view"
 import { DemoShell } from "./components/DemoShell"
 import { TaskDetailPanel } from "./components/TaskDetailPanel"
+import { TaskChat } from "./components/TaskChat"
 import { TaskStatusBar } from "./components/TaskStatusBar"
 import { HotkeysDialog } from "./components/HotkeysDialog"
 
@@ -129,12 +130,14 @@ function AppContent() {
         sidebarWidth={340}
         statusBar={<TaskStatusBar workspace={ws.current} isLoading={isLoading} error={error} />}
       >
-        <TaskDetailPanel
-          task={dialog.selectedTask}
-          open={selectedTaskId !== null}
-          onClose={handleCloseDetail}
-          onChanged={handleChanged}
-        />
+        {selectedTaskId !== null ?
+          <TaskDetailPanel
+            task={dialog.selectedTask}
+            open={selectedTaskId !== null}
+            onClose={handleCloseDetail}
+            onChanged={handleChanged}
+          />
+        : <TaskChat />}
       </DemoShell>
       <HotkeysDialog
         open={hotkeysDialogOpen}

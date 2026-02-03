@@ -68,6 +68,7 @@ export type {
   ConnectionStatus,
   AgentChatState,
   AgentChatActions,
+  UseAgentChatOptions,
 } from "./hooks/useAgentChat"
 export { useAgentControl } from "./hooks/useAgentControl"
 export type {

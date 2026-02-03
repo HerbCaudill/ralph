@@ -33,6 +33,48 @@ The `hotkeys/` directory provides a hotkey registration system for host applicat
 
 Host applications provide handler callbacks; the hook handles platform-aware key matching and input element filtering.
 
+## useAgentChat hook
+
+WebSocket-based hook for managing agent chat sessions. Handles connection lifecycle, session persistence, and message streaming.
+
+**Options** (`UseAgentChatOptions`):
+
+| Option         | Type                  | Description                                                                          |
+| -------------- | --------------------- | ------------------------------------------------------------------------------------ |
+| `initialAgent` | `"claude" \| "codex"` | Initial agent type (default: `"claude"`)                                             |
+| `systemPrompt` | `string`              | System prompt to use when creating sessions                                          |
+| `storageKey`   | `string`              | Unique key for localStorage persistence (allows multiple independent chat instances) |
+
+**Example usage**:
+
+```tsx
+// Basic usage with default agent
+const { state, actions, agentType } = useAgentChat()
+
+// With custom system prompt
+const { state, actions } = useAgentChat({
+  systemPrompt: "You are a helpful assistant focused on code review.",
+  storageKey: "code-review-chat",
+})
+
+// Legacy single-argument form (still supported)
+const { state, actions } = useAgentChat("codex")
+```
+
+**Returns**:
+
+- `state.events` - Array of chat events
+- `state.isStreaming` - Whether the agent is currently responding
+- `state.connectionStatus` - WebSocket connection status (`"disconnected" | "connecting" | "connected"`)
+- `state.error` - Error message if any
+- `state.sessionId` - Current session ID
+- `actions.sendMessage(message)` - Send a message to the agent
+- `actions.clearHistory()` - Clear chat history and delete session
+- `actions.setAgentType(type)` - Switch agent type
+- `actions.newSession()` - Start a new session
+- `actions.restoreSession(sessionId)` - Restore a previous session
+- `agentType` - Current agent type
+
 ## Adapter info hooks
 
 Hooks for fetching adapter version and model information from the `/api/adapters` endpoint.
