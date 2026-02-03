@@ -39,7 +39,7 @@ export function BlockerCombobox({
           variant="ghost"
           size="sm"
           disabled={disabled || availableTasks.length === 0}
-          className="text-muted-foreground hover:text-foreground h-6 gap-1 px-2 text-xs"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground dark:hover:bg-muted h-6 gap-1 px-2 text-xs"
         >
           <IconPlus className="h-3 w-3" />
           Add blocker
