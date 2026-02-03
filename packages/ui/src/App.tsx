@@ -3,7 +3,7 @@ import { MainLayout } from "./components/MainLayout"
 import { Header } from "./components/layout"
 import { RalphRunner } from "./components/RalphRunner"
 import { TaskChatPanel } from "./components/TaskChatPanel"
-import { TaskDetailPanel } from "./components/TaskDetailPanel"
+import { TaskDetailSheet } from "./components/TaskDetailSheet"
 import { StatusBar } from "./components/StatusBar"
 import { HotkeysDialog } from "./components/HotkeysDialog"
 import { CommandPalette } from "./components/CommandPalette"
@@ -109,13 +109,9 @@ function AppContent() {
 
   // Hotkey handlers - Agent actions
   const handleFocusChatInput = useCallback(() => {
-    // Focus task chat or Ralph input depending on which is visible
-    if (selectedTaskId !== null) {
-      // Task detail is open, no chat visible
-      return
-    }
+    // TaskChatPanel is always visible now, so always focus it
     taskChatInputRef.current?.focus()
-  }, [selectedTaskId])
+  }, [])
 
   const handleToggleToolOutput = useCallback(() => {
     useUiStore.getState().toggleToolOutput()
@@ -258,25 +254,19 @@ function AppContent() {
     setIsStoppingAfterCurrent(false)
   }, [])
 
-  // Left sidebar: show TaskDetailPanel when a task is selected, otherwise TaskChatPanel
-  const sidebar =
-    selectedTaskId !== null ?
-      <TaskDetailPanel
-        task={selectedTask}
-        open={selectedTaskId !== null}
-        onClose={handleCloseDetail}
-        onChanged={handleChanged}
-      />
-    : <TaskChatPanel
-        taskId={null}
-        taskTitle={undefined}
-        events={taskChatState.events}
-        isStreaming={taskChatState.isStreaming}
-        sessionId={taskChatState.sessionId}
-        onSendMessage={handleTaskChatSend}
-        onSessionSelect={handleTaskChatSessionSelect}
-        onClose={closeDialog}
-      />
+  // Left sidebar: always show TaskChatPanel
+  const sidebar = (
+    <TaskChatPanel
+      taskId={null}
+      taskTitle={undefined}
+      events={taskChatState.events}
+      isStreaming={taskChatState.isStreaming}
+      sessionId={taskChatState.sessionId}
+      onSendMessage={handleTaskChatSend}
+      onSessionSelect={handleTaskChatSessionSelect}
+      onClose={closeDialog}
+    />
+  )
 
   // Ralph loop panel (right side)
   const rightPanel = (
@@ -326,6 +316,13 @@ function AppContent() {
         workspaceName={workspace?.name}
         workspacePath={workspace?.path}
         branch={workspace?.branch}
+      />
+      {/* Task detail sheet overlay */}
+      <TaskDetailSheet
+        task={selectedTask}
+        open={selectedTaskId !== null}
+        onClose={handleCloseDetail}
+        onChanged={handleChanged}
       />
       <HotkeysDialog open={showHotkeysDialog} onClose={() => setShowHotkeysDialog(false)} />
       <CommandPalette

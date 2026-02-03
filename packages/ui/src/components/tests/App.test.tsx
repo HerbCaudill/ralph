@@ -76,6 +76,11 @@ vi.mock("@herbcaudill/beads-view", () => ({
   useBeadsHotkeys: vi.fn(),
   hotkeys: {},
   getHotkeyDisplayString: () => "",
+  // Add TaskDetailsController for TaskDetailSheet
+  TaskDetailsController: ({ task }: { task: { title: string } | null }) =>
+    task ? <div data-testid="task-details-controller">{task.title}</div> : null,
+  updateTask: vi.fn(),
+  deleteTask: vi.fn(),
 }))
 
 vi.mock("@herbcaudill/agent-view", () => ({
@@ -101,18 +106,18 @@ vi.mock("@herbcaudill/agent-view", () => ({
   cn: (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(" "),
 }))
 
-// Mock TaskDetailPanel to verify it gets rendered
-vi.mock("../TaskDetailPanel", () => ({
-  TaskDetailPanel: ({
+// Mock TaskDetailSheet to verify it gets rendered as an overlay
+vi.mock("../TaskDetailSheet", () => ({
+  TaskDetailSheet: ({
     task,
     open,
   }: {
     task: { id: string; title: string } | null
     open: boolean
   }) => {
-    if (!open || !task) return <div data-testid="task-detail-empty">No task selected</div>
+    if (!open || !task) return null
     return (
-      <div data-testid="task-detail-panel">
+      <div data-testid="task-detail-sheet" role="dialog">
         <span data-testid="task-detail-title">{task.title}</span>
       </div>
     )
@@ -169,32 +174,57 @@ describe("App", () => {
     })
   })
 
-  describe("TaskDetailPanel rendering", () => {
-    it("renders TaskDetailPanel in the left sidebar when a task is selected", () => {
+  describe("TaskDetailSheet rendering", () => {
+    it("renders TaskDetailSheet as an overlay when a task is selected", () => {
       // Set a selected task
       mockSelectedTaskId = "task-123"
 
       render(<App />)
 
-      // TaskDetailPanel should be rendered with the task
-      expect(screen.getByTestId("task-detail-panel")).toBeInTheDocument()
+      // TaskDetailSheet should be rendered as an overlay
+      expect(screen.getByTestId("task-detail-sheet")).toBeInTheDocument()
       expect(screen.getByTestId("task-detail-title")).toHaveTextContent("Test Task")
     })
 
-    it("renders TaskChatPanel when no task is selected", () => {
+    it("always renders TaskChatPanel in the left sidebar", () => {
       // Ensure no task is selected
       mockSelectedTaskId = null
 
       const { container } = render(<App />)
 
-      // TaskDetailPanel should NOT be rendered when no task is selected
-      expect(screen.queryByTestId("task-detail-panel")).not.toBeInTheDocument()
-      expect(screen.queryByTestId("task-detail-empty")).not.toBeInTheDocument()
+      // TaskChatPanel should always be in the left sidebar
+      expect(screen.getByTestId("task-chat-panel")).toBeInTheDocument()
 
-      // Left sidebar should be empty (TaskChatPanel returns null when no task)
-      // The aside with border-r class is the left sidebar
+      // Left sidebar should contain TaskChatPanel
       const leftSidebar = container.querySelector("aside.border-r")
       expect(leftSidebar).toBeInTheDocument()
+      expect(leftSidebar).toContainElement(screen.getByTestId("task-chat-panel"))
+    })
+
+    it("renders TaskChatPanel in sidebar even when task is selected", () => {
+      // Set a selected task
+      mockSelectedTaskId = "task-123"
+
+      const { container } = render(<App />)
+
+      // TaskChatPanel should still be visible in the left sidebar
+      expect(screen.getByTestId("task-chat-panel")).toBeInTheDocument()
+
+      // And TaskDetailSheet should be rendered as an overlay
+      expect(screen.getByTestId("task-detail-sheet")).toBeInTheDocument()
+
+      // Left sidebar should contain TaskChatPanel
+      const leftSidebar = container.querySelector("aside.border-r")
+      expect(leftSidebar).toContainElement(screen.getByTestId("task-chat-panel"))
+    })
+
+    it("does not render TaskDetailSheet when no task is selected", () => {
+      mockSelectedTaskId = null
+
+      render(<App />)
+
+      // TaskDetailSheet should not be rendered
+      expect(screen.queryByTestId("task-detail-sheet")).not.toBeInTheDocument()
     })
   })
 })
