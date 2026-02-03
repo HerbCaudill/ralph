@@ -1,6 +1,7 @@
 import path from "node:path"
 import { readRegistry } from "./readRegistry.js"
 import { type RegistryEntry, type WorkspaceInfo } from "./types.js"
+import { getWorkspaceName } from "./lib/getWorkspaceName.js"
 
 /**
  * Get all available workspaces from the registry file.
@@ -10,7 +11,7 @@ export function getAvailableWorkspaces(currentPath?: string): WorkspaceInfo[] {
   const entries = readRegistry()
   return entries.map((entry: RegistryEntry) => ({
     path: entry.workspace_path,
-    name: path.basename(entry.workspace_path),
+    name: getWorkspaceName(entry.workspace_path),
     database: entry.database_path,
     pid: entry.pid,
     version: entry.version,

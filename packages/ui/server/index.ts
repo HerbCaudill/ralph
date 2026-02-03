@@ -36,6 +36,7 @@ import type {
   AgentPendingEventsResponse,
 } from "@herbcaudill/ralph-shared"
 import { envelopeToLegacy } from "@herbcaudill/ralph-shared"
+import { getWorkspaceName } from "./lib/getWorkspaceName.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -749,7 +750,7 @@ function createApp(
         ok: true,
         workspace: {
           path: workspacePath,
-          name: workspacePath.split("/").pop() || workspacePath,
+          name: getWorkspaceName(workspacePath),
           issueCount: activeIssueCount,
           daemonConnected: info.daemon_connected,
           daemonStatus: info.daemon_status,
@@ -858,7 +859,7 @@ function createApp(
         ok: true,
         workspace: {
           path: workspacePath,
-          name: workspacePath.split("/").pop(),
+          name: getWorkspaceName(workspacePath),
           issueCount: activeIssueCount,
           daemonConnected: info.daemon_connected,
           daemonStatus: info.daemon_status,

@@ -15,6 +15,7 @@ import {
   resumeMessageProcessing,
 } from "@/lib/ralphConnection"
 import type { WorkspaceInfo, WorkspaceListEntry } from "@/types"
+import { getRepoName } from "@/lib/getRepoName"
 
 /**
  * Dropdown component to select and switch between workspaces.
@@ -218,7 +219,7 @@ export function WorkspacePicker({
   // Display name: use workspaceInfo name, or derive from workspace path, or fallback
   const displayName =
     isServerDown ? "Server not running" : (
-      workspaceInfo?.name || (workspace ? workspace.split("/").pop() : null) || "No workspace"
+      workspaceInfo?.name || getRepoName(workspace) || "No workspace"
     )
 
   // Issue count badge
