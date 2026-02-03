@@ -1,26 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
 @import "tailwindcss";
-@import "tw-animate-css";
-
-@theme {
-  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-
-  --color-background: oklch(100% 0 0);
-  --color-foreground: oklch(15% 0 0);
-  --color-muted: oklch(96% 0 0);
-  --color-muted-foreground: oklch(45% 0 0);
-  --color-border: oklch(90% 0 0);
-  --color-primary: oklch(25% 0 0);
-  --color-primary-foreground: oklch(100% 0 0);
-  --color-accent: oklch(55% 0.15 250);
-  --color-destructive: oklch(55% 0.2 25);
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-  }
-}
+@plugin "@tailwindcss/typography";
+@source "../node_modules/@herbcaudill/agent-view/dist";
+@source "../node_modules/@herbcaudill/beads-view/dist";
+@import "@herbcaudill/agent-view/styles.css";
