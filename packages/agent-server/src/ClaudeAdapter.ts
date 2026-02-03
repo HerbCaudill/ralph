@@ -18,6 +18,7 @@ import type {
 } from "./agentTypes.js"
 import { isRetryableError } from "./lib/isRetryableError.js"
 import { calculateBackoffDelay } from "./lib/calculateBackoffDelay.js"
+import { loadClaudeMdSync } from "./lib/loadClaudeMd.js"
 
 export type QueryFn = typeof query
 
@@ -103,6 +104,13 @@ export interface ClaudeAdapterOptions {
    * Default: 0 (extended thinking disabled)
    */
   maxThinkingTokens?: number
+  /**
+   * Whether to load CLAUDE.md files and prepend their content to the system prompt.
+   * Loads from: ~/.claude/CLAUDE.md (user global) and {cwd}/CLAUDE.md (workspace).
+   * Order: global first, then workspace, then caller-provided systemPrompt.
+   * Default: true (for consistency with Claude CLI behavior)
+   */
+  loadClaudeMd?: boolean
 }
 
 /**
@@ -354,12 +362,30 @@ export class ClaudeAdapter extends AgentAdapter {
     let attempt = 0
     let lastError: Error | null = null
 
-    // Build system prompt with working directory context
-    let systemPrompt = options.systemPrompt
-    if (options.cwd) {
-      const cwdContext = buildCwdContext(options.cwd)
-      systemPrompt = systemPrompt ? cwdContext + systemPrompt : cwdContext.trim()
+    // Build system prompt with CLAUDE.md content and working directory context
+    // Order: CLAUDE.md content (global then workspace) → cwd context → caller-provided systemPrompt
+    const promptParts: string[] = []
+
+    // Load CLAUDE.md files if enabled (default: true)
+    const shouldLoadClaudeMd = this.options.loadClaudeMd !== false
+    if (shouldLoadClaudeMd) {
+      const claudeMdContent = loadClaudeMdSync({ cwd: options.cwd })
+      if (claudeMdContent) {
+        promptParts.push(claudeMdContent)
+      }
     }
+
+    // Add working directory context
+    if (options.cwd) {
+      promptParts.push(buildCwdContext(options.cwd).trim())
+    }
+
+    // Add caller-provided system prompt
+    if (options.systemPrompt) {
+      promptParts.push(options.systemPrompt)
+    }
+
+    const systemPrompt = promptParts.length > 0 ? promptParts.join("\n\n") : undefined
 
     while (attempt <= maxRetries) {
       this.abortController = new AbortController()

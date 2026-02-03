@@ -285,6 +285,26 @@ Agents implement `AgentAdapter` base class (`server/AgentAdapter.ts`). Available
 
 ClaudeAdapter accepts an optional `model` in `ClaudeAdapterOptions`, falling back to the `CLAUDE_MODEL` environment variable. Per-message model overrides the default. `AgentInfo` (returned by `getInfo()`) includes a `model` field showing the configured default.
 
+### CLAUDE.md auto-loading
+
+ClaudeAdapter automatically loads CLAUDE.md files and prepends their content to the system prompt. This mirrors Claude CLI behavior for consistent context across tools.
+
+**Configuration:** Set `loadClaudeMd: false` in `ClaudeAdapterOptions` to disable (default: `true`).
+
+**Load order:**
+1. User global: `~/.claude/CLAUDE.md`
+2. Workspace: `{cwd}/CLAUDE.md`
+3. Working directory context (injected automatically)
+4. Caller-provided `systemPrompt`
+
+If both global and workspace files exist, their contents are combined (global first, then workspace, separated by a blank line).
+
+**Exported utilities** (from `@herbcaudill/agent-server`):
+- `loadClaudeMd(options?)` - Async function to load CLAUDE.md content
+- `loadClaudeMdSync(options?)` - Sync version
+- `CLAUDE_MD_FILENAME` - The constant `"CLAUDE.md"`
+- `LoadClaudeMdOptions` - Type for options (`{ cwd?: string }`)
+
 ## Runtime interaction
 
 - **Escape** - Send a message to Claude

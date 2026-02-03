@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { ClaudeAdapter, type QueryFn, parseCliVersionOutput } from ".././ClaudeAdapter.js"
 import type { AgentEvent, AgentStatusEvent } from ".././agentTypes.js"
+import * as loadClaudeMdModule from "../lib/loadClaudeMd.js"
+
+// Mock loadClaudeMd module
+vi.mock("../lib/loadClaudeMd.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../lib/loadClaudeMd.js")>("../lib/loadClaudeMd.js")
+  return {
+    ...actual,
+    loadClaudeMdSync: vi.fn(() => null),
+  }
+})
 
 /**
  * Create a mock queryFn that yields the given SDK messages.
@@ -38,6 +49,13 @@ function collectStatuses(adapter: ClaudeAdapter): string[] {
 
 describe("ClaudeAdapter", () => {
   let adapter: ClaudeAdapter
+  const mockLoadClaudeMdSync = vi.mocked(loadClaudeMdModule.loadClaudeMdSync)
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Default: no CLAUDE.md files
+    mockLoadClaudeMdSync.mockReturnValue(null)
+  })
 
   describe("runQuery sets status to idle on completion", () => {
     it("emits a status 'idle' event after runQuery completes successfully", async () => {
@@ -1137,6 +1155,200 @@ describe("ClaudeAdapter", () => {
 
     it("parses version followed by newline", () => {
       expect(parseCliVersionOutput("2.1.29 (Claude Code)\n")).toBe("2.1.29")
+    })
+  })
+
+  describe("CLAUDE.md loading", () => {
+    it("loads CLAUDE.md content and prepends it to system prompt by default", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      mockLoadClaudeMdSync.mockReturnValue("# Project Rules\n- Be helpful")
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/project", systemPrompt: "You are an assistant." })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      expect(mockLoadClaudeMdSync).toHaveBeenCalledWith({ cwd: "/project" })
+
+      const options = capturedOpts!.options as Record<string, unknown>
+      const systemPrompt = options.systemPrompt as string
+      // Order: CLAUDE.md → cwd context → caller systemPrompt
+      expect(systemPrompt).toContain("# Project Rules")
+      expect(systemPrompt).toContain("- Be helpful")
+      expect(systemPrompt).toContain("Working directory: /project")
+      expect(systemPrompt).toContain("You are an assistant.")
+      // Verify order: CLAUDE.md should come before cwd context
+      const claudeMdIndex = systemPrompt.indexOf("# Project Rules")
+      const cwdIndex = systemPrompt.indexOf("Working directory")
+      const callerPromptIndex = systemPrompt.indexOf("You are an assistant")
+      expect(claudeMdIndex).toBeLessThan(cwdIndex)
+      expect(cwdIndex).toBeLessThan(callerPromptIndex)
+    })
+
+    it("does not load CLAUDE.md when loadClaudeMd option is false", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      mockLoadClaudeMdSync.mockReturnValue("# Should Not Appear")
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+        loadClaudeMd: false,
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/project", systemPrompt: "Be helpful." })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      // loadClaudeMdSync should not be called
+      expect(mockLoadClaudeMdSync).not.toHaveBeenCalled()
+
+      const options = capturedOpts!.options as Record<string, unknown>
+      const systemPrompt = options.systemPrompt as string
+      expect(systemPrompt).not.toContain("# Should Not Appear")
+      expect(systemPrompt).toContain("Be helpful.")
+    })
+
+    it("handles null CLAUDE.md content gracefully", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      // No CLAUDE.md files exist
+      mockLoadClaudeMdSync.mockReturnValue(null)
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/project", systemPrompt: "Be helpful." })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      expect(mockLoadClaudeMdSync).toHaveBeenCalledWith({ cwd: "/project" })
+
+      const options = capturedOpts!.options as Record<string, unknown>
+      const systemPrompt = options.systemPrompt as string
+      // Should still have cwd context and caller prompt
+      expect(systemPrompt).toContain("Working directory: /project")
+      expect(systemPrompt).toContain("Be helpful.")
+    })
+
+    it("works without cwd or systemPrompt when only CLAUDE.md exists", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      mockLoadClaudeMdSync.mockReturnValue("# Global Config")
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      // No cwd, no systemPrompt
+      await adapter.start({})
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      const options = capturedOpts!.options as Record<string, unknown>
+      const systemPrompt = options.systemPrompt as string
+      expect(systemPrompt).toBe("# Global Config")
+    })
+
+    it("system prompt is undefined when no CLAUDE.md, no cwd, and no systemPrompt", async () => {
+      let capturedOpts: Record<string, unknown> | undefined
+
+      const queryFn = async function* (opts: unknown) {
+        capturedOpts = opts as Record<string, unknown>
+        yield {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 5, output_tokens: 2 },
+        } as never
+      } as unknown as QueryFn
+
+      mockLoadClaudeMdSync.mockReturnValue(null)
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({})
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      const options = capturedOpts!.options as Record<string, unknown>
+      expect(options.systemPrompt).toBeUndefined()
     })
   })
 })

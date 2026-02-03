@@ -96,6 +96,8 @@ export { calculateBackoffDelay } from "./lib/calculateBackoffDelay.js"
 export { generateId } from "./lib/generateId.js"
 export { createEventStream } from "./lib/createEventStream.js"
 export { createMessageStream } from "./lib/createMessageStream.js"
+export { loadClaudeMd, loadClaudeMdSync, CLAUDE_MD_FILENAME } from "./lib/loadClaudeMd.js"
+export type { LoadClaudeMdOptions } from "./lib/loadClaudeMd.js"
 
 // ── Server ───────────────────────────────────────────────────────────
 
