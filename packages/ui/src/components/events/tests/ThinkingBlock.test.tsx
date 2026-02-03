@@ -134,7 +134,7 @@ describe("ThinkingBlock", () => {
 
       // Should still have default classes
       expect(container.firstChild).toHaveClass("py-1.5")
-      expect(container.firstChild).toHaveClass("pr-4")
+      expect(container.firstChild).toHaveClass("pr-12")
       expect(container.firstChild).toHaveClass("pl-4")
     })
   })
