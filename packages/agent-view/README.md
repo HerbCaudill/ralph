@@ -62,10 +62,10 @@ import {
 | `AgentView`            | High-level composition with scrollable container, auto-scroll, and slots |
 | `EventList`            | Headless event list (no container/scroll)                                |
 | `EventDisplay`         | Event list with scrollable container and empty state                     |
-| `ToolUseCard`          | Collapsible tool use with output preview                                 |
-| `AssistantText`        | Markdown-rendered assistant message                                      |
+| `ToolUseCard`          | Collapsible tool use with output preview (`max-w-prose` for readability) |
+| `AssistantText`        | Markdown-rendered assistant message (`max-w-prose` for readability)      |
 | `UserMessage`          | User message display                                                     |
-| `ThinkingBlock`        | Collapsible extended thinking block                                      |
+| `ThinkingBlock`        | Collapsible extended thinking block (`max-w-prose` for readability)      |
 | `ErrorEvent`           | Error message display                                                    |
 | `DiffView`             | Side-by-side code diff                                                   |
 | `AnsiOutput`           | Terminal output with ANSI color support                                  |

@@ -5,7 +5,7 @@ import type { AssistantTextEvent } from "../types"
 /**  Renders assistant text content with markdown support. */
 export function AssistantText({ event, className }: Props) {
   return (
-    <div className={cn("py-1.5 pr-12 pl-4", className)}>
+    <div className={cn("max-w-prose py-1.5 pr-12 pl-4", className)}>
       <MarkdownContent className="flex-1 font-serif">{event.content}</MarkdownContent>
     </div>
   )
