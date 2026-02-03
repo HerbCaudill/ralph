@@ -7,6 +7,7 @@ import {
   AgentControls,
 } from "@herbcaudill/agent-view"
 import type { ChatEvent, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
+import { useSessionTimer } from "@/hooks/useSessionTimer"
 
 /**
  * Footer status bar showing connection status, workspace path, current task, agent controls, token usage, and context window progress.
@@ -25,6 +26,7 @@ export function StatusBar({
 }: StatusBarProps) {
   const tokenUsage = useTokenUsage(events)
   const contextWindow = useContextWindow(events)
+  const { formatted: sessionDuration } = useSessionTimer(events)
 
   return (
     <div className="flex w-full items-center justify-between">
@@ -80,13 +82,23 @@ export function StatusBar({
         {error && <span className="border-l border-border pl-3 text-red-500">{error}</span>}
       </div>
 
-      {/* Right section: token usage and context window */}
+      {/* Right section: session timer, token usage, and context window */}
       <div className="flex items-center pr-4">
+        {/* Session timer */}
+        {sessionDuration !== "00:00" && (
+          <span className="border-r border-border pr-4 font-mono text-[10px]">
+            {sessionDuration}
+          </span>
+        )}
+
+        {/* Token usage */}
         {(tokenUsage.input > 0 || tokenUsage.output > 0) && (
           <div className="border-r border-border pr-4">
             <TokenUsageDisplay tokenUsage={tokenUsage} />
           </div>
         )}
+
+        {/* Context window */}
         <div className="pl-4">
           <ContextWindowProgress contextWindow={contextWindow} />
         </div>
