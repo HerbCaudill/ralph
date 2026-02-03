@@ -9,6 +9,7 @@ import { BdProxy } from "./BdProxy.js"
 import { registerTaskRoutes } from "@herbcaudill/beads-view/server"
 import { getAliveWorkspaces } from "./getAliveWorkspaces.js"
 import { watchMutations } from "./BeadsClient.js"
+import { ThemeDiscovery } from "./ThemeDiscovery.js"
 import type { MutationEvent } from "@herbcaudill/beads-sdk"
 import type { BeadsServerConfig, WsClient } from "./types.js"
 
@@ -408,6 +409,21 @@ function createApp(config: BeadsServerConfig): Express {
       const message = err instanceof Error ? err.message : "Failed to switch workspace"
       res.status(500).json({ ok: false, error: message })
     }
+  })
+
+  // Theme discovery
+  app.get("/api/themes", async (_req, res) => {
+    const discovery = new ThemeDiscovery()
+    const initialized = await discovery.initialize()
+    if (!initialized) {
+      res.json({ themes: [], variant: null })
+      return
+    }
+    const themes = await discovery.discoverThemes()
+    res.json({
+      themes,
+      variant: discovery.getVariantName(),
+    })
   })
 
   // ── Task management (delegated to @herbcaudill/beads-view) ────────
