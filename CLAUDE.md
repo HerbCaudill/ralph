@@ -24,9 +24,8 @@ pnpm ui:test              # UI tests only
 pnpm test:pw              # Playwright with dynamic ports
 
 pnpm cli                  # Run ralph CLI in development
-pnpm ui                   # Start UI dev server (Vite)
-pnpm dev                  # Start UI dev server (alias)
-pnpm dev:split            # Start beads-server + agent-server + UI as separate processes
+pnpm ui                   # Start UI Vite server only (no backends)
+pnpm dev                  # Start beads-server + agent-server + UI dev server
 pnpm serve:beads          # Start just the beads-server (port 4243)
 pnpm serve:agent          # Start just the agent-server (port 4244)
 pnpm demo:agent-chat      # Run agent chat demo dev server (port 5180)

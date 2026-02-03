@@ -12,7 +12,6 @@
     "demo:agent": "node scripts/agent-demo.js",
     "demo:beads": "node scripts/beads-demo.js",
     "dev": "node scripts/dev.js",
-    "dev:split": "node scripts/dev-split.js",
     "format": "git diff --name-only HEAD --diff-filter=ACMR | xargs -r prettier --write --ignore-unknown --log-level silent",
     "postinstall": "pnpm --filter ralph-shared build",
     "pub": "pnpm --filter ralph publish && pnpm --filter ralph-ui publish",
