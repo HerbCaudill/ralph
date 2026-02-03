@@ -18,6 +18,7 @@ function makeEntry(overrides: Partial<SessionIndexEntry> = {}): SessionIndexEntr
     firstMessageAt: 1000,
     lastMessageAt: 2000,
     firstUserMessage: "Hello",
+    hasResponse: true,
     ...overrides,
   }
 }

@@ -109,11 +109,7 @@ function isInputElement(target: EventTarget | null): boolean {
 }
 
 /** Actions that should still work when focused on an input element */
-const ALLOWED_IN_INPUT: BeadsHotkeyAction[] = [
-  "focusSearch",
-  "focusTaskInput",
-  "showHotkeys",
-]
+const ALLOWED_IN_INPUT: BeadsHotkeyAction[] = ["focusSearch", "focusTaskInput", "showHotkeys"]
 
 /**
  * Hook for global keyboard hotkeys in beads-view.
@@ -148,7 +144,10 @@ export function useBeadsHotkeys({
 
       const isInput = isInputElement(event.target)
 
-      for (const [action, config] of Object.entries(hotkeys) as [BeadsHotkeyAction, HotkeyConfig][]) {
+      for (const [action, config] of Object.entries(hotkeys) as [
+        BeadsHotkeyAction,
+        HotkeyConfig,
+      ][]) {
         if (matchesHotkey(event, config)) {
           const handler = handlersRef.current[action]
           if (handler) {

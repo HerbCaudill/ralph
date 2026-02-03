@@ -10,15 +10,7 @@ export function useTaskDetails(
   /** Task details configuration. */
   options: UseTaskDetailsOptions,
 ): UseTaskDetailsResult {
-  const {
-    task,
-    open,
-    readOnly = false,
-    onSave,
-    onDelete,
-    onClose,
-    currentSessionId,
-  } = options
+  const { task, open, readOnly = false, onSave, onDelete, onClose, currentSessionId } = options
 
   const issuePrefix = useBeadsViewStore(selectIssuePrefix)
   const allTasks = useBeadsViewStore(selectTasks)

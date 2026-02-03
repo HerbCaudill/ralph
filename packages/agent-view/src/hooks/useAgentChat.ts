@@ -266,6 +266,11 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
 
           // For tool_use events with the same toolUseId, replace the earlier version
           if (event.type === "tool_use" && event.toolUseId) {
+            // Mark session as having a response (tool_use is an assistant action)
+            const currentSid = sessionIdRef.current
+            if (currentSid) {
+              updateSession(currentSid, { hasResponse: true })
+            }
             setEvents(prev => {
               const existingIndex = prev.findIndex(
                 e =>
@@ -300,6 +305,14 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
             return
           }
 
+          // Mark session as having a response for non-user events
+          if (event.type !== "user_message") {
+            const currentSid = sessionIdRef.current
+            if (currentSid) {
+              updateSession(currentSid, { hasResponse: true })
+            }
+          }
+
           setEvents(prev => [...prev, event])
           return
         }
@@ -311,6 +324,13 @@ export function useAgentChat(initialAgent: AgentType = "claude") {
             message: message.content as string,
             text: message.content as string,
             timestamp: Date.now(),
+          }
+          // Mark session as having a response for assistant messages
+          if (chatEvent.type === "assistant_text") {
+            const currentSid = sessionIdRef.current
+            if (currentSid) {
+              updateSession(currentSid, { hasResponse: true })
+            }
           }
           setEvents(prev => [...prev, chatEvent])
         }

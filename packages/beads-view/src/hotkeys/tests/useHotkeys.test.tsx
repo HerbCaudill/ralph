@@ -467,26 +467,20 @@ describe("useBeadsHotkeys", () => {
 
   describe("getHotkeyDisplay return value", () => {
     it("returns display string for a registered action", () => {
-      const { result } = renderHook(() =>
-        useBeadsHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useBeadsHotkeys({ handlers: {} }))
 
       // focusSearch is cmd+f => on non-Mac: "Ctrl+F"
       expect(result.current.getHotkeyDisplay("focusSearch")).toBe("Ctrl+F")
     })
 
     it("returns arrow glyph for previousTask", () => {
-      const { result } = renderHook(() =>
-        useBeadsHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useBeadsHotkeys({ handlers: {} }))
 
       expect(result.current.getHotkeyDisplay("previousTask")).toBe("\u2191")
     })
 
     it("returns enter glyph for openTask", () => {
-      const { result } = renderHook(() =>
-        useBeadsHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useBeadsHotkeys({ handlers: {} }))
 
       expect(result.current.getHotkeyDisplay("openTask")).toBe("\u23CE")
     })
@@ -494,14 +488,12 @@ describe("useBeadsHotkeys", () => {
 
   describe("registeredHotkeys", () => {
     it("returns all hotkey actions with display and description", () => {
-      const { result } = renderHook(() =>
-        useBeadsHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useBeadsHotkeys({ handlers: {} }))
 
       const registered = result.current.registeredHotkeys
       expect(registered).toHaveLength(6)
 
-      const actions = registered.map((r) => r.action)
+      const actions = registered.map(r => r.action)
       expect(actions).toContain("focusSearch")
       expect(actions).toContain("focusTaskInput")
       expect(actions).toContain("previousTask")
@@ -511,9 +503,7 @@ describe("useBeadsHotkeys", () => {
     })
 
     it("each entry has a non-empty display string", () => {
-      const { result } = renderHook(() =>
-        useBeadsHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useBeadsHotkeys({ handlers: {} }))
 
       for (const entry of result.current.registeredHotkeys) {
         expect(entry.display.length).toBeGreaterThan(0)
@@ -521,9 +511,7 @@ describe("useBeadsHotkeys", () => {
     })
 
     it("each entry has a non-empty description", () => {
-      const { result } = renderHook(() =>
-        useBeadsHotkeys({ handlers: {} }),
-      )
+      const { result } = renderHook(() => useBeadsHotkeys({ handlers: {} }))
 
       for (const entry of result.current.registeredHotkeys) {
         expect(entry.description.length).toBeGreaterThan(0)
