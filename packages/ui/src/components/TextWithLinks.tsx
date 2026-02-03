@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useMemo } from "react"
+import { cutTaskIdPrefix } from "@/lib/cutTaskIdPrefix"
 
 /** Pattern matching beads task IDs like "rui-123", "r-abc12", etc. */
 const TASK_ID_PATTERN = /\b([a-z]+-[a-z0-9]+)\b/gi
@@ -45,18 +46,16 @@ export function TextWithLinks({ text, onTaskClick, className }: Props) {
   return (
     <span className={className}>
       {parts.map((part, i) =>
-        part.type === "link" ? (
+        part.type === "link" ?
           <a
             key={i}
             href={`#task/${part.value}`}
             onClick={handleClick(part.value)}
             className="text-blue-500 hover:underline"
           >
-            {part.value}
+            {cutTaskIdPrefix(part.value)}
           </a>
-        ) : (
-          <Fragment key={i}>{part.value}</Fragment>
-        ),
+        : <Fragment key={i}>{part.value}</Fragment>,
       )}
     </span>
   )

@@ -10,20 +10,20 @@ describe("TextWithLinks", () => {
 
   it("renders task ID as link", () => {
     render(<TextWithLinks text="See rui-123 for details" />)
-    const link = screen.getByRole("link", { name: "rui-123" })
+    const link = screen.getByRole("link", { name: "123" })
     expect(link).toBeInTheDocument()
   })
 
   it("handles multiple task IDs", () => {
     render(<TextWithLinks text="rui-123 depends on r-abc12" />)
-    expect(screen.getByRole("link", { name: "rui-123" })).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "r-abc12" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "123" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "abc12" })).toBeInTheDocument()
   })
 
   it("calls onTaskClick when link clicked", () => {
     const onClick = vi.fn()
     render(<TextWithLinks text="Click rui-123" onTaskClick={onClick} />)
-    fireEvent.click(screen.getByRole("link", { name: "rui-123" }))
+    fireEvent.click(screen.getByRole("link", { name: "123" }))
     expect(onClick).toHaveBeenCalledWith("rui-123")
   })
 })
