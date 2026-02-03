@@ -3,6 +3,7 @@ import { getContrastingColor } from "@/lib/getContrastingColor"
 import { DEFAULT_ACCENT_COLOR } from "@/constants"
 import { WorkspaceSelector, type Workspace } from "@herbcaudill/beads-view"
 import { Logo } from "./Logo"
+import { HelpButton } from "./HelpButton"
 import { SettingsDropdown } from "./SettingsDropdown"
 
 /**
@@ -18,6 +19,7 @@ export function Header({
   workspaces,
   isWorkspaceLoading,
   onWorkspaceSwitch,
+  onHelpClick,
 }: HeaderProps) {
   const backgroundColor = accentColor ?? DEFAULT_ACCENT_COLOR
   const textColor = getContrastingColor(backgroundColor)
@@ -39,6 +41,7 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-2">
+        <HelpButton textColor={textColor} onClick={onHelpClick} />
         <SettingsDropdown textColor={textColor} />
       </div>
     </header>
@@ -62,4 +65,6 @@ export type HeaderProps = {
   isWorkspaceLoading: boolean
   /** Callback when user switches workspace */
   onWorkspaceSwitch: (path: string) => void
+  /** Callback when help button is clicked (opens hotkeys dialog) */
+  onHelpClick: () => void
 }

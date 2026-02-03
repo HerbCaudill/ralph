@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { Header } from "../Header"
 
@@ -14,7 +14,7 @@ vi.mock("@herbcaudill/beads-view", () => ({
     isLoading: boolean
   }) => (
     <div data-testid="workspace-selector">
-      {isLoading ? "Loading..." : current?.name ?? "No workspace"}
+      {isLoading ? "Loading..." : (current?.name ?? "No workspace")}
       {workspaces.length > 0 && <span> ({workspaces.length} workspaces)</span>}
     </div>
   ),
@@ -29,6 +29,15 @@ vi.mock("../SettingsDropdown", () => ({
   ),
 }))
 
+// Mock the HelpButton
+vi.mock("../HelpButton", () => ({
+  HelpButton: ({ textColor, onClick }: { textColor: string; onClick: () => void }) => (
+    <button data-testid="help-button" style={{ color: textColor }} onClick={onClick}>
+      Help
+    </button>
+  ),
+}))
+
 // Mock the Logo component
 vi.mock("../Logo", () => ({
   Logo: () => <div data-testid="logo">Ralph</div>,
@@ -39,7 +48,7 @@ describe("Header", () => {
     vi.clearAllMocks()
   })
 
-  it("renders with logo, workspace selector, and settings", () => {
+  it("renders with logo, workspace selector, help button, and settings", () => {
     const mockWorkspace = { path: "/test", name: "Test Workspace" }
 
     render(
@@ -49,12 +58,14 @@ describe("Header", () => {
         workspaces={[mockWorkspace]}
         isWorkspaceLoading={false}
         onWorkspaceSwitch={() => {}}
+        onHelpClick={() => {}}
       />,
     )
 
     expect(screen.getByTestId("header")).toBeInTheDocument()
     expect(screen.getByTestId("logo")).toBeInTheDocument()
     expect(screen.getByTestId("workspace-selector")).toBeInTheDocument()
+    expect(screen.getByTestId("help-button")).toBeInTheDocument()
     expect(screen.getByTestId("settings-dropdown")).toBeInTheDocument()
   })
 
@@ -66,6 +77,7 @@ describe("Header", () => {
         workspaces={[]}
         isWorkspaceLoading={false}
         onWorkspaceSwitch={() => {}}
+        onHelpClick={() => {}}
       />,
     )
 
@@ -81,6 +93,7 @@ describe("Header", () => {
         workspaces={[]}
         isWorkspaceLoading={false}
         onWorkspaceSwitch={() => {}}
+        onHelpClick={() => {}}
       />,
     )
 
@@ -96,6 +109,7 @@ describe("Header", () => {
         workspaces={[]}
         isWorkspaceLoading={false}
         onWorkspaceSwitch={() => {}}
+        onHelpClick={() => {}}
       />,
     )
 
@@ -112,6 +126,7 @@ describe("Header", () => {
         workspaces={[]}
         isWorkspaceLoading={false}
         onWorkspaceSwitch={() => {}}
+        onHelpClick={() => {}}
       />,
     )
 
@@ -122,10 +137,7 @@ describe("Header", () => {
 
   it("passes workspace data to WorkspaceSelector", () => {
     const mockWorkspace = { path: "/project", name: "My Project" }
-    const mockWorkspaces = [
-      mockWorkspace,
-      { path: "/other", name: "Other Project" },
-    ]
+    const mockWorkspaces = [mockWorkspace, { path: "/other", name: "Other Project" }]
 
     render(
       <Header
@@ -134,6 +146,7 @@ describe("Header", () => {
         workspaces={mockWorkspaces}
         isWorkspaceLoading={false}
         onWorkspaceSwitch={() => {}}
+        onHelpClick={() => {}}
       />,
     )
 
@@ -150,6 +163,7 @@ describe("Header", () => {
         workspaces={[]}
         isWorkspaceLoading={true}
         onWorkspaceSwitch={() => {}}
+        onHelpClick={() => {}}
       />,
     )
 
@@ -166,10 +180,29 @@ describe("Header", () => {
         workspaces={[]}
         isWorkspaceLoading={false}
         onWorkspaceSwitch={() => {}}
+        onHelpClick={() => {}}
       />,
     )
 
     const header = screen.getByTestId("header")
     expect(header).toHaveClass("custom-class")
+  })
+
+  it("calls onHelpClick when help button is clicked", () => {
+    const handleHelpClick = vi.fn()
+
+    render(
+      <Header
+        accentColor="#007ACC"
+        workspace={null}
+        workspaces={[]}
+        isWorkspaceLoading={false}
+        onWorkspaceSwitch={() => {}}
+        onHelpClick={handleHelpClick}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId("help-button"))
+    expect(handleHelpClick).toHaveBeenCalledTimes(1)
   })
 })

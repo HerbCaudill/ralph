@@ -290,6 +290,7 @@ function AppContent() {
         workspaces={workspaces}
         isWorkspaceLoading={isWorkspaceLoading}
         onWorkspaceSwitch={switchWorkspace}
+        onHelpClick={handleShowHotkeys}
       />
       <MainLayout sidebar={sidebar} rightPanel={rightPanel}>
         {/* Tasks panel (center) */}
