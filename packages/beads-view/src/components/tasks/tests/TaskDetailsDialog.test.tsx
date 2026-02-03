@@ -1239,6 +1239,34 @@ describe("TaskDetailsDialog", () => {
     })
   })
 
+  describe("delete button", () => {
+    const mockOnDelete = vi.fn()
+
+    beforeEach(() => {
+      mockOnDelete.mockClear()
+    })
+
+    it("has correct text color classes for hover state", async () => {
+      await renderAndWait(
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+          onDelete={mockOnDelete}
+        />,
+      )
+
+      // Find the delete button
+      const deleteButton = screen.getByRole("button", { name: /delete/i })
+      expect(deleteButton).toBeInTheDocument()
+
+      // Verify delete button has the correct hover class for white text on red background
+      // The button should have hover:text-white to ensure proper contrast on the red hover background
+      expect(deleteButton.className).toContain("hover:text-white")
+    })
+  })
+
   describe("event log capture on close", () => {
     it("does not save event log when task is already closed", async () => {
       // Track POST calls to eventlogs endpoint (creating new event logs)

@@ -567,7 +567,7 @@ export function TaskDetails({
                     size="sm"
                     onClick={onStartDelete}
                     disabled={isSaving}
-                    className="text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                    className="text-muted-foreground hover:bg-destructive hover:text-white"
                   >
                     <IconTrash className="mr-1 h-4 w-4" />
                     Delete
