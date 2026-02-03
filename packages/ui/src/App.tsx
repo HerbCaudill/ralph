@@ -1,7 +1,7 @@
 import { useCallback } from "react"
 import { MainLayout } from "./components/MainLayout"
 import { RalphRunner } from "./components/RalphRunner"
-import { TaskDetailPanel } from "./components/TaskDetailPanel"
+import { TaskChatPanel } from "./components/TaskChatPanel"
 import { StatusBar } from "./components/StatusBar"
 import { useRalphLoop } from "./hooks/useRalphLoop"
 import {
@@ -17,7 +17,7 @@ configureApiClient({ baseUrl: "" }) // Uses relative URLs, proxied by Vite
 
 /**
  * Main Ralph UI application.
- * Composes the task sidebar, Ralph runner, and task detail panel.
+ * Layout: (1) task chat (left), (2) tasks (center), (3) ralph loop (right)
  */
 export function App() {
   return (
@@ -43,8 +43,8 @@ function AppContent() {
   } = useRalphLoop()
 
   // Task state from beads-view
-  const { error: tasksError, refresh: refreshTasks } = useTasks()
-  const { selectedTask, isOpen, openDialogById, closeDialog } = useTaskDialog()
+  const { error: tasksError } = useTasks()
+  const { selectedTask, openDialogById, closeDialog } = useTaskDialog()
 
   // Handle task click from sidebar
   const handleTaskClick = useCallback(
@@ -53,11 +53,6 @@ function AppContent() {
     },
     [openDialogById],
   )
-
-  // Handle task changes (save/delete)
-  const handleTaskChanged = useCallback(() => {
-    void refreshTasks()
-  }, [refreshTasks])
 
   // Handle Ralph message send
   const handleRalphSend = useCallback(
@@ -74,34 +69,42 @@ function AppContent() {
     setTimeout(start, 100)
   }, [stop, start])
 
-  // Task sidebar
+  // Handle task chat message send (placeholder - will be connected to task-specific chat)
+  const handleTaskChatSend = useCallback((_message: string) => {
+    // TODO: Connect to task-specific chat functionality
+  }, [])
+
+  // Task chat panel (left side)
   const sidebar = (
-    <TaskSidebarController onTaskClick={handleTaskClick} onOpenTask={handleTaskClick} />
+    <TaskChatPanel
+      taskId={selectedTask?.id ?? null}
+      taskTitle={selectedTask?.title}
+      events={[]} // TODO: Connect to task-specific chat events
+      isStreaming={false}
+      onSendMessage={handleTaskChatSend}
+      onClose={closeDialog}
+    />
   )
 
-  // Task detail panel (right side, shows task details when selected)
+  // Ralph loop panel (right side)
   const rightPanel = (
-    <TaskDetailPanel
-      task={selectedTask}
-      open={isOpen}
-      onClose={closeDialog}
-      onChanged={handleTaskChanged}
+    <RalphRunner
+      events={events}
+      isStreaming={isStreaming}
+      controlState={controlState}
+      onSendMessage={handleRalphSend}
+      onPause={pause}
+      onResume={resume}
+      onStop={stop}
+      onNewSession={handleNewSession}
     />
   )
 
   return (
     <div className="flex h-screen flex-col">
       <MainLayout sidebar={sidebar} rightPanel={rightPanel}>
-        <RalphRunner
-          events={events}
-          isStreaming={isStreaming}
-          controlState={controlState}
-          onSendMessage={handleRalphSend}
-          onPause={pause}
-          onResume={resume}
-          onStop={stop}
-          onNewSession={handleNewSession}
-        />
+        {/* Tasks panel (center) */}
+        <TaskSidebarController onTaskClick={handleTaskClick} onOpenTask={handleTaskClick} />
       </MainLayout>
       <StatusBar connectionStatus={connectionStatus} events={events} error={tasksError} />
     </div>

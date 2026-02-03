@@ -132,10 +132,10 @@ All screenshots live in `spec/screenshots/`. Each referenced screenshot is requi
 The web client is a multi-panel layout with:
 
 - **Header** (top bar)
-- **Left sidebar** for tasks
-- **Main content** for event stream
-- **Optional left panel** for task chat
-- **Optional left overlay panel** for task details
+- **Task chat panel** (left) - TaskChatPanel
+- **Tasks panel** (center) - TaskSidebarController
+- **Ralph loop panel** (right) - RalphRunner
+- **Optional overlay panel** for task details
 - **Status bar** (bottom)
 
 **Screenshot:** `spec/screenshots/01-app-main.png`
@@ -151,8 +151,8 @@ The web client is a multi-panel layout with:
 
 - Task chat panel toggles on/off via hotkey and UI controls.
 - Task details panel opens when a task is selected and closes via Escape, close button, or clicking outside.
-- Task chat panel sits to the far left of the layout, with the task sidebar immediately to its right.
-- Task details panel opens from the left edge of the main content area and overlays the event stream without covering the sidebar.
+- Panel order from left to right: task chat (TaskChatPanel) → tasks (TaskSidebarController) → Ralph loop (RalphRunner).
+- Task details panel opens as an overlay on the main content area.
 
 ## 5. Header
 
@@ -748,7 +748,7 @@ This section captures UX constraints surfaced by closed bd issues and commit his
 
 - Task details panel slides in from the left, inside the main content area.
 - The details panel does not add a full-screen dimming overlay; click outside closes it.
-- Panel order is: main event stream → task chat (left) → task sidebar (right) → details panel (overlays main area).
+- Panel order is: task chat (left) → tasks (center) → Ralph loop (right) → details panel (overlays main area).
 - Divider lines use neutral border colors, not the workspace accent.
 
 ### 17.6 Status bar and controls
