@@ -11,6 +11,28 @@ pnpm test            # Run vitest
 pnpm storybook       # Start Storybook on port 6007
 ```
 
+## Hotkeys module
+
+The `hotkeys/` directory provides a hotkey registration system for host applications. Parallel to the `beads-view` hotkeys module.
+
+**Exports** (from `@herbcaudill/agent-view`):
+
+- `useAgentHotkeys(options)` — React hook that registers global keyboard listeners and invokes handler callbacks. Returns `getHotkeyDisplay(action)` for rendering shortcut labels and `registeredHotkeys` listing all actions.
+- `hotkeys` — Parsed hotkey config object (`AgentHotkeysConfig`)
+- `getHotkeyDisplayString(config)` — Formats a `HotkeyConfig` as a platform-aware display string (e.g., "⌘L" on Mac, "Ctrl+L" on Windows)
+- Types: `AgentHotkeyAction`, `HotkeyConfig`, `HotkeyModifier`, `AgentHotkeysConfig`, `HotkeyHandler`, `UseAgentHotkeysOptions`, `UseAgentHotkeysReturn`
+
+**Available actions** (defined in `hotkeys.json`):
+| Action | Key | Description |
+|---|---|---|
+| `focusChatInput` | `Cmd+L` | Focus chat input |
+| `newSession` | `Cmd+Backspace` | New chat session |
+| `toggleToolOutput` | `Ctrl+O` | Toggle tool output visibility |
+| `scrollToBottom` | `Cmd+↓` | Scroll to bottom |
+| `showHotkeys` | `Cmd+/` | Show keyboard shortcuts |
+
+Host applications provide handler callbacks; the hook handles platform-aware key matching and input element filtering.
+
 ## Effect Schema cheat sheet
 
 Effect Schema is used for the canonical event schema (single source of truth for types + runtime validation). Import from `effect/Schema`:
@@ -42,8 +64,8 @@ const Extended = Base.pipe(
     S.Struct({
       type: S.Literal("message"),
       content: S.String,
-    })
-  )
+    }),
+  ),
 )
 ```
 
@@ -71,9 +93,7 @@ const Config = S.Struct({
 
 ```ts
 const WithId = S.Struct({
-  id: S.propertySignature(S.String).pipe(
-    S.withConstructorDefault(() => crypto.randomUUID())
-  ),
+  id: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => crypto.randomUUID())),
 })
 ```
 
@@ -89,8 +109,8 @@ S.NonEmptyArray(S.Number)
 
 ```ts
 // Decode unknown data (parse + validate)
-const result = S.decodeUnknownSync(MySchema)(rawData)        // throws on error
-const either = S.decodeUnknownEither(MySchema)(rawData)      // Either<A, ParseError>
+const result = S.decodeUnknownSync(MySchema)(rawData) // throws on error
+const either = S.decodeUnknownEither(MySchema)(rawData) // Either<A, ParseError>
 
 // Encode (serialize back)
 const encoded = S.encodeSync(MySchema)(value)
@@ -128,12 +148,12 @@ const MessageEvent = BaseEvent.pipe(
       type: S.Literal("message"),
       content: S.String,
       isPartial: S.optional(S.Boolean),
-    })
-  )
+    }),
+  ),
 )
 
 // Union of all known event types
-const CanonicalEvent = S.Union(MessageEvent, ToolUseEvent, /* ... */)
+const CanonicalEvent = S.Union(MessageEvent, ToolUseEvent /* ... */)
 
 // Decode incoming data
 const event = S.decodeUnknownSync(CanonicalEvent)(rawEvent)

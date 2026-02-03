@@ -50,9 +50,10 @@ pnpm workspace with these main packages:
 - **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
 - **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, hotkey registration, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
+- **`packages/agent-view/`** (`@herbcaudill/agent-view`) - Agent chat UI components, canonical event schema (Effect Schema), hotkey registration, hooks (useAgentChat, useAgentHotkeys), and reusable React context. Exports event types consumed by shared and UI packages
 - **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Generic agent chat server with JSONL persistence, multi-adapter support (Claude, Codex), session-based WebSocket protocol, and no built-in system prompt. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/ralph-server/`** (`@herbcaudill/ralph-server`) - Ralph-specific server for managing AI coding agent sessions, worktrees, and task chats. Depends on `@herbcaudill/agent-server` for adapters and utilities. Includes RalphManager, RalphRegistry, WorktreeManager, SessionRunner, TaskChatManager, and workspace context modules. Default port 4245 (configurable via `RALPH_SERVER_PORT`). Dev: `pnpm dev` (tsx)
-- **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) - Functional chat demo connecting to agent-server via session-based WebSocket protocol (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents, session persistence across page reloads via localStorage session index (falls back to `/api/sessions/latest`), session switching via SessionPicker and `useAgentChat.restoreSession`, displays model name in status bar via `/api/adapters` endpoint
+- **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) - Functional chat demo connecting to agent-server via session-based WebSocket protocol (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents, session persistence across page reloads via localStorage session index (falls back to `/api/sessions/latest`), session switching via SessionPicker and `useAgentChat.restoreSession`, displays model name in status bar via `/api/adapters` endpoint. Registers handlers for agent-view hotkey actions (focusChatInput, newSession, toggleToolOutput, scrollToBottom, showHotkeys)
 - **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) - Functional task manager demo using beads-view controller components (TaskSidebarController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Registers handlers for all beads-view hotkey actions (focusSearch, focusTaskInput, previousTask, nextTask, openTask, showHotkeys) and includes a HotkeysDialog component. Vite proxy forwards /api requests to the beads-server
 
 ### Project structure
@@ -103,6 +104,20 @@ packages/beads-view/                   # Beads-view package (task management UI/
       beadsViewStore.ts     # Zustand store for task UI state
       BeadsViewProvider.tsx  # React context provider for store
       selectors.ts          # Store selectors
+
+packages/agent-view/                   # Agent-view package (chat UI components, event schema, hotkeys)
+  src/
+    components/             # Agent chat UI components (AgentView, MessageBlock, ToolUseBlock, etc.)
+    context/                # React context providers
+    events/                 # Canonical event schema (Effect Schema)
+    hooks/                  # React hooks (useAgentChat, etc.)
+    hotkeys/
+      config.ts             # Hotkey config parser, types (AgentHotkeyAction, HotkeyConfig, AgentHotkeysConfig)
+      hotkeys.json          # Hotkey definitions (key bindings, descriptions, categories)
+      useHotkeys.ts         # useAgentHotkeys hook, getHotkeyDisplayString utility
+      index.ts              # Barrel exports
+    lib/                    # Utility functions
+    tests/                  # Test files
 
 packages/beads-server/                 # Beads server package
   src/

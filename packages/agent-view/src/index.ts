@@ -166,6 +166,9 @@ export type {
   AgentStatus,
 } from "./events/index.js"
 
+// Hotkeys
+export * from "./hotkeys"
+
 // Types
 export type {
   // Base types

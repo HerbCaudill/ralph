@@ -1,0 +1,29 @@
+{
+  "hotkeys": {
+    "focusChatInput": {
+      "key": "cmd+l",
+      "description": "Focus chat input",
+      "category": "Navigation"
+    },
+    "newSession": {
+      "key": "cmd+Backspace",
+      "description": "New chat session",
+      "category": "Chat"
+    },
+    "toggleToolOutput": {
+      "key": "ctrl+o",
+      "description": "Toggle tool output visibility",
+      "category": "Navigation"
+    },
+    "scrollToBottom": {
+      "key": "cmd+ArrowDown",
+      "description": "Scroll to bottom",
+      "category": "Navigation"
+    },
+    "showHotkeys": {
+      "key": "cmd+/",
+      "description": "Show keyboard shortcuts",
+      "category": "Help"
+    }
+  }
+}
