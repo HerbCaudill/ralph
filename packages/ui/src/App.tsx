@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useRef } from "react"
 import { MainLayout } from "./components/MainLayout"
 import { Header } from "./components/layout"
 import { RalphRunner } from "./components/RalphRunner"
@@ -101,7 +101,8 @@ function AppContent() {
   }, [])
 
   const handleShowHotkeys = useCallback(() => {
-    setHotkeysDialogOpen(true)
+    // TODO: Implement hotkeys dialog
+    console.log("Show hotkeys dialog")
   }, [])
 
   // Hotkey handlers - Beads actions
