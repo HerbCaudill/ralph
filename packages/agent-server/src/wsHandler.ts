@@ -71,6 +71,7 @@ export function handleWsConnection(
               adapter: msg.adapter as string | undefined,
               cwd: msg.cwd as string | undefined,
               app: msg.app as string | undefined,
+              systemPrompt: msg.systemPrompt as string | undefined,
             })
             .then(result => {
               client.subscribedSessions.add(result.sessionId)
