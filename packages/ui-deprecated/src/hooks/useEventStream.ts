@@ -1,0 +1,322 @@
+import { useEffect, useMemo, useRef, useCallback } from "react"
+import {
+  useAppStore,
+  selectEvents,
+  selectRalphStatus,
+  selectInstanceEvents,
+  selectInstanceStatus,
+  selectActiveInstance,
+  selectInstance,
+  selectIsConnected,
+  getEventsForSessionId,
+} from "@/store"
+import { useBeadsViewStore, selectTasks, selectIssuePrefix } from "@herbcaudill/beads-view"
+import { useSessions, buildSessionPath, parseSessionIdFromUrl } from "@/hooks"
+import type { SessionSummary } from "@/hooks"
+import type { ChatEvent, Task, RalphStatus } from "@/types"
+
+export interface SessionTask {
+  id: string | null
+  title: string
+}
+
+export interface SessionNavigationActions {
+  selectSessionHistory: (id: string) => void
+  returnToLive: () => void
+  goToPrevious: () => void
+  goToNext: () => void
+  hasPrevious: boolean
+  hasNext: boolean
+}
+
+export interface UseEventStreamOptions {
+  /** Optional instance ID to display events from. When omitted, shows events from the active instance. */
+  instanceId?: string
+  /** Maximum number of events to display. */
+  maxEvents?: number
+}
+
+export interface UseEventStreamResult {
+  /** Events for the current session */
+  sessionEvents: ChatEvent[]
+  /** Ralph status (running, stopped, etc.) */
+  ralphStatus: RalphStatus
+  /** Whether viewing the latest session */
+  isViewingLatest: boolean
+  /** Whether viewing a historical session from IndexedDB */
+  isViewingHistorical: boolean
+  /** Whether Ralph is currently running */
+  isRunning: boolean
+  /** Whether connected to the server */
+  isConnected: boolean
+  /** Current task for the session */
+  sessionTask: SessionTask | null
+  /** Past sessions for history dropdown */
+  sessions: SessionSummary[]
+  /** Whether sessions are loading */
+  isLoadingSessions: boolean
+  /** Whether historical session events are loading */
+  isLoadingHistoricalEvents: boolean
+  /** Issue prefix for the workspace */
+  issuePrefix: string | null
+  /** ID of the currently viewed session (for highlighting in dropdown) */
+  currentSessionId: string | null
+  /** Navigation actions */
+  navigation: SessionNavigationActions
+  /** Ref for the container element */
+  containerRef: React.RefObject<HTMLDivElement | null>
+}
+
+/**
+ * Hook that encapsulates all EventStream state and logic.
+ * Provides data and actions for the EventStream component.
+ */
+export function useEventStream(options: UseEventStreamOptions = {}): UseEventStreamResult {
+  const { instanceId } = options
+
+  // Store selectors - when instanceId is provided, use instance-specific selectors
+  const allEvents = useAppStore(state =>
+    instanceId ? selectInstanceEvents(state, instanceId) : selectEvents(state),
+  )
+  const ralphStatus = useAppStore(state =>
+    instanceId ? selectInstanceStatus(state, instanceId) : selectRalphStatus(state),
+  )
+  const tasks = useBeadsViewStore(selectTasks)
+  const issuePrefix = useBeadsViewStore(selectIssuePrefix)
+  const isConnected = useAppStore(selectIsConnected)
+
+  // Get instance for currentTaskId fallback
+  const instance = useAppStore(state =>
+    instanceId ? selectInstance(state, instanceId) : selectActiveInstance(state),
+  )
+
+  // Computed values
+  const isRunning =
+    ralphStatus === "running" ||
+    ralphStatus === "starting" ||
+    ralphStatus === "stopping_after_current"
+
+  // Fetch sessions for the history dropdown and manage selected session
+  const {
+    sessions,
+    isLoading: isLoadingSessions,
+    loadSessionEvents,
+    selectedSession,
+    isLoadingEvents: isLoadingHistoricalEvents,
+    clearSelectedSession,
+  } = useSessions()
+
+  // Whether viewing a historical session from IndexedDB
+  const isViewingHistorical = selectedSession !== null
+
+  // Session data - use historical session events or live events
+  // When loading historical events, return an empty array to avoid briefly
+  // showing live session events before the historical data arrives.
+  const sessionEvents = useMemo(() => {
+    if (selectedSession) {
+      return selectedSession.events
+    }
+    if (isLoadingHistoricalEvents) {
+      return []
+    }
+    // When not viewing a historical session, show the latest session's events
+    return getEventsForSessionId(allEvents, null)
+  }, [allEvents, selectedSession, isLoadingHistoricalEvents])
+
+  // Determine the current task for the session
+  // Task ID comes from ralph_task_started events, title is looked up from beads
+  const sessionTask = useMemo((): SessionTask | null => {
+    // Find taskId from various sources
+    let taskId: string | null = null
+
+    // If viewing a historical session, use its metadata
+    if (selectedSession?.metadata?.taskId) {
+      taskId = selectedSession.metadata.taskId
+    }
+
+    // Try to find task from ralph_task_started event in session events
+    if (!taskId) {
+      for (const event of sessionEvents) {
+        if ((event as { type: string }).type === "ralph_task_started") {
+          taskId = (event as { taskId?: string }).taskId ?? null
+          break
+        }
+      }
+    }
+
+    // Fallback: use the instance's currentTaskId if available
+    if (!taskId && instance?.currentTaskId) {
+      taskId = instance.currentTaskId
+    }
+
+    // If we found a taskId, look up the title from beads
+    if (taskId) {
+      const task = tasks.find((t: Task) => t.id === taskId)
+      const title = task?.title ?? taskId // Fall back to showing the ID if title not found
+      return { id: taskId, title }
+    }
+
+    // Fallback: if no task in session, show the first in-progress task from the store
+    const inProgressTask = tasks.find((t: Task) => t.status === "in_progress")
+    if (inProgressTask) {
+      return { id: inProgressTask.id, title: inProgressTask.title }
+    }
+
+    return null
+  }, [sessionEvents, tasks, instance, selectedSession])
+
+  // Container ref for scrolling
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // When viewing a historical session, scroll to bottom on session change
+  useEffect(() => {
+    if (isViewingHistorical && containerRef.current) {
+      const scrollContainer = containerRef.current.querySelector('[role="log"]')
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+      }
+    }
+  }, [isViewingHistorical, selectedSession?.id])
+
+  // Handle URL-based session loading on mount and browser back/forward
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const sessionId = parseSessionIdFromUrl(window.location)
+      if (sessionId) {
+        // URL has a session ID, load it
+        loadSessionEvents(sessionId)
+      } else {
+        // URL has no session ID — clear any selected session.
+        // This is idempotent, so it's safe to call even if no session is selected.
+        clearSelectedSession()
+      }
+    }
+
+    // Check URL on mount
+    handleUrlChange()
+
+    // Listen for popstate (browser back/forward)
+    window.addEventListener("popstate", handleUrlChange)
+    // Also listen for hashchange for legacy URL support
+    window.addEventListener("hashchange", handleUrlChange)
+
+    return () => {
+      window.removeEventListener("popstate", handleUrlChange)
+      window.removeEventListener("hashchange", handleUrlChange)
+    }
+  }, [loadSessionEvents, clearSelectedSession])
+
+  const handleSessionHistorySelect = useCallback(
+    (id: string) => {
+      // Update URL to reflect the selected session
+      window.history.pushState({ sessionId: id }, "", buildSessionPath(id))
+      // Load the session data
+      loadSessionEvents(id)
+      // Notify other components of the session URL change
+      window.dispatchEvent(new CustomEvent("session-url-change"))
+    },
+    [loadSessionEvents],
+  )
+
+  const handleReturnToLive = useCallback(() => {
+    // Clear the URL (go back to root)
+    window.history.pushState(null, "", "/")
+    // Clear the selected session
+    clearSelectedSession()
+    // Notify other components of the session URL change
+    window.dispatchEvent(new CustomEvent("session-url-change"))
+  }, [clearSelectedSession])
+
+  // Derive hasPrevious/hasNext from the sessions list (IndexedDB-backed).
+  // Sessions are sorted newest-first. "Previous" = older, "Next" = newer/live.
+  const currentSessionIndex = useMemo(() => {
+    if (!selectedSession) return -1
+    return sessions.findIndex(s => s.id === selectedSession.id)
+  }, [sessions, selectedSession])
+
+  const hasPrevious =
+    selectedSession ? currentSessionIndex < sessions.length - 1 : sessions.length > 0
+  const hasNext = selectedSession !== null
+
+  const handleGoToPrevious = useCallback(() => {
+    if (!selectedSession) {
+      // Currently viewing live — go to most recent historical session
+      if (sessions.length > 0) {
+        handleSessionHistorySelect(sessions[0].id)
+      }
+    } else {
+      // Currently viewing a historical session — go to the next older one
+      const nextIndex = currentSessionIndex + 1
+      if (nextIndex < sessions.length) {
+        handleSessionHistorySelect(sessions[nextIndex].id)
+      }
+    }
+  }, [selectedSession, sessions, currentSessionIndex, handleSessionHistorySelect])
+
+  const handleGoToNext = useCallback(() => {
+    if (!selectedSession) return
+    if (currentSessionIndex <= 0) {
+      // At the most recent historical session — go to live
+      handleReturnToLive()
+    } else {
+      // Go to the next newer historical session
+      handleSessionHistorySelect(sessions[currentSessionIndex - 1].id)
+    }
+  }, [
+    selectedSession,
+    sessions,
+    currentSessionIndex,
+    handleSessionHistorySelect,
+    handleReturnToLive,
+  ])
+
+  // Listen for custom session navigation events dispatched by hotkey handlers
+  useEffect(() => {
+    const handlePrev = () => handleGoToPrevious()
+    const handleNext = () => handleGoToNext()
+
+    window.addEventListener("session-navigate-previous", handlePrev)
+    window.addEventListener("session-navigate-next", handleNext)
+
+    return () => {
+      window.removeEventListener("session-navigate-previous", handlePrev)
+      window.removeEventListener("session-navigate-next", handleNext)
+    }
+  }, [handleGoToPrevious, handleGoToNext])
+
+  const navigation: SessionNavigationActions = useMemo(
+    () => ({
+      selectSessionHistory: handleSessionHistorySelect,
+      returnToLive: handleReturnToLive,
+      goToPrevious: handleGoToPrevious,
+      goToNext: handleGoToNext,
+      hasPrevious,
+      hasNext,
+    }),
+    [
+      handleSessionHistorySelect,
+      handleReturnToLive,
+      handleGoToPrevious,
+      handleGoToNext,
+      hasPrevious,
+      hasNext,
+    ],
+  )
+
+  return {
+    sessionEvents,
+    ralphStatus,
+    isViewingLatest: !isViewingHistorical && !isLoadingHistoricalEvents,
+    isViewingHistorical,
+    isRunning,
+    isConnected,
+    sessionTask,
+    sessions,
+    isLoadingSessions,
+    isLoadingHistoricalEvents,
+    issuePrefix,
+    currentSessionId: selectedSession?.id ?? null,
+    navigation,
+    containerRef,
+  }
+}

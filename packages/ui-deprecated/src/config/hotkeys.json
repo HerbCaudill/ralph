@@ -1,0 +1,180 @@
+{
+  "$schema": "./hotkeys.schema.json",
+  "hotkeys": {
+    "agentStart": {
+      "key": "cmd+Enter",
+      "description": "Start Ralph agent",
+      "category": "Agent Control",
+      "commandPalette": {
+        "label": "Start Ralph",
+        "icon": "PlayerPlay",
+        "keywords": ["run", "begin", "launch", "agent"]
+      }
+    },
+    "agentStop": {
+      "key": "ctrl+c",
+      "description": "Stop Ralph agent",
+      "category": "Agent Control",
+      "commandPalette": {
+        "label": "Stop Ralph",
+        "icon": "PlayerStop",
+        "keywords": ["halt", "end", "terminate", "agent"]
+      }
+    },
+    "agentPause": {
+      "key": "cmd+.",
+      "description": "Pause/Resume Ralph agent",
+      "category": "Agent Control",
+      "commandPalette": {
+        "label": "Pause Ralph",
+        "icon": "PlayerPause",
+        "keywords": ["pause", "resume", "suspend", "agent"]
+      }
+    },
+    "agentStopAfterCurrent": {
+      "key": "cmd+shift+.",
+      "description": "Stop after current task",
+      "category": "Agent Control"
+    },
+    "focusSidebar": {
+      "key": "cmd+1",
+      "description": "Focus sidebar",
+      "category": "Navigation"
+    },
+    "focusMain": {
+      "key": "cmd+2",
+      "description": "Focus main content",
+      "category": "Navigation"
+    },
+    "focusTaskInput": {
+      "key": "cmd+k",
+      "description": "Show task search",
+      "category": "Navigation",
+      "commandPalette": {
+        "label": "Search tasks",
+        "icon": "Search",
+        "keywords": ["task", "search", "find", "filter", "issue"]
+      }
+    },
+    "focusChatInput": {
+      "key": "cmd+l",
+      "description": "Focus chat input",
+      "category": "Navigation",
+      "commandPalette": {
+        "label": "Focus chat",
+        "icon": "Message",
+        "keywords": ["chat", "message", "input", "type", "send"]
+      }
+    },
+    "cycleTheme": {
+      "key": "ctrl+t",
+      "description": "Cycle theme (system → light → dark)",
+      "category": "Appearance",
+      "commandPalette": {
+        "label": "Toggle theme",
+        "icon": "Sun",
+        "keywords": ["theme", "dark", "light", "mode", "appearance", "color"]
+      }
+    },
+    "showHotkeys": {
+      "key": "cmd+/",
+      "description": "Show keyboard shortcuts",
+      "category": "Help",
+      "commandPalette": {
+        "label": "Keyboard shortcuts",
+        "icon": "Keyboard",
+        "keywords": ["hotkeys", "keys", "bindings", "help", "shortcuts"]
+      }
+    },
+    "toggleInputFocus": {
+      "key": "Tab",
+      "description": "Cycle focus through inputs (task/search/chat)",
+      "category": "Navigation"
+    },
+    "toggleTaskChat": {
+      "key": "cmd+j",
+      "description": "Toggle task chat panel and focus input",
+      "category": "Navigation",
+      "commandPalette": {
+        "label": "Toggle task chat",
+        "icon": "Terminal",
+        "keywords": ["task", "chat", "panel", "show", "hide"]
+      }
+    },
+    "focusTaskChatInput": {
+      "key": "cmd+3",
+      "description": "Focus task chat input",
+      "category": "Navigation"
+    },
+    "showCommandPalette": {
+      "key": "cmd+;",
+      "description": "Open command palette",
+      "category": "Help"
+    },
+    "previousSession": {
+      "key": "cmd+[",
+      "description": "Go to previous session",
+      "category": "Navigation"
+    },
+    "nextSession": {
+      "key": "cmd+]",
+      "description": "Go to next session",
+      "category": "Navigation"
+    },
+    "latestSession": {
+      "key": "cmd+\\",
+      "description": "Go to latest session",
+      "category": "Navigation"
+    },
+    "focusSearch": {
+      "key": "cmd+f",
+      "description": "Focus task search",
+      "category": "Navigation"
+    },
+    "previousWorkspace": {
+      "key": "cmd+shift+[",
+      "description": "Switch to previous workspace",
+      "category": "Navigation"
+    },
+    "nextWorkspace": {
+      "key": "cmd+shift+]",
+      "description": "Switch to next workspace",
+      "category": "Navigation"
+    },
+    "toggleToolOutput": {
+      "key": "ctrl+o",
+      "description": "Toggle tool output visibility",
+      "category": "Navigation"
+    },
+    "newChat": {
+      "key": "cmd+Backspace",
+      "description": "New chat",
+      "category": "Chat"
+    },
+    "previousTask": {
+      "key": "ArrowUp",
+      "description": "Select previous task",
+      "category": "Navigation"
+    },
+    "nextTask": {
+      "key": "ArrowDown",
+      "description": "Select next task",
+      "category": "Navigation"
+    },
+    "openTask": {
+      "key": "Enter",
+      "description": "Open selected task",
+      "category": "Navigation"
+    },
+    "exportState": {
+      "key": "cmd+shift+e",
+      "description": "Export application state",
+      "category": "Help",
+      "commandPalette": {
+        "label": "Export state",
+        "icon": "Download",
+        "keywords": ["export", "download", "state", "debug", "backup"]
+      }
+    }
+  }
+}

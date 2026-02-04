@@ -1,0 +1,218 @@
+/**
+ * Hook for hydrating the store from IndexedDB on startup.
+ *
+ * Loads:
+ * - Most recent active session (if not ended) to restore events
+ * - Most recent task chat session to restore task chat messages/events
+ *
+ * This enables the UI to restore state after page reload or browser restart.
+ */
+
+import { useEffect, useState, useRef } from "react"
+import { eventDatabase } from "@/lib/persistence"
+import { setCurrentSessionId } from "@/lib/ralphConnection"
+import { useAppStore } from "@/store"
+
+export interface UseStoreHydrationOptions {
+  /** ID of the Ralph instance to hydrate */
+  instanceId: string
+  /** Path of the current workspace (optional - if provided, only sessions from this workspace are restored) */
+  workspaceId?: string | null
+  /** Whether hydration is enabled (default: true) */
+  enabled?: boolean
+}
+
+export interface UseStoreHydrationResult {
+  /** Whether hydration has completed */
+  isHydrated: boolean
+  /** Whether hydration is in progress */
+  isHydrating: boolean
+  /** Error that occurred during hydration, if any */
+  error: Error | null
+}
+
+/**
+ * Hook to hydrate the store from IndexedDB on startup.
+ *
+ * On mount, it loads:
+ * 1. The most recent active (incomplete) session and restores its events
+ * 2. The most recent task chat session and restores its messages/events
+ *
+ * This allows the UI to pick up where it left off after a page reload.
+ */
+export function useStoreHydration(options: UseStoreHydrationOptions): UseStoreHydrationResult {
+  const { instanceId, workspaceId, enabled = true } = options
+
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [isHydrating, setIsHydrating] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  // Track which instance+workspace combos we've already hydrated to prevent redundant hydration
+  // while still allowing hydration when switching to a new instance or workspace
+  const hydratedKeysRef = useRef(new Set<string>())
+
+  // Get store actions
+  const setEventsForInstance = useAppStore(state => state.setEventsForInstance)
+
+  useEffect(() => {
+    if (!enabled) {
+      setIsHydrated(true)
+      return
+    }
+
+    // Only hydrate each instance+workspace combo once
+    // (but allow re-hydration when switching to a new instance or workspace)
+    const hydrationKey = `${instanceId}:${workspaceId ?? ""}`
+    if (hydratedKeysRef.current.has(hydrationKey)) return
+    hydratedKeysRef.current.add(hydrationKey)
+
+    async function hydrate() {
+      setIsHydrating(true)
+      setError(null)
+
+      try {
+        // Initialize the database
+        await eventDatabase.init()
+
+        // Check if server has already provided events via WebSocket.
+        // If so, server data is authoritative - skip IndexedDB event restoration to avoid
+        // overwriting server events with potentially stale IndexedDB cache.
+        // This handles the race condition where WebSocket 'connected' message arrives
+        // before IndexedDB hydration completes.
+        const serverHasProvidedEvents = useAppStore.getState().hasInitialSync
+        const currentEvents = useAppStore.getState().instances.get(instanceId)?.events ?? []
+        const shouldSkipEventRestoration = serverHasProvidedEvents && currentEvents.length > 0
+
+        if (shouldSkipEventRestoration) {
+          console.log(
+            `[useStoreHydration] Skipping event restoration from IndexedDB - server already provided ${currentEvents.length} events`,
+          )
+        }
+
+        // Load the most recent active session
+        // If workspaceId is provided, only restore sessions from the current workspace
+        const activeSession =
+          workspaceId ?
+            await eventDatabase.getLatestActiveSessionForWorkspace(instanceId, workspaceId)
+          : await eventDatabase.getLatestActiveSession(instanceId)
+
+        if (activeSession) {
+          // Restore the session ID into ralphConnection's in-memory currentSessions Map.
+          // This ensures events arriving after page reload can be persisted to IndexedDB
+          // immediately, without waiting for a new session boundary event. (fixes r-tufi7.35)
+          setCurrentSessionId(instanceId, activeSession.id, activeSession.startedAt)
+          console.log(
+            `[useStoreHydration] Restored session ID ${activeSession.id} for instance ${instanceId} into ralphConnection`,
+          )
+
+          if (!shouldSkipEventRestoration) {
+            // In v3+ schema, events are stored separately in the events table.
+            // For v2 data (migration), events may be inline.
+            let sessionEvents = activeSession.events ?? []
+
+            // If no inline events (v3 schema), load from the events table
+            if (sessionEvents.length === 0) {
+              const persistedEvents = await eventDatabase.getEventsForSession(activeSession.id)
+              sessionEvents = persistedEvents.map(pe => pe.event)
+            }
+
+            if (sessionEvents.length > 0) {
+              // Restore events to the store
+              // Use setEventsForInstance for the specific instance
+              // Note: When instanceId === activeInstanceId, setEventsForInstance automatically
+              // syncs to the flat events array, so we don't need a separate setEvents call
+              setEventsForInstance(instanceId, sessionEvents)
+
+              console.log(
+                `[useStoreHydration] Restored ${sessionEvents.length} events from active session ${activeSession.id}`,
+              )
+            }
+          }
+        }
+
+        // Load the task chat session - use stored session ID if available
+        // If workspaceId is provided, prefer workspace-scoped queries to ensure
+        // we only restore task chat sessions from the current workspace
+        const storedSessionId = useAppStore.getState().currentTaskChatSessionId
+        let taskChatSession:
+          | Awaited<ReturnType<typeof eventDatabase.getTaskChatSession>>
+          | undefined
+
+        if (storedSessionId) {
+          const storedSession = await eventDatabase.getTaskChatSession(storedSessionId)
+          // Only use the stored session if it belongs to the current workspace
+          // (or if no workspace filtering is needed)
+          if (storedSession && (!workspaceId || storedSession.workspaceId === workspaceId)) {
+            taskChatSession = storedSession
+          }
+        }
+
+        // If no valid stored session found, look up the latest session
+        if (!taskChatSession) {
+          taskChatSession =
+            workspaceId ?
+              await eventDatabase.getLatestTaskChatSessionForWorkspace(instanceId, workspaceId)
+            : await eventDatabase.getLatestTaskChatSessionForInstance(instanceId)
+        }
+
+        if (taskChatSession) {
+          // Restore task chat messages
+          if (taskChatSession.messages.length > 0) {
+            useAppStore.setState({
+              taskChatMessages: taskChatSession.messages,
+            })
+
+            console.log(
+              `[useStoreHydration] Restored ${taskChatSession.messages.length} task chat messages from session ${taskChatSession.id}`,
+            )
+          }
+
+          // In v7+ schema, events are stored separately in the events table.
+          // For v6 data (migration), events may be inline.
+          let taskChatEvents = taskChatSession.events ?? []
+
+          // If no inline events (v7 schema), load from the events table
+          if (taskChatEvents.length === 0) {
+            const persistedEvents = await eventDatabase.getEventsForSession(taskChatSession.id)
+            taskChatEvents = persistedEvents.map(pe => pe.event)
+          }
+
+          // Restore task chat events
+          if (taskChatEvents.length > 0) {
+            useAppStore.setState({
+              taskChatEvents: taskChatEvents,
+            })
+
+            console.log(
+              `[useStoreHydration] Restored ${taskChatEvents.length} task chat events from session ${taskChatSession.id}`,
+            )
+          }
+
+          // Ensure the session ID is set in the store for useTaskChatPersistence to continue
+          if (taskChatSession.id !== storedSessionId) {
+            useAppStore.setState({
+              currentTaskChatSessionId: taskChatSession.id,
+            })
+          }
+        }
+
+        setIsHydrated(true)
+      } catch (err) {
+        console.error("[useStoreHydration] Failed to hydrate store:", err)
+        setError(err instanceof Error ? err : new Error("Unknown hydration error"))
+        // Still mark as hydrated so the app can proceed (just without restored data)
+        setIsHydrated(true)
+      } finally {
+        setIsHydrating(false)
+      }
+    }
+
+    hydrate()
+  }, [enabled, instanceId, workspaceId, setEventsForInstance])
+
+  return {
+    isHydrated,
+    isHydrating,
+    error,
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "instanceId": "default",
+  "conversationContext": {
+    "messages": [],
+    "usage": {
+      "inputTokens": 130,
+      "outputTokens": 11801,
+      "totalTokens": 11931
+    },
+    "timestamp": 1769331730835
+  },
+  "status": "stopped",
+  "currentTaskId": null,
+  "savedAt": 1769331730835,
+  "version": 1
+}

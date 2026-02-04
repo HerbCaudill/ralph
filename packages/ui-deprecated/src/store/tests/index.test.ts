@@ -1,0 +1,3888 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import {
+  useAppStore,
+  isSessionBoundary,
+  getSessionBoundaries,
+  countSessions,
+  getEventsForSession,
+  getEventsForSessionId,
+  getTaskFromSessionEvents,
+  getSessionTaskIds,
+  selectSessionCount,
+  selectCurrentSessionEvents,
+  selectSessionTask,
+  // Instance-related exports
+  DEFAULT_INSTANCE_ID,
+  DEFAULT_INSTANCE_NAME,
+  DEFAULT_AGENT_NAME,
+  DEFAULT_CONTEXT_WINDOW_MAX,
+  createRalphInstance,
+  selectInstances,
+  selectActiveInstanceId,
+  selectActiveInstance,
+  selectInstance,
+  selectInstanceCount,
+  // Delegating selectors
+  selectRalphStatus,
+  selectRunStartedAt,
+  selectEvents,
+  selectTokenUsage,
+  selectContextWindow,
+  selectSession,
+  // Per-instance selectors
+  selectInstanceStatus,
+  selectInstanceEvents,
+  selectInstanceTokenUsage,
+  selectInstanceContextWindow,
+  selectInstanceSession,
+  selectInstanceRunStartedAt,
+  selectInstanceWorktreePath,
+  selectInstanceBranch,
+  selectInstanceCurrentTaskId,
+  selectInstanceName,
+  selectInstanceAgentName,
+  selectInstanceCreatedAt,
+  selectIsInstanceRunning,
+  selectInstanceSessionCount,
+  flushTaskChatEventsBatch,
+  selectCanAcceptMessages,
+  mergeEventsById,
+  MAX_STORE_EVENTS,
+  getSessionId,
+  getSessionIndexById,
+} from ".././index"
+import type { ChatEvent, TaskChatMessage } from "@/types"
+import { beadsViewStore } from "@herbcaudill/beads-view"
+import {
+  PERSIST_NAME,
+  PERSIST_VERSION,
+  type PersistedState,
+  serializeInstances,
+} from ".././persist"
+
+/**
+ * Helper to create a result event with token usage that `selectTokenUsage` can derive from.
+ * Since selectors now derive token usage from events (not stored properties), tests
+ * must add events with usage data instead of calling `setTokenUsage()`.
+ */
+function makeResultEvent(input: number, output: number, timestamp = Date.now()): ChatEvent {
+  return {
+    type: "result",
+    timestamp,
+    content: "",
+    usage: { inputTokens: input, outputTokens: output },
+  } as unknown as ChatEvent
+}
+
+/**
+ * Helper to create persisted state for localStorage tests.
+ * Uses the persist middleware format with proper serialization.
+ */
+function createPersistedState(overrides: Partial<PersistedState>): string {
+  const defaultInstance = createRalphInstance(DEFAULT_INSTANCE_ID, DEFAULT_INSTANCE_NAME)
+  const defaultInstances = new Map([[DEFAULT_INSTANCE_ID, defaultInstance]])
+
+  const state: PersistedState = {
+    sidebarWidth: 20,
+    taskChatOpen: true,
+    taskChatWidth: 25,
+    showToolOutput: false,
+    theme: "system",
+    vscodeThemeId: null,
+    lastDarkThemeId: null,
+    lastLightThemeId: null,
+    currentTaskChatSessionId: null,
+    isSearchVisible: false,
+    taskChatInputDraft: "",
+    workspace: null,
+    branch: null,
+    issuePrefix: null,
+    accentColor: null,
+    instances: serializeInstances(defaultInstances, DEFAULT_INSTANCE_ID),
+    activeInstanceId: DEFAULT_INSTANCE_ID,
+    ...overrides,
+  }
+
+  return JSON.stringify({ state, version: PERSIST_VERSION })
+}
+
+describe("useAppStore", () => {
+  beforeEach(() => {
+    // Reset store to initial state before each test
+    useAppStore.getState().reset()
+    beadsViewStore.setState({
+      issuePrefix: null,
+      accentColor: null,
+      initialTaskCount: null,
+      tasks: [],
+      taskSearchQuery: "",
+      selectedTaskId: null,
+      visibleTaskIds: [],
+      closedTimeFilter: "past_day",
+      statusCollapsedState: { open: false, deferred: true, closed: true },
+      parentCollapsedState: {},
+      taskInputDraft: "",
+      commentDrafts: {},
+    })
+    // Silence console output during tests
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  describe("initial state", () => {
+    it("has correct initial values", () => {
+      const state = useAppStore.getState()
+      // Instance-based state is accessed via selectors
+      expect(selectRalphStatus(state)).toBe("stopped")
+      expect(selectEvents(state)).toEqual([])
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectContextWindow(state)).toEqual({ used: 0, max: 200_000 })
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
+      // Workspace state
+      expect(state.workspace).toBeNull()
+      expect(state.branch).toBeNull()
+      expect(state.connectionStatus).toBe("disconnected")
+      expect(state.accentColor).toBeNull()
+      expect(state.sidebarWidth).toBe(20)
+      expect(state.taskChatOpen).toBe(true)
+      expect(state.taskChatWidth).toBe(25)
+      expect(state.taskChatMessages).toEqual([])
+      expect(state.taskChatLoading).toBe(false)
+      expect(state.taskChatEvents).toEqual([])
+      expect(state.persistenceError).toBeNull()
+    })
+
+    it("has instances Map with default instance", () => {
+      const state = useAppStore.getState()
+      expect(state.instances).toBeInstanceOf(Map)
+      expect(state.instances.size).toBe(1)
+      expect(state.instances.has(DEFAULT_INSTANCE_ID)).toBe(true)
+    })
+
+    it("has activeInstanceId set to default", () => {
+      const state = useAppStore.getState()
+      expect(state.activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("default instance has correct initial values", () => {
+      const state = useAppStore.getState()
+      const defaultInstance = state.instances.get(DEFAULT_INSTANCE_ID)
+      expect(defaultInstance).toBeDefined()
+      expect(defaultInstance?.id).toBe(DEFAULT_INSTANCE_ID)
+      expect(defaultInstance?.name).toBe(DEFAULT_INSTANCE_NAME)
+      expect(defaultInstance?.agentName).toBe(DEFAULT_AGENT_NAME)
+      expect(defaultInstance?.status).toBe("stopped")
+      expect(defaultInstance?.events).toEqual([])
+      expect(defaultInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(defaultInstance?.contextWindow).toEqual({ used: 0, max: 200_000 })
+      expect(defaultInstance?.session).toEqual({ current: 0, total: 0 })
+      expect(defaultInstance?.worktreePath).toBeNull()
+      expect(defaultInstance?.branch).toBeNull()
+      expect(defaultInstance?.currentTaskId).toBeNull()
+      expect(defaultInstance?.createdAt).toBeGreaterThan(0)
+      expect(defaultInstance?.runStartedAt).toBeNull()
+    })
+  })
+
+  describe("createRalphInstance helper", () => {
+    it("creates instance with provided id", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.id).toBe("test-id")
+      expect(instance.name).toBe(DEFAULT_INSTANCE_NAME)
+      expect(instance.agentName).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("creates instance with custom name and agent", () => {
+      const instance = createRalphInstance("test-id", "Custom Name", "Custom Agent")
+      expect(instance.id).toBe("test-id")
+      expect(instance.name).toBe("Custom Name")
+      expect(instance.agentName).toBe("Custom Agent")
+    })
+
+    it("creates instance with stopped status", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.status).toBe("stopped")
+    })
+
+    it("creates instance with empty events array", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.events).toEqual([])
+    })
+
+    it("creates instance with zero token usage", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.tokenUsage).toEqual({ input: 0, output: 0 })
+    })
+
+    it("creates instance with default context window", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.contextWindow).toEqual({ used: 0, max: 200_000 })
+    })
+
+    it("creates instance with zero session progress", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.session).toEqual({ current: 0, total: 0 })
+    })
+
+    it("creates instance with null worktree and branch", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.worktreePath).toBeNull()
+      expect(instance.branch).toBeNull()
+    })
+
+    it("creates instance with createdAt timestamp", () => {
+      const before = Date.now()
+      const instance = createRalphInstance("test-id")
+      const after = Date.now()
+      expect(instance.createdAt).toBeGreaterThanOrEqual(before)
+      expect(instance.createdAt).toBeLessThanOrEqual(after)
+    })
+
+    it("creates instance with null runStartedAt", () => {
+      const instance = createRalphInstance("test-id")
+      expect(instance.runStartedAt).toBeNull()
+    })
+  })
+
+  describe("instance selectors", () => {
+    it("selectInstances returns the instances Map", () => {
+      const state = useAppStore.getState()
+      const instances = selectInstances(state)
+      expect(instances).toBeInstanceOf(Map)
+      expect(instances.size).toBe(1)
+    })
+
+    it("selectActiveInstanceId returns the active instance ID", () => {
+      const state = useAppStore.getState()
+      expect(selectActiveInstanceId(state)).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("selectActiveInstance returns the active instance", () => {
+      const state = useAppStore.getState()
+      const activeInstance = selectActiveInstance(state)
+      expect(activeInstance).not.toBeNull()
+      expect(activeInstance?.id).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("selectInstance returns instance by ID", () => {
+      const state = useAppStore.getState()
+      const instance = selectInstance(state, DEFAULT_INSTANCE_ID)
+      expect(instance).not.toBeNull()
+      expect(instance?.id).toBe(DEFAULT_INSTANCE_ID)
+    })
+
+    it("selectInstance returns null for non-existent ID", () => {
+      const state = useAppStore.getState()
+      const instance = selectInstance(state, "non-existent")
+      expect(instance).toBeNull()
+    })
+
+    it("selectInstanceCount returns number of instances", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceCount(state)).toBe(1)
+    })
+  })
+
+  describe("per-instance selectors", () => {
+    it("selectInstanceStatus returns status for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceStatus(state, DEFAULT_INSTANCE_ID)).toBe("stopped")
+    })
+
+    it("selectInstanceStatus returns stopped for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceStatus(state, "non-existent")).toBe("stopped")
+    })
+
+    it("selectInstanceStatus reflects status changes", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      expect(selectInstanceStatus(state, DEFAULT_INSTANCE_ID)).toBe("running")
+    })
+
+    it("selectInstanceEvents returns events for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceEvents(state, DEFAULT_INSTANCE_ID)).toEqual([])
+    })
+
+    it("selectInstanceEvents returns empty array for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceEvents(state, "non-existent")).toEqual([])
+    })
+
+    it("selectInstanceEvents reflects added events", () => {
+      const event = { type: "test", timestamp: 12345 }
+      useAppStore.getState().addEvent(event)
+      const state = useAppStore.getState()
+      expect(selectInstanceEvents(state, DEFAULT_INSTANCE_ID)).toHaveLength(1)
+      expect(selectInstanceEvents(state, DEFAULT_INSTANCE_ID)[0]).toEqual(event)
+    })
+
+    it("selectInstanceTokenUsage returns token usage for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceTokenUsage(state, DEFAULT_INSTANCE_ID)).toEqual({
+        input: 0,
+        output: 0,
+      })
+    })
+
+    it("selectInstanceTokenUsage returns defaults for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceTokenUsage(state, "non-existent")).toEqual({ input: 0, output: 0 })
+    })
+
+    it("selectInstanceTokenUsage reflects token usage changes", () => {
+      useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
+      const state = useAppStore.getState()
+      expect(selectInstanceTokenUsage(state, DEFAULT_INSTANCE_ID)).toEqual({
+        input: 1000,
+        output: 500,
+      })
+    })
+
+    it("selectInstanceContextWindow returns context window for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceContextWindow(state, DEFAULT_INSTANCE_ID)).toEqual({
+        used: 0,
+        max: DEFAULT_CONTEXT_WINDOW_MAX,
+      })
+    })
+
+    it("selectInstanceContextWindow returns defaults for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceContextWindow(state, "non-existent")).toEqual({
+        used: 0,
+        max: DEFAULT_CONTEXT_WINDOW_MAX,
+      })
+    })
+
+    it("selectInstanceContextWindow reflects context window changes", () => {
+      useAppStore.getState().setContextWindow({ used: 50000, max: 200000 })
+      const state = useAppStore.getState()
+      expect(selectInstanceContextWindow(state, DEFAULT_INSTANCE_ID)).toEqual({
+        used: 50000,
+        max: 200000,
+      })
+    })
+
+    it("selectInstanceSession returns session for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceSession(state, DEFAULT_INSTANCE_ID)).toEqual({
+        current: 0,
+        total: 0,
+      })
+    })
+
+    it("selectInstanceSession returns defaults for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceSession(state, "non-existent")).toEqual({ current: 0, total: 0 })
+    })
+
+    it("selectInstanceSession reflects session changes", () => {
+      useAppStore.getState().setSession({ current: 3, total: 10 })
+      const state = useAppStore.getState()
+      expect(selectInstanceSession(state, DEFAULT_INSTANCE_ID)).toEqual({
+        current: 3,
+        total: 10,
+      })
+    })
+
+    it("selectInstanceRunStartedAt returns null for default instance initially", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceRunStartedAt(state, DEFAULT_INSTANCE_ID)).toBeNull()
+    })
+
+    it("selectInstanceRunStartedAt returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceRunStartedAt(state, "non-existent")).toBeNull()
+    })
+
+    it("selectInstanceRunStartedAt reflects when running", () => {
+      const before = Date.now()
+      useAppStore.getState().setRalphStatus("running")
+      const after = Date.now()
+      const state = useAppStore.getState()
+      const runStartedAt = selectInstanceRunStartedAt(state, DEFAULT_INSTANCE_ID)
+      expect(runStartedAt).toBeGreaterThanOrEqual(before)
+      expect(runStartedAt).toBeLessThanOrEqual(after)
+    })
+
+    it("selectInstanceWorktreePath returns null for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceWorktreePath(state, DEFAULT_INSTANCE_ID)).toBeNull()
+    })
+
+    it("selectInstanceWorktreePath returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceWorktreePath(state, "non-existent")).toBeNull()
+    })
+
+    it("selectInstanceBranch returns null for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceBranch(state, DEFAULT_INSTANCE_ID)).toBeNull()
+    })
+
+    it("selectInstanceBranch returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceBranch(state, "non-existent")).toBeNull()
+    })
+
+    it("selectInstanceCurrentTaskId returns null for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceCurrentTaskId(state, DEFAULT_INSTANCE_ID)).toBeNull()
+    })
+
+    it("selectInstanceCurrentTaskId returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceCurrentTaskId(state, "non-existent")).toBeNull()
+    })
+
+    it("selectInstanceName returns name for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceName(state, DEFAULT_INSTANCE_ID)).toBe(DEFAULT_INSTANCE_NAME)
+    })
+
+    it("selectInstanceName returns empty string for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceName(state, "non-existent")).toBe("")
+    })
+
+    it("selectInstanceAgentName returns agent name for default instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceAgentName(state, DEFAULT_INSTANCE_ID)).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("selectInstanceAgentName returns default for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceAgentName(state, "non-existent")).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("selectInstanceCreatedAt returns timestamp for default instance", () => {
+      const state = useAppStore.getState()
+      const createdAt = selectInstanceCreatedAt(state, DEFAULT_INSTANCE_ID)
+      expect(createdAt).toBeGreaterThan(0)
+    })
+
+    it("selectInstanceCreatedAt returns null for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceCreatedAt(state, "non-existent")).toBeNull()
+    })
+
+    it("selectIsInstanceRunning returns false for default instance initially", () => {
+      const state = useAppStore.getState()
+      expect(selectIsInstanceRunning(state, DEFAULT_INSTANCE_ID)).toBe(false)
+    })
+
+    it("selectIsInstanceRunning returns false for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectIsInstanceRunning(state, "non-existent")).toBe(false)
+    })
+
+    it("selectIsInstanceRunning returns true when running", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      expect(selectIsInstanceRunning(state, DEFAULT_INSTANCE_ID)).toBe(true)
+    })
+
+    it("selectInstanceSessionCount returns 0 for default instance initially", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceSessionCount(state, DEFAULT_INSTANCE_ID)).toBe(0)
+    })
+
+    it("selectInstanceSessionCount returns 0 for non-existent instance", () => {
+      const state = useAppStore.getState()
+      expect(selectInstanceSessionCount(state, "non-existent")).toBe(0)
+    })
+
+    it("selectInstanceSessionCount counts session boundaries in events", () => {
+      useAppStore.getState().addEvent({ type: "system", subtype: "init", timestamp: 1 })
+      useAppStore.getState().addEvent({ type: "assistant", timestamp: 2 })
+      useAppStore.getState().addEvent({ type: "system", subtype: "init", timestamp: 3 })
+      const state = useAppStore.getState()
+      expect(selectInstanceSessionCount(state, DEFAULT_INSTANCE_ID)).toBe(2)
+    })
+  })
+
+  describe("setActiveInstanceId action", () => {
+    it("does nothing when instance does not exist", () => {
+      const state = useAppStore.getState()
+      const originalActiveId = state.activeInstanceId
+
+      useAppStore.getState().setActiveInstanceId("non-existent-id")
+
+      expect(useAppStore.getState().activeInstanceId).toBe(originalActiveId)
+    })
+
+    it("does nothing when switching to the same instance", () => {
+      const state = useAppStore.getState()
+      const originalActiveId = state.activeInstanceId
+
+      useAppStore.getState().setActiveInstanceId(originalActiveId)
+
+      expect(useAppStore.getState().activeInstanceId).toBe(originalActiveId)
+    })
+
+    it("switches to existing instance", () => {
+      // Create a second instance manually in the instances Map
+      const state = useAppStore.getState()
+      const newInstance = createRalphInstance("second-instance", "Second", "Agent2")
+      newInstance.status = "running"
+      newInstance.events = [{ type: "test-event", timestamp: 123 }]
+      newInstance.tokenUsage = { input: 500, output: 250 }
+      newInstance.contextWindow = { used: 10000, max: 200000 }
+      newInstance.session = { current: 2, total: 5 }
+      newInstance.runStartedAt = 12345
+
+      // Add the new instance to the Map
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to the new instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+
+      // Verify activeInstanceId changed
+      expect(useAppStore.getState().activeInstanceId).toBe("second-instance")
+    })
+
+    it("selectors return data from newly active instance after switch", () => {
+      // Create a second instance with distinct state
+      const state = useAppStore.getState()
+      const resultEvent = makeResultEvent(500, 250, 123)
+      const newInstance = createRalphInstance("second-instance", "Second", "Agent2")
+      newInstance.status = "running"
+      newInstance.events = [resultEvent]
+      newInstance.session = { current: 2, total: 5 }
+      newInstance.runStartedAt = 12345
+
+      // Add the new instance to the Map
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to the new instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+
+      // Verify selectors return data from the new active instance
+      const updatedState = useAppStore.getState()
+      expect(selectRalphStatus(updatedState)).toBe("running")
+      expect(selectEvents(updatedState)).toEqual([resultEvent])
+      expect(selectTokenUsage(updatedState)).toEqual({ input: 500, output: 250 })
+      expect(selectContextWindow(updatedState)).toEqual({ used: 750, max: 200000 })
+      expect(selectSession(updatedState)).toEqual({ current: 2, total: 5 })
+      expect(selectRunStartedAt(updatedState)).toBe(12345)
+    })
+
+    it("allows switching back to original instance", () => {
+      // Create a second instance
+      const state = useAppStore.getState()
+      const newInstance = createRalphInstance("second-instance")
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to second instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+      expect(useAppStore.getState().activeInstanceId).toBe("second-instance")
+
+      // Switch back to default
+      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
+      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+    })
+  })
+
+  describe("createInstance action", () => {
+    it("creates a new instance with the provided ID", () => {
+      useAppStore.getState().createInstance("new-instance")
+
+      const state = useAppStore.getState()
+      expect(state.instances.has("new-instance")).toBe(true)
+      expect(state.instances.size).toBe(2) // default + new
+    })
+
+    it("creates instance with default name and agent when not provided", () => {
+      useAppStore.getState().createInstance("new-instance")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("new-instance")
+      expect(newInstance?.name).toBe(DEFAULT_INSTANCE_NAME)
+      expect(newInstance?.agentName).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("creates instance with custom name when provided", () => {
+      useAppStore.getState().createInstance("custom-instance", "Custom Name")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("custom-instance")
+      expect(newInstance?.name).toBe("Custom Name")
+      expect(newInstance?.agentName).toBe(DEFAULT_AGENT_NAME)
+    })
+
+    it("creates instance with custom name and agent when provided", () => {
+      useAppStore.getState().createInstance("custom-instance", "Custom Name", "Custom Agent")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("custom-instance")
+      expect(newInstance?.name).toBe("Custom Name")
+      expect(newInstance?.agentName).toBe("Custom Agent")
+    })
+
+    it("creates instance with initial stopped status", () => {
+      useAppStore.getState().createInstance("new-instance")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("new-instance")
+      expect(newInstance?.status).toBe("stopped")
+    })
+
+    it("creates instance with empty events and zero token usage", () => {
+      useAppStore.getState().createInstance("new-instance")
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("new-instance")
+      expect(newInstance?.events).toEqual([])
+      expect(newInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+    })
+
+    it("creates instance with createdAt timestamp", () => {
+      const before = Date.now()
+      useAppStore.getState().createInstance("new-instance")
+      const after = Date.now()
+
+      const state = useAppStore.getState()
+      const newInstance = state.instances.get("new-instance")
+      expect(newInstance?.createdAt).toBeGreaterThanOrEqual(before)
+      expect(newInstance?.createdAt).toBeLessThanOrEqual(after)
+    })
+
+    it("does nothing when instance with same ID already exists", () => {
+      // Create first instance
+      useAppStore.getState().createInstance("test-instance", "First")
+      expect(useAppStore.getState().instances.size).toBe(2)
+
+      // Try to create with same ID
+      useAppStore.getState().createInstance("test-instance", "Second")
+
+      // Should still have same count, and first name should be preserved
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(2)
+      expect(state.instances.get("test-instance")?.name).toBe("First")
+    })
+
+    it("auto-selects the newly created instance", () => {
+      expect(useAppStore.getState().activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+
+      useAppStore.getState().createInstance("new-instance")
+
+      expect(useAppStore.getState().activeInstanceId).toBe("new-instance")
+    })
+
+    it("selectors return data from newly created instance", () => {
+      useAppStore.getState().createInstance("new-instance", "My Instance", "My Agent")
+
+      const state = useAppStore.getState()
+      // Verify selectors read from the new active instance
+      expect(selectRalphStatus(state)).toBe("stopped")
+      expect(selectEvents(state)).toEqual([])
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectContextWindow(state)).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
+      expect(selectRunStartedAt(state)).toBeNull()
+    })
+
+    it("can create multiple instances", () => {
+      useAppStore.getState().createInstance("instance-1", "First")
+      useAppStore.getState().createInstance("instance-2", "Second")
+      useAppStore.getState().createInstance("instance-3", "Third")
+
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(4) // default + 3 new
+      expect(state.instances.has("instance-1")).toBe(true)
+      expect(state.instances.has("instance-2")).toBe(true)
+      expect(state.instances.has("instance-3")).toBe(true)
+    })
+  })
+
+  describe("removeInstance action", () => {
+    beforeEach(() => {
+      // Create some instances for removal tests
+      useAppStore.getState().createInstance("instance-1", "First")
+      useAppStore.getState().createInstance("instance-2", "Second")
+    })
+
+    it("removes an existing instance", () => {
+      expect(useAppStore.getState().instances.size).toBe(3) // default + 2
+
+      useAppStore.getState().removeInstance("instance-1")
+
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(2)
+      expect(state.instances.has("instance-1")).toBe(false)
+      expect(state.instances.has("instance-2")).toBe(true)
+    })
+
+    it("does nothing when trying to remove non-existent instance", () => {
+      const initialSize = useAppStore.getState().instances.size
+
+      useAppStore.getState().removeInstance("non-existent")
+
+      expect(useAppStore.getState().instances.size).toBe(initialSize)
+    })
+
+    it("cannot remove the active instance", () => {
+      // Switch to instance-1
+      useAppStore.getState().setActiveInstanceId("instance-1")
+      expect(useAppStore.getState().activeInstanceId).toBe("instance-1")
+
+      // Try to remove active instance
+      useAppStore.getState().removeInstance("instance-1")
+
+      // Instance should still exist
+      expect(useAppStore.getState().instances.has("instance-1")).toBe(true)
+    })
+
+    it("cannot remove the last instance", () => {
+      // After beforeEach, active instance is "instance-2" (last created)
+      // Remove other instances first
+      useAppStore.getState().removeInstance("instance-1")
+      useAppStore.getState().removeInstance(DEFAULT_INSTANCE_ID)
+
+      expect(useAppStore.getState().instances.size).toBe(1)
+      expect(useAppStore.getState().instances.has("instance-2")).toBe(true)
+
+      // Try to remove the last remaining instance (which is also active)
+      // It should fail because it's the active instance
+      useAppStore.getState().removeInstance("instance-2")
+
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(1)
+      expect(state.instances.has("instance-2")).toBe(true)
+    })
+
+    it("preserves activeInstanceId after removing other instances", () => {
+      // After beforeEach, active instance is "instance-2" (last created)
+      expect(useAppStore.getState().activeInstanceId).toBe("instance-2")
+
+      useAppStore.getState().removeInstance("instance-1")
+      useAppStore.getState().removeInstance(DEFAULT_INSTANCE_ID)
+
+      expect(useAppStore.getState().activeInstanceId).toBe("instance-2")
+    })
+
+    it("does not affect other instances when removing one", () => {
+      // Set up some state on instance-2
+      const state = useAppStore.getState()
+      const instance2 = state.instances.get("instance-2")!
+      instance2.status = "running"
+      instance2.events = [{ type: "test", timestamp: 123 }]
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-2", instance2)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Remove instance-1
+      useAppStore.getState().removeInstance("instance-1")
+
+      // instance-2 should still have its state
+      const newState = useAppStore.getState()
+      const stillInstance2 = newState.instances.get("instance-2")
+      expect(stillInstance2?.status).toBe("running")
+      expect(stillInstance2?.events).toHaveLength(1)
+    })
+  })
+
+  describe("cleanupInstance action", () => {
+    beforeEach(() => {
+      // Create additional instances for testing
+      useAppStore.getState().createInstance("instance-1", "First")
+      useAppStore.getState().createInstance("instance-2", "Second")
+      // Set instance-1 as active
+      useAppStore.getState().setActiveInstanceId("instance-1")
+    })
+
+    it("resets instance runtime state to initial values", () => {
+      // Set up some state on instance-1
+      const state = useAppStore.getState()
+      const instance = state.instances.get("instance-1")!
+      const updatedInstance = {
+        ...instance,
+        status: "running" as const,
+        events: [{ type: "test", timestamp: 123 }],
+        tokenUsage: { input: 1000, output: 500 },
+        contextWindow: { used: 50000, max: 200000 },
+        session: { current: 3, total: 5 },
+        runStartedAt: Date.now(),
+        currentTaskId: "task-123",
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-1", updatedInstance)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Cleanup the instance
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      // Verify state was reset
+      const newState = useAppStore.getState()
+      const cleanedInstance = newState.instances.get("instance-1")
+      expect(cleanedInstance?.status).toBe("stopped")
+      expect(cleanedInstance?.events).toEqual([])
+      expect(cleanedInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(cleanedInstance?.contextWindow.used).toBe(0)
+      expect(cleanedInstance?.session).toEqual({ current: 0, total: 0 })
+      expect(cleanedInstance?.runStartedAt).toBeNull()
+      expect(cleanedInstance?.currentTaskId).toBeNull()
+    })
+
+    it("preserves instance identity (id, name, agentName, createdAt)", () => {
+      const state = useAppStore.getState()
+      const instanceBefore = state.instances.get("instance-1")!
+
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      const instanceAfter = useAppStore.getState().instances.get("instance-1")
+      expect(instanceAfter?.id).toBe(instanceBefore.id)
+      expect(instanceAfter?.name).toBe(instanceBefore.name)
+      expect(instanceAfter?.agentName).toBe(instanceBefore.agentName)
+      expect(instanceAfter?.createdAt).toBe(instanceBefore.createdAt)
+    })
+
+    it("warns when cleaning up non-existent instance", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+      useAppStore.getState().cleanupInstance("non-existent")
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[store] Cannot cleanup non-existent instance: non-existent",
+      )
+      warnSpy.mockRestore()
+    })
+
+    it("selectors return reset values when cleaning up the active instance", () => {
+      // Set up state on the active instance (instance-1)
+      useAppStore.getState().setRalphStatus("running")
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 } as any)
+      useAppStore.getState().setTokenUsage({ input: 500, output: 250 })
+      useAppStore.getState().setContextWindow({ used: 25000, max: 200000 })
+      useAppStore.getState().setSession({ current: 2, total: 4 })
+
+      // Cleanup the active instance
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      // Verify selectors return reset values
+      const state = useAppStore.getState()
+      expect(selectRalphStatus(state)).toBe("stopped")
+      expect(selectEvents(state)).toEqual([])
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectContextWindow(state).used).toBe(0)
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
+      expect(selectRunStartedAt(state)).toBeNull()
+      expect(beadsViewStore.getState().initialTaskCount).toBeNull()
+    })
+
+    it("does not affect active instance when cleaning up a non-active instance", () => {
+      // Set up state on the active instance (instance-1)
+      useAppStore.getState().setRalphStatus("running")
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 } as any)
+
+      // Set up state on instance-2
+      const state = useAppStore.getState()
+      const instance2 = state.instances.get("instance-2")!
+      const updatedInstance2 = {
+        ...instance2,
+        status: "running" as const,
+        events: [{ type: "test2", timestamp: 456 } as any],
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-2", updatedInstance2)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Cleanup instance-2 (non-active)
+      useAppStore.getState().cleanupInstance("instance-2")
+
+      // Verify active instance was NOT affected (use selectors to read from instances Map)
+      const newState = useAppStore.getState()
+      expect(selectRalphStatus(newState)).toBe("running")
+      expect(selectEvents(newState)).toHaveLength(1)
+    })
+
+    it("does not affect other instances when cleaning up one", () => {
+      // Set up state on instance-2
+      const state = useAppStore.getState()
+      const instance2 = state.instances.get("instance-2")!
+      const updatedInstance2 = {
+        ...instance2,
+        status: "running" as const,
+        events: [{ type: "test2", timestamp: 456 }],
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-2", updatedInstance2)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Cleanup instance-1 (active)
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      // Verify instance-2 was NOT affected
+      const newState = useAppStore.getState()
+      const stillInstance2 = newState.instances.get("instance-2")
+      expect(stillInstance2?.status).toBe("running")
+      expect(stillInstance2?.events).toHaveLength(1)
+    })
+
+    it("keeps instance in the Map after cleanup", () => {
+      const initialCount = useAppStore.getState().instances.size
+
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      expect(useAppStore.getState().instances.size).toBe(initialCount)
+      expect(useAppStore.getState().instances.has("instance-1")).toBe(true)
+    })
+
+    it("preserves worktreePath and branch during cleanup", () => {
+      // Set worktree and branch on instance
+      const state = useAppStore.getState()
+      const instance = state.instances.get("instance-1")!
+      const updatedInstance = {
+        ...instance,
+        worktreePath: "/path/to/worktree",
+        branch: "feature/test",
+      }
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("instance-1", updatedInstance)
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Cleanup
+      useAppStore.getState().cleanupInstance("instance-1")
+
+      // Verify worktree and branch were preserved
+      const cleanedInstance = useAppStore.getState().instances.get("instance-1")
+      expect(cleanedInstance?.worktreePath).toBe("/path/to/worktree")
+      expect(cleanedInstance?.branch).toBe("feature/test")
+    })
+  })
+
+  describe("hydrateInstances action", () => {
+    it("creates new instances from server data", () => {
+      const initialCount = useAppStore.getState().instances.size
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "server-instance-1",
+          name: "Server Instance 1",
+          agentName: "Ralph-Server-1",
+          worktreePath: "/path/to/worktree1",
+          branch: "feature/branch1",
+          createdAt: 1700000000000,
+          currentTaskId: "task-1",
+          status: "running",
+          mergeConflict: null,
+        },
+        {
+          id: "server-instance-2",
+          name: "Server Instance 2",
+          agentName: "Ralph-Server-2",
+          worktreePath: null,
+          branch: null,
+          createdAt: 1700000001000,
+          currentTaskId: null,
+          status: "stopped",
+          mergeConflict: null,
+        },
+      ])
+
+      const state = useAppStore.getState()
+      expect(state.instances.size).toBe(initialCount + 2)
+      expect(state.instances.has("server-instance-1")).toBe(true)
+      expect(state.instances.has("server-instance-2")).toBe(true)
+
+      const instance1 = state.instances.get("server-instance-1")!
+      expect(instance1.name).toBe("Server Instance 1")
+      expect(instance1.agentName).toBe("Ralph-Server-1")
+      expect(instance1.worktreePath).toBe("/path/to/worktree1")
+      expect(instance1.branch).toBe("feature/branch1")
+      expect(instance1.status).toBe("running")
+      expect(instance1.currentTaskId).toBe("task-1")
+      expect(instance1.createdAt).toBe(1700000000000)
+      // Runtime state should be initialized to defaults
+      expect(instance1.events).toEqual([])
+      expect(instance1.tokenUsage).toEqual({ input: 0, output: 0 })
+    })
+
+    it("updates existing instances with server metadata while preserving runtime state", () => {
+      // Set up an instance with runtime state
+      useAppStore.getState().createInstance("existing-instance", "Old Name", "Old Agent")
+      const state = useAppStore.getState()
+      const instance = state.instances.get("existing-instance")!
+      const updatedInstances = new Map(state.instances)
+      updatedInstances.set("existing-instance", {
+        ...instance,
+        events: [{ type: "test", timestamp: 123 }],
+        tokenUsage: { input: 1000, output: 500 },
+        contextWindow: { used: 50000, max: 200000 },
+      })
+      useAppStore.setState({ instances: updatedInstances })
+
+      // Hydrate with server data
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "existing-instance",
+          name: "Updated Name",
+          agentName: "Updated Agent",
+          worktreePath: "/new/path",
+          branch: "feature/new",
+          createdAt: 1700000000000,
+          currentTaskId: "new-task",
+          status: "running",
+          mergeConflict: null,
+        },
+      ])
+
+      const updatedInstance = useAppStore.getState().instances.get("existing-instance")!
+      // Metadata should be updated
+      expect(updatedInstance.name).toBe("Updated Name")
+      expect(updatedInstance.agentName).toBe("Updated Agent")
+      expect(updatedInstance.worktreePath).toBe("/new/path")
+      expect(updatedInstance.branch).toBe("feature/new")
+      expect(updatedInstance.status).toBe("running")
+      expect(updatedInstance.currentTaskId).toBe("new-task")
+      // Runtime state should be preserved
+      expect(updatedInstance.events).toHaveLength(1)
+      expect(updatedInstance.tokenUsage).toEqual({ input: 1000, output: 500 })
+      expect(updatedInstance.contextWindow.used).toBe(50000)
+    })
+
+    it("preserves activeInstanceId if it still exists after hydration", () => {
+      useAppStore.getState().createInstance("my-active-instance", "Active")
+      useAppStore.getState().setActiveInstanceId("my-active-instance")
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "my-active-instance",
+          name: "Updated Active",
+          agentName: "Ralph",
+          worktreePath: null,
+          branch: null,
+          createdAt: Date.now(),
+          currentTaskId: null,
+          status: "stopped",
+          mergeConflict: null,
+        },
+        {
+          id: "other-instance",
+          name: "Other",
+          agentName: "Ralph-2",
+          worktreePath: null,
+          branch: null,
+          createdAt: Date.now(),
+          currentTaskId: null,
+          status: "stopped",
+          mergeConflict: null,
+        },
+      ])
+
+      expect(useAppStore.getState().activeInstanceId).toBe("my-active-instance")
+    })
+
+    it("switches to first server instance if active instance becomes invalid", () => {
+      // Start with only the default instance
+      const state = useAppStore.getState()
+      expect(state.activeInstanceId).toBe(DEFAULT_INSTANCE_ID)
+
+      // Hydrate with a completely different set of instances
+      // The default instance doesn't exist in server data, but the store keeps local instances
+      // This test verifies that if the active instance doesn't exist in the result, it falls back
+      useAppStore.setState({ activeInstanceId: "non-existent-instance" })
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "server-instance",
+          name: "Server",
+          agentName: "Ralph",
+          worktreePath: null,
+          branch: null,
+          createdAt: Date.now(),
+          currentTaskId: null,
+          status: "stopped",
+          mergeConflict: null,
+        },
+      ])
+
+      // Since non-existent-instance is not in the merged instances, it should switch to server-instance
+      expect(useAppStore.getState().activeInstanceId).toBe("server-instance")
+    })
+
+    it("does nothing with empty instances array", () => {
+      const initialState = useAppStore.getState()
+      const initialCount = initialState.instances.size
+
+      useAppStore.getState().hydrateInstances([])
+
+      expect(useAppStore.getState().instances.size).toBe(initialCount)
+    })
+
+    it("updates active instance status via selectors when hydrated", () => {
+      useAppStore.getState().createInstance("active", "Active Instance")
+      useAppStore.getState().setActiveInstanceId("active")
+
+      useAppStore.getState().hydrateInstances([
+        {
+          id: "active",
+          name: "Updated Active",
+          agentName: "Ralph-Updated",
+          worktreePath: "/worktree",
+          branch: "main",
+          createdAt: 1700000000000,
+          currentTaskId: "task-1",
+          status: "running",
+          mergeConflict: null,
+        },
+      ])
+
+      const state = useAppStore.getState()
+      // Selectors should return data from the updated active instance
+      expect(selectRalphStatus(state)).toBe("running")
+    })
+  })
+
+  describe("flat field delegation to active instance", () => {
+    it("setRalphStatus updates active instance status", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.status).toBe("running")
+    })
+
+    it("setRalphStatus updates active instance runStartedAt when transitioning to running", () => {
+      const before = Date.now()
+      useAppStore.getState().setRalphStatus("running")
+      const after = Date.now()
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.runStartedAt).toBeGreaterThanOrEqual(before)
+      expect(activeInstance?.runStartedAt).toBeLessThanOrEqual(after)
+    })
+
+    it("setRalphStatus clears active instance runStartedAt when stopped", () => {
+      useAppStore.getState().setRalphStatus("running")
+      let state = useAppStore.getState()
+      expect(state.instances.get(state.activeInstanceId)?.runStartedAt).not.toBeNull()
+
+      useAppStore.getState().setRalphStatus("stopped")
+      state = useAppStore.getState()
+      expect(state.instances.get(state.activeInstanceId)?.runStartedAt).toBeNull()
+    })
+
+    it("addEvent updates active instance events", () => {
+      const event = { type: "test", timestamp: 12345 }
+      useAppStore.getState().addEvent(event)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.events).toHaveLength(1)
+      expect(activeInstance?.events[0]).toEqual(event)
+    })
+
+    it("setEvents updates active instance events", () => {
+      const events = [
+        { type: "first", timestamp: 1 },
+        { type: "second", timestamp: 2 },
+      ]
+      useAppStore.getState().setEvents(events)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.events).toHaveLength(2)
+      expect(activeInstance?.events).toEqual(events)
+    })
+
+    it("clearEvents clears active instance events", () => {
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
+      let state = useAppStore.getState()
+      expect(state.instances.get(state.activeInstanceId)?.events).toHaveLength(1)
+
+      useAppStore.getState().clearEvents()
+      state = useAppStore.getState()
+      expect(state.instances.get(state.activeInstanceId)?.events).toEqual([])
+    })
+
+    it("setTokenUsage updates active instance tokenUsage", () => {
+      const usage = { input: 1000, output: 500 }
+      useAppStore.getState().setTokenUsage(usage)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual(usage)
+    })
+
+    it("addTokenUsage updates active instance tokenUsage", () => {
+      useAppStore.getState().addTokenUsage({ input: 100, output: 50 })
+      useAppStore.getState().addTokenUsage({ input: 200, output: 100 })
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual({ input: 300, output: 150 })
+    })
+
+    it("setContextWindow updates active instance contextWindow", () => {
+      const contextWindow = { used: 50000, max: 200000 }
+      useAppStore.getState().setContextWindow(contextWindow)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.contextWindow).toEqual(contextWindow)
+    })
+
+    it("updateContextWindowUsed updates active instance contextWindow", () => {
+      useAppStore.getState().updateContextWindowUsed(75000)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.contextWindow.used).toBe(75000)
+    })
+
+    it("setSession updates active instance session", () => {
+      const session = { current: 3, total: 10 }
+      useAppStore.getState().setSession(session)
+
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.session).toEqual(session)
+    })
+
+    it("resetSessionStats resets token usage, context window, and session to defaults", () => {
+      // Set up various state that should be reset
+      useAppStore.getState().setTokenUsage({ input: 5000, output: 2500 })
+      useAppStore.getState().setContextWindow({ used: 100000, max: 200000 })
+      useAppStore.getState().setSession({ current: 7, total: 15 })
+
+      // Verify instance properties were set
+      let state = useAppStore.getState()
+      let activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual({ input: 5000, output: 2500 })
+      expect(activeInstance?.contextWindow).toEqual({ used: 100000, max: 200000 })
+      expect(selectSession(state)).toEqual({ current: 7, total: 15 })
+
+      // Reset session stats
+      useAppStore.getState().resetSessionStats()
+
+      // Verify all session stats were reset on the instance
+      state = useAppStore.getState()
+      activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(activeInstance?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
+    })
+
+    it("resetSessionStats updates active instance in the instances Map", () => {
+      // Set up state on the active instance
+      useAppStore.getState().setTokenUsage({ input: 3000, output: 1500 })
+      useAppStore.getState().setContextWindow({ used: 75000, max: 200000 })
+      useAppStore.getState().setSession({ current: 4, total: 8 })
+
+      // Reset session stats
+      useAppStore.getState().resetSessionStats()
+
+      // Verify the active instance in the Map was also updated
+      const state = useAppStore.getState()
+      const activeInstance = state.instances.get(state.activeInstanceId)
+      expect(activeInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(activeInstance?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+      expect(activeInstance?.session).toEqual({ current: 0, total: 0 })
+    })
+
+    it("clearWorkspaceData resets active instance state", () => {
+      // Set up various state
+      useAppStore.getState().setRalphStatus("running")
+      useAppStore.getState().addEvent({ type: "test", timestamp: 1 })
+      useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
+      useAppStore.getState().setSession({ current: 5, total: 10 })
+
+      // Verify state was set
+      let state = useAppStore.getState()
+      let instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.status).toBe("running")
+      expect(instance?.events).toHaveLength(1)
+      expect(instance?.tokenUsage.input).toBe(1000)
+
+      // Clear workspace data
+      useAppStore.getState().clearWorkspaceData()
+
+      // Verify instance was reset
+      state = useAppStore.getState()
+      instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.status).toBe("stopped")
+      expect(instance?.events).toEqual([])
+      expect(instance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(instance?.contextWindow).toEqual({ used: 0, max: 200_000 })
+      expect(instance?.session).toEqual({ current: 0, total: 0 })
+      expect(instance?.runStartedAt).toBeNull()
+    })
+
+    it("clearWorkspaceData clears ALL instances, not just active", () => {
+      // Create a second instance
+      useAppStore.getState().createInstance("second-instance", "Second", "Ralph-2")
+
+      // Add events and state to the second instance
+      useAppStore.getState().addEventForInstance("second-instance", { type: "test", timestamp: 1 })
+      useAppStore
+        .getState()
+        .addTokenUsageForInstance("second-instance", { input: 500, output: 250 })
+      useAppStore.getState().setSessionForInstance("second-instance", { current: 3, total: 6 })
+      useAppStore.getState().setStatusForInstance("second-instance", "running")
+
+      // Switch back to default instance
+      useAppStore.getState().setActiveInstanceId(DEFAULT_INSTANCE_ID)
+
+      // Add events and state to the default (active) instance
+      useAppStore.getState().addEvent({ type: "active-event", timestamp: 2 })
+      useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
+      useAppStore.getState().setRalphStatus("running")
+
+      // Verify both instances have data
+      let state = useAppStore.getState()
+      expect(state.instances.get(DEFAULT_INSTANCE_ID)?.events).toHaveLength(1)
+      expect(state.instances.get("second-instance")?.events).toHaveLength(1)
+      expect(state.instances.get("second-instance")?.tokenUsage.input).toBe(500)
+
+      // Clear workspace data
+      useAppStore.getState().clearWorkspaceData()
+
+      // Verify BOTH instances were cleared
+      state = useAppStore.getState()
+
+      // Active instance should be cleared
+      const activeInstance = state.instances.get(DEFAULT_INSTANCE_ID)
+      expect(activeInstance?.events).toEqual([])
+      expect(activeInstance?.status).toBe("stopped")
+      expect(activeInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+
+      // Non-active instance should ALSO be cleared (this is the bug fix)
+      const secondInstance = state.instances.get("second-instance")
+      expect(secondInstance?.events).toEqual([])
+      expect(secondInstance?.status).toBe("stopped")
+      expect(secondInstance?.tokenUsage).toEqual({ input: 0, output: 0 })
+      expect(secondInstance?.contextWindow).toEqual({ used: 0, max: 200_000 })
+      expect(secondInstance?.session).toEqual({ current: 0, total: 0 })
+    })
+  })
+
+  describe("delegating selectors read from active instance", () => {
+    it("selectRalphStatus reads from active instance", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      expect(selectRalphStatus(state)).toBe("running")
+      // Verify it matches the instance
+      expect(selectRalphStatus(state)).toBe(state.instances.get(state.activeInstanceId)?.status)
+    })
+
+    it("selectRunStartedAt reads from active instance", () => {
+      useAppStore.getState().setRalphStatus("running")
+      const state = useAppStore.getState()
+      const runStartedAt = selectRunStartedAt(state)
+      expect(runStartedAt).not.toBeNull()
+      expect(runStartedAt).toBe(state.instances.get(state.activeInstanceId)?.runStartedAt)
+    })
+
+    it("selectEvents reads from active instance", () => {
+      const events = [
+        { type: "first", timestamp: 1 },
+        { type: "second", timestamp: 2 },
+      ]
+      useAppStore.getState().setEvents(events)
+      const state = useAppStore.getState()
+      expect(selectEvents(state)).toEqual(events)
+      expect(selectEvents(state)).toBe(state.instances.get(state.activeInstanceId)?.events)
+    })
+
+    it("selectTokenUsage derives from active instance events", () => {
+      // Token usage is now derived from events, not stored properties
+      useAppStore.getState().addEvent(makeResultEvent(1000, 500))
+      const state = useAppStore.getState()
+      expect(selectTokenUsage(state)).toEqual({ input: 1000, output: 500 })
+    })
+
+    it("selectContextWindow derives from active instance events", () => {
+      // Context window is now derived from events (input + output)
+      useAppStore.getState().addEvent(makeResultEvent(30000, 20000))
+      const state = useAppStore.getState()
+      expect(selectContextWindow(state)).toEqual({ used: 50000, max: 200000 })
+    })
+
+    it("selectSession reads from active instance", () => {
+      const session = { current: 5, total: 10 }
+      useAppStore.getState().setSession(session)
+      const state = useAppStore.getState()
+      expect(selectSession(state)).toEqual(session)
+      expect(selectSession(state)).toBe(state.instances.get(state.activeInstanceId)?.session)
+    })
+  })
+
+  describe("ralph status", () => {
+    it("sets ralph status", () => {
+      useAppStore.getState().setRalphStatus("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
+    })
+
+    it("updates through all status transitions", () => {
+      const { setRalphStatus } = useAppStore.getState()
+
+      setRalphStatus("starting")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("starting")
+
+      setRalphStatus("running")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("running")
+
+      setRalphStatus("stopping")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopping")
+
+      setRalphStatus("stopped")
+      expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
+    })
+
+    it("sets initialTaskCount when transitioning to running", () => {
+      // Set up some tasks before running
+      beadsViewStore.getState().setTasks([
+        { id: "1", title: "Task 1", status: "open" },
+        { id: "2", title: "Task 2", status: "closed" },
+        { id: "3", title: "Task 3", status: "in_progress" },
+      ])
+
+      // Initially null
+      expect(beadsViewStore.getState().initialTaskCount).toBeNull()
+
+      // Transition to running
+      useAppStore.getState().setRalphStatus("running")
+
+      // Should capture initial task count
+      expect(beadsViewStore.getState().initialTaskCount).toBe(3)
+    })
+
+    it("clears initialTaskCount when transitioning to stopped", () => {
+      // Set up and start
+      beadsViewStore.getState().setTasks([{ id: "1", title: "Task 1", status: "open" }])
+      useAppStore.getState().setRalphStatus("running")
+      expect(beadsViewStore.getState().initialTaskCount).toBe(1)
+
+      // Stop
+      useAppStore.getState().setRalphStatus("stopped")
+      expect(beadsViewStore.getState().initialTaskCount).toBeNull()
+    })
+
+    it("preserves initialTaskCount during paused/stopping_after_current states", () => {
+      // Set up and start
+      beadsViewStore.getState().setTasks([
+        { id: "1", title: "Task 1", status: "open" },
+        { id: "2", title: "Task 2", status: "open" },
+      ])
+      useAppStore.getState().setRalphStatus("running")
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
+
+      // Pause - should preserve
+      useAppStore.getState().setRalphStatus("paused")
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
+
+      // Stop after current - should preserve
+      useAppStore.getState().setRalphStatus("stopping_after_current")
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
+    })
+
+    it("does not update initialTaskCount when already running", () => {
+      // Start with 2 tasks
+      beadsViewStore.getState().setTasks([
+        { id: "1", title: "Task 1", status: "open" },
+        { id: "2", title: "Task 2", status: "open" },
+      ])
+      useAppStore.getState().setRalphStatus("running")
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
+
+      // Add more tasks
+      beadsViewStore.getState().setTasks([
+        { id: "1", title: "Task 1", status: "open" },
+        { id: "2", title: "Task 2", status: "open" },
+        { id: "3", title: "Task 3", status: "open" },
+      ])
+
+      // Set running again (shouldn't change initial count)
+      useAppStore.getState().setRalphStatus("running")
+      expect(beadsViewStore.getState().initialTaskCount).toBe(2)
+    })
+  })
+
+  describe("selectCanAcceptMessages", () => {
+    it("returns true when running", () => {
+      useAppStore.getState().setRalphStatus("running")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(true)
+    })
+
+    it("returns true when paused", () => {
+      useAppStore.getState().setRalphStatus("paused")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(true)
+    })
+
+    it("returns true when stopping_after_current", () => {
+      useAppStore.getState().setRalphStatus("stopping_after_current")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(true)
+    })
+
+    it("returns false when stopped", () => {
+      useAppStore.getState().setRalphStatus("stopped")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(false)
+    })
+
+    it("returns false when starting", () => {
+      useAppStore.getState().setRalphStatus("starting")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(false)
+    })
+
+    it("returns false when stopping", () => {
+      useAppStore.getState().setRalphStatus("stopping")
+      expect(selectCanAcceptMessages(useAppStore.getState())).toBe(false)
+    })
+  })
+
+  describe("events", () => {
+    it("adds events to the list", () => {
+      const event: ChatEvent = { type: "test", timestamp: 1234567890 }
+      useAppStore.getState().addEvent(event)
+
+      const events = selectEvents(useAppStore.getState())
+      expect(events).toHaveLength(1)
+      expect(events[0]).toEqual(event)
+    })
+
+    it("preserves event order", () => {
+      const { addEvent } = useAppStore.getState()
+
+      addEvent({ type: "first", timestamp: 1 } as ChatEvent)
+      addEvent({ type: "second", timestamp: 2 } as ChatEvent)
+      addEvent({ type: "third", timestamp: 3 } as ChatEvent)
+
+      const events = selectEvents(useAppStore.getState())
+      expect(events).toHaveLength(3)
+      expect(events[0].type).toBe("first")
+      expect(events[1].type).toBe("second")
+      expect(events[2].type).toBe("third")
+    })
+
+    it("clears all events", () => {
+      const { addEvent, clearEvents } = useAppStore.getState()
+
+      addEvent({ type: "test", timestamp: 1 } as ChatEvent)
+      addEvent({ type: "test", timestamp: 2 } as ChatEvent)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(2)
+
+      clearEvents()
+      expect(selectEvents(useAppStore.getState())).toEqual([])
+    })
+
+    it("sets events array directly (for restoring from server)", () => {
+      const events: ChatEvent[] = [
+        { type: "first", timestamp: 1 },
+        { type: "second", timestamp: 2 },
+        { type: "third", timestamp: 3 },
+      ]
+
+      useAppStore.getState().setEvents(events)
+
+      const storedEvents = selectEvents(useAppStore.getState())
+      expect(storedEvents).toHaveLength(3)
+      expect(storedEvents).toEqual(events)
+    })
+
+    it("setEvents merges with existing events without duplicates", () => {
+      // Add initial events
+      useAppStore.getState().addEvent({ type: "old", timestamp: 1 } as ChatEvent)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
+
+      // Set new events (should merge, not replace)
+      const newEvents: ChatEvent[] = [
+        { type: "new1", timestamp: 2 },
+        { type: "new2", timestamp: 3 },
+      ]
+      useAppStore.getState().setEvents(newEvents)
+
+      // All events should be present, sorted by timestamp
+      const storedEvents = selectEvents(useAppStore.getState())
+      expect(storedEvents).toHaveLength(3)
+      expect(storedEvents[0].type).toBe("old")
+      expect(storedEvents[1].type).toBe("new1")
+      expect(storedEvents[2].type).toBe("new2")
+    })
+
+    it("replaceEvents replaces existing events", () => {
+      // Add initial events
+      useAppStore.getState().addEvent({ type: "old", timestamp: 1 } as ChatEvent)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
+
+      // Replace events (should fully replace, not merge)
+      const newEvents: ChatEvent[] = [
+        { type: "new1", timestamp: 2 },
+        { type: "new2", timestamp: 3 },
+      ]
+      useAppStore.getState().replaceEvents(newEvents)
+
+      const storedEvents = selectEvents(useAppStore.getState())
+      expect(storedEvents).toHaveLength(2)
+      expect(storedEvents[0].type).toBe("new1")
+      expect(storedEvents[1].type).toBe("new2")
+    })
+  })
+
+  describe("workspace", () => {
+    it("sets workspace path", () => {
+      useAppStore.getState().setWorkspace("/path/to/project")
+      expect(useAppStore.getState().workspace).toBe("/path/to/project")
+    })
+
+    it("clears workspace", () => {
+      useAppStore.getState().setWorkspace("/path/to/project")
+      useAppStore.getState().setWorkspace(null)
+      expect(useAppStore.getState().workspace).toBeNull()
+    })
+
+    it("clears all workspace-specific data", () => {
+      // Set up various workspace-specific state
+      const { addEvent, setSession, addTaskChatMessage, addTaskChatEvent } = useAppStore.getState()
+      addEvent(makeResultEvent(100, 50))
+      beadsViewStore.getState().setTasks([{ id: "1", title: "Task 1", status: "open" }])
+      setSession({ current: 2, total: 5 })
+      addTaskChatMessage({ id: "msg-1", role: "user", content: "Hello", timestamp: 123 })
+      addTaskChatEvent({ type: "stream_event", timestamp: 456, event: {} })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
+
+      // Verify state was set (use selectors for instance-level data)
+      expect(selectEvents(useAppStore.getState())).toHaveLength(1)
+      expect(beadsViewStore.getState().tasks).toHaveLength(1)
+      expect(selectTokenUsage(useAppStore.getState()).input).toBe(100)
+      expect(selectSession(useAppStore.getState()).current).toBe(2)
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
+
+      // Clear workspace data
+      useAppStore.getState().clearWorkspaceData()
+
+      // Verify all workspace-specific state was cleared (use selectors for instance-level data)
+      expect(selectEvents(useAppStore.getState())).toEqual([])
+      expect(beadsViewStore.getState().tasks).toEqual([])
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 0, output: 0 })
+      expect(selectSession(useAppStore.getState())).toEqual({ current: 0, total: 0 })
+      expect(useAppStore.getState().taskChatMessages).toEqual([])
+      expect(useAppStore.getState().taskChatEvents).toEqual([])
+    })
+  })
+
+  describe("accent color", () => {
+    it("sets accent color", () => {
+      useAppStore.getState().setAccentColor("#4d9697")
+      expect(useAppStore.getState().accentColor).toBe("#4d9697")
+    })
+
+    it("clears accent color", () => {
+      useAppStore.getState().setAccentColor("#4d9697")
+      useAppStore.getState().setAccentColor(null)
+      expect(useAppStore.getState().accentColor).toBeNull()
+    })
+  })
+
+  describe("branch", () => {
+    it("sets branch name", () => {
+      useAppStore.getState().setBranch("feature/new-feature")
+      expect(useAppStore.getState().branch).toBe("feature/new-feature")
+    })
+
+    it("clears branch", () => {
+      useAppStore.getState().setBranch("main")
+      useAppStore.getState().setBranch(null)
+      expect(useAppStore.getState().branch).toBeNull()
+    })
+  })
+
+  describe("token usage", () => {
+    it("sets token usage on instance property", () => {
+      useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.tokenUsage).toEqual({ input: 1000, output: 500 })
+    })
+
+    it("adds to token usage on instance property", () => {
+      useAppStore.getState().setTokenUsage({ input: 1000, output: 500 })
+      useAppStore.getState().addTokenUsage({ input: 200, output: 100 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.tokenUsage).toEqual({ input: 1200, output: 600 })
+    })
+
+    it("accumulates multiple token additions on instance property", () => {
+      useAppStore.getState().addTokenUsage({ input: 100, output: 50 })
+      useAppStore.getState().addTokenUsage({ input: 200, output: 100 })
+      useAppStore.getState().addTokenUsage({ input: 300, output: 150 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.tokenUsage).toEqual({ input: 600, output: 300 })
+    })
+
+    it("selectTokenUsage derives from events", () => {
+      useAppStore.getState().addEvent(makeResultEvent(1000, 500))
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
+    })
+
+    it("selectTokenUsage accumulates from multiple events", () => {
+      useAppStore.getState().addEvent(makeResultEvent(100, 50, 1))
+      useAppStore.getState().addEvent(makeResultEvent(200, 100, 2))
+      useAppStore.getState().addEvent(makeResultEvent(300, 150, 3))
+      expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 600, output: 300 })
+    })
+  })
+
+  describe("context window", () => {
+    it("has default max context window of 200k", () => {
+      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 0, max: 200_000 })
+    })
+
+    it("sets context window on instance property", () => {
+      useAppStore.getState().setContextWindow({ used: 50000, max: 200000 })
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.contextWindow).toEqual({ used: 50000, max: 200000 })
+    })
+
+    it("updates context window used on instance property", () => {
+      useAppStore.getState().updateContextWindowUsed(75000)
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.contextWindow.used).toBe(75000)
+    })
+
+    it("preserves max when updating used on instance property", () => {
+      useAppStore.getState().setContextWindow({ used: 0, max: 150000 })
+      useAppStore.getState().updateContextWindowUsed(50000)
+      const state = useAppStore.getState()
+      const instance = state.instances.get(state.activeInstanceId)
+      expect(instance?.contextWindow).toEqual({ used: 50000, max: 150000 })
+    })
+
+    it("selectContextWindow derives used from events (input + output)", () => {
+      useAppStore.getState().addEvent(makeResultEvent(30000, 20000))
+      expect(selectContextWindow(useAppStore.getState())).toEqual({ used: 50000, max: 200_000 })
+    })
+  })
+
+  describe("session", () => {
+    it("sets session info", () => {
+      useAppStore.getState().setSession({ current: 3, total: 10 })
+      expect(selectSession(useAppStore.getState())).toEqual({ current: 3, total: 10 })
+    })
+
+    it("updates session progress", () => {
+      useAppStore.getState().setSession({ current: 1, total: 5 })
+      useAppStore.getState().setSession({ current: 2, total: 5 })
+      expect(selectSession(useAppStore.getState())).toEqual({ current: 2, total: 5 })
+    })
+  })
+
+  describe("session view", () => {
+    // Helper to create events with session boundaries
+    const createEventsWithSessions = (): ChatEvent[] => [
+      { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+      { type: "assistant", timestamp: 1001 } as ChatEvent,
+      { type: "user_message", timestamp: 1002 } as ChatEvent,
+      { type: "system", subtype: "init", timestamp: 2000 } as ChatEvent,
+      { type: "assistant", timestamp: 2001 } as ChatEvent,
+      { type: "system", subtype: "init", timestamp: 3000 } as ChatEvent,
+      { type: "user_message", timestamp: 3001 } as ChatEvent,
+      { type: "assistant", timestamp: 3002 } as ChatEvent,
+    ]
+
+    describe("isSessionBoundary", () => {
+      it("returns true for system init events", () => {
+        const event = { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent
+        expect(isSessionBoundary(event)).toBe(true)
+      })
+
+      it("returns true for ralph_session_start events", () => {
+        const event = {
+          type: "ralph_session_start",
+          session: 1,
+          totalSessions: 5,
+          timestamp: 1000,
+        } as ChatEvent
+        expect(isSessionBoundary(event)).toBe(true)
+      })
+
+      it("returns false for other events", () => {
+        expect(isSessionBoundary({ type: "assistant", timestamp: 1000 } as ChatEvent)).toBe(false)
+        expect(isSessionBoundary({ type: "user_message", timestamp: 1000 } as ChatEvent)).toBe(
+          false,
+        )
+        expect(
+          isSessionBoundary({ type: "system", subtype: "other", timestamp: 1000 } as ChatEvent),
+        ).toBe(false)
+      })
+    })
+
+    describe("getSessionBoundaries", () => {
+      it("returns empty array for no events", () => {
+        expect(getSessionBoundaries([])).toEqual([])
+      })
+
+      it("returns indices of all session boundaries", () => {
+        const events = createEventsWithSessions()
+        expect(getSessionBoundaries(events)).toEqual([0, 3, 5])
+      })
+
+      it("prefers ralph_session_start events over system/init when both exist", () => {
+        // When ralph_session_start events exist, system/init should be ignored.
+        // This handles backward compatibility with legacy persisted data that may
+        // contain both event types.
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 2,
+            totalSessions: 5,
+            timestamp: 2000,
+          } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 3,
+            totalSessions: 5,
+            timestamp: 3000,
+          } as ChatEvent,
+          { type: "assistant", timestamp: 3001 } as ChatEvent,
+        ]
+        // Only ralph_session_start indices should be returned (not system/init at index 0)
+        expect(getSessionBoundaries(events)).toEqual([2, 4])
+      })
+
+      it("falls back to system/init when no ralph_session_start events exist", () => {
+        // For backward compatibility with older persisted events that only have system/init
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          { type: "system", subtype: "init", timestamp: 2000 } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+        ]
+        expect(getSessionBoundaries(events)).toEqual([0, 2])
+      })
+
+      it("returns empty array when no boundaries exist", () => {
+        const events = [
+          { type: "assistant", timestamp: 1000 },
+          { type: "user_message", timestamp: 1001 },
+        ] as ChatEvent[]
+        expect(getSessionBoundaries(events)).toEqual([])
+      })
+    })
+
+    describe("countSessions", () => {
+      it("returns 0 for no events", () => {
+        expect(countSessions([])).toBe(0)
+      })
+
+      it("counts session boundaries", () => {
+        const events = createEventsWithSessions()
+        expect(countSessions(events)).toBe(3)
+      })
+    })
+
+    describe("getSessionId", () => {
+      it("returns null for empty events", () => {
+        expect(getSessionId([], 0)).toBeNull()
+      })
+
+      it("returns null for negative index", () => {
+        const events = [{ type: "system", subtype: "init", timestamp: 1000 } as ChatEvent]
+        expect(getSessionId(events, -1)).toBeNull()
+      })
+
+      it("returns null for index beyond session count", () => {
+        const events = [{ type: "system", subtype: "init", timestamp: 1000 } as ChatEvent]
+        expect(getSessionId(events, 5)).toBeNull()
+      })
+
+      it("returns sessionId from ralph_session_start event when available", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 1,
+            timestamp: 1000,
+            sessionId: "server-generated-abc",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionId(events, 0)).toBe("server-generated-abc")
+      })
+
+      it("falls back to session-{timestamp} for legacy system/init events without sessionId", () => {
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionId(events, 0)).toBe("session-1000")
+      })
+
+      it("returns correct ID when multiple sessions exist", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 3,
+            timestamp: 1000,
+            sessionId: "session-aaa",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 2,
+            totalSessions: 3,
+            timestamp: 2000,
+            sessionId: "session-bbb",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 3,
+            totalSessions: 3,
+            timestamp: 3000,
+            sessionId: "session-ccc",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 3001 } as ChatEvent,
+        ]
+        expect(getSessionId(events, 0)).toBe("session-aaa")
+        expect(getSessionId(events, 1)).toBe("session-bbb")
+        expect(getSessionId(events, 2)).toBe("session-ccc")
+      })
+    })
+
+    describe("getSessionIndexById", () => {
+      it("returns null for empty events", () => {
+        expect(getSessionIndexById([], "some-id")).toBeNull()
+      })
+
+      it("returns null for non-existent session ID", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 1,
+            timestamp: 1000,
+            sessionId: "session-aaa",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionIndexById(events, "does-not-exist")).toBeNull()
+      })
+
+      it("finds session by server-generated sessionId", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 1,
+            timestamp: 1000,
+            sessionId: "server-id-xyz",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionIndexById(events, "server-id-xyz")).toBe(0)
+      })
+
+      it("finds session by fallback ID (session-{timestamp})", () => {
+        const events = [
+          { type: "system", subtype: "init", timestamp: 1000 } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+        ]
+        expect(getSessionIndexById(events, "session-1000")).toBe(0)
+      })
+
+      it("returns correct index with multiple sessions", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 3,
+            timestamp: 1000,
+            sessionId: "session-aaa",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 2,
+            totalSessions: 3,
+            timestamp: 2000,
+            sessionId: "session-bbb",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 3,
+            totalSessions: 3,
+            timestamp: 3000,
+            sessionId: "session-ccc",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 3001 } as ChatEvent,
+        ]
+        expect(getSessionIndexById(events, "session-aaa")).toBe(0)
+        expect(getSessionIndexById(events, "session-bbb")).toBe(1)
+        expect(getSessionIndexById(events, "session-ccc")).toBe(2)
+      })
+    })
+
+    describe("getEventsForSession", () => {
+      it("returns all events when index is null and no boundaries", () => {
+        const events = [
+          { type: "assistant", timestamp: 1000 },
+          { type: "user_message", timestamp: 1001 },
+        ] as ChatEvent[]
+        expect(getEventsForSession(events, null)).toEqual(events)
+      })
+
+      it("returns events from latest session when index is null", () => {
+        const events = createEventsWithSessions()
+        const result = getEventsForSession(events, null)
+        expect(result).toHaveLength(3) // 3rd session has 3 events
+        expect(result[0].timestamp).toBe(3000)
+      })
+
+      it("returns events for specific session index", () => {
+        const events = createEventsWithSessions()
+
+        // First session (index 0): 3 events
+        const first = getEventsForSession(events, 0)
+        expect(first).toHaveLength(3)
+        expect(first[0].timestamp).toBe(1000)
+        expect(first[2].timestamp).toBe(1002)
+
+        // Second session (index 1): 2 events
+        const second = getEventsForSession(events, 1)
+        expect(second).toHaveLength(2)
+        expect(second[0].timestamp).toBe(2000)
+
+        // Third session (index 2): 3 events
+        const third = getEventsForSession(events, 2)
+        expect(third).toHaveLength(3)
+        expect(third[0].timestamp).toBe(3000)
+      })
+
+      it("returns all events for out-of-bounds index", () => {
+        const events = createEventsWithSessions()
+        expect(getEventsForSession(events, -1)).toEqual(events)
+        expect(getEventsForSession(events, 10)).toEqual(events)
+      })
+    })
+
+    describe("getEventsForSessionId", () => {
+      it("returns latest session events when sessionId is null", () => {
+        const events = createEventsWithSessions()
+        const result = getEventsForSessionId(events, null)
+        expect(result).toHaveLength(3) // 3rd session has 3 events
+        expect(result[0].timestamp).toBe(3000)
+      })
+
+      it("returns events for a valid session ID (fallback format)", () => {
+        const events = createEventsWithSessions()
+        // Session IDs use fallback format: session-{timestamp}
+        const first = getEventsForSessionId(events, "session-1000")
+        expect(first).toHaveLength(3)
+        expect(first[0].timestamp).toBe(1000)
+
+        const second = getEventsForSessionId(events, "session-2000")
+        expect(second).toHaveLength(2)
+        expect(second[0].timestamp).toBe(2000)
+
+        const third = getEventsForSessionId(events, "session-3000")
+        expect(third).toHaveLength(3)
+        expect(third[0].timestamp).toBe(3000)
+      })
+
+      it("returns events for a server-generated session ID", () => {
+        const events = [
+          {
+            type: "ralph_session_start",
+            session: 1,
+            totalSessions: 2,
+            timestamp: 1000,
+            sessionId: "uuid-abc",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 1001 } as ChatEvent,
+          {
+            type: "ralph_session_start",
+            session: 2,
+            totalSessions: 2,
+            timestamp: 2000,
+            sessionId: "uuid-def",
+          } as ChatEvent,
+          { type: "assistant", timestamp: 2001 } as ChatEvent,
+        ]
+
+        const first = getEventsForSessionId(events, "uuid-abc")
+        expect(first).toHaveLength(2)
+        expect(first[0].timestamp).toBe(1000)
+
+        const second = getEventsForSessionId(events, "uuid-def")
+        expect(second).toHaveLength(2)
+        expect(second[0].timestamp).toBe(2000)
+      })
+
+      it("returns all events when session ID is not found", () => {
+        const events = createEventsWithSessions()
+        const result = getEventsForSessionId(events, "nonexistent-id")
+        expect(result).toEqual(events)
+      })
+
+      it("returns all events from empty array when sessionId is null", () => {
+        const result = getEventsForSessionId([], null)
+        expect(result).toEqual([])
+      })
+
+      it("returns all events from empty array for non-null sessionId", () => {
+        const result = getEventsForSessionId([], "some-id")
+        expect(result).toEqual([])
+      })
+    })
+
+    describe("getTaskFromSessionEvents", () => {
+      it("returns null when no ralph_task_started events exist", () => {
+        const events = [
+          { type: "assistant", timestamp: 1000 },
+          { type: "user_message", timestamp: 1001 },
+        ] as ChatEvent[]
+        expect(getTaskFromSessionEvents(events)).toBeNull()
+      })
+
+      it("extracts task ID from ralph_task_started event", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-123",
+          },
+          { type: "assistant", timestamp: 1002 },
+        ] as ChatEvent[]
+        const taskId = getTaskFromSessionEvents(events)
+        // Returns just the task ID string, not an object
+        expect(taskId).toBe("rui-123")
+      })
+
+      it("returns task ID from ralph_task_started event", () => {
+        const events = [
+          { type: "ralph_task_started", timestamp: 1000, taskId: "rui-123" },
+        ] as ChatEvent[]
+        // Returns just the task ID string, not an object
+        expect(getTaskFromSessionEvents(events)).toBe("rui-123")
+      })
+
+      it("returns null if ralph_task_started event is missing both taskId and taskTitle", () => {
+        const events = [{ type: "ralph_task_started", timestamp: 1000 }] as ChatEvent[]
+        expect(getTaskFromSessionEvents(events)).toBeNull()
+      })
+
+      it("returns the first task ID when multiple ralph_task_started events exist", () => {
+        const events = [
+          {
+            type: "ralph_task_started",
+            timestamp: 1000,
+            taskId: "rui-111",
+          },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-222",
+          },
+        ] as ChatEvent[]
+        const taskId = getTaskFromSessionEvents(events)
+        // Returns just the task ID string, not an object
+        expect(taskId).toBe("rui-111")
+      })
+
+      // Note: The function no longer parses task info from assistant message text.
+      // It only looks at ralph_task_started events. Task titles are looked up from beads.
+      it("returns null when only <start_task> tag in assistant message (no ralph_task_started event)", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "assistant",
+            timestamp: 1001,
+            message: {
+              content: [{ type: "text", text: "<start_task>rui-123</start_task>" }],
+            },
+          },
+        ] as ChatEvent[]
+        const taskId = getTaskFromSessionEvents(events)
+        // Function only looks at ralph_task_started events, not assistant message text
+        expect(taskId).toBeNull()
+      })
+
+      it("returns null when only emoji format in assistant message (no ralph_task_started event)", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "assistant",
+            timestamp: 1001,
+            message: {
+              content: [{ type: "text", text: "✨ Starting **rui-456 Fix the button layout**" }],
+            },
+          },
+        ] as ChatEvent[]
+        const taskId = getTaskFromSessionEvents(events)
+        // Function only looks at ralph_task_started events, not assistant message text
+        expect(taskId).toBeNull()
+      })
+
+      it("returns task ID from ralph_task_started event ignoring assistant message text", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-111",
+          },
+          {
+            type: "assistant",
+            timestamp: 1002,
+            message: {
+              content: [{ type: "text", text: "✨ Starting **rui-222 From text**" }],
+            },
+          },
+        ] as ChatEvent[]
+        const taskId = getTaskFromSessionEvents(events)
+        // Only returns the ID from ralph_task_started event
+        expect(taskId).toBe("rui-111")
+      })
+
+      it("returns null when assistant message has no ralph_task_started event", () => {
+        const events = [
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "assistant",
+            timestamp: 1001,
+            message: {
+              content: [{ type: "text", text: "Just a normal message without task info" }],
+            },
+          },
+        ] as ChatEvent[]
+        expect(getTaskFromSessionEvents(events)).toBeNull()
+      })
+    })
+
+    describe("getSessionTaskIds", () => {
+      it("returns empty array when no events", () => {
+        expect(getSessionTaskIds([])).toEqual([])
+      })
+
+      it("returns empty array when no session boundaries", () => {
+        const events = [
+          { type: "assistant", timestamp: 1000 },
+          { type: "user_message", timestamp: 1001 },
+        ] as ChatEvent[]
+        expect(getSessionTaskIds(events)).toEqual([])
+      })
+
+      it("returns task ID for each session", () => {
+        const events = [
+          // First session
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-111",
+          },
+          { type: "assistant", timestamp: 1002 },
+          // Second session
+          { type: "system", timestamp: 2000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 2001,
+            taskId: "rui-222",
+          },
+          { type: "assistant", timestamp: 2002 },
+          // Third session
+          { type: "system", timestamp: 3000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 3001,
+            taskId: "rui-333",
+          },
+        ] as ChatEvent[]
+        expect(getSessionTaskIds(events)).toEqual(["rui-111", "rui-222", "rui-333"])
+      })
+
+      it("returns null values for sessions without tasks", () => {
+        const events = [
+          // First session - has task
+          { type: "system", timestamp: 1000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 1001,
+            taskId: "rui-111",
+          },
+          // Second session - no task
+          { type: "system", timestamp: 2000, subtype: "init" },
+          { type: "assistant", timestamp: 2001 },
+          // Third session - has task
+          { type: "system", timestamp: 3000, subtype: "init" },
+          {
+            type: "ralph_task_started",
+            timestamp: 3001,
+            taskId: "rui-333",
+          },
+        ] as ChatEvent[]
+        expect(getSessionTaskIds(events)).toEqual(["rui-111", null, "rui-333"])
+      })
+    })
+
+    describe("selectSessionTask", () => {
+      it("returns null when no events", () => {
+        const task = selectSessionTask(useAppStore.getState())
+        expect(task).toBeNull()
+      })
+
+      it("returns task from latest session by default", () => {
+        useAppStore.getState().addEvent({
+          type: "system",
+          timestamp: 1000,
+          subtype: "init",
+        })
+        useAppStore.getState().addEvent({
+          type: "ralph_task_started",
+          timestamp: 1001,
+          taskId: "rui-999",
+        })
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBe("rui-999")
+      })
+
+      it("falls back to instance currentTaskId when no events", () => {
+        // Simulate page reload scenario where server sends instance info
+        // with currentTaskId but events don't include ralph_task_started
+        useAppStore.getState().hydrateInstances([
+          {
+            id: DEFAULT_INSTANCE_ID,
+            name: "Default",
+            agentName: "Ralph",
+            status: "running",
+            worktreePath: null,
+            branch: null,
+            currentTaskId: "rui-restored",
+            createdAt: Date.now(),
+            mergeConflict: null,
+          },
+        ])
+
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBe("rui-restored")
+      })
+
+      it("returns null when instance has no currentTaskId", () => {
+        // Simulate scenario where there's no task ID
+        useAppStore.getState().hydrateInstances([
+          {
+            id: DEFAULT_INSTANCE_ID,
+            name: "Default",
+            agentName: "Ralph",
+            status: "running",
+            worktreePath: null,
+            branch: null,
+            currentTaskId: null,
+            createdAt: Date.now(),
+            mergeConflict: null,
+          },
+        ])
+
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBeNull()
+      })
+
+      it("prefers event task over instance fallback", () => {
+        // Set up instance with current task info
+        useAppStore.getState().hydrateInstances([
+          {
+            id: DEFAULT_INSTANCE_ID,
+            name: "Default",
+            agentName: "Ralph",
+            status: "running",
+            worktreePath: null,
+            branch: null,
+            currentTaskId: "rui-instance",
+            createdAt: Date.now(),
+            mergeConflict: null,
+          },
+        ])
+
+        // Add a ralph_task_started event for a DIFFERENT task
+        useAppStore.getState().addEvent({
+          type: "ralph_task_started",
+          timestamp: 1001,
+          taskId: "rui-event",
+        })
+
+        const taskId = selectSessionTask(useAppStore.getState())
+        expect(taskId).toBe("rui-event")
+      })
+    })
+
+    describe("session selectors", () => {
+      beforeEach(() => {
+        const events = createEventsWithSessions()
+        events.forEach(e => useAppStore.getState().addEvent(e))
+      })
+
+      it("selectSessionCount returns correct count", () => {
+        const state = useAppStore.getState()
+        expect(selectSessionCount(state)).toBe(3)
+      })
+
+      it("selectCurrentSessionEvents returns latest session events", () => {
+        // Always returns the latest session's events (historical navigation is URL-based)
+        const events = selectCurrentSessionEvents(useAppStore.getState())
+        expect(events).toHaveLength(3)
+        expect(events[0].timestamp).toBe(3000)
+      })
+    })
+  })
+
+  describe("connection status", () => {
+    it("sets connection status", () => {
+      useAppStore.getState().setConnectionStatus("connected")
+      expect(useAppStore.getState().connectionStatus).toBe("connected")
+    })
+
+    it("updates through all connection states", () => {
+      const { setConnectionStatus } = useAppStore.getState()
+
+      setConnectionStatus("connecting")
+      expect(useAppStore.getState().connectionStatus).toBe("connecting")
+
+      setConnectionStatus("connected")
+      expect(useAppStore.getState().connectionStatus).toBe("connected")
+
+      setConnectionStatus("disconnected")
+      expect(useAppStore.getState().connectionStatus).toBe("disconnected")
+    })
+  })
+
+  describe("persistence error", () => {
+    it("sets persistence error", () => {
+      useAppStore.getState().setPersistenceError({
+        message: "Failed to persist events",
+        failedCount: 3,
+      })
+
+      const error = useAppStore.getState().persistenceError
+      expect(error).toEqual({
+        message: "Failed to persist events",
+        failedCount: 3,
+      })
+    })
+
+    it("clears persistence error", () => {
+      useAppStore.getState().setPersistenceError({
+        message: "Failed to persist events",
+        failedCount: 3,
+      })
+      expect(useAppStore.getState().persistenceError).not.toBeNull()
+
+      useAppStore.getState().clearPersistenceError()
+      expect(useAppStore.getState().persistenceError).toBeNull()
+    })
+
+    it("can set error to null directly", () => {
+      useAppStore.getState().setPersistenceError({
+        message: "Failed to persist events",
+        failedCount: 3,
+      })
+
+      useAppStore.getState().setPersistenceError(null)
+      expect(useAppStore.getState().persistenceError).toBeNull()
+    })
+  })
+
+  describe("sidebar state", () => {
+    it("sets sidebar width", () => {
+      useAppStore.getState().setSidebarWidth(400)
+      expect(useAppStore.getState().sidebarWidth).toBe(400)
+
+      useAppStore.getState().setSidebarWidth(250)
+      expect(useAppStore.getState().sidebarWidth).toBe(250)
+    })
+
+    it("persists sidebar width to localStorage", () => {
+      useAppStore.getState().setSidebarWidth(450)
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.sidebarWidth).toBe(450)
+    })
+  })
+
+  describe("task chat panel state", () => {
+    it("sets task chat open state", () => {
+      useAppStore.getState().setTaskChatOpen(true)
+      expect(useAppStore.getState().taskChatOpen).toBe(true)
+
+      useAppStore.getState().setTaskChatOpen(false)
+      expect(useAppStore.getState().taskChatOpen).toBe(false)
+    })
+
+    it("toggles task chat state", () => {
+      // Initial state is true
+      expect(useAppStore.getState().taskChatOpen).toBe(true)
+
+      useAppStore.getState().toggleTaskChat()
+      expect(useAppStore.getState().taskChatOpen).toBe(false)
+
+      useAppStore.getState().toggleTaskChat()
+      expect(useAppStore.getState().taskChatOpen).toBe(true)
+    })
+
+    it("sets task chat width", () => {
+      useAppStore.getState().setTaskChatWidth(500)
+      expect(useAppStore.getState().taskChatWidth).toBe(500)
+
+      useAppStore.getState().setTaskChatWidth(350)
+      expect(useAppStore.getState().taskChatWidth).toBe(350)
+    })
+
+    it("persists task chat width to localStorage", () => {
+      useAppStore.getState().setTaskChatWidth(550)
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatWidth).toBe(550)
+    })
+
+    it("persists task chat open state to localStorage", () => {
+      useAppStore.getState().setTaskChatOpen(false)
+      let stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(false)
+
+      useAppStore.getState().setTaskChatOpen(true)
+      stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(true)
+    })
+
+    it("persists task chat open state when toggling", () => {
+      // Start with true
+      useAppStore.getState().setTaskChatOpen(true)
+      let stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(true)
+
+      // Toggle to false
+      useAppStore.getState().toggleTaskChat()
+      expect(useAppStore.getState().taskChatOpen).toBe(false)
+      stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(false)
+
+      // Toggle back to true
+      useAppStore.getState().toggleTaskChat()
+      expect(useAppStore.getState().taskChatOpen).toBe(true)
+      stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.taskChatOpen).toBe(true)
+    })
+
+    it("adds task chat messages", () => {
+      const message: TaskChatMessage = {
+        id: "msg-1",
+        role: "user",
+        content: "Hello",
+        timestamp: Date.now(),
+      }
+      useAppStore.getState().addTaskChatMessage(message)
+
+      const messages = useAppStore.getState().taskChatMessages
+      expect(messages).toHaveLength(1)
+      expect(messages[0]).toEqual(message)
+    })
+
+    it("preserves message order", () => {
+      const { addTaskChatMessage } = useAppStore.getState()
+
+      addTaskChatMessage({ id: "1", role: "user", content: "First", timestamp: 1 })
+      addTaskChatMessage({ id: "2", role: "assistant", content: "Second", timestamp: 2 })
+      addTaskChatMessage({ id: "3", role: "user", content: "Third", timestamp: 3 })
+
+      const messages = useAppStore.getState().taskChatMessages
+      expect(messages).toHaveLength(3)
+      expect(messages[0].content).toBe("First")
+      expect(messages[1].content).toBe("Second")
+      expect(messages[2].content).toBe("Third")
+    })
+
+    it("clears all task chat messages", () => {
+      const { addTaskChatMessage, clearTaskChatMessages } = useAppStore.getState()
+
+      addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
+      addTaskChatMessage({ id: "2", role: "assistant", content: "Test", timestamp: 2 })
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(2)
+
+      clearTaskChatMessages()
+      expect(useAppStore.getState().taskChatMessages).toEqual([])
+    })
+
+    it("removes a specific task chat message by id", () => {
+      const { addTaskChatMessage, removeTaskChatMessage } = useAppStore.getState()
+
+      addTaskChatMessage({ id: "1", role: "user", content: "First", timestamp: 1 })
+      addTaskChatMessage({ id: "2", role: "assistant", content: "Second", timestamp: 2 })
+      addTaskChatMessage({ id: "3", role: "user", content: "Third", timestamp: 3 })
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(3)
+
+      removeTaskChatMessage("2")
+      const messages = useAppStore.getState().taskChatMessages
+      expect(messages).toHaveLength(2)
+      expect(messages[0].id).toBe("1")
+      expect(messages[1].id).toBe("3")
+    })
+
+    it("does nothing when removing non-existent message id", () => {
+      const { addTaskChatMessage, removeTaskChatMessage } = useAppStore.getState()
+
+      addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+
+      removeTaskChatMessage("non-existent")
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+    })
+
+    it("sets task chat loading state", () => {
+      useAppStore.getState().setTaskChatLoading(true)
+      expect(useAppStore.getState().taskChatLoading).toBe(true)
+
+      useAppStore.getState().setTaskChatLoading(false)
+      expect(useAppStore.getState().taskChatLoading).toBe(false)
+    })
+
+    it("adds a task chat event", () => {
+      const event = {
+        type: "stream_event",
+        timestamp: Date.now(),
+        event: { type: "content_block_delta", delta: { text: "Hello" } },
+      }
+      useAppStore.getState().addTaskChatEvent(event)
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
+
+      const events = useAppStore.getState().taskChatEvents
+      expect(events).toHaveLength(1)
+      expect(events[0]).toEqual(event)
+    })
+
+    it("preserves task chat event order", () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: { type: "message_start" } })
+      addTaskChatEvent({
+        type: "stream_event",
+        timestamp: 2,
+        event: { type: "content_block_delta" },
+      })
+      addTaskChatEvent({ type: "assistant", timestamp: 3, message: { content: [] } })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
+
+      const events = useAppStore.getState().taskChatEvents
+      expect(events).toHaveLength(3)
+      expect(events[0].timestamp).toBe(1)
+      expect(events[1].timestamp).toBe(2)
+      expect(events[2].timestamp).toBe(3)
+    })
+
+    it("clears task chat events", () => {
+      const { addTaskChatEvent, clearTaskChatEvents } = useAppStore.getState()
+
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: {} })
+      addTaskChatEvent({ type: "assistant", timestamp: 2, message: {} })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(2)
+
+      clearTaskChatEvents()
+      expect(useAppStore.getState().taskChatEvents).toEqual([])
+    })
+
+    it("clearTaskChatMessages also clears task chat events", () => {
+      const { addTaskChatMessage, addTaskChatEvent, clearTaskChatMessages } = useAppStore.getState()
+
+      addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
+      addTaskChatEvent({ type: "stream_event", timestamp: 2, event: {} })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
+      expect(useAppStore.getState().taskChatMessages).toHaveLength(1)
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
+
+      clearTaskChatMessages()
+      expect(useAppStore.getState().taskChatMessages).toEqual([])
+      expect(useAppStore.getState().taskChatEvents).toEqual([])
+    })
+
+    it("batches multiple addTaskChatEvent calls into a single state update", async () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      // Add multiple events without flushing
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: { type: "start" } })
+      addTaskChatEvent({ type: "stream_event", timestamp: 2, event: { type: "delta" } })
+      addTaskChatEvent({ type: "stream_event", timestamp: 3, event: { type: "end" } })
+
+      // Events should NOT be in state yet (still batched)
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(0)
+
+      // Flush the batch
+      flushTaskChatEventsBatch()
+
+      // Now all events should be in state
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(3)
+      expect(useAppStore.getState().taskChatEvents[0].timestamp).toBe(1)
+      expect(useAppStore.getState().taskChatEvents[1].timestamp).toBe(2)
+      expect(useAppStore.getState().taskChatEvents[2].timestamp).toBe(3)
+    })
+
+    it("auto-flushes batch after timeout", async () => {
+      vi.useFakeTimers()
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      // Add an event
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: { type: "test" } })
+
+      // Events should NOT be in state yet
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(0)
+
+      // Advance timers past the batch interval (16ms)
+      await vi.advanceTimersByTimeAsync(20)
+
+      // Now the event should be in state
+      expect(useAppStore.getState().taskChatEvents).toHaveLength(1)
+
+      vi.useRealTimers()
+    })
+
+    it("clearTaskChatEvents cancels pending batch", () => {
+      const { addTaskChatEvent, clearTaskChatEvents } = useAppStore.getState()
+
+      // Add events to batch
+      addTaskChatEvent({ type: "stream_event", timestamp: 1, event: {} })
+      addTaskChatEvent({ type: "stream_event", timestamp: 2, event: {} })
+
+      // Clear should cancel the batch
+      clearTaskChatEvents()
+
+      // Flush should have no effect since batch was cleared
+      flushTaskChatEventsBatch()
+
+      // State should still be empty
+      expect(useAppStore.getState().taskChatEvents).toEqual([])
+    })
+  })
+
+  describe("sidebar width localStorage persistence", () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    it("loads sidebar width from localStorage on store creation", async () => {
+      // Set localStorage using persist middleware format (sidebarWidth is now a percentage)
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ sidebarWidth: 35 }))
+
+      // Re-import the module to get fresh store instance
+      // We need to use dynamic import to force re-evaluation
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().sidebarWidth).toBe(35)
+    })
+
+    it("uses default width when localStorage is empty", async () => {
+      localStorage.clear()
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().sidebarWidth).toBe(20)
+    })
+
+    it("uses default width when localStorage value is invalid", async () => {
+      // Persist middleware handles invalid JSON gracefully by using defaults
+      localStorage.setItem(PERSIST_NAME, "invalid-json")
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().sidebarWidth).toBe(20)
+    })
+  })
+
+  describe("task chat width localStorage persistence", () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    it("loads task chat width from localStorage on store creation", async () => {
+      // taskChatWidth is now a percentage (0-100)
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ taskChatWidth: 35 }))
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().taskChatWidth).toBe(35)
+    })
+
+    it("uses default width when localStorage is empty", async () => {
+      localStorage.clear()
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().taskChatWidth).toBe(25)
+    })
+
+    it("uses default width when localStorage value is invalid", async () => {
+      // Persist middleware handles invalid JSON gracefully by using defaults
+      localStorage.setItem(PERSIST_NAME, "invalid-json")
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().taskChatWidth).toBe(25)
+    })
+  })
+
+  describe("task chat open state localStorage persistence", () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    it("loads task chat open state from localStorage on store creation", async () => {
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ taskChatOpen: false }))
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().taskChatOpen).toBe(false)
+    })
+
+    it("loads true state from localStorage on store creation", async () => {
+      localStorage.setItem(PERSIST_NAME, createPersistedState({ taskChatOpen: true }))
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().taskChatOpen).toBe(true)
+    })
+
+    it("uses default open state (true) when localStorage is empty", async () => {
+      localStorage.clear()
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().taskChatOpen).toBe(true)
+    })
+
+    it("uses default open state when localStorage value is invalid", async () => {
+      // Persist middleware handles invalid JSON gracefully by using defaults
+      localStorage.setItem(PERSIST_NAME, "invalid-json")
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      expect(freshStore.getState().taskChatOpen).toBe(true)
+    })
+  })
+
+  describe("activeInstanceId localStorage persistence", () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    it("persists activeInstanceId to localStorage when switching instances", () => {
+      // Create a second instance
+      const state = useAppStore.getState()
+      const newInstance = createRalphInstance("second-instance", "Second")
+      const newInstances = new Map(state.instances)
+      newInstances.set("second-instance", newInstance)
+      useAppStore.setState({ instances: newInstances })
+
+      // Switch to the new instance
+      useAppStore.getState().setActiveInstanceId("second-instance")
+
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.activeInstanceId).toBe("second-instance")
+    })
+
+    it("persists activeInstanceId to localStorage when creating a new instance", () => {
+      useAppStore.getState().createInstance("new-instance", "New Instance")
+
+      const stored = JSON.parse(localStorage.getItem(PERSIST_NAME) ?? "{}")
+      expect(stored.state?.activeInstanceId).toBe("new-instance")
+    })
+
+    it("does not change activeInstanceId when switching to non-existent instance", () => {
+      const originalActiveId = useAppStore.getState().activeInstanceId
+
+      // Try to switch to non-existent instance
+      useAppStore.getState().setActiveInstanceId("non-existent")
+
+      // Should still be the original value in state
+      expect(useAppStore.getState().activeInstanceId).toBe(originalActiveId)
+    })
+
+    it("does not persist when switching to the same instance", () => {
+      const originalActiveId = useAppStore.getState().activeInstanceId
+
+      // Switch to the same instance
+      useAppStore.getState().setActiveInstanceId(originalActiveId)
+
+      // State should remain unchanged (the persist middleware only writes on actual state changes)
+      expect(useAppStore.getState().activeInstanceId).toBe(originalActiveId)
+    })
+
+    it("loads activeInstanceId from localStorage on store creation", async () => {
+      // First create an instance with this ID to make it valid
+      useAppStore.getState().createInstance("persisted-instance", "Persisted")
+
+      vi.resetModules()
+      const { useAppStore: freshStore } = await import(".././index")
+
+      // With persist middleware, both instances and activeInstanceId are persisted together.
+      // Since we created "persisted-instance" above, it gets persisted and rehydrated,
+      // so the activeInstanceId remains valid.
+      expect(freshStore.getState().activeInstanceId).toBe("persisted-instance")
+      expect(freshStore.getState().instances.has("persisted-instance")).toBe(true)
+    })
+
+    it("uses default ID when localStorage has non-existent instance ID", async () => {
+      // Set localStorage with a non-existent instance ID (but valid format)
+      // The persist middleware's merge function will validate that activeInstanceId
+      // exists in instances and fall back to currentState's activeInstanceId if not
+      const persistedInstance = createRalphInstance("other-instance", "Other")
+      const instances = new Map([[persistedInstance.id, persistedInstance]])
+      localStorage.setItem(
+        PERSIST_NAME,
+        JSON.stringify({
+          state: {
+            ...JSON.parse(createPersistedState({})).state,
+            activeInstanceId: "non-existent-instance", // This ID is not in instances
+            instances: serializeInstances(instances, "other-instance"),
+          },
+          version: 1,
+        }),
+      )
+
+      vi.resetModules()
+      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
+        await import(".././index")
+
+      // Should fall back to the default instance since the stored activeInstanceId
+      // doesn't exist in the persisted instances, and the merge function uses
+      // currentState.activeInstanceId as fallback
+      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
+    })
+
+    it("uses default ID when localStorage is empty", async () => {
+      localStorage.clear()
+
+      vi.resetModules()
+      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
+        await import(".././index")
+
+      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
+    })
+
+    it("uses default ID when localStorage has invalid JSON", async () => {
+      localStorage.setItem(PERSIST_NAME, "invalid-json")
+
+      vi.resetModules()
+      const { useAppStore: freshStore, DEFAULT_INSTANCE_ID: freshDefaultId } =
+        await import(".././index")
+
+      expect(freshStore.getState().activeInstanceId).toBe(freshDefaultId)
+    })
+  })
+
+  describe("reset", () => {
+    it("resets all state to initial values", () => {
+      // Modify all state
+      const {
+        setRalphStatus,
+        addEvent,
+        setWorkspace,
+        setAccentColor,
+        setBranch,
+        setSession,
+        setConnectionStatus,
+        setSidebarWidth,
+        setTaskChatOpen,
+        setTaskChatWidth,
+        addTaskChatMessage,
+        setTaskChatLoading,
+      } = useAppStore.getState()
+
+      setRalphStatus("running")
+      addEvent(makeResultEvent(1000, 500))
+      setWorkspace("/path")
+      setAccentColor("#4d9697")
+      setBranch("feature/test")
+      setSession({ current: 5, total: 10 })
+      setConnectionStatus("connected")
+      setSidebarWidth(400)
+      setTaskChatOpen(true)
+      setTaskChatWidth(500)
+      addTaskChatMessage({ id: "1", role: "user", content: "Test", timestamp: 1 })
+      useAppStore.getState().addTaskChatEvent({ type: "stream_event", timestamp: 1, event: {} })
+      flushTaskChatEventsBatch() // Flush batch to apply events immediately
+      setTaskChatLoading(true)
+
+      // Verify state is modified (use selectors for instance-level data)
+      let state = useAppStore.getState()
+      expect(selectRalphStatus(state)).toBe("running")
+      expect(selectEvents(state)).toHaveLength(1)
+      expect(state.workspace).toBe("/path")
+      expect(state.accentColor).toBe("#4d9697")
+      expect(state.branch).toBe("feature/test")
+      expect(selectTokenUsage(state)).toEqual({ input: 1000, output: 500 })
+      expect(selectSession(state)).toEqual({ current: 5, total: 10 })
+      expect(state.connectionStatus).toBe("connected")
+      expect(state.sidebarWidth).toBe(400)
+      expect(state.taskChatOpen).toBe(true)
+      expect(state.taskChatWidth).toBe(500)
+      expect(state.taskChatMessages).toHaveLength(1)
+      expect(state.taskChatEvents).toHaveLength(1)
+      expect(state.taskChatLoading).toBe(true)
+
+      // Reset
+      useAppStore.getState().reset()
+
+      // Verify reset (use selectors for instance-level data)
+      state = useAppStore.getState()
+      expect(selectRalphStatus(state)).toBe("stopped")
+      expect(selectEvents(state)).toEqual([])
+      expect(state.workspace).toBeNull()
+      expect(state.accentColor).toBeNull()
+      expect(state.branch).toBeNull()
+      expect(selectTokenUsage(state)).toEqual({ input: 0, output: 0 })
+      expect(selectSession(state)).toEqual({ current: 0, total: 0 })
+      expect(state.connectionStatus).toBe("disconnected")
+      expect(state.sidebarWidth).toBe(20)
+      expect(state.taskChatOpen).toBe(true)
+      expect(state.taskChatWidth).toBe(25)
+      expect(state.taskChatMessages).toEqual([])
+      expect(state.taskChatEvents).toEqual([])
+      expect(state.taskChatLoading).toBe(false)
+    })
+  })
+
+  describe("search visibility", () => {
+    it("has isSearchVisible false initially", () => {
+      expect(useAppStore.getState().isSearchVisible).toBe(false)
+    })
+
+    it("setSearchVisible sets the visibility", () => {
+      useAppStore.getState().setSearchVisible(true)
+      expect(useAppStore.getState().isSearchVisible).toBe(true)
+
+      useAppStore.getState().setSearchVisible(false)
+      expect(useAppStore.getState().isSearchVisible).toBe(false)
+    })
+
+    it("showSearch sets isSearchVisible to true", () => {
+      useAppStore.getState().showSearch()
+      expect(useAppStore.getState().isSearchVisible).toBe(true)
+    })
+
+    it("hideSearch sets isSearchVisible to false", () => {
+      useAppStore.getState().showSearch()
+      expect(useAppStore.getState().isSearchVisible).toBe(true)
+
+      useAppStore.getState().hideSearch()
+      expect(useAppStore.getState().isSearchVisible).toBe(false)
+    })
+
+    it("hideSearch also clears the search query", () => {
+      beadsViewStore.getState().setTaskSearchQuery("test query")
+      useAppStore.getState().showSearch()
+
+      expect(beadsViewStore.getState().taskSearchQuery).toBe("test query")
+      expect(useAppStore.getState().isSearchVisible).toBe(true)
+
+      useAppStore.getState().hideSearch()
+      expect(beadsViewStore.getState().taskSearchQuery).toBe("")
+      expect(useAppStore.getState().isSearchVisible).toBe(false)
+    })
+  })
+
+  describe("per-instance actions", () => {
+    beforeEach(() => {
+      // Create two instances for testing
+      useAppStore.getState().createInstance("instance-1", "Instance 1", "Ralph-1")
+      useAppStore.getState().createInstance("instance-2", "Instance 2", "Ralph-2")
+      // Set instance-1 as active
+      useAppStore.getState().setActiveInstanceId("instance-1")
+    })
+
+    describe("addEventForInstance action", () => {
+      it("adds event to a specific instance", () => {
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("instance-2", event)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.events).toContainEqual(event)
+      })
+
+      it("does not affect other instances", () => {
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("instance-2", event)
+
+        const instance1 = useAppStore.getState().instances.get("instance-1")
+        expect(instance1?.events).not.toContainEqual(event)
+      })
+
+      it("selector returns events from active instance", () => {
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("instance-1", event)
+
+        expect(selectEvents(useAppStore.getState())).toContainEqual(event)
+      })
+
+      it("selector does not return events from non-active instance", () => {
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("instance-2", event)
+
+        expect(selectEvents(useAppStore.getState())).not.toContainEqual(event)
+      })
+
+      it("warns when adding to non-existent instance", () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+        const event: ChatEvent = { type: "tool_use", timestamp: 1234 }
+
+        useAppStore.getState().addEventForInstance("non-existent", event)
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          "[store] Cannot add event to non-existent instance: non-existent",
+        )
+        warnSpy.mockRestore()
+      })
+    })
+
+    describe("setEventsForInstance action", () => {
+      it("sets events for a specific instance", () => {
+        const events: ChatEvent[] = [
+          { type: "tool_use", timestamp: 1234 },
+          { type: "tool_result", timestamp: 1235 },
+        ]
+
+        useAppStore.getState().setEventsForInstance("instance-2", events)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.events).toEqual(events)
+      })
+
+      it("merges with existing events", () => {
+        // Add initial event
+        useAppStore.getState().addEventForInstance("instance-2", { type: "old", timestamp: 1000 })
+
+        // Set new events (should merge, not replace)
+        const newEvents: ChatEvent[] = [{ type: "new", timestamp: 2000 }]
+        useAppStore.getState().setEventsForInstance("instance-2", newEvents)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        // Both events should be present, sorted by timestamp
+        expect(instance2?.events).toHaveLength(2)
+        expect(instance2?.events?.[0].type).toBe("old")
+        expect(instance2?.events?.[1].type).toBe("new")
+      })
+
+      it("selector returns events from active instance after setEventsForInstance", () => {
+        const events: ChatEvent[] = [{ type: "tool_use", timestamp: 1234 }]
+
+        useAppStore.getState().setEventsForInstance("instance-1", events)
+
+        // Events are merged with existing (empty) events
+        expect(selectEvents(useAppStore.getState())).toEqual(events)
+      })
+    })
+
+    describe("replaceEventsForInstance action", () => {
+      it("replaces existing events", () => {
+        // Add initial event
+        useAppStore.getState().addEventForInstance("instance-2", { type: "old", timestamp: 1000 })
+
+        // Replace with new events (should fully replace, not merge)
+        const newEvents: ChatEvent[] = [{ type: "new", timestamp: 2000 }]
+        useAppStore.getState().replaceEventsForInstance("instance-2", newEvents)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.events).toEqual(newEvents)
+      })
+
+      it("selector returns events from active instance after replaceEventsForInstance", () => {
+        // Add initial event to active instance
+        useAppStore
+          .getState()
+          .addEventForInstance("instance-1", { type: "old", timestamp: 1000 } as ChatEvent)
+
+        // Replace with new events
+        const newEvents: ChatEvent[] = [{ type: "new", timestamp: 2000 }]
+        useAppStore.getState().replaceEventsForInstance("instance-1", newEvents)
+
+        expect(selectEvents(useAppStore.getState())).toEqual(newEvents)
+      })
+    })
+
+    describe("setStatusForInstance action", () => {
+      it("sets status for a specific instance", () => {
+        useAppStore.getState().setStatusForInstance("instance-2", "running")
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.status).toBe("running")
+      })
+
+      it("sets runStartedAt when transitioning to running", () => {
+        useAppStore.getState().setStatusForInstance("instance-2", "running")
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.runStartedAt).not.toBeNull()
+      })
+
+      it("clears runStartedAt when transitioning to stopped", () => {
+        // First set to running
+        useAppStore.getState().setStatusForInstance("instance-2", "running")
+        expect(useAppStore.getState().instances.get("instance-2")?.runStartedAt).not.toBeNull()
+
+        // Then stop
+        useAppStore.getState().setStatusForInstance("instance-2", "stopped")
+        expect(useAppStore.getState().instances.get("instance-2")?.runStartedAt).toBeNull()
+      })
+
+      it("selectors return data from active instance", () => {
+        useAppStore.getState().setStatusForInstance("instance-1", "running")
+
+        expect(selectRalphStatus(useAppStore.getState())).toBe("running")
+        expect(selectRunStartedAt(useAppStore.getState())).not.toBeNull()
+      })
+
+      it("selectors still return active instance data when non-active instance is updated", () => {
+        useAppStore.getState().setStatusForInstance("instance-2", "running")
+
+        // Active instance is still instance-1 with stopped status
+        expect(selectRalphStatus(useAppStore.getState())).toBe("stopped")
+      })
+    })
+
+    describe("addTokenUsageForInstance action", () => {
+      it("adds token usage to a specific instance", () => {
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 100, output: 50 })
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 100, output: 50 })
+      })
+
+      it("accumulates token usage", () => {
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 100, output: 50 })
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 200, output: 100 })
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 300, output: 150 })
+      })
+
+      it("selector returns token usage from active instance events", () => {
+        // selectTokenUsage derives from events, not the stored tokenUsage property
+        useAppStore.getState().addEventForInstance("instance-1", makeResultEvent(100, 50))
+
+        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 100, output: 50 })
+      })
+    })
+
+    describe("updateContextWindowUsedForInstance action", () => {
+      it("updates context window for a specific instance", () => {
+        useAppStore.getState().updateContextWindowUsedForInstance("instance-2", 50000)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.contextWindow.used).toBe(50000)
+      })
+
+      it("selector returns context window derived from active instance events", () => {
+        // selectContextWindow derives used from events (input + output)
+        useAppStore.getState().addEventForInstance("instance-1", makeResultEvent(50000, 25000))
+
+        expect(selectContextWindow(useAppStore.getState()).used).toBe(75000)
+      })
+    })
+
+    describe("setSessionForInstance action", () => {
+      it("sets session for a specific instance", () => {
+        useAppStore.getState().setSessionForInstance("instance-2", { current: 3, total: 5 })
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.session).toEqual({ current: 3, total: 5 })
+      })
+
+      it("selector returns session from active instance", () => {
+        useAppStore.getState().setSessionForInstance("instance-1", { current: 2, total: 4 })
+
+        expect(selectSession(useAppStore.getState())).toEqual({ current: 2, total: 4 })
+      })
+    })
+
+    describe("resetSessionStatsForInstance action", () => {
+      it("resets session stats for a specific instance", () => {
+        // Set up state on instance-2
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 2000, output: 1000 })
+        useAppStore.getState().updateContextWindowUsedForInstance("instance-2", 80000)
+        useAppStore.getState().setSessionForInstance("instance-2", { current: 5, total: 10 })
+
+        // Verify state was set
+        let instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 2000, output: 1000 })
+        expect(instance2?.contextWindow.used).toBe(80000)
+        expect(instance2?.session).toEqual({ current: 5, total: 10 })
+
+        // Reset session stats for instance-2
+        useAppStore.getState().resetSessionStatsForInstance("instance-2")
+
+        // Verify all session stats were reset
+        instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 0, output: 0 })
+        expect(instance2?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+        expect(instance2?.session).toEqual({ current: 0, total: 0 })
+      })
+
+      it("resets instance properties when resetting for active instance", () => {
+        // Set up stored properties on the active instance (instance-1)
+        useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 4000, output: 2000 })
+        useAppStore.getState().updateContextWindowUsedForInstance("instance-1", 120000)
+        useAppStore.getState().setSessionForInstance("instance-1", { current: 8, total: 12 })
+
+        // Verify instance properties were set
+        let instance = useAppStore.getState().instances.get("instance-1")
+        expect(instance?.tokenUsage).toEqual({ input: 4000, output: 2000 })
+        expect(instance?.contextWindow.used).toBe(120000)
+        expect(selectSession(useAppStore.getState())).toEqual({ current: 8, total: 12 })
+
+        // Reset session stats for the active instance
+        useAppStore.getState().resetSessionStatsForInstance("instance-1")
+
+        // Verify instance properties are reset
+        instance = useAppStore.getState().instances.get("instance-1")
+        expect(instance?.tokenUsage).toEqual({ input: 0, output: 0 })
+        expect(instance?.contextWindow).toEqual({ used: 0, max: DEFAULT_CONTEXT_WINDOW_MAX })
+        expect(selectSession(useAppStore.getState())).toEqual({ current: 0, total: 0 })
+      })
+
+      it("selectors return active instance data when resetting non-active instance", () => {
+        // Set up events on the active instance (instance-1) so selectTokenUsage derives values
+        useAppStore.getState().addEventForInstance("instance-1", makeResultEvent(1000, 500))
+        // Set up stored properties on instance-2
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 3000, output: 1500 })
+
+        // Verify selectors return active instance data derived from events (instance-1)
+        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
+
+        // Reset session stats for non-active instance (instance-2)
+        useAppStore.getState().resetSessionStatsForInstance("instance-2")
+
+        // Verify selector still returns active instance data (instance-1, not affected)
+        expect(selectTokenUsage(useAppStore.getState())).toEqual({ input: 1000, output: 500 })
+
+        // But instance-2 properties should be reset
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.tokenUsage).toEqual({ input: 0, output: 0 })
+      })
+
+      it("does nothing for non-existent instance", () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+        useAppStore.getState().resetSessionStatsForInstance("non-existent")
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          "[store] Cannot reset session stats for non-existent instance: non-existent",
+        )
+        warnSpy.mockRestore()
+      })
+
+      it("preserves other instance state when resetting one instance", () => {
+        // Set up state on both instances
+        useAppStore.getState().addTokenUsageForInstance("instance-1", { input: 1500, output: 750 })
+        useAppStore.getState().addTokenUsageForInstance("instance-2", { input: 2500, output: 1250 })
+        useAppStore.getState().setSessionForInstance("instance-1", { current: 3, total: 6 })
+        useAppStore.getState().setSessionForInstance("instance-2", { current: 4, total: 8 })
+
+        // Reset only instance-2
+        useAppStore.getState().resetSessionStatsForInstance("instance-2")
+
+        // Verify instance-1 was NOT affected
+        const instance1 = useAppStore.getState().instances.get("instance-1")
+        expect(instance1?.tokenUsage).toEqual({ input: 1500, output: 750 })
+        expect(instance1?.session).toEqual({ current: 3, total: 6 })
+      })
+    })
+
+    describe("setMergeConflictForInstance action", () => {
+      it("sets merge conflict for a specific instance", () => {
+        const conflict = {
+          files: ["file1.ts", "file2.ts"],
+          sourceBranch: "ralph/instance-2",
+          timestamp: Date.now(),
+        }
+        useAppStore.getState().setMergeConflictForInstance("instance-2", conflict)
+
+        const instance2 = useAppStore.getState().instances.get("instance-2")
+        expect(instance2?.mergeConflict).toEqual(conflict)
+      })
+
+      it("clears merge conflict when set to null", () => {
+        const conflict = {
+          files: ["file1.ts"],
+          sourceBranch: "ralph/instance-1",
+          timestamp: Date.now(),
+        }
+        useAppStore.getState().setMergeConflictForInstance("instance-1", conflict)
+
+        const instance = useAppStore.getState().instances.get("instance-1")
+        expect(instance?.mergeConflict).toEqual(conflict)
+
+        useAppStore.getState().setMergeConflictForInstance("instance-1", null)
+
+        const updatedInstance = useAppStore.getState().instances.get("instance-1")
+        expect(updatedInstance?.mergeConflict).toBeNull()
+      })
+
+      it("does nothing for non-existent instance", () => {
+        const stateBefore = useAppStore.getState()
+        useAppStore.getState().setMergeConflictForInstance("non-existent", {
+          files: ["file1.ts"],
+          sourceBranch: "ralph/non-existent",
+          timestamp: Date.now(),
+        })
+        const stateAfter = useAppStore.getState()
+
+        // State should be unchanged (except possibly internal timestamps)
+        expect(stateAfter.instances.size).toBe(stateBefore.instances.size)
+      })
+    })
+
+    describe("clearMergeConflictForInstance action", () => {
+      it("clears merge conflict for a specific instance", () => {
+        const conflict = {
+          files: ["file1.ts"],
+          sourceBranch: "ralph/instance-1",
+          timestamp: Date.now(),
+        }
+        useAppStore.getState().setMergeConflictForInstance("instance-1", conflict)
+        useAppStore.getState().clearMergeConflictForInstance("instance-1")
+
+        const instance = useAppStore.getState().instances.get("instance-1")
+        expect(instance?.mergeConflict).toBeNull()
+      })
+
+      it("does nothing for non-existent instance", () => {
+        const stateBefore = useAppStore.getState()
+        useAppStore.getState().clearMergeConflictForInstance("non-existent")
+        const stateAfter = useAppStore.getState()
+
+        expect(stateAfter.instances.size).toBe(stateBefore.instances.size)
+      })
+    })
+  })
+
+  describe("reconnection state (auto-resume)", () => {
+    describe("markRunningBeforeDisconnect action", () => {
+      it("sets wasRunningBeforeDisconnect to true when ralph is running", () => {
+        useAppStore.getState().setRalphStatus("running")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(true)
+      })
+
+      it("sets wasRunningBeforeDisconnect to true when ralph is paused", () => {
+        useAppStore.getState().setRalphStatus("paused")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(true)
+      })
+
+      it("sets wasRunningBeforeDisconnect to false when ralph is stopped", () => {
+        useAppStore.getState().setRalphStatus("stopped")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+      })
+
+      it("sets wasRunningBeforeDisconnect to false when ralph is starting", () => {
+        useAppStore.getState().setRalphStatus("starting")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+      })
+
+      it("records disconnectedAt timestamp when ralph was running", () => {
+        const before = Date.now()
+        useAppStore.getState().setRalphStatus("running")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        const after = Date.now()
+        const disconnectedAt = useAppStore.getState().disconnectedAt
+        expect(disconnectedAt).toBeGreaterThanOrEqual(before)
+        expect(disconnectedAt).toBeLessThanOrEqual(after)
+      })
+
+      it("does not update disconnectedAt when ralph was not running", () => {
+        useAppStore.getState().setRalphStatus("stopped")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        expect(useAppStore.getState().disconnectedAt).toBeNull()
+      })
+    })
+
+    describe("clearRunningBeforeDisconnect action", () => {
+      it("clears wasRunningBeforeDisconnect and disconnectedAt", () => {
+        useAppStore.getState().setRalphStatus("running")
+        useAppStore.getState().markRunningBeforeDisconnect()
+        useAppStore.getState().clearRunningBeforeDisconnect()
+        expect(useAppStore.getState().wasRunningBeforeDisconnect).toBe(false)
+        expect(useAppStore.getState().disconnectedAt).toBeNull()
+      })
+    })
+  })
+
+  describe("mergeEventsById", () => {
+    it("merges events and removes duplicates by id", () => {
+      const existing: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+      ]
+      const incoming: ChatEvent[] = [
+        { id: "event-2", type: "tool_result", timestamp: 2000 }, // duplicate
+        { id: "event-3", type: "system", timestamp: 3000 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(3)
+      expect(result.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+    })
+
+    it("maintains chronological order after merge", () => {
+      const existing: ChatEvent[] = [{ id: "event-2", type: "tool_result", timestamp: 2000 }]
+      const incoming: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 }, // earlier timestamp
+        { id: "event-3", type: "system", timestamp: 3000 }, // later timestamp
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(3)
+      expect(result.map(e => e.timestamp)).toEqual([1000, 2000, 3000])
+    })
+
+    it("appends events without id (no deduplication)", () => {
+      const existing: ChatEvent[] = [{ type: "output", timestamp: 1000, line: "first" }]
+      const incoming: ChatEvent[] = [
+        { type: "output", timestamp: 2000, line: "second" },
+        { type: "output", timestamp: 3000, line: "third" },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(3)
+    })
+
+    it("handles empty existing array", () => {
+      const existing: ChatEvent[] = []
+      const incoming: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(2)
+      expect(result.map(e => e.id)).toEqual(["event-1", "event-2"])
+    })
+
+    it("handles empty incoming array", () => {
+      const existing: ChatEvent[] = [{ id: "event-1", type: "tool_use", timestamp: 1000 }]
+      const incoming: ChatEvent[] = []
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("event-1")
+    })
+
+    it("handles mixed events with and without id", () => {
+      const existing: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { type: "output", timestamp: 1500, line: "log" }, // no id
+      ]
+      const incoming: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 }, // duplicate (with id)
+        { type: "output", timestamp: 2000, line: "another log" }, // no id, not deduped
+        { id: "event-2", type: "system", timestamp: 2500 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(4)
+      // Two tool events (one deduped), two output events (not deduped), one system event
+      const ids = result.filter(e => e.id).map(e => e.id)
+      expect(ids).toEqual(["event-1", "event-2"])
+    })
+
+    it("truncates to maxEvents most recent entries when merged result exceeds limit", () => {
+      const existing: ChatEvent[] = Array.from({ length: 5 }, (_, i) => ({
+        id: `existing-${i}`,
+        type: "tool_use" as const,
+        timestamp: i * 1000,
+      }))
+      const incoming: ChatEvent[] = Array.from({ length: 5 }, (_, i) => ({
+        id: `incoming-${i}`,
+        type: "tool_result" as const,
+        timestamp: (i + 5) * 1000,
+      }))
+
+      const result = mergeEventsById(existing, incoming, 7)
+
+      expect(result).toHaveLength(7)
+      // Should keep the 7 most recent (timestamps 3000..9000)
+      expect(result[0].timestamp).toBe(3000)
+      expect(result[result.length - 1].timestamp).toBe(9000)
+    })
+
+    it("does not truncate when merged events are under the default limit", () => {
+      const existing: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+      ]
+      const incoming: ChatEvent[] = [{ id: "event-3", type: "system", timestamp: 3000 }]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(3)
+      expect(result.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+    })
+
+    it("uses MAX_STORE_EVENTS as default cap", () => {
+      // Create events that exceed MAX_STORE_EVENTS
+      const existing: ChatEvent[] = Array.from({ length: MAX_STORE_EVENTS }, (_, i) => ({
+        id: `existing-${i}`,
+        type: "tool_use" as const,
+        timestamp: i,
+      }))
+      const incoming: ChatEvent[] = [
+        { id: "overflow", type: "system", timestamp: MAX_STORE_EVENTS + 1 },
+      ]
+
+      const result = mergeEventsById(existing, incoming)
+
+      expect(result).toHaveLength(MAX_STORE_EVENTS)
+      // The oldest event should have been dropped, and the new one should be last
+      expect(result[result.length - 1].id).toBe("overflow")
+      expect(result[0].id).toBe("existing-1")
+    })
+
+    it("custom maxEvents parameter caps the result", () => {
+      const existing: ChatEvent[] = Array.from({ length: 3 }, (_, i) => ({
+        id: `event-${i}`,
+        type: "tool_use" as const,
+        timestamp: i * 1000,
+      }))
+      const incoming: ChatEvent[] = Array.from({ length: 3 }, (_, i) => ({
+        id: `event-${i + 3}`,
+        type: "tool_result" as const,
+        timestamp: (i + 3) * 1000,
+      }))
+
+      const result = mergeEventsById(existing, incoming, 4)
+
+      expect(result).toHaveLength(4)
+      // Should keep the 4 most recent (timestamps 2000, 3000, 4000, 5000)
+      expect(result.map(e => e.id)).toEqual(["event-2", "event-3", "event-4", "event-5"])
+    })
+  })
+
+  describe("event deduplication in store actions", () => {
+    it("addEvent deduplicates by id", () => {
+      const event1: ChatEvent = { id: "event-1", type: "tool_use", timestamp: 1000 }
+      const event2: ChatEvent = { id: "event-2", type: "tool_result", timestamp: 2000 }
+
+      useAppStore.getState().addEvent(event1)
+      useAppStore.getState().addEvent(event2)
+      useAppStore.getState().addEvent(event1) // duplicate
+
+      const events = selectEvents(useAppStore.getState())
+      expect(events).toHaveLength(2)
+      expect(events.map(e => e.id)).toEqual(["event-1", "event-2"])
+    })
+
+    it("setEvents merges with existing events and deduplicates", () => {
+      // Simulate pending_events arriving first
+      const pendingEvent: ChatEvent = { id: "event-2", type: "tool_result", timestamp: 2000 }
+      useAppStore.getState().addEvent(pendingEvent)
+
+      // Simulate connected message arriving with full history
+      const serverEvents: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 }, // duplicate
+        { id: "event-3", type: "system", timestamp: 3000 },
+      ]
+      useAppStore.getState().setEvents(serverEvents)
+
+      const events = selectEvents(useAppStore.getState())
+      expect(events).toHaveLength(3)
+      expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+    })
+
+    it("addEventForInstance deduplicates by id", () => {
+      const instanceId = "test-instance"
+      useAppStore.getState().createInstance(instanceId, "Test", "Ralph")
+
+      const event1: ChatEvent = { id: "event-1", type: "tool_use", timestamp: 1000 }
+      const event2: ChatEvent = { id: "event-2", type: "tool_result", timestamp: 2000 }
+
+      useAppStore.getState().addEventForInstance(instanceId, event1)
+      useAppStore.getState().addEventForInstance(instanceId, event2)
+      useAppStore.getState().addEventForInstance(instanceId, event1) // duplicate
+
+      const instance = useAppStore.getState().instances.get(instanceId)
+      expect(instance?.events).toHaveLength(2)
+      expect(instance?.events.map(e => e.id)).toEqual(["event-1", "event-2"])
+    })
+
+    it("setEventsForInstance merges and deduplicates", () => {
+      const instanceId = "test-instance"
+      useAppStore.getState().createInstance(instanceId, "Test", "Ralph")
+
+      // Add initial event
+      const existingEvent: ChatEvent = { id: "event-2", type: "tool_result", timestamp: 2000 }
+      useAppStore.getState().addEventForInstance(instanceId, existingEvent)
+
+      // Set events with overlap
+      const newEvents: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 }, // duplicate
+        { id: "event-3", type: "system", timestamp: 3000 },
+      ]
+      useAppStore.getState().setEventsForInstance(instanceId, newEvents)
+
+      const instance = useAppStore.getState().instances.get(instanceId)
+      expect(instance?.events).toHaveLength(3)
+      expect(instance?.events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+    })
+
+    it("handles reconnection race condition: pending_events before connected", () => {
+      // Scenario: Client reconnects and receives pending_events before connected message
+
+      // 1. Client receives pending_events first (via addEvent)
+      const pendingEvents: ChatEvent[] = [
+        { id: "event-3", type: "system", timestamp: 3000 },
+        { id: "event-4", type: "tool_use", timestamp: 4000 },
+      ]
+      pendingEvents.forEach(e => useAppStore.getState().addEvent(e))
+
+      // 2. Client receives connected message with full history (via setEvents)
+      const serverHistory: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+        { id: "event-3", type: "system", timestamp: 3000 }, // duplicate
+        { id: "event-4", type: "tool_use", timestamp: 4000 }, // duplicate
+      ]
+      useAppStore.getState().setEvents(serverHistory)
+
+      // Verify: all events present, no duplicates, chronologically ordered
+      const events = selectEvents(useAppStore.getState())
+      expect(events).toHaveLength(4)
+      expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3", "event-4"])
+      expect(events.map(e => e.timestamp)).toEqual([1000, 2000, 3000, 4000])
+    })
+
+    it("handles reconnection race condition: connected before pending_events", () => {
+      // Scenario: Client reconnects and receives connected before pending_events
+
+      // 1. Client receives connected message with full history (via setEvents)
+      const serverHistory: ChatEvent[] = [
+        { id: "event-1", type: "tool_use", timestamp: 1000 },
+        { id: "event-2", type: "tool_result", timestamp: 2000 },
+      ]
+      useAppStore.getState().setEvents(serverHistory)
+
+      // 2. Client receives pending_events with some overlap (via addEvent)
+      const pendingEvents: ChatEvent[] = [
+        { id: "event-2", type: "tool_result", timestamp: 2000 }, // duplicate
+        { id: "event-3", type: "system", timestamp: 3000 }, // new
+      ]
+      pendingEvents.forEach(e => useAppStore.getState().addEvent(e))
+
+      // Verify: all events present, no duplicates, chronologically ordered
+      const events = selectEvents(useAppStore.getState())
+      expect(events).toHaveLength(3)
+      expect(events.map(e => e.id)).toEqual(["event-1", "event-2", "event-3"])
+      expect(events.map(e => e.timestamp)).toEqual([1000, 2000, 3000])
+    })
+
+    it("addTaskChatEvent deduplicates by id", () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      const event1: ChatEvent = { id: "tc-1", type: "stream_event", timestamp: 1000, event: {} }
+      const event2: ChatEvent = { id: "tc-2", type: "stream_event", timestamp: 2000, event: {} }
+
+      addTaskChatEvent(event1)
+      addTaskChatEvent(event2)
+      addTaskChatEvent(event1) // duplicate
+      flushTaskChatEventsBatch()
+
+      const taskChatEvents = useAppStore.getState().taskChatEvents
+      expect(taskChatEvents).toHaveLength(2)
+      expect(taskChatEvents.map(e => e.id)).toEqual(["tc-1", "tc-2"])
+    })
+
+    it("addTaskChatEvent deduplicates across batches", () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      // First batch
+      const event1: ChatEvent = { id: "tc-1", type: "stream_event", timestamp: 1000, event: {} }
+      const event2: ChatEvent = { id: "tc-2", type: "stream_event", timestamp: 2000, event: {} }
+      addTaskChatEvent(event1)
+      addTaskChatEvent(event2)
+      flushTaskChatEventsBatch()
+
+      // Second batch with a duplicate from the first batch and a new event
+      const event3: ChatEvent = { id: "tc-3", type: "stream_event", timestamp: 3000, event: {} }
+      addTaskChatEvent(event1) // duplicate of event already in state
+      addTaskChatEvent(event3)
+      flushTaskChatEventsBatch()
+
+      const taskChatEvents = useAppStore.getState().taskChatEvents
+      expect(taskChatEvents).toHaveLength(3)
+      expect(taskChatEvents.map(e => e.id)).toEqual(["tc-1", "tc-2", "tc-3"])
+    })
+
+    it("addTaskChatEvent preserves events without id (no deduplication for id-less events)", () => {
+      const { addTaskChatEvent } = useAppStore.getState()
+
+      // Events without id should always be appended
+      const event1: ChatEvent = { type: "stream_event", timestamp: 1000, event: {} }
+      const event2: ChatEvent = { type: "stream_event", timestamp: 2000, event: {} }
+      addTaskChatEvent(event1)
+      addTaskChatEvent(event2)
+      addTaskChatEvent({ type: "stream_event", timestamp: 3000, event: {} })
+      flushTaskChatEventsBatch()
+
+      const taskChatEvents = useAppStore.getState().taskChatEvents
+      expect(taskChatEvents).toHaveLength(3)
+    })
+  })
+})
