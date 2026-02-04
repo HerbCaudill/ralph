@@ -111,6 +111,7 @@ export function RalphLoopPanel({
           onResume={onResume}
           onStop={onStop}
           onNewSession={onNewSession}
+          showNewSession={false}
           disabled={!isConnected}
           size="sm"
         />

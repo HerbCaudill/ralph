@@ -28,7 +28,15 @@ vi.mock("@herbcaudill/agent-view", () => ({
     </div>
   ),
   AgentViewProvider: ({ children }: any) => <div data-testid="agent-view-provider">{children}</div>,
-  AgentControls: ({ state, onPause, onResume, onStop, onNewSession, disabled }: any) => (
+  AgentControls: ({
+    state,
+    onPause,
+    onResume,
+    onStop,
+    onNewSession,
+    disabled,
+    showNewSession = true,
+  }: any) => (
     <div data-testid="agent-controls" data-state={state} data-disabled={disabled}>
       <button onClick={onPause} data-testid="pause-btn">
         Pause
@@ -39,9 +47,11 @@ vi.mock("@herbcaudill/agent-view", () => ({
       <button onClick={onStop} data-testid="stop-btn">
         Stop
       </button>
-      <button onClick={onNewSession} data-testid="new-session-btn">
-        New Session
-      </button>
+      {showNewSession && (
+        <button onClick={onNewSession} data-testid="new-session-btn">
+          New Session
+        </button>
+      )}
     </div>
   ),
   SessionPicker: ({ sessions, currentSessionId, onSelectSession, disabled }: any) => (
@@ -255,10 +265,9 @@ describe("RalphLoopPanel", () => {
       expect(defaultProps.onStop).toHaveBeenCalled()
     })
 
-    it("calls onNewSession when new session button is clicked", () => {
+    it("does not show new session button", () => {
       render(<RalphLoopPanel {...defaultProps} />)
-      fireEvent.click(screen.getByTestId("new-session-btn"))
-      expect(defaultProps.onNewSession).toHaveBeenCalled()
+      expect(screen.queryByTestId("new-session-btn")).not.toBeInTheDocument()
     })
 
     it("disables controls when disconnected", () => {
