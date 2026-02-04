@@ -67,6 +67,7 @@ const defaultProps = {
   sessionId: "session-1",
   onSendMessage: vi.fn(),
   onSessionSelect: vi.fn(),
+  onNewSession: vi.fn(),
   onClose: vi.fn(),
 }
 
@@ -113,6 +114,29 @@ describe("TaskChatPanel", () => {
       fireEvent.click(closeButton)
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it("renders new session button", () => {
+      render(<TaskChatPanel {...defaultProps} />)
+
+      const newSessionButton = screen.getByLabelText("New session")
+      expect(newSessionButton).toBeInTheDocument()
+    })
+
+    it("calls onNewSession when new session button is clicked", () => {
+      render(<TaskChatPanel {...defaultProps} />)
+
+      const newSessionButton = screen.getByLabelText("New session")
+      fireEvent.click(newSessionButton)
+
+      expect(defaultProps.onNewSession).toHaveBeenCalledTimes(1)
+    })
+
+    it("disables new session button when streaming", () => {
+      render(<TaskChatPanel {...defaultProps} isStreaming={true} />)
+
+      const newSessionButton = screen.getByLabelText("New session")
+      expect(newSessionButton).toBeDisabled()
     })
   })
 

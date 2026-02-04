@@ -1,4 +1,4 @@
-import { IconMessage, IconX } from "@tabler/icons-react"
+import { IconMessage, IconPlus, IconX } from "@tabler/icons-react"
 import {
   AgentView,
   AgentViewProvider,
@@ -21,6 +21,7 @@ export function TaskChatPanel({
   sessionId,
   onSendMessage,
   onSessionSelect,
+  onNewSession,
   onClose,
 }: TaskChatPanelProps) {
   // Get session list for the SessionPicker
@@ -44,6 +45,14 @@ export function TaskChatPanel({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        <button
+          onClick={onNewSession}
+          disabled={isStreaming}
+          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+          aria-label="New session"
+        >
+          <IconPlus size={18} stroke={1.5} />
+        </button>
         {sessions.length > 0 && (
           <SessionPicker
             sessions={sessions}
@@ -115,6 +124,8 @@ export type TaskChatPanelProps = {
   onSendMessage: (message: string) => void
   /** Callback when a session is selected from the picker. */
   onSessionSelect: (sessionId: string) => void
+  /** Callback when new session button is clicked. */
+  onNewSession: () => void
   /** Callback to close the panel. */
   onClose: () => void
 }

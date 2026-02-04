@@ -206,6 +206,11 @@ function AppContent() {
     [taskChatActions],
   )
 
+  // Handle task chat new session
+  const handleTaskChatNewSession = useCallback(() => {
+    taskChatActions.newSession()
+  }, [taskChatActions])
+
   // Handle closing the task detail panel
   const handleCloseDetail = useCallback(() => {
     setSelectedTaskId(null)
@@ -260,6 +265,7 @@ function AppContent() {
       sessionId={taskChatState.sessionId}
       onSendMessage={handleTaskChatSend}
       onSessionSelect={handleTaskChatSessionSelect}
+      onNewSession={handleTaskChatNewSession}
       onClose={closeDialog}
     />
   )
