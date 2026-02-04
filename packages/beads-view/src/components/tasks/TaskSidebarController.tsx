@@ -37,7 +37,7 @@ export function TaskSidebarController({
   /** External loading state (e.g., when workspace is switching). */
   isLoadingExternal = false,
   /** Hide quick task input */
-  hideQuickInput = false,
+  hideQuickInput = true,
 }: TaskSidebarControllerProps) {
   const { tasks, isLoading: isLoadingTasks, refresh } = useTasks({ all: true })
   const isLoading = isLoadingTasks || isLoadingExternal

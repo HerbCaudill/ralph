@@ -37,8 +37,20 @@ afterEach(() => {
 
 describe("TaskSidebarController", () => {
   describe("quick task input", () => {
-    it("renders the quick task input by default", async () => {
+    it("hides the quick task input by default", async () => {
       render(<TaskSidebarController />)
+
+      // Wait for component to render
+      await waitFor(() => {
+        expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
+      })
+
+      // Quick task input should NOT be present by default
+      expect(screen.queryByRole("textbox", { name: /new task title/i })).not.toBeInTheDocument()
+    })
+
+    it("renders quick task input when hideQuickInput is false", async () => {
+      render(<TaskSidebarController hideQuickInput={false} />)
 
       // Wait for component to render
       await waitFor(() => {
@@ -48,18 +60,6 @@ describe("TaskSidebarController", () => {
       // Quick task input should be present
       expect(screen.getByRole("textbox", { name: /new task title/i })).toBeInTheDocument()
       expect(screen.getByRole("button", { name: /add task/i })).toBeInTheDocument()
-    })
-
-    it("does not render quick task input when hideQuickInput is true", async () => {
-      render(<TaskSidebarController hideQuickInput />)
-
-      // Wait for component to render
-      await waitFor(() => {
-        expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
-      })
-
-      // Quick task input should not be present
-      expect(screen.queryByRole("textbox", { name: /new task title/i })).not.toBeInTheDocument()
     })
 
     it("refreshes task list when task is created", async () => {
@@ -81,7 +81,7 @@ describe("TaskSidebarController", () => {
           json: () => Promise.resolve({ ok: true, issues: [mockIssue] }),
         })
 
-      render(<TaskSidebarController />)
+      render(<TaskSidebarController hideQuickInput={false} />)
 
       // Wait for component to render
       await waitFor(() => {
