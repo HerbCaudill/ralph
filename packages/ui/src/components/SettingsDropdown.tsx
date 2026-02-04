@@ -1,9 +1,15 @@
 import { useState, useRef, useEffect, useMemo } from "react"
-import { IconSettings, IconSun, IconMoon, IconDeviceDesktop } from "@tabler/icons-react"
+import {
+  IconSettings,
+  IconSun,
+  IconMoon,
+  IconDeviceDesktop,
+  IconCheck,
+  IconRefresh,
+} from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/hooks/useTheme"
 import { useThemes } from "@/hooks/useThemes"
-import { ThemePicker } from "./ThemePicker"
 import { useUiStore, selectVscodeThemeId } from "@/stores/uiStore"
 
 /**
@@ -12,12 +18,7 @@ import { useUiStore, selectVscodeThemeId } from "@/stores/uiStore"
  */
 export function SettingsDropdown({ className, textColor }: SettingsDropdownProps) {
   const { theme: appearanceMode, setTheme: setAppearanceMode, resolvedTheme } = useTheme()
-  const {
-    themes,
-    isLoading: isLoadingThemes,
-    error: themesError,
-    refresh: refreshThemes,
-  } = useThemes()
+  const { themes, error: themesError, refresh: refreshThemes } = useThemes()
   const vscodeThemeId = useUiStore(selectVscodeThemeId)
   const setVscodeThemeId = useUiStore(state => state.setVscodeThemeId)
   const [isOpen, setIsOpen] = useState(false)
@@ -25,20 +26,19 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
 
   // Filter themes to match the current display mode (dark/light)
   const filteredThemes = useMemo(() => {
-    return themes
-      .filter(theme => {
-        const isDarkTheme = theme.type === "dark" || theme.type === "hcDark"
-        return resolvedTheme === "dark" ? isDarkTheme : !isDarkTheme
-      })
-      .map(theme => ({
-        id: theme.id,
-        label: theme.label,
-        type: theme.type,
-      }))
+    return themes.filter(theme => {
+      const isDarkTheme = theme.type === "dark" || theme.type === "hcDark"
+      return resolvedTheme === "dark" ? isDarkTheme : !isDarkTheme
+    })
   }, [themes, resolvedTheme])
 
+  // Sort filtered themes alphabetically
+  const sortedThemes = useMemo(() => {
+    return [...filteredThemes].sort((a, b) => a.label.localeCompare(b.label))
+  }, [filteredThemes])
+
   // Handle theme selection
-  const handleApplyTheme = (themeId: string) => {
+  const handleThemeSelect = async (themeId: string) => {
     setVscodeThemeId(themeId)
     // Note: Full theme application (CSS variables, code highlighting) would require
     // additional implementation. This stores the preference for now.
@@ -98,7 +98,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
           data-testid="settings-dropdown"
         >
           {/* Appearance Mode Section */}
-          <div className="p-2">
+          <div className="border-b border-border p-2">
             <div className="mb-2 px-1 text-xs font-medium text-muted-foreground">Appearance</div>
             <div className="flex gap-1">
               {appearanceModes.map(({ value, Icon, label }) => (
@@ -119,20 +119,39 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
             </div>
           </div>
 
-          {/* Theme Picker Section */}
-          {filteredThemes.length > 0 && (
-            <div className="border-t border-border p-2">
-              <div className="mb-2 px-1 text-xs font-medium text-muted-foreground">
-                VS Code Theme
+          {/* Theme Section */}
+          {themesError && (
+            <div className="p-3">
+              <div className="flex items-center gap-2 text-sm text-red-500">
+                <span>{themesError}</span>
+                <button onClick={refreshThemes} className="hover:opacity-60" title="Retry">
+                  <IconRefresh className="size-3.5" />
+                </button>
               </div>
-              <ThemePicker
-                themes={filteredThemes}
-                activeThemeId={vscodeThemeId}
-                isLoading={isLoadingThemes}
-                error={themesError}
-                onApplyTheme={handleApplyTheme}
-                onRefresh={refreshThemes}
-              />
+            </div>
+          )}
+
+          {!themesError && (
+            <div className="max-h-64 overflow-y-auto p-1">
+              {sortedThemes.length === 0 && (
+                <div className="px-2 py-2 text-xs text-muted-foreground">No themes found</div>
+              )}
+
+              {sortedThemes.map(theme => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleThemeSelect(theme.id)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs",
+                    "hover:bg-muted",
+                    vscodeThemeId === theme.id && "bg-accent/50",
+                  )}
+                  data-testid={`settings-theme-item-${theme.id}`}
+                >
+                  <span className="flex-1 truncate">{theme.label}</span>
+                  {vscodeThemeId === theme.id && <IconCheck className="size-3 text-primary" />}
+                </button>
+              ))}
             </div>
           )}
         </div>
