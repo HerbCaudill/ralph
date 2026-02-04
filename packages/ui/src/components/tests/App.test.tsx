@@ -23,11 +23,40 @@ const mockSetSelectedTaskId = vi.fn((id: string | null) => {
   mockSelectedTaskId = id
 })
 
+// Track mock tasks for testing
+let mockTasks: Array<{ id: string; title: string; status: string }> = []
+let mockInitialTaskCount: number | null = null
+let mockClosedTimeFilter = "past_day"
+
 vi.mock("@herbcaudill/beads-view", () => ({
   TaskSidebarController: () => <div data-testid="task-sidebar">Tasks Sidebar</div>,
+  TaskProgressBar: ({
+    isRunning,
+    tasks,
+    initialTaskCount,
+    accentColor,
+    closedTimeFilter,
+  }: {
+    isRunning: boolean
+    tasks: Array<{ id: string; title: string; status: string }>
+    initialTaskCount: number | null
+    accentColor: string | null
+    closedTimeFilter: string
+  }) => (
+    <div
+      data-testid="task-progress-bar"
+      data-is-running={isRunning}
+      data-task-count={tasks.length}
+      data-initial-task-count={initialTaskCount}
+      data-accent-color={accentColor}
+      data-closed-time-filter={closedTimeFilter}
+    >
+      Task Progress Bar
+    </div>
+  ),
   BeadsViewProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   configureApiClient: vi.fn(),
-  useTasks: () => ({ error: null, refresh: vi.fn() }),
+  useTasks: () => ({ tasks: mockTasks, error: null, refresh: vi.fn() }),
   useTaskDialog: () => ({
     selectedTask:
       mockSelectedTaskId ?
@@ -50,11 +79,15 @@ vi.mock("@herbcaudill/beads-view", () => ({
       selectedTaskId: mockSelectedTaskId,
       setSelectedTaskId: mockSetSelectedTaskId,
       visibleTaskIds: [],
+      initialTaskCount: mockInitialTaskCount,
+      closedTimeFilter: mockClosedTimeFilter,
     }
     return selector(state)
   },
   selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
   selectVisibleTaskIds: (state: { visibleTaskIds: string[] }) => state.visibleTaskIds,
+  selectInitialTaskCount: (state: { initialTaskCount: number | null }) => state.initialTaskCount,
+  selectClosedTimeFilter: (state: { closedTimeFilter: string }) => state.closedTimeFilter,
   useWorkspace: () => ({
     state: {
       current: {
@@ -138,6 +171,10 @@ describe("App", () => {
   beforeEach(() => {
     // Reset selected task before each test
     mockSelectedTaskId = null
+    // Reset tasks mock
+    mockTasks = []
+    mockInitialTaskCount = null
+    mockClosedTimeFilter = "past_day"
   })
 
   describe("panel layout order", () => {
@@ -225,6 +262,51 @@ describe("App", () => {
 
       // TaskDetailSheet should not be rendered
       expect(screen.queryByTestId("task-detail-sheet")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("TaskProgressBar rendering", () => {
+    it("renders TaskProgressBar below the task sidebar", () => {
+      mockTasks = [{ id: "task-1", title: "Test Task", status: "open" }]
+      mockInitialTaskCount = 1
+
+      const { container } = render(<App />)
+
+      // TaskProgressBar should be rendered
+      const progressBar = screen.getByTestId("task-progress-bar")
+      expect(progressBar).toBeInTheDocument()
+
+      // Should be in the main area (center panel)
+      const main = container.querySelector("main")
+      expect(main).toContainElement(progressBar)
+    })
+
+    it("passes correct props to TaskProgressBar", () => {
+      mockTasks = [
+        { id: "task-1", title: "Task 1", status: "closed" },
+        { id: "task-2", title: "Task 2", status: "open" },
+      ]
+      mockInitialTaskCount = 2
+      mockClosedTimeFilter = "past_hour"
+
+      render(<App />)
+
+      const progressBar = screen.getByTestId("task-progress-bar")
+      expect(progressBar).toHaveAttribute("data-task-count", "2")
+      expect(progressBar).toHaveAttribute("data-initial-task-count", "2")
+      expect(progressBar).toHaveAttribute("data-accent-color", "#007ACC")
+      expect(progressBar).toHaveAttribute("data-closed-time-filter", "past_hour")
+    })
+
+    it("passes isRunning based on controlState", () => {
+      mockTasks = [{ id: "task-1", title: "Test Task", status: "open" }]
+      mockInitialTaskCount = 1
+
+      render(<App />)
+
+      const progressBar = screen.getByTestId("task-progress-bar")
+      // Default controlState is "idle", so isRunning should be false
+      expect(progressBar).toHaveAttribute("data-is-running", "false")
     })
   })
 })

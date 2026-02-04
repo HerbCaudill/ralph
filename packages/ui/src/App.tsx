@@ -13,6 +13,7 @@ import { useTaskChat } from "./hooks/useTaskChat"
 import { useUiStore } from "./stores/uiStore"
 import {
   TaskSidebarController,
+  TaskProgressBar,
   BeadsViewProvider,
   configureApiClient,
   useTasks,
@@ -20,6 +21,8 @@ import {
   useBeadsViewStore,
   selectSelectedTaskId,
   selectVisibleTaskIds,
+  selectInitialTaskCount,
+  selectClosedTimeFilter,
   useWorkspace,
   useBeadsHotkeys,
   type SearchInputHandle,
@@ -79,6 +82,10 @@ function AppContent() {
   const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
   const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
   const visibleTaskIds = useBeadsViewStore(selectVisibleTaskIds)
+
+  // Task progress bar state from store
+  const initialTaskCount = useBeadsViewStore(selectInitialTaskCount)
+  const closedTimeFilter = useBeadsViewStore(selectClosedTimeFilter)
 
   // Refs for hotkey targets
   const searchInputRef = useRef<SearchInputHandle>(null)
@@ -294,6 +301,14 @@ function AppContent() {
           searchInputRef={searchInputRef}
           onTaskClick={handleTaskClick}
           onOpenTask={handleTaskClick}
+        />
+        {/* Task completion progress */}
+        <TaskProgressBar
+          isRunning={controlState === "running"}
+          tasks={tasks}
+          initialTaskCount={initialTaskCount}
+          accentColor={workspace?.accentColor ?? null}
+          closedTimeFilter={closedTimeFilter}
         />
       </MainLayout>
       <StatusBar
