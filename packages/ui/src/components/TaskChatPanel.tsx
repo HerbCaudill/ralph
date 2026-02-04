@@ -65,16 +65,6 @@ export function TaskChatPanel({
     </div>
   )
 
-  const footer = (
-    <div className="border-t border-border p-4">
-      <ChatInput
-        onSend={onSendMessage}
-        disabled={isStreaming}
-        placeholder={taskId ? "Ask about this task" : "Send a message"}
-      />
-    </div>
-  )
-
   const emptyState = (
     <div className="flex h-full items-center justify-center p-8">
       <div className="flex flex-col items-center gap-4 text-muted-foreground">
@@ -93,11 +83,19 @@ export function TaskChatPanel({
           events={events}
           isStreaming={isStreaming}
           header={header}
-          footer={footer}
           emptyState={emptyState}
           className="flex-1"
         />
       </AgentViewProvider>
+
+      {/* Chat input - outside AgentView (no footer slot) */}
+      <div className="border-t border-border p-4">
+        <ChatInput
+          onSend={onSendMessage}
+          disabled={isStreaming}
+          placeholder={taskId ? "Ask about this task" : "Send a message"}
+        />
+      </div>
     </div>
   )
 }
