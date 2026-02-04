@@ -204,31 +204,53 @@ describe("RalphLoopPanel", () => {
   })
 
   describe("chat input", () => {
-    it("renders chat input", () => {
-      render(<RalphLoopPanel {...defaultProps} />)
+    it("shows chat input when session is running", () => {
+      render(<RalphLoopPanel {...defaultProps} controlState="running" />)
       expect(screen.getByTestId("chat-input")).toBeInTheDocument()
     })
 
+    it("shows chat input when session is paused", () => {
+      render(<RalphLoopPanel {...defaultProps} controlState="paused" />)
+      expect(screen.getByTestId("chat-input")).toBeInTheDocument()
+    })
+
+    it("hides chat input when session is idle (no active session)", () => {
+      render(<RalphLoopPanel {...defaultProps} controlState="idle" />)
+      expect(screen.queryByTestId("chat-input")).not.toBeInTheDocument()
+    })
+
     it("enables chat input when viewing current session and not streaming", () => {
-      render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={false} />)
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          controlState="running"
+          isViewingHistoricalSession={false}
+        />,
+      )
       const input = screen.getByTestId("chat-input-field")
       expect(input).not.toBeDisabled()
     })
 
     it("disables chat input when viewing historical session", () => {
-      render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={true} />)
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          controlState="running"
+          isViewingHistoricalSession={true}
+        />,
+      )
       const input = screen.getByTestId("chat-input-field")
       expect(input).toBeDisabled()
     })
 
     it("disables chat input when streaming", () => {
-      render(<RalphLoopPanel {...defaultProps} isStreaming={true} />)
+      render(<RalphLoopPanel {...defaultProps} controlState="running" isStreaming={true} />)
       const input = screen.getByTestId("chat-input-field")
       expect(input).toBeDisabled()
     })
 
     it("calls onSendMessage when enter is pressed", () => {
-      render(<RalphLoopPanel {...defaultProps} />)
+      render(<RalphLoopPanel {...defaultProps} controlState="running" />)
       const input = screen.getByTestId("chat-input-field")
       fireEvent.change(input, { target: { value: "test message" } })
       fireEvent.keyDown(input, { key: "Enter" })

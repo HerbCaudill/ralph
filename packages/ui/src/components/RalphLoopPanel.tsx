@@ -52,6 +52,7 @@ export function RalphLoopPanel({
   const contextWindow = useContextWindow(events)
 
   const isConnected = connectionStatus === "connected"
+  const isSessionActive = controlState !== "idle"
   const isChatDisabled = isStreaming || isViewingHistoricalSession || !isConnected
 
   // Header with title and session picker
@@ -117,17 +118,19 @@ export function RalphLoopPanel({
         />
       </div>
 
-      {/* Chat input */}
-      <ChatInput
-        onSend={onSendMessage}
-        disabled={isChatDisabled}
-        placeholder={
-          isViewingHistoricalSession ? "Switch to current session to send messages"
-          : !isConnected ?
-            "Waiting for connection..."
-          : "Send a message…"
-        }
-      />
+      {/* Chat input - only show when there's an active session */}
+      {isSessionActive && (
+        <ChatInput
+          onSend={onSendMessage}
+          disabled={isChatDisabled}
+          placeholder={
+            isViewingHistoricalSession ? "Switch to current session to send messages"
+            : !isConnected ?
+              "Waiting for connection..."
+            : "Send a message…"
+          }
+        />
+      )}
 
       {/* Status bar */}
       <StatusBarFooter
