@@ -35,7 +35,7 @@ export function AutoScroll({
   const showEmptyState = isEmpty && emptyState
 
   return (
-    <div className={cn("relative flex h-full flex-col", className)}>
+    <div className={cn("relative flex min-h-0 flex-1 flex-col", className)}>
       <div
         ref={containerRef}
         onScroll={handleScroll}
