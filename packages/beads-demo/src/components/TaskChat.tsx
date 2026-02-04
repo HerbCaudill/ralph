@@ -174,7 +174,7 @@ export function TaskChat() {
         ref={chatInputRef}
         onSend={sendMessage}
         disabled={!isConnected}
-        placeholder={isConnected ? "Tell me about a task\u2026" : "Connecting to agent server\u2026"}
+        placeholder={isConnected ? "Discuss your tasks\u2026" : "Connecting to agent server\u2026"}
       />
     </div>
   )
