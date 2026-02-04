@@ -10,7 +10,6 @@ import { CommandPalette } from "./components/CommandPalette"
 import { useRalphLoop } from "./hooks/useRalphLoop"
 import { useAccentColor } from "./hooks/useAccentColor"
 import { useTaskChat } from "./hooks/useTaskChat"
-import { useCurrentTask } from "./hooks/useCurrentTask"
 import { useUiStore } from "./stores/uiStore"
 import {
   TaskSidebarController,
@@ -59,9 +58,6 @@ function AppContent() {
 
   // Task chat state from agent-server
   const { state: taskChatState, actions: taskChatActions } = useTaskChat()
-
-  // Current task from Ralph events
-  const { taskId: currentTaskId, taskTitle: currentTaskTitle } = useCurrentTask(events)
 
   // Workspace state from beads-view
   const {
@@ -312,8 +308,6 @@ function AppContent() {
         onStop={stop}
         onStopAfterCurrent={handleStopAfterCurrent}
         onCancelStopAfterCurrent={handleCancelStopAfterCurrent}
-        currentTaskId={currentTaskId}
-        currentTaskTitle={currentTaskTitle}
         workspaceName={workspace?.name}
         workspacePath={workspace?.path}
         branch={workspace?.branch}

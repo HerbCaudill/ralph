@@ -1,4 +1,3 @@
-import { IconPlugConnected, IconPlugConnectedX, IconLoader2 } from "@tabler/icons-react"
 import {
   useTokenUsage,
   useContextWindow,
@@ -12,7 +11,9 @@ import { RepoBranch, RunDuration, SessionProgress, StatusIndicator } from "@/com
 import type { TaskCardTask } from "@herbcaudill/beads-view"
 
 /**
- * Footer status bar showing connection status, workspace path, current task, agent controls, token usage, and context window progress.
+ * Footer status bar showing agent controls, status, session duration, repo info, token usage, context window, and session progress.
+ *
+ * Layout: [ControlBar] [StatusIndicator] [RunDuration] | [RepoBranch] [TokenUsage] [ContextWindow] [SessionProgress]
  */
 export function StatusBar({
   connectionStatus,
@@ -27,8 +28,6 @@ export function StatusBar({
   onStop,
   onStopAfterCurrent,
   onCancelStopAfterCurrent,
-  currentTaskId,
-  currentTaskTitle,
   workspaceName,
   branch,
   tasks,
@@ -40,33 +39,21 @@ export function StatusBar({
 
   return (
     <div className="flex w-full items-center justify-between">
-      {/* Left section: connection, workspace, and controls */}
+      {/* Left section: controls + status */}
       <div className="flex items-center gap-3 pl-4">
-        {/* Connection indicator */}
-        <span className="flex items-center gap-1">
-          {connectionStatus === "connected" ?
-            <IconPlugConnected size={14} stroke={1.5} className="text-green-600" />
-          : connectionStatus === "connecting" ?
-            <IconLoader2 size={14} stroke={1.5} className="animate-spin text-amber-500" />
-          : <IconPlugConnectedX size={14} stroke={1.5} className="text-red-500" />}
-          <span className="capitalize">{connectionStatus}</span>
-        </span>
-
         {/* Agent controls - full ControlBar with Start/Pause/Stop/Stop-after-current */}
         {controlState && (
-          <div className="border-l border-border pl-3">
-            <ControlBar
-              controlState={controlState}
-              isConnected={connectionStatus === "connected"}
-              isStoppingAfterCurrent={isStoppingAfterCurrent}
-              onStart={onStart}
-              onPause={onPause}
-              onResume={onResume}
-              onStop={onStop}
-              onStopAfterCurrent={onStopAfterCurrent}
-              onCancelStopAfterCurrent={onCancelStopAfterCurrent}
-            />
-          </div>
+          <ControlBar
+            controlState={controlState}
+            isConnected={connectionStatus === "connected"}
+            isStoppingAfterCurrent={isStoppingAfterCurrent}
+            onStart={onStart}
+            onPause={onPause}
+            onResume={onResume}
+            onStop={onStop}
+            onStopAfterCurrent={onStopAfterCurrent}
+            onCancelStopAfterCurrent={onCancelStopAfterCurrent}
+          />
         )}
 
         {/* Status indicator - shows Running/Paused/Stopped with colored dot */}
@@ -78,43 +65,24 @@ export function StatusBar({
           />
         )}
 
-        {/* Current task indicator */}
-        {currentTaskId && (
-          <span className="flex items-center gap-1.5 border-l border-border pl-3">
-            <span className="text-muted-foreground text-[10px]">Task:</span>
-            <span className="font-mono text-[10px]" title={currentTaskTitle ?? currentTaskId}>
-              {currentTaskId}
-            </span>
-          </span>
-        )}
+        {/* Session timer */}
+        <RunDuration elapsedMs={elapsedMs} className="border-l border-border pl-3" />
 
+        {/* Error */}
+        {error && <span className="border-l border-border pl-3 text-red-500">{error}</span>}
+      </div>
+
+      {/* Right section: info displays */}
+      <div className="flex items-center pr-4">
         {/* Workspace name and branch */}
         {(workspaceName || branch) && (
           <RepoBranch
             workspaceName={workspaceName}
             branch={branch}
             workspacePath={workspacePath}
-            className="border-l border-border pl-3"
-          />
-        )}
-
-        {/* Error */}
-        {error && <span className="border-l border-border pl-3 text-red-500">{error}</span>}
-      </div>
-
-      {/* Right section: session progress, session timer, token usage, and context window */}
-      <div className="flex items-center pr-4">
-        {/* Session progress - task completion progress bar */}
-        {tasks && tasks.length > 0 && (
-          <SessionProgress
-            tasks={tasks}
-            accentColor={accentColor}
             className="border-r border-border pr-4"
           />
         )}
-
-        {/* Session timer */}
-        <RunDuration elapsedMs={elapsedMs} className="border-r border-border pr-4" />
 
         {/* Token usage */}
         {(tokenUsage.input > 0 || tokenUsage.output > 0) && (
@@ -124,9 +92,14 @@ export function StatusBar({
         )}
 
         {/* Context window */}
-        <div className="pl-4">
+        <div className="border-r border-border pr-4">
           <ContextWindowProgress contextWindow={contextWindow} />
         </div>
+
+        {/* Session progress - task completion progress bar */}
+        {tasks && tasks.length > 0 && (
+          <SessionProgress tasks={tasks} accentColor={accentColor} className="pl-4" />
+        )}
       </div>
     </div>
   )
@@ -157,10 +130,6 @@ export type StatusBarProps = {
   onStopAfterCurrent?: () => void
   /** Called when cancel-stop-after-current button is clicked. */
   onCancelStopAfterCurrent?: () => void
-  /** ID of the current task being worked on. */
-  currentTaskId?: string | null
-  /** Title of the current task being worked on. */
-  currentTaskTitle?: string | null
   /** Workspace name. */
   workspaceName?: string | null
   /** Git branch name. */
