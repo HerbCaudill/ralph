@@ -17,6 +17,10 @@ interface UiState {
   theme: "system" | "light" | "dark"
   /** Selected VS Code theme ID (null for default). */
   vscodeThemeId: string | null
+  /** Last used dark theme ID. */
+  lastDarkThemeId: string | null
+  /** Last used light theme ID. */
+  lastLightThemeId: string | null
 
   /** Set the sidebar width. */
   setSidebarWidth: (width: number) => void
@@ -30,6 +34,10 @@ interface UiState {
   setTheme: (theme: "system" | "light" | "dark") => void
   /** Set the VS Code theme ID. */
   setVscodeThemeId: (id: string | null) => void
+  /** Set the last used dark theme ID. */
+  setLastDarkThemeId: (id: string | null) => void
+  /** Set the last used light theme ID. */
+  setLastLightThemeId: (id: string | null) => void
 }
 
 /**
@@ -43,6 +51,8 @@ export const useUiStore = create<UiState>()(set => ({
   showToolOutput: true,
   theme: "system",
   vscodeThemeId: null,
+  lastDarkThemeId: null,
+  lastLightThemeId: null,
 
   setSidebarWidth: width => set({ sidebarWidth: width }),
   toggleRightPanel: () => set(state => ({ rightPanelOpen: !state.rightPanelOpen })),
@@ -50,6 +60,8 @@ export const useUiStore = create<UiState>()(set => ({
   toggleToolOutput: () => set(state => ({ showToolOutput: !state.showToolOutput })),
   setTheme: theme => set({ theme }),
   setVscodeThemeId: id => set({ vscodeThemeId: id }),
+  setLastDarkThemeId: id => set({ lastDarkThemeId: id }),
+  setLastLightThemeId: id => set({ lastLightThemeId: id }),
 }))
 
 /**
@@ -61,3 +73,13 @@ export const selectTheme = (state: UiState) => state.theme
  * Select the VS Code theme ID.
  */
 export const selectVscodeThemeId = (state: UiState) => state.vscodeThemeId
+
+/**
+ * Select the last used dark theme ID.
+ */
+export const selectLastDarkThemeId = (state: UiState) => state.lastDarkThemeId
+
+/**
+ * Select the last used light theme ID.
+ */
+export const selectLastLightThemeId = (state: UiState) => state.lastLightThemeId
