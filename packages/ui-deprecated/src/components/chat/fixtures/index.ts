@@ -5,7 +5,30 @@
  * used to test the TaskChatController's rendering of various scenarios.
  */
 
-import type { TaskChatLogEntry } from "../../../../server/TaskChatEventLog.js"
+/**
+ * Base event shape with required fields for task chat events.
+ */
+export interface TaskChatEventBase {
+  /** Event type identifier */
+  type: string
+  /** Timestamp when the event occurred */
+  timestamp: number
+  /** Additional properties */
+  [key: string]: unknown
+}
+
+/**
+ * Entry in the task chat event log.
+ * Each entry represents a logged event with metadata.
+ */
+export interface TaskChatLogEntry {
+  /** Session ID this event belongs to */
+  sessionId: string
+  /** ISO timestamp when this event was logged */
+  loggedAt: string
+  /** The actual event data */
+  event: TaskChatEventBase
+}
 
 /**  Fixture metadata for test organization. */
 export interface FixtureMetadata {

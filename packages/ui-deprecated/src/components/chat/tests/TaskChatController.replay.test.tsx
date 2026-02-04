@@ -21,8 +21,8 @@ import {
   multiToolFullStreamingFixture,
   extractEvents,
   type TaskChatFixture,
+  type TaskChatLogEntry,
 } from ".././fixtures"
-import type { TaskChatLogEntry } from "../../../../server/TaskChatEventLog.js"
 
 // Mock fetch to prevent actual API calls
 const mockFetch = vi.fn()

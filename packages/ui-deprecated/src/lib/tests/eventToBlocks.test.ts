@@ -9,7 +9,7 @@ import {
   type TextBlock,
   type ToolUseBlock,
 } from ".././eventToBlocks"
-import type { AgentEvent, AgentToolResultEvent } from "../../../server/AgentAdapter"
+import type { AgentEvent, AgentToolResultEvent } from "@herbcaudill/ralph-shared"
 import {
   isAgentMessageEvent,
   isAgentToolUseEvent,
@@ -17,7 +17,7 @@ import {
   isAgentResultEvent,
   isAgentErrorEvent,
   isAgentStatusEvent,
-} from "../../../server/AgentAdapter"
+} from "@herbcaudill/ralph-shared"
 
 describe("eventToBlocks", () => {
   describe("basic event processing", () => {

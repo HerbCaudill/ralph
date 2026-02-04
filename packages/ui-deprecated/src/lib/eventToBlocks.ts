@@ -1,4 +1,4 @@
-import type { AgentEvent, AgentToolResultEvent } from "../../server/AgentAdapter.js"
+import type { AgentEvent, AgentToolResultEvent } from "@herbcaudill/ralph-shared"
 import {
   isAgentMessageEvent,
   isAgentToolUseEvent,
@@ -6,7 +6,7 @@ import {
   isAgentResultEvent,
   isAgentErrorEvent,
   isAgentStatusEvent,
-} from "../../server/AgentAdapter.js"
+} from "@herbcaudill/ralph-shared"
 import type { AssistantTextEvent, ToolUseEvent, ToolName } from "@/types"
 
 /**  A text message from the assistant (rendered as markdown) */
