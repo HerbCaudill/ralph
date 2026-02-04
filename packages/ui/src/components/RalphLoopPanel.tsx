@@ -4,6 +4,7 @@ import {
   IconPlugConnectedX,
   IconLoader2,
   IconHistory,
+  IconPlayerPlayFilled,
 } from "@tabler/icons-react"
 import {
   AgentView,
@@ -42,6 +43,7 @@ export function RalphLoopPanel({
   onPause,
   onResume,
   onStop,
+  onStart,
   onNewSession,
   onSelectSession,
   className,
@@ -74,7 +76,8 @@ export function RalphLoopPanel({
     </div>
   )
 
-  // Empty state shown when no events
+  // Empty state shown when no events - shows start button when idle
+  const showStartButton = controlState === "idle"
   const emptyState = (
     <div className="flex h-full items-center justify-center p-8">
       <div className="flex flex-col items-center gap-4 text-muted-foreground">
@@ -82,6 +85,17 @@ export function RalphLoopPanel({
         <p className="text-center text-sm">
           Start the Ralph loop to begin autonomous task execution.
         </p>
+        {showStartButton && (
+          <button
+            onClick={onStart}
+            disabled={!isConnected}
+            aria-label="Start Ralph"
+            className="mt-4 flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <IconPlayerPlayFilled size={20} />
+            Start
+          </button>
+        )}
       </div>
     </div>
   )
@@ -209,6 +223,8 @@ export type RalphLoopPanelProps = {
   onResume: () => void
   /** Called when the stop button is clicked. */
   onStop: () => void
+  /** Called when the start button is clicked (in the empty state). */
+  onStart: () => void
   /** Called when the new session button is clicked. */
   onNewSession: () => void
   /** Called when a session is selected from the session picker. */

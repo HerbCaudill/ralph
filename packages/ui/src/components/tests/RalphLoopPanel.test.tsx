@@ -128,6 +128,7 @@ const defaultProps = {
   onPause: vi.fn(),
   onResume: vi.fn(),
   onStop: vi.fn(),
+  onStart: vi.fn(),
   onNewSession: vi.fn(),
   onSelectSession: vi.fn(),
 }
@@ -307,6 +308,46 @@ describe("RalphLoopPanel", () => {
     it("does not show indicator when viewing current session", () => {
       render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={false} />)
       expect(screen.queryByText(/viewing history/i)).not.toBeInTheDocument()
+    })
+  })
+
+  describe("start button", () => {
+    it("shows centered start button when idle with no events", () => {
+      render(<RalphLoopPanel {...defaultProps} events={[]} controlState="idle" />)
+      expect(screen.getByRole("button", { name: /start/i })).toBeInTheDocument()
+    })
+
+    it("calls onStart when start button is clicked", () => {
+      render(<RalphLoopPanel {...defaultProps} events={[]} controlState="idle" />)
+      fireEvent.click(screen.getByRole("button", { name: /start/i }))
+      expect(defaultProps.onStart).toHaveBeenCalled()
+    })
+
+    it("does not show start button when running", () => {
+      render(<RalphLoopPanel {...defaultProps} events={[]} controlState="running" />)
+      expect(screen.queryByRole("button", { name: /start/i })).not.toBeInTheDocument()
+    })
+
+    it("does not show start button when paused", () => {
+      render(<RalphLoopPanel {...defaultProps} events={[]} controlState="paused" />)
+      expect(screen.queryByRole("button", { name: /start/i })).not.toBeInTheDocument()
+    })
+
+    it("does not show start button when there are events", () => {
+      render(<RalphLoopPanel {...defaultProps} controlState="idle" />)
+      expect(screen.queryByRole("button", { name: /start/i })).not.toBeInTheDocument()
+    })
+
+    it("disables start button when disconnected", () => {
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          events={[]}
+          controlState="idle"
+          connectionStatus="disconnected"
+        />,
+      )
+      expect(screen.getByRole("button", { name: /start/i })).toBeDisabled()
     })
   })
 })
