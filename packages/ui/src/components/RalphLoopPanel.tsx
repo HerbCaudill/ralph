@@ -9,7 +9,6 @@ import {
 import {
   AgentView,
   AgentViewProvider,
-  AgentControls,
   SessionPicker,
   ChatInput,
   TokenUsageDisplay,
@@ -40,11 +39,11 @@ export function RalphLoopPanel({
   error,
   isViewingHistoricalSession = false,
   onSendMessage,
-  onPause,
-  onResume,
-  onStop,
+  onPause: _onPause,
+  onResume: _onResume,
+  onStop: _onStop,
   onStart,
-  onNewSession,
+  onNewSession: _onNewSession,
   onSelectSession,
   className,
 }: RalphLoopPanelProps) {
@@ -101,23 +100,9 @@ export function RalphLoopPanel({
     </div>
   )
 
-  // Footer with controls, chat input, and status bar
+  // Footer with chat input and status bar
   const footer = (
     <div className="flex flex-col border-t border-border">
-      {/* Agent controls row */}
-      <div className="flex items-center justify-end border-b border-border px-4 py-2">
-        <AgentControls
-          state={controlState}
-          onPause={onPause}
-          onResume={onResume}
-          onStop={onStop}
-          onNewSession={onNewSession}
-          showNewSession={false}
-          disabled={!isConnected}
-          size="sm"
-        />
-      </div>
-
       {/* Chat input - only show when there's an active session */}
       {isSessionActive && (
         <ChatInput

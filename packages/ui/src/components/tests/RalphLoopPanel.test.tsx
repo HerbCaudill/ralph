@@ -259,42 +259,9 @@ describe("RalphLoopPanel", () => {
   })
 
   describe("agent controls", () => {
-    it("renders agent controls", () => {
+    it("does not render agent controls (control bar has been removed)", () => {
       render(<RalphLoopPanel {...defaultProps} />)
-      expect(screen.getByTestId("agent-controls")).toBeInTheDocument()
-    })
-
-    it("passes control state to agent controls", () => {
-      render(<RalphLoopPanel {...defaultProps} controlState="running" />)
-      expect(screen.getByTestId("agent-controls")).toHaveAttribute("data-state", "running")
-    })
-
-    it("calls onPause when pause button is clicked", () => {
-      render(<RalphLoopPanel {...defaultProps} />)
-      fireEvent.click(screen.getByTestId("pause-btn"))
-      expect(defaultProps.onPause).toHaveBeenCalled()
-    })
-
-    it("calls onResume when resume button is clicked", () => {
-      render(<RalphLoopPanel {...defaultProps} />)
-      fireEvent.click(screen.getByTestId("resume-btn"))
-      expect(defaultProps.onResume).toHaveBeenCalled()
-    })
-
-    it("calls onStop when stop button is clicked", () => {
-      render(<RalphLoopPanel {...defaultProps} />)
-      fireEvent.click(screen.getByTestId("stop-btn"))
-      expect(defaultProps.onStop).toHaveBeenCalled()
-    })
-
-    it("does not show new session button", () => {
-      render(<RalphLoopPanel {...defaultProps} />)
-      expect(screen.queryByTestId("new-session-btn")).not.toBeInTheDocument()
-    })
-
-    it("disables controls when disconnected", () => {
-      render(<RalphLoopPanel {...defaultProps} connectionStatus="disconnected" />)
-      expect(screen.getByTestId("agent-controls")).toHaveAttribute("data-disabled", "true")
+      expect(screen.queryByTestId("agent-controls")).not.toBeInTheDocument()
     })
   })
 
