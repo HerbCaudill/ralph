@@ -43,8 +43,23 @@ export function useRalphLoop(): UseRalphLoopReturn {
         setControlState(data.state)
         break
 
+      // Handle both naming conventions for connection status
       case "connection_status":
         setConnectionStatus(data.status)
+        break
+
+      // Worker sends 'connected' and 'disconnected' events
+      case "connected":
+        setConnectionStatus("connected")
+        break
+
+      case "disconnected":
+        setConnectionStatus("disconnected")
+        break
+
+      // Worker sends 'state_change' for control state updates
+      case "state_change":
+        setControlState(data.state)
         break
 
       case "error":
@@ -181,4 +196,8 @@ export type WorkerResponse =
   | { type: "streaming"; isStreaming: boolean }
   | { type: "control_state"; state: ControlState }
   | { type: "connection_status"; status: ConnectionStatus }
+  // Messages sent by the ralphWorker.ts SharedWorker
+  | { type: "connected" }
+  | { type: "disconnected" }
+  | { type: "state_change"; state: ControlState }
   | { type: "error"; error: string }
