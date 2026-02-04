@@ -1,16 +1,48 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { IconSettings, IconSun, IconMoon, IconDeviceDesktop } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/hooks/useTheme"
+import { useThemes } from "@/hooks/useThemes"
+import { ThemePicker } from "./ThemePicker"
+import { useUiStore, selectVscodeThemeId } from "@/stores/uiStore"
 
 /**
  * Settings dropdown with appearance mode selector.
  * Accessed via a cog icon in the header.
  */
 export function SettingsDropdown({ className, textColor }: SettingsDropdownProps) {
-  const { theme: appearanceMode, setTheme: setAppearanceMode } = useTheme()
+  const { theme: appearanceMode, setTheme: setAppearanceMode, resolvedTheme } = useTheme()
+  const {
+    themes,
+    isLoading: isLoadingThemes,
+    error: themesError,
+    refresh: refreshThemes,
+  } = useThemes()
+  const vscodeThemeId = useUiStore(selectVscodeThemeId)
+  const setVscodeThemeId = useUiStore(state => state.setVscodeThemeId)
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Filter themes to match the current display mode (dark/light)
+  const filteredThemes = useMemo(() => {
+    return themes
+      .filter(theme => {
+        const isDarkTheme = theme.type === "dark" || theme.type === "hcDark"
+        return resolvedTheme === "dark" ? isDarkTheme : !isDarkTheme
+      })
+      .map(theme => ({
+        id: theme.id,
+        label: theme.label,
+        type: theme.type,
+      }))
+  }, [themes, resolvedTheme])
+
+  // Handle theme selection
+  const handleApplyTheme = (themeId: string) => {
+    setVscodeThemeId(themeId)
+    // Note: Full theme application (CSS variables, code highlighting) would require
+    // additional implementation. This stores the preference for now.
+  }
 
   // Close on click outside
   useEffect(() => {
@@ -86,6 +118,23 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
               ))}
             </div>
           </div>
+
+          {/* Theme Picker Section */}
+          {filteredThemes.length > 0 && (
+            <div className="border-t border-border p-2">
+              <div className="mb-2 px-1 text-xs font-medium text-muted-foreground">
+                VS Code Theme
+              </div>
+              <ThemePicker
+                themes={filteredThemes}
+                activeThemeId={vscodeThemeId}
+                isLoading={isLoadingThemes}
+                error={themesError}
+                onApplyTheme={handleApplyTheme}
+                onRefresh={refreshThemes}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -15,6 +15,8 @@ interface UiState {
   showToolOutput: boolean
   /** Current theme preference. */
   theme: "system" | "light" | "dark"
+  /** Selected VS Code theme ID (null for default). */
+  vscodeThemeId: string | null
 
   /** Set the sidebar width. */
   setSidebarWidth: (width: number) => void
@@ -26,6 +28,8 @@ interface UiState {
   toggleToolOutput: () => void
   /** Set the theme preference. */
   setTheme: (theme: "system" | "light" | "dark") => void
+  /** Set the VS Code theme ID. */
+  setVscodeThemeId: (id: string | null) => void
 }
 
 /**
@@ -38,15 +42,22 @@ export const useUiStore = create<UiState>()(set => ({
   rightPanelWidth: 400,
   showToolOutput: true,
   theme: "system",
+  vscodeThemeId: null,
 
   setSidebarWidth: width => set({ sidebarWidth: width }),
   toggleRightPanel: () => set(state => ({ rightPanelOpen: !state.rightPanelOpen })),
   setRightPanelWidth: width => set({ rightPanelWidth: width }),
   toggleToolOutput: () => set(state => ({ showToolOutput: !state.showToolOutput })),
   setTheme: theme => set({ theme }),
+  setVscodeThemeId: id => set({ vscodeThemeId: id }),
 }))
 
 /**
  * Select the current theme preference.
  */
 export const selectTheme = (state: UiState) => state.theme
+
+/**
+ * Select the VS Code theme ID.
+ */
+export const selectVscodeThemeId = (state: UiState) => state.vscodeThemeId

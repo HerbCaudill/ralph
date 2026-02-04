@@ -169,6 +169,7 @@ packages/ui/                           # UI package (new, rebuilt)
       StatusBar.tsx         # Status bar with connection/session info
     hooks/
       useRalphLoop.ts       # Hook connecting to SharedWorker for Ralph loop
+      useThemes.ts          # Hook fetching VS Code themes from /api/themes
     stores/
       uiStore.ts            # Zustand store for UI state
     workers/
