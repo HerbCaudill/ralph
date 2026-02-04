@@ -1,16 +1,17 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
 /**
  * UI preferences state for the Ralph UI.
  * Contains layout and display preferences that are not session-specific.
  */
 interface UiState {
-  /** Width of the sidebar in pixels. */
-  sidebarWidth: number
+  /** Width of the sidebar as a percentage of viewport width (0-100). */
+  sidebarWidthPercent: number
   /** Whether the right panel is open. */
   rightPanelOpen: boolean
-  /** Width of the right panel in pixels. */
-  rightPanelWidth: number
+  /** Width of the right panel as a percentage of viewport width (0-100). */
+  rightPanelWidthPercent: number
   /** Whether to show tool output in the event stream. */
   showToolOutput: boolean
   /** Current theme preference. */
@@ -22,12 +23,12 @@ interface UiState {
   /** Last used light theme ID. */
   lastLightThemeId: string | null
 
-  /** Set the sidebar width. */
-  setSidebarWidth: (width: number) => void
+  /** Set the sidebar width as a percentage of viewport width. */
+  setSidebarWidthPercent: (percent: number) => void
   /** Toggle the right panel open/closed. */
   toggleRightPanel: () => void
-  /** Set the right panel width. */
-  setRightPanelWidth: (width: number) => void
+  /** Set the right panel width as a percentage of viewport width. */
+  setRightPanelWidthPercent: (percent: number) => void
   /** Toggle whether tool output is shown. */
   toggleToolOutput: () => void
   /** Set the theme preference. */
@@ -40,29 +41,44 @@ interface UiState {
   setLastLightThemeId: (id: string | null) => void
 }
 
+/** Default sidebar width as percentage of viewport. */
+const DEFAULT_SIDEBAR_WIDTH_PERCENT = 20
+
+/** Default right panel width as percentage of viewport. */
+const DEFAULT_RIGHT_PANEL_WIDTH_PERCENT = 30
+
 /**
  * Zustand store for UI preferences.
  * Manages layout state like panel widths and visibility.
+ * State is persisted to localStorage.
  */
-export const useUiStore = create<UiState>()(set => ({
-  sidebarWidth: 280,
-  rightPanelOpen: false,
-  rightPanelWidth: 400,
-  showToolOutput: true,
-  theme: "system",
-  vscodeThemeId: null,
-  lastDarkThemeId: null,
-  lastLightThemeId: null,
+export const useUiStore = create<UiState>()(
+  persist(
+    set => ({
+      sidebarWidthPercent: DEFAULT_SIDEBAR_WIDTH_PERCENT,
+      rightPanelOpen: false,
+      rightPanelWidthPercent: DEFAULT_RIGHT_PANEL_WIDTH_PERCENT,
+      showToolOutput: true,
+      theme: "system",
+      vscodeThemeId: null,
+      lastDarkThemeId: null,
+      lastLightThemeId: null,
 
-  setSidebarWidth: width => set({ sidebarWidth: width }),
-  toggleRightPanel: () => set(state => ({ rightPanelOpen: !state.rightPanelOpen })),
-  setRightPanelWidth: width => set({ rightPanelWidth: width }),
-  toggleToolOutput: () => set(state => ({ showToolOutput: !state.showToolOutput })),
-  setTheme: theme => set({ theme }),
-  setVscodeThemeId: id => set({ vscodeThemeId: id }),
-  setLastDarkThemeId: id => set({ lastDarkThemeId: id }),
-  setLastLightThemeId: id => set({ lastLightThemeId: id }),
-}))
+      setSidebarWidthPercent: percent => set({ sidebarWidthPercent: percent }),
+      toggleRightPanel: () => set(state => ({ rightPanelOpen: !state.rightPanelOpen })),
+      setRightPanelWidthPercent: percent => set({ rightPanelWidthPercent: percent }),
+      toggleToolOutput: () => set(state => ({ showToolOutput: !state.showToolOutput })),
+      setTheme: theme => set({ theme }),
+      setVscodeThemeId: id => set({ vscodeThemeId: id }),
+      setLastDarkThemeId: id => set({ lastDarkThemeId: id }),
+      setLastLightThemeId: id => set({ lastLightThemeId: id }),
+    }),
+    {
+      name: "ralph-ui-preferences",
+      version: 1,
+    },
+  ),
+)
 
 /**
  * Select the current theme preference.

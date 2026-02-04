@@ -1,17 +1,44 @@
-import { useState, useCallback, type ReactNode, type MouseEvent } from "react"
+import { useState, useCallback, useEffect, type ReactNode, type MouseEvent } from "react"
 import { cn } from "../lib/utils"
+import { useUiStore } from "../stores/uiStore"
 
 /**
  * Main application layout with three resizable panels using CSS and mouse events.
- * - Left sidebar (resizable, min 200px, max 50%, default 25%)
+ * Panel widths are stored as percentages of viewport width and persisted to localStorage.
+ * - Left sidebar (resizable, min 200px, max 50%, default 20%)
  * - Center panel (main content, flexible)
- * - Right panel (optional, resizable, min 200px, max 70%, default 35%)
+ * - Right panel (optional, resizable, min 200px, max 70%, default 30%)
  */
 export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
-  const [leftWidth, setLeftWidth] = useState(DEFAULT_LEFT_WIDTH)
-  const [rightWidth, setRightWidth] = useState(DEFAULT_RIGHT_WIDTH)
+  const sidebarWidthPercent = useUiStore(state => state.sidebarWidthPercent)
+  const rightPanelWidthPercent = useUiStore(state => state.rightPanelWidthPercent)
+  const setSidebarWidthPercent = useUiStore(state => state.setSidebarWidthPercent)
+  const setRightPanelWidthPercent = useUiStore(state => state.setRightPanelWidthPercent)
+
+  // Local state for dragging - we track pixels during drag for smoothness
+  const [leftWidth, setLeftWidth] = useState(() => percentToPixels(sidebarWidthPercent))
+  const [rightWidth, setRightWidth] = useState(() => percentToPixels(rightPanelWidthPercent))
   const [isResizingLeft, setIsResizingLeft] = useState(false)
   const [isResizingRight, setIsResizingRight] = useState(false)
+
+  // Sync local state with store when store changes (e.g., on mount from localStorage)
+  useEffect(() => {
+    setLeftWidth(percentToPixels(sidebarWidthPercent))
+  }, [sidebarWidthPercent])
+
+  useEffect(() => {
+    setRightWidth(percentToPixels(rightPanelWidthPercent))
+  }, [rightPanelWidthPercent])
+
+  // Update pixel values on window resize to maintain percentage-based layout
+  useEffect(() => {
+    const handleResize = () => {
+      setLeftWidth(percentToPixels(sidebarWidthPercent))
+      setRightWidth(percentToPixels(rightPanelWidthPercent))
+    }
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [sidebarWidthPercent, rightPanelWidthPercent])
 
   const handleLeftMouseDown = useCallback((e: MouseEvent) => {
     e.preventDefault()
@@ -40,9 +67,23 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
   )
 
   const handleMouseUp = useCallback(() => {
+    // Persist to store as percentages when drag ends
+    if (isResizingLeft) {
+      setSidebarWidthPercent(pixelsToPercent(leftWidth))
+    }
+    if (isResizingRight) {
+      setRightPanelWidthPercent(pixelsToPercent(rightWidth))
+    }
     setIsResizingLeft(false)
     setIsResizingRight(false)
-  }, [])
+  }, [
+    isResizingLeft,
+    isResizingRight,
+    leftWidth,
+    rightWidth,
+    setSidebarWidthPercent,
+    setRightPanelWidthPercent,
+  ])
 
   return (
     <div
@@ -97,14 +138,18 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
   )
 }
 
+/** Convert percentage to pixels based on current viewport width. */
+function percentToPixels(percent: number): number {
+  return (percent / 100) * window.innerWidth
+}
+
+/** Convert pixels to percentage based on current viewport width. */
+function pixelsToPercent(pixels: number): number {
+  return (pixels / window.innerWidth) * 100
+}
+
 /** Minimum width for panels in pixels. */
 const MIN_PANEL_WIDTH = 200
-
-/** Default width for the left sidebar in pixels. */
-const DEFAULT_LEFT_WIDTH = 300
-
-/** Default width for the right panel in pixels. */
-const DEFAULT_RIGHT_WIDTH = 420
 
 export type MainLayoutProps = {
   /** Optional sidebar content (left panel, resizable). */
