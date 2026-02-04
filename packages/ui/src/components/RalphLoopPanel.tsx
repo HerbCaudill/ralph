@@ -1,4 +1,10 @@
-import { IconRobot, IconPlugConnected, IconPlugConnectedX, IconLoader2, IconHistory } from "@tabler/icons-react"
+import {
+  IconRobot,
+  IconPlugConnected,
+  IconPlugConnectedX,
+  IconLoader2,
+  IconHistory,
+} from "@tabler/icons-react"
 import {
   AgentView,
   AgentViewProvider,
@@ -102,7 +108,8 @@ export function RalphLoopPanel({
         disabled={isChatDisabled}
         placeholder={
           isViewingHistoricalSession ? "Switch to current session to send messages"
-          : !isConnected ? "Waiting for connection..."
+          : !isConnected ?
+            "Waiting for connection..."
           : "Send a message…"
         }
       />

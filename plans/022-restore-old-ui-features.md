@@ -1,180 +1,342 @@
-# Restore old UI features
+# 022: Restore Old UI Features
 
 ## Goal
 
-Restore functionality that existed in the old Ralph UI before the rearchitecture, pulling code from git history where possible.
+Restore feature parity with the old Ralph UI by copying components from git history (`4e931633^:packages/ui-deprecated/`) and wiring them into the new architecture.
 
-## Current state
+## Source Reference
 
-The rearchitected UI (`packages/ui/`) has:
-- Three-panel layout using `react-resizable-panels`
-- `TaskChatPanel` (placeholder, not connected)
-- `TaskSidebarController` from beads-view
-- `RalphRunner` with AgentView
-- Basic StatusBar
-- Minimal uiStore (sidebar/panel widths, tool output toggle)
+```bash
+# View any old component:
+git show 4e931633^:packages/ui-deprecated/src/components/layout/StatusBar.tsx
 
-## Missing functionality
+# List all old components:
+git ls-tree -r --name-only 4e931633^ -- packages/ui-deprecated/src/components/
+```
 
-### 1. Header with workspace selector
-
-The old UI had a header with:
-- Logo
-- WorkspacePicker dropdown (workspace name, issue count, branch)
-- Settings dropdown
-- Help button
-
-**Existing code to reuse:**
-- `WorkspaceSelector` component exists in `@herbcaudill/beads-view`
-- `useWorkspace` hook exists in beads-view
-- Server endpoints exist: `/api/workspace`, `/api/workspaces`, `/api/workspace/switch`
-
-### 2. Theme system
-
-The old UI had:
-- VS Code theme picker (discovers installed themes)
-- Light/dark/system mode toggle
-- Theme persistence per mode
-- Theme auto-switching based on selection
-
-**Needs restoration from git:**
-- `ThemeDiscovery.ts` (server-side theme discovery)
-- `ThemePicker.tsx` component
-- `ThemeToggle.tsx` component
-- `SettingsDropdown.tsx` component
-- `useTheme` hook
-- `useThemeCoordinator` hook
-- `useVSCodeTheme` hook
-- `/api/themes` endpoint
-
-### 3. Peacock accent color integration
-
-The old UI applied workspace accent colors from VS Code's Peacock extension:
-- Read from `.vscode/settings.json`
-- Applied as CSS custom property
-- Visible in workspace selector and throughout UI
-
-**Existing code:**
-- Server already reads peacock color via `readPeacockColor()`
-- `/api/workspace` returns `accentColor`
-- `useWorkspace` hook receives `accentColor`
-
-**Missing:** CSS variable injection and usage in components
-
-### 4. Task chat functionality
-
-The left panel should show a task-specific chat:
-- Dedicated chat for discussing/managing tasks
-- Uses `manage-tasks` system prompt
-- Session picker for switching between chat sessions
-
-**Reference implementation:** `packages/agent-demo/src/App.tsx` with `manage-tasks` system prompt
-
-### 5. Store enhancements
-
-Add to uiStore:
-- `theme`: "system" | "light" | "dark"
-- `vscodeThemeId`: current theme ID
-- `lastDarkThemeId`, `lastLightThemeId`: restore per-mode
-- `accentColor`: from workspace
-
-### 6. Hotkeys and command palette
-
-The old UI had comprehensive keyboard shortcuts:
-- Agent control: Start, Stop, Pause, Resume
-- Navigation: Previous/next session, previous/next task
-- Focus management: Sidebar, main, search, chat, task detail
-- Theme cycling
-- Tool output visibility toggle
-- Command palette
-- Help/hotkeys dialog
-
-**Reference implementation:** `@herbcaudill/beads-view` and `@herbcaudill/agent-view` have hotkey infrastructure
-
-### 7. Task ID linking
-
-The old UI auto-linked task IDs in text:
-- Detect task IDs like `rui-123`
-- Render as clickable links
-- Cut the prefix for display (show `123` instead of `rui-123`)
-
-### 8. Task detail panel wiring
-
-The TaskDetailPanel component exists but isn't rendered in App.tsx. When a task is clicked, `openDialogById` is called but nothing displays. Need to wire it up so task details show when a task is selected.
-
-**Reference:** `packages/beads-demo/src/App.tsx` - shows TaskDetailPanel in place of TaskChat when selectedTaskId is set.
-
-### 9. Footer/status bar enhancements
-
-The old UI footer had:
-- Pause/resume/stop controls (ControlBar)
-- Current task progress indicator
-- Connection status indicator
-- Token usage (input/output)
-- Context window percentage
-- Session timer/duration
-- Workspace name and branch
-
-**Existing code:**
-- `AgentControls` component exists in agent-view
-- `TokenUsageDisplay` and `ContextWindowProgress` exist in agent-view
-- Current StatusBar has basic version but missing controls
-
-**Reference:** `RalphLoopPanel.tsx` has some of this, but it's in the right panel not the global footer
-
-## Out of scope (punted)
-
-- Multi-instance support (instance selector, instance count badge)
-- IndexedDB persistence (handled by agent/beads packages)
-- Custom session history panel (use existing SessionPicker from agent-view)
+---
 
 ## Tasks
 
-### Phase 1: Header and workspace integration
+### 1. Restore Header HelpButton
 
-1. Create Header component with logo, workspace selector, settings button
-2. Wire up WorkspaceSelector from beads-view to App.tsx
-3. Add accent color CSS variable injection
+**Goal:** Add the ? button to header that opens hotkeys dialog
 
-### Phase 2: Theme system
+**Copy from git:**
 
-4. Restore ThemeDiscovery.ts to beads-server
-5. Add /api/themes endpoint to beads-server
-6. Restore ThemePicker component
-7. Restore ThemeToggle component (light/dark/system)
-8. Create SettingsDropdown with theme picker
-9. Add theme-related state to uiStore
-10. Restore useTheme and useThemeCoordinator hooks
+- `packages/ui-deprecated/src/components/layout/HelpButton.tsx`
+- `packages/ui-deprecated/src/components/layout/tests/HelpButton.test.tsx`
 
-### Phase 3: Task chat
+**Modify:**
 
-11. Connect TaskChatPanel to agent-server using useAgentChat with manage-tasks prompt
-12. Add SessionPicker for task chat sessions
+- `packages/ui/src/components/layout/Header.tsx` - Add HelpButton between workspace selector and settings
 
-### Phase 4: Hotkeys and command palette
+**Old component structure:**
 
-13. Register hotkey handlers in App.tsx
-14. Create HotkeysDialog component
-15. Restore CommandPalette component
-16. Wire up all hotkey actions
+```tsx
+// HelpButton.tsx - uses IconHelp, calls openHotkeysDialog from store
+<Button onClick={openHotkeysDialog} title="Keyboard shortcuts">
+  <IconHelp className="size-5" />
+</Button>
+```
 
-### Phase 5: Task ID linking
+**Verification:**
 
-17. Restore TextWithLinks component for task ID auto-linking
-18. Add prefix-cutting display logic
+- Click ? opens HotkeysDialog
+- Cmd+/ also opens it (already works)
 
-### Phase 6: Footer/status bar
+---
 
-19. Add agent controls (pause/resume/stop) to global footer
-20. Add current task indicator to footer
-21. Ensure token usage and context window are visible
-22. Add session timer/duration display
-23. Show workspace name and branch in footer
+### 2. Restore Full ControlBar
 
-## Approach
+**Goal:** Replace current AgentControls with full ControlBar (start/pause/stop/stop-after-current)
 
-For each task, first check git history at `7704f1f4^` to find the original implementation. Copy and adapt as needed, updating imports for the new package structure.
+**Copy from git:**
 
-Key commits:
-- `7704f1f4` - The rearchitecture commit (before this has the old code)
-- `d4dab3a0` - Added react-resizable-panels
+- `packages/ui-deprecated/src/components/controls/ControlBar.tsx`
+- `packages/ui-deprecated/src/components/controls/tests/ControlBar.test.tsx`
+- `packages/ui-deprecated/src/lib/getControlBarButtonStates.ts`
+- `packages/ui-deprecated/src/lib/startRalph.ts`
+- `packages/ui-deprecated/src/lib/stopRalph.ts`
+- `packages/ui-deprecated/src/lib/pauseRalph.ts`
+- `packages/ui-deprecated/src/lib/resumeRalph.ts`
+- `packages/ui-deprecated/src/lib/stopAfterCurrentRalph.ts`
+- `packages/ui-deprecated/src/lib/cancelStopAfterCurrentRalph.ts`
+
+**Modify:**
+
+- `packages/ui/src/components/StatusBar.tsx` - Use ControlBar instead of AgentControls
+
+**Old component features:**
+
+- Start button (play icon) - starts new Ralph session
+- Pause/Resume button - toggles pause state
+- Stop button - stops immediately
+- Stop-after-current button - stops after current task completes
+- Tooltips with hotkey hints
+- Button states disabled based on Ralph status
+
+**Verification:**
+
+- All four buttons visible in footer
+- Start works when idle
+- Pause/Resume toggles correctly
+- Stop stops immediately
+- Stop-after-current queues stop
+
+---
+
+### 3. Restore StatusIndicator
+
+**Goal:** Show running/paused/idle text in footer
+
+**Copy from git:**
+
+- `packages/ui-deprecated/src/components/layout/StatusIndicator.tsx`
+
+**Old component:**
+
+```tsx
+// Shows "Running", "Paused", "Idle" etc with colored dot
+<span className="flex items-center gap-1.5">
+  <span className={cn("size-2 rounded-full", statusColor)} />
+  <span>{statusText}</span>
+</span>
+```
+
+**Modify:**
+
+- `packages/ui/src/components/StatusBar.tsx` - Add StatusIndicator after ControlBar
+
+---
+
+### 4. Restore RunDuration (Session Timer)
+
+**Goal:** Show elapsed session time in footer
+
+**Copy from git:**
+
+- `packages/ui-deprecated/src/components/layout/RunDuration.tsx`
+- `packages/ui-deprecated/src/components/layout/tests/RunDuration.test.tsx`
+
+**Note:** Current `useSessionTimer` hook exists in `packages/ui/src/hooks/useSessionTimer.ts`. Verify compatibility.
+
+**Old component:**
+
+```tsx
+// Shows "1:04" format, only when > 00:00
+<span className="font-mono text-xs">{formatted}</span>
+```
+
+**Verification:**
+
+- Timer shows elapsed time during Ralph session
+- Timer resets on new session
+
+---
+
+### 5. Restore RepoBranch
+
+**Goal:** Show workspace name and git branch in footer
+
+**Copy from git:**
+
+- `packages/ui-deprecated/src/components/layout/RepoBranch.tsx`
+
+**Old component:**
+
+```tsx
+// Shows "ralph / main" with icons
+<span className="flex items-center gap-1.5">
+  <IconFolder size={14} />
+  <span>{workspaceName}</span>
+  <span className="text-muted-foreground">/</span>
+  <IconGitBranch size={14} />
+  <span>{branch}</span>
+</span>
+```
+
+**Note:** Current StatusBar already has this logic inline. May just need styling adjustments.
+
+---
+
+### 6. Restore SessionProgress (Task Progress Bar)
+
+**Goal:** Show task completion progress in footer
+
+**Copy from git:**
+
+- `packages/ui-deprecated/src/components/layout/SessionProgress.tsx`
+
+**Note:** `TaskProgressBar` exists in `packages/beads-view/src/components/tasks/TaskProgressBar.tsx`. Evaluate which to use.
+
+**Old component:**
+
+```tsx
+// Shows progress bar with "3/10" count
+<div className="flex items-center gap-2">
+  <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
+    <div className="h-full bg-repo-accent" style={{ width: `${progress}%` }} />
+  </div>
+  <span className="text-xs">
+    {current}/{total}
+  </span>
+</div>
+```
+
+**Verification:**
+
+- Progress bar visible when Ralph is running
+- Updates as tasks are completed
+
+---
+
+### 7. Restructure StatusBar Layout
+
+**Goal:** Rebuild StatusBar to match old layout structure
+
+**Old StatusBar structure (left to right):**
+
+```
+[ControlBar] [StatusIndicator] [RunDuration] | [RepoBranch] [TokenUsage] [ContextWindow] [SessionProgress]
+```
+
+**Current StatusBar has:** Connection indicator, some controls, workspace, token usage, context window
+
+**Modify:**
+
+- `packages/ui/src/components/StatusBar.tsx` - Restructure to use restored components
+
+---
+
+### 8. Task Details as Sheet Overlay
+
+**Goal:** Task details should open as overlay/sheet from right, not replace left sidebar
+
+**Create new:**
+
+- `packages/ui/src/components/TaskDetailSheet.tsx` - Wraps TaskDetailsController in Sheet
+
+**Modify:**
+
+- `packages/ui/src/App.tsx`:
+  - Remove conditional sidebar logic (always show TaskChatPanel)
+  - Add Sheet component that opens when task is selected
+  - Sheet slides in from right over Ralph panel
+
+**Reference:** `packages/ui/src/components/ui/sheet.tsx` already exists
+
+**Structure:**
+
+```tsx
+// App.tsx
+const sidebar = <TaskChatPanel ... />  // Always task chat
+
+// Sheet overlay for task details
+<Sheet open={selectedTaskId !== null} onOpenChange={...}>
+  <SheetContent side="right">
+    <TaskDetailsController task={selectedTask} ... />
+  </SheetContent>
+</Sheet>
+```
+
+**Verification:**
+
+- Left panel always shows TaskChatPanel
+- Clicking task opens sheet from right
+- Sheet can be closed
+- Sheet doesn't replace any panel
+
+---
+
+### 9. Wire TaskProgressBar to Task List
+
+**Goal:** Show task completion progress below task list
+
+**Component exists:** `packages/beads-view/src/components/tasks/TaskProgressBar.tsx`
+
+**Modify:**
+
+- Either export TaskProgressBar from beads-view and use in App.tsx
+- Or add it inside TaskSidebarController
+
+**Props needed:**
+
+- `isRunning` - from useRalphLoop().controlState === "running"
+- `tasks` - from useTasks()
+- `accentColor` - from workspace
+
+---
+
+### 10. Wire Theme Picker
+
+**Goal:** Enable VS Code theme selection
+
+**Components exist:**
+
+- `packages/ui/src/components/layout/ThemePicker.tsx`
+- `packages/beads-server/src/ThemeDiscovery.ts`
+
+**Create:**
+
+- `/api/themes` endpoint in beads-server
+- `useThemes` hook to fetch available themes
+
+**Modify:**
+
+- `packages/ui/src/components/layout/SettingsDropdown.tsx` - Add ThemePicker
+
+**Copy from git (if needed):**
+
+- `packages/ui-deprecated/src/components/layout/ThemePickerController.tsx`
+- `packages/ui-deprecated/src/hooks/useTheme.ts`
+- `packages/ui-deprecated/src/hooks/useThemeCoordinator.ts`
+
+---
+
+### 11. Copy and Update Tests
+
+**Copy tests for all restored components:**
+
+From `packages/ui-deprecated/src/components/`:
+
+- `layout/tests/Header.test.tsx`
+- `layout/tests/StatusBar.test.tsx`
+- `layout/tests/HelpButton.test.tsx`
+- `layout/tests/RunDuration.test.tsx`
+- `layout/tests/ThemePicker.test.tsx`
+- `controls/tests/ControlBar.test.tsx`
+
+**Update imports** to match new package structure.
+
+---
+
+## Implementation Order
+
+1. Task 1: HelpButton (quick win, header)
+2. Task 2: ControlBar (core functionality)
+3. Task 3: StatusIndicator
+4. Task 4: RunDuration
+5. Task 5: RepoBranch
+6. Task 6: SessionProgress
+7. Task 7: StatusBar restructure (combines above)
+8. Task 8: Task details as sheet
+9. Task 9: TaskProgressBar wiring
+10. Task 10: Theme picker wiring
+11. Task 11: Tests
+
+---
+
+## Verification
+
+After all tasks complete:
+
+1. `pnpm typecheck` - No errors
+2. `pnpm ui:test` - All tests pass
+3. Manual verification:
+   - Header: Logo, workspace selector, ?, settings
+   - Footer: Start/Pause/Stop buttons, "Running"/"Idle" text, timer, repo/branch, tokens, context window, progress
+   - Left panel: Always TaskChatPanel
+   - Task click: Opens sheet from right
+   - Progress bar under task list when running
+   - Theme picker in settings works

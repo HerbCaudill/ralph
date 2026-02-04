@@ -134,9 +134,7 @@ describe("ControlBar", () => {
 
     it("enables Cancel stop after current button when stopping after current", () => {
       render(<ControlBar {...defaultProps} controlState="running" isStoppingAfterCurrent={true} />)
-      expect(
-        screen.getByRole("button", { name: "Cancel stop after current" }),
-      ).not.toBeDisabled()
+      expect(screen.getByRole("button", { name: "Cancel stop after current" })).not.toBeDisabled()
     })
   })
 

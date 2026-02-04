@@ -31,12 +31,12 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
       } else if (isResizingRight) {
         const newWidth = Math.min(
           Math.max(window.innerWidth - e.clientX, MIN_PANEL_WIDTH),
-          window.innerWidth * 0.7
+          window.innerWidth * 0.7,
         )
         setRightWidth(newWidth)
       }
     },
-    [isResizingLeft, isResizingRight]
+    [isResizingLeft, isResizingRight],
   )
 
   const handleMouseUp = useCallback(() => {
@@ -63,7 +63,7 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
           <div
             className={cn(
               "w-1 cursor-col-resize transition-colors hover:bg-primary/20",
-              isResizingLeft && "bg-primary/30"
+              isResizingLeft && "bg-primary/30",
             )}
             onMouseDown={handleLeftMouseDown}
             data-testid="sidebar-resize-handle"
@@ -80,7 +80,7 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
           <div
             className={cn(
               "w-1 cursor-col-resize transition-colors hover:bg-primary/20",
-              isResizingRight && "bg-primary/30"
+              isResizingRight && "bg-primary/30",
             )}
             onMouseDown={handleRightMouseDown}
             data-testid="right-panel-resize-handle"

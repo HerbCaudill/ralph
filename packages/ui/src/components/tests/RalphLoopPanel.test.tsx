@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { RalphLoopPanel } from "../RalphLoopPanel"
-import type { ChatEvent, SessionIndexEntry, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
+import type {
+  ChatEvent,
+  SessionIndexEntry,
+  ConnectionStatus,
+  ControlState,
+} from "@herbcaudill/agent-view"
 
 // Mock agent-view components
 vi.mock("@herbcaudill/agent-view", () => ({
@@ -9,11 +14,14 @@ vi.mock("@herbcaudill/agent-view", () => ({
     <div data-testid="agent-view">
       {header}
       <div data-testid="events-container">
-        {events.length === 0 ? emptyState : (
-          events.map((e: ChatEvent, i: number) => (
-            <div key={i} data-testid={`event-${i}`}>{e.type}</div>
+        {events.length === 0 ?
+          emptyState
+        : events.map((e: ChatEvent, i: number) => (
+            <div key={i} data-testid={`event-${i}`}>
+              {e.type}
+            </div>
           ))
-        )}
+        }
       </div>
       {isStreaming && <div data-testid="streaming-indicator">Streaming...</div>}
       {footer}
@@ -22,17 +30,25 @@ vi.mock("@herbcaudill/agent-view", () => ({
   AgentViewProvider: ({ children }: any) => <div data-testid="agent-view-provider">{children}</div>,
   AgentControls: ({ state, onPause, onResume, onStop, onNewSession, disabled }: any) => (
     <div data-testid="agent-controls" data-state={state} data-disabled={disabled}>
-      <button onClick={onPause} data-testid="pause-btn">Pause</button>
-      <button onClick={onResume} data-testid="resume-btn">Resume</button>
-      <button onClick={onStop} data-testid="stop-btn">Stop</button>
-      <button onClick={onNewSession} data-testid="new-session-btn">New Session</button>
+      <button onClick={onPause} data-testid="pause-btn">
+        Pause
+      </button>
+      <button onClick={onResume} data-testid="resume-btn">
+        Resume
+      </button>
+      <button onClick={onStop} data-testid="stop-btn">
+        Stop
+      </button>
+      <button onClick={onNewSession} data-testid="new-session-btn">
+        New Session
+      </button>
     </div>
   ),
   SessionPicker: ({ sessions, currentSessionId, onSelectSession, disabled }: any) => (
     <div data-testid="session-picker" data-disabled={disabled}>
       <select
         value={currentSessionId || ""}
-        onChange={(e) => onSelectSession(e.target.value)}
+        onChange={e => onSelectSession(e.target.value)}
         data-testid="session-select"
       >
         <option value="">Select session</option>
@@ -50,7 +66,7 @@ vi.mock("@herbcaudill/agent-view", () => ({
         data-testid="chat-input-field"
         placeholder={placeholder}
         disabled={disabled}
-        onKeyDown={(e) => {
+        onKeyDown={e => {
           if (e.key === "Enter" && !e.shiftKey) {
             onSend((e.target as HTMLInputElement).value)
           }

@@ -1,9 +1,6 @@
 import { cn } from "@/lib/utils"
 import type { ControlState } from "@/hooks/useRalphLoop"
-import {
-  controlStateToRalphStatus,
-  type RalphStatus,
-} from "@/lib/getControlBarButtonStates"
+import { controlStateToRalphStatus, type RalphStatus } from "@/lib/getControlBarButtonStates"
 
 /**
  * Displays the current Ralph status with a colored dot indicator.

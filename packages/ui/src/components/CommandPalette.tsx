@@ -8,12 +8,7 @@ import {
   IconKeyboard,
 } from "@tabler/icons-react"
 
-export type CommandAction =
-  | "agentStart"
-  | "agentStop"
-  | "agentPause"
-  | "cycleTheme"
-  | "showHotkeys"
+export type CommandAction = "agentStart" | "agentStop" | "agentPause" | "cycleTheme" | "showHotkeys"
 
 type CommandItem = {
   id: CommandAction
@@ -80,8 +75,7 @@ export function CommandPalette({
       {
         id: "agentPause",
         label: controlState === "paused" ? "Resume Ralph" : "Pause Ralph",
-        description:
-          controlState === "paused" ? "Resume the Ralph agent" : "Pause the Ralph agent",
+        description: controlState === "paused" ? "Resume the Ralph agent" : "Pause the Ralph agent",
         icon: <IconPlayerPause className="h-4 w-4" />,
         available: () => (controlState === "running" || controlState === "paused") && isConnected,
       },
