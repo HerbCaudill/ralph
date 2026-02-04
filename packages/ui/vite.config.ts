@@ -30,6 +30,10 @@ export default defineConfig({
         target: `http://localhost:${beadsPort}`,
         changeOrigin: true,
       },
+      "/api/themes": {
+        target: `http://localhost:${beadsPort}`,
+        changeOrigin: true,
+      },
       "/beads-ws": {
         target: `ws://localhost:${beadsPort}`,
         ws: true,
