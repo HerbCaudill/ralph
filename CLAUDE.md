@@ -169,7 +169,7 @@ packages/ui/                           # UI package
       HotkeysDialog.tsx     # Keyboard shortcuts dialog
       Logo.tsx              # Ralph logo component
       MainLayout.tsx        # Main layout with sidebar and content
-      RalphRunner.tsx       # Ralph session display with AgentView
+      RalphRunner.tsx       # Ralph session display with AgentView and comprehensive footer (controls, status, timer, repo/branch, token usage, context window)
       RalphLoopPanel.tsx    # Full-featured Ralph loop panel with session history, controls, and status bar
       RepoBranch.tsx        # Workspace name and git branch with branch icon (status bar footer)
       RunDuration.tsx       # Session timer display

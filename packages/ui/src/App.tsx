@@ -264,16 +264,24 @@ function AppContent() {
     />
   )
 
-  // Ralph loop panel (right side)
+  // Ralph loop panel (right side) - with comprehensive footer
   const rightPanel = (
     <RalphRunner
       events={events}
       isStreaming={isStreaming}
       controlState={controlState}
+      connectionStatus={connectionStatus}
+      workspaceName={workspace?.name}
+      branch={workspace?.branch}
+      workspacePath={workspace?.path}
+      isStoppingAfterCurrent={isStoppingAfterCurrent}
       onSendMessage={handleRalphSend}
+      onStart={start}
       onPause={pause}
       onResume={resume}
       onStop={stop}
+      onStopAfterCurrent={handleStopAfterCurrent}
+      onCancelStopAfterCurrent={handleCancelStopAfterCurrent}
       onNewSession={handleNewSession}
     />
   )
