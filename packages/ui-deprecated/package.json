@@ -3,7 +3,6 @@
   "types": "./dist/server/index.d.ts",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc -b --noEmit",
     "test:watch": "vitest --watch",
     "test:pw:ui": "node ../../scripts/playwright.js --ui",
     "test:pw:headed": "node ../../scripts/playwright.js --headed",
