@@ -155,18 +155,32 @@ packages/agent-server/                 # Generic agent server package
       loadPrompt.ts         # Prompt assembly (context file + cwd context + system prompt)
       loadClaudeMd.ts       # Claude-specific context loading (legacy, still exported)
 
-packages/ui/                           # UI package (new, rebuilt)
+packages/ui/                           # UI package
   src/
     main.tsx                # App entry point
     App.tsx                 # Root component
     index.css               # Tailwind CSS entry
+    assets/
+      logo.svg              # Ralph robot icon (uses currentColor for theming)
     components/
+      ControlBar.tsx        # Agent control buttons (start/pause/resume/stop)
+      Header.tsx            # App header (logo, workspace selector, settings)
+      HelpButton.tsx        # Help button for opening hotkeys dialog
+      HotkeysDialog.tsx     # Keyboard shortcuts dialog
+      Logo.tsx              # Ralph logo component
       MainLayout.tsx        # Main layout with sidebar and content
       RalphRunner.tsx       # Ralph session display with AgentView
       RalphLoopPanel.tsx    # Full-featured Ralph loop panel with session history, controls, and status bar
+      RepoBranch.tsx        # Workspace name and git branch with branch icon (status bar footer)
+      RunDuration.tsx       # Session timer display
+      SessionProgress.tsx   # Session task completion progress
+      SettingsDropdown.tsx  # Settings dropdown (placeholder)
+      StatusBar.tsx         # Status bar with connection/session info
+      StatusIndicator.tsx   # Connection/status indicator
       TaskChatPanel.tsx     # Task chat panel with AgentView
       TaskDetailPanel.tsx   # Task detail panel with inline editing (wraps TaskDetailsController)
-      StatusBar.tsx         # Status bar with connection/session info
+      ThemePicker.tsx       # Theme color picker
+      ThemeToggle.tsx       # Light/dark mode toggle
     hooks/
       useRalphLoop.ts       # Hook connecting to SharedWorker for Ralph loop
       useThemes.ts          # Hook fetching VS Code themes from /api/themes
@@ -175,7 +189,9 @@ packages/ui/                           # UI package (new, rebuilt)
     workers/
       ralphWorker.ts        # SharedWorker for Ralph loop orchestration
     lib/
+      getContrastingColor.ts # WCAG-compliant foreground color calculator
       utils.ts              # Utility functions (cn for class merging)
+    constants.ts            # UI constants (DEFAULT_ACCENT_COLOR, storage keys)
 
 packages/agent-demo/              # Agent chat demo
   src/
@@ -196,26 +212,7 @@ packages/beads-demo/                   # Beads task manager demo
       HotkeysDialog.tsx     # Dialog showing available keyboard shortcuts (triggered by showHotkeys action)
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
 
-packages/ui/                        # UI package
-  src/
-    assets/
-      logo.svg              # Ralph robot icon (uses currentColor for theming)
-    components/
-      layout/               # Layout components
-        Header.tsx          # App header (logo, workspace selector, settings)
-        HelpButton.tsx      # Help button for opening hotkeys dialog
-        Logo.tsx            # Ralph logo component
-        RepoBranch.tsx      # Workspace name and git branch with branch icon (status bar footer)
-        RunDuration.tsx     # Session timer display
-        SettingsDropdown.tsx # Settings dropdown (placeholder)
-        StatusIndicator.tsx # Connection/status indicator
-        ThemePicker.tsx     # Theme color picker
-        ThemeToggle.tsx     # Light/dark mode toggle
-        index.ts            # Barrel exports
-    lib/
-      getContrastingColor.ts # WCAG-compliant foreground color calculator
-      utils.ts              # Utility functions (cn for class merging)
-    constants.ts            # UI constants (DEFAULT_ACCENT_COLOR, storage keys)
+packages/ui/                        # UI package (continued)
   server/                   # Express backend
     index.ts                # Server entry + REST API + WebSocket (imports task routes from beads-view)
     RalphManager.ts         # Re-export from @herbcaudill/agent-server
