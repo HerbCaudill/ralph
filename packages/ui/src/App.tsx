@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, useEffect } from "react"
 import { MainLayout } from "./components/MainLayout"
-import { Header } from "./components/layout"
+import { Header } from "./components/Header"
 import { RalphRunner } from "./components/RalphRunner"
 import { TaskChatPanel } from "./components/TaskChatPanel"
 import { TaskDetailSheet } from "./components/TaskDetailSheet"

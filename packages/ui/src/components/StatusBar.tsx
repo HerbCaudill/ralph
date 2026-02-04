@@ -6,8 +6,11 @@ import {
 } from "@herbcaudill/agent-view"
 import type { ChatEvent, ConnectionStatus, ControlState } from "@herbcaudill/agent-view"
 import { useSessionTimer } from "@/hooks/useSessionTimer"
-import { ControlBar } from "@/components/controls/ControlBar"
-import { RepoBranch, RunDuration, SessionProgress, StatusIndicator } from "@/components/layout"
+import { ControlBar } from "@/components/ControlBar"
+import { RepoBranch } from "@/components/RepoBranch"
+import { RunDuration } from "@/components/RunDuration"
+import { SessionProgress } from "@/components/SessionProgress"
+import { StatusIndicator } from "@/components/StatusIndicator"
 import type { TaskCardTask } from "@herbcaudill/beads-view"
 
 /**

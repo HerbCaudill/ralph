@@ -12,7 +12,11 @@ vi.mock("@herbcaudill/agent-view", () => ({
       {tokenUsage.input}in/{tokenUsage.output}out
     </div>
   ),
-  ContextWindowProgress: ({ contextWindow }: { contextWindow: { used: number; total: number } }) => (
+  ContextWindowProgress: ({
+    contextWindow,
+  }: {
+    contextWindow: { used: number; total: number }
+  }) => (
     <div data-testid="context-window">
       {contextWindow.used}/{contextWindow.total}
     </div>
@@ -25,7 +29,7 @@ vi.mock("@/hooks/useSessionTimer", () => ({
 }))
 
 // Mock the layout components
-vi.mock("@/components/layout", () => ({
+vi.mock("@/components/RepoBranch", () => ({
   RepoBranch: ({
     workspaceName,
     branch,
@@ -39,9 +43,15 @@ vi.mock("@/components/layout", () => ({
       {workspaceName}:{branch}
     </div>
   ),
+}))
+
+vi.mock("@/components/RunDuration", () => ({
   RunDuration: ({ elapsedMs }: { elapsedMs: number; className?: string }) => (
     <div data-testid="run-duration">{elapsedMs}ms</div>
   ),
+}))
+
+vi.mock("@/components/SessionProgress", () => ({
   SessionProgress: ({
     tasks,
   }: {
@@ -49,6 +59,9 @@ vi.mock("@/components/layout", () => ({
     accentColor?: string | null
     className?: string
   }) => <div data-testid="session-progress">{tasks.length} tasks</div>,
+}))
+
+vi.mock("@/components/StatusIndicator", () => ({
   StatusIndicator: ({
     controlState,
   }: {
@@ -59,7 +72,7 @@ vi.mock("@/components/layout", () => ({
 }))
 
 // Mock the ControlBar
-vi.mock("@/components/controls/ControlBar", () => ({
+vi.mock("@/components/ControlBar", () => ({
   ControlBar: ({ controlState }: { controlState: string }) => (
     <div data-testid="control-bar">{controlState}</div>
   ),
@@ -124,8 +137,8 @@ describe("StatusBar", () => {
       const { container } = render(<StatusBar {...defaultProps} />)
 
       // Get all test ids in document order
-      const allTestIds = Array.from(container.querySelectorAll("[data-testid]")).map(
-        el => el.getAttribute("data-testid"),
+      const allTestIds = Array.from(container.querySelectorAll("[data-testid]")).map(el =>
+        el.getAttribute("data-testid"),
       )
 
       // Verify the expected order
