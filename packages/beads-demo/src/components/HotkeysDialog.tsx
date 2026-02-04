@@ -28,7 +28,7 @@ export function HotkeysDialog({ open, onClose, hotkeys }: HotkeysDialogProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="rounded-lg border border-border bg-background p-0 shadow-lg backdrop:bg-black/50"
+      className="m-auto rounded-lg border border-border bg-background p-0 shadow-lg backdrop:bg-black/50"
       onClose={onClose}
     >
       <div className="w-80 p-4">
