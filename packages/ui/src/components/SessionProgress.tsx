@@ -6,11 +6,7 @@ import type { TaskCardTask } from "@herbcaudill/beads-view"
  * Shows task completion progress in the footer.
  * Displays a compact progress bar with closed/total count.
  */
-export function SessionProgress({
-  tasks = [],
-  accentColor,
-  className,
-}: SessionProgressProps) {
+export function SessionProgress({ tasks = [], accentColor, className }: SessionProgressProps) {
   const progressColor = accentColor ?? DEFAULT_ACCENT_COLOR
 
   // Filter out epics for progress calculation

@@ -78,12 +78,7 @@ describe("SessionProgress", () => {
     })
 
     it("uses accent color for progress bar fill when set", () => {
-      render(
-        <SessionProgress
-          tasks={[createTask({ status: "closed" })]}
-          accentColor="#ff0000"
-        />,
-      )
+      render(<SessionProgress tasks={[createTask({ status: "closed" })]} accentColor="#ff0000" />)
       const progressBar = screen.getByTestId("session-progress")
       const fillElement = progressBar.querySelector(".h-full")
       expect(fillElement).toHaveStyle({ backgroundColor: "#ff0000" })

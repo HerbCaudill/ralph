@@ -173,9 +173,8 @@ describe("useRalphLoop", () => {
   describe("start button enabled state", () => {
     it("should enable start when connected and idle (reproduces P0 bug r-0wsce)", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
-      const { getControlBarButtonStates, controlStateToRalphStatus } = await import(
-        "../../lib/getControlBarButtonStates"
-      )
+      const { getControlBarButtonStates, controlStateToRalphStatus } =
+        await import("../../lib/getControlBarButtonStates")
       const { result } = renderHook(() => useRalphLoop())
 
       // Simulate the worker sending connected and idle state

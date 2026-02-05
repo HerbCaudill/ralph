@@ -159,14 +159,17 @@ describe("useThemes", () => {
       })
 
       mockFetch.mockClear()
-      const newThemes = [...mockThemes, {
-        id: "new.theme/New Theme",
-        label: "New Theme",
-        type: "dark" as const,
-        path: "/path/to/new.json",
-        extensionId: "new.theme",
-        extensionName: "New Theme Extension",
-      }]
+      const newThemes = [
+        ...mockThemes,
+        {
+          id: "new.theme/New Theme",
+          label: "New Theme",
+          type: "dark" as const,
+          path: "/path/to/new.json",
+          extensionId: "new.theme",
+          extensionName: "New Theme Extension",
+        },
+      ]
 
       mockFetch.mockResolvedValue({
         ok: true,

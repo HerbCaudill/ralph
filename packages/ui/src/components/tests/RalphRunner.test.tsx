@@ -47,7 +47,9 @@ vi.mock("../StatusIndicator", () => ({
 }))
 
 vi.mock("../RunDuration", () => ({
-  RunDuration: ({ elapsedMs }: any) => <div data-testid="run-duration">Duration: {elapsedMs}ms</div>,
+  RunDuration: ({ elapsedMs }: any) => (
+    <div data-testid="run-duration">Duration: {elapsedMs}ms</div>
+  ),
 }))
 
 vi.mock("../RepoBranch", () => ({
@@ -75,9 +77,7 @@ vi.mock("@/hooks/useSessionTimer", () => ({
   useSessionTimer: () => ({ elapsedMs: 5000 }),
 }))
 
-const mockEvents: ChatEvent[] = [
-  { type: "user", role: "user", content: "Hello" } as ChatEvent,
-]
+const mockEvents: ChatEvent[] = [{ type: "user", role: "user", content: "Hello" } as ChatEvent]
 
 const defaultProps = {
   events: mockEvents,

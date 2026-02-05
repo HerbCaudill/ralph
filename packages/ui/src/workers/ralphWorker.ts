@@ -145,17 +145,24 @@ function connect(): void {
           currentSessionId = message.sessionId as string
           broadcast({ type: "session_created", sessionId: currentSessionId })
 
-          // Send initial message to start the Ralph agent
-          // The system prompt tells it what to do (check for errors, find work, etc.)
-          // Use empty message so it doesn't show in UI
-          if (ws && controlState === "running") {
-            ws.send(
-              JSON.stringify({
-                type: "message",
-                sessionId: currentSessionId,
-                message: "",
-              }),
-            )
+          // Fetch and send the Ralph prompt as the first user message (like the CLI does)
+          if (controlState === "running") {
+            fetch(`${self.location.protocol}//${self.location.host}/api/prompts/ralph`)
+              .then(res => res.json())
+              .then((data: { prompt: string }) => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                  ws.send(
+                    JSON.stringify({
+                      type: "message",
+                      sessionId: currentSessionId,
+                      message: data.prompt,
+                    }),
+                  )
+                }
+              })
+              .catch(err => {
+                broadcast({ type: "error", error: `Failed to load Ralph prompt: ${err.message}` })
+              })
           }
           return
         }
