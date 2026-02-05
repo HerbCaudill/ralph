@@ -194,14 +194,21 @@ function connect(): void {
           return
         }
 
-        // Forward all other events
+        // Forward all other events (except user messages, like the CLI does)
         if (message.type === "event" && message.event) {
-          broadcast({ type: "event", event: message.event })
+          const event = message.event as Record<string, unknown>
+          // Skip user messages (initial prompt, user inputs)
+          // Only show assistant and result messages
+          if (event.type !== "user") {
+            broadcast({ type: "event", event: message.event })
+          }
           return
         }
 
-        // Forward any other message as an event
-        broadcast({ type: "event", event: message })
+        // Forward any other message as an event (except user messages)
+        if (message.type !== "user") {
+          broadcast({ type: "event", event: message })
+        }
       } catch {
         // Ignore unparseable messages
       }
