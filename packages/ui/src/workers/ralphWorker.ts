@@ -147,12 +147,13 @@ function connect(): void {
 
           // Send initial message to start the Ralph agent
           // The system prompt tells it what to do (check for errors, find work, etc.)
+          // Use empty message so it doesn't show in UI
           if (ws && controlState === "running") {
             ws.send(
               JSON.stringify({
                 type: "message",
                 sessionId: currentSessionId,
-                message: "Begin session",
+                message: "",
               }),
             )
           }
