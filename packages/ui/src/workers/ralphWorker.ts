@@ -196,8 +196,9 @@ function connect(): void {
         pingInterval = null
       }
 
-      // Auto-reconnect after 3 seconds if we were running
-      if (controlState !== "idle") {
+      // Auto-reconnect after 3 seconds if we have connected ports
+      // This maintains connection status even when idle
+      if (ports.size > 0) {
         reconnectTimer = setTimeout(connect, 3000)
       }
     }
@@ -290,7 +291,10 @@ function handlePortMessage(message: WorkerMessage, port: MessagePort): void {
     case "start":
       if (controlState === "idle") {
         setControlState("running")
-        connect()
+        // Connect if not already connected
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          connect()
+        }
         // Wait for connection, then create/resume session
         const checkConnection = setInterval(() => {
           if (ws?.readyState === WebSocket.OPEN) {
@@ -356,6 +360,14 @@ self.onconnect = (e: MessageEvent) => {
     handlePortMessage(event.data, port)
   }
 
+  port.onmessageerror = () => {
+    ports.delete(port)
+    // Disconnect if no ports remain
+    if (ports.size === 0) {
+      disconnect()
+    }
+  }
+
   // Send current state to the new port
   port.postMessage({
     type: "state_change",
@@ -373,6 +385,10 @@ self.onconnect = (e: MessageEvent) => {
   // Notify if already connected
   if (ws?.readyState === WebSocket.OPEN) {
     port.postMessage({ type: "connected" } satisfies WorkerEvent)
+  } else if (!ws && ports.size === 1) {
+    // First port connected and no WebSocket exists - connect now
+    // This allows the UI to show connection status without waiting for "start"
+    connect()
   }
 
   port.start()
