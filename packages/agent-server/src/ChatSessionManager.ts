@@ -106,6 +106,13 @@ export class ChatSessionManager extends EventEmitter {
       throw new Error("No available agent adapters. Check API keys.")
     }
 
+    // Load app-specific system prompt if not provided
+    let systemPrompt = options.systemPrompt
+    if (!systemPrompt && options.app === "ralph") {
+      const { loadRalphPrompt } = await import("./lib/loadRalphPrompt.js")
+      systemPrompt = await loadRalphPrompt(options.cwd ?? this.defaultCwd)
+    }
+
     const sessionId = generateId()
     const session: SessionState = {
       sessionId,
@@ -121,7 +128,7 @@ export class ChatSessionManager extends EventEmitter {
       },
       messageQueue: [],
       app: options.app,
-      systemPrompt: options.systemPrompt,
+      systemPrompt,
     }
 
     this.sessions.set(sessionId, session)

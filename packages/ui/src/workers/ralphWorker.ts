@@ -144,6 +144,18 @@ function connect(): void {
         if (message.type === "session_created") {
           currentSessionId = message.sessionId as string
           broadcast({ type: "session_created", sessionId: currentSessionId })
+
+          // Send initial message to start the Ralph agent
+          // The system prompt tells it what to do (check for errors, find work, etc.)
+          if (ws && controlState === "running") {
+            ws.send(
+              JSON.stringify({
+                type: "message",
+                sessionId: currentSessionId,
+                message: "Begin session",
+              }),
+            )
+          }
           return
         }
 
