@@ -10,6 +10,7 @@ const workspacePath = process.env.WORKSPACE_PATH ?? process.cwd()
 
 runDev({
   label: "dev",
+  waitForHealthz: true,
   services: [
     {
       name: "beads-server",

@@ -4,6 +4,7 @@ import { runDev } from "./lib/devRunner.js"
 
 runDev({
   label: "agent-demo",
+  waitForHealthz: true,
   services: [
     {
       name: "agent-server",

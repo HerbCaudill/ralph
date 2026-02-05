@@ -4,6 +4,7 @@ import { runDev } from "./lib/devRunner.js"
 
 runDev({
   label: "beads-demo",
+  waitForHealthz: true,
   services: [
     {
       name: "beads-server",
