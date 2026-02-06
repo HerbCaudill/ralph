@@ -5,9 +5,11 @@ import { renderHook, act, waitFor } from "@testing-library/react"
  * Tests for the communication between useRalphLoop hook and the SharedWorker.
  *
  * These tests verify that the hook correctly handles messages from the worker.
- * The worker sends events with specific types, and the hook must handle them
- * to update its state correctly.
+ * The worker sends events scoped to a workspaceId, and the hook must filter
+ * and handle them to update its state correctly.
  */
+
+const TEST_WORKSPACE_ID = "herbcaudill/ralph"
 
 // Mock SharedWorker
 class MockMessagePort {
@@ -27,7 +29,7 @@ class MockMessagePort {
     // noop
   }
 
-  // Helper to simulate receiving a message from the worker
+  /** Simulate receiving a message from the worker. */
   simulateMessage(data: unknown): void {
     if (this.onmessage) {
       this.onmessage(new MessageEvent("message", { data }))
@@ -73,15 +75,17 @@ describe("useRalphLoop", () => {
     it("should update connectionStatus when receiving 'connected' event from worker", async () => {
       // Dynamic import to get fresh module with mocked SharedWorker
       const { useRalphLoop } = await import("../useRalphLoop")
-      const { result } = renderHook(() => useRalphLoop())
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
       // Initially should be connecting (set in the hook when worker connects)
       expect(result.current.connectionStatus).toBe("connecting")
 
-      // Simulate the worker sending a 'connected' event
-      // This is what the worker actually sends (see ralphWorker.ts line 113)
+      // Simulate the worker sending a 'connected' event for this workspace
       act(() => {
-        mockWorkerInstance.port.simulateMessage({ type: "connected" })
+        mockWorkerInstance.port.simulateMessage({
+          type: "connected",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
       })
 
       // The hook should update connectionStatus to "connected"
@@ -92,11 +96,14 @@ describe("useRalphLoop", () => {
 
     it("should update connectionStatus when receiving 'disconnected' event from worker", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
-      const { result } = renderHook(() => useRalphLoop())
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
       // First connect
       act(() => {
-        mockWorkerInstance.port.simulateMessage({ type: "connected" })
+        mockWorkerInstance.port.simulateMessage({
+          type: "connected",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
       })
 
       await waitFor(() => {
@@ -104,9 +111,11 @@ describe("useRalphLoop", () => {
       })
 
       // Then simulate disconnect
-      // This is what the worker sends (see ralphWorker.ts line 191)
       act(() => {
-        mockWorkerInstance.port.simulateMessage({ type: "disconnected" })
+        mockWorkerInstance.port.simulateMessage({
+          type: "disconnected",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
       })
 
       await waitFor(() => {
@@ -116,15 +125,18 @@ describe("useRalphLoop", () => {
 
     it("should update controlState when receiving 'state_change' event from worker", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
-      const { result } = renderHook(() => useRalphLoop())
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
       // Initially should be idle
       expect(result.current.controlState).toBe("idle")
 
       // Simulate the worker sending a 'state_change' event
-      // This is what the worker actually sends (see ralphWorker.ts line 82)
       act(() => {
-        mockWorkerInstance.port.simulateMessage({ type: "state_change", state: "running" })
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "running",
+        })
       })
 
       // The hook should update controlState to "running"
@@ -135,10 +147,14 @@ describe("useRalphLoop", () => {
 
     it("should handle state_change to paused", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
-      const { result } = renderHook(() => useRalphLoop())
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
       act(() => {
-        mockWorkerInstance.port.simulateMessage({ type: "state_change", state: "paused" })
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "paused",
+        })
       })
 
       await waitFor(() => {
@@ -148,11 +164,15 @@ describe("useRalphLoop", () => {
 
     it("should handle state_change to idle", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
-      const { result } = renderHook(() => useRalphLoop())
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
       // First set to running
       act(() => {
-        mockWorkerInstance.port.simulateMessage({ type: "state_change", state: "running" })
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "running",
+        })
       })
 
       await waitFor(() => {
@@ -161,12 +181,38 @@ describe("useRalphLoop", () => {
 
       // Then set to idle
       act(() => {
-        mockWorkerInstance.port.simulateMessage({ type: "state_change", state: "idle" })
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "idle",
+        })
       })
 
       await waitFor(() => {
         expect(result.current.controlState).toBe("idle")
       })
+    })
+
+    it("should ignore events from a different workspace", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate events for a different workspace
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "connected",
+          workspaceId: "other/repo",
+        })
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: "other/repo",
+          state: "running",
+        })
+      })
+
+      // State should remain at initial values
+      expect(result.current.connectionStatus).toBe("connecting")
+      expect(result.current.controlState).toBe("idle")
     })
   })
 
@@ -175,12 +221,19 @@ describe("useRalphLoop", () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { getControlBarButtonStates, controlStateToRalphStatus } =
         await import("../../lib/getControlBarButtonStates")
-      const { result } = renderHook(() => useRalphLoop())
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
       // Simulate the worker sending connected and idle state
       act(() => {
-        mockWorkerInstance.port.simulateMessage({ type: "connected" })
-        mockWorkerInstance.port.simulateMessage({ type: "state_change", state: "idle" })
+        mockWorkerInstance.port.simulateMessage({
+          type: "connected",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "idle",
+        })
       })
 
       await waitFor(() => {
@@ -195,6 +248,26 @@ describe("useRalphLoop", () => {
 
       // The start button should be enabled
       expect(buttonStates.start).toBe(true)
+    })
+  })
+
+  describe("subscribe_workspace on mount", () => {
+    it("should send subscribe_workspace message with workspaceId on mount", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      expect(calls).toContainEqual({
+        type: "subscribe_workspace",
+        workspaceId: TEST_WORKSPACE_ID,
+      })
+    })
+
+    it("should not create SharedWorker when workspaceId is undefined", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(undefined))
+
+      expect(result.current.connectionStatus).toBe("disconnected")
     })
   })
 })

@@ -1,6 +1,45 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { App } from "../../App"
+import { MemoryRouter, Route, Routes } from "react-router-dom"
+import { WorkspaceView } from "../WorkspaceView"
+
+/**
+ * Tests for the WorkspaceView component layout.
+ *
+ * Uses MemoryRouter to render at a workspace route (/:owner/:repo)
+ * instead of going through the full App router, which would redirect
+ * to WorkspaceRedirect at `/`.
+ */
+
+// Mock useWorkspaceParams to provide a workspace ID
+vi.mock("../../hooks/useWorkspaceParams", () => ({
+  useWorkspaceParams: () => ({
+    owner: "test",
+    repo: "workspace",
+    workspaceId: "test/workspace",
+  }),
+}))
+
+// Mock useTaskChat for WorkspaceView
+vi.mock("../../hooks/useTaskChat", () => ({
+  useTaskChat: () => ({
+    state: { events: [], isStreaming: false, sessionId: null },
+    actions: { sendMessage: vi.fn(), restoreSession: vi.fn(), newSession: vi.fn() },
+  }),
+}))
+
+// Mock useAccentColor for WorkspaceView
+vi.mock("../../hooks/useAccentColor", () => ({
+  useAccentColor: vi.fn(),
+}))
+
+// Mock ralph-shared for getWorkspaceId used by WorkspaceView
+vi.mock("@herbcaudill/ralph-shared", () => ({
+  getWorkspaceId: vi.fn(({ workspacePath }: { workspacePath: string }) => {
+    const parts = workspacePath.split("/").filter(Boolean)
+    return `${parts[parts.length - 2]}/${parts[parts.length - 1]}`.toLowerCase()
+  }),
+}))
 
 // Mock the hooks and components that depend on external services
 vi.mock("../../hooks/useRalphLoop", () => ({
@@ -34,6 +73,9 @@ vi.mock("@herbcaudill/beads-view", () => ({
   ),
   BeadsViewProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   configureApiClient: vi.fn(),
+  getApiClientConfig: vi.fn(() => ({ baseUrl: "" })),
+  getSavedWorkspacePath: vi.fn(() => null),
+  migrateWorkspaceStorage: vi.fn(),
   useTasks: () => ({ tasks: mockTasks, error: null, refresh: vi.fn() }),
   useTaskDialog: () => ({
     selectedTask:
@@ -141,7 +183,18 @@ vi.mock("../RalphRunner", () => ({
   RalphRunner: () => <div data-testid="ralph-runner">Ralph Runner</div>,
 }))
 
-describe("App", () => {
+/** Render WorkspaceView at a workspace route. */
+function renderWorkspaceView() {
+  return render(
+    <MemoryRouter initialEntries={["/test/workspace"]}>
+      <Routes>
+        <Route path="/:owner/:repo" element={<WorkspaceView />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+describe("WorkspaceView", () => {
   beforeEach(() => {
     // Reset selected task before each test
     mockSelectedTaskId = null
@@ -151,7 +204,7 @@ describe("App", () => {
 
   describe("panel layout order", () => {
     it("renders panels in the correct order: task chat (left), tasks (center), ralph loop (right)", () => {
-      const { container } = render(<App />)
+      const { container } = renderWorkspaceView()
 
       // Get main element (center)
       const main = container.querySelector("main")
@@ -164,21 +217,15 @@ describe("App", () => {
       expect(screen.getByTestId("ralph-runner")).toBeInTheDocument()
 
       // Verify there is an aside for the right panel
-      // (TaskChatPanel returns null when no task selected, so only right panel aside exists)
       const asides = container.querySelectorAll("aside")
       expect(asides.length).toBeGreaterThanOrEqual(1)
     })
 
     it("renders task chat panel on the left when a task is selected", () => {
-      // This test would require mocking a selected task
-      // For now, verify that TaskChatPanel renders nothing when no task is selected
-      const { container } = render(<App />)
+      const { container } = renderWorkspaceView()
 
-      // When no task is selected, TaskChatPanel returns null, so no left sidebar aside
       // The only aside should be the right panel with RalphRunner
       const asides = container.querySelectorAll("aside")
-
-      // With no task selected, TaskChatPanel returns null, so we should have just the right panel
       expect(asides.length).toBeGreaterThanOrEqual(1)
     })
   })
@@ -188,7 +235,7 @@ describe("App", () => {
       // Set a selected task
       mockSelectedTaskId = "task-123"
 
-      render(<App />)
+      renderWorkspaceView()
 
       // TaskDetailSheet should be rendered as an overlay
       expect(screen.getByTestId("task-detail-sheet")).toBeInTheDocument()
@@ -199,7 +246,7 @@ describe("App", () => {
       // Ensure no task is selected
       mockSelectedTaskId = null
 
-      const { container } = render(<App />)
+      const { container } = renderWorkspaceView()
 
       // TaskChatPanel should always be in the left sidebar
       expect(screen.getByTestId("task-chat-panel")).toBeInTheDocument()
@@ -214,7 +261,7 @@ describe("App", () => {
       // Set a selected task
       mockSelectedTaskId = "task-123"
 
-      const { container } = render(<App />)
+      const { container } = renderWorkspaceView()
 
       // TaskChatPanel should still be visible in the left sidebar
       expect(screen.getByTestId("task-chat-panel")).toBeInTheDocument()
@@ -230,7 +277,7 @@ describe("App", () => {
     it("does not render TaskDetailSheet when no task is selected", () => {
       mockSelectedTaskId = null
 
-      render(<App />)
+      renderWorkspaceView()
 
       // TaskDetailSheet should not be rendered
       expect(screen.queryByTestId("task-detail-sheet")).not.toBeInTheDocument()
@@ -241,7 +288,7 @@ describe("App", () => {
     it("passes isRunning based on controlState to TaskSidebarController", () => {
       mockTasks = [{ id: "task-1", title: "Test Task", status: "open" }]
 
-      render(<App />)
+      renderWorkspaceView()
 
       const taskSidebar = screen.getByTestId("task-sidebar")
       // Default controlState is "idle", so isRunning should be false
@@ -251,7 +298,7 @@ describe("App", () => {
 
   describe("control bar placement", () => {
     it("only renders controls in the RalphRunner panel, not as a separate full-width status bar", () => {
-      render(<App />)
+      renderWorkspaceView()
 
       // RalphRunner contains its own comprehensive footer with controls
       expect(screen.getByTestId("ralph-runner")).toBeInTheDocument()
