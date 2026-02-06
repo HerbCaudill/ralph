@@ -8,6 +8,7 @@ import { WebSocketServer, type WebSocket, type RawData } from "ws"
 import { BdProxy } from "./BdProxy.js"
 import { registerTaskRoutes } from "@herbcaudill/beads-view/server"
 import { getAliveWorkspaces } from "./getAliveWorkspaces.js"
+import { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 import { watchMutations } from "./BeadsClient.js"
 import { ThemeDiscovery } from "./ThemeDiscovery.js"
 import type { MutationEvent } from "@herbcaudill/beads-sdk"
@@ -22,6 +23,7 @@ export { getAvailableWorkspaces } from "./getAvailableWorkspaces.js"
 export { readRegistry } from "./readRegistry.js"
 export { getRegistryPath } from "./getRegistryPath.js"
 export { isProcessRunning } from "./isProcessRunning.js"
+export { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -65,9 +67,13 @@ export async function readPeacockColor(workspacePath: string): Promise<string | 
   }
 }
 
-/** Create a BdProxy for the given workspace path. */
-function getBdProxy(workspacePath: string): BdProxy {
-  return new BdProxy({ cwd: workspacePath })
+/** Create a BdProxy for the given workspace identifier (path or owner/repo). */
+function getBdProxy(workspace: string): BdProxy {
+  const resolved = resolveWorkspacePath(workspace)
+  if (!resolved) {
+    throw new Error(`workspace not found: ${workspace}`)
+  }
+  return new BdProxy({ cwd: resolved })
 }
 
 // Mutation polling
@@ -223,12 +229,18 @@ function createApp(_config: BeadsServerConfig): Express {
     res.status(200).json({ ok: true, server: "beads-server" })
   })
 
-  // Workspace info (requires workspace query param)
+  // Workspace info (requires workspace query param — accepts path or owner/repo ID)
   app.get("/api/workspace", async (req: Request, res: Response) => {
     try {
-      const workspacePath = (req.query.workspace as string)?.trim()
-      if (!workspacePath) {
+      const workspaceParam = (req.query.workspace as string)?.trim()
+      if (!workspaceParam) {
         res.status(400).json({ ok: false, error: "workspace query parameter is required" })
+        return
+      }
+
+      const workspacePath = resolveWorkspacePath(workspaceParam)
+      if (!workspacePath) {
+        res.status(404).json({ ok: false, error: `workspace not found: ${workspaceParam}` })
         return
       }
 
