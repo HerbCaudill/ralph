@@ -8,6 +8,8 @@ export interface WsClient {
   ws: WebSocket
   /** Session IDs this client is subscribed to. */
   subscribedSessions: Set<string>
+  /** Workspace ID this client is associated with (owner/repo format). */
+  workspaceId?: string
 }
 
 /** Options for setting up WebSocket handling. */
@@ -33,22 +35,43 @@ export function handleWsConnection(
 
   const manager = options.getSessionManager()
 
-  // Forward events for subscribed sessions
+  // Forward events for subscribed sessions (include workspaceId if set)
   const onEvent = (sessionId: string, event: AgentEvent) => {
     if (client.subscribedSessions.has(sessionId) && ws.readyState === 1) {
-      ws.send(JSON.stringify({ type: "event", sessionId, event }))
+      ws.send(
+        JSON.stringify({
+          type: "event",
+          sessionId,
+          event,
+          ...(client.workspaceId && { workspaceId: client.workspaceId }),
+        }),
+      )
     }
   }
 
   const onStatus = (sessionId: string, status: string) => {
     if (client.subscribedSessions.has(sessionId) && ws.readyState === 1) {
-      ws.send(JSON.stringify({ type: "status", sessionId, status }))
+      ws.send(
+        JSON.stringify({
+          type: "status",
+          sessionId,
+          status,
+          ...(client.workspaceId && { workspaceId: client.workspaceId }),
+        }),
+      )
     }
   }
 
   const onError = (sessionId: string, error: Error) => {
     if (client.subscribedSessions.has(sessionId) && ws.readyState === 1) {
-      ws.send(JSON.stringify({ type: "error", sessionId, error: error.message }))
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          sessionId,
+          error: error.message,
+          ...(client.workspaceId && { workspaceId: client.workspaceId }),
+        }),
+      )
     }
   }
 
@@ -66,6 +89,10 @@ export function handleWsConnection(
           break
 
         case "create_session":
+          // Track workspace ID if provided
+          if (msg.workspaceId) {
+            client.workspaceId = msg.workspaceId as string
+          }
           manager
             .createSession({
               adapter: msg.adapter as string | undefined,
@@ -75,7 +102,13 @@ export function handleWsConnection(
             })
             .then(result => {
               client.subscribedSessions.add(result.sessionId)
-              ws.send(JSON.stringify({ type: "session_created", sessionId: result.sessionId }))
+              ws.send(
+                JSON.stringify({
+                  type: "session_created",
+                  sessionId: result.sessionId,
+                  workspaceId: client.workspaceId,
+                }),
+              )
             })
             .catch(err => {
               ws.send(JSON.stringify({ type: "error", error: (err as Error).message }))
