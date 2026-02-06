@@ -6,7 +6,7 @@ import {
   SessionPicker,
   listSessions,
 } from "@herbcaudill/agent-view"
-import type { ChatEvent } from "@herbcaudill/agent-view"
+import type { ChatEvent, AgentViewToolOutputControl } from "@herbcaudill/agent-view"
 import { useMemo } from "react"
 
 /**
@@ -19,6 +19,7 @@ export function TaskChatPanel({
   events,
   isStreaming,
   sessionId,
+  toolOutput,
   onSendMessage,
   onSessionSelect,
   onNewSession,
@@ -87,7 +88,7 @@ export function TaskChatPanel({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <AgentViewProvider>
+      <AgentViewProvider value={toolOutput ? { toolOutput } : undefined}>
         <AgentView
           events={events}
           isStreaming={isStreaming}
@@ -120,6 +121,8 @@ export type TaskChatPanelProps = {
   isStreaming: boolean
   /** Current session ID. */
   sessionId: string | null
+  /** Tool output visibility control (from global UI state). */
+  toolOutput?: AgentViewToolOutputControl
   /** Callback when user sends a message. */
   onSendMessage: (message: string) => void
   /** Callback when a session is selected from the picker. */
