@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { MainLayout } from "./MainLayout"
 import { Header } from "./Header"
 import { RalphRunner } from "./RalphRunner"
@@ -13,6 +14,8 @@ import { useWorkspaceParams } from "../hooks/useWorkspaceParams"
 import { useUiStore } from "../stores/uiStore"
 import {
   TaskSidebarController,
+  configureApiClient,
+  getApiClientConfig,
   useTasks,
   useTaskDialog,
   useBeadsViewStore,
@@ -23,14 +26,31 @@ import {
   type SearchInputHandle,
 } from "@herbcaudill/beads-view"
 import { useAgentHotkeys, type ChatInputHandle } from "@herbcaudill/agent-view"
+import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 
 /**
  * Workspace view — renders the main Ralph UI for a specific workspace.
  * Reads `owner` and `repo` from URL params to identify the workspace.
  */
 export function WorkspaceView() {
-  // Route params — will be wired into workspace/session hooks in later tasks
-  useWorkspaceParams()
+  const { workspaceId } = useWorkspaceParams()
+  const navigate = useNavigate()
+
+  // Sync API client config with the workspace from the route.
+  // This runs synchronously on first render so hooks that make API calls
+  // (useWorkspace, useTasks, etc.) include the correct workspace parameter.
+  const routeConfigApplied = useRef<string | undefined>(undefined)
+  if (workspaceId && workspaceId !== routeConfigApplied.current) {
+    routeConfigApplied.current = workspaceId
+    const config = getApiClientConfig()
+    configureApiClient({ ...config, workspaceId })
+    // Save to localStorage so the root redirect picks it up next time
+    try {
+      localStorage.setItem("ralph-workspace-path", workspaceId)
+    } catch {
+      // Ignore storage errors
+    }
+  }
 
   // Ralph loop state from SharedWorker
   const {
@@ -51,8 +71,17 @@ export function WorkspaceView() {
   // Workspace state from beads-view
   const {
     state: { current: workspace, workspaces, isLoading: isWorkspaceLoading },
-    actions: { switchWorkspace },
   } = useWorkspace()
+
+  /** Switch workspace by navigating to its URL. */
+  const handleWorkspaceSwitch = useCallback(
+    (pathOrId: string) => {
+      // Convert filesystem path to workspace ID if necessary
+      const id = pathOrId.startsWith("/") ? getWorkspaceId({ workspacePath: pathOrId }) : pathOrId
+      navigate(`/${id}`)
+    },
+    [navigate],
+  )
 
   // Inject accent color as CSS custom property
   useAccentColor(workspace?.accentColor)
@@ -295,7 +324,7 @@ export function WorkspaceView() {
         workspace={workspace}
         workspaces={workspaces}
         isWorkspaceLoading={isWorkspaceLoading}
-        onWorkspaceSwitch={switchWorkspace}
+        onWorkspaceSwitch={handleWorkspaceSwitch}
         onHelpClick={handleShowHotkeys}
       />
       <MainLayout sidebar={sidebar} rightPanel={rightPanel}>
