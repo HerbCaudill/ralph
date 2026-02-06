@@ -26,7 +26,7 @@ export function WorkspaceSelector({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
+        className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-white/10"
       >
         {isLoading ?
           <IconLoader2 size={16} stroke={1.5} className="animate-spin" />

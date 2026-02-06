@@ -43,14 +43,14 @@ describe("TaskDetailSheet", () => {
     render(<TaskDetailSheet {...defaultProps} open={false} />)
 
     const panel = screen.getByTestId("task-detail-sheet")
-    expect(panel.className).toContain("-translate-x-full")
+    expect(panel.className).toContain("translate-x-full")
   })
 
   it("is translated off-screen when no task is provided", () => {
     render(<TaskDetailSheet {...defaultProps} task={null} />)
 
     const panel = screen.getByTestId("task-detail-sheet")
-    expect(panel.className).toContain("-translate-x-full")
+    expect(panel.className).toContain("translate-x-full")
   })
 
   it("renders TaskDetailsController in a panel when open with a task", () => {

@@ -61,10 +61,10 @@ export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSh
       ref={panelRef}
       data-testid="task-detail-sheet"
       className={cn(
-        "absolute left-0 top-0 z-40 h-full w-[400px] max-w-full",
-        "bg-background border-r border-border shadow-lg",
+        "absolute right-0 top-0 z-40 h-full w-[400px] max-w-full",
+        "bg-background border-l border-border shadow-lg",
         "transition-transform duration-200 ease-out",
-        open && task ? "translate-x-0" : "-translate-x-full",
+        open && task ? "translate-x-0" : "translate-x-full",
       )}
     >
       {task && (

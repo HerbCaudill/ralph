@@ -37,7 +37,7 @@ export function TaskChatPanel({
       <div className="flex items-center gap-2">
         <IconMessage size={18} stroke={1.5} className="text-muted-foreground" />
         <div className="flex flex-col">
-          <span className="text-sm font-medium">{taskId ? "Task chat" : "Chat"}</span>
+          <span className="text-sm font-medium">Task chat</span>
           {taskTitle && (
             <span className="max-w-[300px] truncate text-xs text-muted-foreground">
               {taskTitle}
