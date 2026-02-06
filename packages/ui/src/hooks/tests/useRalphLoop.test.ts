@@ -270,4 +270,122 @@ describe("useRalphLoop", () => {
       expect(result.current.connectionStatus).toBe("disconnected")
     })
   })
+
+  describe("unsubscribe_workspace on unmount", () => {
+    it("should send unsubscribe_workspace message when unmounting", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { unmount } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Verify subscribe was sent
+      const callsBefore = mockWorkerInstance.port.getPostMessageCalls()
+      expect(callsBefore).toContainEqual({
+        type: "subscribe_workspace",
+        workspaceId: TEST_WORKSPACE_ID,
+      })
+
+      // Unmount the hook
+      unmount()
+
+      // Verify unsubscribe was sent
+      const callsAfter = mockWorkerInstance.port.getPostMessageCalls()
+      expect(callsAfter).toContainEqual({
+        type: "unsubscribe_workspace",
+        workspaceId: TEST_WORKSPACE_ID,
+      })
+    })
+  })
+
+  describe("workspace switching", () => {
+    it("should unsubscribe from old workspace and subscribe to new one when workspaceId changes", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const NEW_WORKSPACE_ID = "herbcaudill/other-repo"
+
+      const { rerender } = renderHook(({ id }) => useRalphLoop(id), {
+        initialProps: { id: TEST_WORKSPACE_ID },
+      })
+
+      // Verify initial subscribe
+      const initialCalls = mockWorkerInstance.port.getPostMessageCalls()
+      expect(initialCalls).toContainEqual({
+        type: "subscribe_workspace",
+        workspaceId: TEST_WORKSPACE_ID,
+      })
+
+      // Change workspace
+      rerender({ id: NEW_WORKSPACE_ID })
+
+      const allCalls = mockWorkerInstance.port.getPostMessageCalls()
+
+      // Should have unsubscribed from old workspace
+      expect(allCalls).toContainEqual({
+        type: "unsubscribe_workspace",
+        workspaceId: TEST_WORKSPACE_ID,
+      })
+
+      // Should have subscribed to new workspace
+      expect(allCalls).toContainEqual({
+        type: "subscribe_workspace",
+        workspaceId: NEW_WORKSPACE_ID,
+      })
+    })
+
+    it("should reset events when switching workspaces", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const NEW_WORKSPACE_ID = "herbcaudill/other-repo"
+
+      const { result, rerender } = renderHook(({ id }) => useRalphLoop(id), {
+        initialProps: { id: TEST_WORKSPACE_ID },
+      })
+
+      // Add some events for the first workspace
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: { type: "assistant", content: "hello" },
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.events.length).toBe(1)
+      })
+
+      // Switch workspace
+      rerender({ id: NEW_WORKSPACE_ID })
+
+      // Events should be cleared
+      await waitFor(() => {
+        expect(result.current.events.length).toBe(0)
+      })
+    })
+
+    it("should reset connectionStatus to 'connecting' when switching workspaces", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const NEW_WORKSPACE_ID = "herbcaudill/other-repo"
+
+      const { result, rerender } = renderHook(({ id }) => useRalphLoop(id), {
+        initialProps: { id: TEST_WORKSPACE_ID },
+      })
+
+      // Connect to first workspace
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "connected",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.connectionStatus).toBe("connected")
+      })
+
+      // Switch workspace
+      rerender({ id: NEW_WORKSPACE_ID })
+
+      // Connection status should reset since we're connecting to a new workspace
+      await waitFor(() => {
+        expect(result.current.connectionStatus).toBe("connecting")
+      })
+    })
+  })
 })

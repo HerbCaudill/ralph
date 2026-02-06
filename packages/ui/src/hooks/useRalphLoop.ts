@@ -18,6 +18,7 @@ export function useRalphLoop(
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
 
   const portRef = useRef<MessagePort | null>(null)
+  const currentWorkspaceRef = useRef<string | undefined>(undefined)
 
   /** Send a message to the SharedWorker, automatically including the workspaceId. */
   const postMessage = useCallback((message: WorkerMessage) => {
@@ -27,51 +28,46 @@ export function useRalphLoop(
   }, [])
 
   /** Handle messages received from the SharedWorker. */
-  const handleWorkerMessage = useCallback(
-    (e: MessageEvent<WorkerEvent>) => {
-      const data = e.data
+  const handleWorkerMessage = useCallback((e: MessageEvent<WorkerEvent>) => {
+    const data = e.data
 
-      // Only process events for our workspace
-      if (data.workspaceId !== workspaceId) return
+    // Only process events for our current workspace
+    if (data.workspaceId !== currentWorkspaceRef.current) return
 
-      switch (data.type) {
-        case "state_change":
-          setControlState(data.state)
-          break
+    switch (data.type) {
+      case "state_change":
+        setControlState(data.state)
+        break
 
-        case "event":
-          setEvents(prev => [...prev, data.event as ChatEvent])
-          break
+      case "event":
+        setEvents(prev => [...prev, data.event as ChatEvent])
+        break
 
-        case "pending_events":
-          setEvents(prev => [...prev, ...(data.events as ChatEvent[])])
-          break
+      case "pending_events":
+        setEvents(prev => [...prev, ...(data.events as ChatEvent[])])
+        break
 
-        case "connected":
-          setConnectionStatus("connected")
-          break
+      case "connected":
+        setConnectionStatus("connected")
+        break
 
-        case "disconnected":
-          setConnectionStatus("disconnected")
-          break
+      case "disconnected":
+        setConnectionStatus("disconnected")
+        break
 
-        case "session_created":
-          // Session created — streaming will follow
-          setIsStreaming(true)
-          break
+      case "session_created":
+        // Session created — streaming will follow
+        setIsStreaming(true)
+        break
 
-        case "error":
-          console.error("[useRalphLoop] Worker error:", data.error)
-          break
-      }
-    },
-    [workspaceId],
-  )
+      case "error":
+        console.error("[useRalphLoop] Worker error:", data.error)
+        break
+    }
+  }, [])
 
-  /** Initialize connection to the SharedWorker and subscribe to the workspace. */
+  /** Initialize the SharedWorker connection (once). */
   useEffect(() => {
-    if (!workspaceId) return
-
     // SharedWorker is not supported in all environments (e.g., SSR, some browsers)
     if (typeof SharedWorker === "undefined") {
       console.warn("[useRalphLoop] SharedWorker not supported in this environment")
@@ -93,26 +89,56 @@ export function useRalphLoop(
 
       // Start the port to receive messages
       worker.port.start()
-
-      // Subscribe to workspace events
-      worker.port.postMessage({
-        type: "subscribe_workspace",
-        workspaceId,
-      } satisfies WorkerMessage)
-
-      setConnectionStatus("connecting")
     } catch (error) {
       console.error("[useRalphLoop] Failed to create SharedWorker:", error)
-      setConnectionStatus("disconnected")
     }
 
     return () => {
+      // Unsubscribe from current workspace before closing the port
+      if (portRef.current && currentWorkspaceRef.current) {
+        portRef.current.postMessage({
+          type: "unsubscribe_workspace",
+          workspaceId: currentWorkspaceRef.current,
+        } satisfies WorkerMessage)
+      }
       if (portRef.current) {
         portRef.current.close()
         portRef.current = null
       }
     }
-  }, [workspaceId, handleWorkerMessage])
+  }, [handleWorkerMessage])
+
+  /** Subscribe/unsubscribe when workspace changes. */
+  useEffect(() => {
+    const previousWorkspaceId = currentWorkspaceRef.current
+    currentWorkspaceRef.current = workspaceId
+
+    if (!portRef.current) return
+
+    // Unsubscribe from the previous workspace
+    if (previousWorkspaceId && previousWorkspaceId !== workspaceId) {
+      portRef.current.postMessage({
+        type: "unsubscribe_workspace",
+        workspaceId: previousWorkspaceId,
+      } satisfies WorkerMessage)
+
+      // Reset state for the new workspace
+      setEvents([])
+      setIsStreaming(false)
+      setControlState("idle")
+      setConnectionStatus("disconnected")
+    }
+
+    // Subscribe to the new workspace
+    if (workspaceId) {
+      portRef.current.postMessage({
+        type: "subscribe_workspace",
+        workspaceId,
+      } satisfies WorkerMessage)
+
+      setConnectionStatus("connecting")
+    }
+  }, [workspaceId])
 
   /** Start the Ralph loop. */
   const start = useCallback(() => {

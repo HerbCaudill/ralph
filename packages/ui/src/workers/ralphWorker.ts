@@ -36,6 +36,7 @@ interface WorkspaceState {
 /** Messages sent from browser tabs to the worker. */
 export type WorkerMessage =
   | { type: "subscribe_workspace"; workspaceId: string }
+  | { type: "unsubscribe_workspace"; workspaceId: string }
   | { type: "start"; workspaceId: string; sessionId?: string }
   | { type: "pause"; workspaceId: string }
   | { type: "resume"; workspaceId: string }
@@ -54,13 +55,13 @@ export type WorkerEvent =
   | { type: "pending_events"; workspaceId: string; events: unknown[] }
 
 /** All connected ports (for cleanup). */
-const allPorts: Set<MessagePort> = new Set()
+export const allPorts: Set<MessagePort> = new Set()
 
 /** Per-workspace state keyed by workspace ID (owner/repo). */
-const workspaces = new Map<string, WorkspaceState>()
+export const workspaces = new Map<string, WorkspaceState>()
 
 /** Get or create state for a workspace. */
-function getWorkspace(workspaceId: string): WorkspaceState {
+export function getWorkspace(workspaceId: string): WorkspaceState {
   let state = workspaces.get(workspaceId)
   if (!state) {
     state = {
@@ -335,7 +336,7 @@ function sendMessageToWorkspace(workspaceId: string, text: string): void {
 }
 
 /** Handle a message from a connected browser tab. */
-function handlePortMessage(message: WorkerMessage, port: MessagePort): void {
+export function handlePortMessage(message: WorkerMessage, port: MessagePort): void {
   switch (message.type) {
     case "subscribe_workspace": {
       const state = getWorkspace(message.workspaceId)
@@ -364,6 +365,29 @@ function handlePortMessage(message: WorkerMessage, port: MessagePort): void {
         } satisfies WorkerEvent)
       } else if (!state.ws) {
         connectWorkspace(message.workspaceId)
+      }
+      break
+    }
+
+    case "unsubscribe_workspace": {
+      const state = workspaces.get(message.workspaceId)
+      if (state) {
+        state.subscribedPorts.delete(port)
+
+        // Notify the port that it's disconnected from this workspace
+        try {
+          port.postMessage({
+            type: "disconnected",
+            workspaceId: message.workspaceId,
+          } satisfies WorkerEvent)
+        } catch {
+          // Port may already be closed
+        }
+
+        // Disconnect the WebSocket if no subscribers remain and workspace is idle
+        if (state.subscribedPorts.size === 0 && state.controlState === "idle") {
+          disconnectWorkspace(message.workspaceId)
+        }
       }
       break
     }
@@ -442,7 +466,7 @@ function handlePortMessage(message: WorkerMessage, port: MessagePort): void {
 }
 
 /** Remove a port from all workspace subscriptions. */
-function removePort(port: MessagePort): void {
+export function removePort(port: MessagePort): void {
   allPorts.delete(port)
   for (const [workspaceId, state] of workspaces) {
     state.subscribedPorts.delete(port)
