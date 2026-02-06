@@ -93,14 +93,14 @@ Add React Router v6 for URL-based navigation:
 2. Deploy UI changes (switch to workspace IDs)
 3. Users' old paths automatically migrate to workspace IDs on first load
 
-## Unresolved Questions
+## Design Decisions
 
-1. **Multi-repo workspaces:** How to handle monorepos with multiple projects? Use first git remote found, or add explicit workspace naming?
+1. **Monorepos:** A monorepo is a single workspace. Use the first git remote found for the workspace ID.
 
-2. **Name collisions:** If two repos have same `owner/repo` but different full paths, how to disambiguate? Add numeric suffix or require unique names?
+2. **Name collisions:** Not a concern - each workspace will have a unique `owner/repo` identifier.
 
-3. **WebSocket subscriptions:** Should browser tabs unsubscribe from workspaces when navigating away, or keep all workspace connections alive?
+3. **WebSocket subscriptions:** Tabs unsubscribe from workspaces when navigating away. Don't keep all workspace connections alive.
 
-4. **Session auto-start:** When navigating to `/{owner}/{repo}` (no session), should Ralph auto-start a new session, or require explicit user action?
+4. **Session auto-start:** Ralph does NOT auto-start when navigating to `/{owner}/{repo}`. Requires explicit user action (start button).
 
-5. **Session persistence:** Should session IDs persist across page reloads (restore most recent session for workspace), or always start fresh?
+5. **Session persistence:** Session IDs persist across page reloads. Restore the most recent session for each workspace on reload.
