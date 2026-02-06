@@ -113,7 +113,7 @@ vi.mock("@herbcaudill/agent-view", () => ({
   cn: (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(" "),
 }))
 
-// Mock TaskDetailSheet to verify it gets rendered as an overlay
+// Mock TaskDetailSheet to verify it gets rendered as a side panel
 vi.mock("../TaskDetailSheet", () => ({
   TaskDetailSheet: ({
     task,
@@ -184,7 +184,7 @@ describe("App", () => {
   })
 
   describe("TaskDetailSheet rendering", () => {
-    it("renders TaskDetailSheet as an overlay when a task is selected", () => {
+    it("renders TaskDetailSheet as a side panel when a task is selected", () => {
       // Set a selected task
       mockSelectedTaskId = "task-123"
 
@@ -219,7 +219,7 @@ describe("App", () => {
       // TaskChatPanel should still be visible in the left sidebar
       expect(screen.getByTestId("task-chat-panel")).toBeInTheDocument()
 
-      // And TaskDetailSheet should be rendered as an overlay
+      // And TaskDetailSheet should be rendered as a side panel
       expect(screen.getByTestId("task-detail-sheet")).toBeInTheDocument()
 
       // Left sidebar should contain TaskChatPanel

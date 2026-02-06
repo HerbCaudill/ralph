@@ -4,9 +4,10 @@ import type { TaskCardTask, TaskUpdateData } from "@herbcaudill/beads-view"
 import { cn } from "../lib/utils"
 
 /**
- * Slide-out panel for task details.
- * Absolutely positioned within the main content area, slides from behind the task list.
- * No modal overlay -- click outside closes the panel.
+ * Side panel for task details.
+ * Rendered inline beside the task list within a flex container --
+ * it takes up space in the layout rather than overlaying the task list.
+ * Close via Escape key or the close button in TaskDetailsController.
  */
 export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
@@ -28,20 +29,6 @@ export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSh
     [onChanged, onClose],
   )
 
-  /** Close when clicking outside the panel. */
-  useEffect(() => {
-    if (!open) return
-
-    const handlePointerDown = (e: PointerEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        onClose()
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown)
-    return () => document.removeEventListener("pointerdown", handlePointerDown)
-  }, [open, onClose])
-
   /** Close on Escape key. */
   useEffect(() => {
     if (!open) return
@@ -56,16 +43,15 @@ export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSh
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [open, onClose])
 
+  const isVisible = open && task !== null
+
+  if (!isVisible) return null
+
   return (
     <div
       ref={panelRef}
       data-testid="task-detail-sheet"
-      className={cn(
-        "absolute right-0 top-0 z-40 h-full w-[400px] max-w-full",
-        "bg-background border-l border-border shadow-lg",
-        "transition-transform duration-200 ease-out",
-        open && task ? "translate-x-0" : "translate-x-full",
-      )}
+      className={cn("h-full w-[400px] shrink-0", "bg-background border-l border-border")}
     >
       {task && (
         <>

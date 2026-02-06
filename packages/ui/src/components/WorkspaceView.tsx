@@ -299,18 +299,22 @@ export function WorkspaceView() {
         onHelpClick={handleShowHotkeys}
       />
       <MainLayout sidebar={sidebar} rightPanel={rightPanel}>
-        <TaskSidebarController
-          searchInputRef={searchInputRef}
-          onTaskClick={handleTaskClick}
-          onOpenTask={handleTaskClick}
-          isRunning={controlState === "running"}
-        />
-        <TaskDetailSheet
-          task={selectedTask}
-          open={selectedTaskId !== null}
-          onClose={handleCloseDetail}
-          onChanged={handleChanged}
-        />
+        <div className="flex h-full min-w-0">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <TaskSidebarController
+              searchInputRef={searchInputRef}
+              onTaskClick={handleTaskClick}
+              onOpenTask={handleTaskClick}
+              isRunning={controlState === "running"}
+            />
+          </div>
+          <TaskDetailSheet
+            task={selectedTask}
+            open={selectedTaskId !== null}
+            onClose={handleCloseDetail}
+            onChanged={handleChanged}
+          />
+        </div>
       </MainLayout>
       <HotkeysDialog open={showHotkeysDialog} onClose={() => setShowHotkeysDialog(false)} />
       <CommandPalette

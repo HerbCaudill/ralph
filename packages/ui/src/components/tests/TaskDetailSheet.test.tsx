@@ -39,18 +39,16 @@ describe("TaskDetailSheet", () => {
     vi.clearAllMocks()
   })
 
-  it("is translated off-screen when closed", () => {
+  it("renders nothing when closed", () => {
     render(<TaskDetailSheet {...defaultProps} open={false} />)
 
-    const panel = screen.getByTestId("task-detail-sheet")
-    expect(panel.className).toContain("translate-x-full")
+    expect(screen.queryByTestId("task-detail-sheet")).not.toBeInTheDocument()
   })
 
-  it("is translated off-screen when no task is provided", () => {
+  it("renders nothing when no task is provided", () => {
     render(<TaskDetailSheet {...defaultProps} task={null} />)
 
-    const panel = screen.getByTestId("task-detail-sheet")
-    expect(panel.className).toContain("translate-x-full")
+    expect(screen.queryByTestId("task-detail-sheet")).not.toBeInTheDocument()
   })
 
   it("renders TaskDetailsController in a panel when open with a task", () => {
@@ -60,13 +58,13 @@ describe("TaskDetailSheet", () => {
     expect(screen.getAllByText("Test Task").length).toBeGreaterThanOrEqual(1)
   })
 
-  it("renders as an absolutely positioned panel with shadow", () => {
+  it("renders as an inline panel with a border", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
     const panel = screen.getByTestId("task-detail-sheet")
-    expect(panel.className).toContain("absolute")
-    expect(panel.className).toContain("shadow-lg")
-    expect(panel.className).toContain("translate-x-0")
+    expect(panel.className).toContain("border-l")
+    expect(panel.className).toContain("shrink-0")
+    expect(panel.className).not.toContain("absolute")
   })
 
   it("has no modal overlay or backdrop", () => {
