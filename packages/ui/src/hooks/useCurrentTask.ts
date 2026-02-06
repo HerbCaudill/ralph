@@ -26,7 +26,6 @@ export function useCurrentTask(
       return {
         taskId: lastEvent.taskId,
         // We don't have the title in the event, so return null
-        // The StatusBar can fetch it if needed
         taskTitle: null,
       }
     }
