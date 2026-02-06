@@ -155,13 +155,19 @@ function AppContent() {
     }
   }, [selectedTaskId, openDialogById])
 
+  // Handle task chat new session
+  const handleTaskChatNewSession = useCallback(() => {
+    taskChatActions.newSession()
+  }, [taskChatActions])
+
   // Register hotkeys
   useAgentHotkeys({
     handlers: {
       focusChatInput: handleFocusChatInput,
+      newSession: handleTaskChatNewSession,
       toggleToolOutput: handleToggleToolOutput,
       showHotkeys: handleShowHotkeys,
-      // Note: newSession and scrollToBottom not implemented yet
+      // Note: scrollToBottom not implemented yet
     },
   })
 
@@ -215,11 +221,6 @@ function AppContent() {
     },
     [taskChatActions],
   )
-
-  // Handle task chat new session
-  const handleTaskChatNewSession = useCallback(() => {
-    taskChatActions.newSession()
-  }, [taskChatActions])
 
   // Handle closing the task detail panel
   const handleCloseDetail = useCallback(() => {
