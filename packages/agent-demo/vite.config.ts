@@ -17,6 +17,9 @@ export default defineConfig({
       "/ws": {
         target: `http://localhost:${agentServerPort}`,
         ws: true,
+        configure: proxy => {
+          proxy.on("error", () => {})
+        },
       },
     },
   },
