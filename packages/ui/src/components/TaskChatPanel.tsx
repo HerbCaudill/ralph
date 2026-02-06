@@ -101,7 +101,7 @@ export function TaskChatPanel({
       <div className="shrink-0">
         <ChatInput
           onSend={onSendMessage}
-          disabled={isStreaming}
+          disabled={false}
           placeholder={taskId ? "Ask about this task" : "Send a message"}
         />
       </div>

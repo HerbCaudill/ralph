@@ -52,6 +52,17 @@ describe("ChatInput", () => {
 
       expect(textarea).toHaveValue("")
     })
+
+    it("retains focus after sending a message", () => {
+      const handleSend = vi.fn()
+      render(<ChatInput onSend={handleSend} />)
+      const textarea = screen.getByRole("textbox")
+
+      fireEvent.change(textarea, { target: { value: "Hello world" } })
+      fireEvent.keyDown(textarea, { key: "Enter" })
+
+      expect(textarea).toHaveFocus()
+    })
   })
 
   describe("submit behavior", () => {

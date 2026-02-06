@@ -149,14 +149,14 @@ describe("TaskChatPanel", () => {
   })
 
   describe("chat input", () => {
-    it("disables chat input when streaming", () => {
+    it("keeps chat input enabled while streaming so user can type next message", () => {
       render(<TaskChatPanel {...defaultProps} isStreaming={true} />)
 
       const input = screen.getByTestId("chat-input-field")
-      expect(input).toBeDisabled()
+      expect(input).not.toBeDisabled()
     })
 
-    it("enables chat input when not streaming", () => {
+    it("keeps chat input enabled when not streaming", () => {
       render(<TaskChatPanel {...defaultProps} isStreaming={false} />)
 
       const input = screen.getByTestId("chat-input-field")
