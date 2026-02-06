@@ -163,4 +163,25 @@ describe("TaskChatPanel", () => {
       expect(input).not.toBeDisabled()
     })
   })
+
+  describe("layout", () => {
+    it("renders chat input in a non-shrinkable container at the bottom", () => {
+      render(<TaskChatPanel {...defaultProps} />)
+
+      // Find the chat input wrapper (parent of chat-input)
+      const chatInput = screen.getByTestId("chat-input")
+      const chatInputWrapper = chatInput.parentElement
+
+      // The wrapper should have shrink-0 to prevent it from being hidden by overflow
+      expect(chatInputWrapper).toHaveClass("shrink-0")
+    })
+
+    it("renders with overflow-hidden on the outer container", () => {
+      const { container } = render(<TaskChatPanel {...defaultProps} />)
+
+      // The outer container should have overflow-hidden
+      const outerContainer = container.firstChild
+      expect(outerContainer).toHaveClass("overflow-hidden")
+    })
+  })
 })

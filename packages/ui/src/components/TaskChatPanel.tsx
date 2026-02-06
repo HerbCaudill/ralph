@@ -86,19 +86,19 @@ export function TaskChatPanel({
   )
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       <AgentViewProvider>
         <AgentView
           events={events}
           isStreaming={isStreaming}
           header={header}
           emptyState={emptyState}
-          className="flex-1"
+          className="min-h-0 flex-1"
         />
       </AgentViewProvider>
 
-      {/* Chat input - outside AgentView (no footer slot) */}
-      <div className="border-t border-border p-4">
+      {/* Chat input - outside AgentView (ChatInput has its own border-t) */}
+      <div className="shrink-0">
         <ChatInput
           onSend={onSendMessage}
           disabled={isStreaming}
