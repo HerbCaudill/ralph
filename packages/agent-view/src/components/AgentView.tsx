@@ -53,6 +53,17 @@ export function AgentView({
   /** Hide the built-in scroll button when the consumer passes false. */
   const hideScrollButton = scrollButton === false
 
+  /**
+   * When streaming with no events yet (e.g. Ralph loop just started), show the
+   * spinner as the empty state so the user sees activity immediately.
+   */
+  const effectiveEmptyState =
+    isStreaming && events.length === 0 ?
+      <div className="flex h-full items-center justify-center p-8">
+        <TopologySpinner />
+      </div>
+    : emptyState
+
   return (
     <AgentViewProvider value={context}>
       <div className={cx("flex h-full flex-col", className)}>
@@ -60,7 +71,7 @@ export function AgentView({
         <AutoScroll
           ariaLabel="Agent Events"
           dependencies={[events]}
-          emptyState={emptyState}
+          emptyState={effectiveEmptyState}
           autoScrollEnabled={isStreaming}
           scrollButtonClassName={hideScrollButton ? "hidden" : undefined}
         >
