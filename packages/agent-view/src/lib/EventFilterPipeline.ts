@@ -107,6 +107,7 @@ export type FilterReason =
   | "tool_result_rendered_inline"
   | "stream_event_processed_by_streaming"
   | "system_event_internal"
+  | "system_prompt_hidden"
   | "unrecognized_event_type"
   // Layer 4: Content block filtering
   | "lifecycle_text_has_structured_event"
@@ -175,6 +176,11 @@ export function shouldFilterEventByType(event: ChatEvent): FilterResult {
   // System events are internal
   if (type === "system") {
     return { shouldRender: false, reason: "system_event_internal" }
+  }
+
+  // User messages flagged as system/workflow prompts are hidden from display
+  if (type === "user_message" && (event as Record<string, unknown>).isSystemPrompt === true) {
+    return { shouldRender: false, reason: "system_prompt_hidden" }
   }
 
   // Check if it's a recognized renderable type

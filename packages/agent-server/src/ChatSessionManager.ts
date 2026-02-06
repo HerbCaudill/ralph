@@ -52,6 +52,8 @@ export interface SendMessageOptions {
   systemPrompt?: string
   /** Model override. */
   model?: string
+  /** Whether this message is a system/workflow prompt (should be hidden from display). */
+  isSystemPrompt?: boolean
 }
 
 /** Events emitted by ChatSessionManager. */
@@ -181,10 +183,11 @@ export class ChatSessionManager extends EventEmitter {
     this.emit("status", sessionId, "processing")
 
     // Persist user message as a generic record (not a typed AgentEvent)
-    const userEvent = {
+    const userEvent: Record<string, unknown> = {
       type: "user_message",
       message,
       timestamp: Date.now(),
+      ...(options.isSystemPrompt ? { isSystemPrompt: true } : {}),
     }
     await this.persister.appendEvent(sessionId, userEvent, session.app)
     this.emit("event", sessionId, userEvent)

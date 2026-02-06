@@ -156,6 +156,7 @@ function connect(): void {
                       type: "message",
                       sessionId: currentSessionId,
                       message: data.prompt,
+                      isSystemPrompt: true,
                     }),
                   )
                 }

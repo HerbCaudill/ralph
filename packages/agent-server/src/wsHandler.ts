@@ -95,6 +95,7 @@ export function handleWsConnection(
             .sendMessage(sessionId, message, {
               systemPrompt: msg.systemPrompt as string | undefined,
               model: msg.model as string | undefined,
+              isSystemPrompt: msg.isSystemPrompt as boolean | undefined,
             })
             .catch(err => {
               ws.send(JSON.stringify({ type: "error", sessionId, error: (err as Error).message }))

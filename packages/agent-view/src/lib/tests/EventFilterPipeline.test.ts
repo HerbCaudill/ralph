@@ -113,6 +113,30 @@ describe("EventFilterPipeline", () => {
       expect(result.shouldRender).toBe(false)
       expect(result.reason).toBe("unrecognized_event_type")
     })
+
+    it("should filter user_message events flagged as system prompts", () => {
+      const event: ChatEvent = {
+        type: "user_message",
+        timestamp: 123,
+        message: "# Ralph session protocol\nYou are running as an autonomous session agent.",
+        isSystemPrompt: true,
+      }
+      const result = shouldFilterEventByType(event)
+
+      expect(result.shouldRender).toBe(false)
+      expect(result.reason).toBe("system_prompt_hidden")
+    })
+
+    it("should render regular user_message events without system prompt flag", () => {
+      const event: ChatEvent = {
+        type: "user_message",
+        timestamp: 123,
+        message: "Please fix the bug in auth.ts",
+      }
+      const result = shouldFilterEventByType(event)
+
+      expect(result.shouldRender).toBe(true)
+    })
   })
 
   describe("shouldFilterContentBlock", () => {
