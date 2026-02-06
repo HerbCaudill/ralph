@@ -7,6 +7,7 @@ import { getContrastingColor } from "../../lib/getContrastingColor"
 import { useBeadsViewStore, selectAccentColor, selectTaskInputDraft } from "../../store"
 import { DEFAULT_INPUT_ACCENT_COLOR } from "../../constants"
 import { InputGroup, InputGroupAddon, InputGroupButton } from "../ui/input-group"
+import { apiFetch } from "../../lib/apiClient"
 import { useState } from "react"
 
 /**
@@ -92,7 +93,7 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
         setIsSubmitting(true)
 
         try {
-          const response = await fetch("/api/tasks", {
+          const response = await apiFetch("/api/tasks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ title: trimmedTitle }),

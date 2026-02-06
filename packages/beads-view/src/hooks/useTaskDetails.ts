@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { useBeadsViewStore, selectIssuePrefix, selectTasks } from "../store"
 import { linkSessionToTask } from "../lib/linkSessionToTask"
+import { apiFetch } from "../lib/apiClient"
 import type { TaskCardTask, TaskStatus, TaskUpdateData, Comment } from "../types"
 
 /**
@@ -44,7 +45,7 @@ export function useTaskDetails(
 
   useEffect(() => {
     if (task && open) {
-      fetch(`/api/tasks/${task.id}/labels`)
+      apiFetch(`/api/tasks/${task.id}/labels`)
         .then(res => res.json())
         .then((data: { ok: boolean; labels?: string[] }) => {
           if (data.ok && data.labels) {
@@ -57,7 +58,7 @@ export function useTaskDetails(
 
       setIsLoadingComments(true)
       setCommentsError(null)
-      fetch(`/api/tasks/${task.id}/comments`)
+      apiFetch(`/api/tasks/${task.id}/comments`)
         .then(res => res.json())
         .then((data: { ok: boolean; comments?: Comment[]; error?: string }) => {
           if (data.ok && data.comments) {
@@ -283,7 +284,7 @@ export function useTaskDetails(
     setIsAddingLabel(true)
 
     try {
-      const response = await fetch(`/api/tasks/${task.id}/labels`, {
+      const response = await apiFetch(`/api/tasks/${task.id}/labels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ label: labelToAdd }),
@@ -309,7 +310,7 @@ export function useTaskDetails(
       setLabels(prev => prev.filter(l => l !== labelToRemove))
 
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `/api/tasks/${task.id}/labels/${encodeURIComponent(labelToRemove)}`,
           { method: "DELETE" },
         )
@@ -331,7 +332,7 @@ export function useTaskDetails(
       if (!task || readOnly) return
 
       try {
-        const response = await fetch(`/api/tasks/${task.id}/comments`, {
+        const response = await apiFetch(`/api/tasks/${task.id}/comments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ comment }),
@@ -339,7 +340,7 @@ export function useTaskDetails(
 
         const data = (await response.json()) as { ok: boolean; error?: string }
         if (data.ok) {
-          const commentsRes = await fetch(`/api/tasks/${task.id}/comments`)
+          const commentsRes = await apiFetch(`/api/tasks/${task.id}/comments`)
           const commentsData = (await commentsRes.json()) as {
             ok: boolean
             comments?: Comment[]

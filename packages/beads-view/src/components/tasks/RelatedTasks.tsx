@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react"
 import { Label } from "../ui/label"
 import { CollapsibleSection } from "./CollapsibleSection"
 import { BlockerCombobox } from "./BlockerCombobox"
+import { apiFetch } from "../../lib/apiClient"
 import type { RelatedTask, Task, TaskCardTask } from "../../types"
 
 /**
@@ -32,7 +33,7 @@ export function RelatedTasks({
   const fetchDependencies = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/tasks/${taskId}`)
+      const response = await apiFetch(`/api/tasks/${taskId}`)
       const data = (await response.json()) as {
         ok: boolean
         issue?: {
@@ -105,7 +106,7 @@ export function RelatedTasks({
 
       setIsAddingBlocker(true)
       try {
-        const response = await fetch(`/api/tasks/${taskId}/blockers`, {
+        const response = await apiFetch(`/api/tasks/${taskId}/blockers`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ blockerId }),
@@ -136,7 +137,7 @@ export function RelatedTasks({
       setBlockers(prev => prev.filter(b => b.id !== blockerId))
 
       try {
-        const response = await fetch(`/api/tasks/${taskId}/blockers/${blockerId}`, {
+        const response = await apiFetch(`/api/tasks/${taskId}/blockers/${blockerId}`, {
           method: "DELETE",
         })
 

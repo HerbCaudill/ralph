@@ -25,13 +25,7 @@ export { isProcessRunning } from "./isProcessRunning.js"
 
 const execFileAsync = promisify(execFile)
 
-// Module state
-
-/** Active BdProxy instance for the current workspace. */
-let bdProxy: BdProxy | null = null
-
-/** Current workspace path. */
-let currentWorkspacePath: string | undefined
+// Module state (no workspace state -- workspace is per-request)
 
 /** Cleanup function for the mutation watcher. */
 let stopMutationWatcher: (() => void) | null = null
@@ -71,58 +65,43 @@ export async function readPeacockColor(workspacePath: string): Promise<string | 
   }
 }
 
-/** Get or create the BdProxy for the current workspace. */
-function getBdProxy(): BdProxy {
-  if (!bdProxy) {
-    const workspacePath = currentWorkspacePath || process.cwd()
-    bdProxy = new BdProxy({ cwd: workspacePath })
-  }
-  return bdProxy
-}
-
-/**
- * Switch to a different workspace.
- * Creates a new BdProxy and restarts mutation polling.
- */
-async function switchWorkspace(
-  workspacePath: string,
-  config: { enableMutationPolling?: boolean; mutationPollingInterval?: number },
-): Promise<void> {
-  // Stop existing mutation watcher
-  if (stopMutationWatcher) {
-    stopMutationWatcher()
-    stopMutationWatcher = null
-  }
-
-  // Update workspace
-  currentWorkspacePath = workspacePath
-  bdProxy = new BdProxy({ cwd: workspacePath })
-
-  // Restart mutation polling
-  if (config.enableMutationPolling !== false) {
-    startMutationPolling(config.mutationPollingInterval)
-  }
+/** Create a BdProxy for the given workspace path. */
+function getBdProxy(workspacePath: string): BdProxy {
+  return new BdProxy({ cwd: workspacePath })
 }
 
 // Mutation polling
 
-/** Start polling the beads daemon for mutation events and broadcast them via WebSocket. */
+/** Start polling all alive workspaces for mutation events and broadcast them via WebSocket. */
 function startMutationPolling(interval: number = 1000): void {
   if (stopMutationWatcher) {
     stopMutationWatcher()
   }
 
-  const workspacePath = currentWorkspacePath || process.cwd()
-  stopMutationWatcher = watchMutations(
-    (event: MutationEvent) => {
-      broadcast({
-        type: "mutation:event",
-        event,
-        timestamp: Date.now(),
-      })
-    },
-    { workspacePath, interval },
-  )
+  // Poll all alive workspaces
+  const workspaces = getAliveWorkspaces()
+  const cleanups: (() => void)[] = []
+
+  for (const ws of workspaces) {
+    const cleanup = watchMutations(
+      (event: MutationEvent) => {
+        broadcastToWorkspace(ws.path, {
+          type: "mutation:event",
+          event,
+          workspace: ws.path,
+          timestamp: Date.now(),
+        })
+      },
+      { workspacePath: ws.path, interval },
+    )
+    cleanups.push(cleanup)
+  }
+
+  stopMutationWatcher = () => {
+    for (const cleanup of cleanups) {
+      cleanup()
+    }
+  }
 }
 
 // WebSocket
@@ -138,12 +117,12 @@ function broadcast(message: Record<string, unknown>): void {
 }
 
 /** Broadcast a message to clients subscribed to a specific workspace. */
-function broadcastToWorkspace(workspaceId: string, message: Record<string, unknown>): void {
+function broadcastToWorkspace(workspacePath: string, message: Record<string, unknown>): void {
   const data = JSON.stringify(message)
   for (const client of wsClients) {
     if (client.ws.readyState !== client.ws.OPEN) continue
     // Send to clients subscribed to this workspace, or to all if no subscriptions
-    if (client.subscribedWorkspaces.size === 0 || client.subscribedWorkspaces.has(workspaceId)) {
+    if (client.subscribedWorkspaces.size === 0 || client.subscribedWorkspaces.has(workspacePath)) {
       client.ws.send(data)
     }
   }
@@ -162,14 +141,17 @@ function attachWsServer(server: Server): void {
       JSON.stringify({
         type: "connected",
         server: "beads-server",
-        workspace: currentWorkspacePath,
         timestamp: Date.now(),
       }),
     )
 
     ws.on("message", (raw: RawData) => {
       try {
-        const message = JSON.parse(raw.toString()) as { type: string; workspaceId?: string }
+        const message = JSON.parse(raw.toString()) as {
+          type: string
+          workspaceId?: string
+          workspace?: string
+        }
 
         switch (message.type) {
           case "ping":
@@ -177,24 +159,27 @@ function attachWsServer(server: Server): void {
             break
 
           case "ws:subscribe_workspace":
-            if (message.workspaceId) {
-              client.subscribedWorkspaces.add(message.workspaceId)
-              ws.send(
-                JSON.stringify({
-                  type: "ws:subscribed",
-                  workspaceId: message.workspaceId,
-                  timestamp: Date.now(),
-                }),
-              )
+            {
+              const wsPath = message.workspace ?? message.workspaceId
+              if (wsPath) {
+                client.subscribedWorkspaces.add(wsPath)
+                ws.send(
+                  JSON.stringify({
+                    type: "ws:subscribed",
+                    workspace: wsPath,
+                    timestamp: Date.now(),
+                  }),
+                )
+              }
             }
             break
 
           default:
-            // Unknown message type — ignore
+            // Unknown message type -- ignore
             break
         }
       } catch {
-        // Invalid JSON — ignore
+        // Invalid JSON -- ignore
       }
     })
 
@@ -215,7 +200,6 @@ export function getConfig(): BeadsServerConfig {
   return {
     host: process.env.BEADS_HOST || process.env.HOST || "localhost",
     port: parseInt(process.env.BEADS_PORT || process.env.PORT || "4243", 10),
-    workspacePath: process.env.WORKSPACE_PATH || process.cwd(),
     enableMutationPolling: process.env.BEADS_DISABLE_POLLING !== "true",
     mutationPollingInterval: parseInt(process.env.BEADS_POLL_INTERVAL || "1000", 10),
   }
@@ -224,7 +208,7 @@ export function getConfig(): BeadsServerConfig {
 // Express app
 
 /** Create an Express application with all beads API endpoints configured. */
-function createApp(config: BeadsServerConfig): Express {
+function createApp(_config: BeadsServerConfig): Express {
   const app = express()
 
   // Disable x-powered-by header
@@ -239,14 +223,17 @@ function createApp(config: BeadsServerConfig): Express {
     res.status(200).json({ ok: true, server: "beads-server" })
   })
 
-  // Workspace info
-  app.get("/api/workspace", async (_req: Request, res: Response) => {
+  // Workspace info (requires workspace query param)
+  app.get("/api/workspace", async (req: Request, res: Response) => {
     try {
-      const proxy = getBdProxy()
-      const info = await proxy.getInfo()
+      const workspacePath = (req.query.workspace as string)?.trim()
+      if (!workspacePath) {
+        res.status(400).json({ ok: false, error: "workspace query parameter is required" })
+        return
+      }
 
-      // Extract workspace path from database_path (remove .beads/beads.db suffix)
-      const workspacePath = info.database_path.replace(/\/.beads\/beads\.db$/, "")
+      const proxy = getBdProxy(workspacePath)
+      const info = await proxy.getInfo()
 
       // Read peacock accent color and git branch in parallel
       const [accentColor, branch] = await Promise.all([
@@ -288,19 +275,10 @@ function createApp(config: BeadsServerConfig): Express {
     }
   })
 
-  // List workspaces
+  // List workspaces (no workspace param needed)
   app.get("/api/workspaces", async (_req: Request, res: Response) => {
     try {
-      const proxy = getBdProxy()
-      let currentPath: string | undefined
-      try {
-        const info = await proxy.getInfo()
-        currentPath = info.database_path.replace(/\/.beads\/beads\.db$/, "")
-      } catch {
-        // If we can't get current workspace, that's fine
-      }
-
-      const workspaces = getAliveWorkspaces(currentPath)
+      const workspaces = getAliveWorkspaces()
 
       // Add accent colors and active issue counts for each workspace
       const workspacesWithMetadata = await Promise.all(
@@ -309,7 +287,7 @@ function createApp(config: BeadsServerConfig): Express {
 
           let activeIssueCount: number | undefined
           try {
-            const wsProxy = new BdProxy({ cwd: ws.path })
+            const wsProxy = getBdProxy(ws.path)
             const [openIssues, inProgressIssues] = await Promise.all([
               wsProxy.list({ status: "open", limit: 0 }),
               wsProxy.list({ status: "in_progress", limit: 0 }),
@@ -330,83 +308,9 @@ function createApp(config: BeadsServerConfig): Express {
       res.status(200).json({
         ok: true,
         workspaces: workspacesWithMetadata,
-        currentPath,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to list workspaces"
-      res.status(500).json({ ok: false, error: message })
-    }
-  })
-
-  // Switch workspace
-  app.post("/api/workspace/switch", async (req: Request, res: Response) => {
-    try {
-      const { path: workspacePath } = req.body as { path?: string }
-
-      if (!workspacePath?.trim()) {
-        res.status(400).json({ ok: false, error: "Workspace path is required" })
-        return
-      }
-
-      // Switch the BdProxy to the new workspace
-      await switchWorkspace(workspacePath, config)
-
-      // Get info from the new workspace to confirm it works
-      const proxy = getBdProxy()
-      const info = await proxy.getInfo()
-
-      // Read peacock accent color and git branch in parallel
-      const [accentColor, branch] = await Promise.all([
-        readPeacockColor(workspacePath),
-        getGitBranch(workspacePath),
-      ])
-
-      // Get count of open + in_progress issues (active issues)
-      let activeIssueCount: number | undefined
-      try {
-        const [openIssues, inProgressIssues] = await Promise.all([
-          proxy.list({ status: "open", limit: 0 }),
-          proxy.list({ status: "in_progress", limit: 0 }),
-        ])
-        activeIssueCount = openIssues.length + inProgressIssues.length
-      } catch {
-        // If we can't get issue count, leave it undefined
-      }
-
-      // Extract issue prefix from config
-      const issuePrefix = info.config?.issue_prefix ?? null
-
-      // Broadcast workspace switch to all clients
-      broadcast({
-        type: "workspace_switched",
-        workspace: {
-          path: workspacePath,
-          name: workspacePath.split("/").pop(),
-          issueCount: activeIssueCount,
-          daemonConnected: info.daemon_connected,
-          daemonStatus: info.daemon_status,
-          accentColor,
-          branch,
-          issuePrefix,
-        },
-        timestamp: Date.now(),
-      })
-
-      res.status(200).json({
-        ok: true,
-        workspace: {
-          path: workspacePath,
-          name: workspacePath.split("/").pop(),
-          issueCount: activeIssueCount,
-          daemonConnected: info.daemon_connected,
-          daemonStatus: info.daemon_status,
-          accentColor,
-          branch,
-          issuePrefix,
-        },
-      })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to switch workspace"
       res.status(500).json({ ok: false, error: message })
     }
   })
@@ -493,16 +397,6 @@ async function gracefulShutdown(signal: string): Promise<void> {
 
 /** Start the beads server with the given configuration. */
 export async function startServer(config: BeadsServerConfig): Promise<Server> {
-  // Set workspace path
-  currentWorkspacePath = config.workspacePath
-
-  if (currentWorkspacePath) {
-    console.log(`[beads-server] Using workspace: ${currentWorkspacePath}`)
-  }
-
-  // Create BdProxy for the initial workspace
-  bdProxy = new BdProxy({ cwd: currentWorkspacePath || process.cwd() })
-
   // Start mutation polling if enabled
   if (config.enableMutationPolling !== false) {
     startMutationPolling(config.mutationPollingInterval)

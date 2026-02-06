@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla"
 import { createJSONStorage, persist } from "zustand/middleware"
+import { apiFetch } from "../lib/apiClient"
 import type { BeadsViewStore } from "./types"
 import type { Task, TaskGroup } from "../types"
 
@@ -61,7 +62,7 @@ export function createBeadsViewStore(
             taskRefreshPending = false
 
             try {
-              const response = await fetch("/api/tasks?all=true")
+              const response = await apiFetch("/api/tasks?all=true")
               const data = (await response.json()) as { ok: boolean; issues?: Task[] }
               if (data.ok && data.issues) {
                 set({ tasks: data.issues })

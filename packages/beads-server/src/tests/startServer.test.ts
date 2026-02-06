@@ -32,7 +32,6 @@ describe("startServer", () => {
   const getTestConfig = async (): Promise<BeadsServerConfig> => ({
     host: "localhost",
     port: await findAvailablePort("localhost", 18500),
-    workspacePath: "/tmp/test-workspace",
     enableMutationPolling: false,
   })
 
@@ -71,7 +70,6 @@ describe("startServer", () => {
 
     expect(msg.type).toBe("connected")
     expect(msg.server).toBe("beads-server")
-    expect(msg.workspace).toBe("/tmp/test-workspace")
   })
 
   it("responds to ping with pong", async () => {
@@ -116,7 +114,7 @@ describe("startServer", () => {
     })
 
     expect(msg.type).toBe("ws:subscribed")
-    expect(msg.workspaceId).toBe("test-workspace")
+    expect(msg.workspace).toBe("test-workspace")
   })
 
   it("ignores invalid JSON messages", async () => {

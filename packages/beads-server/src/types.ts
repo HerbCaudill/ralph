@@ -25,8 +25,6 @@ export interface BeadsServerConfig {
   host: string
   /** Port to listen on (default: 4243) */
   port: number
-  /** Workspace directory for beads database. Defaults to process.cwd() if not set. */
-  workspacePath?: string
   /** Enable mutation polling for real-time task updates (default: true) */
   enableMutationPolling?: boolean
   /** Mutation polling interval in ms (default: 1000) */

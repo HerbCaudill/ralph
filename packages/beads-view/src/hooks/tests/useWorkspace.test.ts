@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useWorkspace } from "../useWorkspace"
+import { configureApiClient, getApiClientConfig } from "../../lib/apiClient"
 
 // Mock fetch
 const mockFetch = vi.fn()
@@ -19,12 +20,25 @@ describe("useWorkspace", () => {
   }
 
   const mockWorkspaces = [
-    { path: "/home/user/project", name: "project", issueCount: 5, accentColor: "#ff0000" },
-    { path: "/home/user/other", name: "other", issueCount: 3, accentColor: "#00ff00" },
+    {
+      path: "/home/user/project",
+      name: "project",
+      accentColor: "#ff0000",
+      activeIssueCount: 5,
+    },
+    {
+      path: "/home/user/other",
+      name: "other",
+      accentColor: "#00ff00",
+      activeIssueCount: 3,
+    },
   ]
 
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    // Reset the API client config
+    configureApiClient({})
   })
 
   afterEach(() => {
@@ -32,15 +46,17 @@ describe("useWorkspace", () => {
   })
 
   describe("initialization", () => {
-    it("fetches workspace and workspaces on mount", async () => {
+    it("fetches workspaces and workspace info on mount", async () => {
       mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
-        })
+        // /api/workspaces
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+        })
+        // /api/workspace (for first workspace info)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
         })
 
       const { result } = renderHook(() => useWorkspace())
@@ -49,19 +65,19 @@ describe("useWorkspace", () => {
         expect(result.current.state.isLoading).toBe(false)
       })
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/workspace")
-      expect(mockFetch).toHaveBeenCalledWith("/api/workspaces")
+      // Should have fetched workspaces list
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/api/workspaces"), undefined)
     })
 
     it("sets isLoading while fetching", async () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
         })
 
       const { result } = renderHook(() => useWorkspace())
@@ -73,15 +89,15 @@ describe("useWorkspace", () => {
       })
     })
 
-    it("parses the workspace from the response correctly", async () => {
+    it("auto-selects the first workspace when no localStorage value exists", async () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
         })
 
       const { result } = renderHook(() => useWorkspace())
@@ -90,26 +106,32 @@ describe("useWorkspace", () => {
         expect(result.current.state.isLoading).toBe(false)
       })
 
-      // The current workspace should have all the correct properties from the nested workspace object
       expect(result.current.state.current).toMatchObject({
         path: "/home/user/project",
         name: "project",
-        issueCount: 5,
-        accentColor: "#ff0000",
-        branch: "main",
-        issuePrefix: "PROJ",
       })
     })
 
-    it("parses workspaces list from the response correctly", async () => {
+    it("uses saved localStorage workspace if it exists in the list", async () => {
+      localStorage.setItem("ralph-workspace-path", "/home/user/other")
+
+      const otherWorkspace = {
+        path: "/home/user/other",
+        name: "other",
+        issueCount: 3,
+        branch: "develop",
+        accentColor: "#00ff00",
+        issuePrefix: "OTH",
+      }
+
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+          json: () => Promise.resolve({ ok: true, workspace: otherWorkspace }),
         })
 
       const { result } = renderHook(() => useWorkspace())
@@ -118,21 +140,57 @@ describe("useWorkspace", () => {
         expect(result.current.state.isLoading).toBe(false)
       })
 
-      expect(result.current.state.workspaces).toEqual(mockWorkspaces)
+      expect(result.current.state.current?.path).toBe("/home/user/other")
+    })
+
+    it("falls back to first workspace if saved path is not in the list", async () => {
+      localStorage.setItem("ralph-workspace-path", "/home/user/deleted")
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+        })
+
+      const { result } = renderHook(() => useWorkspace())
+
+      await waitFor(() => {
+        expect(result.current.state.isLoading).toBe(false)
+      })
+
+      expect(result.current.state.current?.path).toBe("/home/user/project")
+    })
+
+    it("configures apiClient with workspace path", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+        })
+
+      renderHook(() => useWorkspace())
+
+      await waitFor(() => {
+        const config = getApiClientConfig()
+        expect(config.workspacePath).toBe("/home/user/project")
+      })
     })
   })
 
   describe("error handling", () => {
-    it("sets error when workspace fetch fails", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: false,
-          json: () => Promise.resolve({ ok: false, error: "Not found" }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
-        })
+    it("sets error when no workspaces are found", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ ok: true, workspaces: [] }),
+      })
 
       const { result } = renderHook(() => useWorkspace())
 
@@ -140,55 +198,34 @@ describe("useWorkspace", () => {
         expect(result.current.state.isLoading).toBe(false)
       })
 
-      expect(result.current.state.error).toBe("Failed to fetch workspace")
-    })
-
-    it("sets current to null when response returns ok: false", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ ok: false, error: "No workspace" }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
-        })
-
-      const { result } = renderHook(() => useWorkspace())
-
-      await waitFor(() => {
-        expect(result.current.state.isLoading).toBe(false)
-      })
-
-      expect(result.current.state.current).toBe(null)
+      expect(result.current.state.error).toBe("No workspaces found")
     })
   })
 
   describe("switchWorkspace", () => {
-    it("calls the switch endpoint and refreshes", async () => {
+    it("switches workspace client-side and updates apiClient config", async () => {
+      const otherWorkspace = {
+        path: "/home/user/other",
+        name: "other",
+        issueCount: 3,
+        branch: "develop",
+      }
+
       mockFetch
-        // Initial fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
-        })
+        // Initial: workspaces list
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
         })
-        // Switch call
+        // Initial: workspace info
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ ok: true }),
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
         })
-        // Refresh after switch
+        // Switch: workspace info for new workspace
         .mockResolvedValueOnce({
           ok: true,
-          json: () =>
-            Promise.resolve({
-              ok: true,
-              workspace: { ...mockWorkspace, path: "/home/user/other", name: "other" },
-            }),
+          json: () => Promise.resolve({ ok: true, workspace: otherWorkspace }),
         })
 
       const { result } = renderHook(() => useWorkspace())
@@ -201,27 +238,34 @@ describe("useWorkspace", () => {
         await result.current.actions.switchWorkspace("/home/user/other")
       })
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/workspace/switch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: "/home/user/other" }),
-      })
+      // Should NOT have called /api/workspace/switch
+      expect(mockFetch).not.toHaveBeenCalledWith(
+        expect.stringContaining("/api/workspace/switch"),
+        expect.anything(),
+      )
+
+      // Should have updated current workspace
+      expect(result.current.state.current?.path).toBe("/home/user/other")
+
+      // Should have updated apiClient config
+      expect(getApiClientConfig().workspacePath).toBe("/home/user/other")
+
+      // Should have saved to localStorage
+      expect(localStorage.getItem("ralph-workspace-path")).toBe("/home/user/other")
     })
 
     it("calls onSwitchStart callback immediately when switching workspaces", async () => {
       const onSwitchStart = vi.fn()
 
       mockFetch
-        // Initial fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
-        })
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
         })
-        // Switch call - use a delayed promise to verify onSwitchStart is called before fetch completes
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+        })
         .mockImplementationOnce(
           () =>
             new Promise(resolve => {
@@ -229,19 +273,14 @@ describe("useWorkspace", () => {
               expect(onSwitchStart).toHaveBeenCalledTimes(1)
               resolve({
                 ok: true,
-                json: () => Promise.resolve({ ok: true }),
+                json: () =>
+                  Promise.resolve({
+                    ok: true,
+                    workspace: { ...mockWorkspace, path: "/home/user/other", name: "other" },
+                  }),
               })
             }),
         )
-        // Refresh after switch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              ok: true,
-              workspace: { ...mockWorkspace, path: "/home/user/other", name: "other" },
-            }),
-        })
 
       const { result } = renderHook(() => useWorkspace({ onSwitchStart }))
 
@@ -253,7 +292,6 @@ describe("useWorkspace", () => {
         await result.current.actions.switchWorkspace("/home/user/other")
       })
 
-      // Callback should have been called exactly once
       expect(onSwitchStart).toHaveBeenCalledTimes(1)
     })
   })

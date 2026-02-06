@@ -51,8 +51,8 @@ export interface TaskRouteBdProxy {
 export interface TaskRoutesOptions {
   /** Express app to register routes on. */
   app: Express
-  /** Accessor function to get the BdProxy instance for the current request context. */
-  getBdProxy: () => TaskRouteBdProxy
+  /** Accessor function to get a BdProxy for the given workspace path. */
+  getBdProxy: (workspacePath: string) => TaskRouteBdProxy
 }
 
 /**
@@ -75,16 +75,32 @@ export interface TaskRoutesOptions {
  * - POST   /api/tasks/:id/comments
  */
 export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void {
+  /**
+   * Extract the workspace query parameter from a request.
+   * Returns the workspace path or sends a 400 error if missing.
+   */
+  function extractWorkspace(req: Request, res: Response): string | null {
+    const workspace = req.query.workspace as string | undefined
+    if (!workspace?.trim()) {
+      res.status(400).json({ ok: false, error: "workspace query parameter is required" })
+      return null
+    }
+    return workspace.trim()
+  }
+
   // List tasks
   app.get("/api/tasks", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const { status, ready, all } = req.query as {
         status?: string
         ready?: string
         all?: string
       }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const issues = await bdProxy.listWithParents({
         status: status as "open" | "in_progress" | "blocked" | "deferred" | "closed" | undefined,
         ready: ready === "true",
@@ -102,9 +118,12 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Get blocked tasks
   app.get("/api/tasks/blocked", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const { parent } = req.query as { parent?: string }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const issues = await bdProxy.blocked(parent)
 
       res.status(200).json({ ok: true, issues })
@@ -117,6 +136,9 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Create task
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const { title, description, priority, type, assignee, parent, labels } = req.body as {
         title?: string
         description?: string
@@ -132,7 +154,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const options: {
         title: string
         description?: string
@@ -166,9 +188,12 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Get single task
   app.get("/api/tasks/:id", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const issues = await bdProxy.show(id)
 
       if (issues.length === 0) {
@@ -186,6 +211,9 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Update task
   app.patch("/api/tasks/:id", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
       const { title, description, priority, status, type, assignee, parent } = req.body as {
         title?: string
@@ -197,7 +225,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         parent?: string
       }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const issues = await bdProxy.update(id, {
         title,
         description,
@@ -223,9 +251,12 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Delete task
   app.delete("/api/tasks/:id", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       await bdProxy.delete(id)
 
       res.status(200).json({ ok: true })
@@ -238,9 +269,12 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Get labels for a task
   app.get("/api/tasks/:id/labels", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const labels = await bdProxy.getLabels(id)
 
       res.status(200).json({ ok: true, labels })
@@ -253,6 +287,9 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Add label to a task
   app.post("/api/tasks/:id/labels", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
       const { label } = req.body as { label?: string }
 
@@ -261,7 +298,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const result = await bdProxy.addLabel(id, label.trim())
 
       res.status(201).json({ ok: true, result })
@@ -274,6 +311,9 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Remove label from a task
   app.delete("/api/tasks/:id/labels/:label", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
       const label = req.params.label as string
 
@@ -282,7 +322,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const result = await bdProxy.removeLabel(id, label.trim())
 
       res.status(200).json({ ok: true, result })
@@ -295,6 +335,9 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Add blocker to a task
   app.post("/api/tasks/:id/blockers", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
       const { blockerId } = req.body as { blockerId?: string }
 
@@ -303,7 +346,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const result = await bdProxy.addBlocker(id, blockerId.trim())
 
       res.status(201).json({ ok: true, result })
@@ -316,6 +359,9 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Remove blocker from a task
   app.delete("/api/tasks/:id/blockers/:blockerId", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
       const blockerId = req.params.blockerId as string
 
@@ -324,7 +370,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const result = await bdProxy.removeBlocker(id, blockerId.trim())
 
       res.status(200).json({ ok: true, result })
@@ -335,9 +381,12 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   })
 
   // List all unique labels
-  app.get("/api/labels", async (_req: Request, res: Response) => {
+  app.get("/api/labels", async (req: Request, res: Response) => {
     try {
-      const bdProxy = getBdProxy()
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
+      const bdProxy = getBdProxy(workspace)
       const labels = await bdProxy.listAllLabels()
 
       res.status(200).json({ ok: true, labels })
@@ -350,9 +399,12 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Get comments for a task
   app.get("/api/tasks/:id/comments", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       const comments = await bdProxy.getComments(id)
 
       res.status(200).json({ ok: true, comments })
@@ -365,6 +417,9 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
   // Add comment to a task
   app.post("/api/tasks/:id/comments", async (req: Request, res: Response) => {
     try {
+      const workspace = extractWorkspace(req, res)
+      if (!workspace) return
+
       const id = req.params.id as string
       const { comment, author } = req.body as { comment?: string; author?: string }
 
@@ -373,7 +428,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy()
+      const bdProxy = getBdProxy(workspace)
       await bdProxy.addComment(id, comment.trim(), author)
 
       res.status(201).json({ ok: true })

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { apiFetch, configureApiClient, getApiClientConfig } from "../lib/apiClient"
 
 export type Workspace = {
   path: string
@@ -17,7 +18,7 @@ export type WorkspaceState = {
 }
 
 export type UseWorkspaceOptions = {
-  /** Callback fired immediately when a workspace switch starts, before the API call. */
+  /** Callback fired immediately when a workspace switch starts. */
   onSwitchStart?: () => void
   /** localStorage key for persisting the selected workspace. */
   storageKey?: string
@@ -27,8 +28,9 @@ export type UseWorkspaceOptions = {
 const DEFAULT_STORAGE_KEY = "ralph-workspace-path"
 
 /**
- * Hook that fetches workspace info and provides workspace switching.
- * Persists the selected workspace path to localStorage.
+ * Hook that manages workspace selection entirely on the client side.
+ * Fetches workspace list from the server, picks first (or localStorage-saved),
+ * and configures the API client to include the workspace path on all requests.
  */
 export function useWorkspace(options: UseWorkspaceOptions = {}) {
   const { onSwitchStart, storageKey = DEFAULT_STORAGE_KEY } = options
@@ -46,7 +48,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
     }
   }, [storageKey])
 
-  /** Save workspace path to localStorage. */
+  /** Save workspace path to localStorage and update the API client config. */
   const saveWorkspacePath = useCallback(
     (path: string) => {
       try {
@@ -54,128 +56,129 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
       } catch {
         // Ignore storage errors
       }
+      // Update the API client so all subsequent requests include this workspace
+      const currentConfig = getApiClientConfig()
+      configureApiClient({ ...currentConfig, workspacePath: path })
     },
     [storageKey],
   )
 
-  const fetchWorkspace = useCallback(async () => {
-    try {
-      const res = await fetch("/api/workspace")
-      if (!res.ok) throw new Error("Failed to fetch workspace")
-      const data = (await res.json()) as {
-        ok: boolean
-        workspace?: Workspace
+  /** Fetch detailed workspace info for a given workspace path. */
+  const fetchWorkspaceInfo = useCallback(
+    async (workspacePath: string): Promise<Workspace | null> => {
+      try {
+        const res = await apiFetch(`/api/workspace`)
+        if (!res.ok) return null
+        const data = (await res.json()) as { ok: boolean; workspace?: Workspace }
+        if (data.ok !== false && data.workspace) {
+          return data.workspace
+        }
+        return null
+      } catch {
+        return null
       }
-      if (data.ok !== false && data.workspace) {
-        setCurrent(data.workspace)
-        // Save current workspace path on successful fetch
-        saveWorkspacePath(data.workspace.path)
-      }
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }, [saveWorkspacePath])
+    },
+    [],
+  )
 
-  const fetchWorkspaces = useCallback(async () => {
+  /** Fetch the list of available workspaces from the server. */
+  const fetchWorkspaces = useCallback(async (): Promise<Workspace[]> => {
     try {
-      const res = await fetch("/api/workspaces")
-      if (!res.ok) return
+      // /api/workspaces does not need a workspace param
+      const res = await apiFetch("/api/workspaces")
+      if (!res.ok) return []
       const data = (await res.json()) as {
         ok: boolean
-        workspaces: Workspace[]
+        workspaces: Array<{
+          path: string
+          name: string
+          accentColor?: string
+          activeIssueCount?: number
+        }>
       }
       if (data.ok !== false && data.workspaces) {
-        setWorkspaces(data.workspaces)
+        return data.workspaces.map(ws => ({
+          path: ws.path,
+          name: ws.name,
+          accentColor: ws.accentColor,
+          issueCount: ws.activeIssueCount,
+        }))
       }
+      return []
     } catch {
-      // Ignore - workspaces list is optional
+      return []
     }
   }, [])
 
+  /** Refresh the current workspace info. */
+  const refresh = useCallback(async () => {
+    if (!current) return
+    const info = await fetchWorkspaceInfo(current.path)
+    if (info) {
+      setCurrent(info)
+    }
+  }, [current, fetchWorkspaceInfo])
+
+  /** Switch to a different workspace. Client-side only -- no server call needed. */
   const switchWorkspace = useCallback(
     async (path: string) => {
       try {
         setIsLoading(true)
         onSwitchStart?.()
-        const res = await fetch("/api/workspace/switch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path }),
-        })
-        if (!res.ok) throw new Error("Failed to switch workspace")
-        await fetchWorkspace()
+
+        // Update localStorage and apiClient config first
+        saveWorkspacePath(path)
+
+        // Fetch workspace info for the new workspace
+        const info = await fetchWorkspaceInfo(path)
+        if (info) {
+          setCurrent(info)
+        } else {
+          // Even if we can't get full info, set minimal workspace data
+          setCurrent({ path, name: path.split("/").pop() || path })
+        }
       } catch (e) {
         setError((e as Error).message)
       } finally {
         setIsLoading(false)
       }
     },
-    [fetchWorkspace, onSwitchStart],
+    [fetchWorkspaceInfo, onSwitchStart, saveWorkspacePath],
   )
 
   useEffect(() => {
     const init = async () => {
       setIsLoading(true)
 
-      // Get saved workspace path first
-      const savedPath = getSavedWorkspacePath()
+      // Fetch available workspaces
+      const availableWorkspaces = await fetchWorkspaces()
+      setWorkspaces(availableWorkspaces)
 
-      // Fetch current workspace info
-      let currentWorkspace: Workspace | null = null
-      let fetchError: string | null = null
-      try {
-        const res = await fetch("/api/workspace")
-        if (!res.ok) {
-          fetchError = "Failed to fetch workspace"
-        } else {
-          const data = (await res.json()) as { ok: boolean; workspace?: Workspace }
-          if (data.ok !== false && data.workspace) {
-            currentWorkspace = data.workspace
-          }
-        }
-      } catch (e) {
-        fetchError = (e as Error).message
-      }
-
-      // If there was an error fetching workspace, set it and stop
-      if (fetchError) {
-        setError(fetchError)
-        await fetchWorkspaces()
+      if (availableWorkspaces.length === 0) {
+        setError("No workspaces found")
         setIsLoading(false)
         return
       }
 
-      // If saved workspace differs from current, switch to it
-      if (savedPath && currentWorkspace?.path !== savedPath) {
-        try {
-          const switchRes = await fetch("/api/workspace/switch", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path: savedPath }),
-          })
-          if (switchRes.ok) {
-            // Re-fetch current workspace after switch
-            const res = await fetch("/api/workspace")
-            if (res.ok) {
-              const data = (await res.json()) as { ok: boolean; workspace?: Workspace }
-              if (data.ok !== false && data.workspace) {
-                currentWorkspace = data.workspace
-              }
-            }
-          }
-        } catch {
-          // If switch fails, continue with current workspace
+      // Determine which workspace to use
+      const savedPath = getSavedWorkspacePath()
+      const savedExists = savedPath && availableWorkspaces.some(ws => ws.path === savedPath)
+      const targetPath = savedExists ? savedPath : availableWorkspaces[0].path
+
+      // Configure apiClient with the workspace path
+      saveWorkspacePath(targetPath)
+
+      // Fetch detailed info for the selected workspace
+      const info = await fetchWorkspaceInfo(targetPath)
+      if (info) {
+        setCurrent(info)
+      } else {
+        // Use minimal info from the workspace list
+        const wsFromList = availableWorkspaces.find(ws => ws.path === targetPath)
+        if (wsFromList) {
+          setCurrent(wsFromList)
         }
       }
-
-      // Update state
-      if (currentWorkspace) {
-        setCurrent(currentWorkspace)
-        saveWorkspacePath(currentWorkspace.path)
-      }
-
-      // Fetch available workspaces
-      await fetchWorkspaces()
 
       setIsLoading(false)
     }
@@ -185,6 +188,6 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
 
   return {
     state: { current, workspaces, isLoading, error },
-    actions: { switchWorkspace, refresh: fetchWorkspace },
+    actions: { switchWorkspace, refresh },
   }
 }
