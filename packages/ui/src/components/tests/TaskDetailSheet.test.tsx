@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { TaskDetailSheet } from "../TaskDetailSheet"
 import type { TaskCardTask } from "@herbcaudill/beads-view"
 
@@ -67,22 +67,11 @@ describe("TaskDetailSheet", () => {
     expect(dialog).toBeInTheDocument()
   })
 
-  it("calls onClose when close button is clicked", () => {
-    const onClose = vi.fn()
-    render(<TaskDetailSheet {...defaultProps} onClose={onClose} />)
-
-    const closeButton = screen.getByRole("button", { name: /close/i })
-    fireEvent.click(closeButton)
-
-    expect(onClose).toHaveBeenCalled()
-  })
-
-  it("displays the task title in the header", () => {
+  it("provides an accessible title via a visually hidden Dialog.Title", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
-    // The title should appear in the sheet header (using getAllByText since it's also in the mock)
+    // The title should appear in the dialog (visually hidden for accessibility)
     const titles = screen.getAllByText("Test Task")
-    // At least one should be the Dialog.Title in the header
     expect(titles.length).toBeGreaterThanOrEqual(1)
   })
 })

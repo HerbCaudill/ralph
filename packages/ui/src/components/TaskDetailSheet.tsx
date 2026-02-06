@@ -1,5 +1,4 @@
 import * as Dialog from "@radix-ui/react-dialog"
-import { IconX } from "@tabler/icons-react"
 import { TaskDetailsController, updateTask, deleteTask } from "@herbcaudill/beads-view"
 import type { TaskCardTask, TaskUpdateData } from "@herbcaudill/beads-view"
 import { cn } from "../lib/utils"
@@ -50,33 +49,14 @@ export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSh
             "duration-200 ease-out",
           )}
         >
-          <div className="flex h-full flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <Dialog.Title className="text-sm font-medium truncate flex-1">
-                {task.title}
-              </Dialog.Title>
-              <Dialog.Close asChild>
-                <button
-                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  aria-label="Close"
-                >
-                  <IconX size={18} stroke={1.5} />
-                </button>
-              </Dialog.Close>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-auto">
-              <TaskDetailsController
-                task={task}
-                open={open}
-                onClose={onClose}
-                onSave={handleSave}
-                onDelete={handleDelete}
-              />
-            </div>
-          </div>
+          <Dialog.Title className="sr-only">{task.title}</Dialog.Title>
+          <TaskDetailsController
+            task={task}
+            open={open}
+            onClose={onClose}
+            onSave={handleSave}
+            onDelete={handleDelete}
+          />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
