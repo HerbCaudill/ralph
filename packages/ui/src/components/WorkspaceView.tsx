@@ -63,7 +63,7 @@ export function WorkspaceView() {
     resume,
     stop,
     sendMessage,
-  } = useRalphLoop()
+  } = useRalphLoop(workspaceId)
 
   // Task chat state from agent-server
   const { state: taskChatState, actions: taskChatActions } = useTaskChat()

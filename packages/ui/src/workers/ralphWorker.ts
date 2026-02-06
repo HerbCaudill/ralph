@@ -1,9 +1,9 @@
 /**
- * SharedWorker for managing the Ralph loop WebSocket connection.
+ * SharedWorker for managing Ralph loop WebSocket connections per workspace.
  *
- * This worker owns the WebSocket connection to the agent server (app=ralph),
- * manages ralph loop state (running/paused/idle), and broadcasts events
- * to all connected browser tabs.
+ * Maintains a Map of workspace states — each workspace has its own
+ * WebSocket connection, control state, and session ID. Browser tabs
+ * subscribe to a workspace to receive scoped events.
  */
 
 // SharedWorker global scope type declaration
@@ -22,139 +22,155 @@ interface SharedWorkerGlobalScope {
 /** Control state for the Ralph loop. Matches agent-view ControlState. */
 export type ControlState = "idle" | "running" | "paused"
 
+/** Per-workspace state managed by the worker. */
+interface WorkspaceState {
+  controlState: ControlState
+  currentSessionId: string | null
+  ws: WebSocket | null
+  reconnectTimer: ReturnType<typeof setTimeout> | null
+  pingInterval: ReturnType<typeof setInterval> | null
+  /** Ports subscribed to this workspace's events. */
+  subscribedPorts: Set<MessagePort>
+}
+
 /** Messages sent from browser tabs to the worker. */
 export type WorkerMessage =
-  | { type: "start"; sessionId?: string }
-  | { type: "pause" }
-  | { type: "resume" }
-  | { type: "stop" }
-  | { type: "message"; text: string }
-  | { type: "get_state" }
+  | { type: "subscribe_workspace"; workspaceId: string }
+  | { type: "start"; workspaceId: string; sessionId?: string }
+  | { type: "pause"; workspaceId: string }
+  | { type: "resume"; workspaceId: string }
+  | { type: "stop"; workspaceId: string }
+  | { type: "message"; workspaceId: string; text: string }
+  | { type: "get_state"; workspaceId: string }
 
-/** Events broadcast from the worker to all connected tabs. */
+/** Events broadcast from the worker to connected tabs. */
 export type WorkerEvent =
-  | { type: "state_change"; state: ControlState }
-  | { type: "event"; event: unknown }
-  | { type: "error"; error: string }
-  | { type: "connected" }
-  | { type: "disconnected" }
-  | { type: "session_created"; sessionId: string }
-  | { type: "pending_events"; events: unknown[] }
+  | { type: "state_change"; workspaceId: string; state: ControlState }
+  | { type: "event"; workspaceId: string; event: unknown }
+  | { type: "error"; workspaceId: string; error: string }
+  | { type: "connected"; workspaceId: string }
+  | { type: "disconnected"; workspaceId: string }
+  | { type: "session_created"; workspaceId: string; sessionId: string }
+  | { type: "pending_events"; workspaceId: string; events: unknown[] }
 
-/** Set of all connected MessagePorts from browser tabs. */
-const ports: Set<MessagePort> = new Set()
+/** All connected ports (for cleanup). */
+const allPorts: Set<MessagePort> = new Set()
 
-/** Current control state of the Ralph loop. */
-let controlState: ControlState = "idle"
+/** Per-workspace state keyed by workspace ID (owner/repo). */
+const workspaces = new Map<string, WorkspaceState>()
 
-/** WebSocket connection to the agent server. */
-let ws: WebSocket | null = null
+/** Get or create state for a workspace. */
+function getWorkspace(workspaceId: string): WorkspaceState {
+  let state = workspaces.get(workspaceId)
+  if (!state) {
+    state = {
+      controlState: "idle",
+      currentSessionId: null,
+      ws: null,
+      reconnectTimer: null,
+      pingInterval: null,
+      subscribedPorts: new Set(),
+    }
+    workspaces.set(workspaceId, state)
+  }
+  return state
+}
 
-/** Current session ID for the Ralph loop. */
-let currentSessionId: string | null = null
-
-/** Reconnection timer reference. */
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-
-/** Keep-alive ping interval reference. */
-let pingInterval: ReturnType<typeof setInterval> | null = null
-
-/**
- * Broadcast an event to all connected browser tabs.
- */
-function broadcast(event: WorkerEvent): void {
-  ports.forEach(port => {
+/** Broadcast an event to all ports subscribed to a workspace. */
+function broadcastToWorkspace(workspaceId: string, event: WorkerEvent): void {
+  const state = workspaces.get(workspaceId)
+  if (!state) return
+  state.subscribedPorts.forEach(port => {
     try {
       port.postMessage(event)
     } catch {
-      // Port may be closed, remove it
-      ports.delete(port)
+      state.subscribedPorts.delete(port)
+      allPorts.delete(port)
     }
   })
 }
 
-/**
- * Update control state and broadcast the change.
- */
-function setControlState(newState: ControlState): void {
-  if (controlState !== newState) {
-    controlState = newState
-    broadcast({ type: "state_change", state: newState })
+/** Update control state and broadcast the change. */
+function setControlState(workspaceId: string, newState: ControlState): void {
+  const state = getWorkspace(workspaceId)
+  if (state.controlState !== newState) {
+    state.controlState = newState
+    broadcastToWorkspace(workspaceId, { type: "state_change", workspaceId, state: newState })
   }
 }
 
-/**
- * Construct the WebSocket URL for the Ralph app.
- */
-function getWebSocketUrl(): string {
+/** Construct the WebSocket URL for a workspace. */
+function getWebSocketUrl(workspaceId: string): string {
   const protocol = self.location.protocol === "https:" ? "wss:" : "ws:"
-  return `${protocol}//${self.location.host}/ws?app=ralph`
+  return `${protocol}//${self.location.host}/ws?app=ralph&workspace=${encodeURIComponent(workspaceId)}`
 }
 
-/**
- * Connect to the agent server WebSocket.
- */
-function connect(): void {
+/** Connect to the agent server WebSocket for a workspace. */
+function connectWorkspace(workspaceId: string): void {
+  const state = getWorkspace(workspaceId)
+
   // Clean up existing connection
-  if (ws) {
-    ws.close()
-    ws = null
+  if (state.ws) {
+    state.ws.close()
+    state.ws = null
   }
 
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
+  if (state.reconnectTimer) {
+    clearTimeout(state.reconnectTimer)
+    state.reconnectTimer = null
   }
 
   try {
-    ws = new WebSocket(getWebSocketUrl())
+    state.ws = new WebSocket(getWebSocketUrl(workspaceId))
 
-    ws.onopen = () => {
-      broadcast({ type: "connected" })
+    state.ws.onopen = () => {
+      broadcastToWorkspace(workspaceId, { type: "connected", workspaceId })
 
       // Start keep-alive pings
-      if (pingInterval) {
-        clearInterval(pingInterval)
+      if (state.pingInterval) {
+        clearInterval(state.pingInterval)
       }
-      pingInterval = setInterval(() => {
-        if (ws?.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "ping" }))
+      state.pingInterval = setInterval(() => {
+        if (state.ws?.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({ type: "ping" }))
         }
       }, 30000)
 
       // If we were running before disconnect, try to resume
-      if (controlState === "running" && currentSessionId && ws) {
-        ws.send(
+      if (state.controlState === "running" && state.currentSessionId && state.ws) {
+        state.ws.send(
           JSON.stringify({
             type: "reconnect",
-            sessionId: currentSessionId,
+            sessionId: state.currentSessionId,
           }),
         )
       }
     }
 
-    ws.onmessage = e => {
+    state.ws.onmessage = e => {
       try {
         const message = JSON.parse(e.data as string) as Record<string, unknown>
 
-        // Handle pong silently
         if (message.type === "pong") return
 
-        // Handle session created
         if (message.type === "session_created") {
-          currentSessionId = message.sessionId as string
-          broadcast({ type: "session_created", sessionId: currentSessionId })
+          state.currentSessionId = message.sessionId as string
+          broadcastToWorkspace(workspaceId, {
+            type: "session_created",
+            workspaceId,
+            sessionId: state.currentSessionId,
+          })
 
-          // Fetch and send the Ralph prompt as the first user message (like the CLI does)
-          if (controlState === "running") {
+          // Fetch and send the Ralph prompt as the first user message
+          if (state.controlState === "running") {
             fetch(`${self.location.protocol}//${self.location.host}/api/prompts/ralph`)
               .then(res => res.json())
               .then((data: { prompt: string }) => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                  ws.send(
+                if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+                  state.ws.send(
                     JSON.stringify({
                       type: "message",
-                      sessionId: currentSessionId,
+                      sessionId: state.currentSessionId,
                       message: data.prompt,
                       isSystemPrompt: true,
                     }),
@@ -162,261 +178,292 @@ function connect(): void {
                 }
               })
               .catch(err => {
-                broadcast({ type: "error", error: `Failed to load Ralph prompt: ${err.message}` })
+                broadcastToWorkspace(workspaceId, {
+                  type: "error",
+                  workspaceId,
+                  error: `Failed to load Ralph prompt: ${err.message}`,
+                })
               })
           }
           return
         }
 
-        // Handle pending events on reconnect
         if (message.type === "pending_events") {
           const events = message.events as unknown[]
           if (events?.length) {
-            broadcast({ type: "pending_events", events })
+            broadcastToWorkspace(workspaceId, { type: "pending_events", workspaceId, events })
           }
           return
         }
 
-        // Handle status changes
         if (message.type === "status") {
-          const status = message.status as string
-          // If status is "idle" or "completed", we might auto-continue
-          if (controlState === "running" && status === "completed") {
-            // Auto-continue logic would go here - check for ready tasks
-          }
-          // Broadcast the raw event
-          broadcast({ type: "event", event: message })
+          broadcastToWorkspace(workspaceId, { type: "event", workspaceId, event: message })
           return
         }
 
-        // Handle errors
         if (message.type === "error") {
-          broadcast({ type: "error", error: message.error as string })
+          broadcastToWorkspace(workspaceId, {
+            type: "error",
+            workspaceId,
+            error: message.error as string,
+          })
           return
         }
 
-        // Forward all other events (except user messages, like the CLI does)
         if (message.type === "event" && message.event) {
           const event = message.event as Record<string, unknown>
-          // Skip user messages (initial prompt, user inputs)
-          // Only show assistant and result messages
           if (event.type !== "user") {
-            broadcast({ type: "event", event: message.event })
+            broadcastToWorkspace(workspaceId, { type: "event", workspaceId, event: message.event })
           }
           return
         }
 
-        // Forward any other message as an event (except user messages)
         if (message.type !== "user") {
-          broadcast({ type: "event", event: message })
+          broadcastToWorkspace(workspaceId, { type: "event", workspaceId, event: message })
         }
       } catch {
         // Ignore unparseable messages
       }
     }
 
-    ws.onclose = () => {
-      broadcast({ type: "disconnected" })
-      ws = null
+    state.ws.onclose = () => {
+      broadcastToWorkspace(workspaceId, { type: "disconnected", workspaceId })
+      state.ws = null
 
-      if (pingInterval) {
-        clearInterval(pingInterval)
-        pingInterval = null
+      if (state.pingInterval) {
+        clearInterval(state.pingInterval)
+        state.pingInterval = null
       }
 
-      // Auto-reconnect after 3 seconds if we have connected ports
-      // This maintains connection status even when idle
-      if (ports.size > 0) {
-        reconnectTimer = setTimeout(connect, 3000)
+      // Auto-reconnect after 3 seconds if there are subscribed ports
+      if (state.subscribedPorts.size > 0) {
+        state.reconnectTimer = setTimeout(() => connectWorkspace(workspaceId), 3000)
       }
     }
 
-    ws.onerror = () => {
-      broadcast({ type: "error", error: "WebSocket connection failed" })
+    state.ws.onerror = () => {
+      broadcastToWorkspace(workspaceId, {
+        type: "error",
+        workspaceId,
+        error: "WebSocket connection failed",
+      })
     }
   } catch (err) {
-    broadcast({ type: "error", error: `Failed to connect: ${(err as Error).message}` })
+    broadcastToWorkspace(workspaceId, {
+      type: "error",
+      workspaceId,
+      error: `Failed to connect: ${(err as Error).message}`,
+    })
   }
 }
 
-/**
- * Disconnect from the WebSocket.
- */
-function disconnect(): void {
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
+/** Disconnect a workspace's WebSocket. */
+function disconnectWorkspace(workspaceId: string): void {
+  const state = workspaces.get(workspaceId)
+  if (!state) return
+
+  if (state.reconnectTimer) {
+    clearTimeout(state.reconnectTimer)
+    state.reconnectTimer = null
   }
 
-  if (pingInterval) {
-    clearInterval(pingInterval)
-    pingInterval = null
+  if (state.pingInterval) {
+    clearInterval(state.pingInterval)
+    state.pingInterval = null
   }
 
-  if (ws) {
-    ws.close()
-    ws = null
+  if (state.ws) {
+    state.ws.close()
+    state.ws = null
   }
 }
 
-/**
- * Create a new session or resume an existing one.
- */
-function createOrResumeSession(sessionId?: string): void {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    broadcast({ type: "error", error: "WebSocket not connected" })
+/** Create a new session or resume an existing one for a workspace. */
+function createOrResumeSession(workspaceId: string, sessionId?: string): void {
+  const state = getWorkspace(workspaceId)
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+    broadcastToWorkspace(workspaceId, {
+      type: "error",
+      workspaceId,
+      error: "WebSocket not connected",
+    })
     return
   }
 
   if (sessionId) {
-    // Resume existing session
-    currentSessionId = sessionId
-    ws.send(
-      JSON.stringify({
-        type: "reconnect",
-        sessionId,
-      }),
-    )
+    state.currentSessionId = sessionId
+    state.ws.send(JSON.stringify({ type: "reconnect", sessionId }))
   } else {
-    // Create new session
-    ws.send(
+    state.ws.send(
       JSON.stringify({
         type: "create_session",
         app: "ralph",
+        workspaceId,
       }),
     )
   }
 }
 
-/**
- * Send a message to the current session.
- */
-function sendMessage(text: string): void {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    broadcast({ type: "error", error: "WebSocket not connected" })
+/** Send a message to the current session for a workspace. */
+function sendMessageToWorkspace(workspaceId: string, text: string): void {
+  const state = getWorkspace(workspaceId)
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+    broadcastToWorkspace(workspaceId, {
+      type: "error",
+      workspaceId,
+      error: "WebSocket not connected",
+    })
     return
   }
 
-  if (!currentSessionId) {
-    broadcast({ type: "error", error: "No active session" })
+  if (!state.currentSessionId) {
+    broadcastToWorkspace(workspaceId, {
+      type: "error",
+      workspaceId,
+      error: "No active session",
+    })
     return
   }
 
-  ws.send(
+  state.ws.send(
     JSON.stringify({
       type: "message",
-      sessionId: currentSessionId,
+      sessionId: state.currentSessionId,
       message: text,
     }),
   )
 }
 
-/**
- * Handle a message from a connected browser tab.
- */
+/** Handle a message from a connected browser tab. */
 function handlePortMessage(message: WorkerMessage, port: MessagePort): void {
   switch (message.type) {
-    case "start":
-      if (controlState === "idle") {
-        setControlState("running")
-        // Connect if not already connected
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          connect()
+    case "subscribe_workspace": {
+      const state = getWorkspace(message.workspaceId)
+      state.subscribedPorts.add(port)
+
+      // Send current state to the subscribing port
+      port.postMessage({
+        type: "state_change",
+        workspaceId: message.workspaceId,
+        state: state.controlState,
+      } satisfies WorkerEvent)
+
+      if (state.currentSessionId) {
+        port.postMessage({
+          type: "session_created",
+          workspaceId: message.workspaceId,
+          sessionId: state.currentSessionId,
+        } satisfies WorkerEvent)
+      }
+
+      // Connect if not already connected
+      if (state.ws?.readyState === WebSocket.OPEN) {
+        port.postMessage({
+          type: "connected",
+          workspaceId: message.workspaceId,
+        } satisfies WorkerEvent)
+      } else if (!state.ws) {
+        connectWorkspace(message.workspaceId)
+      }
+      break
+    }
+
+    case "start": {
+      const state = getWorkspace(message.workspaceId)
+      if (state.controlState === "idle") {
+        setControlState(message.workspaceId, "running")
+        if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+          connectWorkspace(message.workspaceId)
         }
-        // Wait for connection, then create/resume session
         const checkConnection = setInterval(() => {
-          if (ws?.readyState === WebSocket.OPEN) {
+          if (state.ws?.readyState === WebSocket.OPEN) {
             clearInterval(checkConnection)
-            createOrResumeSession(message.sessionId)
+            createOrResumeSession(message.workspaceId, message.sessionId)
           }
         }, 100)
-        // Timeout after 10 seconds
         setTimeout(() => clearInterval(checkConnection), 10000)
       }
       break
+    }
 
-    case "pause":
-      if (controlState === "running") {
-        setControlState("paused")
-        // Keep connection open but don't auto-continue
+    case "pause": {
+      const state = getWorkspace(message.workspaceId)
+      if (state.controlState === "running") {
+        setControlState(message.workspaceId, "paused")
       }
       break
+    }
 
-    case "resume":
-      if (controlState === "paused") {
-        setControlState("running")
-        // Check for ready tasks and potentially auto-continue
+    case "resume": {
+      const state = getWorkspace(message.workspaceId)
+      if (state.controlState === "paused") {
+        setControlState(message.workspaceId, "running")
       }
       break
+    }
 
     case "stop":
-      setControlState("idle")
-      currentSessionId = null
-      disconnect()
+      setControlState(message.workspaceId, "idle")
+      getWorkspace(message.workspaceId).currentSessionId = null
+      disconnectWorkspace(message.workspaceId)
       break
 
-    case "message":
-      if (controlState !== "idle") {
-        sendMessage(message.text)
+    case "message": {
+      const state = getWorkspace(message.workspaceId)
+      if (state.controlState !== "idle") {
+        sendMessageToWorkspace(message.workspaceId, message.text)
       } else {
-        broadcast({ type: "error", error: "Ralph is not running" })
+        broadcastToWorkspace(message.workspaceId, {
+          type: "error",
+          workspaceId: message.workspaceId,
+          error: "Ralph is not running",
+        })
       }
       break
+    }
 
-    case "get_state":
-      // Send current state to the requesting port only
+    case "get_state": {
+      const state = getWorkspace(message.workspaceId)
       port.postMessage({
         type: "state_change",
-        state: controlState,
+        workspaceId: message.workspaceId,
+        state: state.controlState,
       } satisfies WorkerEvent)
-      if (currentSessionId) {
+      if (state.currentSessionId) {
         port.postMessage({
           type: "session_created",
-          sessionId: currentSessionId,
+          workspaceId: message.workspaceId,
+          sessionId: state.currentSessionId,
         } satisfies WorkerEvent)
       }
       break
+    }
+  }
+}
+
+/** Remove a port from all workspace subscriptions. */
+function removePort(port: MessagePort): void {
+  allPorts.delete(port)
+  for (const [workspaceId, state] of workspaces) {
+    state.subscribedPorts.delete(port)
+    // Disconnect workspace if no subscribers remain
+    if (state.subscribedPorts.size === 0) {
+      disconnectWorkspace(workspaceId)
+    }
   }
 }
 
 // SharedWorker connection handler
 self.onconnect = (e: MessageEvent) => {
   const port = e.ports[0]
-  ports.add(port)
+  allPorts.add(port)
 
   port.onmessage = (event: MessageEvent<WorkerMessage>) => {
     handlePortMessage(event.data, port)
   }
 
   port.onmessageerror = () => {
-    ports.delete(port)
-    // Disconnect if no ports remain
-    if (ports.size === 0) {
-      disconnect()
-    }
-  }
-
-  // Send current state to the new port
-  port.postMessage({
-    type: "state_change",
-    state: controlState,
-  } satisfies WorkerEvent)
-
-  // Send session ID if we have one
-  if (currentSessionId) {
-    port.postMessage({
-      type: "session_created",
-      sessionId: currentSessionId,
-    } satisfies WorkerEvent)
-  }
-
-  // Notify if already connected
-  if (ws?.readyState === WebSocket.OPEN) {
-    port.postMessage({ type: "connected" } satisfies WorkerEvent)
-  } else if (!ws && ports.size === 1) {
-    // First port connected and no WebSocket exists - connect now
-    // This allows the UI to show connection status without waiting for "start"
-    connect()
+    removePort(port)
   }
 
   port.start()

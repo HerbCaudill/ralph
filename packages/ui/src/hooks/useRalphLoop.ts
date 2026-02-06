@@ -1,21 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import type { ChatEvent, ControlState, ConnectionStatus } from "@herbcaudill/agent-view"
+import type { WorkerMessage, WorkerEvent } from "../workers/ralphWorker"
 
 /**
  * Hook that communicates with the SharedWorker (ralphWorker.ts) to control the Ralph loop.
- * Provides state for events, streaming status, control state, and connection status,
- * along with actions to start, pause, resume, stop, and send messages.
+ * Subscribes to a specific workspace and provides state for events, streaming status,
+ * control state, and connection status, along with actions to start, pause, resume, stop,
+ * and send messages.
  */
-export function useRalphLoop(): UseRalphLoopReturn {
+export function useRalphLoop(
+  /** Workspace identifier in `owner/repo` format. */
+  workspaceId?: string,
+): UseRalphLoopReturn {
   const [events, setEvents] = useState<ChatEvent[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [controlState, setControlState] = useState<ControlState>("idle")
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
 
-  const workerRef = useRef<SharedWorker | null>(null)
   const portRef = useRef<MessagePort | null>(null)
 
-  /** Send a message to the SharedWorker. */
+  /** Send a message to the SharedWorker, automatically including the workspaceId. */
   const postMessage = useCallback((message: WorkerMessage) => {
     if (portRef.current) {
       portRef.current.postMessage(message)
@@ -23,53 +27,51 @@ export function useRalphLoop(): UseRalphLoopReturn {
   }, [])
 
   /** Handle messages received from the SharedWorker. */
-  const handleWorkerMessage = useCallback((e: MessageEvent<WorkerResponse>) => {
-    const data = e.data
+  const handleWorkerMessage = useCallback(
+    (e: MessageEvent<WorkerEvent>) => {
+      const data = e.data
 
-    switch (data.type) {
-      case "events":
-        setEvents(data.events)
-        break
+      // Only process events for our workspace
+      if (data.workspaceId !== workspaceId) return
 
-      case "event":
-        setEvents(prev => [...prev, data.event])
-        break
+      switch (data.type) {
+        case "state_change":
+          setControlState(data.state)
+          break
 
-      case "streaming":
-        setIsStreaming(data.isStreaming)
-        break
+        case "event":
+          setEvents(prev => [...prev, data.event as ChatEvent])
+          break
 
-      case "control_state":
-        setControlState(data.state)
-        break
+        case "pending_events":
+          setEvents(prev => [...prev, ...(data.events as ChatEvent[])])
+          break
 
-      // Handle both naming conventions for connection status
-      case "connection_status":
-        setConnectionStatus(data.status)
-        break
+        case "connected":
+          setConnectionStatus("connected")
+          break
 
-      // Worker sends 'connected' and 'disconnected' events
-      case "connected":
-        setConnectionStatus("connected")
-        break
+        case "disconnected":
+          setConnectionStatus("disconnected")
+          break
 
-      case "disconnected":
-        setConnectionStatus("disconnected")
-        break
+        case "session_created":
+          // Session created — streaming will follow
+          setIsStreaming(true)
+          break
 
-      // Worker sends 'state_change' for control state updates
-      case "state_change":
-        setControlState(data.state)
-        break
+        case "error":
+          console.error("[useRalphLoop] Worker error:", data.error)
+          break
+      }
+    },
+    [workspaceId],
+  )
 
-      case "error":
-        console.error("[useRalphLoop] Worker error:", data.error)
-        break
-    }
-  }, [])
-
-  /** Initialize connection to the SharedWorker. */
+  /** Initialize connection to the SharedWorker and subscribe to the workspace. */
   useEffect(() => {
+    if (!workspaceId) return
+
     // SharedWorker is not supported in all environments (e.g., SSR, some browsers)
     if (typeof SharedWorker === "undefined") {
       console.warn("[useRalphLoop] SharedWorker not supported in this environment")
@@ -82,7 +84,6 @@ export function useRalphLoop(): UseRalphLoopReturn {
         name: "ralph-loop-worker",
       })
 
-      workerRef.current = worker
       portRef.current = worker.port
 
       worker.port.onmessage = handleWorkerMessage
@@ -93,8 +94,11 @@ export function useRalphLoop(): UseRalphLoopReturn {
       // Start the port to receive messages
       worker.port.start()
 
-      // Notify the worker that this client has connected
-      worker.port.postMessage({ type: "connect" })
+      // Subscribe to workspace events
+      worker.port.postMessage({
+        type: "subscribe_workspace",
+        workspaceId,
+      } satisfies WorkerMessage)
 
       setConnectionStatus("connecting")
     } catch (error) {
@@ -104,41 +108,45 @@ export function useRalphLoop(): UseRalphLoopReturn {
 
     return () => {
       if (portRef.current) {
-        portRef.current.postMessage({ type: "disconnect" })
         portRef.current.close()
         portRef.current = null
       }
-      workerRef.current = null
     }
-  }, [handleWorkerMessage])
+  }, [workspaceId, handleWorkerMessage])
 
   /** Start the Ralph loop. */
   const start = useCallback(() => {
-    postMessage({ type: "start" })
-  }, [postMessage])
+    if (!workspaceId) return
+    setEvents([])
+    postMessage({ type: "start", workspaceId })
+  }, [workspaceId, postMessage])
 
   /** Pause the Ralph loop. */
   const pause = useCallback(() => {
-    postMessage({ type: "pause" })
-  }, [postMessage])
+    if (!workspaceId) return
+    postMessage({ type: "pause", workspaceId })
+  }, [workspaceId, postMessage])
 
   /** Resume the Ralph loop after pausing. */
   const resume = useCallback(() => {
-    postMessage({ type: "resume" })
-  }, [postMessage])
+    if (!workspaceId) return
+    postMessage({ type: "resume", workspaceId })
+  }, [workspaceId, postMessage])
 
   /** Stop the Ralph loop. */
   const stop = useCallback(() => {
-    postMessage({ type: "stop" })
-  }, [postMessage])
+    if (!workspaceId) return
+    setIsStreaming(false)
+    postMessage({ type: "stop", workspaceId })
+  }, [workspaceId, postMessage])
 
   /** Send a message to Claude within the current session. */
   const sendMessage = useCallback(
     (message: string) => {
-      if (!message.trim()) return
-      postMessage({ type: "message", text: message.trim() })
+      if (!workspaceId || !message.trim()) return
+      postMessage({ type: "message", workspaceId, text: message.trim() })
     },
-    [postMessage],
+    [workspaceId, postMessage],
   )
 
   return {
@@ -178,26 +186,3 @@ export interface UseRalphLoopReturn {
   /** Send a message to Claude within the current session. */
   sendMessage: (message: string) => void
 }
-
-/** Messages sent to the SharedWorker. */
-export type WorkerMessage =
-  | { type: "connect" }
-  | { type: "disconnect" }
-  | { type: "start" }
-  | { type: "pause" }
-  | { type: "resume" }
-  | { type: "stop" }
-  | { type: "message"; text: string }
-
-/** Responses received from the SharedWorker. */
-export type WorkerResponse =
-  | { type: "events"; events: ChatEvent[] }
-  | { type: "event"; event: ChatEvent }
-  | { type: "streaming"; isStreaming: boolean }
-  | { type: "control_state"; state: ControlState }
-  | { type: "connection_status"; status: ConnectionStatus }
-  // Messages sent by the ralphWorker.ts SharedWorker
-  | { type: "connected" }
-  | { type: "disconnected" }
-  | { type: "state_change"; state: ControlState }
-  | { type: "error"; error: string }
