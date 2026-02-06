@@ -4,7 +4,6 @@ import { Header } from "./components/Header"
 import { RalphRunner } from "./components/RalphRunner"
 import { TaskChatPanel } from "./components/TaskChatPanel"
 import { TaskDetailSheet } from "./components/TaskDetailSheet"
-import { StatusBar } from "./components/StatusBar"
 import { HotkeysDialog } from "./components/HotkeysDialog"
 import { CommandPalette } from "./components/CommandPalette"
 import { useRalphLoop } from "./hooks/useRalphLoop"
@@ -69,7 +68,7 @@ function AppContent() {
   useAccentColor(workspace?.accentColor)
 
   // Task state from beads-view
-  const { tasks, error: tasksError, refresh } = useTasks()
+  const { refresh } = useTasks()
   const { selectedTask, openDialogById, closeDialog } = useTaskDialog({
     onTaskUpdated: refresh,
     onTaskDeleted: refresh,
@@ -311,24 +310,6 @@ function AppContent() {
           isRunning={controlState === "running"}
         />
       </MainLayout>
-      <StatusBar
-        connectionStatus={connectionStatus}
-        events={events}
-        error={tasksError}
-        controlState={controlState}
-        isStoppingAfterCurrent={isStoppingAfterCurrent}
-        onStart={start}
-        onPause={pause}
-        onResume={resume}
-        onStop={stop}
-        onStopAfterCurrent={handleStopAfterCurrent}
-        onCancelStopAfterCurrent={handleCancelStopAfterCurrent}
-        workspaceName={workspace?.name}
-        workspacePath={workspace?.path}
-        branch={workspace?.branch}
-        tasks={tasks}
-        accentColor={workspace?.accentColor}
-      />
       {/* Task detail sheet overlay */}
       <TaskDetailSheet
         task={selectedTask}

@@ -175,7 +175,7 @@ packages/ui/                           # UI package
       RunDuration.tsx       # Session timer display
       SessionProgress.tsx   # Session task completion progress
       SettingsDropdown.tsx  # Settings dropdown (placeholder)
-      StatusBar.tsx         # Status bar with connection/session info
+      StatusBar.tsx         # Standalone status bar component (not used in App.tsx - RalphRunner has its own footer)
       StatusIndicator.tsx   # Connection/status indicator
       TaskChatPanel.tsx     # Task chat panel with AgentView
       TaskDetailPanel.tsx   # Task detail panel with inline editing (wraps TaskDetailsController)

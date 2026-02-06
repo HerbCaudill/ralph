@@ -63,9 +63,7 @@ git ls-tree -r --name-only 4e931633^ -- packages/ui-deprecated/src/components/
 - `packages/ui-deprecated/src/lib/stopAfterCurrentRalph.ts`
 - `packages/ui-deprecated/src/lib/cancelStopAfterCurrentRalph.ts`
 
-**Modify:**
-
-- `packages/ui/src/components/StatusBar.tsx` - Use ControlBar instead of AgentControls
+**Note:** The full-width StatusBar at the bottom of App.tsx was removed (bug fix r-70zdf). ControlBar is now rendered in RalphRunner's footer instead. The ControlBar component exists at `packages/ui/src/components/ControlBar.tsx`.
 
 **Old component features:**
 
@@ -104,9 +102,7 @@ git ls-tree -r --name-only 4e931633^ -- packages/ui-deprecated/src/components/
 </span>
 ```
 
-**Modify:**
-
-- `packages/ui/src/components/StatusBar.tsx` - Add StatusIndicator after ControlBar
+**Note:** StatusIndicator is now rendered in RalphRunner's footer instead of a separate StatusBar at the bottom of App.tsx (bug fix r-70zdf).
 
 ---
 
@@ -191,21 +187,15 @@ git ls-tree -r --name-only 4e931633^ -- packages/ui-deprecated/src/components/
 
 ---
 
-### 7. Restructure StatusBar Layout
+### 7. ~~Restructure StatusBar Layout~~ (COMPLETED/SUPERSEDED)
 
-**Goal:** Rebuild StatusBar to match old layout structure
+**Status:** This task has been superseded. The full-width StatusBar at the bottom of App.tsx was removed because RalphRunner already contains a comprehensive footer with all the same controls and information (bug fix r-70zdf).
 
-**Old StatusBar structure (left to right):**
+**Current architecture:**
 
-```
-[ControlBar] [StatusIndicator] [RunDuration] | [RepoBranch] [TokenUsage] [ContextWindow] [SessionProgress]
-```
-
-**Current StatusBar has:** Connection indicator, some controls, workspace, token usage, context window
-
-**Modify:**
-
-- `packages/ui/src/components/StatusBar.tsx` - Restructure to use restored components
+- `RalphRunner.tsx` includes a built-in footer with: ControlBar, StatusIndicator, RunDuration, RepoBranch, TokenUsageDisplay, ContextWindowProgress
+- `StatusBar.tsx` component still exists as a standalone presentational component but is no longer rendered in App.tsx
+- This eliminates the duplicate control bar that was appearing below the task chat
 
 ---
 

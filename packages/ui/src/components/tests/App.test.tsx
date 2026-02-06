@@ -141,6 +141,11 @@ vi.mock("../RalphRunner", () => ({
   RalphRunner: () => <div data-testid="ralph-runner">Ralph Runner</div>,
 }))
 
+// Mock StatusBar to have a distinct testid (for testing that it's NOT rendered)
+vi.mock("../StatusBar", () => ({
+  StatusBar: () => <div data-testid="status-bar">Status Bar</div>,
+}))
+
 describe("App", () => {
   beforeEach(() => {
     // Reset selected task before each test
@@ -246,6 +251,16 @@ describe("App", () => {
       const taskSidebar = screen.getByTestId("task-sidebar")
       // Default controlState is "idle", so isRunning should be false
       expect(taskSidebar).toHaveAttribute("data-is-running", "false")
+    })
+  })
+
+  describe("control bar placement", () => {
+    it("does not render a full-width status bar with control bar under the task chat", () => {
+      render(<App />)
+
+      // The StatusBar component should not be rendered at all
+      // since controls are now only in the RalphRunner panel (right side)
+      expect(screen.queryByTestId("status-bar")).not.toBeInTheDocument()
     })
   })
 })

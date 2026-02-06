@@ -13,12 +13,12 @@ Fresh rebuild of `packages/ui/` using modular building blocks.
 
 Ralph and task-chat are structurally identical - just different system prompts and loop behavior:
 
-| Aspect | Task Chat | Ralph |
-|--------|-----------|-------|
-| System prompt | manage-tasks skill | core + workflow |
-| Context files | Adapter-specific (CLAUDE.md / AGENTS.md) | Adapter-specific |
-| Loop behavior | Wait for user input | Auto-continue on task completion |
-| Trigger | User sends message | Ready task in beads |
+| Aspect        | Task Chat                                | Ralph                            |
+| ------------- | ---------------------------------------- | -------------------------------- |
+| System prompt | manage-tasks skill                       | core + workflow                  |
+| Context files | Adapter-specific (CLAUDE.md / AGENTS.md) | Adapter-specific                 |
+| Loop behavior | Wait for user input                      | Auto-continue on task completion |
+| Trigger       | User sends message                       | Ready task in beads              |
 
 ## Session Isolation
 
@@ -27,12 +27,14 @@ Task-chat and ralph must have completely independent sessions. This requires cha
 ### Required: App-namespaced sessions
 
 **Connection:** WebSocket accepts `app` parameter:
+
 ```
 /ws?app=ralph
 /ws?app=task-chat
 ```
 
 **Storage:** Sessions stored in separate directories:
+
 ```
 .agent-server/
   sessions/
@@ -43,6 +45,7 @@ Task-chat and ralph must have completely independent sessions. This requires cha
 ```
 
 **Session IDs:** Globally unique (UUID), but scoped to app for listing:
+
 ```
 GET /api/sessions?app=ralph      → ralph sessions only
 GET /api/sessions?app=task-chat  → task-chat sessions only
@@ -50,6 +53,7 @@ GET /api/sessions                → all sessions (backward compat)
 ```
 
 **WebSocket protocol changes:**
+
 ```typescript
 // Client connects with app
 ws.connect("/ws?app=ralph")
@@ -65,6 +69,7 @@ ws.connect("/ws?app=ralph")
 ```
 
 **Adapter selection:** App can specify adapter:
+
 ```
 /ws?app=ralph&adapter=claude
 /ws?app=task-chat&adapter=claude
@@ -119,6 +124,7 @@ function useAgentControl() {
 ```
 
 New components:
+
 - `AgentControls` - Start/pause/stop buttons
 - `SessionPicker` - Session history dropdown
 
@@ -134,12 +140,14 @@ New components:
 4. **Prompt assembly endpoint** - `GET /api/prompt?app=ralph&workspace=...`
 
 Context file loading is adapter-specific:
+
 - Claude: `CLAUDE.md` in `.claude/` directories
 - Codex: `AGENTS.md` in `.codex/` directories
 
 ### ui (new, thin)
 
 Ralph-specific orchestration only:
+
 - Shared worker for ralph loop automation
 - Layout composition (task sidebar + ralph runner + task chat)
 - Workspace switching UI
@@ -150,6 +158,7 @@ Ralph-specific orchestration only:
 ### Phase 1: agent-server - Session isolation
 
 **Files:**
+
 - `packages/agent-server/src/SessionPersister.ts` - Add app namespace to paths
 - `packages/agent-server/src/ChatSessionManager.ts` - Scope sessions by app
 - `packages/agent-server/src/wsHandler.ts` - Parse `app` query param, route accordingly
@@ -158,6 +167,7 @@ Ralph-specific orchestration only:
 ### Phase 2: agent-server - System prompt injection
 
 **Files:**
+
 - `packages/agent-server/src/wsHandler.ts` - Accept `systemPrompt` in `session:start`
 - `packages/agent-server/src/ChatSessionManager.ts` - Store prompt with session
 - `packages/agent-server/src/routes/promptRoutes.ts` - NEW: `GET /api/prompt`
@@ -167,6 +177,7 @@ Ralph-specific orchestration only:
 ### Phase 3: agent-view - Control components
 
 **Files:**
+
 - `packages/agent-view/src/hooks/useAgentControl.ts` - NEW
 - `packages/agent-view/src/components/AgentControls.tsx` - NEW
 - `packages/agent-view/src/components/SessionPicker.tsx` - NEW
@@ -177,14 +188,16 @@ Ralph-specific orchestration only:
 ### Phase 4: beads-view - useWorkspace
 
 **Files:**
+
 - `packages/beads-view/src/hooks/useWorkspace.ts` - Move from beads-demo
 
 ### Phase 5: UI - Fresh package
 
 Use `/scaffold` skill to create new package, then add:
+
 - Shared worker for ralph loop (`workers/ralphWorker.ts`)
 - `useRalphLoop()` hook
-- Layout components (MainLayout, RalphRunner, TaskChatPanel, StatusBar)
+- Layout components (MainLayout, RalphRunner with built-in footer, TaskChatPanel)
 - Minimal UI store
 
 ### Phase 6: Cleanup

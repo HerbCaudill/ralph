@@ -10,7 +10,7 @@ Components throughout the UI mix data access with presentation, making them diff
 
 | Pattern                            | Count | Example                               |
 | ---------------------------------- | ----- | ------------------------------------- |
-| Direct store access in component   | 15+   | `Header`, `StatusBar`, `EventStream`  |
+| Direct store access in component   | 15+   | `Header`, `EventStream`               |
 | API calls in component             | 8+    | `TaskDetailsDialog`, `TaskChatPanel`  |
 | Purely presentational (props only) | 12+   | `ChatInput`, `EventList`, `TaskList`  |
 | Data via custom hook               | 5+    | `TasksSidebarPanel` uses `useTasks()` |
@@ -35,7 +35,7 @@ Stories use these hacks to work around data-accessing components:
 
 **Medium Priority**:
 
-- `StatusBar` - reads status from store
+- ~~`StatusBar` - reads status from store~~ (Now presentational, not rendered in App.tsx - RalphRunner has its own footer)
 - `TaskSidebar` - needs store state
 - `TaskChatHistoryDropdown` - fetches sessions directly
 - `InstanceSelector` - reads instances from store
@@ -120,7 +120,7 @@ App (root orchestrator - stays as-is)
 ├── EventStreamController   → EventList, SessionNav, ToolUseCard
 ├── TaskChatController      → TaskChat, ChatInput, TaskChatHistory
 ├── TaskDetailsController   → TaskDetails (refactored from TaskDetailsDialog)
-└── StatusBarController     → StatusBar, TokenUsage
+└── (StatusBarController no longer needed - RalphRunner has built-in footer)
 ```
 
 Prop drilling is fine for 1-2 levels within each region.
@@ -272,7 +272,7 @@ test('renders workspace name', () => {
 ## Migration Priority
 
 1. **Phase 1:** `TaskChatPanel`, `TaskDetailsDialog` (proof of concept + messy component)
-2. **Phase 2:** `EventStream`, `Header`, `StatusBar` (most impactful)
+2. **Phase 2:** `EventStream`, `Header` (most impactful; StatusBar no longer needed as separate controller - RalphRunner has built-in footer)
 3. **Phase 3:** `TaskSidebar`, `InstanceSelector` (remaining containers)
 4. **Phase 4:** Cleanup remaining components
 
