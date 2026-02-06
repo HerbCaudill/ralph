@@ -14,6 +14,7 @@ import {
   TaskSidebarController,
   BeadsViewProvider,
   configureApiClient,
+  getSavedWorkspacePath,
   useTasks,
   useTaskDialog,
   useBeadsViewStore,
@@ -25,8 +26,11 @@ import {
 } from "@herbcaudill/beads-view"
 import { useAgentHotkeys, type ChatInputHandle } from "@herbcaudill/agent-view"
 
-// Configure API client for beads-view
-configureApiClient({ baseUrl: "" }) // Uses relative URLs, proxied by Vite
+// Configure API client for beads-view. Include the saved workspace path from
+// localStorage so that API calls made before useWorkspace's async init completes
+// (e.g. fetching comments for a task hydrated from the persisted store) already
+// include the required workspace query parameter.
+configureApiClient({ baseUrl: "", workspacePath: getSavedWorkspacePath() ?? undefined })
 
 /**
  * Main Ralph UI application.

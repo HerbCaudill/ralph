@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { apiFetch, configureApiClient, getApiClientConfig } from "../lib/apiClient"
 
 export type Workspace = {
@@ -28,6 +28,21 @@ export type UseWorkspaceOptions = {
 const DEFAULT_STORAGE_KEY = "ralph-workspace-path"
 
 /**
+ * Read the saved workspace path from localStorage.
+ * Exported so callers can eagerly configure the API client at module scope.
+ */
+export function getSavedWorkspacePath(
+  /** The localStorage key to read from. */
+  storageKey: string = DEFAULT_STORAGE_KEY,
+): string | null {
+  try {
+    return localStorage.getItem(storageKey)
+  } catch {
+    return null
+  }
+}
+
+/**
  * Hook that manages workspace selection entirely on the client side.
  * Fetches workspace list from the server, picks first (or localStorage-saved),
  * and configures the API client to include the workspace path on all requests.
@@ -39,14 +54,21 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  /** Get saved workspace path from localStorage. */
-  const getSavedWorkspacePath = useCallback(() => {
-    try {
-      return localStorage.getItem(storageKey)
-    } catch {
-      return null
+  // Eagerly configure the API client with the saved workspace path from localStorage.
+  // This runs synchronously during the first render, before any effects, so that
+  // other hooks (e.g. useTaskDetails) can make API calls that include the workspace
+  // parameter even when the store has hydrated cached tasks from a previous session.
+  const eagerConfigApplied = useRef(false)
+  if (!eagerConfigApplied.current) {
+    eagerConfigApplied.current = true
+    const savedPath = getSavedWorkspacePath(storageKey)
+    if (savedPath) {
+      const currentConfig = getApiClientConfig()
+      if (!currentConfig.workspacePath) {
+        configureApiClient({ ...currentConfig, workspacePath: savedPath })
+      }
     }
-  }, [storageKey])
+  }
 
   /** Save workspace path to localStorage and update the API client config. */
   const saveWorkspacePath = useCallback(
@@ -161,7 +183,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
       }
 
       // Determine which workspace to use
-      const savedPath = getSavedWorkspacePath()
+      const savedPath = getSavedWorkspacePath(storageKey)
       const savedExists = savedPath && availableWorkspaces.some(ws => ws.path === savedPath)
       const targetPath = savedExists ? savedPath : availableWorkspaces[0].path
 

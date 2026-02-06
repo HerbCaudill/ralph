@@ -31,12 +31,15 @@ function createMockApp() {
   return { app: app as any, routes }
 }
 
+/** Default workspace path for test requests. */
+const TEST_WORKSPACE = "/test/workspace"
+
 function createMockReqRes(
   overrides: { params?: Record<string, string>; query?: Record<string, string>; body?: any } = {},
 ) {
   const req = {
     params: overrides.params ?? {},
-    query: overrides.query ?? {},
+    query: { workspace: TEST_WORKSPACE, ...overrides.query },
     body: overrides.body ?? {},
   }
 
@@ -455,6 +458,39 @@ describe("registerTaskRoutes", () => {
 
       expect(bdProxy.addComment).toHaveBeenCalledWith("task-1", "Great progress!", "alice")
       expect(res.status).toHaveBeenCalledWith(201)
+    })
+  })
+
+  describe("workspace query parameter", () => {
+    it("returns 400 when workspace query parameter is missing", async () => {
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({ app, getBdProxy: () => createMockBdProxy() })
+
+      const handler = routes.get.get("/api/tasks")!
+      const req = { params: {}, query: {}, body: {} }
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() }
+
+      await handler(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.json).toHaveBeenCalledWith({
+        ok: false,
+        error: "workspace query parameter is required",
+      })
+    })
+
+    it("passes workspace to getBdProxy", async () => {
+      const bdProxy = createMockBdProxy()
+      const getBdProxy = vi.fn().mockReturnValue(bdProxy)
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({ app, getBdProxy })
+
+      const handler = routes.get.get("/api/tasks")!
+      const { req, res } = createMockReqRes()
+
+      await handler(req, res)
+
+      expect(getBdProxy).toHaveBeenCalledWith(TEST_WORKSPACE)
     })
   })
 

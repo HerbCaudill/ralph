@@ -185,6 +185,48 @@ describe("useWorkspace", () => {
     })
   })
 
+  describe("eager workspace config", () => {
+    it("configures apiClient with saved workspace path synchronously during first render", async () => {
+      localStorage.setItem("ralph-workspace-path", "/home/user/project")
+
+      // No mock fetch responses needed -- we just check the synchronous config
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+        })
+
+      renderHook(() => useWorkspace())
+
+      // Config should be set immediately (no waiting for effects)
+      expect(getApiClientConfig().workspacePath).toBe("/home/user/project")
+    })
+
+    it("does not overwrite existing workspace config", async () => {
+      localStorage.setItem("ralph-workspace-path", "/home/user/other")
+      configureApiClient({ workspacePath: "/home/user/project" })
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+        })
+
+      renderHook(() => useWorkspace())
+
+      // Should NOT have overwritten the existing config
+      expect(getApiClientConfig().workspacePath).toBe("/home/user/project")
+    })
+  })
+
   describe("error handling", () => {
     it("sets error when no workspaces are found", async () => {
       mockFetch.mockResolvedValueOnce({
