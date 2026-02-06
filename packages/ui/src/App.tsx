@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from "react"
+import { useCallback, useMemo, useRef, useState, useEffect } from "react"
 import { MainLayout } from "./components/MainLayout"
 import { Header } from "./components/Header"
 import { RalphRunner } from "./components/RalphRunner"
@@ -90,10 +90,21 @@ function AppContent() {
   // Stop-after-current state (temporary local state until worker supports it)
   const [isStoppingAfterCurrent, setIsStoppingAfterCurrent] = useState(false)
 
-  // Command palette keyboard listener (Cmd+K or Cmd+;)
+  // Tool output visibility from persisted UI store
+  const showToolOutput = useUiStore(state => state.showToolOutput)
+  const toolOutputContext = useMemo(
+    () => ({
+      isVisible: showToolOutput,
+      onToggle: () => useUiStore.getState().toggleToolOutput(),
+    }),
+    [showToolOutput],
+  )
+
+  // Command palette keyboard listener (Cmd+;)
+  // Note: Cmd+K is not used here because beads-view claims it for focusTaskInput
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === ";")) {
+      if ((e.metaKey || e.ctrlKey) && e.key === ";") {
         e.preventDefault()
         setShowCommandPalette(true)
       }
@@ -262,6 +273,7 @@ function AppContent() {
       events={taskChatState.events}
       isStreaming={taskChatState.isStreaming}
       sessionId={taskChatState.sessionId}
+      toolOutput={toolOutputContext}
       onSendMessage={handleTaskChatSend}
       onSessionSelect={handleTaskChatSessionSelect}
       onNewSession={handleTaskChatNewSession}
@@ -280,6 +292,7 @@ function AppContent() {
       branch={workspace?.branch}
       workspacePath={workspace?.path}
       isStoppingAfterCurrent={isStoppingAfterCurrent}
+      context={{ toolOutput: toolOutputContext, workspacePath: workspace?.path }}
       onSendMessage={handleRalphSend}
       onStart={start}
       onPause={pause}
@@ -309,14 +322,14 @@ function AppContent() {
           onOpenTask={handleTaskClick}
           isRunning={controlState === "running"}
         />
+        {/* Task detail panel slides from behind the task list */}
+        <TaskDetailSheet
+          task={selectedTask}
+          open={selectedTaskId !== null}
+          onClose={handleCloseDetail}
+          onChanged={handleChanged}
+        />
       </MainLayout>
-      {/* Task detail sheet overlay */}
-      <TaskDetailSheet
-        task={selectedTask}
-        open={selectedTaskId !== null}
-        onClose={handleCloseDetail}
-        onChanged={handleChanged}
-      />
       <HotkeysDialog open={showHotkeysDialog} onClose={() => setShowHotkeysDialog(false)} />
       <CommandPalette
         open={showCommandPalette}

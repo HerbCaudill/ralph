@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { TaskDetailSheet } from "../TaskDetailSheet"
 import type { TaskCardTask } from "@herbcaudill/beads-view"
 
@@ -39,39 +39,57 @@ describe("TaskDetailSheet", () => {
     vi.clearAllMocks()
   })
 
-  it("renders nothing when closed", () => {
+  it("is translated off-screen when closed", () => {
     render(<TaskDetailSheet {...defaultProps} open={false} />)
 
-    expect(screen.queryByTestId("task-details-controller")).not.toBeInTheDocument()
+    const panel = screen.getByTestId("task-detail-sheet")
+    expect(panel.className).toContain("-translate-x-full")
   })
 
-  it("renders nothing when no task is provided", () => {
+  it("is translated off-screen when no task is provided", () => {
     render(<TaskDetailSheet {...defaultProps} task={null} />)
 
-    expect(screen.queryByTestId("task-details-controller")).not.toBeInTheDocument()
+    const panel = screen.getByTestId("task-detail-sheet")
+    expect(panel.className).toContain("-translate-x-full")
   })
 
-  it("renders TaskDetailsController in a sheet when open with a task", () => {
+  it("renders TaskDetailsController in a panel when open with a task", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
     expect(screen.getByTestId("task-details-controller")).toBeInTheDocument()
-    // Title appears in both header and controller mock, so use getAllByText
     expect(screen.getAllByText("Test Task").length).toBeGreaterThanOrEqual(1)
   })
 
-  it("renders as an overlay (sheet from right side)", () => {
+  it("renders as an absolutely positioned panel with shadow", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
-    // Sheet should have role="dialog"
-    const dialog = screen.getByRole("dialog")
-    expect(dialog).toBeInTheDocument()
+    const panel = screen.getByTestId("task-detail-sheet")
+    expect(panel.className).toContain("absolute")
+    expect(panel.className).toContain("shadow-lg")
+    expect(panel.className).toContain("translate-x-0")
   })
 
-  it("provides an accessible title via a visually hidden Dialog.Title", () => {
+  it("has no modal overlay or backdrop", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
-    // The title should appear in the dialog (visually hidden for accessibility)
+    // Should not have a Radix Dialog overlay
+    const overlays = document.querySelectorAll("[data-state]")
+    overlays.forEach(overlay => {
+      expect(overlay.className).not.toContain("bg-black")
+    })
+  })
+
+  it("provides an accessible title via a visually hidden element", () => {
+    render(<TaskDetailSheet {...defaultProps} />)
+
     const titles = screen.getAllByText("Test Task")
     expect(titles.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("closes on Escape key", () => {
+    render(<TaskDetailSheet {...defaultProps} />)
+
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(defaultProps.onClose).toHaveBeenCalled()
   })
 })

@@ -113,7 +113,9 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
       )}
 
       {/* Center panel */}
-      <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">{children}</main>
+      <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        {children}
+      </main>
 
       {/* Right panel */}
       {rightPanel && (
