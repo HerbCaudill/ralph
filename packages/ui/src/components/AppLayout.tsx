@@ -3,7 +3,11 @@ import {
   BeadsViewProvider,
   configureApiClient,
   getSavedWorkspacePath,
+  migrateWorkspaceStorage,
 } from "@herbcaudill/beads-view"
+
+// Migrate stored filesystem paths to workspace IDs (one-time, idempotent).
+migrateWorkspaceStorage()
 
 // Configure API client for beads-view.
 configureApiClient({ baseUrl: "", workspacePath: getSavedWorkspacePath() ?? undefined })
