@@ -29,7 +29,7 @@ export type CommandPaletteProps = {
 
 /**
  * Command palette for quick access to application actions.
- * Opens with Cmd+K or Cmd+;, provides fuzzy search across commands.
+ * Opens with Cmd+;, provides fuzzy search across commands.
  */
 export function CommandPalette({
   open,
