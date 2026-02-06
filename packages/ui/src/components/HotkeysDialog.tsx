@@ -1,14 +1,9 @@
 import { useEffect, useRef } from "react"
 import { IconKeyboard } from "@tabler/icons-react"
-import {
-  hotkeys as agentHotkeys,
-  getHotkeyDisplayString,
-  type AgentHotkeyAction,
-} from "@herbcaudill/agent-view"
+import { hotkeys as agentHotkeys, getHotkeyDisplayString } from "@herbcaudill/agent-view"
 import {
   hotkeys as beadsHotkeys,
   getHotkeyDisplayString as getBeadsHotkeyDisplayString,
-  type BeadsHotkeyAction,
 } from "@herbcaudill/beads-view"
 
 export type HotkeysDialogProps = {
@@ -35,25 +30,28 @@ export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
     }
   }, [open])
 
-  // Combine hotkeys from both packages with unique keys
-  const allHotkeys = [
-    // Agent hotkeys (prefixed with "agent-" for unique keys)
-    ...Object.entries(agentHotkeys).map(([action, config]) => ({
-      key: `agent-${action}`,
-      action: action as AgentHotkeyAction,
-      display: getHotkeyDisplayString(config),
-      description: config.description,
-      category: config.category,
-    })),
-    // Beads hotkeys (prefixed with "beads-" for unique keys)
-    ...Object.entries(beadsHotkeys).map(([action, config]) => ({
+  // Combine hotkeys from both packages, deduplicating shared actions (e.g. showHotkeys)
+  const agentEntries = Object.entries(agentHotkeys).map(([action, config]) => ({
+    key: `agent-${action}`,
+    action,
+    display: getHotkeyDisplayString(config),
+    description: config.description,
+    category: config.category,
+  }))
+
+  const agentActionNames = new Set(Object.keys(agentHotkeys))
+
+  const beadsEntries = Object.entries(beadsHotkeys)
+    .filter(([action]) => !agentActionNames.has(action))
+    .map(([action, config]) => ({
       key: `beads-${action}`,
-      action: action as BeadsHotkeyAction,
+      action,
       display: getBeadsHotkeyDisplayString(config),
       description: config.description,
       category: config.category,
-    })),
-  ]
+    }))
+
+  const allHotkeys = [...agentEntries, ...beadsEntries]
 
   // Group by category
   const categories = allHotkeys.reduce(
