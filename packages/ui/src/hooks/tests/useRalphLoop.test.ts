@@ -58,6 +58,9 @@ describe("useRalphLoop", () => {
 
     // Create mock SharedWorker
     globalThis.SharedWorker = MockSharedWorkerClass as unknown as typeof SharedWorker
+
+    // Clear localStorage between tests
+    localStorage.clear()
   })
 
   afterEach(() => {
@@ -291,6 +294,114 @@ describe("useRalphLoop", () => {
       expect(callsAfter).toContainEqual({
         type: "unsubscribe_workspace",
         workspaceId: TEST_WORKSPACE_ID,
+      })
+    })
+  })
+
+  describe("session persistence", () => {
+    it("should save session ID to localStorage when session_created is received", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_created",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "new-session-abc",
+        })
+      })
+
+      expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBe(
+        "new-session-abc",
+      )
+    })
+
+    it("should set sessionId state when session_created is received", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      expect(result.current.sessionId).toBeNull()
+
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_created",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "session-xyz",
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.sessionId).toBe("session-xyz")
+        expect(result.current.isStreaming).toBe(true)
+      })
+    })
+
+    it("should send restore_session to worker when subscribing if localStorage has a saved session", async () => {
+      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "saved-session-id")
+
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      expect(calls).toContainEqual({
+        type: "restore_session",
+        workspaceId: TEST_WORKSPACE_ID,
+        sessionId: "saved-session-id",
+      })
+    })
+
+    it("should NOT send restore_session when no saved session exists", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      const restoreCalls = calls.filter((c: any) => c.type === "restore_session")
+      expect(restoreCalls).toHaveLength(0)
+    })
+
+    it("should set sessionId but NOT isStreaming when session_restored is received", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_restored",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "restored-session",
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.sessionId).toBe("restored-session")
+        expect(result.current.isStreaming).toBe(false)
+        expect(result.current.controlState).toBe("idle")
+      })
+    })
+
+    it("should reset sessionId when switching workspaces", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result, rerender } = renderHook(({ id }) => useRalphLoop(id), {
+        initialProps: { id: TEST_WORKSPACE_ID },
+      })
+
+      // Set a session on the first workspace
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_created",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "session-1",
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.sessionId).toBe("session-1")
+      })
+
+      // Switch workspace
+      rerender({ id: "herbcaudill/other-repo" })
+
+      await waitFor(() => {
+        expect(result.current.sessionId).toBeNull()
       })
     })
   })

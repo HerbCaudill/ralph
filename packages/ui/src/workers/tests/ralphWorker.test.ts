@@ -231,6 +231,81 @@ describe("ralphWorker", () => {
     })
   })
 
+  describe("restore_session", () => {
+    it("should set currentSessionId without changing control state", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      // Subscribe first
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+
+      // Restore a saved session
+      handlePortMessage(
+        { type: "restore_session", workspaceId, sessionId: "saved-session-123" },
+        port,
+      )
+
+      const state = getWorkspace(workspaceId)
+      expect(state.currentSessionId).toBe("saved-session-123")
+      expect(state.controlState).toBe("idle")
+    })
+
+    it("should broadcast session_restored event to subscribed ports", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      port.postMessage.mockClear()
+
+      handlePortMessage(
+        { type: "restore_session", workspaceId, sessionId: "saved-session-456" },
+        port,
+      )
+
+      expect(port.postMessage).toHaveBeenCalledWith({
+        type: "session_restored",
+        workspaceId,
+        sessionId: "saved-session-456",
+      })
+    })
+
+    it("should not overwrite an active session when workspace is running", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      // Simulate an active session
+      state.controlState = "running"
+      state.currentSessionId = "active-session"
+
+      // Attempt to restore — should be ignored
+      handlePortMessage({ type: "restore_session", workspaceId, sessionId: "old-session" }, port)
+
+      expect(state.currentSessionId).toBe("active-session")
+    })
+
+    it("should not overwrite when workspace already has a session and is idle", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      // Workspace already has a session from a previous restore
+      state.currentSessionId = "existing-session"
+
+      // Attempt to restore again — should be ignored since session already exists
+      handlePortMessage(
+        { type: "restore_session", workspaceId, sessionId: "another-session" },
+        port,
+      )
+
+      expect(state.currentSessionId).toBe("existing-session")
+    })
+  })
+
   describe("removePort (tab close)", () => {
     it("should unsubscribe from all workspaces when a port is removed", async () => {
       const port = createMockPort()

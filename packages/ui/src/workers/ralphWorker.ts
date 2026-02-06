@@ -43,6 +43,7 @@ export type WorkerMessage =
   | { type: "stop"; workspaceId: string }
   | { type: "message"; workspaceId: string; text: string }
   | { type: "get_state"; workspaceId: string }
+  | { type: "restore_session"; workspaceId: string; sessionId: string }
 
 /** Events broadcast from the worker to connected tabs. */
 export type WorkerEvent =
@@ -52,6 +53,7 @@ export type WorkerEvent =
   | { type: "connected"; workspaceId: string }
   | { type: "disconnected"; workspaceId: string }
   | { type: "session_created"; workspaceId: string; sessionId: string }
+  | { type: "session_restored"; workspaceId: string; sessionId: string }
   | { type: "pending_events"; workspaceId: string; events: unknown[] }
 
 /** All connected ports (for cleanup). */
@@ -459,6 +461,20 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
           workspaceId: message.workspaceId,
           sessionId: state.currentSessionId,
         } satisfies WorkerEvent)
+      }
+      break
+    }
+
+    case "restore_session": {
+      const state = getWorkspace(message.workspaceId)
+      // Only restore if workspace is idle and has no active session
+      if (state.controlState === "idle" && !state.currentSessionId) {
+        state.currentSessionId = message.sessionId
+        broadcastToWorkspace(message.workspaceId, {
+          type: "session_restored",
+          workspaceId: message.workspaceId,
+          sessionId: message.sessionId,
+        })
       }
       break
     }

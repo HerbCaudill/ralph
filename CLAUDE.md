@@ -190,6 +190,7 @@ packages/ui/                           # UI package
     lib/
       getContrastingColor.ts # WCAG-compliant foreground color calculator
       utils.ts              # Utility functions (cn for class merging)
+      workspaceSessionStorage.ts # Per-workspace session ID persistence in localStorage
     constants.ts            # UI constants (DEFAULT_ACCENT_COLOR, storage keys)
 
 packages/agent-demo/              # Agent chat demo
@@ -287,6 +288,10 @@ The server layer consists of two independent packages:
 - **`@herbcaudill/agent-server`** — Generic agent chat server. Agent adapters (ClaudeAdapter, CodexAdapter, AdapterRegistry), the AgentAdapter base class, session management (ChatSessionManager, SessionPersister), utility functions (isRetryableError, calculateBackoffDelay, generateId), and findClaudeExecutable. Port 4244.
 
 The UI is a frontend-only package that connects to these servers. Ralph-specific loop orchestration happens client-side in a SharedWorker.
+
+### Per-workspace session persistence
+
+The most recent session ID for each workspace is persisted in localStorage (key: `ralph-workspace-session:{workspaceId}`). On page reload, `useRalphLoop` sends a `restore_session` message to the SharedWorker, which sets the session ID without auto-starting Ralph. The restored session is in idle state, allowing past events to be viewed. The worker broadcasts a `session_restored` event (distinct from `session_created`) so the hook can set the session ID without entering streaming mode.
 
 ### Server connectivity
 

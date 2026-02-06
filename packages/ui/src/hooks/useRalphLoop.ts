@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import type { ChatEvent, ControlState, ConnectionStatus } from "@herbcaudill/agent-view"
 import type { WorkerMessage, WorkerEvent } from "../workers/ralphWorker"
+import { saveWorkspaceSession, loadWorkspaceSession } from "../lib/workspaceSessionStorage"
 
 /**
  * Hook that communicates with the SharedWorker (ralphWorker.ts) to control the Ralph loop.
  * Subscribes to a specific workspace and provides state for events, streaming status,
  * control state, and connection status, along with actions to start, pause, resume, stop,
  * and send messages.
+ *
+ * Persists the most recent session ID per workspace in localStorage. On page reload,
+ * restores the last session for the current workspace so past events can be viewed,
+ * without auto-starting a new Ralph run.
  */
 export function useRalphLoop(
   /** Workspace identifier in `owner/repo` format. */
@@ -16,6 +21,7 @@ export function useRalphLoop(
   const [isStreaming, setIsStreaming] = useState(false)
   const [controlState, setControlState] = useState<ControlState>("idle")
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
   const portRef = useRef<MessagePort | null>(null)
   const currentWorkspaceRef = useRef<string | undefined>(undefined)
@@ -57,7 +63,15 @@ export function useRalphLoop(
 
       case "session_created":
         // Session created — streaming will follow
+        setSessionId(data.sessionId)
         setIsStreaming(true)
+        // Persist the session ID so it can be restored on page reload
+        saveWorkspaceSession(data.workspaceId, data.sessionId)
+        break
+
+      case "session_restored":
+        // Session restored from localStorage — no streaming, just for viewing past events
+        setSessionId(data.sessionId)
         break
 
       case "error":
@@ -127,6 +141,7 @@ export function useRalphLoop(
       setIsStreaming(false)
       setControlState("idle")
       setConnectionStatus("disconnected")
+      setSessionId(null)
     }
 
     // Subscribe to the new workspace
@@ -137,6 +152,16 @@ export function useRalphLoop(
       } satisfies WorkerMessage)
 
       setConnectionStatus("connecting")
+
+      // Attempt to restore a previously saved session from localStorage
+      const savedSessionId = loadWorkspaceSession(workspaceId)
+      if (savedSessionId) {
+        portRef.current.postMessage({
+          type: "restore_session",
+          workspaceId,
+          sessionId: savedSessionId,
+        } satisfies WorkerMessage)
+      }
     }
   }, [workspaceId])
 
@@ -180,6 +205,7 @@ export function useRalphLoop(
     isStreaming,
     controlState,
     connectionStatus,
+    sessionId,
     start,
     pause,
     resume,
@@ -201,6 +227,8 @@ export interface UseRalphLoopReturn {
   controlState: ControlState
   /** Status of the connection to the SharedWorker. */
   connectionStatus: ConnectionStatus
+  /** The current session ID (active or restored from localStorage). */
+  sessionId: string | null
   /** Start the Ralph loop. */
   start: () => void
   /** Pause the Ralph loop. */
