@@ -159,7 +159,7 @@ export function TaskChat() {
               context={{ isDark: false }}
               loadingIndicator={
                 isStreaming && (
-                  <div className="flex justify-center py-4">
+                  <div className="flex justify-center px-4 py-4">
                     <IconLoader2 className="text-repo-accent size-6 animate-spin" />
                   </div>
                 )
