@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo, useRef } from "react"
 import { IconMessageChatbot, IconLoader2 } from "@tabler/icons-react"
 import {
   AgentView,
-  AgentViewProvider,
   useAgentChat,
   useAgentControl,
   useAgentHotkeys,
@@ -149,28 +148,24 @@ export function App() {
                   </p>
                 </div>
               </div>
-            : <AgentViewProvider
-                value={{
+            : <AgentView
+                events={events}
+                isStreaming={isStreaming}
+                context={{
                   isDark: false,
                   toolOutput: {
                     isVisible: showToolOutput,
                     onToggle: () => setShowToolOutput(prev => !prev),
                   },
                 }}
-              >
-                <AgentView
-                  events={events}
-                  isStreaming={isStreaming}
-                  context={{ isDark: false }}
-                  loadingIndicator={
-                    isStreaming && (
-                      <div className="flex justify-center py-4">
-                        <IconLoader2 className="text-repo-accent size-6 animate-spin" />
-                      </div>
-                    )
-                  }
-                />
-              </AgentViewProvider>
+                loadingIndicator={
+                  isStreaming && (
+                    <div className="flex justify-center py-4">
+                      <IconLoader2 className="text-repo-accent size-6 animate-spin" />
+                    </div>
+                  )
+                }
+              />
             }
           </div>
 

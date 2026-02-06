@@ -1,11 +1,5 @@
 import { IconMessage, IconPlus, IconX } from "@tabler/icons-react"
-import {
-  AgentView,
-  AgentViewProvider,
-  ChatInput,
-  SessionPicker,
-  listSessions,
-} from "@herbcaudill/agent-view"
+import { AgentView, ChatInput, SessionPicker, listSessions } from "@herbcaudill/agent-view"
 import type { ChatEvent, AgentViewToolOutputControl } from "@herbcaudill/agent-view"
 import { useMemo } from "react"
 
@@ -88,15 +82,14 @@ export function TaskChatPanel({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <AgentViewProvider value={toolOutput ? { toolOutput } : undefined}>
-        <AgentView
-          events={events}
-          isStreaming={isStreaming}
-          header={header}
-          emptyState={emptyState}
-          className="min-h-0 flex-1"
-        />
-      </AgentViewProvider>
+      <AgentView
+        events={events}
+        isStreaming={isStreaming}
+        header={header}
+        emptyState={emptyState}
+        className="min-h-0 flex-1"
+        context={toolOutput ? { toolOutput } : undefined}
+      />
 
       {/* Chat input - outside AgentView (ChatInput has its own border-t) */}
       <div className="shrink-0">

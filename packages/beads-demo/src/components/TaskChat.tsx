@@ -1,12 +1,6 @@
 import { useRef, useState } from "react"
 import { IconMessageChatbot, IconLoader2 } from "@tabler/icons-react"
-import {
-  AgentView,
-  AgentViewProvider,
-  useAgentChat,
-  ChatInput,
-  type ChatInputHandle,
-} from "@herbcaudill/agent-view"
+import { AgentView, useAgentChat, ChatInput, type ChatInputHandle } from "@herbcaudill/agent-view"
 
 /**
  * System prompt for the task management chat bot.
@@ -144,28 +138,24 @@ export function TaskChat() {
               </p>
             </div>
           </div>
-        : <AgentViewProvider
-            value={{
+        : <AgentView
+            events={events}
+            isStreaming={isStreaming}
+            context={{
               isDark: false,
               toolOutput: {
                 isVisible: showToolOutput,
                 onToggle: () => setShowToolOutput(prev => !prev),
               },
             }}
-          >
-            <AgentView
-              events={events}
-              isStreaming={isStreaming}
-              context={{ isDark: false }}
-              loadingIndicator={
-                isStreaming && (
-                  <div className="flex justify-center px-4 py-4">
-                    <IconLoader2 className="text-repo-accent size-6 animate-spin" />
-                  </div>
-                )
-              }
-            />
-          </AgentViewProvider>
+            loadingIndicator={
+              isStreaming && (
+                <div className="flex justify-center px-4 py-4">
+                  <IconLoader2 className="text-repo-accent size-6 animate-spin" />
+                </div>
+              )
+            }
+          />
         }
       </div>
 

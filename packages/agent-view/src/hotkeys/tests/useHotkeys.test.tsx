@@ -334,6 +334,22 @@ describe("useAgentHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
+    it("calls handler for toggleToolOutput (ctrl+o) on Mac", () => {
+      // Mock macOS platform
+      vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel")
+
+      const handler = vi.fn()
+      renderHook(() =>
+        useAgentHotkeys({
+          handlers: { toggleToolOutput: handler },
+        }),
+      )
+
+      // On Mac, ctrl+o uses the physical Control key (ctrlKey), not Cmd (metaKey)
+      fireKey({ key: "o", ctrlKey: true, metaKey: false })
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
     it("calls handler for scrollToBottom (cmd+ArrowDown)", () => {
       const handler = vi.fn()
       renderHook(() =>

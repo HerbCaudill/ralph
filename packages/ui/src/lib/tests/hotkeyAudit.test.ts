@@ -22,7 +22,10 @@ describe("cross-package hotkey audit", () => {
       const seen = new Map<string, string>()
       for (const [action, config] of Object.entries(agentHotkeys)) {
         const binding = serializeBinding(config as HotkeyConfig)
-        expect(seen.has(binding), `Duplicate binding "${binding}": "${action}" conflicts with "${seen.get(binding)}"`).toBe(false)
+        expect(
+          seen.has(binding),
+          `Duplicate binding "${binding}": "${action}" conflicts with "${seen.get(binding)}"`,
+        ).toBe(false)
         seen.set(binding, action)
       }
     })
@@ -33,7 +36,10 @@ describe("cross-package hotkey audit", () => {
       const seen = new Map<string, string>()
       for (const [action, config] of Object.entries(beadsHotkeys)) {
         const binding = serializeBinding(config as HotkeyConfig)
-        expect(seen.has(binding), `Duplicate binding "${binding}": "${action}" conflicts with "${seen.get(binding)}"`).toBe(false)
+        expect(
+          seen.has(binding),
+          `Duplicate binding "${binding}": "${action}" conflicts with "${seen.get(binding)}"`,
+        ).toBe(false)
         seen.set(binding, action)
       }
     })
@@ -137,13 +143,19 @@ describe("cross-package hotkey audit", () => {
 
       for (const [action, config] of Object.entries(agentHotkeys)) {
         for (const mod of (config as HotkeyConfig).modifiers) {
-          expect(validModifiers.has(mod), `agent-view "${action}" has invalid modifier "${mod}"`).toBe(true)
+          expect(
+            validModifiers.has(mod),
+            `agent-view "${action}" has invalid modifier "${mod}"`,
+          ).toBe(true)
         }
       }
 
       for (const [action, config] of Object.entries(beadsHotkeys)) {
         for (const mod of (config as HotkeyConfig).modifiers) {
-          expect(validModifiers.has(mod), `beads-view "${action}" has invalid modifier "${mod}"`).toBe(true)
+          expect(
+            validModifiers.has(mod),
+            `beads-view "${action}" has invalid modifier "${mod}"`,
+          ).toBe(true)
         }
       }
     })
