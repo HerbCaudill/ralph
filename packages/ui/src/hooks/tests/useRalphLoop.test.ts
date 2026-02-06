@@ -406,6 +406,71 @@ describe("useRalphLoop", () => {
     })
   })
 
+  describe("no auto-start behavior", () => {
+    it("should NOT send a start message when subscribing to a workspace", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      const startCalls = calls.filter((c: any) => c.type === "start")
+      expect(startCalls).toHaveLength(0)
+    })
+
+    it("should NOT send a start message when restoring a saved session", async () => {
+      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "saved-session-id")
+
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      const startCalls = calls.filter((c: any) => c.type === "start")
+      expect(startCalls).toHaveLength(0)
+    })
+
+    it("should remain idle after session_restored (no auto-start)", async () => {
+      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "saved-session-id")
+
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate the worker responding with session_restored
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_restored",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "saved-session-id",
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.sessionId).toBe("saved-session-id")
+        expect(result.current.controlState).toBe("idle")
+        expect(result.current.isStreaming).toBe(false)
+      })
+    })
+
+    it("should only start when start() is explicitly called", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Verify initially idle
+      expect(result.current.controlState).toBe("idle")
+
+      // Explicitly start
+      act(() => {
+        result.current.start()
+      })
+
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      const startCalls = calls.filter((c: any) => c.type === "start")
+      expect(startCalls).toHaveLength(1)
+      expect(startCalls[0]).toEqual({
+        type: "start",
+        workspaceId: TEST_WORKSPACE_ID,
+      })
+    })
+  })
+
   describe("workspace switching", () => {
     it("should unsubscribe from old workspace and subscribe to new one when workspaceId changes", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")

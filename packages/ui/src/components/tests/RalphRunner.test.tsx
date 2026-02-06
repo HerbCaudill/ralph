@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { RalphRunner } from "../RalphRunner"
 import type { ChatEvent, ControlState } from "@herbcaudill/agent-view"
 
 // Mock agent-view components
 vi.mock("@herbcaudill/agent-view", () => ({
-  AgentView: ({ events, isStreaming }: any) => (
+  AgentView: ({ events, isStreaming, emptyState }: any) => (
     <div data-testid="agent-view">
+      {events.length === 0 && emptyState ? emptyState : null}
       {events.length > 0 && <div data-testid="events">Events: {events.length}</div>}
       {isStreaming && <div data-testid="streaming">Streaming</div>}
     </div>
@@ -149,6 +150,51 @@ describe("RalphRunner", () => {
       render(<RalphRunner {...defaultProps} isStoppingAfterCurrent={true} />)
       expect(screen.getByTestId("control-bar")).toHaveAttribute("data-stopping", "true")
       expect(screen.getByTestId("status-indicator")).toHaveAttribute("data-stopping", "true")
+    })
+  })
+
+  describe("idle state with start button", () => {
+    it("shows idle state with start button when idle and no events", () => {
+      render(<RalphRunner {...defaultProps} events={[]} controlState="idle" />)
+      const startButton = screen.getByRole("button", { name: /start ralph/i })
+      expect(startButton).toBeInTheDocument()
+    })
+
+    it("calls onStart when start button in idle state is clicked", () => {
+      render(
+        <RalphRunner
+          {...defaultProps}
+          events={[]}
+          controlState="idle"
+          connectionStatus="connected"
+        />,
+      )
+      const startButton = screen.getByRole("button", { name: /start ralph/i })
+      fireEvent.click(startButton)
+      expect(defaultProps.onStart).toHaveBeenCalled()
+    })
+
+    it("disables start button in idle state when disconnected", () => {
+      render(
+        <RalphRunner
+          {...defaultProps}
+          events={[]}
+          controlState="idle"
+          connectionStatus="disconnected"
+        />,
+      )
+      const startButton = screen.getByRole("button", { name: /start ralph/i })
+      expect(startButton).toBeDisabled()
+    })
+
+    it("does not show idle state when running", () => {
+      render(<RalphRunner {...defaultProps} events={[]} controlState="running" />)
+      expect(screen.queryByRole("button", { name: /start ralph/i })).not.toBeInTheDocument()
+    })
+
+    it("does not show idle state when there are events", () => {
+      render(<RalphRunner {...defaultProps} controlState="idle" />)
+      expect(screen.queryByRole("button", { name: /start ralph/i })).not.toBeInTheDocument()
     })
   })
 

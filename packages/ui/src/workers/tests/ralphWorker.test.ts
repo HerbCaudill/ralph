@@ -306,6 +306,60 @@ describe("ralphWorker", () => {
     })
   })
 
+  describe("no auto-start on subscribe", () => {
+    it("should remain idle after subscribing to a workspace", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+
+      const state = getWorkspace(workspaceId)
+      expect(state.controlState).toBe("idle")
+    })
+
+    it("should NOT send a state_change to 'running' after subscribing", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+
+      // The port should receive state_change with "idle", never "running"
+      const stateChangeCalls = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "state_change")
+
+      expect(stateChangeCalls).toHaveLength(1)
+      expect(stateChangeCalls[0].state).toBe("idle")
+    })
+
+    it("should remain idle after restoring a session from localStorage", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      // Subscribe and then restore a session
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      handlePortMessage({ type: "restore_session", workspaceId, sessionId: "saved-session" }, port)
+
+      const state = getWorkspace(workspaceId)
+      expect(state.controlState).toBe("idle")
+      expect(state.currentSessionId).toBe("saved-session")
+    })
+
+    it("should only transition to 'running' when an explicit start message is sent", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      // Subscribe
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+      expect(state.controlState).toBe("idle")
+
+      // Explicitly start
+      handlePortMessage({ type: "start", workspaceId }, port)
+      expect(state.controlState).toBe("running")
+    })
+  })
+
   describe("removePort (tab close)", () => {
     it("should unsubscribe from all workspaces when a port is removed", async () => {
       const port = createMockPort()

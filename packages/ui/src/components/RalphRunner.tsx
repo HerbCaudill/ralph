@@ -10,6 +10,7 @@ import {
   type AgentViewContextValue,
   type ConnectionStatus,
 } from "@herbcaudill/agent-view"
+import { IconPlayerPlayFilled, IconRobot } from "@tabler/icons-react"
 import { ControlBar } from "@/components/ControlBar"
 import { RepoBranch } from "@/components/RepoBranch"
 import { RunDuration } from "@/components/RunDuration"
@@ -46,11 +47,40 @@ export function RalphRunner({
   const { elapsedMs } = useSessionTimer(events)
 
   const isConnected = connectionStatus === "connected"
+  const showIdleState = controlState === "idle"
+
+  // Empty state shown when idle and no events — prominent start button
+  const idleEmptyState =
+    showIdleState ?
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-4 text-muted-foreground">
+          <IconRobot size={48} stroke={1.5} />
+          <p className="text-center text-sm">
+            Start the Ralph loop to begin autonomous task execution.
+          </p>
+          <button
+            onClick={onStart}
+            disabled={!isConnected}
+            aria-label="Start Ralph"
+            className="mt-4 flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <IconPlayerPlayFilled size={20} />
+            Start
+          </button>
+        </div>
+      </div>
+    : undefined
 
   return (
     <div className={className ?? "flex h-full flex-col"}>
       {/* Event stream display */}
-      <AgentView events={events} isStreaming={isStreaming} context={context} className="flex-1" />
+      <AgentView
+        events={events}
+        isStreaming={isStreaming}
+        context={context}
+        emptyState={idleEmptyState}
+        className="flex-1"
+      />
 
       {/* Bottom bar: comprehensive controls and chat input */}
       <div className="flex flex-col border-t border-border">
