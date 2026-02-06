@@ -6,6 +6,8 @@ export interface ApiClientConfig {
   baseUrl?: string
   /** Workspace path to include as a query parameter on all requests. */
   workspacePath?: string
+  /** Workspace ID (`owner/repo`) to include as a query parameter. Takes precedence over workspacePath. */
+  workspaceId?: string
   /** Optional custom fetch function (for testing or custom transports). */
   fetchFn?: typeof fetch
 }
@@ -35,12 +37,19 @@ export function getApiClientConfig(): ApiClientConfig {
 /**
  * Build a full API URL by prepending the configured base URL
  * and appending the workspace query parameter if configured.
+ * Uses `workspaceId` if set, otherwise falls back to `workspacePath`.
  */
 export function buildApiUrl(path: string): string {
   const base = clientConfig.baseUrl ?? ""
   const fullPath = `${base}${path}`
 
-  // Add workspace query parameter if configured
+  // Prefer workspaceId over workspacePath
+  const workspaceId = clientConfig.workspaceId
+  if (workspaceId) {
+    const separator = fullPath.includes("?") ? "&" : "?"
+    return `${fullPath}${separator}workspace=${encodeURIComponent(workspaceId)}`
+  }
+
   const workspacePath = clientConfig.workspacePath
   if (!workspacePath) return fullPath
 
