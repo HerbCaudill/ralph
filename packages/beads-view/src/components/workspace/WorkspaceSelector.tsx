@@ -40,7 +40,7 @@ export function WorkspaceSelector({
           {/* Backdrop */}
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
 
-          <div className="absolute right-0 top-full z-20 mt-1 min-w-[240px] rounded-md border border-border bg-background shadow-lg">
+          <div className="absolute left-0 top-full z-20 mt-1 min-w-[240px] rounded-md border border-border bg-background shadow-lg">
             <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Workspaces</div>
             {workspaces.map(ws => {
               const isCurrent = ws.path === current?.path
