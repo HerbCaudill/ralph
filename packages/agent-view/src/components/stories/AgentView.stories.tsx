@@ -180,6 +180,7 @@ const sessionEvents: ChatEvent[] = [
   {
     type: "user",
     timestamp: 1770143536000,
+    tool_use_result: true,
     message: {
       role: "user",
       content: [
@@ -232,6 +233,7 @@ const sessionEvents: ChatEvent[] = [
   {
     type: "user",
     timestamp: 1770143649000,
+    tool_use_result: true,
     message: {
       role: "user",
       content: [
@@ -266,6 +268,7 @@ const sessionEvents: ChatEvent[] = [
   {
     type: "user",
     timestamp: 1770143656000,
+    tool_use_result: true,
     message: {
       role: "user",
       content: [
@@ -363,10 +366,11 @@ export const ToolOutputHidden: Story = {
 }
 
 /**
- * Wrapper that wires useAgentHotkeys to tool output state, matching
- * the real integration pattern used by agent-demo and the UI package.
+ * Integration test component: wires useAgentHotkeys to tool output state and
+ * renders AgentView with the context prop, matching the real pattern used by
+ * agent-demo and the UI package.
  */
-function HotkeyToggleWrapper({ children }: { children: React.ReactNode }) {
+function AgentViewWithHotkeys({ events }: { events: ChatEvent[] }) {
   const [isVisible, setIsVisible] = useState(true)
 
   const handleToggleToolOutput = useCallback(() => {
@@ -380,13 +384,13 @@ function HotkeyToggleWrapper({ children }: { children: React.ReactNode }) {
   })
 
   return (
-    <AgentViewProvider
-      value={{ isDark: false, toolOutput: { isVisible, onToggle: handleToggleToolOutput } }}
-    >
-      <div data-testid="tool-output-state" data-visible={isVisible}>
-        {children}
-      </div>
-    </AgentViewProvider>
+    <AgentView
+      events={events}
+      context={{
+        isDark: false,
+        toolOutput: { isVisible, onToggle: handleToggleToolOutput },
+      }}
+    />
   )
 }
 
@@ -395,16 +399,7 @@ function HotkeyToggleWrapper({ children }: { children: React.ReactNode }) {
  * Verifies the full chain: keypress → useAgentHotkeys → state change → context update → DOM change.
  */
 export const CtrlOToggle: Story = {
-  decorators: [
-    Story => (
-      <HotkeyToggleWrapper>
-        <Story />
-      </HotkeyToggleWrapper>
-    ),
-  ],
-  args: {
-    events: sessionEvents,
-  },
+  render: () => <AgentViewWithHotkeys events={sessionEvents} />,
   play: async ({ canvasElement }) => {
     /** Tool output cards have aria-expanded when they have expandable content. */
     const getExpandedCards = () => canvasElement.querySelectorAll<HTMLElement>("[aria-expanded]")
