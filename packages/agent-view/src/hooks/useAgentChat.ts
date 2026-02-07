@@ -384,9 +384,12 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
     wsRef.current = ws
   }, [initSession])
 
-  // Connect on mount, disconnect on unmount
+  // Connect on mount, disconnect on unmount.
+  // Deferred with setTimeout(0) so React StrictMode's synchronous
+  // mount→unmount→remount cycle doesn't create a WebSocket that is
+  // immediately closed — which causes ECONNRESET on the Vite WS proxy.
   useEffect(() => {
-    connect()
+    const connectTimer = setTimeout(connect, 0)
 
     // Keep-alive ping
     const pingInterval = setInterval(() => {
@@ -396,6 +399,7 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
     }, 30000)
 
     return () => {
+      clearTimeout(connectTimer)
       clearInterval(pingInterval)
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current)

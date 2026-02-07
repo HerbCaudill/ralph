@@ -122,14 +122,18 @@ export function useRalphLoop(
     }
   }, [handleWorkerMessage])
 
-  /** Subscribe/unsubscribe when workspace changes. */
+  /** Subscribe/unsubscribe when workspace changes.
+   * Subscription deferred with setTimeout(0) so React StrictMode's synchronous
+   * mount→unmount→remount cycle doesn't create a SharedWorker WebSocket
+   * that is immediately torn down — which causes ECONNRESET on the proxy.
+   */
   useEffect(() => {
     const previousWorkspaceId = currentWorkspaceRef.current
     currentWorkspaceRef.current = workspaceId
 
     if (!portRef.current) return
 
-    // Unsubscribe from the previous workspace
+    // Unsubscribe from the previous workspace (immediate — no deferral needed)
     if (previousWorkspaceId && previousWorkspaceId !== workspaceId) {
       portRef.current.postMessage({
         type: "unsubscribe_workspace",
@@ -145,7 +149,11 @@ export function useRalphLoop(
     }
 
     // Subscribe to the new workspace
-    if (workspaceId) {
+    if (!workspaceId) return
+
+    const subscribeTimer = setTimeout(() => {
+      if (!portRef.current) return
+
       portRef.current.postMessage({
         type: "subscribe_workspace",
         workspaceId,
@@ -162,6 +170,10 @@ export function useRalphLoop(
           sessionId: savedSessionId,
         } satisfies WorkerMessage)
       }
+    }, 0)
+
+    return () => {
+      clearTimeout(subscribeTimer)
     }
   }, [workspaceId])
 

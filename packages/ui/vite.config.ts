@@ -34,13 +34,6 @@ export default defineConfig({
         target: `http://localhost:${beadsPort}`,
         changeOrigin: true,
       },
-      "/beads-ws": {
-        target: `ws://localhost:${beadsPort}`,
-        ws: true,
-        configure: proxy => {
-          proxy.on("error", () => {})
-        },
-      },
       // Agent server routes (chat sessions)
       "/api": {
         target: `http://localhost:${agentPort}`,
@@ -49,9 +42,6 @@ export default defineConfig({
       "/ws": {
         target: `ws://localhost:${agentPort}`,
         ws: true,
-        configure: proxy => {
-          proxy.on("error", () => {})
-        },
       },
     },
   },

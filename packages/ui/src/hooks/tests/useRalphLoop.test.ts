@@ -11,6 +11,13 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 
 const TEST_WORKSPACE_ID = "herbcaudill/ralph"
 
+/** Flush the deferred setTimeout(0) subscription in useRalphLoop. */
+async function flushSubscription() {
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
+}
+
 // Mock SharedWorker
 class MockMessagePort {
   onmessage: ((event: MessageEvent) => void) | null = null
@@ -80,7 +87,8 @@ describe("useRalphLoop", () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
-      // Initially should be connecting (set in the hook when worker connects)
+      // Flush the deferred subscription (sets status to "connecting")
+      await flushSubscription()
       expect(result.current.connectionStatus).toBe("connecting")
 
       // Simulate the worker sending a 'connected' event for this workspace
@@ -200,6 +208,9 @@ describe("useRalphLoop", () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
+      // Flush the deferred subscription
+      await flushSubscription()
+
       // Simulate events for a different workspace
       act(() => {
         mockWorkerInstance.port.simulateMessage({
@@ -213,7 +224,7 @@ describe("useRalphLoop", () => {
         })
       })
 
-      // State should remain at initial values
+      // State should remain at initial values (connecting, not connected)
       expect(result.current.connectionStatus).toBe("connecting")
       expect(result.current.controlState).toBe("idle")
     })
@@ -225,6 +236,9 @@ describe("useRalphLoop", () => {
       const { getControlBarButtonStates, controlStateToRalphStatus } =
         await import("../../lib/getControlBarButtonStates")
       const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Flush the deferred subscription
+      await flushSubscription()
 
       // Simulate the worker sending connected and idle state
       act(() => {
@@ -259,6 +273,9 @@ describe("useRalphLoop", () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
+      // Flush the deferred subscription
+      await flushSubscription()
+
       const calls = mockWorkerInstance.port.getPostMessageCalls()
       expect(calls).toContainEqual({
         type: "subscribe_workspace",
@@ -278,6 +295,9 @@ describe("useRalphLoop", () => {
     it("should send unsubscribe_workspace message when unmounting", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { unmount } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Flush the deferred subscription
+      await flushSubscription()
 
       // Verify subscribe was sent
       const callsBefore = mockWorkerInstance.port.getPostMessageCalls()
@@ -341,6 +361,9 @@ describe("useRalphLoop", () => {
 
       const { useRalphLoop } = await import("../useRalphLoop")
       renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Flush the deferred subscription
+      await flushSubscription()
 
       const calls = mockWorkerInstance.port.getPostMessageCalls()
       expect(calls).toContainEqual({
@@ -480,6 +503,9 @@ describe("useRalphLoop", () => {
         initialProps: { id: TEST_WORKSPACE_ID },
       })
 
+      // Flush the deferred initial subscription
+      await flushSubscription()
+
       // Verify initial subscribe
       const initialCalls = mockWorkerInstance.port.getPostMessageCalls()
       expect(initialCalls).toContainEqual({
@@ -489,6 +515,9 @@ describe("useRalphLoop", () => {
 
       // Change workspace
       rerender({ id: NEW_WORKSPACE_ID })
+
+      // Flush the deferred new subscription
+      await flushSubscription()
 
       const allCalls = mockWorkerInstance.port.getPostMessageCalls()
 
