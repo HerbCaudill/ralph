@@ -1,9 +1,13 @@
 import { AgentViewProvider } from "../context/AgentViewProvider"
 import { AutoScroll } from "./AutoScroll"
 import { EventList } from "./EventList"
-import { TopologySpinner } from "./TopologySpinner"
 import { cx } from "../cx"
 import type { ChatEvent, AgentViewContextValue } from "../types"
+
+/** Simple CSS-only spinning circle used as the default spinner. */
+const DEFAULT_SPINNER = (
+  <div className="text-repo-accent size-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
+)
 
 /**
  * High-level composition component that wraps agent-view primitives with
@@ -18,14 +22,12 @@ import type { ChatEvent, AgentViewContextValue } from "../types"
  * <AgentView events={events} isStreaming={true} />
  * ```
  *
- * @example Custom slots
+ * @example Custom spinner
  * ```tsx
  * <AgentView
  *   events={events}
- *   isStreaming={false}
- *   header={<h2>Session log</h2>}
- *   emptyState={<p>No events yet.</p>}
- *   scrollButton={false}
+ *   isStreaming={true}
+ *   spinner={<TopologySpinner />}
  * />
  * ```
  */
@@ -37,17 +39,14 @@ export function AgentView({
   footer,
   emptyState,
   loadingIndicator,
+  spinner = DEFAULT_SPINNER,
   scrollButton,
   className,
 }: AgentViewProps) {
-  /** Resolve the loading indicator: use custom if provided, otherwise default spinner when streaming. */
-  const spinner =
+  /** Resolve the loading indicator: use custom if provided, otherwise wrap the spinner when streaming. */
+  const resolvedLoadingIndicator =
     loadingIndicator !== undefined ? loadingIndicator : (
-      isStreaming && (
-        <div className="flex justify-start py-4 pl-4">
-          <TopologySpinner />
-        </div>
-      )
+      isStreaming && <div className="flex justify-start py-4 pl-4">{spinner}</div>
     )
 
   /** Hide the built-in scroll button when the consumer passes false. */
@@ -59,9 +58,7 @@ export function AgentView({
    */
   const effectiveEmptyState =
     isStreaming && events.length === 0 ?
-      <div className="flex h-full items-center justify-center p-8">
-        <TopologySpinner />
-      </div>
+      <div className="flex h-full items-center justify-center p-8">{spinner}</div>
     : emptyState
 
   return (
@@ -75,7 +72,7 @@ export function AgentView({
           autoScrollEnabled={isStreaming}
           scrollButtonClassName={hideScrollButton ? "hidden" : undefined}
         >
-          <EventList events={events} loadingIndicator={spinner} />
+          <EventList events={events} loadingIndicator={resolvedLoadingIndicator} />
         </AutoScroll>
         {footer}
       </div>
@@ -96,7 +93,9 @@ export type AgentViewProps = {
   footer?: React.ReactNode
   /** Slot: empty state when no events */
   emptyState?: React.ReactNode
-  /** Slot: loading indicator (defaults to TopologySpinner when streaming) */
+  /** Slot: spinner element shown when streaming (defaults to a simple spinning circle) */
+  spinner?: React.ReactNode
+  /** Slot: full loading indicator override (bypasses the default spinner wrapper) */
   loadingIndicator?: React.ReactNode
   /** Slot: set to false to hide the scroll-to-bottom button */
   scrollButton?: React.ReactNode | false

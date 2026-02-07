@@ -13,6 +13,7 @@ import {
   ChatInput,
   TokenUsageDisplay,
   ContextWindowProgress,
+  TopologySpinner,
   useTokenUsage,
   useContextWindow,
 } from "@herbcaudill/agent-view"
@@ -133,6 +134,7 @@ export function RalphLoopPanel({
         <AgentView
           events={events}
           isStreaming={isStreaming}
+          spinner={<TopologySpinner />}
           header={header}
           footer={footer}
           emptyState={emptyState}
