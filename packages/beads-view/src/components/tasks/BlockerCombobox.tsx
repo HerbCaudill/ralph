@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { IconCheck, IconPlus } from "@tabler/icons-react"
+import { IconPlus } from "@tabler/icons-react"
 import {
   Button,
   Popover,
@@ -12,6 +12,7 @@ import {
   CommandItem,
   CommandList,
 } from "@herbcaudill/components"
+import { TaskCardCompact } from "./TaskCardCompact"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
 import type { TaskCardTask } from "../../types"
 
@@ -47,7 +48,7 @@ export function BlockerCombobox({
           Add blocker
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
+      <PopoverContent className="w-[320px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search tasks..." />
           <CommandList>
@@ -61,10 +62,9 @@ export function BlockerCombobox({
                     onAdd(t.id)
                     setOpen(false)
                   }}
+                  className="gap-0 px-1 py-0.5"
                 >
-                  <IconCheck className="mr-2 h-4 w-4 opacity-0" />
-                  <span className="font-mono text-xs">{stripTaskPrefix(t.id, issuePrefix)}</span>
-                  <span className="ml-2 truncate">{t.title}</span>
+                  <TaskCardCompact task={t} />
                 </CommandItem>
               ))}
             </CommandGroup>
