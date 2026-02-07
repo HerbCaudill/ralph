@@ -108,6 +108,8 @@ export function MarkdownContent({
         "prose dark:prose-invert max-w-none",
         size === "sm" ? "prose-sm" : "prose-base",
         "prose-p:my-1 prose-p:leading-snug",
+        "prose-h1:text-base prose-h2:text-sm prose-h3:text-xs prose-h4:text-xs",
+        "prose-h1:font-semibold prose-h2:font-semibold prose-h3:font-medium prose-h4:font-medium",
         "prose-strong:font-medium",
         "prose-a:text-link prose-a:no-underline hover:prose-a:underline",
         "prose-code:text-status-success prose-code:font-normal prose-code:font-mono",
