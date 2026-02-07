@@ -10,7 +10,7 @@ const meta: Meta<typeof AgentView> = {
   component: AgentView,
   decorators: [
     Story => (
-      <div className="h-[600px]">
+      <div className="h-150 border">
         <Story />
       </div>
     ),
