@@ -18,6 +18,7 @@
     "ralph": "pnpm cli",
     "serve:agent": "pnpm --filter @herbcaudill/agent-server dev",
     "serve:beads": "pnpm --filter @herbcaudill/beads-server dev",
+    "storybook:comp": "pnpm --filter components storybook",
     "storybook:agent": "pnpm --filter agent-view storybook",
     "storybook:beads": "pnpm --filter beads-view storybook",
     "test": "pnpm --filter ralph-shared test && pnpm --filter ralph test && pnpm --filter ralph-ui test",
