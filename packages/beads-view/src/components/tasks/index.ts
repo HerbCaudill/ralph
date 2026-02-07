@@ -3,6 +3,11 @@ export { TaskPanelController, type TaskPanelControllerProps } from "./TaskPanelC
 export { TaskCard, type TaskCardProps } from "./TaskCard"
 export { TaskList, type TaskListProps } from "./TaskList"
 export {
+  GroupedTaskList,
+  type GroupedTaskListProps,
+  type TaskGroupDescriptor,
+} from "./GroupedTaskList"
+export {
   QuickTaskInput,
   type QuickTaskInputProps,
   type QuickTaskInputHandle,

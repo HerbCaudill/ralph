@@ -1,13 +1,14 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { Label } from "@herbcaudill/components"
-import { CollapsibleSection } from "./CollapsibleSection"
+import { IconX } from "@tabler/icons-react"
+import { GroupedTaskList } from "./GroupedTaskList"
 import { BlockerCombobox } from "./BlockerCombobox"
 import { apiFetch } from "../../lib/apiClient"
-import type { RelatedTask, Task, TaskCardTask } from "../../types"
+import type { RelatedTask, Task, TaskCardTask, TaskTreeNode } from "../../types"
 
 /**
  * Displays child tasks and blocking issues for a given task.
- * Shows collapsible sections for children and blockers.
+ * Shows grouped sections for children, blockers, and dependents.
  * When not in read-only mode, allows adding and removing blockers.
  */
 export function RelatedTasks({
@@ -16,11 +17,13 @@ export function RelatedTasks({
   readOnly = false,
   allTasks = [],
   issuePrefix = null,
+  onTaskClick,
 }: RelatedTasksProps) {
   const [blockers, setBlockers] = useState<RelatedTask[]>([])
   const [dependents, setDependents] = useState<RelatedTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddingBlocker, setIsAddingBlocker] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
   const childTasks: RelatedTask[] = allTasks
     .filter((t: Task) => t.parent === taskId)
@@ -97,9 +100,7 @@ export function RelatedTasks({
     }
   }, [fetchDependencies])
 
-  /**
-   * Adds a blocker to the current task via API call.
-   */
+  /** Adds a blocker to the current task via API call. */
   const handleAddBlocker = useCallback(
     async (blockerId: string) => {
       if (readOnly) return
@@ -114,7 +115,6 @@ export function RelatedTasks({
 
         const data = (await response.json()) as { ok: boolean }
         if (data.ok) {
-          // Refresh the blockers list
           await fetchDependencies()
         }
       } catch (err) {
@@ -126,9 +126,7 @@ export function RelatedTasks({
     [taskId, readOnly, fetchDependencies],
   )
 
-  /**
-   * Removes a blocker from the current task via API call.
-   */
+  /** Removes a blocker from the current task via API call. */
   const handleRemoveBlocker = useCallback(
     async (blockerId: string) => {
       if (readOnly) return
@@ -143,25 +141,74 @@ export function RelatedTasks({
 
         const data = (await response.json()) as { ok: boolean }
         if (!data.ok) {
-          // Revert on failure - refetch
           await fetchDependencies()
         }
       } catch (err) {
         console.error("Failed to remove blocker:", err)
-        // Revert on error - refetch
         await fetchDependencies()
       }
     },
     [taskId, readOnly, fetchDependencies],
   )
 
-  // Only show blockers with dependency_type === "blocks" (not parent-child)
-  const editableBlockers = blockers.filter(b => b.dependency_type === "blocks")
+  const handleToggleGroup = useCallback((key: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }))
+  }, [])
 
-  // Can add blockers if we're not readOnly and we have a task to reference
+  // Only show blockers with dependency_type === "blocks" (not parent-child)
+  const editableBlockerIds = useMemo(
+    () => new Set(blockers.filter(b => b.dependency_type === "blocks").map(b => b.id)),
+    [blockers],
+  )
+
   const canAddBlockers = !readOnly && task
 
-  // Show section if there's content or if we can add blockers
+  const groups = useMemo(() => {
+    const result: Array<{
+      key: string
+      label: string
+      trees: TaskTreeNode[]
+      count: number
+      isCollapsed: boolean
+      onToggle: () => void
+    }> = []
+
+    if (childTasks.length > 0) {
+      result.push({
+        key: "children",
+        label: "Children",
+        trees: childTasks.map(toTreeNode),
+        count: childTasks.length,
+        isCollapsed: collapsedGroups["children"] ?? false,
+        onToggle: () => handleToggleGroup("children"),
+      })
+    }
+
+    if (blockers.length > 0) {
+      result.push({
+        key: "blocked-by",
+        label: "Blocked by",
+        trees: blockers.map(toTreeNode),
+        count: blockers.length,
+        isCollapsed: collapsedGroups["blocked-by"] ?? false,
+        onToggle: () => handleToggleGroup("blocked-by"),
+      })
+    }
+
+    if (dependents.length > 0) {
+      result.push({
+        key: "blocks",
+        label: "Blocks",
+        trees: dependents.map(toTreeNode),
+        count: dependents.length,
+        isCollapsed: collapsedGroups["blocks"] ?? false,
+        onToggle: () => handleToggleGroup("blocks"),
+      })
+    }
+
+    return result
+  }, [childTasks, blockers, dependents, collapsedGroups, handleToggleGroup])
+
   const hasContent = childTasks.length > 0 || blockers.length > 0 || dependents.length > 0
   if (!isLoading && !hasContent && !canAddBlockers) {
     return null
@@ -173,15 +220,28 @@ export function RelatedTasks({
       {isLoading ?
         <div className="text-muted-foreground text-sm">Loading...</div>
       : <div className="space-y-2">
-          <CollapsibleSection label="Children" tasks={childTasks} issuePrefix={issuePrefix} />
-          <CollapsibleSection
-            label="Blocked by"
-            tasks={blockers}
-            issuePrefix={issuePrefix}
-            onRemove={!readOnly ? handleRemoveBlocker : undefined}
-            removableIds={editableBlockers.map(b => b.id)}
-          />
-          {!readOnly && task && (
+          {groups.length > 0 && (
+            <GroupedTaskList groups={groups} onTaskClick={onTaskClick} className="h-auto" />
+          )}
+          {!readOnly && !collapsedGroups["blocked-by"] && blockers.length > 0 && (
+            <div className="flex flex-wrap gap-1 px-2">
+              {blockers
+                .filter(b => editableBlockerIds.has(b.id))
+                .map(b => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => handleRemoveBlocker(b.id)}
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors"
+                    aria-label={`Remove ${b.id} as blocker`}
+                  >
+                    <IconX className="size-3" />
+                    <span>{b.id}</span>
+                  </button>
+                ))}
+            </div>
+          )}
+          {canAddBlockers && (
             <div>
               <BlockerCombobox
                 task={task}
@@ -193,11 +253,22 @@ export function RelatedTasks({
               />
             </div>
           )}
-          <CollapsibleSection label="Blocks" tasks={dependents} issuePrefix={issuePrefix} />
         </div>
       }
     </div>
   )
+}
+
+/** Converts a RelatedTask to a TaskTreeNode with a minimal TaskCardTask. */
+function toTreeNode(related: RelatedTask): TaskTreeNode {
+  return {
+    task: {
+      id: related.id,
+      title: related.title,
+      status: related.status,
+    },
+    children: [],
+  }
 }
 
 export type RelatedTasksProps = {
@@ -208,4 +279,6 @@ export type RelatedTasksProps = {
   allTasks?: TaskCardTask[]
   /** Issue prefix for display (e.g. "rui"). */
   issuePrefix?: string | null
+  /** Callback when a related task is clicked. */
+  onTaskClick?: (id: string) => void
 }

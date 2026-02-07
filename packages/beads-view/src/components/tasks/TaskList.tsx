@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { cn } from "../../lib/cn"
-import { TaskGroupHeader } from "./TaskGroupHeader"
-import { TaskSubtree } from "./TaskSubtree"
+import { GroupedTaskList } from "./GroupedTaskList"
 import { buildTaskTree } from "../../lib/buildTaskTree"
 import { countAllNodes } from "../../lib/countAllNodes"
 import { findRootAncestor } from "../../lib/findRootAncestor"
@@ -456,6 +455,27 @@ export function TaskList({
 
   const hasTasks = statusGroups.some(g => g.totalCount > 0)
 
+  const groupDescriptors = useMemo(
+    () =>
+      visibleStatusGroups.map(({ config, trees, totalCount }) => ({
+        key: config.key,
+        label: config.label,
+        trees,
+        count: totalCount,
+        isCollapsed: statusCollapsedState[config.key],
+        onToggle: () => handleToggleStatusGroup(config.key),
+        timeFilter: config.key === "closed" ? closedTimeFilter : undefined,
+        onTimeFilterChange: config.key === "closed" ? onClosedTimeFilterChange : undefined,
+      })),
+    [
+      visibleStatusGroups,
+      statusCollapsedState,
+      handleToggleStatusGroup,
+      closedTimeFilter,
+      onClosedTimeFilterChange,
+    ],
+  )
+
   // Show skeleton while loading
   if (isLoading) {
     return <TaskListSkeleton className={className} />
@@ -477,47 +497,17 @@ export function TaskList({
   }
 
   return (
-    <div className={cn("h-full overflow-y-auto", className)} role="list" aria-label="Task list">
-      {visibleStatusGroups.map(({ config, trees, totalCount }) => {
-        const isStatusCollapsed = statusCollapsedState[config.key]
-
-        return (
-          <div key={config.key} role="listitem" aria-label={`${config.label} group`}>
-            <TaskGroupHeader
-              label={config.label}
-              count={totalCount}
-              isCollapsed={isStatusCollapsed}
-              onToggle={() => handleToggleStatusGroup(config.key)}
-              timeFilter={config.key === "closed" ? closedTimeFilter : undefined}
-              onTimeFilterChange={config.key === "closed" ? onClosedTimeFilterChange : undefined}
-            />
-            {!isStatusCollapsed && (
-              <div role="group" aria-label={`${config.label} tasks`}>
-                {trees.length > 0 ?
-                  trees.map(tree => (
-                    <TaskSubtree
-                      key={tree.task.id}
-                      node={tree}
-                      depth={0}
-                      onStatusChange={onStatusChange}
-                      onTaskClick={onTaskClick}
-                      newTaskIds={newTaskIds}
-                      activelyWorkingTaskIds={activelyWorkingTaskIds}
-                      taskIdsWithSessions={taskIdsWithSessions}
-                      collapsedState={parentCollapsedState}
-                      onToggleCollapse={handleToggleParentGroup}
-                    />
-                  ))
-                : <div className="text-muted-foreground px-3 py-3 text-center text-xs italic">
-                    No tasks in this group
-                  </div>
-                }
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
+    <GroupedTaskList
+      groups={groupDescriptors}
+      className={className}
+      onStatusChange={onStatusChange}
+      onTaskClick={onTaskClick}
+      newTaskIds={newTaskIds}
+      activelyWorkingTaskIds={activelyWorkingTaskIds}
+      taskIdsWithSessions={taskIdsWithSessions}
+      collapsedState={parentCollapsedState}
+      onToggleCollapse={handleToggleParentGroup}
+    />
   )
 }
 
