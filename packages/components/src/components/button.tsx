@@ -9,12 +9,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-repo-accent text-repo-accent-foreground hover:bg-repo-accent/80",
+        default:
+          "bg-repo-accent text-repo-accent-foreground hover:bg-[color-mix(in_oklch,var(--color-repo-accent),black_20%)]",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/80 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-white hover:bg-[color-mix(in_oklch,var(--color-destructive),black_20%)] focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "border bg-background shadow-xs hover:bg-repo-accent hover:text-accent-foreground dark:bg-input/30 border-border dark:hover:bg-input/50",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/70",
+          "border bg-background shadow-xs hover:bg-repo-accent hover:text-accent-foreground hover:border-[color-mix(in_oklch,var(--color-repo-accent),black_20%)] dark:bg-input/30 border-border dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--color-secondary),black_20%)]",
         ghost: "hover:bg-repo-accent hover:text-accent-foreground dark:hover:bg-repo-accent/50",
         link: "text-link underline-offset-4 hover:underline",
       },
