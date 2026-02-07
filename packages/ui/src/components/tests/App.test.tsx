@@ -41,6 +41,17 @@ vi.mock("@herbcaudill/ralph-shared", () => ({
   }),
 }))
 
+// Mock useThemes to avoid async fetch("/api/themes") causing act() warnings
+vi.mock("../../hooks/useThemes", () => ({
+  useThemes: () => ({
+    themes: [],
+    variant: null,
+    isLoading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+}))
+
 // Mock the hooks and components that depend on external services
 vi.mock("../../hooks/useRalphLoop", () => ({
   useRalphLoop: () => ({
