@@ -13,5 +13,8 @@
     "statusBarItem.remoteBackground": "#67b0b1",
     "statusBarItem.remoteForeground": "#15202b"
   },
-  "peacock.color": "#67B0B1"
+  "peacock.color": "#67B0B1",
+  "search.exclude": {
+    "**/.beads": true
+  }
 }
