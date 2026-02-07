@@ -14,9 +14,7 @@
 
 import type { AgentEvent, AgentEventEnvelope, AgentEventSource } from "./types.js"
 
-// ---------------------------------------------------------------------------
 // Legacy wire message type constants
-// ---------------------------------------------------------------------------
 
 /** All legacy wire message types that can be translated to agent:event. */
 export const LEGACY_WIRE_TYPES = [
@@ -43,9 +41,7 @@ export const LEGACY_PENDING_TYPES = ["pending_events", "task-chat:pending_events
 
 export type LegacyPendingType = (typeof LEGACY_PENDING_TYPES)[number]
 
-// ---------------------------------------------------------------------------
 // Type guards
-// ---------------------------------------------------------------------------
 
 /** Check if a wire message type is a legacy type that can be translated. */
 export function isLegacyWireType(type: string): type is LegacyWireType {
@@ -62,9 +58,7 @@ export function isLegacyPendingType(type: string): type is LegacyPendingType {
   return (LEGACY_PENDING_TYPES as readonly string[]).includes(type)
 }
 
-// ---------------------------------------------------------------------------
 // Translation functions
-// ---------------------------------------------------------------------------
 
 /**
  * Translate a legacy wire message into a unified AgentEventEnvelope.
@@ -234,12 +228,14 @@ export function translateLegacyToEnvelope(
     }
 
     case "task-chat:tool_result": {
-      const toolUse = message.toolUse as {
-        id?: string
-        output?: string
-        error?: string
-        isError?: boolean
-      } | undefined
+      const toolUse = message.toolUse as
+        | {
+            id?: string
+            output?: string
+            error?: string
+            isError?: boolean
+          }
+        | undefined
       if (!toolUse) return null
       return {
         type: "agent:event",
@@ -270,7 +266,12 @@ export function translateLegacyToEnvelope(
  */
 export function translateLegacyReconnect(
   message: Record<string, unknown>,
-): { type: "agent:reconnect"; source: AgentEventSource; instanceId: string; lastEventTimestamp?: number } | null {
+): {
+  type: "agent:reconnect"
+  source: AgentEventSource
+  instanceId: string
+  lastEventTimestamp?: number
+} | null {
   const type = message.type as string | undefined
   if (!type) return null
 
@@ -280,9 +281,9 @@ export function translateLegacyReconnect(
         type: "agent:reconnect",
         source: "ralph",
         instanceId: (message.instanceId as string) || "default",
-        ...(typeof message.lastEventTimestamp === "number"
-          ? { lastEventTimestamp: message.lastEventTimestamp }
-          : {}),
+        ...(typeof message.lastEventTimestamp === "number" ?
+          { lastEventTimestamp: message.lastEventTimestamp }
+        : {}),
       }
 
     case "task-chat:reconnect":
@@ -290,9 +291,9 @@ export function translateLegacyReconnect(
         type: "agent:reconnect",
         source: "task-chat",
         instanceId: (message.instanceId as string) || "default",
-        ...(typeof message.lastEventTimestamp === "number"
-          ? { lastEventTimestamp: message.lastEventTimestamp }
-          : {}),
+        ...(typeof message.lastEventTimestamp === "number" ?
+          { lastEventTimestamp: message.lastEventTimestamp }
+        : {}),
       }
 
     default:
@@ -308,9 +309,7 @@ export function translateLegacyReconnect(
  *
  * @returns The legacy wire message, or null if no legacy equivalent exists.
  */
-export function envelopeToLegacy(
-  envelope: AgentEventEnvelope,
-): Record<string, unknown> | null {
+export function envelopeToLegacy(envelope: AgentEventEnvelope): Record<string, unknown> | null {
   const { source, instanceId, workspaceId, event, timestamp, eventIndex } = envelope
 
   if (source === "ralph") {
@@ -337,9 +336,7 @@ export function envelopeToLegacy(
   return null
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Map legacy TaskChat status strings to unified AgentStatus values.

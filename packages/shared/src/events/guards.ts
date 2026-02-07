@@ -20,9 +20,7 @@ import type {
   AgentPendingEventsResponse,
 } from "./types.js"
 
-// ---------------------------------------------------------------------------
 // Core event type guards (backward-compatible signatures)
-// ---------------------------------------------------------------------------
 
 /**  Check if an event is a message event. */
 export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
@@ -59,9 +57,7 @@ export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent
   return event.type === "status"
 }
 
-// ---------------------------------------------------------------------------
 // Wire protocol guards (defined locally — these are Ralph-specific)
-// ---------------------------------------------------------------------------
 
 /**  Check if a wire message is an agent event envelope. */
 export function isAgentEventEnvelope(message: unknown): message is AgentEventEnvelope {

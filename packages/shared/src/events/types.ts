@@ -21,9 +21,7 @@ import type {
   AgentStatus as CanonicalAgentStatus,
 } from "@herbcaudill/agent-view"
 
-// ---------------------------------------------------------------------------
 // Utility: make canonical types backward-compatible
-// ---------------------------------------------------------------------------
 
 /**
  * Makes `id` optional and removes `readonly` modifiers for backward compatibility.
@@ -37,9 +35,7 @@ type BackwardCompat<T> = { -readonly [K in keyof T as K extends "id" ? never : K
   id?: string
 }
 
-// ---------------------------------------------------------------------------
 // Re-export core event types from agent-view with backward-compatible names
-// ---------------------------------------------------------------------------
 
 /**  Base properties for all agent events. */
 export type AgentEventBase = BackwardCompat<BaseEventType>
@@ -78,9 +74,7 @@ export type AgentEvent =
 /**  Possible agent statuses. */
 export type AgentStatus = CanonicalAgentStatus
 
-// ---------------------------------------------------------------------------
 // Unified wire message envelope
-// ---------------------------------------------------------------------------
 
 /** Source of the agent event — distinguishes Ralph session events from Task Chat events. */
 export type AgentEventSource = "ralph" | "task-chat"
@@ -123,9 +117,7 @@ export interface AgentEventEnvelope {
   eventIndex?: number
 }
 
-// ---------------------------------------------------------------------------
 // Unified reconnection wire messages
-// ---------------------------------------------------------------------------
 
 /**
  * Client → Server reconnection request.

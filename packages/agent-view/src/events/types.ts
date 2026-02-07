@@ -18,9 +18,7 @@ import {
   UnknownEvent,
 } from "./schema.js"
 
-// ---------------------------------------------------------------------------
 // Decoded types (what you work with in code)
-// ---------------------------------------------------------------------------
 
 /** Base event fields present on every canonical event. */
 export type BaseEventType = S.Schema.Type<typeof BaseEvent>
@@ -52,16 +50,12 @@ export type UnknownEventType = S.Schema.Type<typeof UnknownEvent>
 /** Union of all canonical event types. */
 export type CanonicalEventType = S.Schema.Type<typeof CanonicalEvent>
 
-// ---------------------------------------------------------------------------
 // Encoded types (what comes over the wire — before defaults are applied)
-// ---------------------------------------------------------------------------
 
 /** Encoded (wire) shape for a canonical event. */
 export type CanonicalEventEncoded = S.Schema.Encoded<typeof CanonicalEvent>
 
-// ---------------------------------------------------------------------------
 // Agent status literal type
-// ---------------------------------------------------------------------------
 
 /** Possible agent statuses. */
 export type AgentStatus = "idle" | "starting" | "running" | "paused" | "stopping" | "stopped"

@@ -7,9 +7,7 @@
  */
 import { Schema as S } from "effect"
 
-// ---------------------------------------------------------------------------
 // Base event — every event has these fields, with auto-generated defaults
-// ---------------------------------------------------------------------------
 
 export const BaseEvent = S.Struct({
   id: S.optional(S.String).pipe(S.withDecodingDefault(() => crypto.randomUUID())),
@@ -17,9 +15,7 @@ export const BaseEvent = S.Struct({
   type: S.String,
 })
 
-// ---------------------------------------------------------------------------
 // Core event types that agent-view renders natively
-// ---------------------------------------------------------------------------
 
 /** A text message from the assistant. */
 export const MessageEvent = BaseEvent.pipe(
@@ -108,9 +104,7 @@ export const StatusEvent = BaseEvent.pipe(
   ),
 )
 
-// ---------------------------------------------------------------------------
 // Catch-all for custom/unknown event types
-// ---------------------------------------------------------------------------
 
 /**
  * Catch-all for event types not in the core set.
@@ -123,9 +117,7 @@ export const UnknownEvent = S.Struct({
   type: S.String,
 }).pipe(S.extend(S.Record({ key: S.String, value: S.Unknown })))
 
-// ---------------------------------------------------------------------------
 // Union of all canonical event types
-// ---------------------------------------------------------------------------
 
 /**
  * Union of all known event types + catch-all for extensibility.
