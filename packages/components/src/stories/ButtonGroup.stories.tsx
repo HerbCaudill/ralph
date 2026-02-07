@@ -262,7 +262,10 @@ export const Status: Story = {
   render: () => {
     const [selected, setSelected] = useState("open")
     return (
-      <div style={{ width: 400 }}>
+      <div
+        style={{ width: 400, minWidth: 100, maxWidth: 600 }}
+        className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
+      >
         <ResponsiveButtonGroup>
           {statusOptions.map(s => {
             const Icon = s.icon
