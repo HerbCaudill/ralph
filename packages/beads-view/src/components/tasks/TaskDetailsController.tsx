@@ -103,25 +103,34 @@ export function TaskDetailsController({
 export type TaskDetailsControllerProps = {
   /** The task to display/edit */
   task: TaskCardTask | null
+
   /** Whether the dialog is open */
   open: boolean
+
   /** Callback when close is requested */
   onClose: () => void
+
   /** Callback when save is requested */
   onSave?: (id: string, updates: TaskUpdateData) => void | Promise<void>
+
   /** Callback when delete is requested */
   onDelete?: (id: string) => void | Promise<void>
+
   /** Whether the dialog is in read-only mode */
   readOnly?: boolean
+
   /** Optional custom renderer for the description editor */
   renderDescriptionEditor?: (options: {
     /** Description value */
     value: string
+
     /** Handler for description changes */
     onChange: (value: string) => void
+
     /** Placeholder text */
     placeholder?: string
   }) => ReactNode
+
   /** Optional renderer for session links */
   renderSessionLinks?: (taskId: string) => ReactNode
 }
