@@ -35,6 +35,16 @@
   --radius: 0.5rem;
 }
 
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentColor);
+  }
+}
+
 .dark {
   --color-background: #0a0a0a;
   --color-foreground: #fafafa;

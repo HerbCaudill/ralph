@@ -52,6 +52,16 @@
   --color-link: var(--link);
 }
 
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentColor);
+  }
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
