@@ -51,7 +51,7 @@ pnpm workspace with these main packages:
 - **`packages/agent-view/`** (`@herbcaudill/agent-view`) - Agent chat UI components, canonical event schema (Effect Schema), hotkey registration, hooks (useAgentChat with systemPrompt/storageKey options, useAgentHotkeys, useAgentControl), and reusable React context. Exports event types consumed by shared and UI packages
 - **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Generic agent chat server with JSONL persistence, multi-adapter support (Claude, Codex), session-based WebSocket protocol, and no built-in system prompt. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
 - **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) - Functional chat demo connecting to agent-server via session-based WebSocket protocol (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents, session persistence across page reloads via localStorage session index (falls back to `/api/sessions/latest`), session switching via SessionPicker and `useAgentChat.restoreSession`, displays model name in status bar via `/api/adapters` endpoint. Registers handlers for agent-view hotkey actions (focusChatInput, newSession, toggleToolOutput, scrollToBottom, showHotkeys)
-- **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) - Functional task manager demo using beads-view controller components (TaskSidebarController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Includes TaskChat component (task management AI assistant using manage-tasks system prompt via useAgentChat with storageKey for independent session storage) shown when no task is selected. Registers handlers for all beads-view hotkey actions (focusSearch, focusTaskInput, previousTask, nextTask, openTask, showHotkeys) and includes a HotkeysDialog component. Vite proxy forwards /api requests to the beads-server
+- **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) - Functional task manager demo using beads-view controller components (TaskPanelController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Includes TaskChat component (task management AI assistant using manage-tasks system prompt via useAgentChat with storageKey for independent session storage) shown when no task is selected. Registers handlers for all beads-view hotkey actions (focusSearch, focusTaskInput, previousTask, nextTask, openTask, showHotkeys) and includes a HotkeysDialog component. Vite proxy forwards /api requests to the beads-server
 
 ### Project structure
 
@@ -78,7 +78,7 @@ packages/cli/                       # CLI package
 packages/beads-view/                   # Beads-view package (task management UI/state)
   src/
     components/
-      tasks/                # Task UI components (TaskCard, TaskList, TaskSidebar, TaskDetails, etc.)
+      tasks/                # Task UI components (TaskCard, TaskList, TaskPanel, TaskDetails, etc.)
       ui/                   # Shared UI primitives (button, input, popover, command, etc.)
       workspace/            # Workspace UI components (WorkspaceSelector for switching workspaces)
     hooks/
@@ -204,7 +204,7 @@ packages/agent-demo/              # Agent chat demo
 
 packages/beads-demo/                   # Beads task manager demo
   src/
-    App.tsx                 # Main app wrapping BeadsViewProvider, TaskSidebarController, task dialog, workspace selector
+    App.tsx                 # Main app wrapping BeadsViewProvider, TaskPanelController, task dialog, workspace selector
     components/
       TaskDetailPanel.tsx   # Panel displaying task details with inline editing (wraps TaskDetailsController)
       TaskChat.tsx          # Task management AI assistant using manage-tasks system prompt (shown when no task selected)
