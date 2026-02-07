@@ -5,7 +5,7 @@ import { cn } from "../lib/cn"
 import { Separator } from "./separator"
 
 const buttonGroupVariants = cva(
-  "flex w-fit items-stretch rounded-md border text-[11px] [&>*]:whitespace-nowrap [&>*]:focus-visible:z-10 [&>*]:focus-visible:relative [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-md has-[>[data-slot=button-group]]:gap-2 [&>[data-slot=button]]:border-0 [&>[data-slot=button]]:shadow-none",
+  "border border-input flex w-fit items-stretch rounded-md border text-[11px] [&>*]:whitespace-nowrap [&>*]:focus-visible:z-10 [&>*]:focus-visible:relative [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-md has-[>[data-slot=button-group]]:gap-2 [&>[data-slot=button]]:border-0 [&>[data-slot=button]]:shadow-none",
   {
     variants: {
       orientation: {
