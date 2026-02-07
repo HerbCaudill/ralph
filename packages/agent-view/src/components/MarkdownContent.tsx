@@ -110,6 +110,8 @@ export function MarkdownContent({
         "prose-p:my-1 prose-p:leading-snug",
         "prose-h1:text-lg prose-h2:text-sm prose-h3:text-xs prose-h4:text-xs",
         "prose-h1:font-semibold prose-h2:font-semibold prose-h3:font-medium prose-h4:font-medium",
+        "prose-h1:border-b prose-h1:border-border prose-h1:pb-1",
+        "prose-h2:border-b prose-h2:border-border prose-h2:pb-1",
         "prose-strong:font-medium",
         "prose-a:text-link prose-a:no-underline hover:prose-a:underline",
         "prose-code:text-status-success prose-code:font-normal prose-code:font-mono",
