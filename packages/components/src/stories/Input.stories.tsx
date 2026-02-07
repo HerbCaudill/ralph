@@ -5,6 +5,13 @@ import { Label } from "../components/label"
 const meta = {
   title: "Input",
   component: Input,
+  decorators: [
+    Story => (
+      <div className="w-sm">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof Input>
 
 export default meta
@@ -16,7 +23,7 @@ export const Default: Story = {
 
 export const WithLabel: Story = {
   render: () => (
-    <div className="grid w-full max-w-sm gap-1.5">
+    <div className="grid gap-1.5">
       <Label htmlFor="email">Email</Label>
       <Input type="email" id="email" placeholder="Email" />
     </div>
@@ -29,7 +36,7 @@ export const Disabled: Story = {
 
 export const File: Story = {
   render: () => (
-    <div className="grid w-full max-w-sm gap-1.5">
+    <div className="grid gap-1.5">
       <Label htmlFor="file">Upload file</Label>
       <Input id="file" type="file" />
     </div>

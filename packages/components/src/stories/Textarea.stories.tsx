@@ -5,6 +5,13 @@ import { Label } from "../components/label"
 const meta = {
   title: "Textarea",
   component: Textarea,
+  decorators: [
+    Story => (
+      <div className="w-sm">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof Textarea>
 
 export default meta
@@ -16,7 +23,7 @@ export const Default: Story = {
 
 export const WithLabel: Story = {
   render: () => (
-    <div className="grid w-full max-w-sm gap-1.5">
+    <div className="grid gap-1.5">
       <Label htmlFor="message">Message</Label>
       <Textarea id="message" placeholder="Type your message here..." />
     </div>
@@ -29,6 +36,7 @@ export const Disabled: Story = {
 
 export const WithValue: Story = {
   args: {
-    defaultValue: "This is a textarea with some pre-filled content that demonstrates how the component handles longer text.",
+    defaultValue:
+      "This is a textarea with some pre-filled content that demonstrates how the component handles longer text.",
   },
 }
