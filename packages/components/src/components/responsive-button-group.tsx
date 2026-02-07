@@ -31,8 +31,7 @@ export function ResponsiveButtonGroup({ className, ...props }: Props) {
   const fullWidthRef = useRef<number>(0)
   const collapsedRef = useRef(false)
 
-  // After each render, check if expanded content overflows.
-  // useLayoutEffect runs before paint, so the user never sees a clipped state.
+  // After initial render, check if content overflows before paint.
   useLayoutEffect(() => {
     const container = containerRef.current
     if (!container || collapsedRef.current) return
@@ -45,15 +44,29 @@ export function ResponsiveButtonGroup({ className, ...props }: Props) {
     }
   })
 
-  // Watch for container resize to know when there's room to expand again.
+  // Watch for container resize to collapse or expand as needed.
+  // The useLayoutEffect above handles initial render and re-renders (e.g. after
+  // expanding), but only ResizeObserver can detect external size changes like
+  // the parent shrinking via CSS resize or layout shifts.
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const observer = new ResizeObserver(() => {
-      if (collapsedRef.current && container.clientWidth >= fullWidthRef.current) {
-        collapsedRef.current = false
-        setCollapsed(false)
+      if (collapsedRef.current) {
+        // Collapsed: check if there's room to expand
+        if (container.clientWidth >= fullWidthRef.current) {
+          collapsedRef.current = false
+          setCollapsed(false)
+        }
+      } else {
+        // Expanded: check if content now overflows
+        const contentWidth = container.scrollWidth
+        fullWidthRef.current = contentWidth
+        if (contentWidth > container.clientWidth) {
+          collapsedRef.current = true
+          setCollapsed(true)
+        }
       }
     })
 
