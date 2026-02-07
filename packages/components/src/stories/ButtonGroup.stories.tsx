@@ -125,6 +125,7 @@ const statusOptions = [
     icon: IconCircle,
     color: "text-status-success",
     selectedBg: "bg-status-success",
+    colorVar: "--color-status-success",
     unselectedHover: "hover:bg-status-success/20",
   },
   {
@@ -133,6 +134,7 @@ const statusOptions = [
     icon: IconCircleDot,
     color: "text-status-info",
     selectedBg: "bg-status-info",
+    colorVar: "--color-status-info",
     unselectedHover: "hover:bg-status-info/20",
   },
   {
@@ -141,6 +143,7 @@ const statusOptions = [
     icon: IconBan,
     color: "text-status-error",
     selectedBg: "bg-status-error",
+    colorVar: "--color-status-error",
     unselectedHover: "hover:bg-status-error/20",
   },
   {
@@ -149,6 +152,7 @@ const statusOptions = [
     icon: IconClock,
     color: "text-status-warning",
     selectedBg: "bg-status-warning",
+    colorVar: "--color-status-warning",
     unselectedHover: "hover:bg-status-warning/20",
   },
   {
@@ -157,6 +161,7 @@ const statusOptions = [
     icon: IconCircleCheck,
     color: "text-status-neutral",
     selectedBg: "bg-status-neutral",
+    colorVar: "--color-status-neutral",
     unselectedHover: "hover:bg-status-neutral/20",
   },
 ]
@@ -167,6 +172,7 @@ const priorityOptions = [
     short: "P0",
     color: "text-red-600",
     selectedBg: "bg-red-600",
+    colorVar: "--color-red-600",
     unselectedHover: "hover:bg-red-600/20",
   },
   {
@@ -174,6 +180,7 @@ const priorityOptions = [
     short: "P1",
     color: "text-orange-500",
     selectedBg: "bg-orange-500",
+    colorVar: "--color-orange-500",
     unselectedHover: "hover:bg-orange-500/20",
   },
   {
@@ -181,6 +188,7 @@ const priorityOptions = [
     short: "P2",
     color: "text-amber-500",
     selectedBg: "bg-amber-500",
+    colorVar: "--color-amber-500",
     unselectedHover: "hover:bg-amber-500/20",
   },
   {
@@ -188,6 +196,7 @@ const priorityOptions = [
     short: "P3",
     color: "text-yellow-500",
     selectedBg: "bg-yellow-500",
+    colorVar: "--color-yellow-500",
     unselectedHover: "hover:bg-yellow-500/20",
   },
   {
@@ -195,6 +204,7 @@ const priorityOptions = [
     short: "P4",
     color: "text-gray-500",
     selectedBg: "bg-gray-500",
+    colorVar: "--color-gray-500",
     unselectedHover: "hover:bg-gray-500/20",
   },
 ]
@@ -206,6 +216,7 @@ const issueTypeOptions = [
     icon: IconCheckbox,
     color: "text-status-success",
     selectedBg: "bg-status-success",
+    colorVar: "--color-status-success",
     unselectedHover: "hover:bg-status-success/20",
   },
   {
@@ -214,6 +225,7 @@ const issueTypeOptions = [
     icon: IconBug,
     color: "text-status-error",
     selectedBg: "bg-status-error",
+    colorVar: "--color-status-error",
     unselectedHover: "hover:bg-status-error/20",
   },
   {
@@ -222,6 +234,7 @@ const issueTypeOptions = [
     icon: IconStack2,
     color: "text-status-info",
     selectedBg: "bg-status-info",
+    colorVar: "--color-status-info",
     unselectedHover: "hover:bg-status-info/20",
   },
 ]
@@ -231,6 +244,7 @@ function ToggleButton({
   isSelected,
   color,
   selectedBg,
+  colorVar,
   unselectedHover,
   onClick,
   children,
@@ -238,6 +252,7 @@ function ToggleButton({
   isSelected: boolean
   color: string
   selectedBg: string
+  colorVar?: string
   unselectedHover: string
   onClick: () => void
   children: React.ReactNode
@@ -248,42 +263,23 @@ function ToggleButton({
       onClick={onClick}
       className={cn(
         "flex h-full cursor-pointer items-center justify-center gap-1 px-2 transition-colors",
-        isSelected ? cn("text-white", selectedBg) : cn(color, "bg-transparent", unselectedHover),
+        isSelected ?
+          cn("text-white", selectedBg, "relative z-10")
+        : cn(color, "bg-transparent", unselectedHover),
       )}
+      style={
+        isSelected && colorVar ?
+          {
+            outline: `1px solid color-mix(in oklch, var(${colorVar}), black 25%)`,
+            outlineOffset: "-1px",
+          }
+        : undefined
+      }
       aria-pressed={isSelected}
     >
       {children}
     </button>
   )
-}
-
-export const Status: Story = {
-  render: () => {
-    const [selected, setSelected] = useState("open")
-    return (
-      <div
-        style={{ width: 400, minWidth: 100, maxWidth: 600 }}
-        className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
-      >
-        <ButtonGroup responsive>
-          {statusOptions.map(s => {
-            const Icon = s.icon
-            return (
-              <ToggleButton
-                key={s.value}
-                isSelected={selected === s.value}
-                onClick={() => setSelected(s.value)}
-                {...s}
-              >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span data-label>{s.label}</span>
-              </ToggleButton>
-            )
-          })}
-        </ButtonGroup>
-      </div>
-    )
-  },
 }
 
 export const Priority: Story = {
@@ -323,6 +319,35 @@ export const IssueType: Story = {
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 <span data-label>{t.label}</span>
+              </ToggleButton>
+            )
+          })}
+        </ButtonGroup>
+      </div>
+    )
+  },
+}
+
+export const Responsive: Story = {
+  render: () => {
+    const [selected, setSelected] = useState("open")
+    return (
+      <div
+        style={{ width: 400, minWidth: 100, maxWidth: 600 }}
+        className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
+      >
+        <ButtonGroup responsive>
+          {statusOptions.map(s => {
+            const Icon = s.icon
+            return (
+              <ToggleButton
+                key={s.value}
+                isSelected={selected === s.value}
+                onClick={() => setSelected(s.value)}
+                {...s}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span data-label>{s.label}</span>
               </ToggleButton>
             )
           })}
