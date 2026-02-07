@@ -114,6 +114,16 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
     }
   }, [])
 
+  // Scroll to bottom on initial mount, regardless of `enabled` state.
+  // The `enabled` flag controls ongoing auto-scroll (keeping up with new content),
+  // not the initial scroll position — a chat/log container should always start at the bottom.
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
+  }, [])
+
   // Auto-scroll when dependencies change
   useEffect(() => {
     if (autoScroll && enabled && containerRef.current) {
