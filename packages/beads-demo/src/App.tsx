@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react"
 import {
   BeadsViewProvider,
-  TaskSidebarController,
+  TaskPanelController,
   useTasks,
   useTaskDialog,
   useBeadsHotkeys,
@@ -120,7 +120,7 @@ function AppContent() {
           />
         }
         sidebar={
-          <TaskSidebarController
+          <TaskPanelController
             searchInputRef={searchInputRef}
             onTaskClick={handleTaskClick}
             onOpenTask={handleTaskClick}

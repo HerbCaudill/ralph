@@ -77,7 +77,7 @@ const mockSetSelectedTaskId = vi.fn((id: string | null) => {
 let mockTasks: Array<{ id: string; title: string; status: string }> = []
 
 vi.mock("@herbcaudill/beads-view", () => ({
-  TaskSidebarController: ({ isRunning }: { isRunning?: boolean }) => (
+  TaskPanelController: ({ isRunning }: { isRunning?: boolean }) => (
     <div data-testid="task-sidebar" data-is-running={isRunning ?? false}>
       Tasks Sidebar
     </div>
@@ -295,8 +295,8 @@ describe("WorkspaceView", () => {
     })
   })
 
-  describe("TaskSidebarController props", () => {
-    it("passes isRunning based on controlState to TaskSidebarController", () => {
+  describe("TaskPanelController props", () => {
+    it("passes isRunning based on controlState to TaskPanelController", () => {
       mockTasks = [{ id: "task-1", title: "Test Task", status: "open" }]
 
       renderWorkspaceView()

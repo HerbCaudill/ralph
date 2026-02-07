@@ -1,9 +1,6 @@
 import { useCallback } from "react"
-import { TaskSidebar } from "./TaskSidebar"
-import { TaskList } from "./TaskList"
-import { QuickTaskInput } from "./QuickTaskInput"
+import { TaskPanel } from "./TaskPanel"
 import { type SearchInputHandle } from "./SearchInput"
-import { TaskProgressBar } from "./TaskProgressBar"
 import { useTasks } from "../../hooks"
 import {
   useBeadsViewStore,
@@ -16,29 +13,21 @@ import {
 import type { ClosedTasksTimeFilter } from "../../types"
 
 /**
- * Controller component for TaskSidebar.
+ * Controller component for TaskPanel.
  *
- * Connects data hooks to the TaskSidebar presentational component.
+ * Connects data hooks to the TaskPanel presentational component.
  * Handles task loading and wires up the session history and progress bar.
  */
-export function TaskSidebarController({
-  /** Ref to access SearchInput methods */
+export function TaskPanelController({
   searchInputRef,
-  /** Handler when a task is clicked */
   onTaskClick,
-  /** Handler when a task should be opened */
   onOpenTask,
-  /** Task IDs actively being worked on */
   activelyWorkingTaskIds,
-  /** Task IDs with saved sessions */
   taskIdsWithSessions,
-  /** Whether to show progress (host decides if Ralph is running). */
   isRunning = false,
-  /** External loading state (e.g., when workspace is switching). */
   isLoadingExternal = false,
-  /** Hide quick task input */
   hideQuickInput = true,
-}: TaskSidebarControllerProps) {
+}: TaskPanelControllerProps) {
   const { tasks, isLoading: isLoadingTasks, refresh } = useTasks({ all: true })
   const isLoading = isLoadingTasks || isLoadingExternal
   const searchQuery = useBeadsViewStore(selectTaskSearchQuery)
@@ -64,38 +53,30 @@ export function TaskSidebarController({
   }, [refresh])
 
   return (
-    <TaskSidebar
-      quickInput={hideQuickInput ? undefined : <QuickTaskInput onTaskCreated={handleTaskCreated} />}
-      taskList={
-        <TaskList
-          tasks={tasks}
-          onTaskClick={onTaskClick}
-          isLoading={isLoading}
-          activelyWorkingTaskIds={activelyWorkingTaskIds}
-          taskIdsWithSessions={taskIdsWithSessions}
-          searchQuery={searchQuery}
-          closedTimeFilter={closedTimeFilter}
-          onClosedTimeFilterChange={handleClosedTimeFilterChange}
-          onVisibleTaskIdsChange={handleVisibleTaskIdsChange}
-        />
-      }
+    <TaskPanel
+      tasks={tasks}
+      onTaskClick={onTaskClick}
+      isLoading={isLoading}
+      activelyWorkingTaskIds={activelyWorkingTaskIds}
+      taskIdsWithSessions={taskIdsWithSessions}
+      searchQuery={searchQuery}
+      closedTimeFilter={closedTimeFilter}
+      onClosedTimeFilterChange={handleClosedTimeFilterChange}
+      onVisibleTaskIdsChange={handleVisibleTaskIdsChange}
+      showQuickInput={!hideQuickInput}
+      onTaskCreated={handleTaskCreated}
+      isRunning={isRunning}
+      progressTasks={allStoreTasks}
+      initialTaskCount={initialTaskCount}
+      accentColor={accentColor}
       searchInputRef={searchInputRef}
       onOpenTask={onOpenTask}
-      progressBar={
-        <TaskProgressBar
-          isRunning={isRunning}
-          tasks={allStoreTasks}
-          initialTaskCount={initialTaskCount}
-          accentColor={accentColor}
-          closedTimeFilter={closedTimeFilter}
-        />
-      }
     />
   )
 }
 
-/** Props for TaskSidebarController component. */
-export interface TaskSidebarControllerProps {
+/** Props for TaskPanelController component. */
+export interface TaskPanelControllerProps {
   /** Ref to access SearchInput methods */
   searchInputRef?: React.RefObject<SearchInputHandle | null>
   /** Handler when a task is clicked */

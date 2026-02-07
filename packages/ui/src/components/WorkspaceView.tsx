@@ -13,7 +13,7 @@ import { useTaskChat } from "../hooks/useTaskChat"
 import { useWorkspaceParams } from "../hooks/useWorkspaceParams"
 import { useUiStore } from "../stores/uiStore"
 import {
-  TaskSidebarController,
+  TaskPanelController,
   configureApiClient,
   getApiClientConfig,
   useTasks,
@@ -330,7 +330,7 @@ export function WorkspaceView() {
       <MainLayout sidebar={sidebar} rightPanel={rightPanel}>
         <div className="flex h-full min-w-0">
           <div className="min-w-0 flex-1 overflow-hidden">
-            <TaskSidebarController
+            <TaskPanelController
               searchInputRef={searchInputRef}
               onTaskClick={handleTaskClick}
               onOpenTask={handleTaskClick}
