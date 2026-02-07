@@ -292,7 +292,7 @@ export function TaskDetails({
                         }
                       }}
                       className={cn(
-                        "flex h-full items-center justify-center gap-1 px-2 text-xs transition-colors",
+                        "flex h-full items-center justify-center gap-1 px-2 transition-colors",
                         isSelected ?
                           cn("text-white", config.selectedBg)
                         : cn(config.color, config.unselectedBg, config.unselectedHover),
@@ -344,7 +344,7 @@ export function TaskDetails({
                         }
                       }}
                       className={cn(
-                        "flex h-full items-center justify-center gap-1 px-2 text-xs transition-colors",
+                        "flex h-full items-center justify-center gap-1 px-2 transition-colors",
                         isSelected ?
                           cn("text-white", p.selectedBg)
                         : cn(p.color, p.unselectedBg, p.unselectedHover),
@@ -406,7 +406,7 @@ export function TaskDetails({
                         }
                       }}
                       className={cn(
-                        "flex h-full items-center justify-center gap-1 px-2 text-xs transition-colors",
+                        "flex h-full items-center justify-center gap-1 px-2 transition-colors",
                         isSelected ?
                           cn("text-white", t.selectedBg)
                         : cn(t.color, t.unselectedBg, t.unselectedHover),
