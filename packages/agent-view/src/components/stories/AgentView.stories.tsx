@@ -1,7 +1,9 @@
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { expect, userEvent } from "storybook/test"
 import { AgentView } from ".././AgentView"
 import { AgentViewProvider } from "../../context/AgentViewProvider"
+import { useAgentHotkeys } from "../../hotkeys/useHotkeys"
 import type { ChatEvent } from "../../types"
 
 const meta: Meta<typeof AgentView> = {
@@ -357,5 +359,75 @@ export const ToolOutputHidden: Story = {
   ],
   args: {
     events: sessionEvents,
+  },
+}
+
+/**
+ * Wrapper that wires useAgentHotkeys to tool output state, matching
+ * the real integration pattern used by agent-demo and the UI package.
+ */
+function HotkeyToggleWrapper({ children }: { children: React.ReactNode }) {
+  const [isVisible, setIsVisible] = useState(true)
+
+  const handleToggleToolOutput = useCallback(() => {
+    setIsVisible(prev => !prev)
+  }, [])
+
+  useAgentHotkeys({
+    handlers: {
+      toggleToolOutput: handleToggleToolOutput,
+    },
+  })
+
+  return (
+    <AgentViewProvider
+      value={{ isDark: false, toolOutput: { isVisible, onToggle: handleToggleToolOutput } }}
+    >
+      <div data-testid="tool-output-state" data-visible={isVisible}>
+        {children}
+      </div>
+    </AgentViewProvider>
+  )
+}
+
+/**
+ * Integration test: Ctrl+O toggles tool output visibility.
+ * Verifies the full chain: keypress → useAgentHotkeys → state change → context update → DOM change.
+ */
+export const CtrlOToggle: Story = {
+  decorators: [
+    Story => (
+      <HotkeyToggleWrapper>
+        <Story />
+      </HotkeyToggleWrapper>
+    ),
+  ],
+  args: {
+    events: sessionEvents,
+  },
+  play: async ({ canvasElement }) => {
+    /** Tool output cards have aria-expanded when they have expandable content. */
+    const getExpandedCards = () => canvasElement.querySelectorAll<HTMLElement>("[aria-expanded]")
+
+    /** All cards should start expanded (tool output visible by default). */
+    const cards = getExpandedCards()
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      expect(card).toHaveAttribute("aria-expanded", "true")
+    }
+
+    /** Press Ctrl+O — tool output should collapse. */
+    await userEvent.keyboard("{Control>}o{/Control}")
+
+    for (const card of getExpandedCards()) {
+      expect(card).toHaveAttribute("aria-expanded", "false")
+    }
+
+    /** Press Ctrl+O again — tool output should expand. */
+    await userEvent.keyboard("{Control>}o{/Control}")
+
+    for (const card of getExpandedCards()) {
+      expect(card).toHaveAttribute("aria-expanded", "true")
+    }
   },
 }
