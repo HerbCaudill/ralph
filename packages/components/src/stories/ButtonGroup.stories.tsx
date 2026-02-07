@@ -166,49 +166,6 @@ const statusOptions = [
   },
 ]
 
-const priorityOptions = [
-  {
-    value: 0,
-    short: "P0",
-    color: "text-red-600",
-    selectedBg: "bg-red-600",
-    colorVar: "--color-red-600",
-    unselectedHover: "hover:bg-red-600/20",
-  },
-  {
-    value: 1,
-    short: "P1",
-    color: "text-orange-500",
-    selectedBg: "bg-orange-500",
-    colorVar: "--color-orange-500",
-    unselectedHover: "hover:bg-orange-500/20",
-  },
-  {
-    value: 2,
-    short: "P2",
-    color: "text-amber-500",
-    selectedBg: "bg-amber-500",
-    colorVar: "--color-amber-500",
-    unselectedHover: "hover:bg-amber-500/20",
-  },
-  {
-    value: 3,
-    short: "P3",
-    color: "text-yellow-500",
-    selectedBg: "bg-yellow-500",
-    colorVar: "--color-yellow-500",
-    unselectedHover: "hover:bg-yellow-500/20",
-  },
-  {
-    value: 4,
-    short: "P4",
-    color: "text-gray-500",
-    selectedBg: "bg-gray-500",
-    colorVar: "--color-gray-500",
-    unselectedHover: "hover:bg-gray-500/20",
-  },
-]
-
 const issueTypeOptions = [
   {
     value: "task",
@@ -282,27 +239,7 @@ function ToggleButton({
   )
 }
 
-export const Priority: Story = {
-  render: () => {
-    const [selected, setSelected] = useState(2)
-    return (
-      <ButtonGroup className="bg-background h-8 overflow-hidden">
-        {priorityOptions.map(p => (
-          <ToggleButton
-            key={p.value}
-            isSelected={selected === p.value}
-            onClick={() => setSelected(p.value)}
-            {...p}
-          >
-            <span>{p.short}</span>
-          </ToggleButton>
-        ))}
-      </ButtonGroup>
-    )
-  },
-}
-
-export const IssueType: Story = {
+export const ColorCoded: Story = {
   render: () => {
     const [selected, setSelected] = useState("task")
     return (
