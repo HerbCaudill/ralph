@@ -2,7 +2,6 @@ import { useState, useCallback } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { expect, userEvent } from "storybook/test"
 import { AgentView } from ".././AgentView"
-import { AgentViewProvider } from "../../context/AgentViewProvider"
 import { useAgentHotkeys } from "../../hotkeys/useHotkeys"
 import type { ChatEvent } from "../../types"
 
@@ -297,35 +296,35 @@ const sessionEvents: ChatEvent[] = [
   },
 ]
 
-/** Wrapper component for stories that need interactive tool output toggle */
+/** Wrapper component for stories that need interactive tool output toggle.
+ * Renders AgentView directly with the context prop to avoid nested providers
+ * (AgentView creates its own AgentViewProvider, which would override an outer one).
+ */
 function ToolOutputToggleWrapper({
-  children,
+  events,
   defaultVisible,
 }: {
-  children: React.ReactNode
+  events: ChatEvent[]
   defaultVisible: boolean
 }) {
   const [isVisible, setIsVisible] = useState(defaultVisible)
+  const toolOutput = { isVisible, onToggle: () => setIsVisible(v => !v) }
   return (
-    <AgentViewProvider
-      value={{ isDark: false, toolOutput: { isVisible, onToggle: () => setIsVisible(v => !v) } }}
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsVisible(v => !v)}
-            className="bg-muted text-foreground hover:bg-muted/80 rounded px-3 py-1 text-sm"
-          >
-            {isVisible ? "Hide" : "Show"} Tool Output
-          </button>
-          <span className="text-muted-foreground text-xs">
-            Tool output is currently {isVisible ? "visible" : "hidden"}
-          </span>
-        </div>
-        {children}
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setIsVisible(v => !v)}
+          className="bg-muted text-foreground hover:bg-muted/80 rounded px-3 py-1 text-sm"
+        >
+          {isVisible ? "Hide" : "Show"} Tool Output
+        </button>
+        <span className="text-muted-foreground text-xs">
+          Tool output is currently {isVisible ? "visible" : "hidden"}
+        </span>
       </div>
-    </AgentViewProvider>
+      <AgentView events={events} context={{ toolOutput }} />
+    </div>
   )
 }
 
@@ -335,16 +334,7 @@ function ToolOutputToggleWrapper({
  * Click the toggle button to interactively switch visibility.
  */
 export const ToolOutputVisible: Story = {
-  decorators: [
-    Story => (
-      <ToolOutputToggleWrapper defaultVisible={true}>
-        <Story />
-      </ToolOutputToggleWrapper>
-    ),
-  ],
-  args: {
-    events: sessionEvents,
-  },
+  render: () => <ToolOutputToggleWrapper events={sessionEvents} defaultVisible={true} />,
 }
 
 /**
@@ -353,16 +343,7 @@ export const ToolOutputVisible: Story = {
  * Click the toggle button to interactively switch visibility.
  */
 export const ToolOutputHidden: Story = {
-  decorators: [
-    Story => (
-      <ToolOutputToggleWrapper defaultVisible={false}>
-        <Story />
-      </ToolOutputToggleWrapper>
-    ),
-  ],
-  args: {
-    events: sessionEvents,
-  },
+  render: () => <ToolOutputToggleWrapper events={sessionEvents} defaultVisible={false} />,
 }
 
 /**
