@@ -59,10 +59,14 @@ export const TooltipButtonDefault: Story = {
   render: () => (
     <div className="flex gap-2">
       <TooltipButton tooltip="Add item" hotkey="N">
-        <Button size="icon" variant="outline"><IconPlus /></Button>
+        <Button size="icon" variant="outline">
+          <IconPlus />
+        </Button>
       </TooltipButton>
       <TooltipButton tooltip="Delete" hotkey="Del">
-        <Button size="icon" variant="outline"><IconTrash /></Button>
+        <Button size="icon" variant="outline">
+          <IconTrash />
+        </Button>
       </TooltipButton>
     </div>
   ),
@@ -72,20 +76,28 @@ export const Sides: Story = {
   render: () => (
     <div className="flex gap-4">
       <Tooltip>
-        <TooltipTrigger asChild><Button variant="outline">Top</Button></TooltipTrigger>
+        <TooltipTrigger asChild>
+          <Button variant="outline">Left</Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">Left tooltip</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="outline">Top</Button>
+        </TooltipTrigger>
         <TooltipContent side="top">Top tooltip</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger asChild><Button variant="outline">Right</Button></TooltipTrigger>
-        <TooltipContent side="right">Right tooltip</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild><Button variant="outline">Bottom</Button></TooltipTrigger>
+        <TooltipTrigger asChild>
+          <Button variant="outline">Bottom</Button>
+        </TooltipTrigger>
         <TooltipContent side="bottom">Bottom tooltip</TooltipContent>
       </Tooltip>
       <Tooltip>
-        <TooltipTrigger asChild><Button variant="outline">Left</Button></TooltipTrigger>
-        <TooltipContent side="left">Left tooltip</TooltipContent>
+        <TooltipTrigger asChild>
+          <Button variant="outline">Right</Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Right tooltip</TooltipContent>
       </Tooltip>
     </div>
   ),

@@ -25,13 +25,21 @@ export const Default: Story = {
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Suggestions">
-          <CommandItem><IconCalendar /> Calendar</CommandItem>
-          <CommandItem><IconMail /> Mail</CommandItem>
-          <CommandItem><IconUser /> Profile</CommandItem>
+          <CommandItem>
+            <IconCalendar /> Calendar
+          </CommandItem>
+          <CommandItem>
+            <IconMail /> Mail
+          </CommandItem>
+          <CommandItem>
+            <IconUser /> Profile
+          </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Settings">
-          <CommandItem><IconSettings /> Settings</CommandItem>
+          <CommandItem>
+            <IconSettings /> Settings
+          </CommandItem>
         </CommandGroup>
       </CommandList>
     </Command>

@@ -272,7 +272,7 @@ export const Responsive: Story = {
     return (
       <div className="flex flex-col gap-4">
         <div
-          style={{ width: 400, minWidth: 100, maxWidth: 600 }}
+          style={{ width: 450, minWidth: 100, maxWidth: 600 }}
           className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
         >
           <ButtonGroup responsive>
@@ -293,7 +293,7 @@ export const Responsive: Story = {
           </ButtonGroup>
         </div>
         <div
-          style={{ width: 150, minWidth: 100, maxWidth: 600 }}
+          style={{ width: 300, minWidth: 100, maxWidth: 600 }}
           className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
         >
           <ButtonGroup responsive>

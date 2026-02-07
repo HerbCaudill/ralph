@@ -26,7 +26,11 @@ const TooltipContent = React.forwardRef<
 ))
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
-function Kbd({ children, className, ...props }: React.HTMLAttributes<HTMLElement> & { children: React.ReactNode }) {
+function Kbd({
+  children,
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLElement> & { children: React.ReactNode }) {
   return (
     <kbd
       className={cn(

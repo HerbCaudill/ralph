@@ -57,7 +57,13 @@ export const ExtraSmall: Story = {
 }
 
 export const WithIcon: Story = {
-  args: { children: <><IconPlus /> Create</> },
+  args: {
+    children: (
+      <>
+        <IconPlus /> Create
+      </>
+    ),
+  },
 }
 
 export const IconOnly: Story = {
@@ -88,10 +94,18 @@ export const AllSizes: Story = {
       <Button size="sm">Small</Button>
       <Button size="default">Default</Button>
       <Button size="lg">Large</Button>
-      <Button size="icon-xs"><IconDownload /></Button>
-      <Button size="icon-sm"><IconDownload /></Button>
-      <Button size="icon"><IconDownload /></Button>
-      <Button size="icon-lg"><IconDownload /></Button>
+      <Button size="icon-xs">
+        <IconDownload />
+      </Button>
+      <Button size="icon-sm">
+        <IconDownload />
+      </Button>
+      <Button size="icon">
+        <IconDownload />
+      </Button>
+      <Button size="icon-lg">
+        <IconDownload />
+      </Button>
     </div>
   ),
 }
