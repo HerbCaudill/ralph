@@ -8,9 +8,13 @@ import type {
   ControlState,
 } from "@herbcaudill/agent-view"
 
+// Mock TopologySpinner (local component)
+vi.mock("../TopologySpinner", () => ({
+  TopologySpinner: () => <div data-testid="topology-spinner" />,
+}))
+
 // Mock agent-view components
 vi.mock("@herbcaudill/agent-view", () => ({
-  TopologySpinner: () => <div data-testid="topology-spinner" />,
   AgentView: ({ events, isStreaming, header, footer, emptyState }: any) => (
     <div data-testid="agent-view">
       {header}

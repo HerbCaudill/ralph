@@ -51,8 +51,6 @@ export { MarkdownContent } from "./components/MarkdownContent"
 export type { MarkdownContentProps } from "./components/MarkdownContent"
 export { TextWithLinks } from "./components/TextWithLinks"
 export type { TextWithLinksProps } from "./components/TextWithLinks"
-export { TopologySpinner } from "./components/TopologySpinner"
-export type { TopologySpinnerProps } from "./components/TopologySpinner"
 
 // Context
 export { AgentViewContext, DEFAULT_AGENT_VIEW_CONTEXT } from "./context/AgentViewContext"

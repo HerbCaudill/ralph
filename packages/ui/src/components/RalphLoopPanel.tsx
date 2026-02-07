@@ -13,10 +13,10 @@ import {
   ChatInput,
   TokenUsageDisplay,
   ContextWindowProgress,
-  TopologySpinner,
   useTokenUsage,
   useContextWindow,
 } from "@herbcaudill/agent-view"
+import { TopologySpinner } from "./TopologySpinner"
 import type {
   ChatEvent,
   ControlState,

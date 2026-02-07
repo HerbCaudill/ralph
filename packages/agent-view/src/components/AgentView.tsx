@@ -6,7 +6,7 @@ import type { ChatEvent, AgentViewContextValue } from "../types"
 
 /** Simple CSS-only spinning circle used as the default spinner. */
 const DEFAULT_SPINNER = (
-  <div className="text-repo-accent size-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
+  <div className="text-repo-accent size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
 )
 
 /**
@@ -27,7 +27,7 @@ const DEFAULT_SPINNER = (
  * <AgentView
  *   events={events}
  *   isStreaming={true}
- *   spinner={<TopologySpinner />}
+ *   spinner={<MyCustomSpinner />}
  * />
  * ```
  */

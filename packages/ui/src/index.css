@@ -4,3 +4,20 @@
 @source "../node_modules/@herbcaudill/agent-view/dist";
 @source "../node_modules/@herbcaudill/beads-view/dist";
 @import "@herbcaudill/agent-view/styles.css";
+
+/* Combined spin and pulse animation for TopologySpinner */
+@keyframes spin-pulse {
+  0% {
+    transform: rotate(0deg) scale(0.6);
+  }
+  50% {
+    transform: rotate(180deg) scale(1);
+  }
+  100% {
+    transform: rotate(360deg) scale(0.6);
+  }
+}
+
+.animate-spin-pulse {
+  animation: spin-pulse 1s linear infinite;
+}
