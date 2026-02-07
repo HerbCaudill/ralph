@@ -45,8 +45,6 @@ type Props = {
   label: string
   tasks: RelatedTask[]
   issuePrefix: string | null
-  /** @deprecated No longer used - sections are always expanded */
-  defaultExpanded?: boolean
   onRemove?: (taskId: string) => void
   removableIds?: string[]
 }

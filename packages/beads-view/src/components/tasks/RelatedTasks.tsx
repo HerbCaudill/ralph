@@ -173,17 +173,11 @@ export function RelatedTasks({
       {isLoading ?
         <div className="text-muted-foreground text-sm">Loading...</div>
       : <div className="space-y-2">
-          <CollapsibleSection
-            label="Children"
-            tasks={childTasks}
-            issuePrefix={issuePrefix}
-            defaultExpanded={true}
-          />
+          <CollapsibleSection label="Children" tasks={childTasks} issuePrefix={issuePrefix} />
           <CollapsibleSection
             label="Blocked by"
             tasks={blockers}
             issuePrefix={issuePrefix}
-            defaultExpanded={true}
             onRemove={!readOnly ? handleRemoveBlocker : undefined}
             removableIds={editableBlockers.map(b => b.id)}
           />
@@ -199,12 +193,7 @@ export function RelatedTasks({
               />
             </div>
           )}
-          <CollapsibleSection
-            label="Blocks"
-            tasks={dependents}
-            issuePrefix={issuePrefix}
-            defaultExpanded={true}
-          />
+          <CollapsibleSection label="Blocks" tasks={dependents} issuePrefix={issuePrefix} />
         </div>
       }
     </div>
