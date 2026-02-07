@@ -17,7 +17,6 @@ import {
   IconStack2,
 } from "@tabler/icons-react"
 import { ButtonGroup, ButtonGroupSeparator, ButtonGroupText } from "../components/button-group"
-import { ResponsiveButtonGroup } from "../components/responsive-button-group"
 import { Button } from "../components/button"
 import { cn } from "../lib/cn"
 
@@ -266,7 +265,7 @@ export const Status: Story = {
         style={{ width: 400, minWidth: 100, maxWidth: 600 }}
         className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
       >
-        <ResponsiveButtonGroup>
+        <ButtonGroup responsive>
           {statusOptions.map(s => {
             const Icon = s.icon
             return (
@@ -281,7 +280,7 @@ export const Status: Story = {
               </ToggleButton>
             )
           })}
-        </ResponsiveButtonGroup>
+        </ButtonGroup>
       </div>
     )
   },
@@ -312,7 +311,7 @@ export const IssueType: Story = {
     const [selected, setSelected] = useState("task")
     return (
       <div style={{ width: 300 }}>
-        <ResponsiveButtonGroup>
+        <ButtonGroup responsive>
           {issueTypeOptions.map(t => {
             const Icon = t.icon
             return (
@@ -327,7 +326,7 @@ export const IssueType: Story = {
               </ToggleButton>
             )
           })}
-        </ResponsiveButtonGroup>
+        </ButtonGroup>
       </div>
     )
   },

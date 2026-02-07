@@ -49,8 +49,6 @@ export { Label } from "./components/label"
 
 export { Popover, PopoverTrigger, PopoverContent } from "./components/popover"
 
-export { ResponsiveButtonGroup } from "./components/responsive-button-group"
-
 export {
   Select,
   SelectGroup,

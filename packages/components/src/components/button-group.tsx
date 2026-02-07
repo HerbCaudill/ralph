@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -21,11 +22,18 @@ const buttonGroupVariants = cva(
   },
 )
 
-function ButtonGroup({
-  className,
-  orientation,
-  ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof buttonGroupVariants>) {
+/**
+ * A group of buttons rendered as a unified control with shared borders.
+ *
+ * When `responsive` is true, automatically collapses to icon-only buttons when
+ * content would overflow. Button children should include an icon element and a
+ * `<span data-label>` for the text label.
+ */
+function ButtonGroup({ className, orientation, responsive = false, ...props }: ButtonGroupProps) {
+  if (responsive) {
+    return <ResponsiveButtonGroup className={className} orientation={orientation} {...props} />
+  }
+
   return (
     <div
       role="group"
@@ -37,6 +45,82 @@ function ButtonGroup({
   )
 }
 
+/**
+ * Internal responsive wrapper that collapses labels when content overflows.
+ *
+ * Uses ResizeObserver and useLayoutEffect to measure actual content width vs
+ * available space, so no hardcoded breakpoint is needed.
+ */
+function ResponsiveButtonGroup({ className, orientation, ...props }: ButtonGroupProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [collapsed, setCollapsed] = useState(false)
+
+  /** Remembered full-width measurement so we know when it's safe to expand again. */
+  const fullWidthRef = useRef<number>(0)
+  const collapsedRef = useRef(false)
+
+  // After initial render, check if content overflows before paint.
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!container || collapsedRef.current) return
+
+    const contentWidth = container.scrollWidth
+    fullWidthRef.current = contentWidth
+    if (contentWidth > container.clientWidth) {
+      collapsedRef.current = true
+      setCollapsed(true)
+    }
+  })
+
+  // Watch for container resize to collapse or expand as needed.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const observer = new ResizeObserver(() => {
+      if (collapsedRef.current) {
+        if (container.clientWidth >= fullWidthRef.current) {
+          collapsedRef.current = false
+          setCollapsed(false)
+        }
+      } else {
+        const contentWidth = container.scrollWidth
+        fullWidthRef.current = contentWidth
+        if (contentWidth > container.clientWidth) {
+          collapsedRef.current = true
+          setCollapsed(true)
+        }
+      }
+    })
+
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={containerRef} className="min-w-0 flex-1 overflow-hidden">
+      <div
+        role="group"
+        data-slot="button-group"
+        data-orientation={orientation}
+        className={cn(
+          buttonGroupVariants({ orientation }),
+          "bg-background h-8 overflow-hidden",
+          collapsed &&
+            [
+              "[&>*:not(:hover):not([aria-pressed=true])_[data-label]]:hidden",
+              "[&>*:not(:hover):not([aria-pressed=true])]:gap-0",
+              "[&>*:not(:hover):not([aria-pressed=true])]:px-1.5",
+            ].join(" "),
+          className,
+        )}
+        {...props}
+      />
+    </div>
+  )
+}
+
+/** A text label inside a ButtonGroup. */
 function ButtonGroupText({
   className,
   asChild = false,
@@ -57,6 +141,7 @@ function ButtonGroupText({
   )
 }
 
+/** A visual separator between groups of buttons. */
 function ButtonGroupSeparator({
   className,
   orientation = "vertical",
@@ -76,3 +161,9 @@ function ButtonGroupSeparator({
 }
 
 export { ButtonGroup, ButtonGroupSeparator, ButtonGroupText, buttonGroupVariants }
+
+type ButtonGroupProps = React.ComponentProps<"div"> &
+  VariantProps<typeof buttonGroupVariants> & {
+    /** When true, collapses to icon-only when content overflows. */
+    responsive?: boolean
+  }
