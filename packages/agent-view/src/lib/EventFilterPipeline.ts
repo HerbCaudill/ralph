@@ -2,7 +2,7 @@
  * EventFilterPipeline - Centralized event filtering logic for the Ralph UI.
  *
  * This module consolidates all event filtering decisions that were previously
- * scattered across useStreamingState, EventDisplay, EventStreamEventItem, and
+ * scattered across useStreamingState, EventList, EventStreamEventItem, and
  * renderEventContentBlock.
  *
  * ## Design Goals

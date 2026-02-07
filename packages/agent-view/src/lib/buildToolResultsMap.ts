@@ -16,7 +16,7 @@ export type ToolResultsInfo = {
  * Also detects whether the events contain structured lifecycle events
  * (ralph task started/completed).
  *
- * This logic was previously duplicated across EventDisplay and EventList components.
+ * Used by EventList and useEventListState.
  */
 export function buildToolResultsMap(events: ChatEvent[]): ToolResultsInfo {
   const results = new Map<string, ToolResult>()

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { EventList } from ".././EventList"
+import { AutoScroll } from ".././AutoScroll"
 import type { ChatEvent } from "../../types"
 
 const meta: Meta<typeof EventList> = {
@@ -189,4 +190,22 @@ export const MaxEventsLimit: Story = {
     ),
     maxEvents: 10,
   },
+}
+
+/** Wraps EventList in AutoScroll for a complete scrollable display with scroll-to-bottom button. */
+export const WithAutoScroll: Story = {
+  args: {
+    events: Array.from({ length: 20 }, (_, i) => [
+      userMessageEvent(`Question ${i + 1}: How do I implement feature ${i + 1}?`, (20 - i) * 6000),
+      assistantTextEvent(
+        `To implement feature ${i + 1}, you would need to create the component, add business logic, and write tests to verify everything works correctly.`,
+        (20 - i) * 6000 - 3000,
+      ),
+    ]).flat(),
+  },
+  render: args => (
+    <AutoScroll ariaLabel="Event stream" dependencies={[args.events]}>
+      <EventList {...args} />
+    </AutoScroll>
+  ),
 }
