@@ -79,8 +79,13 @@ export function ResponsiveButtonGroup({ className, ...props }: Props) {
       <ButtonGroup
         className={cn(
           "bg-background h-8 overflow-hidden",
+          // When collapsed, hide labels/gap/padding on buttons that are neither hovered nor selected
           collapsed &&
-            "[&>*:not(:hover)_[data-label]]:hidden [&>*:not(:hover)]:gap-0 [&>*:not(:hover)]:px-1.5",
+            [
+              "[&>*:not(:hover):not([aria-pressed=true])_[data-label]]:hidden",
+              "[&>*:not(:hover):not([aria-pressed=true])]:gap-0",
+              "[&>*:not(:hover):not([aria-pressed=true])]:px-1.5",
+            ].join(" "),
           className,
         )}
         {...props}
