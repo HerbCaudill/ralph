@@ -62,7 +62,7 @@ export function BlockerCombobox({
                     onAdd(t.id)
                     setOpen(false)
                   }}
-                  className="gap-0 px-1 py-0.5"
+                  className="border-border gap-0 border-b px-1 py-0.5 last:border-b-0 [&_svg]:size-3.5"
                 >
                   <TaskCardCompact task={t} />
                 </CommandItem>
