@@ -79,7 +79,8 @@ export function ResponsiveButtonGroup({ className, ...props }: Props) {
       <ButtonGroup
         className={cn(
           "bg-background h-8 overflow-hidden",
-          collapsed && "**:data-label:hidden [&>button]:gap-0 [&>button]:px-1.5",
+          collapsed &&
+            "[&>*:not(:hover)_[data-label]]:hidden [&>*:not(:hover)]:gap-0 [&>*:not(:hover)]:px-1.5",
           className,
         )}
         {...props}

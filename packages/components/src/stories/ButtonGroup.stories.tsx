@@ -248,7 +248,7 @@ function ToggleButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex h-full items-center justify-center gap-1 px-2 transition-colors",
+        "flex h-full cursor-pointer items-center justify-center gap-1 px-2 transition-colors",
         isSelected ? cn("text-white", selectedBg) : cn(color, "bg-transparent", unselectedHover),
       )}
       aria-pressed={isSelected}
