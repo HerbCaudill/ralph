@@ -28,8 +28,8 @@ export const MessageEvent = BaseEvent.pipe(
       type: S.Literal("message"),
       content: S.String,
       isPartial: S.optional(S.Boolean),
-    })
-  )
+    }),
+  ),
 )
 
 /** Extended thinking content from the assistant. */
@@ -39,8 +39,8 @@ export const ThinkingEvent = BaseEvent.pipe(
       type: S.Literal("thinking"),
       content: S.String,
       isPartial: S.optional(S.Boolean),
-    })
-  )
+    }),
+  ),
 )
 
 /** A tool invocation by the assistant. */
@@ -51,8 +51,8 @@ export const ToolUseEvent = BaseEvent.pipe(
       toolUseId: S.String,
       tool: S.String,
       input: S.Record({ key: S.String, value: S.Unknown }),
-    })
-  )
+    }),
+  ),
 )
 
 /** The result of a tool invocation. */
@@ -64,8 +64,8 @@ export const ToolResultEvent = BaseEvent.pipe(
       output: S.optional(S.String),
       error: S.optional(S.String),
       isError: S.Boolean,
-    })
-  )
+    }),
+  ),
 )
 
 /** Final result of an agent run. */
@@ -80,10 +80,10 @@ export const ResultEvent = BaseEvent.pipe(
           inputTokens: S.optional(S.Number),
           outputTokens: S.optional(S.Number),
           totalTokens: S.optional(S.Number),
-        })
+        }),
       ),
-    })
-  )
+    }),
+  ),
 )
 
 /** An error from the agent. */
@@ -94,8 +94,8 @@ export const ErrorEvent = BaseEvent.pipe(
       message: S.String,
       code: S.optional(S.String),
       fatal: S.Boolean,
-    })
-  )
+    }),
+  ),
 )
 
 /** Agent status changed. */
@@ -104,8 +104,8 @@ export const StatusEvent = BaseEvent.pipe(
     S.Struct({
       type: S.Literal("status"),
       status: S.Literal("idle", "starting", "running", "paused", "stopping", "stopped"),
-    })
-  )
+    }),
+  ),
 )
 
 // ---------------------------------------------------------------------------
@@ -142,5 +142,5 @@ export const CanonicalEvent = S.Union(
   ResultEvent,
   ErrorEvent,
   StatusEvent,
-  UnknownEvent
+  UnknownEvent,
 )

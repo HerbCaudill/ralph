@@ -17,8 +17,16 @@ function makeSession(overrides: Partial<SessionIndexEntry> = {}): SessionIndexEn
 function renderPicker(overrides: Partial<SessionPickerProps> = {}) {
   const props: SessionPickerProps = {
     sessions: [
-      makeSession({ sessionId: "s1", firstUserMessage: "First session", lastMessageAt: Date.now() - 5 * 60 * 1000 }),
-      makeSession({ sessionId: "s2", firstUserMessage: "Second session", lastMessageAt: Date.now() - 60 * 60 * 1000 }),
+      makeSession({
+        sessionId: "s1",
+        firstUserMessage: "First session",
+        lastMessageAt: Date.now() - 5 * 60 * 1000,
+      }),
+      makeSession({
+        sessionId: "s2",
+        firstUserMessage: "Second session",
+        lastMessageAt: Date.now() - 60 * 60 * 1000,
+      }),
     ],
     currentSessionId: "s1",
     onSelectSession: vi.fn(),
@@ -137,7 +145,9 @@ describe("SessionPicker", () => {
       fireEvent.click(screen.getByTitle("Session history"))
 
       // The current session row should contain an SVG (the IconCheck)
-      const sessionButtons = screen.getAllByRole("button").filter(b => b.textContent?.includes("First session"))
+      const sessionButtons = screen
+        .getAllByRole("button")
+        .filter(b => b.textContent?.includes("First session"))
       expect(sessionButtons).toHaveLength(1)
 
       const svg = sessionButtons[0].querySelector("svg")
@@ -148,7 +158,9 @@ describe("SessionPicker", () => {
       renderPicker({ currentSessionId: "s1" })
       fireEvent.click(screen.getByTitle("Session history"))
 
-      const sessionButtons = screen.getAllByRole("button").filter(b => b.textContent?.includes("Second session"))
+      const sessionButtons = screen
+        .getAllByRole("button")
+        .filter(b => b.textContent?.includes("Second session"))
       expect(sessionButtons).toHaveLength(1)
 
       const svg = sessionButtons[0].querySelector("svg")

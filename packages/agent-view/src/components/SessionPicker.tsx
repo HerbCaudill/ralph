@@ -74,9 +74,7 @@ export function SessionPicker({
 
       {isOpen && hasSessions && (
         <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-md border border-border bg-background shadow-md">
-          <div className="px-3 py-2 text-xs font-medium text-muted-foreground">
-            Recent Sessions
-          </div>
+          <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Recent Sessions</div>
           <div className="max-h-64 overflow-y-auto">
             {sessions.map(session => {
               const isActive = session.sessionId === currentSessionId
@@ -95,11 +93,7 @@ export function SessionPicker({
                     </div>
                   </div>
                   {isActive && (
-                    <IconCheck
-                      size={14}
-                      stroke={2}
-                      className="mt-0.5 shrink-0 text-primary"
-                    />
+                    <IconCheck size={14} stroke={2} className="mt-0.5 shrink-0 text-primary" />
                   )}
                 </button>
               )

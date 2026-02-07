@@ -46,5 +46,5 @@ export const isStatusEvent = (event: CanonicalEventType): event is StatusEventTy
 /** Check if an event is a known core type (not an unknown/custom event). */
 export const isCoreEvent = (event: CanonicalEventType): boolean =>
   ["message", "thinking", "tool_use", "tool_result", "result", "error", "status"].includes(
-    event.type
+    event.type,
   )
