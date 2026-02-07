@@ -267,28 +267,52 @@ export const ColorCoded: Story = {
 
 export const Responsive: Story = {
   render: () => {
-    const [selected, setSelected] = useState("open")
+    const [selected1, setSelected1] = useState("open")
+    const [selected2, setSelected2] = useState("open")
     return (
-      <div
-        style={{ width: 400, minWidth: 100, maxWidth: 600 }}
-        className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
-      >
-        <ButtonGroup responsive>
-          {statusOptions.map(s => {
-            const Icon = s.icon
-            return (
-              <ToggleButton
-                key={s.value}
-                isSelected={selected === s.value}
-                onClick={() => setSelected(s.value)}
-                {...s}
-              >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span data-label>{s.label}</span>
-              </ToggleButton>
-            )
-          })}
-        </ButtonGroup>
+      <div className="flex flex-col gap-4">
+        <div
+          style={{ width: 400, minWidth: 100, maxWidth: 600 }}
+          className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
+        >
+          <ButtonGroup responsive>
+            {statusOptions.map(s => {
+              const Icon = s.icon
+              return (
+                <ToggleButton
+                  key={s.value}
+                  isSelected={selected1 === s.value}
+                  onClick={() => setSelected1(s.value)}
+                  {...s}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span data-label>{s.label}</span>
+                </ToggleButton>
+              )
+            })}
+          </ButtonGroup>
+        </div>
+        <div
+          style={{ width: 150, minWidth: 100, maxWidth: 600 }}
+          className="resize-x overflow-hidden rounded border border-dashed border-gray-300 p-2"
+        >
+          <ButtonGroup responsive>
+            {statusOptions.map(s => {
+              const Icon = s.icon
+              return (
+                <ToggleButton
+                  key={s.value}
+                  isSelected={selected2 === s.value}
+                  onClick={() => setSelected2(s.value)}
+                  {...s}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span data-label>{s.label}</span>
+                </ToggleButton>
+              )
+            })}
+          </ButtonGroup>
+        </div>
       </div>
     )
   },
