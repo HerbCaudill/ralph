@@ -1,15 +1,17 @@
 import { useState } from "react"
 import { IconCheck, IconPlus } from "@tabler/icons-react"
-import { Button } from "../ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-} from "../ui/command"
+} from "@herbcaudill/components"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
 import type { TaskCardTask } from "../../types"
 

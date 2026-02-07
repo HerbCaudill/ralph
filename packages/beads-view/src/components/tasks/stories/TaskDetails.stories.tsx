@@ -4,7 +4,7 @@ import { useState, useCallback } from "react"
 import { TaskDetails } from ".././TaskDetails"
 import type { TaskCardTask } from "../../../types"
 import type { IssueType, TaskFormValues } from "../../../hooks/useTaskDetails"
-import { Button } from "../../ui/button"
+import { Button } from "@herbcaudill/components"
 
 const meta: Meta<typeof TaskDetails> = {
   title: "Panels/TaskDetails",

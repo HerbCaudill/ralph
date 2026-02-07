@@ -7,7 +7,12 @@ import {
   selectSelectedTaskId,
   selectVisibleTaskIds,
 } from "../../store"
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupButton } from "../ui/input-group"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupButton,
+} from "@herbcaudill/components"
 
 /**
  * Search input for filtering tasks in the task list.

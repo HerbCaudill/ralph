@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react"
-import { Label } from "../ui/label"
+import { Label } from "@herbcaudill/components"
 import { CollapsibleSection } from "./CollapsibleSection"
 import { BlockerCombobox } from "./BlockerCombobox"
 import { apiFetch } from "../../lib/apiClient"

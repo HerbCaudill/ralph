@@ -6,7 +6,7 @@ import { cn } from "../../lib/cn"
 import { getContrastingColor } from "../../lib/getContrastingColor"
 import { useBeadsViewStore, selectAccentColor, selectTaskInputDraft } from "../../store"
 import { DEFAULT_INPUT_ACCENT_COLOR } from "../../constants"
-import { InputGroup, InputGroupAddon, InputGroupButton } from "../ui/input-group"
+import { InputGroup, InputGroupAddon, InputGroupButton } from "@herbcaudill/components"
 import { apiFetch } from "../../lib/apiClient"
 import { useState } from "react"
 
