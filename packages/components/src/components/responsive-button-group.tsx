@@ -78,7 +78,7 @@ export function ResponsiveButtonGroup({ className, ...props }: Props) {
     <div ref={containerRef} className="min-w-0 flex-1 overflow-hidden">
       <ButtonGroup
         className={cn(
-          "bg-background h-8",
+          "bg-background h-8 overflow-hidden",
           collapsed && "**:data-label:hidden [&>button]:gap-0 [&>button]:px-1.5",
           className,
         )}
