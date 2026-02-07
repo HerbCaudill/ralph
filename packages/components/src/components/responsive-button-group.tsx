@@ -1,12 +1,13 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { cn } from "../lib/cn"
 import { ButtonGroup } from "./button-group"
 
 /**
- * A responsive button group that shows icon-only buttons when there's insufficient
- * horizontal space, and icon + text when there's enough room.
+ * A responsive button group that automatically collapses to icon-only buttons
+ * when the content would overflow the available space.
  *
- * Uses CSS container queries to detect available width and hide text labels
- * when the container is narrow.
+ * Measures actual content width vs available space using ResizeObserver and
+ * useLayoutEffect, so no hardcoded breakpoint is needed.
  *
  * Button children should include:
  * - An icon element (any element without data-label)
@@ -22,24 +23,50 @@ import { ButtonGroup } from "./button-group"
  * </ResponsiveButtonGroup>
  * ```
  */
-export function ResponsiveButtonGroup({
-  className,
-  ...props
-}: React.ComponentProps<typeof ButtonGroup>) {
+export function ResponsiveButtonGroup({ className, ...props }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [collapsed, setCollapsed] = useState(false)
+
+  /** Remembered full-width measurement so we know when it's safe to expand again. */
+  const fullWidthRef = useRef<number>(0)
+  const collapsedRef = useRef(false)
+
+  // After each render, check if expanded content overflows.
+  // useLayoutEffect runs before paint, so the user never sees a clipped state.
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!container || collapsedRef.current) return
+
+    const contentWidth = container.scrollWidth
+    fullWidthRef.current = contentWidth
+    if (contentWidth > container.clientWidth) {
+      collapsedRef.current = true
+      setCollapsed(true)
+    }
+  })
+
+  // Watch for container resize to know when there's room to expand again.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const observer = new ResizeObserver(() => {
+      if (collapsedRef.current && container.clientWidth >= fullWidthRef.current) {
+        collapsedRef.current = false
+        setCollapsed(false)
+      }
+    })
+
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    // The container must fill available width for container queries to measure available space.
-    // Without flex-1, the container would only be as wide as its content (due to ButtonGroup's w-fit),
-    // and container queries would measure content width instead of available width.
-    <div className="@container min-w-0 flex-1">
+    <div ref={containerRef} className="min-w-0 flex-1 overflow-hidden">
       <ButtonGroup
         className={cn(
-          "bg-background h-8 overflow-hidden",
-          // When container is narrow (< 240px), hide the text labels
-          "[&_[data-label]]:@max-[240px]:hidden",
-          // When container is narrow, remove gap from buttons
-          "[&>button]:@max-[240px]:gap-0",
-          // Adjust padding when in icon-only mode
-          "[&>button]:@max-[240px]:px-1.5",
+          "bg-background h-8",
+          collapsed && "**:data-label:hidden [&>button]:gap-0 [&>button]:px-1.5",
           className,
         )}
         {...props}
@@ -47,3 +74,5 @@ export function ResponsiveButtonGroup({
     </div>
   )
 }
+
+type Props = React.ComponentProps<typeof ButtonGroup>
