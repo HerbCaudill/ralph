@@ -13,7 +13,7 @@ export function ContextWindowProgress({ contextWindow }: ContextWindowProgressPr
   const getProgressColor = () => {
     if (progress >= 80) return "bg-status-error"
     if (progress >= 50) return "bg-status-warning"
-    return "bg-repo-accent"
+    return "bg-status-success"
   }
 
   return (
