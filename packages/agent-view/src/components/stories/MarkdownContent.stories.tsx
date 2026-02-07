@@ -75,6 +75,8 @@ const api = createApi({
 2. Set up CI/CD pipeline
 3. Deploy to staging environment
 
+### Note 
+
 > The choice of PostgreSQL over MongoDB was driven by our need for strong consistency
 > and complex relational queries.
 
