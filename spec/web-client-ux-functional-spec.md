@@ -617,7 +617,7 @@ The following shortcuts are displayed in the Hotkeys dialog and should match beh
 - Focus search: Cmd+F
 - Previous workspace: Cmd+Shift+[
 - Next workspace: Cmd+Shift+]
-- Toggle tool output: Ctrl+O
+- Toggle tool output: Cmd+Shift+O (Ctrl+Shift+O on Windows/Linux)
 - New task chat (clear history): Cmd+Backspace
 - Previous task: ArrowUp
 - Next task: ArrowDown
@@ -734,7 +734,7 @@ This section captures UX constraints surfaced by closed bd issues and commit his
 
 - Task chat maintains a continuous conversation context across messages; “Clear history” resets to a fresh conversation.
 - Assistant responses appear alongside tool usage; task chat messages never appear twice or garble text.
-- Tool output expansion is a global toggle: Ctrl+O applies in both the event stream and task chat.
+- Tool output expansion is a global toggle: Cmd+Shift+O (Ctrl+Shift+O on Windows/Linux) applies in both the event stream and task chat.
 - Tool cards are also clickable to toggle expansion; a disclosure triangle (▸/▾) reflects state.
 
 ### 17.4 Task list and search

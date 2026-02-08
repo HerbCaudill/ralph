@@ -106,4 +106,27 @@ test.describe("Agent Chat Demo", () => {
     // Input should be focused after clicking New session
     await expect(input).toBeFocused()
   })
+
+  test("cmd+/ opens hotkeys dialog", async ({ page }) => {
+    await expect(page.getByText("connected")).toBeVisible()
+
+    // cmd+/ should open the hotkeys dialog
+    // On macOS (where Playwright runs), cmd maps to Meta
+    // First verify the dialog doesn't exist yet
+    const dialog = page.getByRole("dialog")
+    await expect(dialog).not.toBeVisible()
+
+    // Press the shortcut (Meta+/ for cmd+/ on Mac)
+    await page.keyboard.press("Meta+/")
+
+    // Dialog should appear
+    await expect(dialog).toBeVisible({ timeout: 2000 })
+
+    // Verify the dialog shows the correct shortcut for toggleToolOutput
+    await expect(page.locator("text=Toggle tool output")).toBeVisible()
+
+    // Close the dialog
+    await page.keyboard.press("Escape")
+    await expect(dialog).not.toBeVisible()
+  })
 })

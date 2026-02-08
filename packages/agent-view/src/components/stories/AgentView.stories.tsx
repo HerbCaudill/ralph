@@ -376,10 +376,11 @@ function AgentViewWithHotkeys({ events }: { events: ChatEvent[] }) {
 }
 
 /**
- * Integration test: Ctrl+O toggles tool output visibility.
+ * Integration test: Cmd+Shift+O toggles tool output visibility.
  * Verifies the full chain: keypress → useAgentHotkeys → state change → context update → DOM change.
+ * Note: We use Ctrl+Shift+O in tests because jsdom reports non-Mac platform.
  */
-export const CtrlOToggle: Story = {
+export const CmdShiftOToggle: Story = {
   render: () => <AgentViewWithHotkeys events={sessionEvents} />,
   play: async ({ canvasElement }) => {
     /** Tool output cards have aria-expanded when they have expandable content. */
@@ -392,15 +393,15 @@ export const CtrlOToggle: Story = {
       expect(card).toHaveAttribute("aria-expanded", "true")
     }
 
-    /** Press Ctrl+O — tool output should collapse. */
-    await userEvent.keyboard("{Control>}o{/Control}")
+    /** Press Cmd+Shift+O (Meta+Shift+O on Mac, Ctrl+Shift+O on non-Mac) — tool output should collapse. */
+    await userEvent.keyboard("{Meta>}{Shift>}o{/Shift}{/Meta}")
 
     for (const card of getExpandedCards()) {
       expect(card).toHaveAttribute("aria-expanded", "false")
     }
 
-    /** Press Ctrl+O again — tool output should expand. */
-    await userEvent.keyboard("{Control>}o{/Control}")
+    /** Press Cmd+Shift+O again — tool output should expand. */
+    await userEvent.keyboard("{Meta>}{Shift>}o{/Shift}{/Meta}")
 
     for (const card of getExpandedCards()) {
       expect(card).toHaveAttribute("aria-expanded", "true")

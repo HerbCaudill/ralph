@@ -79,9 +79,9 @@ describe("hotkeys config", () => {
     expect(hotkeys.newSession.modifiers).toEqual(["cmd"])
   })
 
-  it("parses ctrl+o into key='o' with modifiers=['ctrl']", () => {
+  it("parses cmd+shift+o into key='o' with modifiers=['cmd', 'shift']", () => {
     expect(hotkeys.toggleToolOutput.key).toBe("o")
-    expect(hotkeys.toggleToolOutput.modifiers).toEqual(["ctrl"])
+    expect(hotkeys.toggleToolOutput.modifiers).toEqual(["cmd", "shift"])
   })
 
   it("parses cmd+ArrowDown into key='ArrowDown' with modifiers=['cmd']", () => {
@@ -321,7 +321,7 @@ describe("useAgentHotkeys", () => {
       expect(handler).not.toHaveBeenCalled()
     })
 
-    it("calls handler for toggleToolOutput (ctrl+o) on non-Mac", () => {
+    it("calls handler for toggleToolOutput (cmd+shift+o) on non-Mac", () => {
       const handler = vi.fn()
       renderHook(() =>
         useAgentHotkeys({
@@ -329,12 +329,12 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      // toggleToolOutput is ctrl+o; on Windows/Linux ctrl maps to ctrlKey
-      fireKey({ key: "o", ctrlKey: true })
+      // toggleToolOutput is cmd+shift+o; on Windows/Linux cmd maps to ctrlKey
+      fireKey({ key: "o", ctrlKey: true, shiftKey: true })
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
-    it("calls handler for toggleToolOutput (ctrl+o) on Mac", () => {
+    it("calls handler for toggleToolOutput (cmd+shift+o) on Mac", () => {
       // Mock macOS platform
       vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel")
 
@@ -345,8 +345,8 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      // On Mac, ctrl+o uses the physical Control key (ctrlKey), not Cmd (metaKey)
-      fireKey({ key: "o", ctrlKey: true, metaKey: false })
+      // On Mac, cmd+shift+o uses metaKey + shiftKey
+      fireKey({ key: "o", metaKey: true, shiftKey: true })
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
@@ -493,8 +493,8 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      // toggleToolOutput is ctrl+o and is in ALLOWED_IN_INPUT
-      fireKey({ key: "o", ctrlKey: true, target: inputEl })
+      // toggleToolOutput is cmd+shift+o and is in ALLOWED_IN_INPUT
+      fireKey({ key: "o", ctrlKey: true, shiftKey: true, target: inputEl })
       expect(handler).toHaveBeenCalledTimes(1)
     })
 

@@ -11,7 +11,7 @@
       "category": "Chat"
     },
     "toggleToolOutput": {
-      "key": "ctrl+o",
+      "key": "cmd+shift+o",
       "description": "Toggle tool output visibility",
       "category": "Navigation"
     },
