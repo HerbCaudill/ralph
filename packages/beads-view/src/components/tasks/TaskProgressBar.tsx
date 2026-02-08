@@ -46,7 +46,7 @@ export function TaskProgressBar({
 
   return (
     <div
-      className={className}
+      className={cn("border-t border-border", className)}
       role="progressbar"
       aria-valuenow={closedTasks}
       aria-valuemin={0}
