@@ -666,20 +666,6 @@ describe("TaskList", () => {
   })
 
   describe("callbacks", () => {
-    it("calls onStatusChange when task status is changed", () => {
-      const onStatusChange = vi.fn()
-      render(<TaskList tasks={sampleTasks} onStatusChange={onStatusChange} />)
-
-      // Click status icon on first open task (task-2 is first due to priority sorting)
-      const statusButtons = screen.getAllByLabelText("Status: Open. Click to change.")
-      fireEvent.click(statusButtons[0])
-
-      // Select a new status
-      fireEvent.click(screen.getByRole("option", { name: "In Progress" }))
-
-      expect(onStatusChange).toHaveBeenCalledWith("task-2", "in_progress") // task-2 is first due to priority sorting
-    })
-
     it("calls onTaskClick when task is clicked", () => {
       const onTaskClick = vi.fn()
       render(<TaskList tasks={sampleTasks} onTaskClick={onTaskClick} />)

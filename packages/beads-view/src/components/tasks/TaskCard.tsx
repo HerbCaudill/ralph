@@ -4,11 +4,11 @@ import { useBeadsViewStore, selectSelectedTaskId, selectAccentColor } from "../.
 import { DEFAULT_ACCENT_COLOR } from "../../constants"
 import { IconChevronDown, IconHistory } from "@tabler/icons-react"
 import { TaskCardCompact, statusConfig } from "./TaskCardCompact"
-import type { TaskCardTask, TaskStatus } from "../../types"
+import type { Task } from "../../types"
 
 /**
  * Card component for displaying an individual task with status indicator, title, and metadata.
- * Supports status dropdown menu, collapsible subtasks, priority badges, and type indicators.
+ * Supports collapsible subtasks, priority badges, and type indicators.
  * Composes TaskCardCompact for the core row layout.
  */
 export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskCard(
@@ -17,8 +17,6 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     task,
     /** Additional CSS classes to apply */
     className,
-    /** Callback when task status is changed */
-    onStatusChange,
     /** Callback when task is clicked */
     onClick,
     /** Whether to show new task animation */
@@ -37,7 +35,6 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   },
   ref,
 ) {
-  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false)
   const [shouldAnimate, setShouldAnimate] = useState(isNew)
   const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
   const accentColor = useBeadsViewStore(selectAccentColor)
@@ -67,24 +64,6 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   const handleClick = useCallback(() => {
     onClick?.(task.id)
   }, [onClick, task.id])
-
-  const handleStatusClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (onStatusChange) {
-        setIsStatusMenuOpen(prev => !prev)
-      }
-    },
-    [onStatusChange],
-  )
-
-  const handleStatusSelect = useCallback(
-    (status: TaskStatus) => {
-      onStatusChange?.(task.id, status)
-      setIsStatusMenuOpen(false)
-    },
-    [onStatusChange, task.id],
-  )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -169,63 +148,10 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
           )}
         </div>
 
-        {/* Status indicator button */}
-        <button
-          type="button"
-          onClick={handleStatusClick}
-          className={cn(
-            "relative shrink-0 rounded p-0.5 transition-colors",
-            onStatusChange && "hover:bg-muted cursor-pointer",
-            !onStatusChange && "cursor-default",
-          )}
-          aria-label={`Status: ${config.label}${onStatusChange ? ". Click to change." : ""}`}
-          aria-haspopup={onStatusChange ? "listbox" : undefined}
-          aria-expanded={isStatusMenuOpen}
-        >
+        {/* Status indicator */}
+        <div className="shrink-0 rounded p-0.5" aria-label={`Status: ${config.label}`}>
           <StatusIcon className={cn("size-3.5", config.color, shouldSpin && config.animate)} />
-
-          {/* Status dropdown menu */}
-          {isStatusMenuOpen && (
-            <div
-              className="bg-popover border-border absolute top-full left-0 z-10 mt-1 min-w-32 rounded-md border py-1 shadow-lg"
-              role="listbox"
-              aria-label="Select status"
-            >
-              {availableStatuses.map(status => {
-                const sc = statusConfig[status]
-                const Icon = sc.icon
-                return (
-                  <div
-                    key={status}
-                    role="option"
-                    tabIndex={0}
-                    aria-selected={status === task.status}
-                    onClick={e => {
-                      e.stopPropagation()
-                      handleStatusSelect(status)
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        handleStatusSelect(status)
-                      }
-                    }}
-                    className={cn(
-                      "hover:bg-muted flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm",
-                      status === task.status && "bg-muted",
-                    )}
-                  >
-                    <Icon
-                      className={cn("size-3.5", sc.color, status === "in_progress" && sc.animate)}
-                    />
-                    <span>{sc.label}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </button>
+        </div>
 
         {/* Clickable content area - delegates layout to TaskCardCompact */}
         <div
@@ -263,15 +189,10 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
   )
 })
 
-/**  List of all available task statuses for status dropdown menu. */
-const availableStatuses: TaskStatus[] = ["open", "in_progress", "blocked", "deferred", "closed"]
-
 /**  Props for the TaskCard component. */
 export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"> & {
   /** The task data to display */
-  task: TaskCardTask
-  /** Callback when task status is changed via dropdown menu */
-  onStatusChange?: (id: string, status: TaskStatus) => void
+  task: Task
   /** Callback when task is clicked for selection */
   onClick?: (id: string) => void
   /** Whether to show new task animation */

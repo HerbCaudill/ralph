@@ -15,7 +15,6 @@ const meta: Meta<typeof TaskCard> = {
     ),
   ],
   args: {
-    onStatusChange: fn(),
     onClick: fn(),
   },
 }
@@ -156,13 +155,6 @@ export const NoPriority: Story = {
       title: "Task without priority",
       status: "open",
     },
-  },
-}
-
-export const WithoutStatusChangeHandler: Story = {
-  args: {
-    task: baseTask,
-    onStatusChange: undefined,
   },
 }
 

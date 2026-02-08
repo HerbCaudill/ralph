@@ -2,7 +2,6 @@ import { cn } from "../../lib/cn"
 import { TaskCard } from "./TaskCard"
 import { countDescendants } from "../../lib/countDescendants"
 import type { TaskTreeNode } from "../../types"
-import type { TaskStatus } from "../../types"
 
 /**
  * Recursively renders a task tree node and its children with proper indentation.
@@ -13,8 +12,6 @@ export function TaskSubtree({
   node,
   /** Current nesting depth (0 = root, 1 = child, 2 = grandchild, etc.) */
   depth = 0,
-  /** Callback when task status is changed */
-  onStatusChange,
   /** Callback when task is clicked */
   onTaskClick,
   /** Set of task IDs that are newly added (for animation) */
@@ -43,7 +40,6 @@ export function TaskSubtree({
     <div role="group" aria-label={`${task.title} sub-group`}>
       <TaskCard
         task={task}
-        onStatusChange={onStatusChange}
         onClick={onTaskClick}
         isNew={newTaskIds.has(task.id)}
         isCollapsed={hasChildren ? isCollapsed : undefined}
@@ -60,7 +56,6 @@ export function TaskSubtree({
               key={childNode.task.id}
               node={childNode}
               depth={depth + 1}
-              onStatusChange={onStatusChange}
               onTaskClick={onTaskClick}
               newTaskIds={newTaskIds}
               activelyWorkingTaskIds={activelyWorkingTaskIds}
@@ -103,8 +98,6 @@ export interface TaskSubtreeProps {
   node: TaskTreeNode
   /** Current nesting depth */
   depth?: number
-  /** Callback when task status is changed */
-  onStatusChange?: (id: string, status: TaskStatus) => void
   /** Callback when task is clicked */
   onTaskClick?: (id: string) => void
   /** Set of task IDs that are newly added */

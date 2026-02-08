@@ -15,7 +15,6 @@ const meta: Meta<typeof TaskList> = {
     ),
   ],
   args: {
-    onStatusChange: fn(),
     onTaskClick: fn(),
     persistCollapsedState: false, // Disable persistence in stories
   },
@@ -313,13 +312,6 @@ export const PrioritySorting: Story = {
     defaultCollapsed: {
       open: false,
     },
-  },
-}
-
-export const WithoutStatusHandler: Story = {
-  args: {
-    tasks: mixedTasks.slice(0, 3),
-    onStatusChange: undefined,
   },
 }
 

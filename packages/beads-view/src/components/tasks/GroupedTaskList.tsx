@@ -1,7 +1,7 @@
 import { cn } from "../../lib/cn"
 import { TaskGroupHeader } from "./TaskGroupHeader"
 import { TaskSubtree } from "./TaskSubtree"
-import type { TaskTreeNode, TaskStatus, ClosedTasksTimeFilter } from "../../types"
+import type { TaskTreeNode, ClosedTasksTimeFilter } from "../../types"
 
 /**
  * Renders pre-grouped task trees using TaskGroupHeader + TaskSubtree.
@@ -10,7 +10,6 @@ import type { TaskTreeNode, TaskStatus, ClosedTasksTimeFilter } from "../../type
 export function GroupedTaskList({
   groups,
   className,
-  onStatusChange,
   onTaskClick,
   newTaskIds = EMPTY_SET,
   activelyWorkingTaskIds = EMPTY_SET,
@@ -39,7 +38,6 @@ export function GroupedTaskList({
                     key={tree.task.id}
                     node={tree}
                     depth={0}
-                    onStatusChange={onStatusChange}
                     onTaskClick={onTaskClick}
                     newTaskIds={newTaskIds}
                     activelyWorkingTaskIds={activelyWorkingTaskIds}
@@ -91,8 +89,6 @@ export type GroupedTaskListProps = {
   groups: TaskGroupDescriptor[]
   /** Additional CSS classes. */
   className?: string
-  /** Callback when task status is changed. */
-  onStatusChange?: (id: string, status: TaskStatus) => void
   /** Callback when task is clicked. */
   onTaskClick?: (id: string) => void
   /** Set of task IDs that are newly added (for animation). */

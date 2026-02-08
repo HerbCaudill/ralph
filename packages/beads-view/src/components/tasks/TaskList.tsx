@@ -11,13 +11,7 @@ import {
   selectStatusCollapsedState,
   selectParentCollapsedState,
 } from "../../store"
-import type {
-  TaskCardTask,
-  TaskGroup,
-  TaskStatus,
-  TaskTreeNode,
-  ClosedTasksTimeFilter,
-} from "../../types"
+import type { Task, TaskGroup, TaskStatus, TaskTreeNode, ClosedTasksTimeFilter } from "../../types"
 import { TaskListSkeleton } from "./TaskListSkeleton"
 
 /**
@@ -33,8 +27,6 @@ export function TaskList({
   tasks,
   /** Additional CSS classes to apply */
   className,
-  /** Callback when task status is changed */
-  onStatusChange,
   /** Callback when task is clicked */
   onTaskClick,
   /** Default collapsed state for status groups */
@@ -182,7 +174,7 @@ export function TaskList({
 
     // Helper to determine which status group a task tree belongs to
     // Uses the root ancestor's status when it's open (not closed/deferred)
-    const getStatusGroupForTask = (task: TaskCardTask): TaskGroup | null => {
+    const getStatusGroupForTask = (task: Task): TaskGroup | null => {
       const rootAncestor = findRootAncestor(task, taskMap)
       const rootIsOpen = !isTerminalStatus(rootAncestor.status)
 
@@ -198,7 +190,7 @@ export function TaskList({
     }
 
     // Build filtered tree nodes from roots, only including visible tasks
-    const buildFilteredTree = (task: TaskCardTask, includeTask: boolean): TaskTreeNode | null => {
+    const buildFilteredTree = (task: Task, includeTask: boolean): TaskTreeNode | null => {
       const children = childrenMap.get(task.id) ?? []
       const filteredChildren: TaskTreeNode[] = []
 
@@ -275,7 +267,7 @@ export function TaskList({
     const addedTaskIds = new Set<string>()
 
     // Helper to add a task (with its subtree) to the appropriate status group
-    const addTaskToGroup = (task: TaskCardTask, includeChildren: boolean): void => {
+    const addTaskToGroup = (task: Task, includeChildren: boolean): void => {
       if (addedTaskIds.has(task.id)) return
       if (!filteredTaskIds.has(task.id)) return
 
@@ -315,8 +307,8 @@ export function TaskList({
         // If all children belong to the same group as the root, keep the tree together
         // If some children belong to different groups, split them out
         const children = childrenMap.get(root.task.id) ?? []
-        const sameGroupChildren: TaskCardTask[] = []
-        const differentGroupChildren: TaskCardTask[] = []
+        const sameGroupChildren: Task[] = []
+        const differentGroupChildren: Task[] = []
 
         for (const child of children) {
           if (!filteredTaskIds.has(child.id)) continue
@@ -500,7 +492,6 @@ export function TaskList({
     <GroupedTaskList
       groups={groupDescriptors}
       className={className}
-      onStatusChange={onStatusChange}
       onTaskClick={onTaskClick}
       newTaskIds={newTaskIds}
       activelyWorkingTaskIds={activelyWorkingTaskIds}
@@ -541,11 +532,9 @@ const groupConfigs: GroupConfig[] = [
 /**  Props for the TaskList component. */
 export type TaskListProps = {
   /** Array of tasks to display and organize */
-  tasks: TaskCardTask[]
+  tasks: Task[]
   /** Additional CSS classes to apply */
   className?: string
-  /** Callback when task status is changed */
-  onStatusChange?: (id: string, status: TaskStatus) => void
   /** Callback when task is clicked */
   onTaskClick?: (id: string) => void
   /** Initial collapsed state for status groups */
@@ -577,7 +566,7 @@ type GroupConfig = {
   /** Human-readable label for the group */
   label: string
   /** Function to filter tasks into this group */
-  taskFilter: (task: TaskCardTask) => boolean
+  taskFilter: (task: Task) => boolean
 }
 
 /**  A complete status group with its task trees. */

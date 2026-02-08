@@ -163,89 +163,6 @@ describe("TaskCard", () => {
     })
   })
 
-  describe("status change", () => {
-    it("does not show status menu without onStatusChange handler", () => {
-      render(<TaskCard task={baseTask} />)
-
-      const statusButton = screen.getByLabelText("Status: Open")
-      fireEvent.click(statusButton)
-
-      // Menu should not appear
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
-    })
-
-    it("shows status menu when onStatusChange is provided and clicked", () => {
-      const onStatusChange = vi.fn()
-      render(<TaskCard task={baseTask} onStatusChange={onStatusChange} />)
-
-      const statusButton = screen.getByLabelText(/Status: Open/)
-      fireEvent.click(statusButton)
-
-      // Menu should appear
-      expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
-
-    it("displays all status options in menu", () => {
-      const onStatusChange = vi.fn()
-      render(<TaskCard task={baseTask} onStatusChange={onStatusChange} />)
-
-      fireEvent.click(screen.getByLabelText(/Status: Open/))
-
-      expect(screen.getByRole("option", { name: "Open" })).toBeInTheDocument()
-      expect(screen.getByRole("option", { name: "In Progress" })).toBeInTheDocument()
-      expect(screen.getByRole("option", { name: "Blocked" })).toBeInTheDocument()
-      expect(screen.getByRole("option", { name: "Deferred" })).toBeInTheDocument()
-      expect(screen.getByRole("option", { name: "Closed" })).toBeInTheDocument()
-    })
-
-    it("calls onStatusChange when option selected", () => {
-      const onStatusChange = vi.fn()
-      render(<TaskCard task={baseTask} onStatusChange={onStatusChange} />)
-
-      fireEvent.click(screen.getByLabelText(/Status: Open/))
-      fireEvent.click(screen.getByRole("option", { name: "In Progress" }))
-
-      expect(onStatusChange).toHaveBeenCalledWith("rui-4rt.5", "in_progress")
-    })
-
-    it("closes menu after selection", () => {
-      const onStatusChange = vi.fn()
-      render(<TaskCard task={baseTask} onStatusChange={onStatusChange} />)
-
-      fireEvent.click(screen.getByLabelText(/Status: Open/))
-      fireEvent.click(screen.getByRole("option", { name: "In Progress" }))
-
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
-    })
-
-    it("marks current status as selected", () => {
-      const onStatusChange = vi.fn()
-      render(
-        <TaskCard task={{ ...baseTask, status: "in_progress" }} onStatusChange={onStatusChange} />,
-      )
-
-      fireEvent.click(screen.getByLabelText(/Status: In Progress/))
-
-      expect(screen.getByRole("option", { name: "In Progress" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      )
-    })
-
-    it("status button click does not trigger onClick", () => {
-      const onStatusChange = vi.fn()
-      const onClick = vi.fn()
-      render(<TaskCard task={fullTask} onStatusChange={onStatusChange} onClick={onClick} />)
-
-      fireEvent.click(screen.getByLabelText(/Status: In Progress/))
-
-      // onClick should not have been called
-      expect(onClick).not.toHaveBeenCalled()
-      // Status menu should be open
-      expect(screen.getByRole("listbox")).toBeInTheDocument()
-    })
-  })
-
   describe("onClick callback", () => {
     it("calls onClick when card content is clicked", () => {
       const onClick = vi.fn()
@@ -339,22 +256,9 @@ describe("TaskCard", () => {
       expect(screen.getByRole("button", { name: baseTask.title })).toBeInTheDocument()
     })
 
-    it("status button has aria-haspopup when interactive", () => {
-      const onStatusChange = vi.fn()
-      render(<TaskCard task={baseTask} onStatusChange={onStatusChange} />)
-
-      const statusButton = screen.getByLabelText(/Status: Open/)
-      expect(statusButton).toHaveAttribute("aria-haspopup", "listbox")
-    })
-
-    it("status menu has correct ARIA attributes", () => {
-      const onStatusChange = vi.fn()
-      render(<TaskCard task={baseTask} onStatusChange={onStatusChange} />)
-
-      fireEvent.click(screen.getByLabelText(/Status: Open/))
-
-      const listbox = screen.getByRole("listbox")
-      expect(listbox).toHaveAttribute("aria-label", "Select status")
+    it("status indicator has aria-label", () => {
+      render(<TaskCard task={baseTask} />)
+      expect(screen.getByLabelText("Status: Open")).toBeInTheDocument()
     })
   })
 
