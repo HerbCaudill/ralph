@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { IconBrain, IconChevronDown, IconChevronRight } from "@tabler/icons-react"
+import { Button } from "@herbcaudill/components"
 import { cn } from "../lib/utils"
 import { MarkdownContent } from "./MarkdownContent"
 
@@ -13,17 +14,18 @@ export function ThinkingBlock({ content, className, defaultExpanded = false }: P
 
   return (
     <div className={cn("max-w-[100ch] py-1.5 pr-12 pl-4", className)}>
-      <button
+      <Button
+        variant="ghost"
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="text-muted-foreground hover:text-foreground flex w-full items-center gap-2 text-left transition-colors"
+        className="text-muted-foreground hover:text-foreground h-auto w-full justify-start px-0 text-left"
       >
         {isExpanded ?
           <IconChevronDown className="size-4 shrink-0" />
         : <IconChevronRight className="size-4 shrink-0" />}
         <IconBrain className="size-4 shrink-0" />
         <span className="text-xs font-medium italic">Thinking...</span>
-      </button>
+      </Button>
 
       {isExpanded && (
         <div className="border-muted-foreground/30 mt-2 ml-4 border-l pl-3">
