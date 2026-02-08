@@ -1029,8 +1029,8 @@ describe("TaskDetailsDialog", () => {
     })
   })
 
-  describe("keyboard navigation", () => {
-    it("allows tab navigation between fields", async () => {
+  describe("button group keyboard navigation removed", () => {
+    it("does not set tabIndex on any metadata button group buttons", async () => {
       globalThis.fetch = createMockFetch()
 
       await renderAndWait(
@@ -1042,39 +1042,27 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      // Get all focusable elements in the expected tab order
-      const titleInput = screen.getByDisplayValue("Test Task")
+      // All metadata button groups use plain buttons without tabIndex management.
+      // Status buttons
+      const openButton = screen.getByRole("button", { pressed: true, name: /open/i })
+      const closedButton = screen.getByRole("button", { pressed: false, name: /closed/i })
+      expect(openButton).not.toHaveAttribute("tabindex")
+      expect(closedButton).not.toHaveAttribute("tabindex")
 
-      // Get the status buttons - the selected one (Open) should be tabbable
-      const selectedStatusButton = screen.getByRole("button", { pressed: true, name: /open/i })
+      // Priority buttons
+      const p2Button = screen.getByRole("button", { pressed: true, name: /p2/i })
+      const p0Button = screen.getByRole("button", { pressed: false, name: /p0/i })
+      expect(p2Button).not.toHaveAttribute("tabindex")
+      expect(p0Button).not.toHaveAttribute("tabindex")
 
-      // Get the priority buttons - the selected one (P2) should be tabbable
-      const selectedPriorityButton = screen.getByRole("button", { pressed: true, name: /p2/i })
-
-      // Get the type buttons - the selected one (Task) should be tabbable
-      const selectedTypeButton = screen.getByRole("button", { pressed: true, name: /task/i })
-      const parentButton = screen.getByRole("combobox", { name: /parent/i })
-
-      // Verify title is focusable
-      titleInput.focus()
-      expect(document.activeElement).toBe(titleInput)
-
-      // Tab to status
-      fireEvent.keyDown(titleInput, { key: "Tab" })
-      // Note: actual tab navigation is handled by the browser, we're just checking elements are tabbable
-
-      // Verify all interactive elements have appropriate tabIndex
-      expect(titleInput).not.toHaveAttribute("tabindex", "-1")
-      // Only the selected status button should be tabbable (tabindex 0)
-      expect(selectedStatusButton).toHaveAttribute("tabindex", "0")
-      // Only the selected priority button should be tabbable (tabindex 0)
-      expect(selectedPriorityButton).toHaveAttribute("tabindex", "0")
-      // Only the selected type button should be tabbable (tabindex 0)
-      expect(selectedTypeButton).toHaveAttribute("tabindex", "0")
-      expect(parentButton).not.toHaveAttribute("tabindex", "-1")
+      // Type buttons
+      const taskButton = screen.getByRole("button", { pressed: true, name: /task/i })
+      const bugButton = screen.getByRole("button", { pressed: false, name: /bug/i })
+      expect(taskButton).not.toHaveAttribute("tabindex")
+      expect(bugButton).not.toHaveAttribute("tabindex")
     })
 
-    it("allows arrow key navigation within type button group", async () => {
+    it("does not change selection on arrow key press", async () => {
       globalThis.fetch = createMockFetch()
 
       await renderAndWait(
@@ -1086,90 +1074,17 @@ describe("TaskDetailsDialog", () => {
         />,
       )
 
-      // Get the type buttons
-      const taskButton = screen
-        .getAllByRole("button")
-        .find(
-          btn => btn.textContent?.includes("Task") && btn.getAttribute("aria-pressed") === "true",
-        )
-      expect(taskButton).toBeInTheDocument()
+      // Task type is currently selected
+      const taskButton = screen.getByRole("button", { pressed: true, name: /task/i })
+      fireEvent.keyDown(taskButton, { key: "ArrowRight" })
+      expect(taskButton).toHaveAttribute("aria-pressed", "true")
+      expect(mockOnSave).not.toHaveBeenCalled()
 
-      // Press ArrowRight to move to Bug
-      fireEvent.keyDown(taskButton!, { key: "ArrowRight" })
-
-      // Wait for state update
-      await waitFor(() => {
-        const bugButton = screen
-          .getAllByRole("button")
-          .find(
-            btn => btn.textContent?.includes("Bug") && btn.getAttribute("aria-pressed") === "true",
-          )
-        expect(bugButton).toBeInTheDocument()
-      })
-
-      // Press ArrowLeft to move back to Task
-      const bugButton = screen
-        .getAllByRole("button")
-        .find(
-          btn => btn.textContent?.includes("Bug") && btn.getAttribute("aria-pressed") === "true",
-        )
-      fireEvent.keyDown(bugButton!, { key: "ArrowLeft" })
-
-      await waitFor(() => {
-        const taskButton = screen
-          .getAllByRole("button")
-          .find(
-            btn => btn.textContent?.includes("Task") && btn.getAttribute("aria-pressed") === "true",
-          )
-        expect(taskButton).toBeInTheDocument()
-      })
-    })
-
-    it("allows arrow key navigation within priority button group", async () => {
-      globalThis.fetch = createMockFetch()
-
-      await renderAndWait(
-        <TaskDetailsController
-          task={mockTask}
-          open={true}
-          onClose={mockOnClose}
-          onSave={mockOnSave}
-        />,
-      )
-
-      // Get the priority buttons - P2 is selected by default (mockTask has priority: 2)
-      const p2Button = screen
-        .getAllByRole("button")
-        .find(btn => btn.textContent?.includes("P2") && btn.getAttribute("aria-pressed") === "true")
-      expect(p2Button).toBeInTheDocument()
-
-      // Press ArrowRight to move to P3
-      fireEvent.keyDown(p2Button!, { key: "ArrowRight" })
-
-      // Wait for state update
-      await waitFor(() => {
-        const p3Button = screen
-          .getAllByRole("button")
-          .find(
-            btn => btn.textContent?.includes("P3") && btn.getAttribute("aria-pressed") === "true",
-          )
-        expect(p3Button).toBeInTheDocument()
-      })
-
-      // Press ArrowLeft to move back to P2
-      const p3Button = screen
-        .getAllByRole("button")
-        .find(btn => btn.textContent?.includes("P3") && btn.getAttribute("aria-pressed") === "true")
-      fireEvent.keyDown(p3Button!, { key: "ArrowLeft" })
-
-      await waitFor(() => {
-        const p2Button = screen
-          .getAllByRole("button")
-          .find(
-            btn => btn.textContent?.includes("P2") && btn.getAttribute("aria-pressed") === "true",
-          )
-        expect(p2Button).toBeInTheDocument()
-      })
+      // P2 priority is currently selected
+      const p2Button = screen.getByRole("button", { pressed: true, name: /p2/i })
+      fireEvent.keyDown(p2Button, { key: "ArrowRight" })
+      expect(p2Button).toHaveAttribute("aria-pressed", "true")
+      expect(mockOnSave).not.toHaveBeenCalled()
     })
   })
 
