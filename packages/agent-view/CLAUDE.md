@@ -27,7 +27,7 @@ The `hotkeys/` directory provides a hotkey registration system for host applicat
 |---|---|---|
 | `focusChatInput` | `Cmd+L` | Focus chat input |
 | `newSession` | `Cmd+Backspace` | New chat session |
-| `toggleToolOutput` | `Cmd+Shift+O` | Toggle tool output visibility |
+| `toggleToolOutput` | `Ctrl+O` | Toggle tool output visibility |
 | `scrollToBottom` | `Cmd+↓` | Scroll to bottom |
 | `showHotkeys` | `Cmd+/` | Show keyboard shortcuts |
 

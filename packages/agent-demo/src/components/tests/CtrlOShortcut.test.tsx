@@ -5,8 +5,9 @@ import { useAgentHotkeys } from "@herbcaudill/agent-view"
 /**
  * Test file for bug r-3ssd4: ctrl-O shortcut not working in agent demo
  *
- * The original ctrl-O shortcut conflicted with the browser's "Open File" shortcut.
- * The fix changed the shortcut to cmd+shift+o (which is Ctrl+Shift+O on non-Mac).
+ * The shortcut is defined as ctrl+o in hotkeys.json.
+ * On Mac, this means Control+O (not Command+O).
+ * On Windows/Linux, this means Ctrl+O.
  */
 
 /** Simulate a keydown event on `window` with the given properties. */
@@ -33,12 +34,12 @@ function fireKey(opts: {
   window.dispatchEvent(event)
 }
 
-describe("cmd+shift+o shortcut in agent-demo", () => {
+describe("ctrl+o shortcut in agent-demo", () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it("calls toggleToolOutput handler when cmd+shift+o is pressed (non-Mac)", () => {
+  it("calls toggleToolOutput handler when ctrl+o is pressed (non-Mac)", () => {
     const handler = vi.fn()
     renderHook(() =>
       useAgentHotkeys({
@@ -46,12 +47,12 @@ describe("cmd+shift+o shortcut in agent-demo", () => {
       }),
     )
 
-    // On non-Mac, cmd maps to ctrlKey
-    fireKey({ key: "o", ctrlKey: true, shiftKey: true })
+    // ctrl+o uses ctrlKey on all platforms
+    fireKey({ key: "o", ctrlKey: true })
     expect(handler).toHaveBeenCalledTimes(1)
   })
 
-  it("calls toggleToolOutput handler when cmd+shift+o is pressed on Mac", () => {
+  it("calls toggleToolOutput handler when ctrl+o is pressed on Mac", () => {
     // Mock macOS platform
     vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel")
 
@@ -62,8 +63,8 @@ describe("cmd+shift+o shortcut in agent-demo", () => {
       }),
     )
 
-    // On Mac, cmd+shift+o uses metaKey + shiftKey
-    fireKey({ key: "o", metaKey: true, shiftKey: true })
+    // On Mac, ctrl+o uses ctrlKey (Control key, not Command)
+    fireKey({ key: "o", ctrlKey: true })
     expect(handler).toHaveBeenCalledTimes(1)
   })
 
@@ -86,7 +87,7 @@ describe("cmd+shift+o shortcut in agent-demo", () => {
       }),
     )
 
-    fireKey({ key: "o", ctrlKey: true, shiftKey: true })
+    fireKey({ key: "o", ctrlKey: true })
     expect(toggleToolOutput).toHaveBeenCalledTimes(1)
     expect(focusChatInput).not.toHaveBeenCalled()
     expect(newSession).not.toHaveBeenCalled()
@@ -107,7 +108,7 @@ describe("cmd+shift+o shortcut in agent-demo", () => {
     document.body.appendChild(textarea)
 
     // toggleToolOutput is in ALLOWED_IN_INPUT, so it should work
-    fireKey({ key: "o", ctrlKey: true, shiftKey: true, target: textarea })
+    fireKey({ key: "o", ctrlKey: true, target: textarea })
     expect(handler).toHaveBeenCalledTimes(1)
 
     textarea.remove()

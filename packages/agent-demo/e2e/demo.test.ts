@@ -107,6 +107,43 @@ test.describe("Agent Chat Demo", () => {
     await expect(input).toBeFocused()
   })
 
+  // Test that ctrl+o shortcut works in the real browser environment
+  // This test uses the console to verify the keydown event is received
+  test("ctrl+o shortcut is received by the page", async ({ page }) => {
+    await expect(page.getByText("connected")).toBeVisible()
+
+    // Add a listener to track keydown events
+    const keysReceived: string[] = []
+    page.on("console", msg => {
+      if (msg.text().startsWith("KEYDOWN:")) {
+        keysReceived.push(msg.text())
+      }
+    })
+
+    // Inject a temporary keydown listener to log key events
+    await page.evaluate(() => {
+      window.addEventListener(
+        "keydown",
+        e => {
+          if (e.ctrlKey && e.key === "o") {
+            console.log(`KEYDOWN: ctrl+${e.key}`)
+          }
+        },
+        { capture: true },
+      )
+    })
+
+    // Press Ctrl+O
+    await page.keyboard.press("Control+o")
+
+    // Give time for the event to be processed
+    await page.waitForTimeout(500)
+
+    // Verify the keydown event was received
+    expect(keysReceived.length).toBeGreaterThan(0)
+    expect(keysReceived[0]).toBe("KEYDOWN: ctrl+o")
+  })
+
   test("cmd+/ opens hotkeys dialog", async ({ page }) => {
     await expect(page.getByText("connected")).toBeVisible()
 
