@@ -33,6 +33,8 @@ The `hotkeys/` directory provides a hotkey registration system for host applicat
 
 Host applications provide handler callbacks; the hook handles platform-aware key matching and input element filtering.
 
+Tool output visibility is controlled globally via `toolOutput.isVisible`, while each `ToolUseCard` can be toggled independently by clicking its header.
+
 ## useAgentChat hook
 
 WebSocket-based hook for managing agent chat sessions. Handles connection lifecycle, session persistence, and message streaming.

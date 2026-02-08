@@ -124,6 +124,8 @@ return (
 | `linkHandlers`  | `AgentViewLinkHandlers`      | Click handlers for task/session links                |
 | `tasks`         | `AgentViewTask[]`            | Task list for lifecycle event enrichment             |
 
+Tool output visibility is controlled globally via `toolOutput.isVisible`, while each `ToolUseCard` can be toggled independently by clicking its header.
+
 ## Agent adapters
 
 The package exports an `AgentAdapter` interface for normalizing events from different agent SDKs:

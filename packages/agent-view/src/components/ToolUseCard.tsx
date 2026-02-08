@@ -25,14 +25,14 @@ export function ToolUseCard({
   defaultExpanded = true,
 }: ToolUseCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const [isToolOutputExpanded, setIsToolOutputExpanded] = useState(true)
   const { workspacePath, toolOutput } = useAgentViewContext()
 
   const summary = getToolSummary(event.tool, event.input, workspacePath)
   const outputSummary = getOutputSummary(event.tool, event.output)
   const statusColor = getStatusColor(event.status)
 
-  const showToolOutput = toolOutput?.isVisible ?? true
-  const toggleToolOutput = toolOutput?.onToggle
+  const showToolOutput = (toolOutput?.isVisible ?? true) && isToolOutputExpanded
 
   const hasExpandableContent = Boolean(
     event.output ||
@@ -61,7 +61,7 @@ export function ToolUseCard({
     <div className={cn("max-w-[100ch] py-1.5 pr-12 pl-4", className)}>
       <div
         className={cn("flex w-full items-center gap-2.5", hasExpandableContent && "cursor-pointer")}
-        onClick={hasExpandableContent ? toggleToolOutput : undefined}
+        onClick={hasExpandableContent ? () => setIsToolOutputExpanded(prev => !prev) : undefined}
         role={hasExpandableContent ? "button" : undefined}
         aria-expanded={hasExpandableContent ? showToolOutput : undefined}
         aria-label={hasExpandableContent ? `Toggle ${event.tool} output` : undefined}
