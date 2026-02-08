@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { render, screen, fireEvent, act } from "@testing-library/react"
 import { TaskDetailSheet } from "../TaskDetailSheet"
 import type { TaskCardTask } from "@herbcaudill/beads-view"
 
@@ -39,6 +39,10 @@ describe("TaskDetailSheet", () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it("renders nothing when closed", () => {
     render(<TaskDetailSheet {...defaultProps} open={false} />)
 
@@ -58,32 +62,35 @@ describe("TaskDetailSheet", () => {
     expect(screen.getAllByText("Test Task").length).toBeGreaterThanOrEqual(1)
   })
 
-  it("renders as an overlay sheet on the right side", async () => {
+  it("renders as a slide-out panel without a dark overlay", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
-    // The sheet should be in a portal (rendered at document level)
-    const sheetContent = await waitFor(() =>
-      document.querySelector('[data-testid="task-detail-sheet"]'),
-    )
-    expect(sheetContent).toBeInTheDocument()
+    const panel = screen.getByTestId("task-detail-sheet")
+    expect(panel).toBeInTheDocument()
 
-    // Should be positioned on the right side
-    expect(sheetContent?.className).toContain("right-0")
+    // Should NOT have a dark overlay/backdrop element
+    expect(document.querySelector("[data-sheet-overlay]")).not.toBeInTheDocument()
+    // No Radix overlay
+    expect(document.querySelector("[data-state]")).not.toBeInTheDocument()
   })
 
-  it("has an overlay backdrop", async () => {
+  it("renders as an absolutely positioned panel on the right side", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
-    // Should have an overlay element (from Radix Sheet)
-    const overlay = await waitFor(() => document.querySelector('[data-state="open"]'))
-    expect(overlay).toBeInTheDocument()
+    const panel = screen.getByTestId("task-detail-sheet")
+    expect(panel).toBeInTheDocument()
+
+    // Should be absolutely positioned on the right
+    expect(panel.className).toContain("absolute")
+    expect(panel.className).toContain("right-0")
   })
 
-  it("provides an accessible title via a visually hidden element", () => {
-    render(<TaskDetailSheet {...defaultProps} />)
+  it("does not render a modal backdrop", () => {
+    const { container } = render(<TaskDetailSheet {...defaultProps} />)
 
-    const titles = screen.getAllByText("Test Task")
-    expect(titles.length).toBeGreaterThanOrEqual(1)
+    // There should be no overlay element with opacity or backdrop styles
+    const overlays = container.querySelectorAll("[data-state]")
+    expect(overlays.length).toBe(0)
   })
 
   it("closes on Escape key", () => {
@@ -91,5 +98,66 @@ describe("TaskDetailSheet", () => {
 
     fireEvent.keyDown(document, { key: "Escape" })
     expect(defaultProps.onClose).toHaveBeenCalled()
+  })
+
+  it("calls onClose when clicking outside the panel", async () => {
+    render(
+      <div>
+        <div data-testid="outside">Outside content</div>
+        <TaskDetailSheet {...defaultProps} />
+      </div>,
+    )
+
+    // Wait for the outside-click listener to be attached (delayed by 100ms)
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 150))
+    })
+
+    const outside = screen.getByTestId("outside")
+    fireEvent.mouseDown(outside)
+
+    expect(defaultProps.onClose).toHaveBeenCalled()
+  })
+
+  it("does not call onClose when clicking inside the panel", async () => {
+    render(
+      <div>
+        <div data-testid="outside">Outside content</div>
+        <TaskDetailSheet {...defaultProps} />
+      </div>,
+    )
+
+    // Wait for the outside-click listener to be attached
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 150))
+    })
+
+    const panel = screen.getByTestId("task-detail-sheet")
+    fireEvent.mouseDown(panel)
+
+    expect(defaultProps.onClose).not.toHaveBeenCalled()
+  })
+
+  it("does not call onClose when clicking inside a Radix portal", async () => {
+    // Create a mock Radix portal element outside the panel
+    const portalElement = document.createElement("div")
+    portalElement.setAttribute("data-radix-popper-content-wrapper", "")
+    portalElement.innerHTML = "<div>Portal Content</div>"
+    document.body.appendChild(portalElement)
+
+    render(<TaskDetailSheet {...defaultProps} />)
+
+    // Wait for the outside-click listener to be attached
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 150))
+    })
+
+    const portalContent = portalElement.querySelector("div")!
+    fireEvent.mouseDown(portalContent)
+
+    expect(defaultProps.onClose).not.toHaveBeenCalled()
+
+    // Cleanup
+    document.body.removeChild(portalElement)
   })
 })

@@ -18,9 +18,9 @@ import {
   getApiClientConfig,
   useTasks,
   useTaskDialog,
+  useTaskNavigation,
   useBeadsViewStore,
   selectSelectedTaskId,
-  selectVisibleTaskIds,
   useWorkspace,
   useBeadsHotkeys,
   type SearchInputHandle,
@@ -334,13 +334,13 @@ export function WorkspaceView() {
           onOpenTask={handleTaskClick}
           isRunning={controlState === "running"}
         />
+        <TaskDetailSheet
+          task={selectedTask}
+          open={selectedTaskId !== null}
+          onClose={handleCloseDetail}
+          onChanged={handleChanged}
+        />
       </MainLayout>
-      <TaskDetailSheet
-        task={selectedTask}
-        open={selectedTaskId !== null}
-        onClose={handleCloseDetail}
-        onChanged={handleChanged}
-      />
       <HotkeysDialog open={showHotkeysDialog} onClose={() => setShowHotkeysDialog(false)} />
       <CommandPalette
         open={showCommandPalette}
