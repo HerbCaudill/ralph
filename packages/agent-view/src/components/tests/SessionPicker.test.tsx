@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
-import { render, screen, fireEvent, cleanup } from "@testing-library/react"
+import { render, screen, fireEvent, cleanup, act } from "@testing-library/react"
 import { SessionPicker, type SessionPickerProps } from "../SessionPicker"
 import type { SessionIndexEntry } from "../../lib/sessionIndex"
 
@@ -39,6 +39,21 @@ function renderPicker(overrides: Partial<SessionPickerProps> = {}) {
 describe("SessionPicker", () => {
   afterEach(() => {
     cleanup()
+  })
+
+  describe("shared component usage", () => {
+    it("should use the shared Button component for the trigger", () => {
+      renderPicker()
+      const button = screen.getByRole("button")
+      expect(button.getAttribute("data-slot")).toBe("button")
+    })
+
+    it("should use outline variant and icon-sm size for the trigger button", () => {
+      renderPicker()
+      const button = screen.getByRole("button")
+      expect(button.getAttribute("data-variant")).toBe("outline")
+      expect(button.getAttribute("data-size")).toBe("icon-sm")
+    })
   })
 
   describe("trigger button", () => {
@@ -178,12 +193,18 @@ describe("SessionPicker", () => {
       expect(screen.queryByText("Recent Sessions")).toBeNull()
     })
 
-    it("should close on outside click", () => {
+    it("should close on outside click", async () => {
       renderPicker()
       fireEvent.click(screen.getByTitle("Session history"))
       expect(screen.getByText("Recent Sessions")).toBeDefined()
 
-      fireEvent.mouseDown(document.body)
+      // Radix DismissableLayer registers its pointerdown listener via setTimeout(0),
+      // so we need to flush that timer before dispatching the event
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+
+      fireEvent.pointerDown(document.body)
       expect(screen.queryByText("Recent Sessions")).toBeNull()
     })
   })
