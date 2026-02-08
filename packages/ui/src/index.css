@@ -3,6 +3,7 @@
 @plugin "@tailwindcss/typography";
 @source "../node_modules/@herbcaudill/agent-view/dist";
 @source "../node_modules/@herbcaudill/beads-view/dist";
+@source "../node_modules/@herbcaudill/components/dist";
 @import "@herbcaudill/agent-view/styles.css";
 
 /* Combined spin and pulse animation for TopologySpinner */
