@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { RelatedTasks } from "../RelatedTasks"
 import { configureApiClient } from "../../../lib/apiClient"
@@ -282,11 +282,21 @@ function MockApiDecorator({
   children: React.ReactNode
   initialBlockerIds: string[]
 }) {
+  // Configure API client synchronously on first render so child components
+  // can fetch dependencies immediately without waiting for useEffect
+  const blockerIdsRef = useRef<Set<string>>(new Set(initialBlockerIds))
+
+  // Configure on first render (synchronously)
+  const isConfigured = useRef(false)
+  if (!isConfigured.current) {
+    configureApiClient({ fetchFn: createMockFetch(blockerIdsRef.current) as typeof fetch })
+    isConfigured.current = true
+  }
+
+  // Clean up on unmount
   useEffect(() => {
-    const blockerIds = new Set(initialBlockerIds)
-    configureApiClient({ fetchFn: createMockFetch(blockerIds) as typeof fetch })
     return () => configureApiClient({})
-  }, [initialBlockerIds])
+  }, [])
 
   return <>{children}</>
 }
