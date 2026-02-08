@@ -159,12 +159,12 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
               "overflow-hidden",
             )}
           />
-          <InputGroupAddon>
+          <InputGroupAddon align="inline-end">
             <InputGroupButton
               type="submit"
               disabled={isDisabled || !title.trim()}
               size="icon-xs"
-              className={cn("rounded-sm p-1 transition-opacity")}
+              className={cn("rounded-md transition-opacity")}
               style={{
                 backgroundColor: buttonBgColor,
                 color: buttonTextColor,
