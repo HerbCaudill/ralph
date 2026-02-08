@@ -10,11 +10,12 @@ import {
   selectSelectedTaskId,
   selectVisibleTaskIds,
   WorkspaceSelector,
+  QuickTaskInput,
   type SearchInputHandle,
+  type QuickTaskInputHandle,
 } from "@herbcaudill/beads-view"
 import { DemoShell } from "./components/DemoShell"
 import { TaskDetailPanel } from "./components/TaskDetailPanel"
-import { TaskChat } from "./components/TaskChat"
 import { TaskStatusBar } from "./components/TaskStatusBar"
 import { HotkeysDialog } from "./components/HotkeysDialog"
 
@@ -40,8 +41,9 @@ function AppContent() {
   const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
   const visibleTaskIds = useBeadsViewStore(selectVisibleTaskIds)
 
-  // Ref for search input focus
+  // Refs for input focus
   const searchInputRef = useRef<SearchInputHandle>(null)
+  const taskInputRef = useRef<QuickTaskInputHandle>(null)
 
   // Hotkeys dialog state
   const [hotkeysDialogOpen, setHotkeysDialogOpen] = useState(false)
@@ -66,6 +68,10 @@ function AppContent() {
   // Hotkey handlers
   const handleFocusSearch = useCallback(() => {
     searchInputRef.current?.focus()
+  }, [])
+
+  const handleFocusTaskInput = useCallback(() => {
+    taskInputRef.current?.focus()
   }, [])
 
   const handlePreviousTask = useCallback(() => {
@@ -99,7 +105,7 @@ function AppContent() {
   const { registeredHotkeys } = useBeadsHotkeys({
     handlers: {
       focusSearch: handleFocusSearch,
-      focusTaskInput: handleFocusSearch,
+      focusTaskInput: handleFocusTaskInput,
       previousTask: handlePreviousTask,
       nextTask: handleNextTask,
       openTask: handleOpenTask,
@@ -137,7 +143,12 @@ function AppContent() {
             onClose={handleCloseDetail}
             onChanged={handleChanged}
           />
-        : <TaskChat />}
+        : <div className="flex h-full items-center justify-center p-8">
+            <div className="w-full max-w-md">
+              <QuickTaskInput ref={taskInputRef} onTaskCreated={refresh} />
+            </div>
+          </div>
+        }
       </DemoShell>
       <HotkeysDialog
         open={hotkeysDialogOpen}
