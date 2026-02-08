@@ -22,7 +22,9 @@ export function RelatedTasks({
   const [blockers, setBlockers] = useState<RelatedTask[]>([])
   const [dependents, setDependents] = useState<RelatedTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isAddingChild, setIsAddingChild] = useState(false)
   const [isAddingBlocker, setIsAddingBlocker] = useState(false)
+  const [isAddingBlocked, setIsAddingBlocked] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
   const childTasks: RelatedTask[] = allTasks
@@ -100,6 +102,32 @@ export function RelatedTasks({
     }
   }, [fetchDependencies])
 
+  /** Adds a child to the current task by setting this task as the child's parent. */
+  const handleAddChild = useCallback(
+    async (childId: string) => {
+      if (readOnly) return
+
+      setIsAddingChild(true)
+      try {
+        const response = await apiFetch(`/api/tasks/${childId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parent: taskId }),
+        })
+
+        const data = (await response.json()) as { ok: boolean }
+        if (data.ok) {
+          onChanged?.()
+        }
+      } catch (err) {
+        console.error("Failed to add child:", err)
+      } finally {
+        setIsAddingChild(false)
+      }
+    },
+    [taskId, readOnly, onChanged],
+  )
+
   /** Adds a blocker to the current task via API call. */
   const handleAddBlocker = useCallback(
     async (blockerId: string) => {
@@ -121,6 +149,33 @@ export function RelatedTasks({
         console.error("Failed to add blocker:", err)
       } finally {
         setIsAddingBlocker(false)
+      }
+    },
+    [taskId, readOnly, fetchDependencies],
+  )
+
+  /** Adds this task as a blocker to another task. */
+  const handleAddBlocked = useCallback(
+    async (blockedId: string) => {
+      if (readOnly) return
+
+      setIsAddingBlocked(true)
+      try {
+        // Add this task as a blocker to the selected task
+        const response = await apiFetch(`/api/tasks/${blockedId}/blockers`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blockerId: taskId }),
+        })
+
+        const data = (await response.json()) as { ok: boolean }
+        if (data.ok) {
+          await fetchDependencies()
+        }
+      } catch (err) {
+        console.error("Failed to add blocked task:", err)
+      } finally {
+        setIsAddingBlocked(false)
       }
     },
     [taskId, readOnly, fetchDependencies],
@@ -196,7 +251,7 @@ export function RelatedTasks({
     [taskId, readOnly, fetchDependencies],
   )
 
-  const canAddBlockers = !readOnly && task
+  const canEdit = !readOnly && task
 
   const groups = useMemo(() => {
     const result: Array<{
@@ -259,7 +314,7 @@ export function RelatedTasks({
   ])
 
   const hasContent = childTasks.length > 0 || blockers.length > 0 || dependents.length > 0
-  if (!isLoading && !hasContent && !canAddBlockers) {
+  if (!isLoading && !hasContent && !canEdit) {
     return null
   }
 
@@ -272,8 +327,17 @@ export function RelatedTasks({
           {groups.length > 0 && (
             <GroupedTaskList groups={groups} onTaskClick={onTaskClick} className="h-auto" />
           )}
-          {canAddBlockers && (
-            <div>
+          {canEdit && (
+            <div className="flex flex-wrap gap-1">
+              <TaskRelationCombobox
+                task={task}
+                allTasks={allTasks}
+                issuePrefix={issuePrefix}
+                excludeIds={childTasks.map(c => c.id)}
+                relationType="child"
+                onSelect={handleAddChild}
+                disabled={isAddingChild}
+              />
               <TaskRelationCombobox
                 task={task}
                 allTasks={allTasks}
@@ -282,6 +346,15 @@ export function RelatedTasks({
                 relationType="blocker"
                 onSelect={handleAddBlocker}
                 disabled={isAddingBlocker}
+              />
+              <TaskRelationCombobox
+                task={task}
+                allTasks={allTasks}
+                issuePrefix={issuePrefix}
+                excludeIds={dependents.map(d => d.id)}
+                relationType="blocked"
+                onSelect={handleAddBlocked}
+                disabled={isAddingBlocked}
               />
             </div>
           )}
