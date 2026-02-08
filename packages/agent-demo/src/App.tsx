@@ -13,12 +13,14 @@ import {
   formatModelName,
   type ChatInputHandle,
 } from "@herbcaudill/agent-view"
+import { useWorkspace, WorkspaceSelector } from "@herbcaudill/beads-view"
 import { DemoShell } from "./components/DemoShell"
 import { SettingsMenu } from "./components/SettingsMenu"
 import { HotkeysDialog } from "./components/HotkeysDialog"
 import { StatusBar } from "./components/StatusBar"
 
 export function App() {
+  const { state: ws, actions: wsActions } = useWorkspace()
   const { state, actions, agentType } = useAgentChat("claude")
   const { events, isStreaming, connectionStatus, error, sessionId } = state
   const { sendMessage, setAgentType, newSession, restoreSession } = actions
@@ -101,6 +103,12 @@ export function App() {
         title="Agent Chat Demo"
         headerActions={
           <div className="flex items-center gap-2">
+            <WorkspaceSelector
+              current={ws.current}
+              workspaces={ws.workspaces}
+              isLoading={ws.isLoading}
+              onSwitch={wsActions.switchWorkspace}
+            />
             <AgentControls
               state={control.state}
               disabled={!isConnected}
