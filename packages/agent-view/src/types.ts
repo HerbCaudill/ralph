@@ -90,6 +90,8 @@ export interface ErrorChatEvent extends ChatEvent {
 /** A tool use event with execution metadata. */
 export interface ToolUseChatEvent extends ChatEvent {
   type: "tool_use"
+  /** Unique identifier for matching tool use with its result. */
+  toolUseId?: string
   tool: ToolName
   input?: Record<string, unknown>
   output?: string

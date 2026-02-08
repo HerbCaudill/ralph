@@ -374,7 +374,8 @@ Messages are delivered via `MessageQueue` (async iterable) through the Claude Ag
 - Components lead files; helper functions live in `packages/ui/src/lib` (one function per file)
 - Shared types in `types.ts`, constants in `constants.ts`
 - Task UI state, hooks, and API client live in `packages/beads-view`; UI re-exports via `@herbcaudill/beads-view`. Server-side task routes are imported from `@herbcaudill/beads-view/server`
-- Use discriminated `*ChatEvent` interfaces (e.g. `AssistantChatEvent`, `UserMessageChatEvent`) with type-guard functions in `packages/ui/src/lib/is*.ts`
+- Use discriminated `*ChatEvent` interfaces (e.g. `AssistantChatEvent`, `UserMessageChatEvent`) with type-guard functions in `packages/agent-view/src/lib/is*.ts`
+- `ToolUseChatEvent` includes `toolUseId` for matching tool_use events with their corresponding tool_result events. This enables consistent rendering of tool output across different event flows (task chat vs Ralph panel)
 - Deprecated aliases (`ErrorEventData`, `UserMessageEvent`, etc.) exist for backward compatibility — don't use in new code
 
 ### Controller/presentational pattern

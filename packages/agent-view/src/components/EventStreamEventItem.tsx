@@ -96,8 +96,7 @@ export function EventStreamEventItem({
   }
 
   if (isToolUseChatEvent(event)) {
-    const toolUseId = (event as ToolUseChatEvent & { toolUseId?: string }).toolUseId
-    const result = toolUseId ? toolResults.get(toolUseId) : undefined
+    const result = event.toolUseId ? toolResults.get(event.toolUseId) : undefined
     return (
       <ToolUseCard
         event={{
