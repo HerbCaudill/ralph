@@ -90,7 +90,10 @@ export async function waitForUrl(
  * {
  *   label: "dev",
  *   services: [
+ *     // Server with port and health check
  *     { name: "server", command: "pnpm serve", portEnv: "PORT", defaultPort: 4242 },
+ *     // Watcher without port (e.g., tsc --watch)
+ *     { name: "components", command: "pnpm --filter pkg dev" },
  *   ],
  *   frontend: {
  *     package: "@herbcaudill/ralph-ui",
@@ -118,10 +121,12 @@ export async function runDev(
     stdio = "inherit",
   } = config
 
-  // Resolve all ports
+  // Resolve all ports (only for services that have ports)
   const ports = {}
   for (const svc of services) {
-    ports[svc.name] = await resolvePort(svc.portEnv, svc.defaultPort, svc.name)
+    if (svc.portEnv && svc.defaultPort) {
+      ports[svc.name] = await resolvePort(svc.portEnv, svc.defaultPort, svc.name)
+    }
   }
   if (frontend) {
     ports._frontend = await resolvePort(frontend.portEnv, frontend.defaultPort, "frontend")
@@ -130,15 +135,21 @@ export async function runDev(
   // Build env with resolved ports
   const baseEnv = { ...process.env, ...extraEnv }
   for (const svc of services) {
-    baseEnv[svc.portEnv] = String(ports[svc.name])
+    if (svc.portEnv && ports[svc.name]) {
+      baseEnv[svc.portEnv] = String(ports[svc.name])
+    }
   }
   if (frontend) {
     baseEnv[frontend.portEnv] = String(ports._frontend)
   }
 
-  // Log ports
+  // Log ports and services
   for (const svc of services) {
-    console.log(`[${label}] ${svc.name} → http://localhost:${ports[svc.name]}`)
+    if (ports[svc.name]) {
+      console.log(`[${label}] ${svc.name} → http://localhost:${ports[svc.name]}`)
+    } else {
+      console.log(`[${label}] ${svc.name} (watcher)`)
+    }
   }
   if (frontend) {
     console.log(`[${label}] frontend → http://localhost:${ports._frontend}`)
@@ -153,9 +164,10 @@ export async function runDev(
     processes.push({ name: svc.name, proc })
   }
 
-  // Wait for health checks if requested
+  // Wait for health checks if requested (only for services with ports)
   if (waitForHealthz) {
     for (const svc of services) {
+      if (!ports[svc.name]) continue // Skip watchers without ports
       if (svc.healthUrl) {
         const url = svc.healthUrl.replace("${port}", String(ports[svc.name]))
         await waitForUrl(url)

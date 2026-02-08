@@ -13,6 +13,10 @@ runDev({
   waitForHealthz: true,
   services: [
     {
+      name: "components",
+      command: "pnpm --filter @herbcaudill/components dev",
+    },
+    {
       name: "beads-server",
       command: "pnpm --filter @herbcaudill/beads-server dev",
       portEnv: "BEADS_PORT",
