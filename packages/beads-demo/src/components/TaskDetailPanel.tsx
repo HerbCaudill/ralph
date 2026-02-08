@@ -30,7 +30,7 @@ export function TaskDetailPanel({ task, open, onClose, onChanged }: TaskDetailPa
   }
 
   return (
-    <div className="h-full">
+    <div className="h-full mx-auto max-w-2xl">
       <TaskDetailsController
         task={task}
         open={open}
