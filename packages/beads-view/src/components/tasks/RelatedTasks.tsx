@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { Label } from "@herbcaudill/components"
-import { IconX } from "@tabler/icons-react"
 import { GroupedTaskList } from "./GroupedTaskList"
 import { BlockerCombobox } from "./BlockerCombobox"
 import { apiFetch } from "../../lib/apiClient"
@@ -126,40 +125,9 @@ export function RelatedTasks({
     [taskId, readOnly, fetchDependencies],
   )
 
-  /** Removes a blocker from the current task via API call. */
-  const handleRemoveBlocker = useCallback(
-    async (blockerId: string) => {
-      if (readOnly) return
-
-      // Optimistically remove from UI
-      setBlockers(prev => prev.filter(b => b.id !== blockerId))
-
-      try {
-        const response = await apiFetch(`/api/tasks/${taskId}/blockers/${blockerId}`, {
-          method: "DELETE",
-        })
-
-        const data = (await response.json()) as { ok: boolean }
-        if (!data.ok) {
-          await fetchDependencies()
-        }
-      } catch (err) {
-        console.error("Failed to remove blocker:", err)
-        await fetchDependencies()
-      }
-    },
-    [taskId, readOnly, fetchDependencies],
-  )
-
   const handleToggleGroup = useCallback((key: string) => {
     setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }))
   }, [])
-
-  // Only show blockers with dependency_type === "blocks" (not parent-child)
-  const editableBlockerIds = useMemo(
-    () => new Set(blockers.filter(b => b.dependency_type === "blocks").map(b => b.id)),
-    [blockers],
-  )
 
   const canAddBlockers = !readOnly && task
 
@@ -222,24 +190,6 @@ export function RelatedTasks({
       : <div className="space-y-2">
           {groups.length > 0 && (
             <GroupedTaskList groups={groups} onTaskClick={onTaskClick} className="h-auto" />
-          )}
-          {!readOnly && !collapsedGroups["blocked-by"] && blockers.length > 0 && (
-            <div className="flex flex-wrap gap-1 px-2">
-              {blockers
-                .filter(b => editableBlockerIds.has(b.id))
-                .map(b => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => handleRemoveBlocker(b.id)}
-                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors"
-                    aria-label={`Remove ${b.id} as blocker`}
-                  >
-                    <IconX className="size-3" />
-                    <span>{b.id}</span>
-                  </button>
-                ))}
-            </div>
           )}
           {canAddBlockers && (
             <div>
