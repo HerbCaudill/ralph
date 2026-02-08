@@ -172,7 +172,36 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
     const init = async () => {
       setIsLoading(true)
 
-      // Fetch available workspaces
+      const savedPath = getSavedWorkspacePath(storageKey)
+
+      // If we have a saved workspace, fetch it immediately (fast path)
+      if (savedPath) {
+        // Configure apiClient with the saved workspace path
+        saveWorkspacePath(savedPath)
+
+        // Fetch saved workspace info immediately
+        const savedWorkspace = await fetchWorkspaceInfo(savedPath)
+
+        if (savedWorkspace) {
+          // Success! Set current workspace and mark as loaded
+          setCurrent(savedWorkspace)
+          setIsLoading(false)
+
+          // Load workspace list in background (for the selector)
+          fetchWorkspaces().then(availableWorkspaces => {
+            setWorkspaces(availableWorkspaces)
+            if (availableWorkspaces.length === 0) {
+              setError("No workspaces found")
+            }
+          })
+          return
+        }
+
+        // Saved workspace failed to load - fall through to slow path
+      }
+
+      // Slow path: no saved workspace, or saved workspace failed to load
+      // Fetch the full workspace list first
       const availableWorkspaces = await fetchWorkspaces()
       setWorkspaces(availableWorkspaces)
 
@@ -182,10 +211,8 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
         return
       }
 
-      // Determine which workspace to use
-      const savedPath = getSavedWorkspacePath(storageKey)
-      const savedExists = savedPath && availableWorkspaces.some(ws => ws.path === savedPath)
-      const targetPath = savedExists ? savedPath : availableWorkspaces[0].path
+      // Select the first workspace from the list
+      const targetPath = availableWorkspaces[0].path
 
       // Configure apiClient with the workspace path
       saveWorkspacePath(targetPath)
@@ -196,10 +223,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
         setCurrent(info)
       } else {
         // Use minimal info from the workspace list
-        const wsFromList = availableWorkspaces.find(ws => ws.path === targetPath)
-        if (wsFromList) {
-          setCurrent(wsFromList)
-        }
+        setCurrent(availableWorkspaces[0])
       }
 
       setIsLoading(false)
