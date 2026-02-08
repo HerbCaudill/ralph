@@ -39,12 +39,16 @@ vi.mock("@herbcaudill/beads-view", async () => {
       selector({
         selectedTaskId: null,
         visibleTaskIds: [],
+        tasks: [],
+        closedTimeFilter: "past_day",
         clearTasks: vi.fn(),
         setSelectedTaskId: vi.fn(),
         setAccentColor: vi.fn(),
       }),
     selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
     selectVisibleTaskIds: (state: { visibleTaskIds: string[] }) => state.visibleTaskIds,
+    selectTasks: (state: { tasks: unknown[] }) => state.tasks,
+    selectClosedTimeFilter: (state: { closedTimeFilter: string }) => state.closedTimeFilter,
   }
 })
 

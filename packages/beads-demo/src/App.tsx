@@ -10,6 +10,8 @@ import {
   useWorkspace,
   selectSelectedTaskId,
   selectVisibleTaskIds,
+  selectTasks,
+  selectClosedTimeFilter,
   WorkspaceSelector,
   QuickTaskInput,
   type SearchInputHandle,
@@ -51,6 +53,10 @@ function AppContent() {
   const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
   const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
   const visibleTaskIds = useBeadsViewStore(selectVisibleTaskIds)
+
+  // Store state for progress bar
+  const tasks = useBeadsViewStore(selectTasks)
+  const closedTimeFilter = useBeadsViewStore(selectClosedTimeFilter)
 
   // Refs for input focus
   const searchInputRef = useRef<SearchInputHandle>(null)
@@ -145,7 +151,18 @@ function AppContent() {
           />
         }
         sidebarWidth={340}
-        statusBar={<TaskStatusBar workspace={ws.current} isLoading={isLoading} error={error} />}
+        statusBar={
+          <TaskStatusBar
+            workspace={ws.current}
+            isLoading={isLoading}
+            error={error}
+            isRunning={!error && !isLoading}
+            tasks={tasks}
+            initialTaskCount={tasks.length > 0 ? tasks.length : null}
+            accentColor={ws.current?.accentColor ?? null}
+            closedTimeFilter={closedTimeFilter}
+          />
+        }
       >
         {selectedTaskId !== null ?
           <TaskDetailPanel
