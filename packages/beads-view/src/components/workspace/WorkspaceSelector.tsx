@@ -32,6 +32,7 @@ export function WorkspaceSelector({
           <IconLoader2 size={16} stroke={1.5} className="animate-spin" />
         : <IconLayoutList size={16} stroke={1.5} />}
         {displayName}
+        {current?.branch && <span className="text-muted-foreground">({current.branch})</span>}
       </button>
 
       {/* Dropdown */}
