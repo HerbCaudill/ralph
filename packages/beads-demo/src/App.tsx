@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   BeadsViewProvider,
+  DEFAULT_ACCENT_COLOR,
   TaskPanelController,
   useTasks,
   useTaskDialog,
@@ -31,6 +32,16 @@ function AppContent() {
   const clearTasks = useBeadsViewStore(state => state.clearTasks)
   const { state: ws, actions: wsActions } = useWorkspace({ onSwitchStart: clearTasks })
   const { isLoading, error, refresh } = useTasks({ all: true })
+
+  // Apply workspace accent color as CSS custom property
+  useEffect(() => {
+    const color = ws.current?.accentColor ?? DEFAULT_ACCENT_COLOR
+    document.documentElement.style.setProperty("--accent-color", color)
+
+    return () => {
+      document.documentElement.style.removeProperty("--accent-color")
+    }
+  }, [ws.current?.accentColor])
   const dialog = useTaskDialog({
     onTaskUpdated: refresh,
     onTaskDeleted: refresh,
