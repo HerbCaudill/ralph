@@ -37,6 +37,9 @@ importers:
       "@herbcaudill/agent-view-theme":
         specifier: workspace:*
         version: link:../agent-view-theme
+      "@herbcaudill/beads-view":
+        specifier: workspace:*
+        version: link:../beads-view
       "@tabler/icons-react":
         specifier: ^3.36.1
         version: 3.36.1(react@19.2.3)
@@ -144,6 +147,9 @@ importers:
       "@herbcaudill/agent-view-theme":
         specifier: workspace:*
         version: link:../agent-view-theme
+      "@herbcaudill/components":
+        specifier: workspace:*
+        version: link:../components
       "@tabler/icons-react":
         specifier: ^3.36.1
         version: 3.36.1(react@19.2.3)
@@ -624,12 +630,21 @@ importers:
       "@tailwindcss/vite":
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0))
+      "@testing-library/jest-dom":
+        specifier: ^6.9.1
+        version: 6.9.1
+      "@testing-library/react":
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       "@types/react":
         specifier: ^19.2.5
         version: 19.2.8
       "@types/react-dom":
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.8)
+      jsdom:
+        specifier: ^28.0.0
+        version: 28.0.0
       prettier:
         specifier: ^3.5.3
         version: 3.8.1
@@ -642,6 +657,9 @@ importers:
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@28.0.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
 
   packages/shared:
     dependencies:
