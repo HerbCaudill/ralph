@@ -3,6 +3,7 @@ import { cx } from "../lib/utils"
 import { highlight, normalizeLanguage } from "@herbcaudill/agent-view-theme"
 import { useAgentViewContext } from "../context/useAgentViewContext"
 import { IconCopy, IconCheck } from "@tabler/icons-react"
+import { Button } from "@herbcaudill/components"
 
 export interface CodeBlockProps {
   /** The code to highlight */
@@ -96,21 +97,20 @@ export function CodeBlock({
         </pre>
       : <div dangerouslySetInnerHTML={{ __html: html }} />}
       {showCopy && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={handleCopy}
           className={cx(
-            "absolute top-2 right-2 rounded-md p-1.5 transition-opacity",
-            "bg-background/80 hover:bg-muted border-border/50 border",
+            "absolute top-2 right-2 transition-opacity",
             "opacity-0 group-hover:opacity-100 focus:opacity-100",
-            "focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none",
           )}
           aria-label={copied ? "Copied" : "Copy code"}
         >
           {copied ?
-            <IconCheck className="text-status-success h-4 w-4" />
-          : <IconCopy className="text-muted-foreground h-4 w-4" />}
-        </button>
+            <IconCheck className="text-status-success" />
+          : <IconCopy className="text-muted-foreground" />}
+        </Button>
       )}
     </div>
   )
