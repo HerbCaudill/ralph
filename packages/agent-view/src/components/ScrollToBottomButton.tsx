@@ -1,4 +1,5 @@
 import { IconChevronDown } from "@tabler/icons-react"
+import { Button } from "@herbcaudill/components"
 import { cn } from "../lib/utils"
 
 /**
@@ -14,18 +15,17 @@ export function ScrollToBottomButton({
   if (!isVisible) return null
 
   return (
-    <button
+    <Button
       onClick={onClick}
       className={cn(
-        "bg-repo-accent text-repo-accent-foreground absolute right-4 bottom-[46px] z-10 rounded-full p-2 shadow-lg transition-opacity hover:opacity-90",
-        "flex items-center gap-1.5",
+        "absolute right-4 bottom-[46px] z-10 rounded-full shadow-lg transition-opacity hover:opacity-90",
         className,
       )}
       aria-label={ariaLabel}
     >
       <IconChevronDown className="size-4" />
       <span className="pr-1 text-xs font-medium">Latest</span>
-    </button>
+    </Button>
   )
 }
 
