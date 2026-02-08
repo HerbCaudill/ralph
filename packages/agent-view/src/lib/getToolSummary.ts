@@ -1,10 +1,10 @@
 import { toRelativePath } from "./toRelativePath"
-import type { ToolName } from "../types"
+import { normalizeToolName } from "./normalizeToolName"
 
 /**  Generate a concise summary string for a tool invocation based on its primary input parameter. */
 export function getToolSummary(
-  /** The name of the tool */
-  tool: ToolName,
+  /** The name of the tool (accepts any casing; normalized internally) */
+  tool: string,
   /** The tool's input parameters */
   input?: Record<string, unknown>,
   /** The workspace root path for relative path conversion */
@@ -12,7 +12,9 @@ export function getToolSummary(
 ): string {
   if (!input) return ""
 
-  switch (tool) {
+  const normalized = normalizeToolName(tool)
+
+  switch (normalized) {
     case "Read":
       return input.file_path ? toRelativePath(String(input.file_path), workspace ?? null) : ""
     case "Edit":

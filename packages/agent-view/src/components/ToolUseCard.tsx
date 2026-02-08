@@ -7,6 +7,7 @@ import { getOutputSummary } from "../lib/getOutputSummary"
 import { getPreviewInfo } from "../lib/getPreviewInfo"
 import { getStatusColor } from "../lib/getStatusColor"
 import { getToolSummary } from "../lib/getToolSummary"
+import { normalizeToolName } from "../lib/normalizeToolName"
 import type { ToolUseEvent } from "../types"
 import { AnsiOutput } from "./AnsiOutput"
 import { DiffView } from "./DiffView"
@@ -28,8 +29,9 @@ export function ToolUseCard({
   const [isToolOutputExpanded, setIsToolOutputExpanded] = useState(true)
   const { workspacePath, toolOutput } = useAgentViewContext()
 
-  const summary = getToolSummary(event.tool, event.input, workspacePath)
-  const outputSummary = getOutputSummary(event.tool, event.output)
+  const tool = normalizeToolName(event.tool)
+  const summary = getToolSummary(tool, event.input, workspacePath)
+  const outputSummary = getOutputSummary(tool, event.output)
   const statusColor = getStatusColor(event.status)
 
   const showToolOutput = (toolOutput?.isVisible ?? true) && isToolOutputExpanded
@@ -37,10 +39,10 @@ export function ToolUseCard({
   const hasExpandableContent = Boolean(
     event.output ||
     event.error ||
-    (event.tool === "Edit" && event.input?.old_string && event.input?.new_string),
+    (tool === "Edit" && event.input?.old_string && event.input?.new_string),
   )
 
-  if (event.tool === "TodoWrite" && event.input?.todos && Array.isArray(event.input.todos)) {
+  if (tool === "TodoWrite" && event.input?.todos && Array.isArray(event.input.todos)) {
     return (
       <div className={cn("max-w-[100ch] py-1.5 pr-12 pl-4", className)}>
         <div className="flex items-center gap-2.5">
@@ -64,7 +66,7 @@ export function ToolUseCard({
         onClick={hasExpandableContent ? () => setIsToolOutputExpanded(prev => !prev) : undefined}
         role={hasExpandableContent ? "button" : undefined}
         aria-expanded={hasExpandableContent ? showToolOutput : undefined}
-        aria-label={hasExpandableContent ? `Toggle ${event.tool} output` : undefined}
+        aria-label={hasExpandableContent ? `Toggle ${tool} output` : undefined}
       >
         <span
           className={cn("size-1.5 shrink-0 rounded-full", statusColor)}
@@ -72,7 +74,7 @@ export function ToolUseCard({
         />
 
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span className="text-foreground shrink-0 text-xs font-semibold">{event.tool}</span>
+          <span className="text-foreground shrink-0 text-xs font-semibold">{tool}</span>
 
           {summary && (
             <span className="text-foreground/80 min-w-0 flex-1 truncate font-mono text-xs">
@@ -93,7 +95,7 @@ export function ToolUseCard({
           <div className="text-muted-foreground flex items-start gap-1 text-xs">
             <span>└</span>
             <div className="flex-1">
-              {event.tool === "Edit" &&
+              {tool === "Edit" &&
                 typeof event.input?.old_string === "string" &&
                 typeof event.input?.new_string === "string" && (
                   <DiffView
@@ -111,7 +113,7 @@ export function ToolUseCard({
 
               {outputSummary && <span>{outputSummary}</span>}
 
-              {event.tool === "Bash" && event.output && (
+              {tool === "Bash" && event.output && (
                 <AnsiOutput
                   code={event.output}
                   isExpanded={isExpanded}
@@ -121,8 +123,8 @@ export function ToolUseCard({
 
               {event.output &&
                 !outputSummary &&
-                event.tool !== "Bash" &&
-                event.tool !== "Edit" &&
+                tool !== "Bash" &&
+                tool !== "Edit" &&
                 (() => {
                   const { preview, remainingLines } = getPreviewInfo(event.output)
                   return (

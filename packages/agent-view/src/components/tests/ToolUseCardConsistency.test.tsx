@@ -37,7 +37,9 @@ describe("ToolUseCard consistency", () => {
       }
 
       // Build toolResults map as EventList would
-      const toolResults = new Map([["toolu_abc", { output: "file1.txt\nfile2.txt", error: undefined }]])
+      const toolResults = new Map([
+        ["toolu_abc", { output: "file1.txt\nfile2.txt", error: undefined }],
+      ])
 
       render(
         <AgentViewProvider value={{ toolOutput }}>
@@ -110,7 +112,9 @@ describe("ToolUseCard consistency", () => {
         toolUseId: "toolu_abc",
       }
 
-      const toolResults = new Map([["toolu_abc", { output: "file1.txt\nfile2.txt", error: undefined }]])
+      const toolResults = new Map([
+        ["toolu_abc", { output: "file1.txt\nfile2.txt", error: undefined }],
+      ])
 
       render(
         <AgentViewProvider value={{ toolOutput }}>
@@ -142,20 +146,22 @@ describe("ToolUseCard consistency", () => {
       const { container: container1 } = render(
         <AgentViewProvider value={{ toolOutput }}>
           <EventStreamEventItem
-            event={{
-              type: "assistant",
-              timestamp: 100,
-              message: {
-                content: [
-                  {
-                    type: "tool_use",
-                    id: "toolu_abc",
-                    name: "Bash", // Use Bash instead of Read to avoid summary-only behavior
-                    input: { command: "echo hello" },
-                  },
-                ],
-              },
-            } as AssistantChatEvent}
+            event={
+              {
+                type: "assistant",
+                timestamp: 100,
+                message: {
+                  content: [
+                    {
+                      type: "tool_use",
+                      id: "toolu_abc",
+                      name: "Bash", // Use Bash instead of Read to avoid summary-only behavior
+                      input: { command: "echo hello" },
+                    },
+                  ],
+                },
+              } as AssistantChatEvent
+            }
             toolResults={toolResults}
             hasStructuredLifecycleEvents={false}
             eventIndex={0}
@@ -167,14 +173,16 @@ describe("ToolUseCard consistency", () => {
       const { container: container2 } = render(
         <AgentViewProvider value={{ toolOutput }}>
           <EventStreamEventItem
-            event={{
-              type: "tool_use",
-              timestamp: 100,
-              tool: "Bash",
-              input: { command: "echo hello" },
-              status: "success",
-              toolUseId: "toolu_abc",
-            } as ToolUseChatEvent}
+            event={
+              {
+                type: "tool_use",
+                timestamp: 100,
+                tool: "Bash",
+                input: { command: "echo hello" },
+                status: "success",
+                toolUseId: "toolu_abc",
+              } as ToolUseChatEvent
+            }
             toolResults={toolResults}
             hasStructuredLifecycleEvents={false}
             eventIndex={0}
@@ -191,6 +199,71 @@ describe("ToolUseCard consistency", () => {
       expect(container2.textContent).toContain("Bash")
       expect(container2.textContent).toContain("echo hello")
       expect(container2.textContent).toContain("output text")
+    })
+  })
+
+  describe("lowercase tool names from Codex adapter (bug r-7wybi)", () => {
+    it("should show command when tool name is lowercase 'bash' from Codex", () => {
+      // The Codex adapter emits lowercase tool names like "bash" instead of "Bash".
+      // The persisted event looks like:
+      // {"type":"tool_use","toolUseId":"item_1","tool":"bash","input":{"command":"pnpm test:all"}}
+      const toolUseEvent: ToolUseChatEvent = {
+        type: "tool_use",
+        timestamp: 100,
+        tool: "bash" as ToolUseChatEvent["tool"],
+        input: { command: "/bin/zsh -lc 'pnpm test:all'" },
+        output: "All tests pass",
+        status: "success",
+        toolUseId: "item_1",
+      }
+
+      const toolResults = new Map<string, { output?: string; error?: string }>()
+
+      render(
+        <AgentViewProvider value={{ toolOutput }}>
+          <EventStreamEventItem
+            event={toolUseEvent}
+            toolResults={toolResults}
+            hasStructuredLifecycleEvents={false}
+            eventIndex={0}
+          />
+        </AgentViewProvider>,
+      )
+
+      // Should show the normalized tool name (PascalCase)
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+
+      // Should show the command (input summary) - this was the bug!
+      expect(screen.getByText("/bin/zsh -lc 'pnpm test:all'")).toBeInTheDocument()
+
+      // Should show the output
+      expect(screen.getByText(/All tests pass/)).toBeInTheDocument()
+    })
+
+    it("should normalize display name from lowercase to PascalCase", () => {
+      const toolUseEvent: ToolUseChatEvent = {
+        type: "tool_use",
+        timestamp: 100,
+        tool: "bash" as ToolUseChatEvent["tool"],
+        input: { command: "ls" },
+        status: "success",
+        toolUseId: "item_1",
+      }
+
+      render(
+        <AgentViewProvider value={{ toolOutput }}>
+          <EventStreamEventItem
+            event={toolUseEvent}
+            toolResults={new Map()}
+            hasStructuredLifecycleEvents={false}
+            eventIndex={0}
+          />
+        </AgentViewProvider>,
+      )
+
+      // Should show "Bash" not "bash" as the display name
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+      expect(screen.queryByText("bash")).not.toBeInTheDocument()
     })
   })
 

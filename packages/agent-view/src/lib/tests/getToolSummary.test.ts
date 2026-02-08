@@ -134,6 +134,74 @@ describe("getToolSummary", () => {
     })
   })
 
+  describe("case-insensitive tool names (Codex adapter emits lowercase)", () => {
+    it("should return command for lowercase 'bash'", () => {
+      const input = { command: "/bin/zsh -lc 'pnpm test:all'" }
+      const result = getToolSummary("bash", input)
+      expect(result).toBe("/bin/zsh -lc 'pnpm test:all'")
+    })
+
+    it("should return file path for lowercase 'read'", () => {
+      const input = { file_path: "/Users/test/project/src/file.ts" }
+      const result = getToolSummary("read", input, "/Users/test/project")
+      expect(result).toBe("src/file.ts")
+    })
+
+    it("should return file path for lowercase 'edit'", () => {
+      const input = { file_path: "/Users/test/project/src/file.ts" }
+      const result = getToolSummary("edit", input, "/Users/test/project")
+      expect(result).toBe("src/file.ts")
+    })
+
+    it("should return file path for lowercase 'write'", () => {
+      const input = { file_path: "/Users/test/project/src/file.ts" }
+      const result = getToolSummary("write", input, "/Users/test/project")
+      expect(result).toBe("src/file.ts")
+    })
+
+    it("should return pattern for lowercase 'grep'", () => {
+      const input = { pattern: "TODO" }
+      const result = getToolSummary("grep", input)
+      expect(result).toBe("TODO")
+    })
+
+    it("should return pattern for lowercase 'glob'", () => {
+      const input = { pattern: "**/*.ts" }
+      const result = getToolSummary("glob", input)
+      expect(result).toBe("**/*.ts")
+    })
+
+    it("should return query for lowercase 'websearch'", () => {
+      const input = { query: "typescript best practices" }
+      const result = getToolSummary("websearch", input)
+      expect(result).toBe("typescript best practices")
+    })
+
+    it("should return url for lowercase 'webfetch'", () => {
+      const input = { url: "https://example.com" }
+      const result = getToolSummary("webfetch", input)
+      expect(result).toBe("https://example.com")
+    })
+
+    it("should return count for lowercase 'todowrite'", () => {
+      const input = { todos: ["Task 1", "Task 2"] }
+      const result = getToolSummary("todowrite", input)
+      expect(result).toBe("2 todo(s)")
+    })
+
+    it("should return description for lowercase 'task'", () => {
+      const input = { description: "Fix bug in login" }
+      const result = getToolSummary("task", input)
+      expect(result).toBe("Fix bug in login")
+    })
+
+    it("should handle UPPERCASE tool names", () => {
+      const input = { command: "npm test" }
+      const result = getToolSummary("BASH", input)
+      expect(result).toBe("npm test")
+    })
+  })
+
   describe("edge cases", () => {
     it("should return empty string when input is undefined", () => {
       const result = getToolSummary("Read", undefined)
