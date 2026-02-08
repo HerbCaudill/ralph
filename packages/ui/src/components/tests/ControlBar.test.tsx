@@ -1,3 +1,4 @@
+import React from "react"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { ControlBar } from "../ControlBar"
@@ -5,6 +6,27 @@ import { ControlBar } from "../ControlBar"
 // Mock agent-view cn utility
 vi.mock("@herbcaudill/agent-view", () => ({
   cn: (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(" "),
+}))
+
+// Mock @herbcaudill/components to provide Button with data-slot attribute
+vi.mock("@herbcaudill/components", () => ({
+  Button: ({
+    className,
+    variant,
+    size,
+    children,
+    ...props
+  }: React.ComponentProps<"button"> & { variant?: string; size?: string }) => (
+    <button
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={className}
+      {...props}
+    >
+      {children}
+    </button>
+  ),
 }))
 
 describe("ControlBar", () => {
@@ -36,6 +58,17 @@ describe("ControlBar", () => {
     it("applies custom className", () => {
       const { container } = render(<ControlBar {...defaultProps} className="custom-class" />)
       expect(container.firstChild).toHaveClass("custom-class")
+    })
+
+    it("uses shared Button component with outline variant and icon-xs size", () => {
+      render(<ControlBar {...defaultProps} />)
+
+      const buttons = screen.getAllByRole("button")
+      buttons.forEach(button => {
+        expect(button).toHaveAttribute("data-slot", "button")
+        expect(button).toHaveAttribute("data-variant", "outline")
+        expect(button).toHaveAttribute("data-size", "icon-xs")
+      })
     })
   })
 

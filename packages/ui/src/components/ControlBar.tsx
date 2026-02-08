@@ -6,6 +6,7 @@ import {
   IconPlayerStop,
 } from "@tabler/icons-react"
 import { cn } from "@herbcaudill/agent-view"
+import { Button } from "@herbcaudill/components"
 import {
   getControlBarButtonStates,
   controlStateToRalphStatus,
@@ -38,12 +39,6 @@ export interface ControlBarProps {
   /** Optional CSS class to apply to the container. */
   className?: string
 }
-
-/** Base styles for control buttons. */
-const buttonBase = cn(
-  "flex items-center justify-center rounded-md border border-border p-1 transition-colors",
-  "hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed",
-)
 
 /**
  * Control bar with buttons for Start, Pause, Stop, and Stop-after-current.
@@ -140,40 +135,47 @@ export function ControlBar({
   return (
     <div className={cn("flex items-center gap-1", className)}>
       {/* Start button */}
-      <button
+      <Button
+        variant="outline"
+        size="icon-xs"
         onClick={handleStart}
         disabled={!buttonStates.start || isLoading}
         title="Start"
         aria-label="Start"
-        className={cn(buttonBase, "text-green-600")}
+        className="text-green-600"
       >
         <IconPlayerPlayFilled size={14} stroke={1.5} />
-      </button>
+      </Button>
 
       {/* Pause/Resume button */}
-      <button
+      <Button
+        variant="outline"
+        size="icon-xs"
         onClick={handlePause}
         disabled={!buttonStates.pause || isLoading}
         title={isPaused ? "Resume" : "Pause"}
         aria-label={isPaused ? "Resume" : "Pause"}
-        className={buttonBase}
       >
         <IconPlayerPauseFilled size={14} stroke={1.5} />
-      </button>
+      </Button>
 
       {/* Stop button */}
-      <button
+      <Button
+        variant="outline"
+        size="icon-xs"
         onClick={handleStop}
         disabled={!buttonStates.stop || isLoading}
         title="Stop"
         aria-label="Stop"
-        className={cn(buttonBase, "hover:text-red-600")}
+        className="hover:text-red-600"
       >
         <IconPlayerStopFilled size={14} stroke={1.5} />
-      </button>
+      </Button>
 
       {/* Stop after current button */}
-      <button
+      <Button
+        variant="outline"
+        size="icon-xs"
         onClick={handleStopAfterCurrent}
         disabled={!buttonStates.stopAfterCurrent || isLoading}
         title={
@@ -184,13 +186,10 @@ export function ControlBar({
             "Cancel stop after current"
           : "Stop after current action"
         }
-        className={cn(
-          buttonBase,
-          status === "stopping_after_current" && "bg-amber-500/20 text-amber-600",
-        )}
+        className={cn(status === "stopping_after_current" && "bg-amber-500/20 text-amber-600")}
       >
         <IconPlayerStop size={14} stroke={1.5} />
-      </button>
+      </Button>
 
       {/* Error display */}
       {error && <span className="text-red-500 text-xs">{error}</span>}
