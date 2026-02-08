@@ -1,6 +1,7 @@
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { RelatedTasks } from ".././RelatedTasks"
+import { beadsViewStore } from "../../../store"
 import type { Task } from "../../../types"
 
 // Mock fetch
@@ -44,10 +45,13 @@ describe("RelatedTasks", () => {
   beforeEach(() => {
     mockFetch.mockReset()
     mockTasks = []
+    // Set up the store with the issue prefix for tests that check ID display
+    beadsViewStore.setState({ issuePrefix: "rui" })
   })
 
   afterEach(() => {
     vi.clearAllMocks()
+    beadsViewStore.setState({ issuePrefix: null })
   })
 
   const renderWithContext = (taskId: string) => {
@@ -100,7 +104,7 @@ describe("RelatedTasks", () => {
       renderWithContext("rui-123")
 
       await waitFor(() => {
-        expect(screen.getByText("Children (2)")).toBeInTheDocument()
+        expect(screen.getByLabelText("Children section, 2 tasks")).toBeInTheDocument()
       })
     })
   })
@@ -127,7 +131,7 @@ describe("RelatedTasks", () => {
       renderWithContext("rui-123")
 
       await waitFor(() => {
-        expect(screen.getByText("Blocked by (2)")).toBeInTheDocument()
+        expect(screen.getByLabelText("Blocked by section, 2 tasks")).toBeInTheDocument()
       })
     })
   })
@@ -153,7 +157,7 @@ describe("RelatedTasks", () => {
       renderWithContext("rui-123")
 
       await waitFor(() => {
-        expect(screen.getByText("Blocks (1)")).toBeInTheDocument()
+        expect(screen.getByLabelText("Blocks section, 1 task")).toBeInTheDocument()
       })
     })
   })
@@ -173,7 +177,7 @@ describe("RelatedTasks", () => {
       })
     })
 
-    it("renders task as link with correct href", async () => {
+    it("renders task as clickable button", async () => {
       mockTasks = [{ id: "rui-123.1", title: "Child task", status: "open", parent: "rui-123" }]
 
       mockFetch.mockResolvedValueOnce({
@@ -186,14 +190,14 @@ describe("RelatedTasks", () => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
       })
 
-      // Task should be a link with correct href
-      const link = screen.getByRole("link", { name: /Child task/ })
-      expect(link).toHaveAttribute("href", "/issue/rui-123.1")
+      // Task should be a button (TaskCard uses button role for the clickable content)
+      const button = screen.getByRole("button", { name: /Child task/ })
+      expect(button).toBeInTheDocument()
     })
   })
 
   describe("section headers", () => {
-    it("section headers are not collapsible - content is always visible", async () => {
+    it("section headers are collapsible and content is visible by default", async () => {
       mockTasks = [{ id: "rui-123.1", title: "Child task", status: "open", parent: "rui-123" }]
 
       mockFetch.mockResolvedValueOnce({
@@ -206,14 +210,14 @@ describe("RelatedTasks", () => {
         expect(screen.getByText("Child task")).toBeInTheDocument()
       })
 
-      // Verify header is visible
-      expect(screen.getByText("Children (1)")).toBeInTheDocument()
-      // Verify content is always visible
+      // Verify header is visible with correct aria-label
+      expect(screen.getByLabelText("Children section, 1 task")).toBeInTheDocument()
+      // Verify content is visible by default
       expect(screen.getByText("Child task")).toBeInTheDocument()
 
-      // Header should not be a button (not clickable)
-      const header = screen.getByText("Children (1)")
-      expect(header.tagName).not.toBe("BUTTON")
+      // Header should be a button (collapsible)
+      const header = screen.getByLabelText("Children section, 1 task")
+      expect(header).toHaveAttribute("role", "button")
     })
   })
 
@@ -247,7 +251,7 @@ describe("RelatedTasks", () => {
       renderWithContext("rui-456")
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-456")
+        expect(mockFetch).toHaveBeenCalledWith("/api/tasks/rui-456", undefined)
       })
     })
 
@@ -367,7 +371,8 @@ describe("RelatedTasks", () => {
       })
 
       // The remove button should be present (visible on hover via CSS)
-      const removeButton = screen.getByRole("button", { name: /remove rui-100 as blocker/i })
+      // The TaskCard uses a generic "Remove" button
+      const removeButton = screen.getByRole("button", { name: "Remove" })
       expect(removeButton).toBeInTheDocument()
     })
 
@@ -499,7 +504,7 @@ describe("RelatedTasks", () => {
       })
 
       // Click the remove button
-      const removeButton = screen.getByRole("button", { name: /remove rui-100 as blocker/i })
+      const removeButton = screen.getByRole("button", { name: "Remove" })
       await act(async () => {
         fireEvent.click(removeButton)
       })

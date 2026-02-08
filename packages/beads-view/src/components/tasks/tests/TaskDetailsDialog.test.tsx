@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react"
 import { TaskDetailsController } from ".././TaskDetailsController"
-import { beadsViewStore } from "@herbcaudill/beads-view"
+import { beadsViewStore } from "../../../store"
 import type { TaskCardTask } from "../../../types"
 
 // Mock child components to avoid their async behavior

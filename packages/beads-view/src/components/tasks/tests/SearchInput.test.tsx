@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { SearchInput, type SearchInputHandle } from ".././SearchInput"
-import { beadsViewStore } from "@herbcaudill/beads-view"
+import { beadsViewStore } from "../../../store"
 import { createRef } from "react"
 
 // Tests

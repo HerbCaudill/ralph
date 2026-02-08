@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { createRef } from "react"
 import { QuickTaskInput, type QuickTaskInputHandle } from ".././QuickTaskInput"
-import { beadsViewStore } from "@herbcaudill/beads-view"
+import { beadsViewStore } from "../../../store"
 
 // Mock fetch
 

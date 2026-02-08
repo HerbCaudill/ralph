@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { TaskList } from ".././TaskList"
 import type { TaskCardTask } from "../../../types"
-import { beadsViewStore } from "@herbcaudill/beads-view"
+import { beadsViewStore } from "../../../store"
 import type { TaskGroup } from "../../../types"
 
 // Helper to get recent date (for closed tasks to be visible with default filter)
@@ -930,7 +930,7 @@ describe("TaskList", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Closed task", status: "closed", closed_at: getRecentDate() },
       ]
-      render(<TaskList tasks={tasks} />)
+      render(<TaskList tasks={tasks} onClosedTimeFilterChange={() => {}} />)
 
       const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
       expect(filterDropdown).toBeInTheDocument()
@@ -940,7 +940,13 @@ describe("TaskList", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Closed task", status: "closed", closed_at: getRecentDate() },
       ]
-      render(<TaskList tasks={tasks} persistCollapsedState={false} />)
+      render(
+        <TaskList
+          tasks={tasks}
+          persistCollapsedState={false}
+          onClosedTimeFilterChange={() => {}}
+        />,
+      )
 
       const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
       expect(filterDropdown).toHaveValue("past_day")
@@ -1019,7 +1025,9 @@ describe("TaskList", () => {
       const tasks: TaskCardTask[] = [
         { id: "task-1", title: "Closed task", status: "closed", closed_at: getRecentDate() },
       ]
-      render(<TaskList tasks={tasks} closedTimeFilter="all_time" />)
+      render(
+        <TaskList tasks={tasks} closedTimeFilter="all_time" onClosedTimeFilterChange={() => {}} />,
+      )
 
       const filterDropdown = screen.getByRole("combobox", { name: "Filter closed tasks by time" })
       expect(filterDropdown).toHaveValue("all_time")
@@ -1056,7 +1064,7 @@ describe("TaskList", () => {
         { id: "task-1", title: "Open task", status: "open" },
         { id: "task-2", title: "Closed task", status: "closed", closed_at: getRecentDate() },
       ]
-      render(<TaskList tasks={tasks} />)
+      render(<TaskList tasks={tasks} onClosedTimeFilterChange={() => {}} />)
 
       // Only one combobox should exist (for closed group)
       const filterDropdowns = screen.getAllByRole("combobox")

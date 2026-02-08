@@ -1,28 +1,8 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { TaskCard } from ".././TaskCard"
+import { beadsViewStore } from "../../../store"
 import type { TaskCardTask, TaskStatus } from "../../../types"
-
-// Mock state that can be modified per test
-let mockState = {
-  issuePrefix: "rui" as string | null,
-  selectedTaskId: null as string | null,
-  accentColor: null as string | null,
-}
-
-// Mock beads-view store
-vi.mock("@herbcaudill/beads-view", async importOriginal => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return {
-    ...actual,
-    useBeadsViewStore: (selector: (state: typeof mockState) => unknown) => {
-      return selector(mockState)
-    },
-    selectIssuePrefix: (state: { issuePrefix: string | null }) => state.issuePrefix,
-    selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
-    selectAccentColor: (state: { accentColor: string | null }) => state.accentColor,
-  }
-})
 
 // Test Fixtures
 
@@ -46,12 +26,12 @@ const fullTask: TaskCardTask = {
 
 describe("TaskCard", () => {
   beforeEach(() => {
-    // Reset mock state before each test
-    mockState = {
+    // Reset store state before each test
+    beadsViewStore.setState({
       issuePrefix: "rui",
       selectedTaskId: null,
       accentColor: null,
-    }
+    })
   })
 
   describe("rendering", () => {
@@ -466,7 +446,7 @@ describe("TaskCard", () => {
 
   describe("keyboard selection styling", () => {
     it("applies selection style when task is selected", () => {
-      mockState.selectedTaskId = baseTask.id
+      beadsViewStore.setState({ selectedTaskId: baseTask.id })
       const { container } = render(<TaskCard task={baseTask} />)
 
       // When selected, the card should have inline styles for selection
@@ -476,7 +456,7 @@ describe("TaskCard", () => {
     })
 
     it("does not apply selection style when task is not selected", () => {
-      mockState.selectedTaskId = "other-task-id"
+      beadsViewStore.setState({ selectedTaskId: "other-task-id" })
       const { container } = render(<TaskCard task={baseTask} />)
 
       const card = container.firstChild as HTMLElement
@@ -485,8 +465,7 @@ describe("TaskCard", () => {
     })
 
     it("uses accent color for selection when provided", () => {
-      mockState.selectedTaskId = baseTask.id
-      mockState.accentColor = "#ff5500"
+      beadsViewStore.setState({ selectedTaskId: baseTask.id, accentColor: "#ff5500" })
       const { container } = render(<TaskCard task={baseTask} />)
 
       const card = container.firstChild as HTMLElement
@@ -498,8 +477,7 @@ describe("TaskCard", () => {
     })
 
     it("uses default color for selection when accent color is null", () => {
-      mockState.selectedTaskId = baseTask.id
-      mockState.accentColor = null
+      beadsViewStore.setState({ selectedTaskId: baseTask.id, accentColor: null })
       const { container } = render(<TaskCard task={baseTask} />)
 
       const card = container.firstChild as HTMLElement
