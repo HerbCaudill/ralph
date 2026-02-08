@@ -16,8 +16,8 @@ const buttonGroupVariants = cva(
           "flex-col divide-y divide-border [&>*:not(:first-child)]:rounded-t-none [&>*:not(:last-child)]:rounded-b-none",
       },
       size: {
-        default: "",
-        sm: "",
+        default: "text-sm",
+        sm: "text-xs",
       },
     },
     defaultVariants: {
