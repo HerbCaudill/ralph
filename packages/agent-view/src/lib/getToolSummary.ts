@@ -4,7 +4,7 @@ import type { ToolName } from "../types"
 /**  Generate a concise summary string for a tool invocation based on its primary input parameter. */
 export function getToolSummary(
   /** The name of the tool */
-  tool: ToolName,
+  tool: ToolName | string,
   /** The tool's input parameters */
   input?: Record<string, unknown>,
   /** The workspace root path for relative path conversion */
@@ -12,29 +12,33 @@ export function getToolSummary(
 ): string {
   if (!input) return ""
 
-  switch (tool) {
-    case "Read":
+  // Normalize tool name to lowercase for case-insensitive matching
+  // (some adapters like Codex emit lowercase tool names)
+  const normalizedTool = tool.toLowerCase()
+
+  switch (normalizedTool) {
+    case "read":
       return input.file_path ? toRelativePath(String(input.file_path), workspace ?? null) : ""
-    case "Edit":
+    case "edit":
       return input.file_path ? toRelativePath(String(input.file_path), workspace ?? null) : ""
-    case "Write":
+    case "write":
       return input.file_path ? toRelativePath(String(input.file_path), workspace ?? null) : ""
-    case "Bash":
+    case "bash":
       return input.command ? String(input.command) : ""
-    case "Grep":
+    case "grep":
       return input.pattern ? String(input.pattern) : ""
-    case "Glob":
+    case "glob":
       return input.pattern ? String(input.pattern) : ""
-    case "WebSearch":
+    case "websearch":
       return input.query ? String(input.query) : ""
-    case "WebFetch":
+    case "webfetch":
       return input.url ? String(input.url) : ""
-    case "TodoWrite":
+    case "todowrite":
       if (Array.isArray(input.todos)) {
         return `${input.todos.length} todo(s)`
       }
       return ""
-    case "Task":
+    case "task":
       return input.description ? String(input.description) : ""
     default:
       return ""
