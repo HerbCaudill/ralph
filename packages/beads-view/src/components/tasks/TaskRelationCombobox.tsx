@@ -52,7 +52,8 @@ export function TaskRelationCombobox({
       switch (relationType) {
         case "parent":
           // Exclude descendants to prevent circular references
-          return !isDescendantOf(t.id, task.id, allTasks)
+          // Also exclude closed tasks (can't set a closed task as parent)
+          return !isDescendantOf(t.id, task.id, allTasks) && t.status !== "closed"
 
         case "child":
           // Exclude ancestors to prevent circular references
@@ -60,6 +61,9 @@ export function TaskRelationCombobox({
 
         case "blocker":
         case "blocked":
+          // Only show open tasks - closed tasks can't block or be blocked
+          return t.status !== "closed"
+
         default:
           return true
       }

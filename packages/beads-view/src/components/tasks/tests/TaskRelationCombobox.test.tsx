@@ -129,6 +129,81 @@ describe("TaskRelationCombobox", () => {
       )
       expect(screen.getByRole("button", { name: /add blocker/i })).toBeDisabled()
     })
+
+    it("excludes closed tasks for blocker relation type", () => {
+      const tasksWithClosed = [
+        defaultTask,
+        { id: "task-2", title: "Open Task", status: "open" as const, type: "task" as const, priority: 2 },
+        { id: "task-3", title: "Closed Task", status: "closed" as const, type: "task" as const, priority: 2 },
+      ]
+      render(
+        <TaskRelationCombobox
+          task={defaultTask}
+          allTasks={tasksWithClosed}
+          issuePrefix="task"
+          relationType="blocker"
+          onSelect={vi.fn()}
+        />,
+      )
+      // Button should be enabled - there's still one open task
+      expect(screen.getByRole("button", { name: /add blocker/i })).not.toBeDisabled()
+    })
+
+    it("disables button when only closed tasks remain for blocker relation", () => {
+      const tasksWithOnlyClosed = [
+        defaultTask,
+        { id: "task-2", title: "Closed Task", status: "closed" as const, type: "task" as const, priority: 2 },
+      ]
+      render(
+        <TaskRelationCombobox
+          task={defaultTask}
+          allTasks={tasksWithOnlyClosed}
+          issuePrefix="task"
+          relationType="blocker"
+          onSelect={vi.fn()}
+        />,
+      )
+      // Button should be disabled - no open tasks available
+      expect(screen.getByRole("button", { name: /add blocker/i })).toBeDisabled()
+    })
+
+    it("excludes closed tasks for blocked relation type", () => {
+      const tasksWithClosed = [
+        defaultTask,
+        { id: "task-2", title: "Open Task", status: "open" as const, type: "task" as const, priority: 2 },
+        { id: "task-3", title: "Closed Task", status: "closed" as const, type: "task" as const, priority: 2 },
+      ]
+      render(
+        <TaskRelationCombobox
+          task={defaultTask}
+          allTasks={tasksWithClosed}
+          issuePrefix="task"
+          relationType="blocked"
+          onSelect={vi.fn()}
+        />,
+      )
+      // Button should be enabled - there's still one open task
+      expect(screen.getByRole("button", { name: /add blocked task/i })).not.toBeDisabled()
+    })
+
+    it("excludes closed tasks for parent relation type", () => {
+      const tasksWithClosed = [
+        defaultTask,
+        { id: "task-2", title: "Open Task", status: "open" as const, type: "task" as const, priority: 2 },
+        { id: "task-3", title: "Closed Task", status: "closed" as const, type: "task" as const, priority: 2 },
+      ]
+      render(
+        <TaskRelationCombobox
+          task={defaultTask}
+          allTasks={tasksWithClosed}
+          issuePrefix="task"
+          relationType="parent"
+          onSelect={vi.fn()}
+        />,
+      )
+      // Button should be enabled - there's still one open task
+      expect(screen.getByRole("button", { name: /set parent/i })).not.toBeDisabled()
+    })
   })
 
   describe("disabled state", () => {
