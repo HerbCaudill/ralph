@@ -27,6 +27,12 @@ export type UseWorkspaceOptions = {
 /** Default localStorage key for workspace persistence. */
 const DEFAULT_STORAGE_KEY = "ralph-workspace-path"
 
+/** LocalStorage key for cached workspace info (full Workspace object). */
+const WORKSPACE_INFO_KEY = "ralph-workspace-info"
+
+/** LocalStorage key for cached workspaces list. */
+const WORKSPACES_LIST_KEY = "ralph-workspaces-list"
+
 /**
  * Read the saved workspace path from localStorage.
  * Exported so callers can eagerly configure the API client at module scope.
@@ -43,15 +49,71 @@ export function getSavedWorkspacePath(
 }
 
 /**
+ * Read the cached workspace info from localStorage.
+ * Returns null if not found or invalid JSON.
+ */
+function getCachedWorkspaceInfo(): Workspace | null {
+  try {
+    const cached = localStorage.getItem(WORKSPACE_INFO_KEY)
+    if (cached) {
+      return JSON.parse(cached) as Workspace
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null
+}
+
+/**
+ * Save workspace info to localStorage cache.
+ */
+function setCachedWorkspaceInfo(workspace: Workspace): void {
+  try {
+    localStorage.setItem(WORKSPACE_INFO_KEY, JSON.stringify(workspace))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Read the cached workspaces list from localStorage.
+ */
+function getCachedWorkspacesList(): Workspace[] {
+  try {
+    const cached = localStorage.getItem(WORKSPACES_LIST_KEY)
+    if (cached) {
+      return JSON.parse(cached) as Workspace[]
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return []
+}
+
+/**
+ * Save workspaces list to localStorage cache.
+ */
+function setCachedWorkspacesList(workspaces: Workspace[]): void {
+  try {
+    localStorage.setItem(WORKSPACES_LIST_KEY, JSON.stringify(workspaces))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
  * Hook that manages workspace selection entirely on the client side.
  * Fetches workspace list from the server, picks first (or localStorage-saved),
  * and configures the API client to include the workspace path on all requests.
  */
 export function useWorkspace(options: UseWorkspaceOptions = {}) {
   const { onSwitchStart, storageKey = DEFAULT_STORAGE_KEY } = options
-  const [current, setCurrent] = useState<Workspace | null>(null)
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+
+  // Initialize with cached data synchronously to avoid loading flash
+  const [current, setCurrent] = useState<Workspace | null>(() => getCachedWorkspaceInfo())
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => getCachedWorkspacesList())
+  // If we have cached workspace info, start with isLoading: false
+  const [isLoading, setIsLoading] = useState(() => getCachedWorkspaceInfo() === null)
   const [error, setError] = useState<string | null>(null)
 
   // Eagerly configure the API client with the saved workspace path from localStorage.
@@ -138,6 +200,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
     const info = await fetchWorkspaceInfo(current.path)
     if (info) {
       setCurrent(info)
+      setCachedWorkspaceInfo(info)
     }
   }, [current, fetchWorkspaceInfo])
 
@@ -155,9 +218,12 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
         const info = await fetchWorkspaceInfo(path)
         if (info) {
           setCurrent(info)
+          setCachedWorkspaceInfo(info)
         } else {
           // Even if we can't get full info, set minimal workspace data
-          setCurrent({ path, name: path.split("/").pop() || path })
+          const minimal: Workspace = { path, name: path.split("/").pop() || path }
+          setCurrent(minimal)
+          setCachedWorkspaceInfo(minimal)
         }
       } catch (e) {
         setError((e as Error).message)
@@ -170,26 +236,56 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
 
   useEffect(() => {
     const init = async () => {
+      const savedPath = getSavedWorkspacePath(storageKey)
+      const cachedWorkspace = getCachedWorkspaceInfo()
+
+      // Fast path: we have cached workspace data (already set synchronously in useState)
+      // Just refresh in the background
+      if (cachedWorkspace && savedPath) {
+        // Ensure API client is configured
+        saveWorkspacePath(savedPath)
+
+        // Refresh workspace info in background (updates cache if data changed)
+        fetchWorkspaceInfo(savedPath).then(freshWorkspace => {
+          if (freshWorkspace) {
+            setCurrent(freshWorkspace)
+            setCachedWorkspaceInfo(freshWorkspace)
+          }
+        })
+
+        // Refresh workspaces list in background
+        fetchWorkspaces().then(availableWorkspaces => {
+          setWorkspaces(availableWorkspaces)
+          setCachedWorkspacesList(availableWorkspaces)
+          if (availableWorkspaces.length === 0) {
+            setError("No workspaces found")
+          }
+        })
+
+        return
+      }
+
+      // Slow path: no cached data, need to load from server
       setIsLoading(true)
 
-      const savedPath = getSavedWorkspacePath(storageKey)
-
-      // If we have a saved workspace, fetch it immediately (fast path)
+      // If we have a saved workspace path, fetch it
       if (savedPath) {
         // Configure apiClient with the saved workspace path
         saveWorkspacePath(savedPath)
 
-        // Fetch saved workspace info immediately
+        // Fetch saved workspace info
         const savedWorkspace = await fetchWorkspaceInfo(savedPath)
 
         if (savedWorkspace) {
-          // Success! Set current workspace and mark as loaded
+          // Success! Set current workspace and cache it
           setCurrent(savedWorkspace)
+          setCachedWorkspaceInfo(savedWorkspace)
           setIsLoading(false)
 
           // Load workspace list in background (for the selector)
           fetchWorkspaces().then(availableWorkspaces => {
             setWorkspaces(availableWorkspaces)
+            setCachedWorkspacesList(availableWorkspaces)
             if (availableWorkspaces.length === 0) {
               setError("No workspaces found")
             }
@@ -200,10 +296,11 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
         // Saved workspace failed to load - fall through to slow path
       }
 
-      // Slow path: no saved workspace, or saved workspace failed to load
+      // Slowest path: no saved workspace, or saved workspace failed to load
       // Fetch the full workspace list first
       const availableWorkspaces = await fetchWorkspaces()
       setWorkspaces(availableWorkspaces)
+      setCachedWorkspacesList(availableWorkspaces)
 
       if (availableWorkspaces.length === 0) {
         setError("No workspaces found")
@@ -221,9 +318,11 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
       const info = await fetchWorkspaceInfo(targetPath)
       if (info) {
         setCurrent(info)
+        setCachedWorkspaceInfo(info)
       } else {
         // Use minimal info from the workspace list
         setCurrent(availableWorkspaces[0])
+        setCachedWorkspaceInfo(availableWorkspaces[0])
       }
 
       setIsLoading(false)
