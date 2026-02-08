@@ -4,6 +4,11 @@ import { expect, userEvent } from "storybook/test"
 import { AgentView } from ".././AgentView"
 import { useAgentHotkeys } from "../../hotkeys/useHotkeys"
 import type { ChatEvent } from "../../types"
+import {
+  sessionLocAnalysisEvents,
+  sessionWithToolsEvents,
+  sessionWithRalphEvents,
+} from "./fixtures/loadEventLog"
 
 const meta: Meta<typeof AgentView> = {
   title: "Panels/AgentView",
@@ -145,156 +150,14 @@ export const LongConversation: Story = {
 }
 
 /**
- * Events from session 0d452b73 demonstrating various tool uses:
+ * Events loaded from JSONL fixture (session-loc-analysis.jsonl).
+ * Demonstrates various tool uses:
  * - User asks about lines of code in the repo
  * - Assistant uses Bash to count LOC
  * - User asks for breakdown by file type
  * - Assistant uses multiple Bash commands to analyze by extension
  */
-const sessionEvents: ChatEvent[] = [
-  {
-    type: "user_message",
-    timestamp: 1770143528818,
-    message: "how many loc in this repo",
-  },
-  {
-    type: "assistant",
-    timestamp: 1770143534286,
-    message: {
-      id: "msg_01HNYAXgA2vhuTuBbXiHusFx",
-      content: [
-        {
-          type: "tool_use",
-          id: "toolu_01FXtHDijg5HqpQyiy58hf4u",
-          name: "Bash",
-          input: {
-            command:
-              'find . -type f \\( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" \\) -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./dist/*" -not -path "./**/dist/*" -not -path "./**/node_modules/*" | xargs wc -l 2>/dev/null | tail -1',
-            description: "Count lines of code in TypeScript/JavaScript files",
-          },
-        },
-      ],
-    },
-  },
-  {
-    type: "user",
-    timestamp: 1770143536000,
-    tool_use_result: true,
-    message: {
-      role: "user",
-      content: [
-        {
-          type: "tool_result",
-          tool_use_id: "toolu_01FXtHDijg5HqpQyiy58hf4u",
-          content: "  59147 total",
-          is_error: false,
-        },
-      ],
-    },
-  },
-  {
-    type: "assistant",
-    timestamp: 1770143538510,
-    message: {
-      id: "msg_01RJMt4KfpkhGCJcZvhHXaos",
-      content: [
-        {
-          type: "text",
-          text: "**~59,000 lines of code** in this repo (TypeScript/JavaScript files, excluding `node_modules`, `dist`, and `.git`).",
-        },
-      ],
-    },
-  },
-  {
-    type: "user_message",
-    timestamp: 1770143642817,
-    message: "show me a breakdown by file type",
-  },
-  {
-    type: "assistant",
-    timestamp: 1770143648305,
-    message: {
-      id: "msg_01VkwX4pqAXbp3wBQrMBxs7s",
-      content: [
-        {
-          type: "tool_use",
-          id: "toolu_011U1iU2CkoQ7UFLxTL7U8H8",
-          name: "Bash",
-          input: {
-            command:
-              'find . -type f \\( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" -o -name "*.md" -o -name "*.css" -o -name "*.html" \\) -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./dist/*" -not -path "./**/dist/*" -not -path "./**/node_modules/*" -not -path "./pnpm-lock.yaml" | while read f; do echo "${f##*.}"; done | sort | uniq -c | sort -rn',
-            description: "Count files by extension",
-          },
-        },
-      ],
-    },
-  },
-  {
-    type: "user",
-    timestamp: 1770143649000,
-    tool_use_result: true,
-    message: {
-      role: "user",
-      content: [
-        {
-          type: "tool_result",
-          tool_use_id: "toolu_011U1iU2CkoQ7UFLxTL7U8H8",
-          content: " 313 ts\n 153 tsx\n  57 md\n  43 json\n  10 js\n   7 css\n   4 html",
-          is_error: false,
-        },
-      ],
-    },
-  },
-  {
-    type: "assistant",
-    timestamp: 1770143650316,
-    message: {
-      id: "msg_01VkwX4pqAXbp3wBQrMBxs7s",
-      content: [
-        {
-          type: "tool_use",
-          id: "toolu_013VwiRJUcCAx4f4wFXnecmu",
-          name: "Bash",
-          input: {
-            command:
-              'for ext in ts tsx js jsx json md css html; do\n  count=$(find . -type f -name "*.$ext" -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./dist/*" -not -path "./**/dist/*" -not -path "./**/node_modules/*" -exec cat {} + 2>/dev/null | wc -l)\n  printf "%6d LOC  .%s\\n" "$count" "$ext"\ndone | sort -rn',
-            description: "Count lines of code by file extension",
-          },
-        },
-      ],
-    },
-  },
-  {
-    type: "user",
-    timestamp: 1770143656000,
-    tool_use_result: true,
-    message: {
-      role: "user",
-      content: [
-        {
-          type: "tool_result",
-          tool_use_id: "toolu_013VwiRJUcCAx4f4wFXnecmu",
-          content:
-            " 33320 LOC  .ts\n 24451 LOC  .tsx\n  8240 LOC  .md\n  1837 LOC  .json\n  1289 LOC  .js\n   191 LOC  .css\n   139 LOC  .html",
-          is_error: false,
-        },
-      ],
-    },
-  },
-  {
-    type: "assistant",
-    timestamp: 1770143659636,
-    message: {
-      id: "msg_018f2KYhkouYzWuoDZ9kLnXv",
-      content: [
-        {
-          type: "text",
-          text: "**Lines of code by file type:**\n\n| Extension | LOC | Files |\n|-----------|----:|------:|\n| `.ts`     | 33,320 | 313 |\n| `.tsx`    | 24,451 | 153 |\n| `.md`     | 8,240 | 57 |\n| `.json`   | 1,837 | 43 |\n| `.js`     | 1,289 | 10 |\n| `.css`    | 191 | 7 |\n| `.html`   | 139 | 4 |\n\n**Total:** ~69,500 LOC across all tracked file types (57,771 in TypeScript/TSX alone).",
-        },
-      ],
-    },
-  },
-]
+const sessionEvents = sessionLocAnalysisEvents
 
 /** Wrapper component for stories that need interactive tool output toggle.
  * Renders AgentView directly with the context prop to avoid nested providers
@@ -405,5 +268,26 @@ export const CtrlOToggle: Story = {
     for (const card of getExpandedCards()) {
       expect(card).toHaveAttribute("aria-expanded", "true")
     }
+  },
+}
+
+/**
+ * Uses real event data from a test run session (session-with-tools.jsonl).
+ * Shows a complete session with system init, tool use, and results.
+ */
+export const RealSessionWithTools: Story = {
+  args: {
+    events: sessionWithToolsEvents,
+  },
+}
+
+/**
+ * Uses real event data from a Ralph agent session (session-with-ralph-events.jsonl).
+ * Demonstrates Ralph-specific events like ralph_task_started, ralph_task_completed,
+ * and ralph_session_start/end events used for task tracking.
+ */
+export const RalphSession: Story = {
+  args: {
+    events: sessionWithRalphEvents,
   },
 }
