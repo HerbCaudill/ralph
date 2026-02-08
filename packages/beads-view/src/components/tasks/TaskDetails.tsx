@@ -234,7 +234,7 @@ export function TaskDetails({
                 }
               }}
               placeholder="Add description..."
-              className="min-h-[100px]"
+              className="min-h-25"
               autoFocus={isEditingDescription}
             />
           : <button
