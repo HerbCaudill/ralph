@@ -529,6 +529,19 @@ export class ClaudeAdapter extends AgentAdapter {
           },
         )
         break
+      case "user":
+        // User message containing tool results
+        this.handleUserMessage(
+          message.message as {
+            content?: Array<{
+              type: string
+              tool_use_id?: string
+              content?: string
+              is_error?: boolean
+            }>
+          },
+        )
+        break
       case "stream_event":
         this.translateEvent(message.event as ClaudeNativeEvent)
         break
@@ -579,6 +592,55 @@ export class ClaudeAdapter extends AgentAdapter {
         break
       default:
         break
+    }
+  }
+
+  /**
+   * Handle SDK user message containing tool results.
+   * Emits tool_result events for each tool result in the message.
+   */
+  private handleUserMessage(message: {
+    content?: Array<{
+      type: string
+      tool_use_id?: string
+      content?: string
+      is_error?: boolean
+    }>
+  }): void {
+    if (!message?.content) return
+
+    const timestamp = this.now()
+
+    for (const block of message.content) {
+      if (block.type === "tool_result" && block.tool_use_id) {
+        const toolUseId = block.tool_use_id
+        const output = block.content
+        const isError = block.is_error ?? false
+        const error = isError ? (output ?? "Unknown error") : undefined
+
+        // Update pending tool use with result
+        if (this.currentAssistantMessage?.toolUses) {
+          const toolUse = this.currentAssistantMessage.toolUses.find(t => t.id === toolUseId)
+          if (toolUse) {
+            toolUse.result = {
+              output: isError ? undefined : output,
+              error,
+              isError,
+            }
+          }
+        }
+
+        const event: AgentToolResultEvent = {
+          type: "tool_result",
+          timestamp,
+          toolUseId,
+          output: isError ? undefined : output,
+          error,
+          isError,
+        }
+        this.emit("event", event)
+        this.pendingToolUses.delete(toolUseId)
+      }
     }
   }
 

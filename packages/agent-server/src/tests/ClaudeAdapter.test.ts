@@ -315,6 +315,137 @@ describe("ClaudeAdapter", () => {
       })
     })
 
+    it("emits tool_result events from SDK user messages", async () => {
+      const sdkMessages = [
+        {
+          type: "assistant",
+          message: {
+            role: "assistant",
+            content: [
+              {
+                type: "tool_use",
+                id: "toolu_123",
+                name: "bash",
+                input: { command: "echo hello" },
+              },
+            ],
+          },
+        },
+        // SDK sends user message with tool result after tool execution
+        {
+          type: "user",
+          message: {
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: "toolu_123",
+                content: "hello",
+              },
+            ],
+          },
+          parent_tool_use_id: null,
+        },
+        {
+          type: "assistant",
+          message: { role: "assistant", content: [{ type: "text", text: "Done!" }] },
+        },
+        {
+          type: "result",
+          subtype: "success",
+          result: "Done!",
+          usage: { input_tokens: 10, output_tokens: 5 },
+        },
+      ]
+
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn(sdkMessages),
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Run a command" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      // Should have emitted a tool_result event
+      const toolResultEvents = events.filter(e => e.type === "tool_result")
+      expect(toolResultEvents).toHaveLength(1)
+      expect(toolResultEvents[0]).toMatchObject({
+        type: "tool_result",
+        toolUseId: "toolu_123",
+        output: "hello",
+        error: undefined,
+        isError: false,
+      })
+    })
+
+    it("emits tool_result error events for failed tools", async () => {
+      const sdkMessages = [
+        {
+          type: "assistant",
+          message: {
+            role: "assistant",
+            content: [
+              {
+                type: "tool_use",
+                id: "toolu_456",
+                name: "bash",
+                input: { command: "exit 1" },
+              },
+            ],
+          },
+        },
+        {
+          type: "user",
+          message: {
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: "toolu_456",
+                content: "Command failed with exit code 1",
+                is_error: true,
+              },
+            ],
+          },
+          parent_tool_use_id: null,
+        },
+        {
+          type: "result",
+          subtype: "success",
+          result: "Command failed.",
+          usage: { input_tokens: 10, output_tokens: 5 },
+        },
+      ]
+
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn(sdkMessages),
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Run a failing command" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      const toolResultEvents = events.filter(e => e.type === "tool_result")
+      expect(toolResultEvents).toHaveLength(1)
+      expect(toolResultEvents[0]).toMatchObject({
+        type: "tool_result",
+        toolUseId: "toolu_456",
+        output: undefined,
+        error: "Command failed with exit code 1",
+        isError: true,
+      })
+    })
+
     it("tracks the last prompt in conversation context", async () => {
       const sdkMessages = [
         {

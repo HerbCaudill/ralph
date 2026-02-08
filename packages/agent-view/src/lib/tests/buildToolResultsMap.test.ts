@@ -280,6 +280,105 @@ describe("buildToolResultsMap", () => {
     })
   })
 
+  describe("standalone tool_result events", () => {
+    it("should extract standalone tool_result from agent-server", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "tool_result",
+          timestamp: 123,
+          toolUseId: "tool-1",
+          output: "Success output from agent-server",
+        } as ChatEvent,
+      ]
+
+      const result = buildToolResultsMap(events)
+
+      expect(result.toolResults.get("tool-1")).toEqual({
+        output: "Success output from agent-server",
+        error: undefined,
+      })
+    })
+
+    it("should extract error from standalone tool_result", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "tool_result",
+          timestamp: 123,
+          toolUseId: "tool-1",
+          error: "Tool execution failed",
+        } as ChatEvent,
+      ]
+
+      const result = buildToolResultsMap(events)
+
+      expect(result.toolResults.get("tool-1")).toEqual({
+        output: undefined,
+        error: "Tool execution failed",
+      })
+    })
+
+    it("should handle both output and error in standalone tool_result", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "tool_result",
+          timestamp: 123,
+          toolUseId: "tool-1",
+          output: "Partial output",
+          error: "But also an error",
+        } as ChatEvent,
+      ]
+
+      const result = buildToolResultsMap(events)
+
+      expect(result.toolResults.get("tool-1")).toEqual({
+        output: "Partial output",
+        error: "But also an error",
+      })
+    })
+
+    it("should skip tool_result events without toolUseId", () => {
+      const events: ChatEvent[] = [
+        {
+          type: "tool_result",
+          timestamp: 123,
+          output: "Output without ID",
+        } as ChatEvent,
+      ]
+
+      const result = buildToolResultsMap(events)
+
+      expect(result.toolResults.size).toBe(0)
+    })
+
+    it("should match standalone tool_result to corresponding tool_use", () => {
+      // This test simulates the real flow where tool_use and tool_result
+      // are separate events that need to be matched by toolUseId
+      const events: ChatEvent[] = [
+        {
+          type: "tool_use",
+          timestamp: 100,
+          tool: "Read",
+          toolUseId: "toolu_123",
+          input: { file: "test.txt" },
+        } as ChatEvent,
+        {
+          type: "tool_result",
+          timestamp: 200,
+          toolUseId: "toolu_123",
+          output: "File contents here",
+        } as ChatEvent,
+      ]
+
+      const result = buildToolResultsMap(events)
+
+      // The tool_result should be extractable for the tool_use's toolUseId
+      expect(result.toolResults.get("toolu_123")).toEqual({
+        output: "File contents here",
+        error: undefined,
+      })
+    })
+  })
+
   describe("edge cases", () => {
     it("should handle empty events array", () => {
       const result = buildToolResultsMap([])
