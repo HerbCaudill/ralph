@@ -271,21 +271,6 @@ export function TaskDetails({
                       key={s}
                       type="button"
                       onClick={() => onUpdateStatus(s)}
-                      tabIndex={isSelected ? 0 : -1}
-                      onKeyDown={e => {
-                        if (e.key === "ArrowLeft") {
-                          e.preventDefault()
-                          const currentIndex = statusOptions.findIndex(opt => opt === s)
-                          const prevIndex =
-                            (currentIndex - 1 + statusOptions.length) % statusOptions.length
-                          onUpdateStatus(statusOptions[prevIndex])
-                        } else if (e.key === "ArrowRight") {
-                          e.preventDefault()
-                          const currentIndex = statusOptions.findIndex(opt => opt === s)
-                          const nextIndex = (currentIndex + 1) % statusOptions.length
-                          onUpdateStatus(statusOptions[nextIndex])
-                        }
-                      }}
                       className={cn(
                         "flex h-full items-center justify-center gap-1 px-2 transition-colors",
                         isSelected ?
@@ -311,7 +296,7 @@ export function TaskDetails({
                 {priorityOptions.find(p => p.value === formValues.priority)?.label ??
                   `P${formValues.priority}`}
               </span>
-            : <ButtonGroup size="sm" className="bg-background h-6 overflow-hidden">
+            : <ButtonGroup responsive size="sm">
                 {priorityOptions.map(p => {
                   const isSelected = formValues.priority === p.value
                   return (
@@ -319,25 +304,6 @@ export function TaskDetails({
                       key={p.value}
                       type="button"
                       onClick={() => onUpdatePriority(p.value)}
-                      tabIndex={isSelected ? 0 : -1}
-                      onKeyDown={e => {
-                        if (e.key === "ArrowLeft") {
-                          e.preventDefault()
-                          const currentIndex = priorityOptions.findIndex(
-                            opt => opt.value === p.value,
-                          )
-                          const prevIndex =
-                            (currentIndex - 1 + priorityOptions.length) % priorityOptions.length
-                          onUpdatePriority(priorityOptions[prevIndex].value)
-                        } else if (e.key === "ArrowRight") {
-                          e.preventDefault()
-                          const currentIndex = priorityOptions.findIndex(
-                            opt => opt.value === p.value,
-                          )
-                          const nextIndex = (currentIndex + 1) % priorityOptions.length
-                          onUpdatePriority(priorityOptions[nextIndex].value)
-                        }
-                      }}
                       className={cn(
                         "flex h-full items-center justify-center gap-1 px-2 transition-colors",
                         isSelected ?
@@ -381,25 +347,6 @@ export function TaskDetails({
                       key={t.value}
                       type="button"
                       onClick={() => onUpdateIssueType(t.value)}
-                      tabIndex={isSelected ? 0 : -1}
-                      onKeyDown={e => {
-                        if (e.key === "ArrowLeft") {
-                          e.preventDefault()
-                          const currentIndex = issueTypeOptions.findIndex(
-                            opt => opt.value === t.value,
-                          )
-                          const prevIndex =
-                            (currentIndex - 1 + issueTypeOptions.length) % issueTypeOptions.length
-                          onUpdateIssueType(issueTypeOptions[prevIndex].value)
-                        } else if (e.key === "ArrowRight") {
-                          e.preventDefault()
-                          const currentIndex = issueTypeOptions.findIndex(
-                            opt => opt.value === t.value,
-                          )
-                          const nextIndex = (currentIndex + 1) % issueTypeOptions.length
-                          onUpdateIssueType(issueTypeOptions[nextIndex].value)
-                        }
-                      }}
                       className={cn(
                         "flex h-full items-center justify-center gap-1 px-2 transition-colors",
                         isSelected ?

@@ -1239,6 +1239,41 @@ describe("TaskDetailsDialog", () => {
     })
   })
 
+  describe("responsive button groups", () => {
+    it("wraps all metadata button groups in a responsive container", async () => {
+      await renderAndWait(
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      )
+
+      // All three metadata button groups (Status, Priority, Type) should use the
+      // responsive prop, which wraps the group in a container div with overflow-hidden.
+      // We verify this by checking that each button group's parent has the responsive wrapper class.
+
+      // Status button group
+      const statusButton = screen.getByRole("button", { pressed: true, name: /open/i })
+      const statusGroup = statusButton.closest("[role='group']")
+      expect(statusGroup).toBeInTheDocument()
+      expect(statusGroup?.parentElement?.className).toContain("overflow-hidden")
+
+      // Priority button group
+      const priorityButton = screen.getByRole("button", { pressed: true, name: /p2/i })
+      const priorityGroup = priorityButton.closest("[role='group']")
+      expect(priorityGroup).toBeInTheDocument()
+      expect(priorityGroup?.parentElement?.className).toContain("overflow-hidden")
+
+      // Type button group
+      const typeButton = screen.getByRole("button", { pressed: true, name: /task/i })
+      const typeGroup = typeButton.closest("[role='group']")
+      expect(typeGroup).toBeInTheDocument()
+      expect(typeGroup?.parentElement?.className).toContain("overflow-hidden")
+    })
+  })
+
   describe("delete button", () => {
     const mockOnDelete = vi.fn()
 
