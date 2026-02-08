@@ -28,7 +28,7 @@ export function ContextWindowProgress({ contextWindow }: ContextWindowProgressPr
           style={{ width: `${Math.min(progress, 100)}%` }}
         />
       </div>
-      <span className="text-muted-foreground text-xs">{usedFormatted}</span>
+      <span className="text-muted-foreground text-xs">{Math.round(progress)}%</span>
     </div>
   )
 }
