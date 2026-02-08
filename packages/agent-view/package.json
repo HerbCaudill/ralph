@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@herbcaudill/agent-view-theme": "workspace:*",
+    "@herbcaudill/components": "workspace:*",
     "@tabler/icons-react": "^3.36.1",
     "clsx": "^2.1.1",
     "effect": "^3.19.14",

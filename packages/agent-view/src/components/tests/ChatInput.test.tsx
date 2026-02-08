@@ -26,12 +26,6 @@ describe("ChatInput", () => {
       const textarea = screen.getByRole("textbox")
       expect(textarea).toHaveAttribute("rows", "1")
     })
-
-    it("textarea has resize disabled", () => {
-      render(<ChatInput onSend={() => {}} />)
-      const textarea = screen.getByRole("textbox")
-      expect(textarea).toHaveClass("resize-none")
-    })
   })
 
   describe("input behavior", () => {
@@ -198,17 +192,31 @@ describe("ChatInput", () => {
     })
   })
 
-  describe("styling", () => {
-    it("textarea has expected base classes", () => {
-      render(<ChatInput onSend={() => {}} />)
-      const textarea = screen.getByRole("textbox")
-      expect(textarea).toHaveClass("resize-none", "bg-muted", "text-sm")
+  describe("InputGroup structure", () => {
+    it("wraps content in an InputGroup container", () => {
+      const { container } = render(<ChatInput onSend={() => {}} />)
+      const inputGroup = container.querySelector('[data-slot="input-group"]')
+      expect(inputGroup).toBeInTheDocument()
     })
 
-    it("send button has primary styling", () => {
+    it("textarea has input-group-control data-slot", () => {
       render(<ChatInput onSend={() => {}} />)
+      const textarea = screen.getByRole("textbox")
+      expect(textarea).toHaveAttribute("data-slot", "input-group-control")
+    })
+
+    it("textarea has resize disabled", () => {
+      render(<ChatInput onSend={() => {}} />)
+      const textarea = screen.getByRole("textbox")
+      expect(textarea).toHaveClass("resize-none")
+    })
+
+    it("send button is inside an InputGroupAddon", () => {
+      const { container } = render(<ChatInput onSend={() => {}} />)
+      const addon = container.querySelector('[data-slot="input-group-addon"]')
+      expect(addon).toBeInTheDocument()
       const button = screen.getByTitle("Send message")
-      expect(button).toHaveClass("bg-primary", "text-primary-foreground")
+      expect(addon!.contains(button)).toBe(true)
     })
   })
 })

@@ -1,22 +1,14 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { IconSend2 } from "@tabler/icons-react"
-
-export type ChatInputHandle = {
-  focus: () => void
-}
-
-export type ChatInputProps = {
-  onSend: (message: string) => void
-  disabled?: boolean
-  placeholder?: string
-}
+import { InputGroup, InputGroupAddon, InputGroupButton } from "@herbcaudill/components"
+import { cn } from "../lib/utils"
 
 /**
  * Chat input with auto-resizing textarea and send button.
  * Submits on Enter (Shift+Enter for newline).
  */
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { onSend, disabled = false, placeholder = "Send a message…" },
+  { onSend, disabled = false, placeholder = "Send a message\u2026" },
   ref,
 ) {
   const [value, setValue] = useState("")
@@ -66,25 +58,48 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const canSend = value.trim().length > 0 && !disabled
 
   return (
-    <div className="flex items-end gap-2 border-t border-border bg-background px-4 py-3">
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleInput}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        placeholder={placeholder}
-        rows={1}
-        className="max-h-[200px] min-h-[40px] flex-1 resize-none rounded-lg border border-border bg-muted px-3 py-2 font-sans text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/40"
-      />
-      <button
-        onClick={handleSend}
-        disabled={!canSend}
-        title="Send message"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30 disabled:hover:bg-primary"
-      >
-        <IconSend2 size={18} stroke={1.5} />
-      </button>
+    <div className="border-t border-border bg-background px-4 py-3">
+      <InputGroup data-disabled={disabled}>
+        <textarea
+          ref={textareaRef}
+          data-slot="input-group-control"
+          value={value}
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder={placeholder}
+          rows={1}
+          className={cn(
+            "placeholder:text-muted-foreground flex-1 bg-transparent",
+            "w-full resize-none border-0 px-3 py-2 text-sm leading-relaxed",
+            "focus:ring-0 focus:outline-none",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            "max-h-[200px] overflow-auto",
+          )}
+        />
+        <InputGroupAddon align="inline-end" className="pr-1.5">
+          <InputGroupButton
+            onClick={handleSend}
+            disabled={!canSend}
+            title="Send message"
+            size="icon-xs"
+            variant="default"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <IconSend2 size={18} stroke={1.5} />
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
     </div>
   )
 })
+
+export type ChatInputHandle = {
+  focus: () => void
+}
+
+export type ChatInputProps = {
+  onSend: (message: string) => void
+  disabled?: boolean
+  placeholder?: string
+}
