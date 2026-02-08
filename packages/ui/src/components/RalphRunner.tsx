@@ -53,11 +53,14 @@ export function RalphRunner({
   const idleEmptyState =
     showIdleState ?
       <div className="flex h-full items-center justify-center p-8">
-        <div className="flex flex-col items-center gap-4 text-muted-foreground">
-          <IconRobot size={48} stroke={1.5} />
-          <p className="text-center text-sm">
-            Start the Ralph loop to begin autonomous task execution.
-          </p>
+        <div className="flex flex-col items-center gap-4">
+          <IconRobot size={48} stroke={1.5} className="text-muted-foreground" />
+          <div className="text-center">
+            <div className="text-lg font-medium text-foreground">Ralph is not running</div>
+            <div className="text-sm text-muted-foreground">
+              Click Start to begin working on open tasks
+            </div>
+          </div>
           <button
             onClick={onStart}
             disabled={!isConnected}

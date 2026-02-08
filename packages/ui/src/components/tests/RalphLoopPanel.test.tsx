@@ -202,9 +202,14 @@ describe("RalphLoopPanel", () => {
       expect(screen.getByTestId("streaming-indicator")).toBeInTheDocument()
     })
 
-    it("shows empty state when no events", () => {
+    it("shows empty state with correct heading when no events", () => {
       render(<RalphLoopPanel {...defaultProps} events={[]} />)
-      expect(screen.getByText(/start the ralph loop/i)).toBeInTheDocument()
+      expect(screen.getByText("Ralph is not running")).toBeInTheDocument()
+    })
+
+    it("shows empty state with correct subtext when no events", () => {
+      render(<RalphLoopPanel {...defaultProps} events={[]} />)
+      expect(screen.getByText("Click Start to begin working on open tasks")).toBeInTheDocument()
     })
   })
 

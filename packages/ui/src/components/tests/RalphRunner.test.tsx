@@ -154,6 +154,16 @@ describe("RalphRunner", () => {
   })
 
   describe("idle state with start button", () => {
+    it("shows idle state heading when idle and no events", () => {
+      render(<RalphRunner {...defaultProps} events={[]} controlState="idle" />)
+      expect(screen.getByText("Ralph is not running")).toBeInTheDocument()
+    })
+
+    it("shows idle state subtext when idle and no events", () => {
+      render(<RalphRunner {...defaultProps} events={[]} controlState="idle" />)
+      expect(screen.getByText("Click Start to begin working on open tasks")).toBeInTheDocument()
+    })
+
     it("shows idle state with start button when idle and no events", () => {
       render(<RalphRunner {...defaultProps} events={[]} controlState="idle" />)
       const startButton = screen.getByRole("button", { name: /start ralph/i })
