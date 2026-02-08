@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { Label } from "@herbcaudill/components"
 import { GroupedTaskList } from "./GroupedTaskList"
-import { BlockerCombobox } from "./BlockerCombobox"
+import { TaskRelationCombobox } from "./TaskRelationCombobox"
 import { apiFetch } from "../../lib/apiClient"
 import type { RelatedTask, Task, TaskTreeNode } from "../../types"
 
@@ -193,12 +193,13 @@ export function RelatedTasks({
           )}
           {canAddBlockers && (
             <div>
-              <BlockerCombobox
+              <TaskRelationCombobox
                 task={task}
                 allTasks={allTasks}
                 issuePrefix={issuePrefix}
-                existingBlockerIds={blockers.map(b => b.id)}
-                onAdd={handleAddBlocker}
+                excludeIds={blockers.map(b => b.id)}
+                relationType="blocker"
+                onSelect={handleAddBlocker}
                 disabled={isAddingBlocker}
               />
             </div>
