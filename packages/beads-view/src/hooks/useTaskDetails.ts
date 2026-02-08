@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { useBeadsViewStore, selectIssuePrefix, selectTasks } from "../store"
 import { linkSessionToTask } from "../lib/linkSessionToTask"
 import { apiFetch } from "../lib/apiClient"
-import type { TaskCardTask, TaskStatus, TaskUpdateData, Comment } from "../types"
+import type { Task, TaskStatus, TaskUpdateData, Comment } from "../types"
 
 /**
  * Hook to manage task details form state and API interactions.
@@ -397,7 +397,7 @@ export type IssueType = "task" | "bug" | "epic"
 
 export interface UseTaskDetailsOptions {
   /** The task to edit. */
-  task: TaskCardTask | null
+  task: Task | null
   /** Whether the dialog is open. */
   open: boolean
   /** Whether the dialog is in read-only mode. */
@@ -435,7 +435,7 @@ export interface UseTaskDetailsResult {
   /** Issue prefix for display. */
   issuePrefix: string | null
   /** All tasks for parent selection. */
-  allTasks: TaskCardTask[]
+  allTasks: Task[]
   /** Whether a save is in progress. */
   isSaving: boolean
   /** Whether a delete is in progress. */

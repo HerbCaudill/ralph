@@ -3,7 +3,7 @@ import { useBeadsViewStore } from "../store"
 import { fetchTask } from "../lib/fetchTask"
 import { updateTask } from "../lib/updateTask"
 import { deleteTask } from "../lib/deleteTask"
-import type { TaskCardTask, TaskUpdateData } from "../types"
+import type { Task, TaskUpdateData } from "../types"
 
 /**
  * Hook to manage task details dialog state and API updates.
@@ -14,7 +14,7 @@ export function useTaskDialog(
 ): UseTaskDialogResult {
   const { onTaskUpdated, onTaskDeleted } = options
 
-  const [selectedTask, setSelectedTask] = useState<TaskCardTask | null>(null)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -26,7 +26,7 @@ export function useTaskDialog(
   const removeTask = useBeadsViewStore(state => state.removeTask)
   const tasks = useBeadsViewStore(state => state.tasks)
 
-  const openDialog = useCallback((task: TaskCardTask) => {
+  const openDialog = useCallback((task: Task) => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current)
       closeTimeoutRef.current = null
@@ -156,7 +156,7 @@ export interface UseTaskDialogOptions {
 
 export interface UseTaskDialogResult {
   /** The currently selected task for the dialog. */
-  selectedTask: TaskCardTask | null
+  selectedTask: Task | null
   /** Whether the dialog is open. */
   isOpen: boolean
   /** Whether an update is in progress. */
@@ -166,7 +166,7 @@ export interface UseTaskDialogResult {
   /** Error message if operation failed. */
   error: string | null
   /** Open the dialog with a task. */
-  openDialog: (task: TaskCardTask) => void
+  openDialog: (task: Task) => void
   /** Open the dialog by task ID (fetches task data). */
   openDialogById: (id: string) => Promise<void>
   /** Close the dialog. */

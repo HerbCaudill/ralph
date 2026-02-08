@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { useTaskDetails } from "../../hooks/useTaskDetails"
 import { TaskDetails } from "./TaskDetails"
-import type { TaskCardTask, TaskUpdateData } from "../../types"
+import type { Task, TaskUpdateData } from "../../types"
 
 /**
  * Controller component for TaskDetails.
@@ -102,7 +102,7 @@ export function TaskDetailsController({
 /** Props for TaskDetailsController component. */
 export type TaskDetailsControllerProps = {
   /** The task to display/edit */
-  task: TaskCardTask | null
+  task: Task | null
 
   /** Whether the dialog is open */
   open: boolean

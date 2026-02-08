@@ -14,7 +14,7 @@ import {
 } from "@herbcaudill/components"
 import { TaskCardCompact } from "./TaskCardCompact"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
-import type { TaskCardTask } from "../../types"
+import type { Task } from "../../types"
 
 /**
  * A combobox for selecting tasks to add as blockers.
@@ -42,18 +42,20 @@ export function BlockerCombobox({
           variant="ghost"
           size="sm"
           disabled={disabled || availableTasks.length === 0}
-          className="text-muted-foreground hover:bg-muted hover:text-foreground dark:hover:bg-muted h-6 gap-1 px-2 text-xs"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground dark:hover:bg-muted h-6 gap-1 px-2 text-xs "
         >
           <IconPlus className="h-3 w-3" />
           Add blocker
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-0" align="start">
+      <PopoverContent className="w-96 p-0 shadow-md" align="start">
         <Command>
           <CommandInput placeholder="Search tasks..." />
           <CommandList>
-            <CommandEmpty>No tasks available.</CommandEmpty>
-            <CommandGroup>
+            <CommandEmpty>
+              <div className="p-2 italic">No matches</div>
+            </CommandEmpty>
+            <CommandGroup className="p-0">
               {availableTasks.map(t => (
                 <CommandItem
                   key={t.id}
@@ -62,7 +64,7 @@ export function BlockerCombobox({
                     onAdd(t.id)
                     setOpen(false)
                   }}
-                  className="border-border gap-0 border-b px-1 py-0.5 last:border-b-0 [&_svg]:size-3.5"
+                  className="border-border gap-0 border-b py-2 last:border-b-0 [&_svg]:size-3.5"
                 >
                   <TaskCardCompact task={t} />
                 </CommandItem>
@@ -76,8 +78,8 @@ export function BlockerCombobox({
 }
 
 type Props = {
-  task: TaskCardTask
-  allTasks: TaskCardTask[]
+  task: Task
+  allTasks: Task[]
   issuePrefix: string | null
   existingBlockerIds: string[]
   onAdd: (blockerId: string) => void

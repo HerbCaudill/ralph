@@ -1,14 +1,14 @@
-import type { TaskCardTask, TaskStatus } from "../types"
+import type { Task, TaskStatus } from "../types"
 
 /**
  * Filter tasks based on status, readiness, and closed inclusion.
  */
 export function filterTasks(
   /** Tasks to filter. */
-  tasks: TaskCardTask[],
+  tasks: Task[],
   /** Filter options. */
   options: FilterTasksOptions,
-): TaskCardTask[] {
+): Task[] {
   const { status, ready, all } = options
 
   return tasks.filter(task => {

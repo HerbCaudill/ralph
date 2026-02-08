@@ -45,10 +45,6 @@ export interface Task {
   blocked_by?: string[]
   /** Number of issues blocking this issue (from bd blocked command). */
   blocked_by_count?: number
-}
-
-/** Task data used by UI components. */
-export type TaskCardTask = Task & {
   /** Task labels. */
   labels?: string[]
 }
@@ -101,7 +97,7 @@ export interface Comment {
 /** Node in a task hierarchy tree. */
 export interface TaskTreeNode {
   /** Task data for this node. */
-  task: TaskCardTask
+  task: Task
   /** Child nodes (subtasks). */
   children: TaskTreeNode[]
 }
@@ -111,7 +107,7 @@ export interface TasksResponse {
   /** Whether the request succeeded. */
   ok: boolean
   /** Tasks returned from the API. */
-  issues?: TaskCardTask[]
+  issues?: Task[]
   /** Error message when the request fails. */
   error?: string
 }
@@ -121,7 +117,7 @@ export interface TaskResponse {
   /** Whether the request succeeded. */
   ok: boolean
   /** Task returned from the API. */
-  issue?: TaskCardTask
+  issue?: Task
   /** Error message when the request fails. */
   error?: string
 }

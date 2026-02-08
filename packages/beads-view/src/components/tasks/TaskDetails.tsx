@@ -13,16 +13,10 @@ import {
   IconCheckbox,
   type TablerIcon,
 } from "@tabler/icons-react"
-import {
-  Button,
-  ButtonGroup,
-  Input,
-  Label,
-  Textarea,
-} from "@herbcaudill/components"
+import { Button, ButtonGroup, Input, Label, Textarea } from "@herbcaudill/components"
 import { cn } from "../../lib/cn"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
-import type { TaskCardTask, TaskStatus, Comment } from "../../types"
+import type { Task, TaskStatus, Comment } from "../../types"
 import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@herbcaudill/agent-view"
 import { RelatedTasks } from "./RelatedTasks"
@@ -730,7 +724,7 @@ const priorityOptions = [
 /** Props for TaskDetails presentational component. */
 export type TaskDetailsProps = {
   /** The task being displayed/edited */
-  task: TaskCardTask | null
+  task: Task | null
   /** Whether the dialog is open */
   open: boolean
   /** Whether the component is in read-only mode */
@@ -742,7 +736,7 @@ export type TaskDetailsProps = {
   /** Issue prefix for display */
   issuePrefix: string | null
   /** All tasks for parent selection */
-  allTasks: TaskCardTask[]
+  allTasks: Task[]
   /** Whether a save is in progress */
   isSaving: boolean
   /** Whether a delete is in progress */

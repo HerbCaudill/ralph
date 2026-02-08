@@ -12,7 +12,7 @@ import {
   IconLoader2,
   type TablerIcon,
 } from "@tabler/icons-react"
-import type { TaskCardTask, TaskStatus } from "../../types"
+import type { Task, TaskStatus } from "../../types"
 
 /**
  * Single source of truth for task row layout: status icon, ID, title,
@@ -73,21 +73,19 @@ export function TaskCardCompact({
         : <div className="h-3.5 w-3.5" aria-hidden="true" />}
 
         {/* Priority badge (only for non-P2) */}
-        {task.priority !== undefined &&
-          task.priority !== 2 &&
-          priorityConfig[task.priority] && (
-            <span
-              className={cn(
-                "rounded px-1 py-0.5 text-[10px] leading-none font-medium",
-                priorityConfig[task.priority].color,
-                priorityConfig[task.priority].bgColor,
-              )}
-              title={`Priority: ${priorityConfig[task.priority].label}`}
-              aria-label={`Priority: ${priorityConfig[task.priority].label}`}
-            >
-              {priorityConfig[task.priority].label}
-            </span>
-          )}
+        {task.priority !== undefined && task.priority !== 2 && priorityConfig[task.priority] && (
+          <span
+            className={cn(
+              "rounded px-1 py-0.5 text-[10px] leading-none font-medium",
+              priorityConfig[task.priority].color,
+              priorityConfig[task.priority].bgColor,
+            )}
+            title={`Priority: ${priorityConfig[task.priority].label}`}
+            aria-label={`Priority: ${priorityConfig[task.priority].label}`}
+          >
+            {priorityConfig[task.priority].label}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -146,7 +144,7 @@ const priorityConfig: Record<number, PriorityConfig> = {
 /** Props for the TaskCardCompact component. */
 export type TaskCardCompactProps = {
   /** The task data to display. */
-  task: TaskCardTask
+  task: Task
   /** Additional CSS classes for the outer container. */
   className?: string
   /** Whether to render the status icon (default true). Set false when the caller renders its own interactive status element. */

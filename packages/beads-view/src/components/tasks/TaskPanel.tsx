@@ -4,7 +4,7 @@ import { SearchInput, type SearchInputHandle } from "./SearchInput"
 import { TaskList } from "./TaskList"
 import { QuickTaskInput, type CreatedIssue } from "./QuickTaskInput"
 import { TaskProgressBar } from "./TaskProgressBar"
-import type { TaskCardTask, ClosedTasksTimeFilter } from "../../types"
+import type { Task, ClosedTasksTimeFilter } from "../../types"
 
 /**
  * Sidebar panel for task management.
@@ -79,7 +79,7 @@ export function TaskPanel({
 /** Props for the TaskPanel component. */
 export type TaskPanelProps = {
   /** Array of tasks to display in the task list */
-  tasks?: TaskCardTask[]
+  tasks?: Task[]
   /** Callback when a task is clicked */
   onTaskClick?: (id: string) => void
   /** Whether tasks are currently loading */
@@ -105,7 +105,7 @@ export type TaskPanelProps = {
   /** Whether Ralph is running (controls progress bar visibility) */
   isRunning?: boolean
   /** Tasks used for progress calculation (defaults to `tasks` if omitted) */
-  progressTasks?: TaskCardTask[]
+  progressTasks?: Task[]
   /** Initial task count for progress bar (hidden when null) */
   initialTaskCount?: number | null
   /** Accent color for the progress bar */

@@ -1,7 +1,7 @@
 import { cn } from "../../lib/cn"
 import { getTimeFilterCutoff } from "../../lib/getTimeFilterCutoff"
 import { DEFAULT_ACCENT_COLOR } from "../../constants"
-import type { TaskCardTask, ClosedTasksTimeFilter } from "../../types"
+import type { Task, ClosedTasksTimeFilter } from "../../types"
 
 /**
  * Shows task completion progress at the bottom of the sidebar.
@@ -46,7 +46,7 @@ export function TaskProgressBar({
 
   return (
     <div
-      className={cn("border-border border-t px-4 py-3", className)}
+      className={className}
       role="progressbar"
       aria-valuenow={closedTasks}
       aria-valuemin={0}
@@ -74,7 +74,7 @@ export type TaskProgressBarProps = {
   /** Whether to show progress (host decides if Ralph is running). */
   isRunning?: boolean
   /** All tasks to calculate progress from. */
-  tasks?: TaskCardTask[]
+  tasks?: Task[]
   /** Initial task count (progress is hidden when null). */
   initialTaskCount?: number | null
   /** Accent color for the progress bar. */

@@ -14,7 +14,7 @@ import {
 } from "@herbcaudill/components"
 import { cn } from "../../lib/cn"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
-import type { TaskCardTask } from "../../types"
+import type { Task } from "../../types"
 
 export function ParentCombobox({ task, allTasks, issuePrefix, value, onChange }: Props) {
   const [open, setOpen] = useState(false)
@@ -84,8 +84,8 @@ export function ParentCombobox({ task, allTasks, issuePrefix, value, onChange }:
 }
 
 type Props = {
-  task: TaskCardTask
-  allTasks: TaskCardTask[]
+  task: Task
+  allTasks: Task[]
   issuePrefix: string | null
   value: string | null
   onChange: (value: string | null) => void

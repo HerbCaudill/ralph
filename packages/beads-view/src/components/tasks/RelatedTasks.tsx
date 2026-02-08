@@ -4,7 +4,7 @@ import { IconX } from "@tabler/icons-react"
 import { GroupedTaskList } from "./GroupedTaskList"
 import { BlockerCombobox } from "./BlockerCombobox"
 import { apiFetch } from "../../lib/apiClient"
-import type { RelatedTask, Task, TaskCardTask, TaskTreeNode } from "../../types"
+import type { RelatedTask, Task, TaskTreeNode } from "../../types"
 
 /**
  * Displays child tasks and blocking issues for a given task.
@@ -273,10 +273,10 @@ function toTreeNode(related: RelatedTask): TaskTreeNode {
 
 export type RelatedTasksProps = {
   taskId: string
-  task?: TaskCardTask
+  task?: Task
   readOnly?: boolean
   /** All tasks, used to find children and populate the blocker combobox. */
-  allTasks?: TaskCardTask[]
+  allTasks?: Task[]
   /** Issue prefix for display (e.g. "rui"). */
   issuePrefix?: string | null
   /** Callback when a related task is clicked. */

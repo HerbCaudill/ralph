@@ -1,9 +1,9 @@
-import type { TaskCardTask } from "../types"
+import type { Task } from "../types"
 
 /** Check whether a task matches a free-text search query. */
 export function matchesSearchQuery(
   /** Task to search. */
-  task: TaskCardTask,
+  task: Task,
   /** Query string to match. */
   query: string,
 ): boolean {

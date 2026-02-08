@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { useBeadsViewStore } from "../store"
 import { fetchTasks } from "../lib/fetchTasks"
 import { filterTasks } from "../lib/filterTasks"
-import type { TaskCardTask, TaskStatus } from "../types"
+import type { Task, TaskStatus } from "../types"
 
 /**
  * Hook to fetch and manage tasks from the beads API.
@@ -64,7 +64,7 @@ export interface UseTasksOptions {
 
 export interface UseTasksResult {
   /** List of tasks. */
-  tasks: TaskCardTask[]
+  tasks: Task[]
   /** Whether tasks are currently loading. */
   isLoading: boolean
   /** Error message if fetch failed. */

@@ -1,12 +1,12 @@
-import type { TaskCardTask, TaskTreeNode } from "../types"
+import type { Task, TaskTreeNode } from "../types"
 
 /** Build a tree structure and lookup maps from a flat list of tasks. */
 export function buildTaskTree(
   /** Flat array of tasks with parent references. */
-  tasks: TaskCardTask[],
+  tasks: Task[],
 ): BuildTaskTreeResult {
-  const taskMap = new Map<string, TaskCardTask>()
-  const childrenMap = new Map<string, TaskCardTask[]>()
+  const taskMap = new Map<string, Task>()
+  const childrenMap = new Map<string, Task[]>()
   const nodeMap = new Map<string, TaskTreeNode>()
 
   for (const task of tasks) {
@@ -44,7 +44,7 @@ type BuildTaskTreeResult = {
   /** Root task nodes. */
   roots: TaskTreeNode[]
   /** Lookup of task ID to task. */
-  taskMap: Map<string, TaskCardTask>
+  taskMap: Map<string, Task>
   /** Lookup of parent ID to child tasks. */
-  childrenMap: Map<string, TaskCardTask[]>
+  childrenMap: Map<string, Task[]>
 }
