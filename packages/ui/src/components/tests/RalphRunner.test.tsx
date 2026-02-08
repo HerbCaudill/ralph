@@ -205,13 +205,23 @@ describe("RalphRunner", () => {
       expect(screen.getByTestId("events")).toBeInTheDocument()
     })
 
-    it("renders chat input", () => {
-      render(<RalphRunner {...defaultProps} />)
+    it("hides chat input when controlState is idle", () => {
+      render(<RalphRunner {...defaultProps} controlState="idle" />)
+      expect(screen.queryByTestId("chat-input")).not.toBeInTheDocument()
+    })
+
+    it("shows chat input when controlState is running", () => {
+      render(<RalphRunner {...defaultProps} controlState="running" />)
+      expect(screen.getByTestId("chat-input")).toBeInTheDocument()
+    })
+
+    it("shows chat input when controlState is paused", () => {
+      render(<RalphRunner {...defaultProps} controlState="paused" />)
       expect(screen.getByTestId("chat-input")).toBeInTheDocument()
     })
 
     it("disables chat input when streaming", () => {
-      render(<RalphRunner {...defaultProps} isStreaming={true} />)
+      render(<RalphRunner {...defaultProps} controlState="running" isStreaming={true} />)
       expect(screen.getByTestId("chat-input")).toBeDisabled()
     })
   })

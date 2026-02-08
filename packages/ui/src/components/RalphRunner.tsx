@@ -84,8 +84,10 @@ export function RalphRunner({
 
       {/* Bottom bar: comprehensive controls and chat input */}
       <div className="flex flex-col border-t border-border">
-        {/* Chat input */}
-        <ChatInput onSend={onSendMessage} disabled={isStreaming} placeholder="Send a message…" />
+        {/* Chat input - only show when session is active */}
+        {controlState !== "idle" && (
+          <ChatInput onSend={onSendMessage} disabled={isStreaming} placeholder="Send a message…" />
+        )}
 
         {/* Status bar footer */}
         <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs">
