@@ -160,8 +160,9 @@ export function TaskList({
 
       // For closed tasks, apply time filter (unless searching)
       if (shouldApplyTimeFilter(task.status) && closedCutoff && !searchQuery.trim()) {
-        const closedAt = task.closed_at ? new Date(task.closed_at) : null
-        if (!closedAt || closedAt < closedCutoff) {
+        // Treat missing closed_at as "just now" so newly closed tasks are always shown
+        const closedAt = task.closed_at ? new Date(task.closed_at) : new Date()
+        if (closedAt < closedCutoff) {
           return false
         }
       }

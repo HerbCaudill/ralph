@@ -1062,6 +1062,46 @@ describe("TaskList", () => {
       const filterDropdowns = screen.getAllByRole("combobox")
       expect(filterDropdowns).toHaveLength(1)
     })
+
+    it("shows closed tasks without closed_at property when closedTimeFilter is all_time", () => {
+      // This test ensures tasks without a closed_at property are still shown
+      // when the filter is set to all_time (reproduces bug r-yj218)
+      const tasks: TaskCardTask[] = [
+        { id: "task-1", title: "Closed task without date", status: "closed" },
+      ]
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+          closedTimeFilter="all_time"
+        />,
+      )
+
+      // The closed task should be visible even without a closed_at property
+      expect(screen.getByText("Closed task without date")).toBeInTheDocument()
+      expect(screen.getByLabelText("Closed section, 1 task")).toBeInTheDocument()
+    })
+
+    it("shows closed tasks without closed_at property with default past_day filter", () => {
+      // Bug r-yj218: Closed tasks without a closed_at property should still appear
+      // with the default filter, treating missing closed_at as "just now"
+      const tasks: TaskCardTask[] = [
+        { id: "task-1", title: "Closed task without date", status: "closed" },
+      ]
+      render(
+        <TaskList
+          tasks={tasks}
+          defaultCollapsed={{ closed: false }}
+          persistCollapsedState={false}
+          closedTimeFilter="past_day"
+        />,
+      )
+
+      // The closed task should be visible even without a closed_at property
+      expect(screen.getByText("Closed task without date")).toBeInTheDocument()
+      expect(screen.getByLabelText("Closed section, 1 task")).toBeInTheDocument()
+    })
   })
 
   describe("search filtering", () => {
