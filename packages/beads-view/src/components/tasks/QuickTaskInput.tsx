@@ -159,7 +159,7 @@ export const QuickTaskInput = forwardRef<QuickTaskInputHandle, QuickTaskInputPro
               "overflow-hidden",
             )}
           />
-          <InputGroupAddon align="inline-end">
+          <InputGroupAddon align="inline-end" className="pr-1.5">
             <InputGroupButton
               type="submit"
               disabled={isDisabled || !title.trim()}
