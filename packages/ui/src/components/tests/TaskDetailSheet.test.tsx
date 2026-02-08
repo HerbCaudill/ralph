@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { TaskDetailSheet } from "../TaskDetailSheet"
 import type { TaskCardTask } from "@herbcaudill/beads-view"
 
@@ -58,23 +58,25 @@ describe("TaskDetailSheet", () => {
     expect(screen.getAllByText("Test Task").length).toBeGreaterThanOrEqual(1)
   })
 
-  it("renders as an inline panel with a border", () => {
+  it("renders as an overlay sheet on the right side", async () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
-    const panel = screen.getByTestId("task-detail-sheet")
-    expect(panel.className).toContain("border-l")
-    expect(panel.className).toContain("shrink-0")
-    expect(panel.className).not.toContain("absolute")
+    // The sheet should be in a portal (rendered at document level)
+    const sheetContent = await waitFor(() =>
+      document.querySelector('[data-testid="task-detail-sheet"]'),
+    )
+    expect(sheetContent).toBeInTheDocument()
+
+    // Should be positioned on the right side
+    expect(sheetContent?.className).toContain("right-0")
   })
 
-  it("has no modal overlay or backdrop", () => {
+  it("has an overlay backdrop", async () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
-    // Should not have a Radix Dialog overlay
-    const overlays = document.querySelectorAll("[data-state]")
-    overlays.forEach(overlay => {
-      expect(overlay.className).not.toContain("bg-black")
-    })
+    // Should have an overlay element (from Radix Sheet)
+    const overlay = await waitFor(() => document.querySelector('[data-state="open"]'))
+    expect(overlay).toBeInTheDocument()
   })
 
   it("provides an accessible title via a visually hidden element", () => {
