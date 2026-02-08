@@ -1,5 +1,10 @@
 export { useTaskDialog, type UseTaskDialogOptions, type UseTaskDialogResult } from "./useTaskDialog"
 export {
+  useTaskNavigation,
+  type UseTaskNavigationOptions,
+  type UseTaskNavigationResult,
+} from "./useTaskNavigation"
+export {
   useTaskDialogRouter,
   type UseTaskDialogRouterOptions,
   type UseTaskDialogRouterReturn,

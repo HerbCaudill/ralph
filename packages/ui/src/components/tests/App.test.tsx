@@ -133,6 +133,11 @@ vi.mock("@herbcaudill/beads-view", () => ({
     },
   }),
   WorkspaceSelector: () => <div data-testid="workspace-selector">Workspace Selector</div>,
+  useTaskNavigation: () => ({
+    navigatePrevious: vi.fn(),
+    navigateNext: vi.fn(),
+    openSelected: vi.fn(),
+  }),
   useBeadsHotkeys: vi.fn(),
   hotkeys: {},
   getHotkeyDisplayString: () => "",

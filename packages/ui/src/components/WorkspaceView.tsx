@@ -96,7 +96,6 @@ export function WorkspaceView() {
   // Selected task ID from store
   const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
   const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
-  const visibleTaskIds = useBeadsViewStore(selectVisibleTaskIds)
 
   // Refs for hotkey targets
   const searchInputRef = useRef<SearchInputHandle>(null)
@@ -149,28 +148,19 @@ export function WorkspaceView() {
     searchInputRef.current?.focus()
   }, [])
 
-  const handlePreviousTask = useCallback(() => {
-    if (visibleTaskIds.length === 0) return
-    const currentIndex =
-      selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : visibleTaskIds.length
-    const prevIndex = Math.max(currentIndex - 1, 0)
-    const prevId = visibleTaskIds[prevIndex]
-    if (prevId) setSelectedTaskId(prevId)
-  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
+  // Handle task click from sidebar
+  const handleTaskClick = useCallback(
+    (taskId: string) => {
+      setSelectedTaskId(taskId)
+      openDialogById(taskId)
+    },
+    [openDialogById, setSelectedTaskId],
+  )
 
-  const handleNextTask = useCallback(() => {
-    if (visibleTaskIds.length === 0) return
-    const currentIndex = selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : -1
-    const nextIndex = Math.min(currentIndex + 1, visibleTaskIds.length - 1)
-    const nextId = visibleTaskIds[nextIndex]
-    if (nextId) setSelectedTaskId(nextId)
-  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
-
-  const handleOpenTask = useCallback(() => {
-    if (selectedTaskId) {
-      openDialogById(selectedTaskId)
-    }
-  }, [selectedTaskId, openDialogById])
+  // Task navigation with auto-open on arrow key navigation
+  const { navigatePrevious, navigateNext, openSelected } = useTaskNavigation({
+    onOpenTask: handleTaskClick,
+  })
 
   // Handle task chat new session
   const handleTaskChatNewSession = useCallback(() => {
@@ -191,21 +181,12 @@ export function WorkspaceView() {
     handlers: {
       focusSearch: handleFocusSearch,
       focusTaskInput: handleFocusSearch,
-      previousTask: handlePreviousTask,
-      nextTask: handleNextTask,
-      openTask: handleOpenTask,
+      previousTask: navigatePrevious,
+      nextTask: navigateNext,
+      openTask: openSelected,
       showHotkeys: handleShowHotkeys,
     },
   })
-
-  // Handle task click from sidebar
-  const handleTaskClick = useCallback(
-    (taskId: string) => {
-      setSelectedTaskId(taskId)
-      openDialogById(taskId)
-    },
-    [openDialogById, setSelectedTaskId],
-  )
 
   // Handle Ralph message send
   const handleRalphSend = useCallback(

@@ -5,11 +5,11 @@ import {
   TaskPanelController,
   useTasks,
   useTaskDialog,
+  useTaskNavigation,
   useBeadsHotkeys,
   useBeadsViewStore,
   useWorkspace,
   selectSelectedTaskId,
-  selectVisibleTaskIds,
   selectTasks,
   selectClosedTimeFilter,
   WorkspaceSelector,
@@ -52,7 +52,6 @@ function AppContent() {
   // Store state for task navigation
   const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
   const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
-  const visibleTaskIds = useBeadsViewStore(selectVisibleTaskIds)
 
   // Store state for progress bar
   const tasks = useBeadsViewStore(selectTasks)
@@ -91,28 +90,10 @@ function AppContent() {
     taskInputRef.current?.focus()
   }, [])
 
-  const handlePreviousTask = useCallback(() => {
-    if (visibleTaskIds.length === 0) return
-    const currentIndex =
-      selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : visibleTaskIds.length
-    const prevIndex = Math.max(currentIndex - 1, 0)
-    const prevId = visibleTaskIds[prevIndex]
-    if (prevId) setSelectedTaskId(prevId)
-  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
-
-  const handleNextTask = useCallback(() => {
-    if (visibleTaskIds.length === 0) return
-    const currentIndex = selectedTaskId ? visibleTaskIds.indexOf(selectedTaskId) : -1
-    const nextIndex = Math.min(currentIndex + 1, visibleTaskIds.length - 1)
-    const nextId = visibleTaskIds[nextIndex]
-    if (nextId) setSelectedTaskId(nextId)
-  }, [selectedTaskId, visibleTaskIds, setSelectedTaskId])
-
-  const handleOpenTask = useCallback(() => {
-    if (selectedTaskId) {
-      void dialog.openDialogById(selectedTaskId)
-    }
-  }, [selectedTaskId, dialog])
+  // Task navigation with auto-open on arrow key navigation
+  const { navigatePrevious, navigateNext, openSelected } = useTaskNavigation({
+    onOpenTask: handleTaskClick,
+  })
 
   const handleShowHotkeys = useCallback(() => {
     setHotkeysDialogOpen(true)
@@ -123,9 +104,9 @@ function AppContent() {
     handlers: {
       focusSearch: handleFocusSearch,
       focusTaskInput: handleFocusTaskInput,
-      previousTask: handlePreviousTask,
-      nextTask: handleNextTask,
-      openTask: handleOpenTask,
+      previousTask: navigatePrevious,
+      nextTask: navigateNext,
+      openTask: openSelected,
       showHotkeys: handleShowHotkeys,
     },
   })
