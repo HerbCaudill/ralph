@@ -24,6 +24,8 @@ export function TaskSubtree({
   collapsedState,
   /** Callback to toggle collapse state for a task */
   onToggleCollapse,
+  /** Callback to remove a task */
+  onRemove,
 }: TaskSubtreeProps) {
   const { task, children } = node
   const hasChildren = children.length > 0
@@ -47,6 +49,7 @@ export function TaskSubtree({
         subtaskCount={descendantCount}
         isActivelyWorking={activelyWorkingTaskIds.has(task.id)}
         hasSessions={taskIdsWithSessions?.has(task.id) ?? false}
+        onRemove={onRemove}
         className={cn(paddingClass)}
       />
       {hasChildren && !isCollapsed && (
@@ -62,6 +65,7 @@ export function TaskSubtree({
               taskIdsWithSessions={taskIdsWithSessions}
               collapsedState={collapsedState}
               onToggleCollapse={onToggleCollapse}
+              onRemove={onRemove}
             />
           ))}
         </div>
@@ -110,4 +114,6 @@ export interface TaskSubtreeProps {
   collapsedState: Record<string, boolean>
   /** Callback to toggle collapse state */
   onToggleCollapse: (taskId: string) => void
+  /** Callback to remove a task */
+  onRemove?: (taskId: string) => void
 }

@@ -2,7 +2,7 @@ import { cn } from "../../lib/cn"
 import { forwardRef, useCallback, useState, useEffect, useMemo } from "react"
 import { useBeadsViewStore, selectSelectedTaskId, selectAccentColor } from "../../store"
 import { DEFAULT_ACCENT_COLOR } from "../../constants"
-import { IconChevronDown, IconHistory } from "@tabler/icons-react"
+import { IconChevronDown, IconHistory, IconTrash } from "@tabler/icons-react"
 import { TaskCardCompact, statusConfig } from "./TaskCardCompact"
 import type { Task } from "../../types"
 
@@ -31,6 +31,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     isActivelyWorking = false,
     /** Whether this task has saved session event logs */
     hasSessions = false,
+    /** Callback to remove this task (e.g., from a relationship) */
+    onRemove,
     ...props
   },
   ref,
@@ -92,6 +94,25 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
       }
     },
     [onToggleCollapse],
+  )
+
+  const handleRemoveClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onRemove?.(task.id)
+    },
+    [onRemove, task.id],
+  )
+
+  const handleRemoveKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault()
+        e.stopPropagation()
+        onRemove?.(task.id)
+      }
+    },
+    [onRemove, task.id],
   )
 
   const hasSubtasks = subtaskCount > 0
@@ -184,6 +205,24 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
             )}
           </TaskCardCompact>
         </div>
+
+        {/* Remove button - appears on hover */}
+        {onRemove && (
+          <button
+            type="button"
+            onClick={handleRemoveClick}
+            onKeyDown={handleRemoveKeyDown}
+            className={cn(
+              "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+              "shrink-0 cursor-pointer rounded p-1 opacity-0 transition-all",
+              "group-hover:opacity-100 focus:opacity-100",
+            )}
+            aria-label="Remove"
+            title="Remove"
+          >
+            <IconTrash className="size-3.5" />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -207,4 +246,6 @@ export type TaskCardProps = Omit<React.HTMLAttributes<HTMLDivElement>, "onClick"
   isActivelyWorking?: boolean
   /** Whether this task has saved session event logs */
   hasSessions?: boolean
+  /** Callback to remove this task (e.g., from a relationship). Shows trash icon on hover when set. */
+  onRemove?: (id: string) => void
 }

@@ -17,6 +17,7 @@ export function RelatedTasks({
   allTasks = [],
   issuePrefix = null,
   onTaskClick,
+  onChanged,
 }: RelatedTasksProps) {
   const [blockers, setBlockers] = useState<RelatedTask[]>([])
   const [dependents, setDependents] = useState<RelatedTask[]>([])
@@ -129,6 +130,72 @@ export function RelatedTasks({
     setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }))
   }, [])
 
+  /** Removes a child relationship by clearing the child's parent. */
+  const handleRemoveChild = useCallback(
+    async (childId: string) => {
+      if (readOnly) return
+
+      try {
+        const response = await apiFetch(`/api/tasks/${childId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parent: "" }),
+        })
+
+        const data = (await response.json()) as { ok: boolean }
+        if (data.ok) {
+          onChanged?.()
+        }
+      } catch (err) {
+        console.error("Failed to remove child:", err)
+      }
+    },
+    [readOnly, onChanged],
+  )
+
+  /** Removes a blocker from the current task. */
+  const handleRemoveBlocker = useCallback(
+    async (blockerId: string) => {
+      if (readOnly) return
+
+      try {
+        const response = await apiFetch(`/api/tasks/${taskId}/blockers/${blockerId}`, {
+          method: "DELETE",
+        })
+
+        const data = (await response.json()) as { ok: boolean }
+        if (data.ok) {
+          await fetchDependencies()
+        }
+      } catch (err) {
+        console.error("Failed to remove blocker:", err)
+      }
+    },
+    [taskId, readOnly, fetchDependencies],
+  )
+
+  /** Removes this task as a blocker from a dependent task. */
+  const handleRemoveDependent = useCallback(
+    async (dependentId: string) => {
+      if (readOnly) return
+
+      try {
+        // Remove this task as a blocker from the dependent
+        const response = await apiFetch(`/api/tasks/${dependentId}/blockers/${taskId}`, {
+          method: "DELETE",
+        })
+
+        const data = (await response.json()) as { ok: boolean }
+        if (data.ok) {
+          await fetchDependencies()
+        }
+      } catch (err) {
+        console.error("Failed to remove dependent:", err)
+      }
+    },
+    [taskId, readOnly, fetchDependencies],
+  )
+
   const canAddBlockers = !readOnly && task
 
   const groups = useMemo(() => {
@@ -139,6 +206,7 @@ export function RelatedTasks({
       count: number
       isCollapsed: boolean
       onToggle: () => void
+      onRemove?: (taskId: string) => void
     }> = []
 
     if (childTasks.length > 0) {
@@ -149,6 +217,7 @@ export function RelatedTasks({
         count: childTasks.length,
         isCollapsed: collapsedGroups["children"] ?? false,
         onToggle: () => handleToggleGroup("children"),
+        onRemove: readOnly ? undefined : handleRemoveChild,
       })
     }
 
@@ -160,6 +229,7 @@ export function RelatedTasks({
         count: blockers.length,
         isCollapsed: collapsedGroups["blocked-by"] ?? false,
         onToggle: () => handleToggleGroup("blocked-by"),
+        onRemove: readOnly ? undefined : handleRemoveBlocker,
       })
     }
 
@@ -171,11 +241,22 @@ export function RelatedTasks({
         count: dependents.length,
         isCollapsed: collapsedGroups["blocks"] ?? false,
         onToggle: () => handleToggleGroup("blocks"),
+        onRemove: readOnly ? undefined : handleRemoveDependent,
       })
     }
 
     return result
-  }, [childTasks, blockers, dependents, collapsedGroups, handleToggleGroup])
+  }, [
+    childTasks,
+    blockers,
+    dependents,
+    collapsedGroups,
+    handleToggleGroup,
+    handleRemoveChild,
+    handleRemoveBlocker,
+    handleRemoveDependent,
+    readOnly,
+  ])
 
   const hasContent = childTasks.length > 0 || blockers.length > 0 || dependents.length > 0
   if (!isLoading && !hasContent && !canAddBlockers) {
@@ -232,4 +313,6 @@ export type RelatedTasksProps = {
   issuePrefix?: string | null
   /** Callback when a related task is clicked. */
   onTaskClick?: (id: string) => void
+  /** Callback when a relationship is modified (child removed, blocker removed, etc.) */
+  onChanged?: () => void
 }

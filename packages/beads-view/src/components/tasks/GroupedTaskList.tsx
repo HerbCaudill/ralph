@@ -44,6 +44,7 @@ export function GroupedTaskList({
                     taskIdsWithSessions={taskIdsWithSessions}
                     collapsedState={collapsedState}
                     onToggleCollapse={onToggleCollapse}
+                    onRemove={group.onRemove}
                   />
                 ))
               : <div className="text-muted-foreground px-3 py-3 text-center text-xs italic">
@@ -81,6 +82,8 @@ export type TaskGroupDescriptor = {
   timeFilter?: ClosedTasksTimeFilter
   /** Callback when time filter changes. */
   onTimeFilterChange?: (filter: ClosedTasksTimeFilter) => void
+  /** Callback to remove a task from this group. Shows trash icon on hover when set. */
+  onRemove?: (taskId: string) => void
 }
 
 /** Props for the GroupedTaskList component. */
