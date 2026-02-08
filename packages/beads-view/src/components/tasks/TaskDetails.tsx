@@ -261,7 +261,7 @@ export function TaskDetails({
                 <StatusIcon className={cn("h-3.5 w-3.5", statusConfig[formValues.status].color)} />
                 <span className="text-sm">{statusConfig[formValues.status].label}</span>
               </div>
-            : <ButtonGroup responsive>
+            : <ButtonGroup responsive size="sm">
                 {statusOptions.map(s => {
                   const config = statusConfig[s]
                   const Icon = config.icon
@@ -294,7 +294,7 @@ export function TaskDetails({
                       )}
                       aria-pressed={isSelected}
                     >
-                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <Icon className="h-3 w-3 shrink-0" />
                       <span data-label>{config.label}</span>
                     </button>
                   )
@@ -311,7 +311,7 @@ export function TaskDetails({
                 {priorityOptions.find(p => p.value === formValues.priority)?.label ??
                   `P${formValues.priority}`}
               </span>
-            : <ButtonGroup className="bg-background h-8 overflow-hidden">
+            : <ButtonGroup size="sm" className="bg-background h-6 overflow-hidden">
                 {priorityOptions.map(p => {
                   const isSelected = formValues.priority === p.value
                   return (
@@ -372,7 +372,7 @@ export function TaskDetails({
                   )
                 })()}
               </div>
-            : <ButtonGroup responsive>
+            : <ButtonGroup responsive size="sm">
                 {issueTypeOptions.map(t => {
                   const Icon = t.icon
                   const isSelected = formValues.issueType === t.value
@@ -408,7 +408,7 @@ export function TaskDetails({
                       )}
                       aria-pressed={isSelected}
                     >
-                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <Icon className="h-3 w-3 shrink-0" />
                       <span data-label>{t.label}</span>
                     </button>
                   )

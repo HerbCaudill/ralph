@@ -15,9 +15,14 @@ const buttonGroupVariants = cva(
         vertical:
           "flex-col divide-y divide-border [&>*:not(:first-child)]:rounded-t-none [&>*:not(:last-child)]:rounded-b-none",
       },
+      size: {
+        default: "",
+        sm: "",
+      },
     },
     defaultVariants: {
       orientation: "horizontal",
+      size: "default",
     },
   },
 )
@@ -29,9 +34,22 @@ const buttonGroupVariants = cva(
  * content would overflow. Button children should include an icon element and a
  * `<span data-label>` for the text label.
  */
-function ButtonGroup({ className, orientation, responsive = false, ...props }: ButtonGroupProps) {
+function ButtonGroup({
+  className,
+  orientation,
+  size,
+  responsive = false,
+  ...props
+}: ButtonGroupProps) {
   if (responsive) {
-    return <ResponsiveButtonGroup className={className} orientation={orientation} {...props} />
+    return (
+      <ResponsiveButtonGroup
+        className={className}
+        orientation={orientation}
+        size={size}
+        {...props}
+      />
+    )
   }
 
   return (
@@ -39,7 +57,7 @@ function ButtonGroup({ className, orientation, responsive = false, ...props }: B
       role="group"
       data-slot="button-group"
       data-orientation={orientation}
-      className={cn(buttonGroupVariants({ orientation }), className)}
+      className={cn(buttonGroupVariants({ orientation, size }), className)}
       {...props}
     />
   )
@@ -51,7 +69,7 @@ function ButtonGroup({ className, orientation, responsive = false, ...props }: B
  * Uses ResizeObserver and useLayoutEffect to measure actual content width vs
  * available space, so no hardcoded breakpoint is needed.
  */
-function ResponsiveButtonGroup({ className, orientation, ...props }: ButtonGroupProps) {
+function ResponsiveButtonGroup({ className, orientation, size, ...props }: ButtonGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -97,6 +115,8 @@ function ResponsiveButtonGroup({ className, orientation, ...props }: ButtonGroup
     return () => observer.disconnect()
   }, [])
 
+  const heightClass = size === "sm" ? "h-6" : "h-8"
+
   return (
     <div ref={containerRef} className="min-w-0 flex-1 overflow-hidden">
       <div
@@ -104,8 +124,9 @@ function ResponsiveButtonGroup({ className, orientation, ...props }: ButtonGroup
         data-slot="button-group"
         data-orientation={orientation}
         className={cn(
-          buttonGroupVariants({ orientation }),
-          "bg-background h-8 overflow-hidden",
+          buttonGroupVariants({ orientation, size }),
+          "bg-background overflow-hidden",
+          heightClass,
           collapsed &&
             [
               "[&>*:not(:hover):not([aria-pressed=true])_[data-label]]:hidden",

@@ -317,3 +317,51 @@ export const Responsive: Story = {
     )
   },
 }
+
+export const SmallSize: Story = {
+  render: () => {
+    const [selected, setSelected] = useState("task")
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <p className="text-muted-foreground mb-2 text-sm">Default size (h-8):</p>
+          <ButtonGroup responsive>
+            {issueTypeOptions.map(t => {
+              const Icon = t.icon
+              return (
+                <ToggleButton
+                  key={t.value}
+                  isSelected={selected === t.value}
+                  onClick={() => setSelected(t.value)}
+                  {...t}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span data-label>{t.label}</span>
+                </ToggleButton>
+              )
+            })}
+          </ButtonGroup>
+        </div>
+        <div>
+          <p className="text-muted-foreground mb-2 text-sm">Small size (h-6):</p>
+          <ButtonGroup responsive size="sm">
+            {issueTypeOptions.map(t => {
+              const Icon = t.icon
+              return (
+                <ToggleButton
+                  key={t.value}
+                  isSelected={selected === t.value}
+                  onClick={() => setSelected(t.value)}
+                  {...t}
+                >
+                  <Icon className="h-3 w-3 shrink-0" />
+                  <span data-label>{t.label}</span>
+                </ToggleButton>
+              )
+            })}
+          </ButtonGroup>
+        </div>
+      </div>
+    )
+  },
+}
