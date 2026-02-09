@@ -61,6 +61,13 @@ export function AgentView({
       <div className="flex h-full items-center justify-center p-8">{spinner}</div>
     : emptyState
 
+  /**
+   * AutoScroll determines isEmpty by checking if children is falsy.
+   * When events is empty and not streaming, we pass null so the emptyState shows.
+   * When there are events (or streaming), we render the EventList.
+   */
+  const showEventList = events.length > 0 || isStreaming
+
   return (
     <AgentViewProvider value={context}>
       <div className={cx("flex min-h-0 flex-col", className)}>
@@ -72,7 +79,9 @@ export function AgentView({
           autoScrollEnabled={isStreaming}
           scrollButtonClassName={hideScrollButton ? "hidden" : undefined}
         >
-          <EventList events={events} loadingIndicator={resolvedLoadingIndicator} />
+          {showEventList ?
+            <EventList events={events} loadingIndicator={resolvedLoadingIndicator} />
+          : null}
         </AutoScroll>
         {footer}
       </div>

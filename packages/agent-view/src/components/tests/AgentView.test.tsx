@@ -103,23 +103,25 @@ describe("AgentView", () => {
 
       expect(screen.getByTestId("custom-footer")).toBeInTheDocument()
     })
+  })
 
-    /**
-     * Note: The empty state behavior is tested indirectly through AutoScroll.
-     * When events is empty and not streaming, the EventList component returns null,
-     * but AutoScroll still receives a React element as children (not null).
-     * AutoScroll's isEmpty check (`!children`) is false for React elements,
-     * so the empty state isn't shown through this mechanism.
-     *
-     * The actual empty state display relies on the specific implementation details
-     * of how EventList and AutoScroll interact. The important behavior is that
-     * when streaming starts, the spinner is shown as the empty state.
-     */
+  describe("empty state", () => {
+    it("shows emptyState when no events and not streaming", () => {
+      render(
+        <AgentView
+          events={[]}
+          isStreaming={false}
+          emptyState={<div data-testid="custom-empty">Custom empty</div>}
+        />,
+      )
+
+      expect(screen.getByTestId("custom-empty")).toBeInTheDocument()
+    })
   })
 
   describe("streaming state", () => {
     it("shows spinner as empty state when streaming with no events", () => {
-      const { container } = render(
+      render(
         <AgentView
           events={[]}
           isStreaming={true}

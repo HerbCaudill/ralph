@@ -132,7 +132,9 @@ describe("fetchRalphSessions", () => {
       baseUrl: "http://localhost:4244",
     })
 
-    expect(mockFetch).toHaveBeenCalledWith("http://localhost:4244/api/sessions?app=ralph&include=summary")
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:4244/api/sessions?app=ralph&include=summary",
+    )
   })
 
   it("sorts sessions by lastMessageAt descending", async () => {

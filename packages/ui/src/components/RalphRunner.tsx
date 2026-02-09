@@ -1,6 +1,7 @@
 import {
   AgentView,
   ChatInput,
+  SessionPicker,
   TokenUsageDisplay,
   ContextWindowProgress,
   useTokenUsage,
@@ -9,8 +10,9 @@ import {
   type ControlState,
   type AgentViewContextValue,
   type ConnectionStatus,
+  type SessionIndexEntry,
 } from "@herbcaudill/agent-view"
-import { IconPlayerPlayFilled, IconRobot } from "@tabler/icons-react"
+import { IconPlayerPlayFilled, IconRobot, IconHistory } from "@tabler/icons-react"
 import { ControlBar } from "@/components/ControlBar"
 import { RepoBranch } from "@/components/RepoBranch"
 import { RunDuration } from "@/components/RunDuration"
@@ -31,6 +33,9 @@ export function RalphRunner({
   branch,
   workspacePath,
   isStoppingAfterCurrent = false,
+  sessions = [],
+  sessionId,
+  isViewingHistoricalSession = false,
   context,
   onSendMessage,
   onStart,
@@ -39,6 +44,7 @@ export function RalphRunner({
   onStopAfterCurrent,
   onCancelStopAfterCurrent,
   onNewSession: _onNewSession, // Kept for API compatibility, will be used by subtask r-0p41v.5
+  onSelectSession,
   className,
 }: RalphRunnerProps) {
   const tokenUsage = useTokenUsage(events)
@@ -47,6 +53,31 @@ export function RalphRunner({
 
   const isConnected = connectionStatus === "connected"
   const showIdleState = controlState === "idle"
+
+  // Chat is only disabled when viewing historical sessions or disconnected
+  const isChatDisabled = isViewingHistoricalSession || !isConnected
+
+  // Header with title and session picker
+  const header = (
+    <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center gap-2">
+        <IconRobot size={18} stroke={1.5} className="text-muted-foreground" />
+        <span className="text-sm font-medium">Ralph</span>
+        {isViewingHistoricalSession && (
+          <span className="flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            <IconHistory size={12} stroke={1.5} />
+            Viewing history
+          </span>
+        )}
+      </div>
+      <SessionPicker
+        sessions={sessions}
+        currentSessionId={sessionId}
+        onSelectSession={onSelectSession ?? (() => {})}
+        disabled={isStreaming}
+      />
+    </div>
+  )
 
   // Empty state shown when idle and no events — prominent start button
   const idleEmptyState =
@@ -80,15 +111,25 @@ export function RalphRunner({
         events={events}
         isStreaming={isStreaming}
         context={context}
+        header={header}
         emptyState={idleEmptyState}
         className="flex-1"
       />
 
       {/* Bottom bar: comprehensive controls and chat input */}
       <div className="flex flex-col border-t border-border">
-        {/* Chat input - show when session is active, always enabled (messages are queued) */}
+        {/* Chat input - show when session is active */}
         {controlState !== "idle" && (
-          <ChatInput onSend={onSendMessage} disabled={false} placeholder="Send a message…" />
+          <ChatInput
+            onSend={onSendMessage}
+            disabled={isChatDisabled}
+            placeholder={
+              isViewingHistoricalSession ? "Switch to current session to send messages"
+              : !isConnected ?
+                "Waiting for connection..."
+              : "Send a message…"
+            }
+          />
         )}
 
         {/* Status bar footer */}
@@ -165,6 +206,12 @@ export type RalphRunnerProps = {
   workspacePath?: string | null
   /** Whether currently stopping after the current session. */
   isStoppingAfterCurrent?: boolean
+  /** List of available sessions for the session picker. */
+  sessions?: SessionIndexEntry[]
+  /** Current session ID. */
+  sessionId?: string | null
+  /** Whether viewing a historical session (not the current active one). */
+  isViewingHistoricalSession?: boolean
   /** Context configuration passed to AgentViewProvider. */
   context?: Partial<AgentViewContextValue>
   /** Called when the user sends a message via the chat input. */
@@ -181,6 +228,8 @@ export type RalphRunnerProps = {
   onCancelStopAfterCurrent?: () => void
   /** Called when the new session button is clicked. */
   onNewSession: () => void
+  /** Called when a session is selected from the session picker. */
+  onSelectSession?: (sessionId: string) => void
   /** Additional CSS classes for the container. */
   className?: string
 }

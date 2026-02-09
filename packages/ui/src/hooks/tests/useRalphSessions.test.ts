@@ -87,10 +87,9 @@ describe("useRalphSessions", () => {
     })
 
     it("should refetch sessions when currentSessionId changes", async () => {
-      const { rerender } = renderHook(
-        ({ sessionId }) => useRalphSessions(sessionId),
-        { initialProps: { sessionId: "session-1" as string | null } },
-      )
+      const { rerender } = renderHook(({ sessionId }) => useRalphSessions(sessionId), {
+        initialProps: { sessionId: "session-1" as string | null },
+      })
 
       await waitFor(() => {
         expect(mockFetchRalphSessions).toHaveBeenCalledTimes(1)

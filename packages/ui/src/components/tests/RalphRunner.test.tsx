@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { RalphRunner } from "../RalphRunner"
-import type { ChatEvent, ControlState } from "@herbcaudill/agent-view"
+import type { ChatEvent, ControlState, SessionIndexEntry } from "@herbcaudill/agent-view"
 
 // Mock agent-view components
 vi.mock("@herbcaudill/agent-view", () => ({
-  AgentView: ({ events, isStreaming, emptyState }: any) => (
+  AgentView: ({ events, isStreaming, emptyState, header }: any) => (
     <div data-testid="agent-view">
+      {header && <div data-testid="agent-view-header">{header}</div>}
       {events.length === 0 && emptyState ? emptyState : null}
       {events.length > 0 && <div data-testid="events">Events: {events.length}</div>}
       {isStreaming && <div data-testid="streaming">Streaming</div>}
@@ -19,6 +20,17 @@ vi.mock("@herbcaudill/agent-view", () => ({
   ),
   ChatInput: ({ disabled, placeholder }: any) => (
     <input data-testid="chat-input" disabled={disabled} placeholder={placeholder} />
+  ),
+  SessionPicker: ({ sessions, currentSessionId, disabled }: any) => (
+    <button
+      data-testid="session-picker"
+      title={sessions?.length > 0 ? "Session history" : "No previous sessions"}
+      disabled={disabled || !sessions?.length}
+      data-session-count={sessions?.length ?? 0}
+      data-current-session={currentSessionId ?? ""}
+    >
+      Sessions
+    </button>
   ),
   useTokenUsage: () => ({ input: 1000, output: 500 }),
   useContextWindow: () => ({ used: 50000, max: 200000 }),
@@ -100,6 +112,76 @@ const defaultProps = {
 describe("RalphRunner", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  describe("header with SessionPicker", () => {
+    it("renders header with Ralph label", () => {
+      render(<RalphRunner {...defaultProps} />)
+      expect(screen.getByText("Ralph")).toBeInTheDocument()
+    })
+
+    it("shows 'Viewing history' badge when isViewingHistoricalSession is true", () => {
+      render(<RalphRunner {...defaultProps} isViewingHistoricalSession={true} />)
+      expect(screen.getByText("Viewing history")).toBeInTheDocument()
+    })
+
+    it("does not show 'Viewing history' badge by default", () => {
+      render(<RalphRunner {...defaultProps} />)
+      expect(screen.queryByText("Viewing history")).not.toBeInTheDocument()
+    })
+
+    it("renders SessionPicker", () => {
+      render(<RalphRunner {...defaultProps} />)
+      expect(screen.getByTestId("session-picker")).toBeInTheDocument()
+    })
+
+    it("passes sessions to SessionPicker", () => {
+      const sessions: SessionIndexEntry[] = [
+        {
+          sessionId: "session-1",
+          adapter: "claude",
+          firstMessageAt: Date.now() - 3600000,
+          lastMessageAt: Date.now() - 3600000,
+          firstUserMessage: "Test session 1",
+        },
+      ]
+      render(<RalphRunner {...defaultProps} sessions={sessions} sessionId="session-1" />)
+      expect(screen.getByTestId("session-picker")).toHaveAttribute("data-session-count", "1")
+      expect(screen.getByTestId("session-picker")).toHaveAttribute(
+        "data-current-session",
+        "session-1",
+      )
+    })
+
+    it("disables SessionPicker when streaming", () => {
+      const sessions: SessionIndexEntry[] = [
+        {
+          sessionId: "session-1",
+          adapter: "claude",
+          firstMessageAt: Date.now(),
+          lastMessageAt: Date.now(),
+          firstUserMessage: "Test session",
+        },
+      ]
+      render(
+        <RalphRunner
+          {...defaultProps}
+          sessions={sessions}
+          sessionId="session-1"
+          isStreaming={true}
+        />,
+      )
+      expect(screen.getByTestId("session-picker")).toBeDisabled()
+    })
+
+    it("disables ChatInput when viewing historical session", () => {
+      render(
+        <RalphRunner {...defaultProps} controlState="running" isViewingHistoricalSession={true} />,
+      )
+      const input = screen.getByTestId("chat-input")
+      expect(input).toBeDisabled()
+      expect(input).toHaveAttribute("placeholder", "Switch to current session to send messages")
+    })
   })
 
   describe("footer components", () => {
