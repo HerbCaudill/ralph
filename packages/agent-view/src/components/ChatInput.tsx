@@ -77,7 +77,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             "max-h-[200px] overflow-auto",
           )}
         />
-        <InputGroupAddon align="inline-end" className="self-end pb-2 pr-2">
+        <InputGroupAddon align="inline-end" className="self-end pb-2">
           <InputGroupButton
             onClick={handleSend}
             disabled={!canSend}
