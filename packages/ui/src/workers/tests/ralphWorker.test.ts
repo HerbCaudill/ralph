@@ -1058,6 +1058,45 @@ describe("ralphWorker", () => {
       expect(state.stopAfterCurrentPending).toBe(false)
     })
 
+    it("should transition to idle when stop_after_current is pending and session ends without promise_complete (r-hiliv)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port, state } = await setupRunningWorkspace(workspaceId)
+
+      // Set stop after current
+      handlePortMessage({ type: "stop_after_current", workspaceId }, port)
+      expect(state.stopAfterCurrentPending).toBe(true)
+
+      // Session ends WITHOUT emitting <promise>COMPLETE</promise>
+      // (e.g., agent completed the task normally)
+      expect(state.sessionCompleted).toBe(false)
+
+      port.postMessage.mockClear()
+
+      // Status goes from processing to idle
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({ type: "status", status: "idle" }),
+      })
+
+      // Should transition to idle since stop_after_current is pending
+      expect(state.controlState).toBe("idle")
+      // Flag should be cleared
+      expect(state.stopAfterCurrentPending).toBe(false)
+
+      // Should broadcast both state_change and stop_after_current_change
+      const stateChangeMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "state_change")
+      expect(stateChangeMessages).toHaveLength(1)
+      expect(stateChangeMessages[0].state).toBe("idle")
+
+      const stopMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "stop_after_current_change")
+      expect(stopMessages).toHaveLength(1)
+      expect(stopMessages[0].isStoppingAfterCurrent).toBe(false)
+    })
+
     it("should clear stop_after_current flag on new start", async () => {
       const workspaceId = "herbcaudill/ralph"
       const port = createMockPort()

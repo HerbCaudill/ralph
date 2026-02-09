@@ -272,18 +272,18 @@ function connectWorkspace(workspaceId: string): void {
           // Also broadcast as generic event for any listeners
           broadcastToWorkspace(workspaceId, { type: "event", workspaceId, event: message })
 
-          // Auto-start: when the agent finishes and we saw promise_complete,
-          // immediately start a new session (the core Ralph loop).
-          // Unless stopAfterCurrentPending is set — then transition to idle.
-          if (
-            status !== "processing" &&
-            state.sessionCompleted &&
-            state.controlState === "running"
-          ) {
-            state.sessionCompleted = false
-
+          // When the agent finishes processing (status transitions away from "processing"):
+          //
+          // 1. If stopAfterCurrentPending is set, transition to idle regardless of
+          //    whether promise_complete was seen. This prevents the UI from being
+          //    stuck on "Stopping after task" when the session ends without the marker.
+          //
+          // 2. If sessionCompleted (promise_complete was seen), auto-start a new session
+          //    (the core Ralph loop).
+          if (status !== "processing" && state.controlState === "running") {
             if (state.stopAfterCurrentPending) {
               // User requested stop after current — transition to idle
+              state.sessionCompleted = false
               state.stopAfterCurrentPending = false
               setControlState(workspaceId, "idle")
               broadcastToWorkspace(workspaceId, {
@@ -291,7 +291,8 @@ function connectWorkspace(workspaceId: string): void {
                 workspaceId,
                 isStoppingAfterCurrent: false,
               })
-            } else {
+            } else if (state.sessionCompleted) {
+              state.sessionCompleted = false
               createOrResumeSession(workspaceId)
             }
           }
