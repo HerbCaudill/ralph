@@ -10,23 +10,27 @@ vi.mock("@herbcaudill/agent-view", () => ({
 
 // Mock @herbcaudill/components to provide Button with data-slot attribute
 vi.mock("@herbcaudill/components", () => ({
-  Button: ({
-    className,
-    variant,
-    size,
-    children,
-    ...props
-  }: React.ComponentProps<"button"> & { variant?: string; size?: string }) => (
-    <button
-      data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={className}
-      {...props}
-    >
-      {children}
-    </button>
-  ),
+  Button: (allProps: Record<string, unknown>) => {
+    const { className, variant, size, children, ...restProps } = allProps as {
+      className?: string
+      variant?: string
+      size?: string
+      children?: React.ReactNode
+      [key: string]: unknown
+    }
+    return (
+      <button
+        data-slot="button"
+        data-variant={variant}
+        data-size={size}
+        className={className ?? ""}
+        data-debug-classname={String(className)}
+        {...(restProps as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+      >
+        {children}
+      </button>
+    )
+  },
 }))
 
 describe("ControlBar", () => {
@@ -267,8 +271,9 @@ describe("ControlBar", () => {
       render(<ControlBar {...defaultProps} controlState="running" />)
 
       const stopButton = screen.getByRole("button", { name: "Stop" })
-      // Should NOT have hardcoded red hover color - it should use accent color from outline variant
-      expect(stopButton.className).not.toContain("hover:text-red")
+      const className = stopButton.className || ""
+      // Should NOT have hardcoded red hover color - the outline variant provides accent-based hover
+      expect(className).not.toMatch(/hover:text-red/)
     })
 
     it("Stop After Current button should not have hardcoded amber colors when active", () => {
@@ -277,8 +282,20 @@ describe("ControlBar", () => {
       const stopAfterCurrentButton = screen.getByRole("button", {
         name: "Cancel stop after current",
       })
-      // Should NOT have hardcoded amber colors - it should use accent color from outline variant
-      expect(stopAfterCurrentButton.className).not.toContain("amber")
+      const className = stopAfterCurrentButton.className || ""
+      // Should NOT have hardcoded amber colors - use repo-accent instead
+      expect(className).not.toMatch(/amber/)
+    })
+
+    it("Stop After Current button uses repo-accent when active", () => {
+      render(<ControlBar {...defaultProps} controlState="running" isStoppingAfterCurrent={true} />)
+
+      const stopAfterCurrentButton = screen.getByRole("button", {
+        name: "Cancel stop after current",
+      })
+      const classNameAttr = stopAfterCurrentButton.getAttribute("data-debug-classname")
+      // Should use repo-accent for theming
+      expect(classNameAttr).toContain("repo-accent")
     })
   })
 })
