@@ -150,7 +150,7 @@ export const LongConversation: Story = {
 }
 
 /**
- * Events loaded from JSONL fixture (session-loc-analysis.jsonl).
+ * Events loaded from JSONL fixture (session-loc-analysis.json).
  * Demonstrates various tool uses:
  * - User asks about lines of code in the repo
  * - Assistant uses Bash to count LOC
@@ -272,7 +272,7 @@ export const CtrlOToggle: Story = {
 }
 
 /**
- * Uses real event data from a test run session (session-with-tools.jsonl).
+ * Uses real event data from a test run session (session-with-tools.json).
  * Shows a complete session with system init, tool use, and results.
  */
 export const RealSessionWithTools: Story = {
@@ -282,7 +282,7 @@ export const RealSessionWithTools: Story = {
 }
 
 /**
- * Uses real event data from a Ralph agent session (session-with-ralph-events.jsonl).
+ * Uses real event data from a Ralph agent session (session-with-ralph-events.json).
  * Demonstrates Ralph-specific events like ralph_task_started, ralph_task_completed,
  * and ralph_session_start/end events used for task tracking.
  */

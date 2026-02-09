@@ -1,0 +1,124 @@
+[
+  {
+    "type": "ralph_session_start",
+    "sessionId": "e231ffe2-2317-41e1-a808-3935895cf9b0",
+    "session": 1,
+    "timestamp": 1770200000000
+  },
+  {
+    "type": "ralph_task_started",
+    "taskId": "r-8ijhg",
+    "session": 1,
+    "sessionId": "e231ffe2-2317-41e1-a808-3935895cf9b0",
+    "timestamp": 1770200001000
+  },
+  {
+    "type": "assistant",
+    "timestamp": 1770200002000,
+    "message": {
+      "id": "msg_01abc123",
+      "content": [
+        {
+          "type": "text",
+          "text": "I'll start working on task r-8ijhg: Add dark mode toggle to settings."
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "timestamp": 1770200003000,
+    "message": {
+      "id": "msg_01abc124",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01read1",
+          "name": "Read",
+          "input": {
+            "file_path": "/src/components/Settings.tsx"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "user",
+    "timestamp": 1770200004000,
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01read1",
+          "content": "export function Settings() {\n  return (\n    <div className=\"settings\">\n      <h1>Settings</h1>\n      {/* Settings content */}\n    </div>\n  )\n}",
+          "is_error": false
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "timestamp": 1770200005000,
+    "message": {
+      "id": "msg_01abc125",
+      "content": [
+        {
+          "type": "text",
+          "text": "I'll add a dark mode toggle component."
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_01edit1",
+          "name": "Edit",
+          "input": {
+            "file_path": "/src/components/Settings.tsx",
+            "old_string": "<h1>Settings</h1>",
+            "new_string": "<h1>Settings</h1>\n      <DarkModeToggle />"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "user",
+    "timestamp": 1770200006000,
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01edit1",
+          "content": "File edited successfully",
+          "is_error": false
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "timestamp": 1770200007000,
+    "message": {
+      "id": "msg_01abc126",
+      "content": [
+        {
+          "type": "text",
+          "text": "✅ Added dark mode toggle to Settings component. The toggle uses the existing theme context to switch between light and dark themes."
+        }
+      ]
+    }
+  },
+  {
+    "type": "ralph_task_completed",
+    "taskId": "r-8ijhg",
+    "session": 1,
+    "sessionId": "e231ffe2-2317-41e1-a808-3935895cf9b0",
+    "timestamp": 1770200008000
+  },
+  {
+    "type": "ralph_session_end",
+    "sessionId": "e231ffe2-2317-41e1-a808-3935895cf9b0",
+    "session": 1,
+    "timestamp": 1770200009000
+  }
+]
