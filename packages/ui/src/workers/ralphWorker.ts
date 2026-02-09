@@ -386,9 +386,13 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
           // Port may already be closed
         }
 
-        // Disconnect the WebSocket if no subscribers remain and workspace is idle
-        if (state.subscribedPorts.size === 0 && state.controlState === "idle") {
+        // Disconnect if no subscribers remain — a worker with zero subscribers
+        // is unreachable, so keeping connections alive creates ghost sessions
+        // (especially after Vite HMR, which creates a new SharedWorker instance)
+        if (state.subscribedPorts.size === 0) {
           disconnectWorkspace(message.workspaceId)
+          state.controlState = "idle"
+          state.currentSessionId = null
         }
       }
       break

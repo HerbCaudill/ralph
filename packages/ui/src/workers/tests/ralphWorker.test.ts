@@ -126,7 +126,7 @@ describe("ralphWorker", () => {
       expect(state.ws).toBeNull()
     })
 
-    it("should NOT disconnect workspace WebSocket when last subscriber leaves but workspace is running", async () => {
+    it("should disconnect and reset running workspace when last subscriber leaves", async () => {
       const port = createMockPort()
       const workspaceId = "herbcaudill/ralph"
 
@@ -141,12 +141,16 @@ describe("ralphWorker", () => {
 
       // Set state to running (simulating an active Ralph session)
       state.controlState = "running"
+      state.currentSessionId = "session-123"
 
-      // Unsubscribe — should NOT disconnect since Ralph is still running
+      // Unsubscribe — should disconnect even though running, because a worker
+      // with zero subscribers is unreachable (ghost worker prevention)
       handlePortMessage({ type: "unsubscribe_workspace", workspaceId }, port)
 
       expect(state.subscribedPorts.size).toBe(0)
-      expect(state.ws).not.toBeNull()
+      expect(state.ws).toBeNull()
+      expect(state.controlState).toBe("idle")
+      expect(state.currentSessionId).toBeNull()
     })
 
     it("should keep WebSocket alive when other subscribers remain", async () => {
