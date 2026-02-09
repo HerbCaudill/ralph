@@ -162,6 +162,9 @@ export class ClaudeAdapter extends AgentAdapter {
   private lastPrompt: string | undefined
   private totalUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
 
+  /** Usage accumulated from streaming lifecycle events (message_start, message_delta). */
+  private streamingUsage = { inputTokens: 0, outputTokens: 0 }
+
   // Session tracking for retry/resume
   private currentSessionId: string | undefined
 
@@ -416,6 +419,9 @@ export class ClaudeAdapter extends AgentAdapter {
 
     const systemPrompt = promptParts.length > 0 ? promptParts.join("\n\n") : undefined
 
+    // Reset streaming usage for this query
+    this.streamingUsage = { inputTokens: 0, outputTokens: 0 }
+
     while (attempt <= maxRetries) {
       this.abortController = new AbortController()
 
@@ -580,7 +586,7 @@ export class ClaudeAdapter extends AgentAdapter {
         break
       case "result":
         if (message.subtype === "success") {
-          const usage = message.usage
+          const sdkUsage = message.usage
 
           // Finalize and save the current assistant message to conversation context
           if (this.currentAssistantMessage) {
@@ -591,10 +597,19 @@ export class ClaudeAdapter extends AgentAdapter {
             this.currentAssistantMessage = null
           }
 
+          // Resolve usage: prefer SDK result usage, fall back to streaming lifecycle events
+          const hasStreamingUsage =
+            this.streamingUsage.inputTokens > 0 || this.streamingUsage.outputTokens > 0
+          const inputTokens =
+            sdkUsage?.input_tokens ?? (hasStreamingUsage ? this.streamingUsage.inputTokens : 0)
+          const outputTokens =
+            sdkUsage?.output_tokens ?? (hasStreamingUsage ? this.streamingUsage.outputTokens : 0)
+          const hasUsage = sdkUsage || hasStreamingUsage
+
           // Update total usage
-          if (usage) {
-            this.totalUsage.inputTokens += usage.input_tokens ?? 0
-            this.totalUsage.outputTokens += usage.output_tokens ?? 0
+          if (hasUsage) {
+            this.totalUsage.inputTokens += inputTokens
+            this.totalUsage.outputTokens += outputTokens
             this.totalUsage.totalTokens = this.totalUsage.inputTokens + this.totalUsage.outputTokens
           }
 
@@ -603,11 +618,11 @@ export class ClaudeAdapter extends AgentAdapter {
             timestamp: this.now(),
             content: message.result,
             usage:
-              usage ?
+              hasUsage ?
                 {
-                  inputTokens: usage.input_tokens,
-                  outputTokens: usage.output_tokens,
-                  totalTokens: (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0),
+                  inputTokens,
+                  outputTokens,
+                  totalTokens: inputTokens + outputTokens,
                 }
               : undefined,
           }
@@ -917,7 +932,7 @@ export class ClaudeAdapter extends AgentAdapter {
           typeof nativeEvent.result === "string" ? nativeEvent.result : this.currentMessageContent
 
         // Extract usage if available
-        const usage = nativeEvent.usage as
+        const nativeUsage = nativeEvent.usage as
           | { input_tokens?: number; output_tokens?: number }
           | undefined
 
@@ -931,10 +946,19 @@ export class ClaudeAdapter extends AgentAdapter {
           this.currentAssistantMessage = null
         }
 
+        // Resolve usage: prefer native event usage, fall back to streaming lifecycle events
+        const hasStreamUsage =
+          this.streamingUsage.inputTokens > 0 || this.streamingUsage.outputTokens > 0
+        const inTokens =
+          nativeUsage?.input_tokens ?? (hasStreamUsage ? this.streamingUsage.inputTokens : 0)
+        const outTokens =
+          nativeUsage?.output_tokens ?? (hasStreamUsage ? this.streamingUsage.outputTokens : 0)
+        const hasAnyUsage = nativeUsage || hasStreamUsage
+
         // Update total usage
-        if (usage) {
-          this.totalUsage.inputTokens += usage.input_tokens ?? 0
-          this.totalUsage.outputTokens += usage.output_tokens ?? 0
+        if (hasAnyUsage) {
+          this.totalUsage.inputTokens += inTokens
+          this.totalUsage.outputTokens += outTokens
           this.totalUsage.totalTokens = this.totalUsage.inputTokens + this.totalUsage.outputTokens
         }
 
@@ -943,11 +967,11 @@ export class ClaudeAdapter extends AgentAdapter {
           timestamp,
           content,
           usage:
-            usage ?
+            hasAnyUsage ?
               {
-                inputTokens: usage.input_tokens,
-                outputTokens: usage.output_tokens,
-                totalTokens: (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0),
+                inputTokens: inTokens,
+                outputTokens: outTokens,
+                totalTokens: inTokens + outTokens,
               }
             : undefined,
         }
@@ -974,10 +998,35 @@ export class ClaudeAdapter extends AgentAdapter {
         break
       }
 
-      case "message_start":
-      case "message_delta":
+      case "message_start": {
+        // Capture input token counts from the streaming message start event
+        const msg = nativeEvent.message as {
+          usage?: {
+            input_tokens?: number
+            cache_creation_input_tokens?: number
+            cache_read_input_tokens?: number
+          }
+        }
+        if (msg?.usage) {
+          this.streamingUsage.inputTokens +=
+            (msg.usage.input_tokens ?? 0) +
+            (msg.usage.cache_creation_input_tokens ?? 0) +
+            (msg.usage.cache_read_input_tokens ?? 0)
+        }
+        break
+      }
+
+      case "message_delta": {
+        // Capture output token counts from the streaming message delta event
+        const deltaUsage = nativeEvent.usage as { output_tokens?: number } | undefined
+        if (deltaUsage?.output_tokens) {
+          this.streamingUsage.outputTokens += deltaUsage.output_tokens
+        }
+        break
+      }
+
       case "message_stop":
-        // These are streaming lifecycle events - we handle the actual content elsewhere
+        // Streaming lifecycle event - no usage data here
         break
 
       default:
