@@ -15,11 +15,24 @@ When choosing which task to work on:
 
 ## Breaking down tasks
 
-If a task will take more than a few minutes of focused work, break it into subtasks:
+There are two kinds of parent-child relationships in beads:
 
-- Create child issues under the parent with `--parent={id}`
+### Epics (separate sessions)
+
+If a task is large enough to warrant multiple independent sessions, convert it to an epic:
+
+- `bd update {id} --type=epic`
+- Create child tasks with `--parent={id}` — each gets its own random ID
 - Apply the parent's priority to all children
 - End your turn after creating subtasks (you'll pick one up next session)
+
+### Subtasks (same session)
+
+If you just need to track steps within a single task, use subtasks:
+
+- Create subtasks with `--parent={id}` on a non-epic parent — IDs are `{parentId}.1`, `{parentId}.2`, etc.
+- Work through all subtasks in the current session
+- Close each subtask as you complete it, then close the parent
 
 ## Wrap-up steps
 

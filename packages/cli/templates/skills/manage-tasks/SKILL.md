@@ -77,9 +77,17 @@ If the user says something is "still" happening or otherwise indicates that they
 - Short title, details in description
 - Use the right type: `task` (default), `bug`, or `epic`. Don't use `feature`.
 - Set appropriate priorities: P0-P4 (P2 is default, P0 is highest priority)
-- Keep tasks granular - break complex work into subtasks under a parent
 - Set blocking dependencies between issues when appropriate (using `bd dep add <issue> <depends-on>`)
 - If there are previous issues on the same topic, link to them (using `--deps related:<id>`)
+
+### Subtasks vs epics
+
+There are two ways to break down work:
+
+- **Subtasks** (non-epic parent): Create children with `--parent={id}`. IDs are `{parentId}.1`, `{parentId}.2`, etc. Ralph treats the parent + all subtasks as a single unit of work, completing them in one session.
+- **Epics** (type `epic`): Create children with `--parent={id}`. Children get their own random IDs. Each child is an independent task that Ralph works on in a separate session.
+
+Use subtasks for granular steps within a single task. Use epics when work is large enough to span multiple sessions.
 
 ## Updating issues
 

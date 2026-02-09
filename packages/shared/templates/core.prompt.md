@@ -20,7 +20,8 @@ Select the highest-priority issue. Finish in-progress tasks first. Bugs take pri
 - Output `<start_task>{id}</start_task>`
 - Assign the issue to yourself: `bd update {id} --status=in_progress --assignee={agentName}`
 - Work only on this single task.
-- If the task is complex, break it into subtasks and end your session.
+- If the task has subtasks (IDs like `{id}.1`, `{id}.2`), complete all of them in this session.
+- If the task is too complex for one session, convert to an epic and break into child tasks (see workflow).
 
 ### Complete the task
 
