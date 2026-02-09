@@ -258,6 +258,7 @@ packages/shared/                    # Shared package
   templates/                # Single source of truth for Ralph session prompts
     core.prompt.md          # Session lifecycle protocol
     workflow.prompt.md      # Default workflow instructions
+    manage-tasks.prompt.md  # Task management skill prompt (used by task chat)
 ```
 
 ## Core architecture
@@ -274,10 +275,21 @@ packages/shared/                    # Shared package
 
 ### Template system
 
-Two-tier prompt system:
+All prompt templates live in `packages/shared/templates/` as the single source of truth:
 
-- **Core prompt** (`packages/shared/templates/core.prompt.md`) - Session lifecycle, task assignment, output tokens (CLI templates symlink here)
-- **Workflow** (`.ralph/workflow.prompt.md`) - Repo-specific build/test commands, prioritization, wrap-up steps
+- **Core prompt** (`core.prompt.md`) - Session lifecycle, task assignment, output tokens (CLI templates symlink here)
+- **Workflow** (`workflow.prompt.md`) - Default workflow instructions; repos override via `.ralph/workflow.prompt.md`
+- **Manage tasks** (`manage-tasks.prompt.md`) - Task management skill prompt for task chat UI
+
+**Importing templates in UI code:**
+
+Templates can be imported as raw strings via Vite's `?raw` suffix:
+
+```typescript
+import MANAGE_TASKS_SYSTEM_PROMPT from "@herbcaudill/ralph-shared/templates/manage-tasks.prompt.md?raw"
+```
+
+The shared package exports templates via `"./templates/*": "./templates/*"` in package.json. TypeScript declarations for `*.md?raw` modules are in `packages/ui/src/vite-env.d.ts`. This pattern inlines the template content at build time with no runtime overhead.
 
 ### Contract with Claude CLI
 

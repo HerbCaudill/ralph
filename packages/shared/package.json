@@ -13,7 +13,8 @@
     "./prompts": {
       "types": "./dist/prompts/index.d.ts",
       "import": "./dist/prompts/index.js"
-    }
+    },
+    "./templates/*": "./templates/*"
   },
   "files": [
     "dist",
