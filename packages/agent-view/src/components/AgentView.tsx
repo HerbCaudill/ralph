@@ -63,7 +63,7 @@ export function AgentView({
 
   return (
     <AgentViewProvider value={context}>
-      <div className={cx("flex h-full flex-col", className)}>
+      <div className={cx("flex min-h-0 flex-col", className)}>
         {header}
         <AutoScroll
           ariaLabel="Agent Events"
