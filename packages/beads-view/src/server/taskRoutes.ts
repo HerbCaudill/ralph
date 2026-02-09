@@ -1,6 +1,26 @@
 import type { Request, Response, Express } from "express"
 
 /**
+ * Check if an error is a WorkspaceNotFoundError.
+ * Works by checking the error name to avoid circular dependencies with beads-server.
+ */
+function isWorkspaceNotFoundError(err: unknown): boolean {
+  return err instanceof Error && err.name === "WorkspaceNotFoundError"
+}
+
+/**
+ * Send an appropriate error response based on the error type.
+ */
+function sendErrorResponse(res: Response, err: unknown, defaultMessage: string): void {
+  if (isWorkspaceNotFoundError(err)) {
+    res.status(404).json({ ok: false, error: (err as Error).message })
+  } else {
+    const message = err instanceof Error ? err.message : defaultMessage
+    res.status(500).json({ ok: false, error: message })
+  }
+}
+
+/**
  * Interface for the beads proxy that task routes depend on.
  * This mirrors the BeadsClient API surface used by the routes.
  */
@@ -110,8 +130,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, issues })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to list tasks"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to list tasks")
     }
   })
 
@@ -128,8 +147,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, issues })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to list blocked tasks"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to list blocked tasks")
     }
   })
 
@@ -180,8 +198,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(201).json({ ok: true, issue })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create task"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to create task")
     }
   })
 
@@ -203,8 +220,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, issue: issues[0] })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to get task"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to get task")
     }
   })
 
@@ -243,8 +259,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, issue: issues[0] })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update task"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to update task")
     }
   })
 
@@ -261,8 +276,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete task"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to delete task")
     }
   })
 
@@ -279,8 +293,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, labels })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to get labels"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to get labels")
     }
   })
 
@@ -303,8 +316,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(201).json({ ok: true, result })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to add label"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to add label")
     }
   })
 
@@ -327,8 +339,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, result })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to remove label"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to remove label")
     }
   })
 
@@ -351,8 +362,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(201).json({ ok: true, result })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to add blocker"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to add blocker")
     }
   })
 
@@ -375,8 +385,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, result })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to remove blocker"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to remove blocker")
     }
   })
 
@@ -391,8 +400,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, labels })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to list labels"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to list labels")
     }
   })
 
@@ -409,8 +417,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(200).json({ ok: true, comments })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to get comments"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to get comments")
     }
   })
 
@@ -433,8 +440,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       res.status(201).json({ ok: true })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to add comment"
-      res.status(500).json({ ok: false, error: message })
+      sendErrorResponse(res, err, "Failed to add comment")
     }
   })
 }

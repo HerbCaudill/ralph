@@ -1,3 +1,14 @@
+/** Error thrown when a workspace cannot be found or resolved. */
+export class WorkspaceNotFoundError extends Error {
+  constructor(
+    /** The workspace identifier that could not be found */
+    public readonly workspace: string,
+  ) {
+    super(`workspace not found: ${workspace}`)
+    this.name = "WorkspaceNotFoundError"
+  }
+}
+
 /** Entry stored in the beads registry file (~/.beads/registry.json). */
 export interface RegistryEntry {
   workspace_path: string

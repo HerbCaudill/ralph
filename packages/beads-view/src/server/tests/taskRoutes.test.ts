@@ -510,5 +510,51 @@ describe("registerTaskRoutes", () => {
       expect(res.status).toHaveBeenCalledWith(500)
       expect(res.json).toHaveBeenCalledWith({ ok: false, error: "Failed to list tasks" })
     })
+
+    it("returns 404 for WorkspaceNotFoundError", async () => {
+      // Create a mock error with name = "WorkspaceNotFoundError"
+      const error = new Error("workspace not found: herbcaudill/ralph")
+      error.name = "WorkspaceNotFoundError"
+
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({
+        app,
+        getBdProxy: () => {
+          throw error
+        },
+      })
+
+      const handler = routes.get.get("/api/tasks")!
+      const { req, res } = createMockReqRes()
+
+      await handler(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(404)
+      expect(res.json).toHaveBeenCalledWith({
+        ok: false,
+        error: "workspace not found: herbcaudill/ralph",
+      })
+    })
+
+    it("returns 500 for other errors", async () => {
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({
+        app,
+        getBdProxy: () => {
+          throw new Error("Database connection failed")
+        },
+      })
+
+      const handler = routes.get.get("/api/tasks")!
+      const { req, res } = createMockReqRes()
+
+      await handler(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(500)
+      expect(res.json).toHaveBeenCalledWith({
+        ok: false,
+        error: "Database connection failed",
+      })
+    })
   })
 })

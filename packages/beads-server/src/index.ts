@@ -12,10 +12,11 @@ import { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 import { watchMutations } from "./BeadsClient.js"
 import { ThemeDiscovery } from "./ThemeDiscovery.js"
 import type { MutationEvent } from "@herbcaudill/beads-sdk"
-import type { BeadsServerConfig, WsClient } from "./types.js"
+import { WorkspaceNotFoundError, type BeadsServerConfig, type WsClient } from "./types.js"
 
 export type { BeadsServerConfig, WsClient } from "./types.js"
 export type { RegistryEntry, WorkspaceInfo } from "./types.js"
+export { WorkspaceNotFoundError } from "./types.js"
 export { BdProxy } from "./BdProxy.js"
 export { BeadsClient, watchMutations } from "./BeadsClient.js"
 export { getAliveWorkspaces } from "./getAliveWorkspaces.js"
@@ -71,7 +72,7 @@ export async function readPeacockColor(workspacePath: string): Promise<string | 
 function getBdProxy(workspace: string): BdProxy {
   const resolved = resolveWorkspacePath(workspace)
   if (!resolved) {
-    throw new Error(`workspace not found: ${workspace}`)
+    throw new WorkspaceNotFoundError(workspace)
   }
   return new BdProxy({ cwd: resolved })
 }
