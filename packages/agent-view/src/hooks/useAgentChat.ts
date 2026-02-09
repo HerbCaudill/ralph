@@ -152,7 +152,11 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
     }
   }, [agentType, systemPrompt, setSessionId])
 
-  /** Try to restore from localStorage, then /api/sessions/latest, or create new. */
+  /**
+   * Try to restore a previous session from localStorage or the session index.
+   * If no session can be restored, leaves sessionId as null — a session will
+   * be created lazily when the user sends their first message.
+   */
   const initSession = useCallback(async () => {
     // Helper to restore streaming state and agent type from session info
     const restoreSessionState = (info: { status?: string; adapter?: string }) => {
@@ -225,10 +229,9 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
       }
     }
 
-    // No localStorage session found — create a new session.
-    // Don't fall back to server's /api/sessions/latest.
-    await createSession()
-  }, [createSession, setSessionId, setAgentType, storageKey])
+    // No restorable session found — leave sessionId null.
+    // A session will be created lazily on first sendMessage.
+  }, [setSessionId, setAgentType, storageKey])
 
   const connect = useCallback(() => {
     // Clean up existing connection
@@ -411,6 +414,30 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
     }
   }, [connect])
 
+  /** Send a WS message on the given session. */
+  const sendViaWs = useCallback((targetSessionId: string, trimmedMessage: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "message",
+          sessionId: targetSessionId,
+          message: trimmedMessage,
+        }),
+      )
+      setIsStreaming(true)
+      setError(null)
+    } else {
+      // Fallback to REST
+      fetch(`/api/sessions/${targetSessionId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmedMessage }),
+      }).catch(() => {
+        setError("Failed to send message")
+      })
+    }
+  }, [])
+
   const sendMessage = useCallback(
     (message: string) => {
       if (!message.trim()) return
@@ -442,42 +469,19 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
 
       const currentSessionId = sessionIdRef.current
 
-      // Send via WebSocket using session protocol
-      if (wsRef.current?.readyState === WebSocket.OPEN && currentSessionId) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: "message",
-            sessionId: currentSessionId,
-            message: trimmedMessage,
-          }),
-        )
-        setIsStreaming(true)
-        setError(null)
-      } else if (wsRef.current?.readyState === WebSocket.OPEN) {
-        // No session yet — use legacy protocol as fallback
-        wsRef.current.send(
-          JSON.stringify({
-            type: "chat_message",
-            message: trimmedMessage,
-            agentType,
-          }),
-        )
-        setIsStreaming(true)
-        setError(null)
+      if (currentSessionId) {
+        // Session exists — send directly
+        sendViaWs(currentSessionId, trimmedMessage)
       } else {
-        // Fallback to REST
-        if (currentSessionId) {
-          fetch(`/api/sessions/${currentSessionId}/messages`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: trimmedMessage }),
-          }).catch(() => {
-            setError("Failed to send message")
-          })
-        }
+        // No session yet — create one lazily, then send
+        createSession().then(newSessionId => {
+          if (newSessionId) {
+            sendViaWs(newSessionId, trimmedMessage)
+          }
+        })
       }
     },
-    [agentType],
+    [createSession, sendViaWs],
   )
 
   const clearHistory = useCallback(() => {

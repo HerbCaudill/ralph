@@ -270,29 +270,11 @@ describe("useAgentChat localStorage persistence", () => {
       expect(localStorage.getItem(AGENT_TYPE_KEY)).toBe("codex")
     })
 
-    it("creates new session when localStorage is empty (no server fallback to /api/sessions/latest)", async () => {
+    it("leaves sessionId null when localStorage is empty (lazy session creation)", async () => {
       // No stored session ID, no session index entries
-      // Should create a new session but NOT call /api/sessions/latest
+      // Session should NOT be created eagerly — only on first sendMessage
 
-      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-        // This should NOT be called
-        if (url === "/api/sessions/latest") {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({
-              sessionId: "latest-session",
-              status: "processing",
-              adapter: "codex",
-            }),
-          })
-        }
-        // This SHOULD be called — create new session
-        if (url === "/api/sessions" && init?.method === "POST") {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ sessionId: "new-session-xyz" }),
-          })
-        }
+      globalThis.fetch = vi.fn().mockImplementation(() => {
         return Promise.resolve({ ok: false, json: async () => ({}) })
       })
 
@@ -306,18 +288,16 @@ describe("useAgentChat localStorage persistence", () => {
         await Promise.resolve()
       })
 
-      // Should have created a new session
-      expect(result.current.state.sessionId).toBe("new-session-xyz")
+      // sessionId should remain null — no eager creation
+      expect(result.current.state.sessionId).toBeNull()
       expect(result.current.agentType).toBe("claude")
 
-      // Verify /api/sessions/latest was NOT called, but POST /api/sessions WAS called
+      // Verify no POST /api/sessions was called
       const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
-      const latestCalls = fetchCalls.filter(([url]: [string]) => url === "/api/sessions/latest")
       const createCalls = fetchCalls.filter(
         ([url, init]: [string, RequestInit?]) => url === "/api/sessions" && init?.method === "POST",
       )
-      expect(latestCalls).toHaveLength(0)
-      expect(createCalls).toHaveLength(1)
+      expect(createCalls).toHaveLength(0)
     })
 
     it("does not set isStreaming when session status is not 'processing'", async () => {
@@ -359,7 +339,7 @@ describe("useAgentChat localStorage persistence", () => {
       clearSessionIndex()
     })
 
-    it("createSession adds a session to the index", async () => {
+    it("sendMessage creates a session lazily and adds it to the index", async () => {
       // Mock fetch: POST /api/sessions returns a sessionId, everything else fails
       globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
         if (url === "/api/sessions" && init?.method === "POST") {
@@ -373,11 +353,21 @@ describe("useAgentChat localStorage persistence", () => {
 
       const { result } = renderUseAgentChat("claude")
 
-      // Trigger WebSocket onopen -> initSession
-      // initSession: no stored session, no index entries -> calls createSession
+      // Let WebSocket connect — no session created yet (lazy)
       await act(async () => {
         vi.advanceTimersByTime(1)
         await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.sessionId).toBeNull()
+      expect(listSessions()).toHaveLength(0)
+
+      // Sending a message triggers lazy session creation
+      await act(async () => {
+        result.current.actions.sendMessage("Hello")
         await Promise.resolve()
         await Promise.resolve()
         await Promise.resolve()
@@ -387,7 +377,6 @@ describe("useAgentChat localStorage persistence", () => {
       expect(sessions).toHaveLength(1)
       expect(sessions[0].sessionId).toBe("new-session-abc")
       expect(sessions[0].adapter).toBe("claude")
-      expect(sessions[0].firstUserMessage).toBe("")
     })
 
     it("sendMessage updates lastMessageAt and sets firstUserMessage on first message", async () => {
