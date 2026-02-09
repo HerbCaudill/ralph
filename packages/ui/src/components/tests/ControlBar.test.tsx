@@ -261,4 +261,24 @@ describe("ControlBar", () => {
       })
     })
   })
+
+  describe("button styling", () => {
+    it("Stop button should not have hardcoded red hover color", () => {
+      render(<ControlBar {...defaultProps} controlState="running" />)
+
+      const stopButton = screen.getByRole("button", { name: "Stop" })
+      // Should NOT have hardcoded red hover color - it should use accent color from outline variant
+      expect(stopButton.className).not.toContain("hover:text-red")
+    })
+
+    it("Stop After Current button should not have hardcoded amber colors when active", () => {
+      render(<ControlBar {...defaultProps} controlState="running" isStoppingAfterCurrent={true} />)
+
+      const stopAfterCurrentButton = screen.getByRole("button", {
+        name: "Cancel stop after current",
+      })
+      // Should NOT have hardcoded amber colors - it should use accent color from outline variant
+      expect(stopAfterCurrentButton.className).not.toContain("amber")
+    })
+  })
 })

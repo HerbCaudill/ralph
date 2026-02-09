@@ -142,7 +142,6 @@ export function ControlBar({
         disabled={!buttonStates.start || isLoading}
         title="Start"
         aria-label="Start"
-        className="text-green-600"
       >
         <IconPlayerPlayFilled size={14} stroke={1.5} />
       </Button>
@@ -167,7 +166,6 @@ export function ControlBar({
         disabled={!buttonStates.stop || isLoading}
         title="Stop"
         aria-label="Stop"
-        className="hover:text-red-600"
       >
         <IconPlayerStopFilled size={14} stroke={1.5} />
       </Button>
@@ -186,7 +184,7 @@ export function ControlBar({
             "Cancel stop after current"
           : "Stop after current action"
         }
-        className={cn(status === "stopping_after_current" && "bg-amber-500/20 text-amber-600")}
+        className={cn(status === "stopping_after_current" && "bg-repo-accent/20 text-repo-accent")}
       >
         <IconPlayerStop size={14} stroke={1.5} />
       </Button>
