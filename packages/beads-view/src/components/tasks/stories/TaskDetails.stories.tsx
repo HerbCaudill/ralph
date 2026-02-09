@@ -43,6 +43,7 @@ const closedTask: TaskCardTask = {
   status: "closed",
   priority: 3,
   closed_at: "2024-01-15T10:00:00Z",
+  close_reason: "Completed successfully",
 }
 
 // Sample all tasks for parent selection

@@ -39,6 +39,8 @@ export interface Task {
   created_at?: string
   /** Close timestamp. */
   closed_at?: string
+  /** Reason the task was closed. */
+  close_reason?: string
   /** Task dependencies. */
   dependencies?: TaskDependency[]
   /** IDs of issues that block this issue (from bd blocked command). */

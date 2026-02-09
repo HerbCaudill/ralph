@@ -291,6 +291,14 @@ export function TaskDetails({
             }
           </div>
 
+          {/* Close Reason - only shown for closed tasks with a reason */}
+          {task.status === "closed" && task.close_reason && (
+            <div className="flex items-start gap-3">
+              <Label className="text-muted-foreground mt-0.5 w-16 shrink-0 text-xs">Reason</Label>
+              <span className="text-muted-foreground text-sm">{task.close_reason}</span>
+            </div>
+          )}
+
           {/* Priority */}
           <div className="flex items-center gap-3">
             <Label className="text-muted-foreground w-16 shrink-0 text-xs">Priority</Label>

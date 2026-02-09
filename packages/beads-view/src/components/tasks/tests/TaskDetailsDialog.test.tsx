@@ -1273,6 +1273,70 @@ describe("TaskDetailsDialog", () => {
     })
   })
 
+  describe("close reason", () => {
+    it("displays close reason for closed tasks", async () => {
+      const closedTask: TaskCardTask = {
+        id: "test-closed",
+        title: "Closed Task",
+        status: "closed",
+        close_reason: "Completed successfully",
+      }
+
+      await renderAndWait(
+        <TaskDetailsController
+          task={closedTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      )
+
+      expect(screen.getByText("Reason")).toBeInTheDocument()
+      expect(screen.getByText("Completed successfully")).toBeInTheDocument()
+    })
+
+    it("does not display close reason row when task has no close_reason", async () => {
+      const closedTask: TaskCardTask = {
+        id: "test-closed",
+        title: "Closed Task",
+        status: "closed",
+      }
+
+      await renderAndWait(
+        <TaskDetailsController
+          task={closedTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      )
+
+      expect(screen.queryByText("Reason")).not.toBeInTheDocument()
+    })
+
+    it("does not display close reason for open tasks", async () => {
+      const openTask: TaskCardTask = {
+        id: "test-open",
+        title: "Open Task",
+        status: "open",
+        // Even if close_reason is somehow set, it shouldn't be displayed for open tasks
+        close_reason: "Should not appear",
+      }
+
+      await renderAndWait(
+        <TaskDetailsController
+          task={openTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      )
+
+      // Look for the "Reason" label which should not appear for open tasks
+      expect(screen.queryByText("Reason")).not.toBeInTheDocument()
+    })
+  })
+
   describe("event log capture on close", () => {
     it("does not save event log when task is already closed", async () => {
       // Track POST calls to eventlogs endpoint (creating new event logs)
