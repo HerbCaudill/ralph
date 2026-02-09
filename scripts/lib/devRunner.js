@@ -6,7 +6,7 @@
  * and playwright.js.
  */
 import getPort, { portNumbers } from "get-port"
-import { spawn } from "node:child_process"
+import { execSync, spawn } from "node:child_process"
 import { setTimeout as delay } from "node:timers/promises"
 
 const MAX_PORT_ATTEMPTS = 10
@@ -89,6 +89,11 @@ export async function waitForUrl(
  * ```
  * {
  *   label: "dev",
+ *   preBuild: [
+ *     // Commands run sequentially before services start (topological build order)
+ *     "pnpm --filter components --filter agent-view-theme build",
+ *     "pnpm --filter agent-view build",
+ *   ],
  *   services: [
  *     // Server with port and health check
  *     { name: "server", command: "pnpm serve", portEnv: "PORT", defaultPort: 4242 },
@@ -114,12 +119,23 @@ export async function runDev(
 ) {
   const {
     label = "dev",
+    preBuild = [],
     services = [],
     frontend,
     env: extraEnv = {},
     waitForHealthz = false,
     stdio = "inherit",
   } = config
+
+  // Run pre-build commands sequentially (topological dependency order)
+  if (preBuild.length > 0) {
+    console.log(`[${label}] Building dependencies...`)
+    for (const cmd of preBuild) {
+      console.log(`[${label}]   $ ${cmd}`)
+      execSync(cmd, { stdio: "inherit" })
+    }
+    console.log(`[${label}] Dependencies built.`)
+  }
 
   // Resolve all ports (only for services that have ports)
   const ports = {}

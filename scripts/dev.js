@@ -2,7 +2,8 @@
 /**
  * Development script that starts beads-server, agent-server, and UI.
  *
- * The UI is frontend-only and connects to these backend servers.
+ * Builds all workspace dependencies in topological order before starting,
+ * then keeps them in watch mode so changes trigger automatic rebuilds.
  */
 import { runDev } from "./lib/devRunner.js"
 
@@ -11,11 +12,23 @@ const workspacePath = process.env.WORKSPACE_PATH ?? process.cwd()
 runDev({
   label: "dev",
   waitForHealthz: true,
+  preBuild: [
+    "pnpm --filter components --filter agent-view-theme build",
+    "pnpm --filter agent-view build",
+    "pnpm --filter ralph-shared --filter agent-view-claude --filter agent-view-codex build",
+    "pnpm --filter beads-view build",
+  ],
   services: [
-    {
-      name: "components",
-      command: "pnpm --filter components dev",
-    },
+    // Watchers for dependency packages
+    { name: "components", command: "pnpm --filter components dev" },
+    { name: "agent-view-theme", command: "pnpm --filter agent-view-theme dev" },
+    { name: "agent-view", command: "pnpm --filter agent-view dev" },
+    { name: "agent-view-claude", command: "pnpm --filter agent-view-claude dev" },
+    { name: "agent-view-codex", command: "pnpm --filter agent-view-codex dev" },
+    { name: "shared", command: "pnpm --filter ralph-shared dev" },
+    { name: "beads-view", command: "pnpm --filter beads-view dev" },
+
+    // Backend servers
     {
       name: "beads-server",
       command: "pnpm --filter beads-server dev",
