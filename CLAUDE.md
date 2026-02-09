@@ -299,6 +299,15 @@ The UI is a frontend-only package that connects to these servers. Ralph-specific
 
 The most recent session ID for each workspace is persisted in localStorage (key: `ralph-workspace-session:{workspaceId}`). On page reload, `useRalphLoop` sends a `restore_session` message to the SharedWorker, which sets the session ID without auto-starting Ralph. The restored session is in idle state, allowing past events to be viewed. The worker broadcasts a `session_restored` event (distinct from `session_created`) so the hook can set the session ID without entering streaming mode.
 
+**Server-side persistence with app namespaces:**
+
+Sessions are stored as JSONL files with an optional app namespace. Sessions are organized as:
+
+- **Root sessions**: `{storageDir}/{sessionId}.jsonl` (for sessions without an app namespace)
+- **App-namespaced sessions**: `{storageDir}/{app}/{sessionId}.jsonl` (e.g., `{storageDir}/ralph/session123.jsonl`)
+
+The `SessionPersister` reads and writes to the correct directory based on the `app` namespace parameter. When a client reconnects via the `reconnect` WebSocket message, the server extracts the session's stored `app` namespace from `getSessionInfo()` and passes it to `persister.readEvents()` or `persister.readEventsSince()`. This ensures sessions stored in app subdirectories are correctly restored on browser reload. The `pending_events` message is always sent (even if empty) to signal event restoration completion.
+
 ### Server connectivity
 
 The UI connects to:
@@ -419,6 +428,10 @@ Key behaviors:
 ### WebSocket protocol
 
 All messages include `instanceId`, `workspaceId`, `timestamp`. Unified `agent:event` envelope (`AgentEventEnvelope`) with `source` field (`"ralph" | "task-chat"`). Reconnection via `agent:reconnect` / `agent:pending_events`. Legacy wire types preserved for backward compatibility but being phased out.
+
+**Session reconnection and event restoration:**
+
+When a client reconnects (e.g., after browser reload), it sends a `reconnect` message with the session ID. The server's WebSocket handler (`wsHandler.ts`) retrieves the session's metadata via `getSessionInfo(sessionId)` to extract the `app` namespace. It then reads the session's events from the persister using `readEvents(sessionId, app)` or `readEventsSince(sessionId, lastTimestamp, app)`. The events are sent to the client via a `pending_events` message, including an empty array for newly created sessions to signal event restoration is complete.
 
 ### Event logs
 

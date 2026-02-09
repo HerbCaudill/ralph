@@ -202,9 +202,13 @@ function connectWorkspace(workspaceId: string): void {
 
         if (message.type === "pending_events") {
           const events = message.events as unknown[]
-          if (events?.length) {
-            broadcastToWorkspace(workspaceId, { type: "pending_events", workspaceId, events })
-          }
+          // Always broadcast pending_events, even if empty - the UI needs to know
+          // event restoration is complete (e.g., for newly created sessions)
+          broadcastToWorkspace(workspaceId, {
+            type: "pending_events",
+            workspaceId,
+            events: events ?? [],
+          })
           return
         }
 

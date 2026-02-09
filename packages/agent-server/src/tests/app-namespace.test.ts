@@ -376,4 +376,47 @@ describe("App-namespaced session storage", () => {
       expect(createSession).toHaveBeenCalledWith({ adapter: "stub", app: "ralph" })
     })
   })
+
+  describe("WebSocket reconnect", () => {
+    it("reads events from app-namespaced session on reconnect", async () => {
+      // This test verifies the bug fix for r-ztbkf:
+      // When reconnecting to a session with an app namespace (e.g., "ralph"),
+      // the persister.readEvents call must include the app parameter to find
+      // events stored in the app's subdirectory.
+      const persister = new SessionPersister(storageDir)
+      const manager = new ChatSessionManager({ storageDir })
+
+      // Create a session with app namespace
+      const { sessionId } = await manager.createSession({ adapter: "stub", app: "ralph" })
+
+      // Manually append some events to simulate a session that was running
+      await persister.appendEvent(
+        sessionId,
+        { type: "user_message", message: "Hello", timestamp: 1000 },
+        "ralph",
+      )
+      await persister.appendEvent(
+        sessionId,
+        { type: "assistant_message", text: "Hi there!", timestamp: 2000 },
+        "ralph",
+      )
+
+      // Simulate what the reconnect handler does: get session info and read events
+      const sessionInfo = manager.getSessionInfo(sessionId)
+      expect(sessionInfo).not.toBeNull()
+      expect(sessionInfo!.app).toBe("ralph")
+
+      // The bug was: reconnect handler called readEvents(sessionId) without app
+      // This would return empty array because the file is in ralph/ subdirectory
+      const eventsWithoutApp = await persister.readEvents(sessionId)
+      expect(eventsWithoutApp).toHaveLength(0) // Bug: events not found!
+
+      // The fix: pass the app parameter from session info
+      const eventsWithApp = await persister.readEvents(sessionId, sessionInfo!.app)
+      // Skip the session_created event (first event), we added 2 more
+      expect(eventsWithApp.length).toBeGreaterThanOrEqual(2)
+      expect(eventsWithApp.some(e => e.type === "user_message")).toBe(true)
+      expect(eventsWithApp.some(e => e.type === "assistant_message")).toBe(true)
+    })
+  })
 })

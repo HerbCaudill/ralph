@@ -143,12 +143,17 @@ export function handleWsConnection(
             break
           }
           client.subscribedSessions.add(sessionId)
+
+          // Get the session's app namespace so we can read from the correct directory
+          const sessionInfo = manager.getSessionInfo(sessionId)
+          const app = sessionInfo?.app
+
           const lastTimestamp = msg.lastEventTimestamp as number | undefined
           const persister = manager.getPersister()
           const eventsPromise =
             lastTimestamp ?
-              persister.readEventsSince(sessionId, lastTimestamp)
-            : persister.readEvents(sessionId)
+              persister.readEventsSince(sessionId, lastTimestamp, app)
+            : persister.readEvents(sessionId, app)
 
           eventsPromise
             .then(events => {
