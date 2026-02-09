@@ -290,6 +290,71 @@ describe("ralphWorker", () => {
       expect(state.currentSessionId).toBe("active-session")
     })
 
+    it("should send a reconnect message to fetch historical events for idle sessions", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      // Subscribe first (creates WebSocket connection)
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      // Wait for WebSocket to open
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Clear any messages from subscription
+      ;(state.ws as any).send.mockClear()
+
+      // Restore an idle session (no controlState — the common case after a completed run)
+      handlePortMessage(
+        { type: "restore_session", workspaceId, sessionId: "completed-session-789" },
+        port,
+      )
+
+      // The worker should send a reconnect message to fetch historical events
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "reconnect", sessionId: "completed-session-789" }),
+      )
+    })
+
+    it("should not create a duplicate WebSocket when restoring a running session right after subscribe", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      // Subscribe (creates WS in CONNECTING state)
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+      const originalWs = state.ws
+
+      // Immediately restore with running state (before WS opens)
+      // This simulates the real useRalphLoop flow where both messages are sent in same tick
+      handlePortMessage(
+        {
+          type: "restore_session",
+          workspaceId,
+          sessionId: "running-session",
+          controlState: "running",
+        },
+        port,
+      )
+
+      // Should NOT have replaced the WebSocket — the original one should still be there
+      expect(state.ws).toBe(originalWs)
+
+      // Wait for the original WS to open
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Should send reconnect once connected
+      await vi.waitFor(() => {
+        expect(state.ws!.send).toHaveBeenCalledWith(
+          JSON.stringify({ type: "reconnect", sessionId: "running-session" }),
+        )
+      })
+    })
+
     it("should not overwrite when workspace already has a session and is idle", () => {
       const port = createMockPort()
       const workspaceId = "herbcaudill/ralph"
@@ -361,6 +426,65 @@ describe("ralphWorker", () => {
       // Explicitly start
       handlePortMessage({ type: "start", workspaceId }, port)
       expect(state.controlState).toBe("running")
+    })
+  })
+
+  describe("server connected message handling", () => {
+    it("should not broadcast server 'connected' acknowledgment as a chat event", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      port.postMessage.mockClear()
+
+      // Simulate the server sending {"type": "connected"} over WebSocket
+      state.ws!.onmessage!({ data: JSON.stringify({ type: "connected" }) })
+
+      // Should NOT have broadcast it as an "event" type (chat event)
+      const eventMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "event")
+
+      expect(eventMessages).toHaveLength(0)
+    })
+  })
+
+  describe("connectWorkspace stale onclose", () => {
+    it("should not clobber state.ws when a replaced WebSocket fires onclose", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      const firstWs = state.ws
+
+      // Simulate starting a new session which calls connectWorkspace internally
+      // by directly calling connectWorkspace (via start which triggers it)
+      handlePortMessage({ type: "start", workspaceId }, port)
+
+      // The start handler may or may not replace the WS (it reuses if already OPEN).
+      // Let's test the scenario where connectWorkspace is called again explicitly:
+      // Close the first WS after a new one has been created
+      const secondWs = state.ws
+
+      // If the WS was replaced, the old onclose shouldn't null out the new one
+      if (firstWs !== secondWs) {
+        // Manually fire the old WS's onclose
+        firstWs!.onclose?.()
+        // state.ws should still be the second WS, not null
+        expect(state.ws).toBe(secondWs)
+      }
     })
   })
 

@@ -129,9 +129,10 @@ function connectWorkspace(workspaceId: string): void {
   }
 
   try {
-    state.ws = new WebSocket(getWebSocketUrl(workspaceId))
+    const ws = new WebSocket(getWebSocketUrl(workspaceId))
+    state.ws = ws
 
-    state.ws.onopen = () => {
+    ws.onopen = () => {
       broadcastToWorkspace(workspaceId, { type: "connected", workspaceId })
 
       // Start keep-alive pings
@@ -155,11 +156,14 @@ function connectWorkspace(workspaceId: string): void {
       }
     }
 
-    state.ws.onmessage = e => {
+    ws.onmessage = e => {
       try {
         const message = JSON.parse(e.data as string) as Record<string, unknown>
 
         if (message.type === "pong") return
+
+        // Server sends {"type": "connected"} as an acknowledgment — not a chat event
+        if (message.type === "connected") return
 
         if (message.type === "session_created") {
           state.currentSessionId = message.sessionId as string
@@ -234,22 +238,26 @@ function connectWorkspace(workspaceId: string): void {
       }
     }
 
-    state.ws.onclose = () => {
-      broadcastToWorkspace(workspaceId, { type: "disconnected", workspaceId })
-      state.ws = null
+    ws.onclose = () => {
+      // Only clean up if this is still the current WebSocket — a replacement
+      // WS may have been created already (e.g. by restore_session or start)
+      if (state.ws === ws) {
+        broadcastToWorkspace(workspaceId, { type: "disconnected", workspaceId })
+        state.ws = null
 
-      if (state.pingInterval) {
-        clearInterval(state.pingInterval)
-        state.pingInterval = null
-      }
+        if (state.pingInterval) {
+          clearInterval(state.pingInterval)
+          state.pingInterval = null
+        }
 
-      // Auto-reconnect after 3 seconds if there are subscribed ports
-      if (state.subscribedPorts.size > 0) {
-        state.reconnectTimer = setTimeout(() => connectWorkspace(workspaceId), 3000)
+        // Auto-reconnect after 3 seconds if there are subscribed ports
+        if (state.subscribedPorts.size > 0) {
+          state.reconnectTimer = setTimeout(() => connectWorkspace(workspaceId), 3000)
+        }
       }
     }
 
-    state.ws.onerror = () => {
+    ws.onerror = () => {
       broadcastToWorkspace(workspaceId, {
         type: "error",
         workspaceId,
@@ -481,25 +489,33 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
         state.currentSessionId = message.sessionId
 
         // If the session was running/paused before reload, restore that state
-        // and reconnect to continue receiving events
         if (message.controlState === "running" || message.controlState === "paused") {
           state.controlState = message.controlState
+        }
 
-          // Ensure WebSocket is connected to resume the session
-          if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
-            connectWorkspace(message.workspaceId)
+        // Send reconnect to fetch historical events
+        const sendReconnect = () => {
+          if (state.ws?.readyState === WebSocket.OPEN) {
+            state.ws.send(
+              JSON.stringify({
+                type: "reconnect",
+                sessionId: state.currentSessionId,
+              }),
+            )
+            return true
           }
+          return false
+        }
 
-          // Once connected, send a reconnect message to get pending events
+        // Try immediately if already connected, otherwise poll until the
+        // WebSocket (started by subscribe_workspace) opens. Do NOT call
+        // connectWorkspace here — subscribe_workspace already initiated the
+        // connection and creating a second one causes a reconnection loop
+        // (the old WS's onclose clobbers state.ws).
+        if (!sendReconnect()) {
           const checkAndReconnect = setInterval(() => {
-            if (state.ws?.readyState === WebSocket.OPEN) {
+            if (sendReconnect()) {
               clearInterval(checkAndReconnect)
-              state.ws.send(
-                JSON.stringify({
-                  type: "reconnect",
-                  sessionId: state.currentSessionId,
-                }),
-              )
             }
           }, 100)
           setTimeout(() => clearInterval(checkAndReconnect), 10000)
