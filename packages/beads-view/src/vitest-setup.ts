@@ -1,10 +1,22 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
-import { afterEach } from "vitest"
+import { afterEach, vi } from "vitest"
 
 // Cleanup after each test to prevent DOM leakage between tests
 afterEach(() => {
   cleanup()
+})
+
+// Mock navigator.clipboard for tests - jsdom doesn't provide this API
+const clipboardMock = {
+  writeText: vi.fn().mockResolvedValue(undefined),
+  readText: vi.fn().mockResolvedValue(""),
+}
+
+Object.defineProperty(navigator, "clipboard", {
+  value: clipboardMock,
+  writable: true,
+  configurable: true,
 })
 
 // Mock localStorage for tests - Node 24's built-in localStorage conflicts with jsdom
