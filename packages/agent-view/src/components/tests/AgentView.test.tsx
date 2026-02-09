@@ -53,7 +53,9 @@ describe("AgentView", () => {
       )
 
       // Find the AgentView outer container (first child of the flex parent after header)
-      const agentViewContainer = container.querySelector("[data-testid='auto-scroll']")?.parentElement
+      const agentViewContainer = container.querySelector(
+        "[data-testid='auto-scroll']",
+      )?.parentElement
 
       expect(agentViewContainer).not.toBeNull()
 
@@ -70,7 +72,9 @@ describe("AgentView", () => {
         </div>,
       )
 
-      const agentViewContainer = container.querySelector("[data-testid='auto-scroll']")?.parentElement
+      const agentViewContainer = container.querySelector(
+        "[data-testid='auto-scroll']",
+      )?.parentElement
       expect(agentViewContainer?.className).toContain("flex-1")
     })
   })

@@ -4,15 +4,7 @@
     "subtype": "init",
     "cwd": "/Users/herbcaudill/Code/HerbCaudill/ralph",
     "session_id": "5f8b6b9e-a5c9-48d2-a5fd-0471a9cbf7aa",
-    "tools": [
-      "Task",
-      "Bash",
-      "Read",
-      "Edit",
-      "Write",
-      "Glob",
-      "Grep"
-    ],
+    "tools": ["Task", "Bash", "Read", "Edit", "Write", "Glob", "Grep"],
     "model": "claude-opus-4-5-20251101",
     "uuid": "37887bb1-81ae-45fc-9c49-8940cb0ac09a",
     "timestamp": 1770143520000

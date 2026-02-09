@@ -52,7 +52,7 @@ describe("getToolSummary", () => {
     })
 
     it("should return command when input is a JSON string", () => {
-      const input = "{\"command\":\"pnpm test:all\"}" as unknown as Record<string, unknown>
+      const input = '{"command":"pnpm test:all"}' as unknown as Record<string, unknown>
       const result = getToolSummary("Bash", input)
       expect(result).toBe("pnpm test:all")
     })

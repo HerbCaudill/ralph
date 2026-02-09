@@ -4,9 +4,7 @@ import { ContextWindowProgress } from "../ContextWindowProgress"
 
 describe("ContextWindowProgress", () => {
   it("returns null when used is 0", () => {
-    const { container } = render(
-      <ContextWindowProgress contextWindow={{ used: 0, max: 200000 }} />,
-    )
+    const { container } = render(<ContextWindowProgress contextWindow={{ used: 0, max: 200000 }} />)
     expect(container.firstChild).toBeNull()
   })
 

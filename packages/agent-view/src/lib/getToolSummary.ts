@@ -44,10 +44,11 @@ export function getToolSummary(
           toRelativePath(String(resolvedInput.file_path), workspace ?? null)
         : ""
     case "Bash":
-      return resolvedInput.command ? String(resolvedInput.command)
-      : typeof rawInput === "string" && rawInput.trim() ?
-        rawInput
-      : ""
+      return (
+        resolvedInput.command ? String(resolvedInput.command)
+        : typeof rawInput === "string" && rawInput.trim() ? rawInput
+        : ""
+      )
     case "Grep":
       return resolvedInput.pattern ? String(resolvedInput.pattern) : ""
     case "Glob":

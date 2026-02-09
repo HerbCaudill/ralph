@@ -33,9 +33,7 @@ describe("ScrollToBottomButton", () => {
 
   it("uses custom aria-label when provided", () => {
     const onClick = vi.fn()
-    render(
-      <ScrollToBottomButton isVisible={true} onClick={onClick} ariaLabel="Custom label" />,
-    )
+    render(<ScrollToBottomButton isVisible={true} onClick={onClick} ariaLabel="Custom label" />)
     expect(screen.getByRole("button")).toHaveAttribute("aria-label", "Custom label")
   })
 

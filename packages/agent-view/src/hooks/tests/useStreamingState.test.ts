@@ -3,10 +3,8 @@ import { describe, it, expect } from "vitest"
 import { useStreamingState } from "../useStreamingState"
 import type { ChatEvent } from "../../types"
 
-describe("useStreamingState", /** Ensure tool_use input is preserved when provided in content_block_start. */
-() => {
-  it("keeps tool_use input from content_block_start when no input_json_delta arrives", /** Verify tool_use input is carried into completed assistant events. */
-  () => {
+describe("useStreamingState" /** Ensure tool_use input is preserved when provided in content_block_start. */, () => {
+  it("keeps tool_use input from content_block_start when no input_json_delta arrives" /** Verify tool_use input is carried into completed assistant events. */, () => {
     const events: ChatEvent[] = [
       {
         type: "stream_event",
