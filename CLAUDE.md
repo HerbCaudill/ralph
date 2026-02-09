@@ -157,6 +157,7 @@ packages/agent-server/                 # Generic agent server package
       loadContextFile.ts    # Adapter-specific context file loading (CLAUDE.md, AGENTS.md)
       loadPrompt.ts         # Prompt assembly (context file + cwd context + system prompt)
       loadClaudeMd.ts       # Claude-specific context loading (legacy, still exported)
+      WorktreeManager.ts    # Git worktree management for concurrent workers
 
 packages/ui/                           # UI package
   src/
@@ -387,6 +388,35 @@ Sessions can store a system prompt at creation time, which is used as the defaul
 - WebSocket `create_session` message - Accepts `systemPrompt` field
 - `CreateSessionOptions.systemPrompt` - Stored with the session
 - `SendMessageOptions.systemPrompt` - Per-message override (takes precedence over session-level)
+
+### WorktreeManager
+
+The `WorktreeManager` (`packages/agent-server/src/lib/WorktreeManager.ts`) manages git worktrees for concurrent Ralph workers, allowing parallel work without conflicts.
+
+**Directory structure:**
+
+- Worktrees stored in sibling folder: `{project}-worktrees/`
+- Each worker gets a subdirectory: `{project}-worktrees/{worker-name}/{task-id}`
+
+**Branch naming:** `ralph/{worker-name}/{task-id}`
+
+**Key methods:**
+
+- `create(options)` - Creates a worktree with a task-specific branch, pulls latest main first
+- `merge(workerName, taskId)` - Merges worktree branch back to main
+- `remove(workerName, taskId, options?)` - Removes worktree and optionally deletes branch
+- `cleanup(workerName, taskId)` - Merges and removes worktree (only removes on successful merge)
+- `list(workerName?)` - Lists all worktrees, optionally filtered by worker
+- `pullLatest()` - Pulls latest changes from remote
+
+**Exported from `@herbcaudill/agent-server`:**
+
+- `WorktreeManager` - The manager class
+- `WorktreeInfo` - Worktree metadata type
+- `CreateWorktreeOptions` - Options for `create()`
+- `RemoveWorktreeOptions` - Options for `remove()`
+- `MergeResult` - Result of merge operations
+- `CleanupResult` - Result of cleanup operations
 
 ## Runtime interaction
 

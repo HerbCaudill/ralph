@@ -115,6 +115,17 @@ export type { SessionSummary } from "./lib/getSessionSummary.js"
 export { parseTaskLifecycleEvent } from "./lib/parseTaskLifecycleEvent.js"
 export type { TaskLifecycleEventData } from "./lib/parseTaskLifecycleEvent.js"
 
+// ── Worktree management ─────────────────────────────────────────────
+
+export { WorktreeManager } from "./lib/WorktreeManager.js"
+export type {
+  WorktreeInfo,
+  CreateWorktreeOptions,
+  RemoveWorktreeOptions,
+  MergeResult,
+  CleanupResult,
+} from "./lib/WorktreeManager.js"
+
 // ── Server ───────────────────────────────────────────────────────────
 
 /** Module state: connected WebSocket clients. */
