@@ -64,6 +64,34 @@ describe("EventFilterPipeline", () => {
       expect(result.shouldRender).toBe(true)
     })
 
+    it("should render message events (agent-server format)", () => {
+      const event: ChatEvent = { type: "message", timestamp: 123, content: "Hello" }
+      const result = shouldFilterEventByType(event)
+
+      expect(result.shouldRender).toBe(true)
+    })
+
+    it("should render thinking events (agent-server format)", () => {
+      const event: ChatEvent = { type: "thinking", timestamp: 123, content: "Hmm..." }
+      const result = shouldFilterEventByType(event)
+
+      expect(result.shouldRender).toBe(true)
+    })
+
+    it("should render partial message events (component handles partial filtering)", () => {
+      const event: ChatEvent = {
+        type: "message",
+        timestamp: 123,
+        content: "partial",
+        isPartial: true,
+      }
+      const result = shouldFilterEventByType(event)
+
+      // The filter pipeline allows partial messages through; the renderer decides
+      // whether to show them (EventStreamEventItem skips partial events)
+      expect(result.shouldRender).toBe(true)
+    })
+
     it("should render error events", () => {
       const event: ChatEvent = { type: "error", timestamp: 123, error: "An error" }
       const result = shouldFilterEventByType(event)

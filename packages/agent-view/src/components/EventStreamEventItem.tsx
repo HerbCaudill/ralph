@@ -1,6 +1,8 @@
 import { useContext } from "react"
+import { AssistantText } from "./AssistantText"
 import { UserMessage } from "./UserMessage"
 import { ErrorEvent } from "./ErrorEvent"
+import { ThinkingBlock } from "./ThinkingBlock"
 import { ToolUseCard } from "./ToolUseCard"
 import type { ToolResult } from "../lib/buildToolResultsMap"
 import { renderEventContentBlock } from "../lib/renderEventContentBlock"
@@ -9,6 +11,8 @@ import {
   logEventFilterDecision,
   type FilterReason,
 } from "../lib/EventFilterPipeline"
+import { isAgentMessageEvent } from "../lib/isAgentMessageEvent"
+import { isAgentThinkingEvent } from "../lib/isAgentThinkingEvent"
 import { isAssistantMessage } from "../lib/isAssistantMessage"
 import { isErrorEvent } from "../lib/isErrorEvent"
 import { isRalphTaskCompletedEvent } from "../lib/isRalphTaskCompletedEvent"
@@ -93,6 +97,23 @@ export function EventStreamEventItem({
         )}
       </>
     )
+  }
+
+  // Agent-server adapters emit individual "message" events instead of structured
+  // "assistant" events with content blocks. Render non-partial messages as assistant text.
+  // Partial messages are streaming deltas that duplicate the final assistant event.
+  if (isAgentMessageEvent(event)) {
+    if (event.isPartial) return null
+    return (
+      <AssistantText event={{ type: "text", timestamp: event.timestamp, content: event.content }} />
+    )
+  }
+
+  // Agent-server adapters emit individual "thinking" events for extended thinking.
+  // Render non-partial thinking blocks. Partial ones are streaming deltas.
+  if (isAgentThinkingEvent(event)) {
+    if (event.isPartial) return null
+    return <ThinkingBlock content={event.content} />
   }
 
   if (isToolUseChatEvent(event)) {

@@ -143,6 +143,8 @@ const RENDERABLE_EVENT_TYPES = new Set<string>([
   "ralph_task_started",
   "ralph_task_completed",
   "assistant",
+  "message",
+  "thinking",
   "tool_use",
   "error",
   "server_error",
