@@ -52,9 +52,25 @@ export function useRalphLoop(
         saveWorkspaceState(data.workspaceId, data.state)
         break
 
-      case "event":
-        setEvents(prev => [...prev, data.event as ChatEvent])
+      case "event": {
+        const event = data.event as ChatEvent
+        // Deduplicate user_message events — the optimistic update in sendMessage
+        // already added the message locally, so skip the server echo
+        if (event.type === "user_message") {
+          setEvents(prev => {
+            const msg = (event as ChatEvent & { message?: string }).message
+            const alreadyExists = prev.some(
+              e =>
+                e.type === "user_message" &&
+                (e as ChatEvent & { message?: string }).message === msg,
+            )
+            return alreadyExists ? prev : [...prev, event]
+          })
+        } else {
+          setEvents(prev => [...prev, event])
+        }
         break
+      }
 
       case "pending_events":
         setEvents(prev => [...prev, ...(data.events as ChatEvent[])])
@@ -221,7 +237,17 @@ export function useRalphLoop(
   const sendMessage = useCallback(
     (message: string) => {
       if (!workspaceId || !message.trim()) return
-      postMessage({ type: "message", workspaceId, text: message.trim() })
+      const trimmed = message.trim()
+
+      // Optimistic update: show the user message immediately in the event stream
+      const userEvent: ChatEvent = {
+        type: "user_message",
+        message: trimmed,
+        timestamp: Date.now(),
+      }
+      setEvents(prev => [...prev, userEvent])
+
+      postMessage({ type: "message", workspaceId, text: trimmed })
     },
     [workspaceId, postMessage],
   )

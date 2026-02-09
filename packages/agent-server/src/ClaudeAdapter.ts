@@ -396,6 +396,7 @@ export class ClaudeAdapter extends AgentAdapter {
     const { maxRetries, initialDelayMs, maxDelayMs, backoffMultiplier } = this.retryConfig
     let attempt = 0
     let lastError: Error | null = null
+    let wasAborted = false
 
     // Build system prompt with CLAUDE.md content and working directory context
     // Order: CLAUDE.md content (global then workspace) → cwd context → caller-provided systemPrompt
@@ -489,9 +490,10 @@ export class ClaudeAdapter extends AgentAdapter {
         const error = err instanceof Error ? err : new Error("Claude query failed")
         lastError = error
 
-        // Check if we should abort (request was cancelled)
-        if (this.abortController?.signal.aborted) {
-          // Don't retry if manually aborted
+        // Check if we should abort (request was cancelled / interrupted)
+        const aborted = this.abortController?.signal.aborted ?? false
+        if (aborted) {
+          wasAborted = true
           break
         }
 
@@ -527,8 +529,10 @@ export class ClaudeAdapter extends AgentAdapter {
       }
     }
 
-    // All retries exhausted or non-retryable error
-    if (lastError) {
+    // Interrupts are clean stops, not errors — just go idle
+    if (wasAborted) {
+      this.setStatus("idle")
+    } else if (lastError) {
       this.handleProcessError(lastError)
     }
     this.inFlight = null
