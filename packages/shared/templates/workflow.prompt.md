@@ -2,7 +2,7 @@
 
 ## Build and test
 
-Use the **run-tests** agent to check for errors, using `pnpm test:all`.
+Use the **run-tests** agent to check for errors, using `pnpm test`.
 
 ## Task selection
 
@@ -25,7 +25,7 @@ If a task will take more than a few minutes of focused work, break it into subta
 
 Before completing a task:
 
-1. Use the **run-tests** agent to verify everything works, this time with `pnpm test:all --changed`.
+1. Use the **run-tests** agent to verify everything works, this time with `pnpm test --changed`.
 2. Run `pnpm format` to format code
 3. Use the **make-tests** agent to add tests where applicable
 4. Use the **write-docs** agent to update CLAUDE.md or README.md with relevant changes

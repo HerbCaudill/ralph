@@ -17,10 +17,9 @@ pnpm build                # Build all packages
 pnpm --filter ralph-shared build  # Build shared (required after changes)
 pnpm typecheck            # Typecheck all packages
 
-pnpm test:all             # Run all tests (CLI + UI)
-pnpm test:changed         # Only affected unit tests
-pnpm cli:test             # CLI tests only
-pnpm ui:test              # UI tests only
+pnpm test                 # Run all tests (CLI + UI)
+pnpm test:unit            # All unit tests
+pnpm test:unit:{pkg}      # Unit tests for one package (e.g. test:unit:ui)
 pnpm test:pw              # Playwright with dynamic ports
 
 pnpm cli                  # Run ralph CLI in development

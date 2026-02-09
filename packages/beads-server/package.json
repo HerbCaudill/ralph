@@ -19,7 +19,7 @@
     "dev": "tsx --watch src/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:all": "pnpm -w test:all",
+    "test:all": "pnpm -w test",
     "test:watch": "vitest --watch",
     "format": "prettier --write . --log-level silent"
   },

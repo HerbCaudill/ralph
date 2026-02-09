@@ -15,13 +15,12 @@
 
 ## Testing
 
-| Command             | Description              |
-| ------------------- | ------------------------ |
-| `pnpm test:all`     | Run all tests (CLI + UI) |
-| `pnpm test:changed` | Only affected unit tests |
-| `pnpm cli:test`     | CLI tests only           |
-| `pnpm ui:test`      | UI tests only            |
-| `pnpm test:pw`      | Playwright E2E tests     |
+| Command                | Description                |
+| ---------------------- | -------------------------- |
+| `pnpm test`            | Run all tests (CLI + UI)   |
+| `pnpm test:unit`       | All unit tests             |
+| `pnpm test:unit:{pkg}` | Unit tests for one package |
+| `pnpm test:pw`         | Playwright E2E tests       |
 
 ## Formatting & Quality
 

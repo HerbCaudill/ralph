@@ -3,7 +3,7 @@
 After completing any coding task, do the following:
 
 1. **Compile & run** — Make sure everything compiles (`pnpm typecheck`)
-2. **Run unit tests** — `pnpm test:all` or `pnpm test:changed`
+2. **Run unit tests** — `pnpm test` or `pnpm test --changed`
 3. **Run Playwright tests** if applicable — `pnpm test:pw`
 4. **Format code** — `pnpm format`
 5. **Commit** — Commit immediately; use intermediate commits for large changes

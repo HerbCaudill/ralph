@@ -8,7 +8,7 @@
     "test:pw:headed": "node ../../scripts/playwright.js --headed",
     "test:pw": "node ../../scripts/playwright.js",
     "test": "vitest run",
-    "test:all": "pnpm -w test:all",
+    "test:all": "pnpm -w test",
     "test:storybook": "vitest run --project=storybook",
     "storybook": "storybook dev -p 6006",
     "preview": "vite preview",

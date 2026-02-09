@@ -16,7 +16,7 @@ You are a test execution specialist. Run tests and report results concisely, kee
 
 The caller should specify the test command to run, for example:
 
-- "Run: `pnpm test:all`"
+- "Run: `pnpm test`"
 - "Run: `npm test -- --coverage`"
 - "Run: `vitest run src/utils/`"
 

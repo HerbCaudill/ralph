@@ -92,7 +92,7 @@ pnpm install
 pnpm build
 
 # Run all tests
-pnpm test:all
+pnpm test
 
 # Start UI in development (combined server mode)
 pnpm dev
