@@ -12,6 +12,7 @@ import {
   IconLoader2,
   type TablerIcon,
 } from "@tabler/icons-react"
+import { CopyableTaskId } from "./CopyableTaskId"
 import type { Task, TaskStatus } from "../../types"
 
 /**
@@ -37,8 +38,8 @@ export function TaskCardCompact({
         <StatusIcon className={cn("size-3.5 shrink-0", config.color, config.animate)} />
       )}
 
-      {/* Task ID */}
-      <span className="text-muted-foreground shrink-0 font-mono text-xs">{displayId}</span>
+      {/* Task ID - click to copy */}
+      <CopyableTaskId taskId={task.id} displayId={displayId} />
 
       {/* Title */}
       <span

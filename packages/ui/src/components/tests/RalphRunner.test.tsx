@@ -115,9 +115,26 @@ describe("RalphRunner", () => {
   })
 
   describe("header with SessionPicker", () => {
-    it("renders header with Ralph label", () => {
+    it("does not show 'Ralph' text in header", () => {
       render(<RalphRunner {...defaultProps} />)
-      expect(screen.getByText("Ralph")).toBeInTheDocument()
+      const header = screen.getByTestId("agent-view-header")
+      expect(header).not.toHaveTextContent("Ralph")
+    })
+
+    it("shows task ID and title in header when provided", () => {
+      render(<RalphRunner {...defaultProps} taskId="r-abc123" taskTitle="Fix the login bug" />)
+      expect(screen.getByText("r-abc123")).toBeInTheDocument()
+      expect(screen.getByText("Fix the login bug")).toBeInTheDocument()
+    })
+
+    it("shows task ID without title when title is not available", () => {
+      render(<RalphRunner {...defaultProps} taskId="r-abc123" />)
+      expect(screen.getByText("r-abc123")).toBeInTheDocument()
+    })
+
+    it("does not show task info when no task is running", () => {
+      render(<RalphRunner {...defaultProps} />)
+      expect(screen.queryByTestId("current-task-info")).not.toBeInTheDocument()
     })
 
     it("shows 'Viewing history' badge when isViewingHistoricalSession is true", () => {

@@ -27,6 +27,7 @@ import {
 } from "@herbcaudill/beads-view"
 import { useAgentHotkeys, type ChatInputHandle } from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { useCurrentTask } from "@/hooks/useCurrentTask"
 import { createRalphEventRenderers } from "@/lib/createRalphEventRenderers"
 
 /**
@@ -91,6 +92,9 @@ export function WorkspaceView() {
 
   // Task state from beads-view
   const { tasks, refresh } = useTasks({ all: true })
+
+  // Current task from Ralph events (resolved against the tasks list)
+  const { taskId: currentTaskId, taskTitle: currentTaskTitle } = useCurrentTask(events, tasks)
   const { selectedTask, openDialogById, closeDialog } = useTaskDialog({
     onTaskUpdated: refresh,
     onTaskDeleted: refresh,
@@ -281,6 +285,8 @@ export function WorkspaceView() {
       branch={workspace?.branch}
       workspacePath={workspace?.path}
       isStoppingAfterCurrent={isStoppingAfterCurrent}
+      taskId={currentTaskId}
+      taskTitle={currentTaskTitle}
       context={{
         toolOutput: toolOutputContext,
         workspacePath: workspace?.path,

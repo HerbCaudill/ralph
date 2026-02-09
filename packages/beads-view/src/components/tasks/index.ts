@@ -2,6 +2,7 @@ export { TaskPanel, type TaskPanelProps } from "./TaskPanel"
 export { TaskPanelController, type TaskPanelControllerProps } from "./TaskPanelController"
 export { TaskCard, type TaskCardProps } from "./TaskCard"
 export { TaskCardCompact, type TaskCardCompactProps } from "./TaskCardCompact"
+export { CopyableTaskId, type CopyableTaskIdProps } from "./CopyableTaskId"
 export { TaskList, type TaskListProps } from "./TaskList"
 export {
   GroupedTaskList,

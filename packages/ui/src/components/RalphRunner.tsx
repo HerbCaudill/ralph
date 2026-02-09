@@ -35,6 +35,8 @@ export function RalphRunner({
   isStoppingAfterCurrent = false,
   sessions = [],
   sessionId,
+  taskId,
+  taskTitle,
   isViewingHistoricalSession = false,
   context,
   onSendMessage,
@@ -57,12 +59,17 @@ export function RalphRunner({
   // Chat is only disabled when viewing historical sessions or disconnected
   const isChatDisabled = isViewingHistoricalSession || !isConnected
 
-  // Header with title and session picker
+  // Header with current task info and session picker
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
       <div className="flex items-center gap-2">
         <IconRobot size={18} stroke={1.5} className="text-muted-foreground" />
-        <span className="text-sm font-medium">Ralph</span>
+        {taskId && (
+          <div className="flex min-w-0 items-center gap-2" data-testid="current-task-info">
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">{taskId}</span>
+            {taskTitle && <span className="truncate text-sm font-medium">{taskTitle}</span>}
+          </div>
+        )}
         {isViewingHistoricalSession && (
           <span className="flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
             <IconHistory size={12} stroke={1.5} />
@@ -210,6 +217,10 @@ export type RalphRunnerProps = {
   sessions?: SessionIndexEntry[]
   /** Current session ID. */
   sessionId?: string | null
+  /** Current task ID being worked on (from task lifecycle events). */
+  taskId?: string | null
+  /** Title of the current task being worked on. */
+  taskTitle?: string | null
   /** Whether viewing a historical session (not the current active one). */
   isViewingHistoricalSession?: boolean
   /** Context configuration passed to AgentViewProvider. */

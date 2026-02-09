@@ -16,6 +16,7 @@ import {
 import { Button, ButtonGroup, Input, Label, Textarea } from "@herbcaudill/components"
 import { cn } from "../../lib/cn"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
+import { CopyableTaskId } from "./CopyableTaskId"
 import type { Task, TaskStatus, Comment } from "../../types"
 import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@herbcaudill/agent-view"
@@ -163,9 +164,11 @@ export function TaskDetails({
       <div className="flex shrink-0 items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
           <StatusIcon className={cn("h-5 w-5", statusConfig[formValues.status].color)} />
-          <span className="text-muted-foreground font-mono text-sm">
-            {stripTaskPrefix(task.id, issuePrefix)}
-          </span>
+          <CopyableTaskId
+            taskId={task.id}
+            displayId={stripTaskPrefix(task.id, issuePrefix)}
+            className="text-sm"
+          />
         </div>
         <button
           type="button"
