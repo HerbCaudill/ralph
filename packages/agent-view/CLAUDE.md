@@ -19,17 +19,18 @@ The `hotkeys/` directory provides a hotkey registration system for host applicat
 
 - `useAgentHotkeys(options)` — React hook that registers global keyboard listeners and invokes handler callbacks. Returns `getHotkeyDisplay(action)` for rendering shortcut labels and `registeredHotkeys` listing all actions.
 - `hotkeys` — Parsed hotkey config object (`AgentHotkeysConfig`)
-- `getHotkeyDisplayString(config)` — Formats a `HotkeyConfig` as a platform-aware display string (e.g., "⌘L" on Mac, "Ctrl+L" on Windows)
+- `getHotkeyDisplayString(config)` — Formats a `HotkeyConfig` as a platform-aware display string (e.g., "⌘J" on Mac, "Ctrl+J" on Windows)
 - Types: `AgentHotkeyAction`, `HotkeyConfig`, `HotkeyModifier`, `AgentHotkeysConfig`, `HotkeyHandler`, `UseAgentHotkeysOptions`, `UseAgentHotkeysReturn`
 
 **Available actions** (defined in `hotkeys.json`):
 | Action | Key | Description |
 |---|---|---|
-| `focusChatInput` | `Cmd+L` | Focus chat input |
+| `focusChatInput` | `Cmd+J` | Focus chat input |
 | `newSession` | `Cmd+Backspace` | New chat session |
 | `toggleToolOutput` | `Ctrl+O` | Toggle tool output visibility |
 | `scrollToBottom` | `Cmd+↓` | Scroll to bottom |
 | `showHotkeys` | `Cmd+/` | Show keyboard shortcuts |
+| `startRalph` | `Cmd+Enter` | Start Ralph |
 
 Host applications provide handler callbacks; the hook handles platform-aware key matching and input element filtering.
 

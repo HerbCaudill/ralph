@@ -1,7 +1,7 @@
 {
   "hotkeys": {
     "focusChatInput": {
-      "key": "cmd+l",
+      "key": "cmd+j",
       "description": "Focus chat input",
       "category": "Navigation"
     },
@@ -24,6 +24,11 @@
       "key": "cmd+/",
       "description": "Show keyboard shortcuts",
       "category": "Help"
+    },
+    "startRalph": {
+      "key": "cmd+Enter",
+      "description": "Start Ralph",
+      "category": "Agent"
     }
   }
 }

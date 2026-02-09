@@ -1,9 +1,9 @@
-import { IconHelp } from "@tabler/icons-react"
+import { IconKeyboard } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 
 /**
  * Help button that opens the hotkeys reference dialog.
- * Displays a help icon in the header toolbar.
+ * Displays a keyboard icon in the header toolbar.
  */
 export function HelpButton({ className, textColor, onClick }: HelpButtonProps) {
   return (
@@ -15,7 +15,7 @@ export function HelpButton({ className, textColor, onClick }: HelpButtonProps) {
       className={cn("rounded p-1.5 hover:bg-white/20", className)}
       style={{ color: textColor }}
     >
-      <IconHelp className="size-5" />
+      <IconKeyboard className="size-5" />
     </button>
   )
 }

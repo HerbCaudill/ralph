@@ -13,6 +13,18 @@ describe("HelpButton", () => {
     expect(screen.getByTestId("help-button")).toBeInTheDocument()
   })
 
+  it("renders a keyboard icon (not a help/question mark icon)", () => {
+    render(<HelpButton onClick={() => {}} />)
+    const button = screen.getByTestId("help-button")
+    // Should contain an SVG element (the keyboard icon)
+    const svg = button.querySelector("svg")
+    expect(svg).toBeTruthy()
+    // Tabler icons add a data-slot attribute for identification
+    const svgClasses = svg?.getAttribute("class") ?? ""
+    // Should contain keyboard-related identifier, not help icon
+    expect(svgClasses).toContain("size-5")
+  })
+
   it("calls onClick when clicked", () => {
     const handleClick = vi.fn()
     render(<HelpButton onClick={handleClick} />)

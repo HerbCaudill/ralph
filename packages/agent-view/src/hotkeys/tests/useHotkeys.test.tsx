@@ -45,6 +45,7 @@ describe("hotkeys config", () => {
     "toggleToolOutput",
     "scrollToBottom",
     "showHotkeys",
+    "startRalph",
   ]
 
   it("exports exactly the expected set of actions", () => {
@@ -69,8 +70,8 @@ describe("hotkeys config", () => {
     }
   })
 
-  it("parses cmd+l into key='l' with modifiers=['cmd']", () => {
-    expect(hotkeys.focusChatInput.key).toBe("l")
+  it("parses cmd+j into key='j' with modifiers=['cmd']", () => {
+    expect(hotkeys.focusChatInput.key).toBe("j")
     expect(hotkeys.focusChatInput.modifiers).toEqual(["cmd"])
   })
 
@@ -94,12 +95,18 @@ describe("hotkeys config", () => {
     expect(hotkeys.showHotkeys.modifiers).toEqual(["cmd"])
   })
 
+  it("parses cmd+Enter into key='Enter' with modifiers=['cmd']", () => {
+    expect(hotkeys.startRalph.key).toBe("Enter")
+    expect(hotkeys.startRalph.modifiers).toEqual(["cmd"])
+  })
+
   it("assigns correct categories", () => {
     expect(hotkeys.focusChatInput.category).toBe("Navigation")
     expect(hotkeys.newSession.category).toBe("Chat")
     expect(hotkeys.toggleToolOutput.category).toBe("Navigation")
     expect(hotkeys.scrollToBottom.category).toBe("Navigation")
     expect(hotkeys.showHotkeys.category).toBe("Help")
+    expect(hotkeys.startRalph.category).toBe("Agent")
   })
 
   it("assigns correct descriptions", () => {
@@ -108,6 +115,7 @@ describe("hotkeys config", () => {
     expect(hotkeys.toggleToolOutput.description).toBe("Toggle tool output visibility")
     expect(hotkeys.scrollToBottom.description).toBe("Scroll to bottom")
     expect(hotkeys.showHotkeys.description).toBe("Show keyboard shortcuts")
+    expect(hotkeys.startRalph.description).toBe("Start Ralph")
   })
 })
 
@@ -129,13 +137,13 @@ describe("getHotkeyDisplayString", () => {
 
   it("formats a key with cmd modifier (non-Mac)", () => {
     const config: HotkeyConfig = {
-      key: "l",
+      key: "j",
       modifiers: ["cmd"],
       description: "test",
       category: "test",
     }
     // On non-Mac, cmd => "Ctrl", joined with "+"
-    expect(getHotkeyDisplayString(config)).toBe("Ctrl+L")
+    expect(getHotkeyDisplayString(config)).toBe("Ctrl+J")
   })
 
   it("formats a key with ctrl modifier (non-Mac)", () => {
@@ -258,8 +266,8 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      // focusChatInput is cmd+l; on non-Mac cmd maps to ctrlKey
-      fireKey({ key: "l", ctrlKey: true })
+      // focusChatInput is cmd+j; on non-Mac cmd maps to ctrlKey
+      fireKey({ key: "j", ctrlKey: true })
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
@@ -275,7 +283,7 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      fireKey({ key: "l", ctrlKey: true })
+      fireKey({ key: "j", ctrlKey: true })
       expect(focusHandler).toHaveBeenCalledTimes(1)
       expect(showHandler).not.toHaveBeenCalled()
 
@@ -303,8 +311,8 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      // Press "l" without Ctrl/Cmd
-      fireKey({ key: "l" })
+      // Press "j" without Ctrl/Cmd
+      fireKey({ key: "j" })
       expect(handler).not.toHaveBeenCalled()
     })
 
@@ -316,8 +324,8 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      // Press Ctrl+Shift+L when only Ctrl+L is expected
-      fireKey({ key: "l", ctrlKey: true, shiftKey: true })
+      // Press Ctrl+Shift+J when only Ctrl+J is expected
+      fireKey({ key: "j", ctrlKey: true, shiftKey: true })
       expect(handler).not.toHaveBeenCalled()
     })
 
@@ -376,6 +384,19 @@ describe("useAgentHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
+    it("calls handler for startRalph (cmd+Enter)", () => {
+      const handler = vi.fn()
+      renderHook(() =>
+        useAgentHotkeys({
+          handlers: { startRalph: handler },
+        }),
+      )
+
+      // startRalph is cmd+Enter; on non-Mac cmd maps to ctrlKey
+      fireKey({ key: "Enter", ctrlKey: true })
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
     it("does not fire when no handler is registered for the action", () => {
       const handler = vi.fn()
       renderHook(() =>
@@ -400,7 +421,7 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      fireKey({ key: "l", ctrlKey: true })
+      fireKey({ key: "j", ctrlKey: true })
       expect(handler).not.toHaveBeenCalled()
     })
 
@@ -412,7 +433,7 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      fireKey({ key: "l", ctrlKey: true })
+      fireKey({ key: "j", ctrlKey: true })
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
@@ -427,12 +448,12 @@ describe("useAgentHotkeys", () => {
         { initialProps: { enabled: false } },
       )
 
-      fireKey({ key: "l", ctrlKey: true })
+      fireKey({ key: "j", ctrlKey: true })
       expect(handler).not.toHaveBeenCalled()
 
       rerender({ enabled: true })
 
-      fireKey({ key: "l", ctrlKey: true })
+      fireKey({ key: "j", ctrlKey: true })
       expect(handler).toHaveBeenCalledTimes(1)
     })
   })
@@ -469,7 +490,7 @@ describe("useAgentHotkeys", () => {
         }),
       )
 
-      fireKey({ key: "l", ctrlKey: true, target: inputEl })
+      fireKey({ key: "j", ctrlKey: true, target: inputEl })
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
@@ -565,8 +586,8 @@ describe("useAgentHotkeys", () => {
     it("returns display string for focusChatInput", () => {
       const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
-      // focusChatInput is cmd+l => on non-Mac: "Ctrl+L"
-      expect(result.current.getHotkeyDisplay("focusChatInput")).toBe("Ctrl+L")
+      // focusChatInput is cmd+j => on non-Mac: "Ctrl+J"
+      expect(result.current.getHotkeyDisplay("focusChatInput")).toBe("Ctrl+J")
     })
 
     it("returns display string for newSession", () => {
@@ -596,7 +617,7 @@ describe("useAgentHotkeys", () => {
       const { result } = renderHook(() => useAgentHotkeys({ handlers: {} }))
 
       const registered = result.current.registeredHotkeys
-      expect(registered).toHaveLength(5)
+      expect(registered).toHaveLength(6)
 
       const actions = registered.map(r => r.action)
       expect(actions).toContain("focusChatInput")
@@ -604,6 +625,7 @@ describe("useAgentHotkeys", () => {
       expect(actions).toContain("toggleToolOutput")
       expect(actions).toContain("scrollToBottom")
       expect(actions).toContain("showHotkeys")
+      expect(actions).toContain("startRalph")
     })
 
     it("each entry has a non-empty display string", () => {
@@ -634,7 +656,7 @@ describe("useAgentHotkeys", () => {
 
       unmount()
 
-      fireKey({ key: "l", ctrlKey: true })
+      fireKey({ key: "j", ctrlKey: true })
       expect(handler).not.toHaveBeenCalled()
     })
   })

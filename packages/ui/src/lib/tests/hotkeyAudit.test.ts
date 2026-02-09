@@ -91,6 +91,7 @@ describe("cross-package hotkey audit", () => {
       "toggleToolOutput",
       "scrollToBottom",
       "showHotkeys",
+      "startRalph",
     ]
 
     const expectedBeadsActions: BeadsHotkeyAction[] = [
@@ -187,9 +188,9 @@ describe("cross-package hotkey audit", () => {
       expect(deduplicatedActions).toContain("nextTask")
       expect(deduplicatedActions).toContain("openTask")
 
-      // Total unique entries should be agent(5) + beads(5, minus showHotkeys) = 10
+      // Total unique entries should be agent(6) + beads(5, minus showHotkeys) = 11
       const totalEntries = Object.keys(agentHotkeys).length + deduplicatedBeadsEntries.length
-      expect(totalEntries).toBe(10)
+      expect(totalEntries).toBe(11)
     })
   })
 })

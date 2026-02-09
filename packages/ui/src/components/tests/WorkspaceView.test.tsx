@@ -8,9 +8,7 @@ import type { RalphSessionIndexEntry } from "../../lib/fetchRalphSessions"
 // ── Mock state that tests can mutate ───────────────────────────────────────
 
 let mockSessionId: string | null = "live-session-1"
-let mockLiveEvents: ChatEvent[] = [
-  { type: "assistant", timestamp: 1000 } as ChatEvent,
-]
+let mockLiveEvents: ChatEvent[] = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
 let mockIsStreaming = false
 let mockControlState: "idle" | "running" | "paused" = "idle"
 
@@ -105,67 +103,60 @@ vi.mock("@herbcaudill/ralph-shared", () => ({
   }),
 }))
 
-vi.mock("@herbcaudill/beads-view", () => ({
-  TaskPanelController: () => <div data-testid="task-sidebar">Tasks</div>,
-  BeadsViewProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  configureApiClient: vi.fn(),
-  getApiClientConfig: vi.fn(() => ({ baseUrl: "" })),
-  useTasks: () => ({ tasks: [], error: null, refresh: vi.fn() }),
-  useTaskDialog: () => ({
-    selectedTask: null,
-    isOpen: false,
-    openDialogById: vi.fn(),
-    closeDialog: vi.fn(),
-  }),
-  useBeadsViewStore: Object.assign(
-    (selector: (state: unknown) => unknown) => {
-      const state = {
-        selectedTaskId: null,
-        setSelectedTaskId: vi.fn(),
-        visibleTaskIds: [],
-        accentColor: null,
-        setAccentColor: vi.fn(),
-        initialTaskCount: null,
-        setInitialTaskCount: vi.fn(),
-      }
-      return selector(state)
-    },
-    {
-      getState: () => ({
-        selectedTaskId: null,
-        setSelectedTaskId: vi.fn(),
-        visibleTaskIds: [],
-        accentColor: null,
-        setAccentColor: vi.fn(),
-        initialTaskCount: null,
-        setInitialTaskCount: vi.fn(),
-      }),
-    },
-  ),
-  selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
-  selectVisibleTaskIds: (state: { visibleTaskIds: string[] }) => state.visibleTaskIds,
-  useWorkspace: () => ({
-    state: {
-      current: { path: "/test/workspace", name: "Test Workspace", accentColor: "#007ACC", branch: "main" },
-      workspaces: [],
-      isLoading: false,
-      error: null,
-    },
-    actions: { switchWorkspace: vi.fn(), refresh: vi.fn() },
-  }),
-  WorkspaceSelector: () => <div data-testid="workspace-selector">Workspace</div>,
-  useTaskNavigation: () => ({
-    navigatePrevious: vi.fn(),
-    navigateNext: vi.fn(),
-    openSelected: vi.fn(),
-  }),
-  useBeadsHotkeys: vi.fn(),
-  hotkeys: {},
-  getHotkeyDisplayString: () => "",
-  TaskDetailsController: () => null,
-  updateTask: vi.fn(),
-  deleteTask: vi.fn(),
-}))
+vi.mock("@herbcaudill/beads-view", () => {
+  const storeState = {
+    selectedTaskId: null,
+    setSelectedTaskId: vi.fn(),
+    visibleTaskIds: [],
+    accentColor: null,
+    setAccentColor: vi.fn(),
+    initialTaskCount: null,
+    setInitialTaskCount: vi.fn(),
+  }
+  return {
+    TaskPanelController: () => <div data-testid="task-sidebar">Tasks</div>,
+    BeadsViewProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    configureApiClient: vi.fn(),
+    getApiClientConfig: vi.fn(() => ({ baseUrl: "" })),
+    useTasks: () => ({ tasks: [], error: null, refresh: vi.fn() }),
+    useTaskDialog: () => ({
+      selectedTask: null,
+      isOpen: false,
+      openDialogById: vi.fn(),
+      closeDialog: vi.fn(),
+    }),
+    useBeadsViewStore: (selector: (state: typeof storeState) => unknown) => selector(storeState),
+    beadsViewStore: { getState: () => storeState },
+    selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
+    selectVisibleTaskIds: (state: { visibleTaskIds: string[] }) => state.visibleTaskIds,
+    useWorkspace: () => ({
+      state: {
+        current: {
+          path: "/test/workspace",
+          name: "Test Workspace",
+          accentColor: "#007ACC",
+          branch: "main",
+        },
+        workspaces: [],
+        isLoading: false,
+        error: null,
+      },
+      actions: { switchWorkspace: vi.fn(), refresh: vi.fn() },
+    }),
+    WorkspaceSelector: () => <div data-testid="workspace-selector">Workspace</div>,
+    useTaskNavigation: () => ({
+      navigatePrevious: vi.fn(),
+      navigateNext: vi.fn(),
+      openSelected: vi.fn(),
+    }),
+    useBeadsHotkeys: vi.fn(),
+    hotkeys: {},
+    getHotkeyDisplayString: () => "",
+    TaskDetailsController: () => null,
+    updateTask: vi.fn(),
+    deleteTask: vi.fn(),
+  }
+})
 
 vi.mock("@herbcaudill/agent-view", () => ({
   AgentView: () => <div data-testid="agent-view">Agent View</div>,

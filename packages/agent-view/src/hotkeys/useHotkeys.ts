@@ -123,6 +123,7 @@ const ALLOWED_IN_INPUT: AgentHotkeyAction[] = [
   "newSession",
   "toggleToolOutput",
   "showHotkeys",
+  "startRalph",
 ]
 
 /**

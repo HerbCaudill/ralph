@@ -67,6 +67,7 @@ export type AgentHotkeyAction =
   | "toggleToolOutput"
   | "scrollToBottom"
   | "showHotkeys"
+  | "startRalph"
 
 export type AgentHotkeysConfig = Record<AgentHotkeyAction, HotkeyConfig>
 
