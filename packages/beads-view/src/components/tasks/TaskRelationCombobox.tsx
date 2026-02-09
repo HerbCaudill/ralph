@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { IconPlus, IconSelector, IconCheck } from "@tabler/icons-react"
+import { IconPlus, IconSelector } from "@tabler/icons-react"
 import {
   Button,
   Popover,
@@ -12,7 +12,6 @@ import {
   CommandItem,
   CommandList,
 } from "@herbcaudill/components"
-import { cn } from "../../lib/cn"
 import { TaskCardCompact } from "./TaskCardCompact"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
 import type { Task } from "../../types"
@@ -106,12 +105,14 @@ export function TaskRelationCombobox({
             <IconSelector className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-0" align="start">
+        <PopoverContent className="w-96 p-0 shadow-md" align="start">
           <Command>
             <CommandInput placeholder={placeholder} />
             <CommandList>
-              <CommandEmpty>No task found.</CommandEmpty>
-              <CommandGroup>
+              <CommandEmpty>
+                <div className="p-2 italic">No matches</div>
+              </CommandEmpty>
+              <CommandGroup className="p-0">
                 {/* None option to clear the selection */}
                 <CommandItem
                   value="__none__"
@@ -119,14 +120,9 @@ export function TaskRelationCombobox({
                     onSelect(null as unknown as string)
                     setOpen(false)
                   }}
+                  className="border-border gap-0 border-b py-2 [&_svg]:size-3.5"
                 >
-                  <IconCheck
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selectedValue === null || !selectedValue ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  None
+                  <span className="text-muted-foreground text-xs italic">None</span>
                 </CommandItem>
                 {availableTasks.map(t => (
                   <CommandItem
@@ -136,15 +132,9 @@ export function TaskRelationCombobox({
                       onSelect(t.id)
                       setOpen(false)
                     }}
+                    className="border-border gap-0 border-b py-2 last:border-b-0 [&_svg]:size-3.5"
                   >
-                    <IconCheck
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        selectedValue === t.id ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    <span className="font-mono text-xs">{stripTaskPrefix(t.id, issuePrefix)}</span>
-                    <span className="ml-2 truncate">{t.title}</span>
+                    <TaskCardCompact task={t} />
                   </CommandItem>
                 ))}
               </CommandGroup>
