@@ -46,9 +46,6 @@ export function EventStreamEventItem({
   // Use centralized filter logic to check if event should be rendered
   const filterResult = shouldFilterEventByType(event)
 
-  // DEBUG: log every event and filter decision
-  console.log("[EventStreamEventItem]", JSON.stringify(event, null, 2), filterResult)
-
   // Log filter decision when debug mode is enabled
   // Enable with: localStorage.setItem('ralph-filter-debug', 'true')
   logEventFilterDecision(event, filterResult)
