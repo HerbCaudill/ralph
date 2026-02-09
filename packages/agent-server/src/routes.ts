@@ -1,8 +1,9 @@
 import type { Express, Request, Response } from "express"
-import type { ChatSessionManager } from "./ChatSessionManager.js"
+import type { ChatSessionManager, SessionInfo } from "./ChatSessionManager.js"
 import { getAvailableAdapters } from "./AdapterRegistry.js"
 import { registerPromptRoutes } from "./routes/promptRoutes.js"
 import { getRalphPrompt } from "./routes/ralphPromptRoute.js"
+import { getSessionSummary } from "./lib/getSessionSummary.js"
 
 /** Context for route handlers. */
 export interface RouteContext {
@@ -110,9 +111,23 @@ export function registerRoutes(
   })
 
   // List all sessions (optionally filtered by app)
-  app.get("/api/sessions", (req: Request, res: Response) => {
-    const app = req.query.app as string | undefined
-    res.json({ sessions: ctx.getSessionManager().listSessions(app) })
+  app.get("/api/sessions", async (req: Request, res: Response) => {
+    const appFilter = req.query.app as string | undefined
+    const includeSummary = req.query.include === "summary"
+    const sessions = ctx.getSessionManager().listSessions(appFilter)
+
+    if (includeSummary) {
+      const persister = ctx.getSessionManager().getPersister()
+      const sessionsWithSummary = await Promise.all(
+        sessions.map(async session => {
+          const summary = await getSessionSummary(session.sessionId, persister, session.app)
+          return summary ? { ...session, taskId: summary.taskId } : session
+        }),
+      )
+      res.json({ sessions: sessionsWithSummary })
+    } else {
+      res.json({ sessions })
+    }
   })
 
   // Delete/clear a session

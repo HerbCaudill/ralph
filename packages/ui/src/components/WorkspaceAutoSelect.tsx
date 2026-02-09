@@ -48,6 +48,8 @@ export function WorkspaceAutoSelect() {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center text-muted-foreground">Loading...</div>
+    <div className="flex h-screen items-center justify-center text-muted-foreground">
+      Loading...
+    </div>
   )
 }

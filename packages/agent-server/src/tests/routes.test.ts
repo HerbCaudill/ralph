@@ -160,4 +160,136 @@ describe("routes", () => {
       expect(res.body).toEqual({ ok: true, server: "agent-server" })
     })
   })
+
+  describe("GET /api/sessions?include=summary", () => {
+    it("returns sessions with taskId when include=summary is specified", async () => {
+      const ctx = createMockContext({
+        persister: {
+          readEvents: vi
+            .fn()
+            .mockResolvedValue([
+              { type: "message", content: "<start_task>r-abc123</start_task>", timestamp: 1000 },
+            ]),
+        },
+        sessionManager: {
+          listSessions: vi.fn().mockReturnValue([
+            {
+              sessionId: "session-1",
+              adapter: "stub",
+              status: "idle",
+              createdAt: 1000,
+              app: "ralph",
+            },
+          ]),
+        },
+      })
+      const app = createTestApp(ctx)
+
+      const res = await request(app, "GET", "/api/sessions?include=summary")
+
+      expect(res.status).toBe(200)
+      expect(res.body.sessions).toHaveLength(1)
+      expect(res.body.sessions[0].taskId).toBe("r-abc123")
+    })
+
+    it("returns sessions without taskId when no task lifecycle events exist", async () => {
+      const ctx = createMockContext({
+        persister: {
+          readEvents: vi
+            .fn()
+            .mockResolvedValue([{ type: "message", content: "Hello", timestamp: 1000 }]),
+        },
+        sessionManager: {
+          listSessions: vi
+            .fn()
+            .mockReturnValue([
+              { sessionId: "session-1", adapter: "stub", status: "idle", createdAt: 1000 },
+            ]),
+        },
+      })
+      const app = createTestApp(ctx)
+
+      const res = await request(app, "GET", "/api/sessions?include=summary")
+
+      expect(res.status).toBe(200)
+      expect(res.body.sessions).toHaveLength(1)
+      expect(res.body.sessions[0].taskId).toBeUndefined()
+    })
+
+    it("does not include taskId when include param is not specified", async () => {
+      const ctx = createMockContext({
+        persister: {
+          readEvents: vi
+            .fn()
+            .mockResolvedValue([
+              { type: "message", content: "<start_task>r-abc123</start_task>", timestamp: 1000 },
+            ]),
+        },
+        sessionManager: {
+          listSessions: vi
+            .fn()
+            .mockReturnValue([
+              { sessionId: "session-1", adapter: "stub", status: "idle", createdAt: 1000 },
+            ]),
+        },
+      })
+      const app = createTestApp(ctx)
+
+      const res = await request(app, "GET", "/api/sessions")
+
+      expect(res.status).toBe(200)
+      expect(res.body.sessions).toHaveLength(1)
+      expect(res.body.sessions[0].taskId).toBeUndefined()
+    })
+
+    it("combines app filter with include=summary", async () => {
+      const readEvents = vi
+        .fn()
+        .mockResolvedValue([
+          { type: "message", content: "<start_task>r-xyz</start_task>", timestamp: 1000 },
+        ])
+      const ctx = createMockContext({
+        persister: { readEvents },
+        sessionManager: {
+          listSessions: vi.fn().mockImplementation((app?: string) => {
+            if (app === "ralph") {
+              return [
+                {
+                  sessionId: "ralph-session",
+                  adapter: "stub",
+                  status: "idle",
+                  createdAt: 1000,
+                  app: "ralph",
+                },
+              ]
+            }
+            return [
+              {
+                sessionId: "ralph-session",
+                adapter: "stub",
+                status: "idle",
+                createdAt: 1000,
+                app: "ralph",
+              },
+              {
+                sessionId: "chat-session",
+                adapter: "stub",
+                status: "idle",
+                createdAt: 2000,
+                app: "task-chat",
+              },
+            ]
+          }),
+        },
+      })
+      const app = createTestApp(ctx)
+
+      const res = await request(app, "GET", "/api/sessions?app=ralph&include=summary")
+
+      expect(res.status).toBe(200)
+      expect(res.body.sessions).toHaveLength(1)
+      expect(res.body.sessions[0].sessionId).toBe("ralph-session")
+      expect(res.body.sessions[0].taskId).toBe("r-xyz")
+    })
+  })
 })
