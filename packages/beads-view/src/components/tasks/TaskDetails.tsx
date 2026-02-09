@@ -20,7 +20,7 @@ import type { Task, TaskStatus, Comment } from "../../types"
 import { CommentsSection } from "./CommentsSection"
 import { MarkdownContent } from "@herbcaudill/agent-view"
 import { RelatedTasks } from "./RelatedTasks"
-import { ParentCombobox } from "./ParentCombobox"
+import { TaskRelationCombobox } from "./TaskRelationCombobox"
 import type { IssueType, TaskFormValues } from "../../hooks/useTaskDetails"
 
 /**
@@ -377,12 +377,14 @@ export function TaskDetails({
                   </span>
                 : <span>None</span>}
               </span>
-            : <ParentCombobox
+            : <TaskRelationCombobox
                 task={task}
                 allTasks={allTasks}
                 issuePrefix={issuePrefix}
-                value={formValues.parent}
-                onChange={onUpdateParent}
+                relationType="parent"
+                selectedValue={formValues.parent}
+                showSelectedValue
+                onSelect={onUpdateParent}
               />
             }
           </div>

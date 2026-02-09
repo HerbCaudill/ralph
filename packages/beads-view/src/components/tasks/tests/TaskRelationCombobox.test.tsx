@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
 import { TaskRelationCombobox } from "../TaskRelationCombobox"
 import type { TaskCardTask } from "../../../types"
@@ -16,7 +16,14 @@ describe("TaskRelationCombobox", () => {
     defaultTask,
     { id: "task-2", title: "Available Task", status: "open", type: "task", priority: 2 },
     { id: "task-3", title: "Another Task", status: "open", type: "task", priority: 2 },
-    { id: "task-4", title: "Child Task", status: "open", type: "task", priority: 2, parent: "task-1" },
+    {
+      id: "task-4",
+      title: "Child Task",
+      status: "open",
+      type: "task",
+      priority: 2,
+      parent: "task-1",
+    },
   ]
 
   describe("relation type labels", () => {
@@ -92,7 +99,10 @@ describe("TaskRelationCombobox", () => {
       render(
         <TaskRelationCombobox
           task={defaultTask}
-          allTasks={[defaultTask, { id: "task-2", title: "Other", status: "open", type: "task", priority: 2 }]}
+          allTasks={[
+            defaultTask,
+            { id: "task-2", title: "Other", status: "open", type: "task", priority: 2 },
+          ]}
           issuePrefix="task"
           relationType="blocker"
           onSelect={vi.fn()}
@@ -133,8 +143,20 @@ describe("TaskRelationCombobox", () => {
     it("excludes closed tasks for blocker relation type", () => {
       const tasksWithClosed = [
         defaultTask,
-        { id: "task-2", title: "Open Task", status: "open" as const, type: "task" as const, priority: 2 },
-        { id: "task-3", title: "Closed Task", status: "closed" as const, type: "task" as const, priority: 2 },
+        {
+          id: "task-2",
+          title: "Open Task",
+          status: "open" as const,
+          type: "task" as const,
+          priority: 2,
+        },
+        {
+          id: "task-3",
+          title: "Closed Task",
+          status: "closed" as const,
+          type: "task" as const,
+          priority: 2,
+        },
       ]
       render(
         <TaskRelationCombobox
@@ -152,7 +174,13 @@ describe("TaskRelationCombobox", () => {
     it("disables button when only closed tasks remain for blocker relation", () => {
       const tasksWithOnlyClosed = [
         defaultTask,
-        { id: "task-2", title: "Closed Task", status: "closed" as const, type: "task" as const, priority: 2 },
+        {
+          id: "task-2",
+          title: "Closed Task",
+          status: "closed" as const,
+          type: "task" as const,
+          priority: 2,
+        },
       ]
       render(
         <TaskRelationCombobox
@@ -170,8 +198,20 @@ describe("TaskRelationCombobox", () => {
     it("excludes closed tasks for blocked relation type", () => {
       const tasksWithClosed = [
         defaultTask,
-        { id: "task-2", title: "Open Task", status: "open" as const, type: "task" as const, priority: 2 },
-        { id: "task-3", title: "Closed Task", status: "closed" as const, type: "task" as const, priority: 2 },
+        {
+          id: "task-2",
+          title: "Open Task",
+          status: "open" as const,
+          type: "task" as const,
+          priority: 2,
+        },
+        {
+          id: "task-3",
+          title: "Closed Task",
+          status: "closed" as const,
+          type: "task" as const,
+          priority: 2,
+        },
       ]
       render(
         <TaskRelationCombobox
@@ -189,8 +229,20 @@ describe("TaskRelationCombobox", () => {
     it("excludes closed tasks for parent relation type", () => {
       const tasksWithClosed = [
         defaultTask,
-        { id: "task-2", title: "Open Task", status: "open" as const, type: "task" as const, priority: 2 },
-        { id: "task-3", title: "Closed Task", status: "closed" as const, type: "task" as const, priority: 2 },
+        {
+          id: "task-2",
+          title: "Open Task",
+          status: "open" as const,
+          type: "task" as const,
+          priority: 2,
+        },
+        {
+          id: "task-3",
+          title: "Closed Task",
+          status: "closed" as const,
+          type: "task" as const,
+          priority: 2,
+        },
       ]
       render(
         <TaskRelationCombobox
@@ -237,6 +289,141 @@ describe("TaskRelationCombobox", () => {
       const button = screen.getByRole("button", { name: /add blocker/i })
       expect(button.className).toMatch(/hover:bg-muted/)
       expect(button.className).not.toMatch(/hover:bg-repo-accent/)
+    })
+  })
+
+  describe("parent selection mode", () => {
+    it("shows selected parent value when selectedValue is provided", () => {
+      const parentTask: TaskCardTask = {
+        id: "parent-1",
+        title: "Parent Epic",
+        status: "open",
+        type: "epic",
+        priority: 1,
+      }
+      const childTask: TaskCardTask = {
+        id: "child-1",
+        title: "Child Task",
+        status: "open",
+        type: "task",
+        priority: 2,
+        parent: "parent-1",
+      }
+      const tasksWithParent = [parentTask, childTask]
+
+      render(
+        <TaskRelationCombobox
+          task={childTask}
+          allTasks={tasksWithParent}
+          issuePrefix="task"
+          relationType="parent"
+          onSelect={vi.fn()}
+          selectedValue="parent-1"
+        />,
+      )
+
+      // Should show the selected parent's ID and title (prefix stripped)
+      expect(screen.getByText("parent-1 Parent Epic")).toBeInTheDocument()
+      // Should have combobox role for selection display
+      expect(screen.getByRole("combobox")).toBeInTheDocument()
+    })
+
+    it("shows 'None' when selectedValue is empty and showSelectedValue is true", () => {
+      render(
+        <TaskRelationCombobox
+          task={defaultTask}
+          allTasks={allTasks}
+          issuePrefix="task"
+          relationType="parent"
+          onSelect={vi.fn()}
+          selectedValue={null}
+          showSelectedValue
+        />,
+      )
+
+      expect(screen.getByText("None")).toBeInTheDocument()
+    })
+
+    it("shows 'Set parent' button when no selectedValue and showSelectedValue is false", () => {
+      render(
+        <TaskRelationCombobox
+          task={defaultTask}
+          allTasks={allTasks}
+          issuePrefix="task"
+          relationType="parent"
+          onSelect={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole("button", { name: /set parent/i })).toBeInTheDocument()
+    })
+
+    it("includes 'None' option in dropdown when selectedValue is provided", async () => {
+      const parentTask: TaskCardTask = {
+        id: "parent-1",
+        title: "Parent Epic",
+        status: "open",
+        type: "epic",
+        priority: 1,
+      }
+
+      render(
+        <TaskRelationCombobox
+          task={defaultTask}
+          allTasks={[defaultTask, parentTask]}
+          issuePrefix="task"
+          relationType="parent"
+          onSelect={vi.fn()}
+          selectedValue="parent-1"
+        />,
+      )
+
+      // Click to open the dropdown
+      const combobox = screen.getByRole("combobox")
+      fireEvent.click(combobox)
+
+      // Should include a "None" option to clear the selection
+      await waitFor(() => {
+        expect(screen.getByText("None")).toBeInTheDocument()
+      })
+    })
+
+    it("calls onSelect with null when 'None' is selected", async () => {
+      const onSelect = vi.fn()
+
+      const parentTask: TaskCardTask = {
+        id: "parent-1",
+        title: "Parent Epic",
+        status: "open",
+        type: "epic",
+        priority: 1,
+      }
+
+      render(
+        <TaskRelationCombobox
+          task={defaultTask}
+          allTasks={[defaultTask, parentTask]}
+          issuePrefix="task"
+          relationType="parent"
+          onSelect={onSelect}
+          selectedValue="parent-1"
+        />,
+      )
+
+      // Click to open the dropdown
+      const combobox = screen.getByRole("combobox")
+      fireEvent.click(combobox)
+
+      // Wait for dropdown to open, then click the "None" option
+      await waitFor(() => {
+        expect(screen.getByText("None")).toBeInTheDocument()
+      })
+
+      const noneOption = screen.getByText("None").closest("[cmdk-item]")
+      expect(noneOption).toBeInTheDocument()
+      fireEvent.click(noneOption!)
+
+      expect(onSelect).toHaveBeenCalledWith(null)
     })
   })
 })

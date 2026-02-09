@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { IconPlus } from "@tabler/icons-react"
+import { IconPlus, IconSelector, IconCheck } from "@tabler/icons-react"
 import {
   Button,
   Popover,
@@ -12,6 +12,7 @@ import {
   CommandItem,
   CommandList,
 } from "@herbcaudill/components"
+import { cn } from "../../lib/cn"
 import { TaskCardCompact } from "./TaskCardCompact"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
 import type { Task } from "../../types"
@@ -33,11 +34,24 @@ export function TaskRelationCombobox({
   disabled = false,
   buttonText,
   placeholder = "Search tasks...",
+  selectedValue,
+  showSelectedValue = false,
 }: Props) {
   const [open, setOpen] = useState(false)
 
+  // Determine if we should show the selected value mode
+  // This applies when we have a selected value OR when showSelectedValue is true
+  const isSelectionMode =
+    selectedValue !== undefined || (showSelectedValue && relationType === "parent")
+
   // Get default button text based on relation type
   const resolvedButtonText = buttonText ?? getDefaultButtonText(relationType)
+
+  // Find the selected task for display
+  const selectedTask = useMemo(() => {
+    if (!selectedValue) return null
+    return allTasks.find(t => t.id === selectedValue) ?? null
+  }, [selectedValue, allTasks])
 
   // Filter available tasks based on relation type and exclusions
   const availableTasks = useMemo(() => {
@@ -70,6 +84,78 @@ export function TaskRelationCombobox({
     })
   }, [allTasks, task.id, excludeIds, relationType])
 
+  // In selection mode (for parent picker), show a combobox-style button with the selected value
+  if (isSelectionMode) {
+    // Show the task ID and title if found, otherwise just the ID, or "None" if no value
+    const displayValue =
+      selectedTask ? `${stripTaskPrefix(selectedTask.id, issuePrefix)} ${selectedTask.title}`
+      : selectedValue ? stripTaskPrefix(selectedValue, issuePrefix)
+      : "None"
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            aria-label="Parent"
+            className="h-8 w-full justify-between px-3 text-sm font-normal"
+          >
+            <span className="truncate">{displayValue}</span>
+            <IconSelector className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[280px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder={placeholder} />
+            <CommandList>
+              <CommandEmpty>No task found.</CommandEmpty>
+              <CommandGroup>
+                {/* None option to clear the selection */}
+                <CommandItem
+                  value="__none__"
+                  onSelect={() => {
+                    onSelect(null as unknown as string)
+                    setOpen(false)
+                  }}
+                >
+                  <IconCheck
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedValue === null || !selectedValue ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  None
+                </CommandItem>
+                {availableTasks.map(t => (
+                  <CommandItem
+                    key={t.id}
+                    value={`${stripTaskPrefix(t.id, issuePrefix)} ${t.title}`}
+                    onSelect={() => {
+                      onSelect(t.id)
+                      setOpen(false)
+                    }}
+                  >
+                    <IconCheck
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedValue === t.id ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <span className="font-mono text-xs">{stripTaskPrefix(t.id, issuePrefix)}</span>
+                    <span className="ml-2 truncate">{t.title}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    )
+  }
+
+  // Default mode: show an "Add X" button
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -127,7 +213,11 @@ function getDefaultButtonText(relationType: TaskRelationType): string {
 }
 
 /** Check if `potentialDescendant` is a descendant of `ancestorId` in the task tree */
-function isDescendantOf(potentialDescendant: string, ancestorId: string, allTasks: Task[]): boolean {
+function isDescendantOf(
+  potentialDescendant: string,
+  ancestorId: string,
+  allTasks: Task[],
+): boolean {
   const taskMap = new Map(allTasks.map(t => [t.id, t]))
   const visited = new Set<string>()
 
@@ -149,7 +239,8 @@ function isAncestorOf(potentialAncestor: string, descendantId: string, allTasks:
   return isDescendantOf(descendantId, potentialAncestor, allTasks)
 }
 
-type Props = {
+/** Base props for the combobox (add mode). */
+type BaseProps = {
   /** The current task (to exclude from selections) */
   task: Task
   /** All available tasks to select from */
@@ -160,8 +251,6 @@ type Props = {
   excludeIds?: string[]
   /** Type of relationship being created */
   relationType: TaskRelationType
-  /** Callback when a task is selected */
-  onSelect: (taskId: string) => void
   /** Whether the combobox is disabled */
   disabled?: boolean
   /** Custom button text (overrides default based on relationType) */
@@ -169,3 +258,23 @@ type Props = {
   /** Custom placeholder text for search input */
   placeholder?: string
 }
+
+/** Props for add mode (default): selecting a task to add a relation. */
+type AddModeProps = BaseProps & {
+  /** Callback when a task is selected. */
+  onSelect: (taskId: string) => void
+  selectedValue?: never
+  showSelectedValue?: never
+}
+
+/** Props for selection mode: showing current selection with ability to change/clear. */
+type SelectionModeProps = BaseProps & {
+  /** Callback when a task is selected. Receives null when "None" is selected. */
+  onSelect: (taskId: string | null) => void
+  /** Currently selected value. When provided, shows as combobox with selected value. */
+  selectedValue: string | null
+  /** Show selected value mode even when no value is selected (shows "None"). */
+  showSelectedValue?: boolean
+}
+
+type Props = AddModeProps | SelectionModeProps
