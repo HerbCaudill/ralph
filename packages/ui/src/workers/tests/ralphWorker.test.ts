@@ -853,6 +853,29 @@ describe("ralphWorker", () => {
       expect(state.sessionCompleted).toBe(false)
     })
 
+    it("should create a new session when end_task is followed by status idle (r-i5cfi)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+
+      // Simulate receiving an assistant event with <end_task>...</end_task> at end of text
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({ data: assistantEvent("Task completed! <end_task>r-abc123</end_task>") })
+
+      expect(state.sessionCompleted).toBe(true)
+      ;(state.ws as any).send.mockClear()
+
+      // Simulate status going idle
+      ws.onmessage!({
+        data: JSON.stringify({ type: "status", status: "idle" }),
+      })
+
+      // Should have sent a create_session message to continue the Ralph loop
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "create_session", app: "ralph", workspaceId }),
+      )
+      expect(state.sessionCompleted).toBe(false)
+    })
+
     it("should NOT set sessionCompleted when marker appears in a code discussion", async () => {
       const workspaceId = "herbcaudill/ralph"
       const { state } = await setupRunningWorkspace(workspaceId)
@@ -862,6 +885,22 @@ describe("ralphWorker", () => {
       ws.onmessage!({
         data: assistantEvent(
           "The worker tracks `sessionCompleted` when `<promise>COMPLETE</promise>` is detected in the event stream.",
+        ),
+      })
+
+      // Should NOT have set sessionCompleted — marker is mid-text
+      expect(state.sessionCompleted).toBe(false)
+    })
+
+    it("should NOT set sessionCompleted when end_task marker appears in a code discussion (r-i5cfi)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+
+      // Simulate the agent discussing the end_task marker in a longer text
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: assistantEvent(
+          "The protocol says to output `<end_task>r-abc123</end_task>` when completing a task. Let me explain further.",
         ),
       })
 

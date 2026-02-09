@@ -170,7 +170,10 @@ function connectWorkspace(workspaceId: string): void {
         const raw = e.data as string
         const message = JSON.parse(raw) as Record<string, unknown>
 
-        // Detect <promise>COMPLETE</promise> in assistant text content blocks.
+        // Detect session completion markers in assistant text content blocks.
+        // Two markers indicate the session should auto-continue:
+        // 1. <promise>COMPLETE</promise> — no more tasks available
+        // 2. <end_task>...</end_task> — task completed, continue to next task
         // Only matches when the marker is at the end of the text — prevents false
         // positives when the agent discusses code mentioning the marker pattern
         // (e.g., reading ralphWorker.ts source or explaining the protocol).
@@ -185,13 +188,19 @@ function connectWorkspace(workspaceId: string): void {
               | undefined
             if (content) {
               for (const block of content) {
-                if (
-                  block.type === "text" &&
-                  typeof block.text === "string" &&
-                  /<promise>COMPLETE<\/promise>\s*$/i.test(block.text)
-                ) {
-                  state.sessionCompleted = true
-                  break
+                if (block.type === "text" && typeof block.text === "string") {
+                  // Check for promise complete marker
+                  if (/<promise>COMPLETE<\/promise>\s*$/i.test(block.text)) {
+                    state.sessionCompleted = true
+                    break
+                  }
+                  // Check for end_task marker (task completed, continue loop)
+                  if (
+                    /<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*$/i.test(block.text)
+                  ) {
+                    state.sessionCompleted = true
+                    break
+                  }
                 }
               }
             }
