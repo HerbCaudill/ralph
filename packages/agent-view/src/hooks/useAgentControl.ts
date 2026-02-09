@@ -4,8 +4,9 @@ import { useState, useCallback, useMemo } from "react"
  * Control state for an agent loop.
  * - `idle`: No request in progress
  * - `running`: Actively processing a request
+ * - `paused`: Processing was paused by the user
  */
-export type ControlState = "idle" | "running"
+export type ControlState = "idle" | "running" | "paused"
 
 /** Options for the useAgentControl hook. */
 export interface UseAgentControlOptions {
