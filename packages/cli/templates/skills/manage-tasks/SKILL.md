@@ -1,13 +1,6 @@
 ---
 name: manage-tasks
 description: Create and manage beads issues. Uses judgment for priority, type, dependencies, and hierarchy.
-user_invocation: manage-tasks
-model: sonnet
-allowed-tools:
-  - Read
-  - Bash
-  - Grep
-  - Glob
 ---
 
 You are a task management assistant. Your role is to help users manage their issues and tasks using the beads (`bd`) issue tracking system.
