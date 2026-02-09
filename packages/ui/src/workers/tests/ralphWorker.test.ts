@@ -799,4 +799,113 @@ describe("ralphWorker", () => {
       )
     })
   })
+
+  describe("auto-start on session completion", () => {
+    /** Helper to set up a running workspace with an open WebSocket. */
+    async function setupRunningWorkspace(workspaceId: string) {
+      const port = createMockPort()
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Start and create session
+      handlePortMessage({ type: "start", workspaceId }, port)
+      state.currentSessionId = "session-123"
+      ;(state.ws as any).send.mockClear()
+
+      return { port, state }
+    }
+
+    it("should create a new session when promise_complete is followed by status idle", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+
+      // Simulate receiving an event with <promise>COMPLETE</promise>
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "event",
+          event: { type: "assistant", text: "All done! <promise>COMPLETE</promise>" },
+        }),
+      })
+
+      expect(state.sessionCompleted).toBe(true)
+      ;(state.ws as any).send.mockClear()
+
+      // Simulate status going idle
+      ws.onmessage!({
+        data: JSON.stringify({ type: "status", status: "idle" }),
+      })
+
+      // Should have sent a create_session message
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "create_session", app: "ralph", workspaceId }),
+      )
+      expect(state.sessionCompleted).toBe(false)
+    })
+
+    it("should not auto-start when paused", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port, state } = await setupRunningWorkspace(workspaceId)
+
+      // Receive promise_complete
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "event",
+          event: { type: "assistant", text: "<promise>COMPLETE</promise>" },
+        }),
+      })
+
+      // User pauses
+      handlePortMessage({ type: "pause", workspaceId }, port)
+      ;(state.ws as any).send.mockClear()
+
+      // Status goes idle
+      ws.onmessage!({
+        data: JSON.stringify({ type: "status", status: "idle" }),
+      })
+
+      // Should NOT have sent a create_session message
+      const calls = (state.ws!.send as any).mock.calls
+      const createSessionCalls = calls.filter((c: string[]) => c[0].includes("create_session"))
+      expect(createSessionCalls).toHaveLength(0)
+    })
+
+    it("should not auto-start without promise_complete", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+
+      // Status goes idle without any promise_complete
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({ type: "status", status: "idle" }),
+      })
+
+      // Should NOT have sent a create_session message
+      const calls = (state.ws!.send as any).mock.calls
+      const createSessionCalls = calls.filter((c: string[]) => c[0].includes("create_session"))
+      expect(createSessionCalls).toHaveLength(0)
+    })
+
+    it("should clear sessionCompleted on manual start", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const port = createMockPort()
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      // Set a stale flag
+      state.sessionCompleted = true
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      handlePortMessage({ type: "start", workspaceId }, port)
+      expect(state.sessionCompleted).toBe(false)
+    })
+  })
 })

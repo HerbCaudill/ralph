@@ -31,6 +31,8 @@ interface WorkspaceState {
   pingInterval: ReturnType<typeof setInterval> | null
   /** Ports subscribed to this workspace's events. */
   subscribedPorts: Set<MessagePort>
+  /** Set when `<promise>COMPLETE</promise>` is detected; cleared on next session start. */
+  sessionCompleted: boolean
 }
 
 /** Messages sent from browser tabs to the worker. */
@@ -78,6 +80,7 @@ export function getWorkspace(workspaceId: string): WorkspaceState {
       reconnectTimer: null,
       pingInterval: null,
       subscribedPorts: new Set(),
+      sessionCompleted: false,
     }
     workspaces.set(workspaceId, state)
   }
@@ -158,7 +161,15 @@ function connectWorkspace(workspaceId: string): void {
 
     ws.onmessage = e => {
       try {
-        const message = JSON.parse(e.data as string) as Record<string, unknown>
+        const raw = e.data as string
+
+        // Detect <promise>COMPLETE</promise> anywhere in the raw event data.
+        // This signals that the agent has no more work and the session is done.
+        if (raw.includes("<promise>COMPLETE</promise>")) {
+          state.sessionCompleted = true
+        }
+
+        const message = JSON.parse(raw) as Record<string, unknown>
 
         if (message.type === "pong") return
 
@@ -222,6 +233,17 @@ function connectWorkspace(workspaceId: string): void {
           })
           // Also broadcast as generic event for any listeners
           broadcastToWorkspace(workspaceId, { type: "event", workspaceId, event: message })
+
+          // Auto-start: when the agent finishes and we saw promise_complete,
+          // immediately start a new session (the core Ralph loop).
+          if (
+            status !== "processing" &&
+            state.sessionCompleted &&
+            state.controlState === "running"
+          ) {
+            state.sessionCompleted = false
+            createOrResumeSession(workspaceId)
+          }
           return
         }
 
@@ -426,6 +448,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
     case "start": {
       const state = getWorkspace(message.workspaceId)
       if (state.controlState === "idle") {
+        state.sessionCompleted = false
         setControlState(message.workspaceId, "running")
         if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
           connectWorkspace(message.workspaceId)
@@ -444,6 +467,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
     case "pause": {
       // Pause immediately interrupts the agent and goes to paused state
       const state = getWorkspace(message.workspaceId)
+      state.sessionCompleted = false
 
       // Send interrupt message to the agent-server if we have an active session
       if (state.currentSessionId && state.ws?.readyState === WebSocket.OPEN) {
