@@ -39,6 +39,8 @@ pnpm pub                  # Publish CLI + UI packages
 
 Use `packages/agent-server/tsconfig.json` when editing agent-server TypeScript files.
 
+UI vitest setup polyfills `HTMLDialogElement.showModal` and `close` for dialog-based components.
+
 ## Workspace structure
 
 pnpm workspace with these main packages:

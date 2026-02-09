@@ -136,6 +136,34 @@ describe("ToolUseCard consistency", () => {
       // Should show the output from toolResults
       expect(screen.getByText(/file1\.txt/)).toBeInTheDocument()
     })
+
+    it("should show command when tool input is a JSON string", () => {
+      const rawInput = JSON.stringify({ command: "pnpm test:all" })
+      const toolUseEvent: ToolUseChatEvent = {
+        type: "tool_use",
+        timestamp: 100,
+        tool: "Bash",
+        input: rawInput as unknown as Record<string, unknown>,
+        output: "All tests pass",
+        status: "success",
+        toolUseId: "toolu_json",
+      }
+
+      render(
+        <AgentViewProvider value={{ toolOutput }}>
+          <EventStreamEventItem
+            event={toolUseEvent}
+            toolResults={new Map()}
+            hasStructuredLifecycleEvents={false}
+            eventIndex={0}
+          />
+        </AgentViewProvider>,
+      )
+
+      expect(screen.getByText("Bash")).toBeInTheDocument()
+      expect(screen.getByText("pnpm test:all")).toBeInTheDocument()
+      expect(screen.getByText(/All tests pass/)).toBeInTheDocument()
+    })
   })
 
   describe("consistent display across both flows", () => {

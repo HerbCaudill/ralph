@@ -115,6 +115,8 @@ Unit tests focus on behavioral coverage; avoid type-only guard tests.
 
 UI components follow the controller/presentational pattern: connected components use a `Controller` suffix (e.g. `HeaderController`), and presentational components use the base name (e.g. `Header`).
 
+UI vitest setup polyfills `HTMLDialogElement.showModal` and `close` for dialog-based components.
+
 ## UX specification
 
 The web client UX-only functional spec (with screenshots) lives in `spec/web-client-ux-functional-spec.md`.

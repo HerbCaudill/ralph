@@ -29,3 +29,19 @@ Object.defineProperty(window, "ResizeObserver", {
 
 // Mock scrollIntoView for tests
 Element.prototype.scrollIntoView = () => {}
+
+if (typeof HTMLDialogElement !== "undefined") {
+  if (!HTMLDialogElement.prototype.showModal) {
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true,
+      value: Element.prototype.scrollIntoView,
+    })
+  }
+
+  if (!HTMLDialogElement.prototype.close) {
+    Object.defineProperty(HTMLDialogElement.prototype, "close", {
+      configurable: true,
+      value: Element.prototype.scrollIntoView,
+    })
+  }
+}

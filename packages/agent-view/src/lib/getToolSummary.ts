@@ -6,38 +6,63 @@ export function getToolSummary(
   /** The name of the tool (accepts any casing; normalized internally) */
   tool: string,
   /** The tool's input parameters */
-  input?: Record<string, unknown>,
+  input?: Record<string, unknown> | string,
   /** The workspace root path for relative path conversion */
   workspace?: string | null,
 ): string {
   if (!input) return ""
 
+  const rawInput = input
+  let resolvedInput: Record<string, unknown> = {}
+
+  if (typeof input === "string") {
+    try {
+      const parsed = JSON.parse(input)
+      if (parsed && typeof parsed === "object") {
+        resolvedInput = parsed as Record<string, unknown>
+      }
+    } catch {
+      // Fall back to empty object, raw string handled per-tool below.
+    }
+  } else {
+    resolvedInput = input
+  }
+
   const normalized = normalizeToolName(tool)
 
   switch (normalized) {
     case "Read":
-      return input.file_path ? toRelativePath(String(input.file_path), workspace ?? null) : ""
+      return resolvedInput.file_path ?
+          toRelativePath(String(resolvedInput.file_path), workspace ?? null)
+        : ""
     case "Edit":
-      return input.file_path ? toRelativePath(String(input.file_path), workspace ?? null) : ""
+      return resolvedInput.file_path ?
+          toRelativePath(String(resolvedInput.file_path), workspace ?? null)
+        : ""
     case "Write":
-      return input.file_path ? toRelativePath(String(input.file_path), workspace ?? null) : ""
+      return resolvedInput.file_path ?
+          toRelativePath(String(resolvedInput.file_path), workspace ?? null)
+        : ""
     case "Bash":
-      return input.command ? String(input.command) : ""
+      return resolvedInput.command ? String(resolvedInput.command)
+      : typeof rawInput === "string" && rawInput.trim() ?
+        rawInput
+      : ""
     case "Grep":
-      return input.pattern ? String(input.pattern) : ""
+      return resolvedInput.pattern ? String(resolvedInput.pattern) : ""
     case "Glob":
-      return input.pattern ? String(input.pattern) : ""
+      return resolvedInput.pattern ? String(resolvedInput.pattern) : ""
     case "WebSearch":
-      return input.query ? String(input.query) : ""
+      return resolvedInput.query ? String(resolvedInput.query) : ""
     case "WebFetch":
-      return input.url ? String(input.url) : ""
+      return resolvedInput.url ? String(resolvedInput.url) : ""
     case "TodoWrite":
-      if (Array.isArray(input.todos)) {
-        return `${input.todos.length} todo(s)`
+      if (Array.isArray(resolvedInput.todos)) {
+        return `${resolvedInput.todos.length} todo(s)`
       }
       return ""
     case "Task":
-      return input.description ? String(input.description) : ""
+      return resolvedInput.description ? String(resolvedInput.description) : ""
     default:
       return ""
   }
