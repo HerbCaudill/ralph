@@ -148,6 +148,7 @@ export class ClaudeAdapter extends AgentAdapter {
   private pendingToolUses = new Map<string, { tool: string; input: Record<string, unknown> }>()
   private inFlight: Promise<void> | null = null
   private abortController: AbortController | null = null
+  private currentQuery: (AsyncIterable<SDKMessage> & { interrupt?: () => void }) | null = null
   private startOptions: AgentStartOptions | undefined
   private retryConfig: RetryConfig
   private maxThinkingTokens: number
@@ -196,7 +197,7 @@ export class ClaudeAdapter extends AgentAdapter {
       features: {
         streaming: true,
         tools: true,
-        pauseResume: false, // Claude SDK doesn't support pause/resume in this mode
+        pauseResume: true, // Supports interrupt via query.interrupt()
         systemPrompt: true,
       },
     }
@@ -314,8 +315,30 @@ export class ClaudeAdapter extends AgentAdapter {
         case "stop":
           void this.stop()
           break
-        // pause/resume not supported
+        case "interrupt":
+          void this.interrupt()
+          break
       }
+    }
+  }
+
+  /**
+   * Interrupt the current query using the SDK's interrupt() method.
+   * This allows the user to stop the current response mid-stream.
+   */
+  async interrupt(): Promise<void> {
+    if (!this.currentQuery) {
+      return
+    }
+
+    // Call the SDK's interrupt method if available
+    if (this.currentQuery.interrupt) {
+      this.currentQuery.interrupt()
+    }
+
+    // Also abort via AbortController as a fallback
+    if (this.abortController) {
+      this.abortController.abort()
     }
   }
 
@@ -405,7 +428,8 @@ export class ClaudeAdapter extends AgentAdapter {
           this.emit("event", resumingEvent)
         }
 
-        for await (const message of this.options.queryFn({
+        // Store the query stream so we can call interrupt() on it
+        this.currentQuery = this.options.queryFn({
           prompt: isRetry && sessionToResume ? "" : prompt, // Empty prompt only on retry - SDK continues from last state
           options: {
             model: options.model ?? this.defaultModel,
@@ -433,12 +457,15 @@ export class ClaudeAdapter extends AgentAdapter {
             // Enable extended thinking with the configured token budget (0 = disabled)
             ...(this.maxThinkingTokens > 0 && { maxThinkingTokens: this.maxThinkingTokens }),
           },
-        })) {
+        }) as AsyncIterable<SDKMessage> & { interrupt?: () => void }
+
+        for await (const message of this.currentQuery) {
           this.handleSDKMessage(message)
         }
         // Success - signal idle so ChatSessionManager can resolve
         this.setStatus("idle")
         this.inFlight = null
+        this.currentQuery = null
         return
       } catch (err) {
         const error = err instanceof Error ? err : new Error("Claude query failed")

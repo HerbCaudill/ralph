@@ -355,6 +355,24 @@ export class ChatSessionManager extends EventEmitter {
     this.persister.deleteSession(sessionId, session?.app)
   }
 
+  /**
+   * Interrupt the current query for a session.
+   * Sends an interrupt control message to the adapter if it's running.
+   */
+  async interruptSession(
+    /** The session ID. */
+    sessionId: string,
+  ): Promise<void> {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    if (session.adapterInstance?.isRunning) {
+      session.adapterInstance.send({ type: "control", command: "interrupt" })
+    }
+  }
+
   /** Get the persister for direct event access. */
   getPersister(): SessionPersister {
     return this.persister

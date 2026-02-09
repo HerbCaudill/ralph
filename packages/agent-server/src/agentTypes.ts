@@ -104,8 +104,8 @@ export interface AgentMessage {
   type: "user_message" | "control"
   /** Message content for user_message type */
   content?: string
-  /** Control command for control type (e.g., "pause", "resume", "stop") */
-  command?: "pause" | "resume" | "stop"
+  /** Control command for control type (e.g., "pause", "resume", "stop", "interrupt") */
+  command?: "pause" | "resume" | "stop" | "interrupt"
 }
 
 /**  Information about an agent adapter's capabilities. */

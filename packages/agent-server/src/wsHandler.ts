@@ -178,6 +178,23 @@ export function handleWsConnection(
           break
         }
 
+        case "interrupt": {
+          const sessionId = msg.sessionId as string
+          if (!sessionId) {
+            ws.send(JSON.stringify({ type: "error", error: "sessionId is required" }))
+            break
+          }
+          manager
+            .interruptSession(sessionId)
+            .then(() => {
+              ws.send(JSON.stringify({ type: "interrupted", sessionId }))
+            })
+            .catch(err => {
+              ws.send(JSON.stringify({ type: "error", sessionId, error: (err as Error).message }))
+            })
+          break
+        }
+
         // Backward compatibility: support the old chat_message protocol
         case "chat_message": {
           const message = msg.message as string

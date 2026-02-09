@@ -427,12 +427,25 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       break
     }
 
-    case "pause":
+    case "pause": {
       // Pause immediately interrupts the agent and goes to idle
+      const state = getWorkspace(message.workspaceId)
+
+      // Send interrupt message to the agent-server if we have an active session
+      if (state.currentSessionId && state.ws?.readyState === WebSocket.OPEN) {
+        state.ws.send(
+          JSON.stringify({
+            type: "interrupt",
+            sessionId: state.currentSessionId,
+          }),
+        )
+      }
+
       setControlState(message.workspaceId, "idle")
       // Note: We don't clear currentSessionId or disconnect - this allows
       // viewing past events and sending new messages to continue the session
       break
+    }
 
     case "message": {
       const state = getWorkspace(message.workspaceId)
