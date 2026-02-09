@@ -4,19 +4,51 @@ import { InputGroup, InputGroupAddon, InputGroupButton } from "@herbcaudill/comp
 import { cn } from "../lib/utils"
 
 /**
+ * Reads draft from localStorage, returns empty string if not found.
+ */
+function readDraft(storageKey: string | undefined): string {
+  if (!storageKey) return ""
+  try {
+    return localStorage.getItem(storageKey) ?? ""
+  } catch {
+    return ""
+  }
+}
+
+/**
+ * Writes draft to localStorage.
+ */
+function writeDraft(storageKey: string | undefined, value: string): void {
+  if (!storageKey) return
+  try {
+    localStorage.setItem(storageKey, value)
+  } catch {
+    // Ignore localStorage errors (e.g., quota exceeded)
+  }
+}
+
+/**
  * Chat input with auto-resizing textarea and send button.
  * Submits on Enter (Shift+Enter for newline).
+ *
+ * When storageKey is provided, the input value is persisted to localStorage
+ * so drafts survive page reloads.
  */
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { onSend, disabled = false, placeholder = "Send a message\u2026" },
+  { onSend, disabled = false, placeholder = "Send a message\u2026", storageKey },
   ref,
 ) {
-  const [value, setValue] = useState("")
+  const [value, setValue] = useState(() => readDraft(storageKey))
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
   }))
+
+  /** Sync value from localStorage when storageKey changes. */
+  useEffect(() => {
+    setValue(readDraft(storageKey))
+  }, [storageKey])
 
   /** Focus the textarea on mount and whenever it becomes enabled. */
   useEffect(() => {
@@ -30,12 +62,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (!trimmed || disabled) return
     onSend(trimmed)
     setValue("")
+    writeDraft(storageKey, "")
     // Reset textarea height and re-focus
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
       textareaRef.current.focus()
     }
-  }, [value, disabled, onSend])
+  }, [value, disabled, onSend, storageKey])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -47,13 +80,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     [handleSend],
   )
 
-  const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value)
-    // Auto-resize
-    const el = e.target
-    el.style.height = "auto"
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
-  }, [])
+  const handleInput = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = e.target.value
+      setValue(newValue)
+      writeDraft(storageKey, newValue)
+      // Auto-resize
+      const el = e.target
+      el.style.height = "auto"
+      el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+    },
+    [storageKey],
+  )
 
   const canSend = value.trim().length > 0 && !disabled
 
@@ -101,4 +139,6 @@ export type ChatInputProps = {
   onSend: (message: string) => void
   disabled?: boolean
   placeholder?: string
+  /** Optional localStorage key for persisting draft messages across reloads. */
+  storageKey?: string
 }

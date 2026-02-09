@@ -128,6 +128,7 @@ export function RalphLoopPanel({
               "Waiting for connection..."
             : "Send a message…"
           }
+          storageKey="ralph-loop-chat-draft"
         />
       )}
 

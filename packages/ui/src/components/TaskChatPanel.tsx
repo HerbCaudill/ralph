@@ -98,6 +98,7 @@ export function TaskChatPanel({
           onSend={onSendMessage}
           disabled={false}
           placeholder={taskId ? "Ask about this task" : "Send a message"}
+          storageKey={taskId ? `task-chat-draft-${taskId}` : "task-chat-draft"}
         />
       </div>
     </div>

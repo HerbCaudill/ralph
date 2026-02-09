@@ -141,6 +141,7 @@ export function RalphRunner({
                 "Waiting for connection..."
               : "Send a message…"
             }
+            storageKey="ralph-runner-chat-draft"
           />
         )}
 

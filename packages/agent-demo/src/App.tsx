@@ -185,6 +185,7 @@ export function App() {
             placeholder={
               isConnected ? "Send a message…" : "Waiting for connection to agent server…"
             }
+            storageKey="agent-demo-chat-draft"
           />
         </div>
       </DemoShell>

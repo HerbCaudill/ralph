@@ -1,10 +1,33 @@
 import { createRef } from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { ChatInput } from "../ChatInput"
 import type { ChatInputHandle } from "../ChatInput"
 
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {}
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
+  }
+})()
+
+Object.defineProperty(window, "localStorage", { value: localStorageMock })
+
 describe("ChatInput", () => {
+  beforeEach(() => {
+    localStorageMock.clear()
+  })
+
   describe("rendering", () => {
     it("renders textarea with default placeholder", () => {
       render(<ChatInput onSend={() => {}} />)
@@ -238,6 +261,55 @@ describe("ChatInput", () => {
       const { container } = render(<ChatInput onSend={() => {}} />)
       const addon = container.querySelector('[data-slot="input-group-addon"]')
       expect(addon).toHaveClass("self-end")
+    })
+  })
+
+  describe("localStorage persistence", () => {
+    const STORAGE_KEY = "test-chat-input"
+
+    it("initializes with value from localStorage when storageKey provided", () => {
+      localStorageMock.setItem(STORAGE_KEY, "Saved draft")
+      render(<ChatInput onSend={() => {}} storageKey={STORAGE_KEY} />)
+      expect(screen.getByRole("textbox")).toHaveValue("Saved draft")
+    })
+
+    it("persists value to localStorage on change when storageKey provided", () => {
+      render(<ChatInput onSend={() => {}} storageKey={STORAGE_KEY} />)
+      const textarea = screen.getByRole("textbox")
+      fireEvent.change(textarea, { target: { value: "New draft" } })
+      expect(localStorageMock.getItem(STORAGE_KEY)).toBe("New draft")
+    })
+
+    it("clears localStorage after successful send", () => {
+      localStorageMock.setItem(STORAGE_KEY, "Draft message")
+      render(<ChatInput onSend={() => {}} storageKey={STORAGE_KEY} />)
+      const textarea = screen.getByRole("textbox")
+      fireEvent.keyDown(textarea, { key: "Enter" })
+      expect(localStorageMock.getItem(STORAGE_KEY)).toBe("")
+    })
+
+    it("does not persist without storageKey", () => {
+      render(<ChatInput onSend={() => {}} />)
+      const textarea = screen.getByRole("textbox")
+      fireEvent.change(textarea, { target: { value: "No persist" } })
+      expect(localStorageMock.getItem(STORAGE_KEY)).toBeNull()
+    })
+
+    it("different storageKeys are isolated", () => {
+      localStorageMock.setItem("key-a", "Draft A")
+      localStorageMock.setItem("key-b", "Draft B")
+
+      const { rerender } = render(<ChatInput onSend={() => {}} storageKey="key-a" />)
+      expect(screen.getByRole("textbox")).toHaveValue("Draft A")
+
+      rerender(<ChatInput onSend={() => {}} storageKey="key-b" />)
+      expect(screen.getByRole("textbox")).toHaveValue("Draft B")
+    })
+
+    it("handles empty localStorage value gracefully", () => {
+      localStorageMock.setItem(STORAGE_KEY, "")
+      render(<ChatInput onSend={() => {}} storageKey={STORAGE_KEY} />)
+      expect(screen.getByRole("textbox")).toHaveValue("")
     })
   })
 })
