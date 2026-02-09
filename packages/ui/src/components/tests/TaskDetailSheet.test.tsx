@@ -74,15 +74,16 @@ describe("TaskDetailSheet", () => {
     expect(document.querySelector("[data-state]")).not.toBeInTheDocument()
   })
 
-  it("renders as an absolutely positioned panel on the right side", () => {
+  it("renders as an absolutely positioned panel anchored to the left", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
     const panel = screen.getByTestId("task-detail-sheet")
     expect(panel).toBeInTheDocument()
 
-    // Should be absolutely positioned on the right
+    // Should be absolutely positioned, anchored to left edge of its container
+    // (the right panel wrapper in MainLayout) so it slides out rightward
     expect(panel.className).toContain("absolute")
-    expect(panel.className).toContain("right-0")
+    expect(panel.className).toContain("left-0")
   })
 
   it("does not render a modal backdrop", () => {

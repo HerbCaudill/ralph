@@ -9,7 +9,7 @@ import { useUiStore } from "../stores/uiStore"
  * - Center panel (main content, flexible)
  * - Right panel (optional, resizable, min 200px, max 70%, default 30%)
  */
-export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
+export function MainLayout({ sidebar, rightPanel, overlay, children }: MainLayoutProps) {
   const sidebarWidthPercent = useUiStore(state => state.sidebarWidthPercent)
   const rightPanelWidthPercent = useUiStore(state => state.rightPanelWidthPercent)
   const setSidebarWidthPercent = useUiStore(state => state.setSidebarWidthPercent)
@@ -113,7 +113,7 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
       )}
 
       {/* Center panel */}
-      <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+      <main className="bg-background relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-hidden">
         {children}
       </main>
 
@@ -128,12 +128,15 @@ export function MainLayout({ sidebar, rightPanel, children }: MainLayoutProps) {
             onMouseDown={handleRightMouseDown}
             data-testid="right-panel-resize-handle"
           />
-          <aside
-            className="bg-background flex h-full flex-col overflow-hidden border-l border-border"
+          <div
+            className="relative flex h-full flex-col"
             style={{ width: rightWidth, minWidth: MIN_PANEL_WIDTH }}
           >
-            {rightPanel}
-          </aside>
+            <aside className="bg-background flex h-full w-full flex-col overflow-hidden border-l border-border">
+              {rightPanel}
+            </aside>
+            {overlay}
+          </div>
         </>
       )}
     </div>
@@ -158,6 +161,8 @@ export type MainLayoutProps = {
   sidebar?: ReactNode
   /** Optional right panel content (toggleable). */
   rightPanel?: ReactNode
+  /** Optional overlay rendered inside the right panel area, anchored to its left edge. */
+  overlay?: ReactNode
   /** Main content area (center panel). */
   children: ReactNode
 }

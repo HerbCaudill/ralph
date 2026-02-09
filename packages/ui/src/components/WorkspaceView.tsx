@@ -308,18 +308,23 @@ export function WorkspaceView() {
         onWorkspaceSwitch={handleWorkspaceSwitch}
         onHelpClick={handleShowHotkeys}
       />
-      <MainLayout sidebar={sidebar} rightPanel={rightPanel}>
+      <MainLayout
+        sidebar={sidebar}
+        rightPanel={rightPanel}
+        overlay={
+          <TaskDetailSheet
+            task={selectedTask}
+            open={selectedTaskId !== null}
+            onClose={handleCloseDetail}
+            onChanged={handleChanged}
+          />
+        }
+      >
         <TaskPanelController
           searchInputRef={searchInputRef}
           onTaskClick={handleTaskClick}
           onOpenTask={handleTaskClick}
           isRunning={controlState === "running"}
-        />
-        <TaskDetailSheet
-          task={selectedTask}
-          open={selectedTaskId !== null}
-          onClose={handleCloseDetail}
-          onChanged={handleChanged}
         />
       </MainLayout>
       <HotkeysDialog open={showHotkeysDialog} onClose={() => setShowHotkeysDialog(false)} />
