@@ -8,6 +8,7 @@ import { TaskDetailSheet } from "./TaskDetailSheet"
 import { HotkeysDialog } from "./HotkeysDialog"
 import { CommandPalette } from "./CommandPalette"
 import { useRalphLoop } from "../hooks/useRalphLoop"
+import { useRalphSessions } from "../hooks/useRalphSessions"
 import { useAccentColor } from "../hooks/useAccentColor"
 import { useTaskChat } from "../hooks/useTaskChat"
 import { useWorkspaceParams } from "../hooks/useWorkspaceParams"
@@ -20,6 +21,7 @@ import {
   useTaskDialog,
   useTaskNavigation,
   useBeadsViewStore,
+  beadsViewStore,
   selectSelectedTaskId,
   useWorkspace,
   useBeadsHotkeys,
@@ -56,10 +58,11 @@ export function WorkspaceView() {
 
   // Ralph loop state from SharedWorker
   const {
-    events,
-    isStreaming,
+    events: liveEvents,
+    isStreaming: liveIsStreaming,
     controlState,
     connectionStatus,
+    sessionId,
     isStoppingAfterCurrent,
     start,
     pause,
@@ -68,6 +71,14 @@ export function WorkspaceView() {
     stopAfterCurrent,
     cancelStopAfterCurrent,
   } = useRalphLoop(workspaceId)
+
+  // Session history management
+  const { sessions, historicalEvents, isViewingHistorical, selectSession, clearHistorical } =
+    useRalphSessions(sessionId)
+
+  // Effective events and streaming state: use historical when viewing past sessions
+  const events = isViewingHistorical && historicalEvents ? historicalEvents : liveEvents
+  const isStreaming = isViewingHistorical ? false : liveIsStreaming
 
   // Task chat state from agent-server
   const { state: taskChatState, actions: taskChatActions } = useTaskChat()
@@ -90,8 +101,23 @@ export function WorkspaceView() {
   // Inject accent color as CSS custom property
   useAccentColor(workspace?.accentColor)
 
+  // Sync accent color to the beads-view store so TaskProgressBar can use it
+  useEffect(() => {
+    beadsViewStore.getState().setAccentColor(workspace?.accentColor ?? null)
+  }, [workspace?.accentColor])
+
   // Task state from beads-view
   const { tasks, refresh } = useTasks({ all: true })
+
+  // Sync initial task count to beads-view store so TaskProgressBar renders
+  useEffect(() => {
+    const store = beadsViewStore.getState()
+    if (controlState !== "idle" && tasks.length > 0) {
+      store.setInitialTaskCount(tasks.length)
+    } else {
+      store.setInitialTaskCount(null)
+    }
+  }, [controlState, tasks.length])
 
   // Current task from Ralph events (resolved against the tasks list)
   const { taskId: currentTaskId, taskTitle: currentTaskTitle } = useCurrentTask(events, tasks)
@@ -174,6 +200,13 @@ export function WorkspaceView() {
     taskChatActions.newSession()
   }, [taskChatActions])
 
+  // Start Ralph hotkey handler
+  const handleStartRalph = useCallback(() => {
+    if (controlState === "idle" && connectionStatus === "connected") {
+      start()
+    }
+  }, [controlState, connectionStatus, start])
+
   // Register hotkeys
   useAgentHotkeys({
     handlers: {
@@ -181,6 +214,7 @@ export function WorkspaceView() {
       newSession: handleTaskChatNewSession,
       toggleToolOutput: handleToggleToolOutput,
       showHotkeys: handleShowHotkeys,
+      startRalph: handleStartRalph,
     },
   })
 
@@ -194,6 +228,18 @@ export function WorkspaceView() {
       showHotkeys: handleShowHotkeys,
     },
   })
+
+  /** Handle session selection from the SessionPicker in RalphRunner. */
+  const handleSelectSession = useCallback(
+    (selectedSessionId: string) => {
+      if (selectedSessionId === sessionId) {
+        clearHistorical()
+      } else {
+        selectSession(selectedSessionId)
+      }
+    },
+    [sessionId, clearHistorical, selectSession],
+  )
 
   // Handle Ralph message send
   const handleRalphSend = useCallback(
@@ -285,6 +331,9 @@ export function WorkspaceView() {
       branch={workspace?.branch}
       workspacePath={workspace?.path}
       isStoppingAfterCurrent={isStoppingAfterCurrent}
+      sessions={sessions}
+      sessionId={sessionId}
+      isViewingHistoricalSession={isViewingHistorical}
       taskId={currentTaskId}
       taskTitle={currentTaskTitle}
       context={{
@@ -294,6 +343,7 @@ export function WorkspaceView() {
         tasks,
       }}
       onSendMessage={handleRalphSend}
+      onSelectSession={handleSelectSession}
       onStart={start}
       onResume={resume}
       onPause={pause}
@@ -342,6 +392,15 @@ export function WorkspaceView() {
           agentPause: handleAgentPause,
           cycleTheme: handleCycleTheme,
           showHotkeys: handleShowHotkeys,
+          focusChatInput: handleFocusChatInput,
+          newSession: handleTaskChatNewSession,
+          toggleToolOutput: handleToggleToolOutput,
+          startRalph: handleStartRalph,
+          focusSearch: handleFocusSearch,
+          focusTaskInput: handleFocusSearch,
+          previousTask: navigatePrevious,
+          nextTask: navigateNext,
+          openTask: openSelected,
         }}
         controlState={controlState}
         isConnected={connectionStatus === "connected"}
