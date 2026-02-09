@@ -69,7 +69,8 @@ export function useRalphLoop(
         break
 
       case "session_created":
-        // Session created — streaming will follow
+        // New session — clear old events, start streaming
+        setEvents([])
         setSessionId(data.sessionId)
         setIsStreaming(true)
         // Persist the session ID so it can be restored on page reload
