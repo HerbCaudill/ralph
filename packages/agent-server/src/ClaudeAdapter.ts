@@ -68,6 +68,23 @@ function getClaudeCliVersion(): string | undefined {
 const cachedCliVersion = getClaudeCliVersion()
 
 /**
+ * Module-level cache for the detected model from message_start events.
+ * This allows getAvailableAdapters() to return the model even for fresh adapter instances.
+ * The cache is set when any ClaudeAdapter instance detects a model from streaming.
+ */
+let cachedDetectedModel: string | undefined
+
+/** Clear the cached detected model. Used for testing. */
+export function clearCachedDetectedModel(): void {
+  cachedDetectedModel = undefined
+}
+
+/** Get the cached detected model. Used for testing. */
+export function getCachedDetectedModel(): string | undefined {
+  return cachedDetectedModel
+}
+
+/**
  * Build the working directory context string for system prompts.
  * Provides explicit instructions to prevent Claude from constructing incorrect absolute paths.
  */
@@ -171,6 +188,9 @@ export class ClaudeAdapter extends AgentAdapter {
   // Session tracking for retry/resume
   private currentSessionId: string | undefined
 
+  /** Model detected from message_start events (used when no explicit model is configured). */
+  private detectedModel: string | undefined
+
   constructor(options: ClaudeAdapterOptions = {}) {
     super()
     this.options = {
@@ -199,7 +219,7 @@ export class ClaudeAdapter extends AgentAdapter {
       name: "Claude",
       description: "Anthropic Claude via SDK",
       version: cachedCliVersion,
-      model: this.defaultModel,
+      model: this.defaultModel ?? this.detectedModel ?? cachedDetectedModel,
       features: {
         streaming: true,
         tools: true,
@@ -991,13 +1011,20 @@ export class ClaudeAdapter extends AgentAdapter {
       }
 
       case "message_start": {
-        // Capture input token counts from the streaming message start event
+        // Capture input token counts and model from the streaming message start event
         const msg = nativeEvent.message as {
+          model?: string
           usage?: {
             input_tokens?: number
             cache_creation_input_tokens?: number
             cache_read_input_tokens?: number
           }
+        }
+        // Capture model if not already set (first message_start in session)
+        // Also update module-level cache for getAvailableAdapters()
+        if (msg?.model && !this.detectedModel) {
+          this.detectedModel = msg.model
+          cachedDetectedModel = msg.model
         }
         if (msg?.usage) {
           const turnInput =

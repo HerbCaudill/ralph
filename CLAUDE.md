@@ -323,6 +323,8 @@ Agents implement `AgentAdapter` base class (`server/AgentAdapter.ts`). Available
 
 ClaudeAdapter accepts an optional `model` in `ClaudeAdapterOptions`, falling back to the `CLAUDE_MODEL` environment variable. Per-message model overrides the default. `AgentInfo` (returned by `getInfo()`) includes a `model` field showing the configured default.
 
+**Model detection from streaming:** ClaudeAdapter detects the model being used from `message_start` streaming events. The detected model is cached at the module level so that new adapter instances created by `getAvailableAdapters()` can return the model even before they've processed any messages. Model priority is: explicit option > `CLAUDE_MODEL` env var > detected from streaming > undefined. Testing utilities `clearCachedDetectedModel()` and `getCachedDetectedModel()` are exported for test isolation.
+
 ### Context file loading
 
 The agent-server loads adapter-specific context files (CLAUDE.md for Claude, AGENTS.md for Codex) and prepends their content to system prompts.

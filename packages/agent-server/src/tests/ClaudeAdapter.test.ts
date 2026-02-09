@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
-import { ClaudeAdapter, type QueryFn, parseCliVersionOutput } from ".././ClaudeAdapter.js"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import {
+  ClaudeAdapter,
+  type QueryFn,
+  parseCliVersionOutput,
+  clearCachedDetectedModel,
+  getCachedDetectedModel,
+} from ".././ClaudeAdapter.js"
 import type { AgentEvent, AgentStatusEvent } from ".././agentTypes.js"
 import * as loadClaudeMdModule from "../lib/loadClaudeMd.js"
 
@@ -55,6 +61,13 @@ describe("ClaudeAdapter", () => {
     vi.clearAllMocks()
     // Default: no CLAUDE.md files
     mockLoadClaudeMdSync.mockReturnValue(null)
+    // Clear the module-level model cache before each test
+    clearCachedDetectedModel()
+  })
+
+  afterEach(() => {
+    // Clean up the module-level model cache after each test
+    clearCachedDetectedModel()
   })
 
   describe("runQuery sets status to idle on completion", () => {
@@ -1485,6 +1498,176 @@ describe("ClaudeAdapter", () => {
 
         const info = adapter.getInfo()
         expect(info.model).toBe("claude-sonnet-4-20250514")
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.CLAUDE_MODEL
+        } else {
+          process.env.CLAUDE_MODEL = originalEnv
+        }
+      }
+    })
+
+    it("captures model from message_start events and updates getInfo()", async () => {
+      const sdkMessages = [
+        {
+          type: "stream_event",
+          event: {
+            type: "message_start",
+            message: {
+              model: "claude-opus-4-6-20260101",
+              usage: { input_tokens: 100 },
+            },
+          },
+        },
+        {
+          type: "stream_event",
+          event: {
+            type: "content_block_delta",
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        {
+          type: "stream_event",
+          event: { type: "message_stop" },
+        },
+        {
+          type: "result",
+          subtype: "success",
+          result: "Hello",
+        },
+      ]
+
+      // Create adapter without explicit model or CLAUDE_MODEL env var
+      const originalEnv = process.env.CLAUDE_MODEL
+      try {
+        delete process.env.CLAUDE_MODEL
+
+        adapter = new ClaudeAdapter({
+          queryFn: createMockQueryFn(sdkMessages),
+          apiKey: "test-key",
+        })
+
+        // Before any query, model should be undefined
+        expect(adapter.getInfo().model).toBeUndefined()
+
+        await adapter.start({ cwd: "/tmp" })
+        adapter.send({ type: "user_message", content: "Hi" })
+
+        // Wait for the query to complete
+        await vi.waitFor(() => {
+          expect(adapter.status).toBe("idle")
+        })
+
+        // After processing message_start, model should be detected
+        expect(adapter.getInfo().model).toBe("claude-opus-4-6-20260101")
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.CLAUDE_MODEL
+        } else {
+          process.env.CLAUDE_MODEL = originalEnv
+        }
+      }
+    })
+
+    it("does not override explicit model with detected model", async () => {
+      const sdkMessages = [
+        {
+          type: "stream_event",
+          event: {
+            type: "message_start",
+            message: {
+              model: "claude-opus-4-6-20260101",
+              usage: { input_tokens: 100 },
+            },
+          },
+        },
+        {
+          type: "result",
+          subtype: "success",
+          result: "Hello",
+        },
+      ]
+
+      // Create adapter with explicit model
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn(sdkMessages),
+        apiKey: "test-key",
+        model: "claude-sonnet-4-20250514",
+      })
+
+      // Model should be the explicit one
+      expect(adapter.getInfo().model).toBe("claude-sonnet-4-20250514")
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Wait for the query to complete
+      await vi.waitFor(() => {
+        expect(adapter.status).toBe("idle")
+      })
+
+      // Explicit model should still be returned (not overridden by detected)
+      expect(adapter.getInfo().model).toBe("claude-sonnet-4-20250514")
+    })
+
+    it("module-level cache allows new adapter instances to return detected model", async () => {
+      const sdkMessages = [
+        {
+          type: "stream_event",
+          event: {
+            type: "message_start",
+            message: {
+              model: "claude-opus-4-6-20260101",
+              usage: { input_tokens: 100 },
+            },
+          },
+        },
+        {
+          type: "stream_event",
+          event: { type: "message_stop" },
+        },
+        {
+          type: "result",
+          subtype: "success",
+          result: "Hello",
+        },
+      ]
+
+      // Clear cache and env var
+      clearCachedDetectedModel()
+      const originalEnv = process.env.CLAUDE_MODEL
+      try {
+        delete process.env.CLAUDE_MODEL
+
+        // First adapter detects the model
+        const adapter1 = new ClaudeAdapter({
+          queryFn: createMockQueryFn(sdkMessages),
+          apiKey: "test-key",
+        })
+
+        // Before query, no model detected
+        expect(adapter1.getInfo().model).toBeUndefined()
+        expect(getCachedDetectedModel()).toBeUndefined()
+
+        await adapter1.start({ cwd: "/tmp" })
+        adapter1.send({ type: "user_message", content: "Hi" })
+
+        // Wait for the query to complete
+        await vi.waitFor(() => {
+          expect(adapter1.status).toBe("idle")
+        })
+
+        // After query, module-level cache should be set
+        expect(getCachedDetectedModel()).toBe("claude-opus-4-6-20260101")
+
+        // Create a NEW adapter without running any queries
+        // It should still return the cached model
+        const adapter2 = new ClaudeAdapter({
+          queryFn: createMockQueryFn([]),
+          apiKey: "test-key",
+        })
+
+        expect(adapter2.getInfo().model).toBe("claude-opus-4-6-20260101")
       } finally {
         if (originalEnv === undefined) {
           delete process.env.CLAUDE_MODEL

@@ -59,7 +59,14 @@ vi.mock("@herbcaudill/agent-view", () => ({
       )}
     </div>
   ),
-  SessionPicker: ({ sessions, currentSessionId, onSelectSession, disabled, taskId, taskTitle }: any) => (
+  SessionPicker: ({
+    sessions,
+    currentSessionId,
+    onSelectSession,
+    disabled,
+    taskId,
+    taskTitle,
+  }: any) => (
     <div data-testid="session-picker" data-disabled={disabled}>
       {taskId && (
         <div data-testid="session-picker-task-info">
