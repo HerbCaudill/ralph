@@ -86,6 +86,11 @@ export function useRalphLoop(
         }
         break
 
+      case "streaming_state":
+        // Toggle streaming state based on agent processing status
+        setIsStreaming(data.isStreaming)
+        break
+
       case "error":
         console.error("[useRalphLoop] Worker error:", data.error)
         break

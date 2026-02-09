@@ -429,6 +429,92 @@ describe("ralphWorker", () => {
     })
   })
 
+  describe("status message handling (r-az2w9)", () => {
+    it("should broadcast streaming_state when receiving status 'processing'", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      port.postMessage.mockClear()
+
+      // Simulate the server sending status processing
+      state.ws!.onmessage!({ data: JSON.stringify({ type: "status", status: "processing" }) })
+
+      const streamingStateMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "streaming_state")
+
+      expect(streamingStateMessages).toHaveLength(1)
+      expect(streamingStateMessages[0]).toEqual({
+        type: "streaming_state",
+        workspaceId,
+        isStreaming: true,
+      })
+    })
+
+    it("should broadcast streaming_state false when receiving status 'idle'", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      port.postMessage.mockClear()
+
+      // Simulate the server sending status idle
+      state.ws!.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+
+      const streamingStateMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "streaming_state")
+
+      expect(streamingStateMessages).toHaveLength(1)
+      expect(streamingStateMessages[0]).toEqual({
+        type: "streaming_state",
+        workspaceId,
+        isStreaming: false,
+      })
+    })
+
+    it("should also broadcast status as a generic event", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      port.postMessage.mockClear()
+
+      // Simulate the server sending status processing
+      state.ws!.onmessage!({ data: JSON.stringify({ type: "status", status: "processing" }) })
+
+      const eventMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "event")
+
+      expect(eventMessages).toHaveLength(1)
+      expect(eventMessages[0]).toEqual({
+        type: "event",
+        workspaceId,
+        event: { type: "status", status: "processing" },
+      })
+    })
+  })
+
   describe("server connected message handling", () => {
     it("should not broadcast server 'connected' acknowledgment as a chat event", async () => {
       const port = createMockPort()

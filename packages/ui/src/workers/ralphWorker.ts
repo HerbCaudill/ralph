@@ -58,6 +58,7 @@ export type WorkerEvent =
       controlState?: ControlState
     }
   | { type: "pending_events"; workspaceId: string; events: unknown[] }
+  | { type: "streaming_state"; workspaceId: string; isStreaming: boolean }
 
 /** All connected ports (for cleanup). */
 export const allPorts: Set<MessagePort> = new Set()
@@ -207,6 +208,14 @@ function connectWorkspace(workspaceId: string): void {
         }
 
         if (message.type === "status") {
+          const status = message.status as string
+          // Broadcast streaming state change for UI to enable/disable input
+          broadcastToWorkspace(workspaceId, {
+            type: "streaming_state",
+            workspaceId,
+            isStreaming: status === "processing",
+          })
+          // Also broadcast as generic event for any listeners
           broadcastToWorkspace(workspaceId, { type: "event", workspaceId, event: message })
           return
         }

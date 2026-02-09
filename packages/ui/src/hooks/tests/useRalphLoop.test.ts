@@ -535,6 +535,88 @@ describe("useRalphLoop", () => {
     })
   })
 
+  describe("streaming state toggling (r-az2w9)", () => {
+    it("should set isStreaming to true when receiving status 'processing'", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Connect and start a session
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "connected",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_created",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "session-1",
+        })
+      })
+
+      // Initially isStreaming is true from session_created
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(true)
+      })
+
+      // Simulate status idle (agent finished processing)
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "streaming_state",
+          workspaceId: TEST_WORKSPACE_ID,
+          isStreaming: false,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(false)
+      })
+
+      // Simulate status processing (agent started processing again)
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "streaming_state",
+          workspaceId: TEST_WORKSPACE_ID,
+          isStreaming: true,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(true)
+      })
+    })
+
+    it("should toggle isStreaming false when status is idle", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Start a session (sets isStreaming true)
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_created",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "session-1",
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(true)
+      })
+
+      // Simulate status idle
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "streaming_state",
+          workspaceId: TEST_WORKSPACE_ID,
+          isStreaming: false,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isStreaming).toBe(false)
+      })
+    })
+  })
+
   describe("no auto-start behavior", () => {
     it("should NOT send a start message when subscribing to a workspace", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
