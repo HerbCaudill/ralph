@@ -6,11 +6,11 @@ import type { ChatEvent, TokenUsage } from "../types"
 const DEFAULT_CONTEXT_WINDOW_MAX = 200_000
 
 /**
- * Derive aggregate token usage from an array of events.
- * Returns `{ input, output }` totals recomputed whenever events change.
+ * Derive current token usage from the most recent usage event.
+ * Input tokens represent the current context window size; output tokens are from the latest turn.
  */
 export function useTokenUsage(
-  /** Events to aggregate token usage from */
+  /** Events to extract the latest token usage from */
   events: ChatEvent[],
 ): TokenUsage {
   return useMemo(() => aggregateTokenUsage(events), [events])

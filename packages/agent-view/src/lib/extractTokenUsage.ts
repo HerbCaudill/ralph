@@ -84,22 +84,21 @@ export function extractTokenUsageFromEvent(
 }
 
 /**
- * Aggregate token usage across an array of events.
- * Useful for calculating total usage from a batch or reconstructing from history.
+ * Get the current token usage from the most recent usage event.
+ * Input tokens represent the current context window size (each API turn sends the
+ * full conversation context). Output tokens are from the most recent turn.
  */
 export function aggregateTokenUsage(
-  /** Events to aggregate token usage from */
+  /** Events to extract the latest token usage from */
   events: ChatEvent[],
 ): TokenUsage {
-  const total: TokenUsage = { input: 0, output: 0 }
-
-  for (const event of events) {
-    const usage = extractTokenUsageFromEvent(event)
+  // Walk backwards to find the most recent usage event
+  for (let i = events.length - 1; i >= 0; i--) {
+    const usage = extractTokenUsageFromEvent(events[i])
     if (usage) {
-      total.input += usage.input
-      total.output += usage.output
+      return usage
     }
   }
 
-  return total
+  return { input: 0, output: 0 }
 }

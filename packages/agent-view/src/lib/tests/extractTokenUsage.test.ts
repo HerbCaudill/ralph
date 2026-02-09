@@ -85,16 +85,16 @@ describe("extractTokenUsageFromEvent", () => {
 })
 
 describe("aggregateTokenUsage", () => {
-  it("sums usage across multiple events", () => {
+  it("returns the most recent usage event", () => {
     const events: ChatEvent[] = [
       { type: "result", usage: { inputTokens: 100, outputTokens: 50 } },
       { type: "assistant" },
       { type: "result", usage: { inputTokens: 200, outputTokens: 75 } },
     ]
-    expect(aggregateTokenUsage(events)).toEqual({ input: 300, output: 125 })
+    expect(aggregateTokenUsage(events)).toEqual({ input: 200, output: 75 })
   })
 
-  it("sums usage from turn_usage events (multi-turn sessions)", () => {
+  it("returns the latest turn_usage event (current context size)", () => {
     const events: ChatEvent[] = [
       { type: "turn_usage", usage: { inputTokens: 1000, outputTokens: 300 } },
       { type: "assistant" },
@@ -102,7 +102,7 @@ describe("aggregateTokenUsage", () => {
       { type: "turn_usage", usage: { inputTokens: 1200, outputTokens: 400 } },
       { type: "result" }, // result without usage (per-turn events cover it)
     ]
-    expect(aggregateTokenUsage(events)).toEqual({ input: 2200, output: 700 })
+    expect(aggregateTokenUsage(events)).toEqual({ input: 1200, output: 400 })
   })
 
   it("returns zeros for empty array", () => {
