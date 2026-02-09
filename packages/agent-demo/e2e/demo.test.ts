@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test"
 
-test.describe("Agent Chat Demo", () => {
+// Unskip these tests if necessary - they run against a real LLM so we don't want to run them every time
+test.describe.skip("Agent Chat Demo", () => {
   // Clear localStorage before each test to ensure test isolation
   test.beforeEach(async ({ page }) => {
     // Navigate first so we have access to localStorage for this origin
@@ -10,8 +11,7 @@ test.describe("Agent Chat Demo", () => {
     await page.reload()
   })
 
-  // Skipped: flaky — second message intermittently doesn't get "Paris" response (r-3m310)
-  test.skip("user can type and send a message", async ({ page }) => {
+  test("user can type and send a message", async ({ page }) => {
     await expect(page.getByText("connected")).toBeVisible()
 
     const input = page.getByPlaceholder("Send a message…")
