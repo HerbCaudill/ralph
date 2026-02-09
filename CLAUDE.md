@@ -379,6 +379,7 @@ Messages are delivered via `MessageQueue` (async iterable) through the Claude Ag
 - Use the shared Dialog component from `@herbcaudill/components` instead of native `<dialog>` elements
 - Use discriminated `*ChatEvent` interfaces (e.g. `AssistantChatEvent`, `UserMessageChatEvent`) with type-guard functions in `packages/agent-view/src/lib/is*.ts`
 - `ToolUseChatEvent` includes `toolUseId` for matching tool_use events with their corresponding tool_result events. This enables consistent rendering of tool output across different event flows (task chat vs Ralph panel)
+- Streaming `tool_use` inputs can arrive in `content_block_start`; `useStreamingState` preserves that input when no `input_json_delta` is emitted so commands render in the Ralph panel.
 - Deprecated aliases (`ErrorEventData`, `UserMessageEvent`, etc.) exist for backward compatibility — don't use in new code
 
 ### Controller/presentational pattern

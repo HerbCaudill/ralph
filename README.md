@@ -79,6 +79,7 @@ Each demo proxies `/api` and `/ws` requests to its backend server via Vite dev s
 5. Exits when no tasks remain (`<promise>COMPLETE</promise>`)
 
 Ralph integrates with [beads](https://github.com/HerbCaudill/beads) for issue tracking, but works without it too.
+Streaming tool_use inputs can be emitted at `content_block_start`; the UI preserves those inputs so commands render in the Ralph panel.
 
 ## Development
 

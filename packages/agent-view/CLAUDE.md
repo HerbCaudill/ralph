@@ -35,6 +35,8 @@ Host applications provide handler callbacks; the hook handles platform-aware key
 
 Tool output visibility is controlled globally via `toolOutput.isVisible`, while each `ToolUseCard` can be toggled independently by clicking its header.
 
+Tool use summaries accept tool input as objects or JSON strings; JSON strings are parsed before rendering summaries (for example, Bash commands).
+
 ## useAgentChat hook
 
 WebSocket-based hook for managing agent chat sessions. Handles connection lifecycle, session persistence, and message streaming.

@@ -47,6 +47,8 @@ interface BlockAccumulator {
   thinkingFragments?: string[]
   /** For tool_use blocks: accumulated JSON fragments */
   inputFragments?: string[]
+  /** For tool_use blocks: initial input provided at content_block_start */
+  initialInput?: string
   /** For tool_use blocks: stable ID and name */
   id?: string
   name?: string
@@ -84,7 +86,7 @@ function resolveAccumulator(acc: BlockAccumulator): StreamingContentBlock {
         type: "tool_use",
         id: acc.id!,
         name: acc.name!,
-        input: acc.inputFragments?.join("") || "",
+        input: acc.inputFragments?.join("") || acc.initialInput || "",
       }
   }
 }
@@ -311,11 +313,17 @@ export function useStreamingState(events: ChatEvent[]): {
                 thinkingFragments: [],
               })
             } else if (block.type === "tool_use") {
+              const rawInput = (block as { input?: unknown }).input
+              const initialInput =
+                rawInput == null ? undefined
+                : typeof rawInput === "string" ? rawInput
+                : JSON.stringify(rawInput)
               state.currentMessage.accumulators.push({
                 type: "tool_use",
                 id: block.id,
                 name: block.name,
                 inputFragments: [],
+                initialInput,
               })
             }
             state.currentBlockIndex = state.currentMessage.accumulators.length - 1
