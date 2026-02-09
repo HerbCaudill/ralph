@@ -798,6 +798,41 @@ describe("ralphWorker", () => {
         }),
       )
     })
+
+    it("should auto-resume (transition to running) when sending a message while paused (r-kapsj)", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Set up paused state with session
+      state.controlState = "paused"
+      state.currentSessionId = "session-123"
+      port.postMessage.mockClear()
+
+      // Send a message while paused
+      handlePortMessage({ type: "message", workspaceId, text: "Hello from pause" }, port)
+
+      // Should auto-transition to running
+      expect(state.controlState).toBe("running")
+
+      // Should broadcast state_change to running
+      const stateChangeMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "state_change")
+
+      expect(stateChangeMessages).toHaveLength(1)
+      expect(stateChangeMessages[0]).toEqual({
+        type: "state_change",
+        workspaceId,
+        state: "running",
+      })
+    })
   })
 
   /** Helper to create a WebSocket event with the marker in an assistant content block. */

@@ -620,7 +620,11 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
 
     case "message": {
       const state = getWorkspace(message.workspaceId)
-      if (state.controlState !== "idle") {
+      if (state.controlState === "paused") {
+        // Auto-resume: transition to running when user sends a message while paused
+        setControlState(message.workspaceId, "running")
+        sendMessageToWorkspace(message.workspaceId, message.text)
+      } else if (state.controlState === "running") {
         sendMessageToWorkspace(message.workspaceId, message.text)
       } else {
         broadcastToWorkspace(message.workspaceId, {
