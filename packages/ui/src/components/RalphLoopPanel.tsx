@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import {
   IconRobot,
   IconPlugConnected,
@@ -17,6 +18,7 @@ import {
   useContextWindow,
 } from "@herbcaudill/agent-view"
 import { TopologySpinner } from "./TopologySpinner"
+import { createRalphEventRenderers } from "@/lib/createRalphEventRenderers"
 import type {
   ChatEvent,
   ControlState,
@@ -50,6 +52,9 @@ export function RalphLoopPanel({
 }: RalphLoopPanelProps) {
   const tokenUsage = useTokenUsage(events)
   const contextWindow = useContextWindow(events)
+
+  // Custom event renderers for Ralph-specific events (task lifecycle, promise complete)
+  const customEventRenderers = useMemo(() => createRalphEventRenderers(), [])
 
   const isConnected = connectionStatus === "connected"
   const isSessionActive = controlState !== "idle"
@@ -133,7 +138,7 @@ export function RalphLoopPanel({
 
   return (
     <div className={className ?? "flex h-full flex-col"}>
-      <AgentViewProvider>
+      <AgentViewProvider value={{ customEventRenderers }}>
         <AgentView
           events={events}
           isStreaming={isStreaming}

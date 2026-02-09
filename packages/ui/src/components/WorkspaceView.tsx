@@ -27,6 +27,7 @@ import {
 } from "@herbcaudill/beads-view"
 import { useAgentHotkeys, type ChatInputHandle } from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { createRalphEventRenderers } from "@/lib/createRalphEventRenderers"
 
 /**
  * Workspace view — renders the main Ralph UI for a specific workspace.
@@ -78,7 +79,7 @@ export function WorkspaceView() {
   useAccentColor(workspace?.accentColor)
 
   // Task state from beads-view
-  const { refresh } = useTasks()
+  const { tasks, refresh } = useTasks({ all: true })
   const { selectedTask, openDialogById, closeDialog } = useTaskDialog({
     onTaskUpdated: refresh,
     onTaskDeleted: refresh,
@@ -105,6 +106,9 @@ export function WorkspaceView() {
     }),
     [showToolOutput],
   )
+
+  // Custom event renderers for Ralph-specific events (task lifecycle, promise complete)
+  const customEventRenderers = useMemo(() => createRalphEventRenderers(), [])
 
   // Command palette keyboard listener (Cmd+;)
   useEffect(() => {
@@ -268,7 +272,12 @@ export function WorkspaceView() {
       branch={workspace?.branch}
       workspacePath={workspace?.path}
       isStoppingAfterCurrent={isStoppingAfterCurrent}
-      context={{ toolOutput: toolOutputContext, workspacePath: workspace?.path }}
+      context={{
+        toolOutput: toolOutputContext,
+        workspacePath: workspace?.path,
+        customEventRenderers,
+        tasks,
+      }}
       onSendMessage={handleRalphSend}
       onStart={start}
       onPause={pause}
