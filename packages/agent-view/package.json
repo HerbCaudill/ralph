@@ -29,12 +29,12 @@
     "src/styles.css"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "build-storybook": "storybook build",
     "dev": "tsc --watch",
     "format": "prettier --write . --log-level silent",
     "storybook": "storybook dev -p 6007",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
     "@herbcaudill/agent-view-theme": "workspace:*",
