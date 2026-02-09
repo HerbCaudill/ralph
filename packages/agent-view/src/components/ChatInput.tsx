@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
-import { IconSend2 } from "@tabler/icons-react"
+import { IconArrowUp } from "@tabler/icons-react"
 import { InputGroup, InputGroupAddon, InputGroupButton } from "@herbcaudill/components"
 import { cn } from "../lib/utils"
 
@@ -77,16 +77,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             "max-h-[200px] overflow-auto",
           )}
         />
-        <InputGroupAddon align="inline-end" className="pr-1.5">
+        <InputGroupAddon align="inline-end" className="self-end pb-2 pr-2">
           <InputGroupButton
             onClick={handleSend}
             disabled={!canSend}
             title="Send message"
             size="icon-xs"
             variant="default"
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            <IconSend2 size={18} stroke={1.5} />
+            <IconArrowUp className="size-4" />
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
