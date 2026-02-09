@@ -603,4 +603,200 @@ describe("ralphWorker", () => {
       expect(allPorts.has(port)).toBe(false)
     })
   })
+
+  describe("pause and resume (r-57grj)", () => {
+    it("should set controlState to 'paused' (not 'idle') when pausing", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      // Subscribe and start
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Start the session
+      handlePortMessage({ type: "start", workspaceId }, port)
+      expect(state.controlState).toBe("running")
+
+      // Pause
+      handlePortMessage({ type: "pause", workspaceId }, port)
+
+      // State should be paused, not idle
+      expect(state.controlState).toBe("paused")
+    })
+
+    it("should preserve currentSessionId when pausing", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Simulate session creation
+      state.currentSessionId = "session-123"
+      state.controlState = "running"
+
+      // Pause
+      handlePortMessage({ type: "pause", workspaceId }, port)
+
+      // Session ID should be preserved
+      expect(state.currentSessionId).toBe("session-123")
+      expect(state.controlState).toBe("paused")
+    })
+
+    it("should transition from 'paused' to 'running' when resuming", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Set up paused state with an existing session
+      state.controlState = "paused"
+      state.currentSessionId = "session-123"
+
+      // Resume
+      handlePortMessage({ type: "resume", workspaceId }, port)
+
+      // State should be running again
+      expect(state.controlState).toBe("running")
+      expect(state.currentSessionId).toBe("session-123")
+    })
+
+    it("should not change state when resuming from idle (requires paused)", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      // Ensure idle state
+      expect(state.controlState).toBe("idle")
+
+      // Resume should have no effect when not paused
+      handlePortMessage({ type: "resume", workspaceId }, port)
+
+      expect(state.controlState).toBe("idle")
+    })
+
+    it("should not change state when resuming without a session ID", () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      // Set paused but without a session
+      state.controlState = "paused"
+      state.currentSessionId = null
+
+      // Resume should have no effect without a session
+      handlePortMessage({ type: "resume", workspaceId }, port)
+
+      expect(state.controlState).toBe("paused")
+    })
+
+    it("should broadcast state_change event when pausing", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Start
+      handlePortMessage({ type: "start", workspaceId }, port)
+      port.postMessage.mockClear()
+
+      // Pause
+      handlePortMessage({ type: "pause", workspaceId }, port)
+
+      // Should broadcast state_change to paused
+      const stateChangeMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "state_change")
+
+      expect(stateChangeMessages).toHaveLength(1)
+      expect(stateChangeMessages[0]).toEqual({
+        type: "state_change",
+        workspaceId,
+        state: "paused",
+      })
+    })
+
+    it("should broadcast state_change event when resuming", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Set up paused state
+      state.controlState = "paused"
+      state.currentSessionId = "session-123"
+      port.postMessage.mockClear()
+
+      // Resume
+      handlePortMessage({ type: "resume", workspaceId }, port)
+
+      // Should broadcast state_change to running
+      const stateChangeMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "state_change")
+
+      expect(stateChangeMessages).toHaveLength(1)
+      expect(stateChangeMessages[0]).toEqual({
+        type: "state_change",
+        workspaceId,
+        state: "running",
+      })
+    })
+
+    it("should allow sending messages when paused (chat remains functional)", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Set up paused state with session
+      state.controlState = "paused"
+      state.currentSessionId = "session-123"
+      ;(state.ws as any).send.mockClear()
+
+      // Send a message while paused
+      handlePortMessage({ type: "message", workspaceId, text: "Hello from pause" }, port)
+
+      // Message should be sent (not rejected)
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({
+          type: "message",
+          sessionId: "session-123",
+          message: "Hello from pause",
+        }),
+      )
+    })
+  })
 })

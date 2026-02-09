@@ -20,7 +20,7 @@ interface SharedWorkerGlobalScope {
 }
 
 /** Control state for the Ralph loop. Matches agent-view ControlState. */
-export type ControlState = "idle" | "running"
+export type ControlState = "idle" | "running" | "paused"
 
 /** Per-workspace state managed by the worker. */
 interface WorkspaceState {
@@ -39,6 +39,7 @@ export type WorkerMessage =
   | { type: "unsubscribe_workspace"; workspaceId: string }
   | { type: "start"; workspaceId: string; sessionId?: string }
   | { type: "pause"; workspaceId: string }
+  | { type: "resume"; workspaceId: string }
   | { type: "message"; workspaceId: string; text: string }
   | { type: "get_state"; workspaceId: string }
   | { type: "restore_session"; workspaceId: string; sessionId: string; controlState?: ControlState }
@@ -437,7 +438,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
     }
 
     case "pause": {
-      // Pause immediately interrupts the agent and goes to idle
+      // Pause immediately interrupts the agent and goes to paused state
       const state = getWorkspace(message.workspaceId)
 
       // Send interrupt message to the agent-server if we have an active session
@@ -450,9 +451,43 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
         )
       }
 
-      setControlState(message.workspaceId, "idle")
+      setControlState(message.workspaceId, "paused")
       // Note: We don't clear currentSessionId or disconnect - this allows
       // viewing past events and sending new messages to continue the session
+      break
+    }
+
+    case "resume": {
+      // Resume from paused state — continue the current session
+      const state = getWorkspace(message.workspaceId)
+      if (state.controlState === "paused" && state.currentSessionId) {
+        setControlState(message.workspaceId, "running")
+
+        // Fetch and send the Ralph prompt to continue the session
+        if (state.ws?.readyState === WebSocket.OPEN) {
+          fetch(`${self.location.protocol}//${self.location.host}/api/prompts/ralph`)
+            .then(res => res.json())
+            .then((data: { prompt: string }) => {
+              if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+                state.ws.send(
+                  JSON.stringify({
+                    type: "message",
+                    sessionId: state.currentSessionId,
+                    message: data.prompt,
+                    isSystemPrompt: true,
+                  }),
+                )
+              }
+            })
+            .catch(err => {
+              broadcastToWorkspace(message.workspaceId, {
+                type: "error",
+                workspaceId: message.workspaceId,
+                error: `Failed to load Ralph prompt: ${err.message}`,
+              })
+            })
+        }
+      }
       break
     }
 

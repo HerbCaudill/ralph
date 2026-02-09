@@ -19,8 +19,10 @@ export interface ControlBarProps {
   isConnected: boolean
   /** Whether currently stopping after the current session. */
   isStoppingAfterCurrent?: boolean
-  /** Called when start button is clicked. */
+  /** Called when start button is clicked (when idle). */
   onStart?: () => void
+  /** Called when resume button is clicked (when paused). */
+  onResume?: () => void
   /** Called when pause button is clicked. */
   onPause?: () => void
   /** Called when stop-after-current button is clicked. */
@@ -40,6 +42,7 @@ export function ControlBar({
   isConnected,
   isStoppingAfterCurrent = false,
   onStart,
+  onResume,
   onPause,
   onStopAfterCurrent,
   onCancelStopAfterCurrent,
@@ -48,8 +51,11 @@ export function ControlBar({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isIdle = controlState === "idle"
   const isRunning = controlState === "running"
-  const canStart = !isRunning && isConnected
+  const isPaused = controlState === "paused"
+  const canStart = isIdle && isConnected
+  const canResume = isPaused && isConnected
   const canPause = isRunning && !isStoppingAfterCurrent
   const canStopAfterCurrent = isRunning && !isStoppingAfterCurrent
 
@@ -67,6 +73,21 @@ export function ControlBar({
       setIsLoading(false)
     }
   }, [onStart])
+
+  /**
+   * Resume a paused Ralph session.
+   */
+  const handleResume = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      onResume?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resume")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [onResume])
 
   /**
    * Pause/interrupt the current Ralph session immediately.
@@ -115,14 +136,14 @@ export function ControlBar({
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
-      {/* Start button */}
+      {/* Start/Resume button - shows Resume when paused, Start otherwise */}
       <Button
         variant="outline"
         size="icon-xs"
-        onClick={handleStart}
-        disabled={!canStart || isLoading}
-        title="Start"
-        aria-label="Start"
+        onClick={isPaused ? handleResume : handleStart}
+        disabled={!(canStart || canResume) || isLoading}
+        title={isPaused ? "Resume" : "Start"}
+        aria-label={isPaused ? "Resume" : "Start"}
       >
         <IconPlayerPlayFilled size={14} stroke={1.5} />
       </Button>

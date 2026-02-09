@@ -210,6 +210,12 @@ export function useRalphLoop(
     postMessage({ type: "pause", workspaceId })
   }, [workspaceId, postMessage])
 
+  /** Resume the Ralph loop from paused state. */
+  const resume = useCallback(() => {
+    if (!workspaceId) return
+    postMessage({ type: "resume", workspaceId })
+  }, [workspaceId, postMessage])
+
   /** Send a message to Claude within the current session. */
   const sendMessage = useCallback(
     (message: string) => {
@@ -227,6 +233,7 @@ export function useRalphLoop(
     sessionId,
     start,
     pause,
+    resume,
     sendMessage,
   }
 }
@@ -240,7 +247,7 @@ export interface UseRalphLoopReturn {
   events: ChatEvent[]
   /** Whether the agent is currently streaming a response. */
   isStreaming: boolean
-  /** Current state of the Ralph loop (idle or running). */
+  /** Current state of the Ralph loop (idle, running, or paused). */
   controlState: ControlState
   /** Status of the connection to the SharedWorker. */
   connectionStatus: ConnectionStatus
@@ -250,6 +257,8 @@ export interface UseRalphLoopReturn {
   start: () => void
   /** Pause/interrupt the Ralph loop immediately. */
   pause: () => void
+  /** Resume the Ralph loop from paused state. */
+  resume: () => void
   /** Send a message to Claude within the current session. */
   sendMessage: (message: string) => void
 }

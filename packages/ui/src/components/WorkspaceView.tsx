@@ -54,7 +54,7 @@ export function WorkspaceView() {
   }
 
   // Ralph loop state from SharedWorker
-  const { events, isStreaming, controlState, connectionStatus, start, pause, sendMessage } =
+  const { events, isStreaming, controlState, connectionStatus, start, pause, resume, sendMessage } =
     useRalphLoop(workspaceId)
 
   // Task chat state from agent-server
@@ -280,6 +280,7 @@ export function WorkspaceView() {
       }}
       onSendMessage={handleRalphSend}
       onStart={start}
+      onResume={resume}
       onPause={pause}
       onStopAfterCurrent={handleStopAfterCurrent}
       onCancelStopAfterCurrent={handleCancelStopAfterCurrent}

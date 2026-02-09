@@ -39,6 +39,7 @@ describe("ControlBar", () => {
     isConnected: true,
     isStoppingAfterCurrent: false,
     onStart: vi.fn(),
+    onResume: vi.fn(),
     onPause: vi.fn(),
     onStopAfterCurrent: vi.fn(),
     onCancelStopAfterCurrent: vi.fn(),
@@ -128,6 +129,62 @@ describe("ControlBar", () => {
 
       await waitFor(() => {
         expect(onPause).toHaveBeenCalledTimes(1)
+      })
+    })
+  })
+
+  describe("button states when paused (r-57grj)", () => {
+    it("shows Resume button (not Start) when paused", () => {
+      render(<ControlBar {...defaultProps} controlState="paused" />)
+      expect(screen.getByRole("button", { name: "Resume" })).toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: "Start" })).not.toBeInTheDocument()
+    })
+
+    it("enables Resume button when paused and connected", () => {
+      render(<ControlBar {...defaultProps} controlState="paused" />)
+      expect(screen.getByRole("button", { name: "Resume" })).not.toBeDisabled()
+    })
+
+    it("disables Resume button when paused but disconnected", () => {
+      render(<ControlBar {...defaultProps} controlState="paused" isConnected={false} />)
+      expect(screen.getByRole("button", { name: "Resume" })).toBeDisabled()
+    })
+
+    it("disables Pause button when paused", () => {
+      render(<ControlBar {...defaultProps} controlState="paused" />)
+      expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled()
+    })
+  })
+
+  describe("Resume button action (r-57grj)", () => {
+    it("calls onResume when Resume is clicked while paused", async () => {
+      const onResume = vi.fn()
+      render(<ControlBar {...defaultProps} controlState="paused" onResume={onResume} />)
+
+      fireEvent.click(screen.getByRole("button", { name: "Resume" }))
+
+      await waitFor(() => {
+        expect(onResume).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it("does not call onStart when Resume is clicked", async () => {
+      const onStart = vi.fn()
+      const onResume = vi.fn()
+      render(
+        <ControlBar
+          {...defaultProps}
+          controlState="paused"
+          onStart={onStart}
+          onResume={onResume}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole("button", { name: "Resume" }))
+
+      await waitFor(() => {
+        expect(onResume).toHaveBeenCalledTimes(1)
+        expect(onStart).not.toHaveBeenCalled()
       })
     })
   })

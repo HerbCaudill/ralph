@@ -34,6 +34,7 @@ export function RalphRunner({
   context,
   onSendMessage,
   onStart,
+  onResume,
   onPause,
   onStopAfterCurrent,
   onCancelStopAfterCurrent,
@@ -94,12 +95,13 @@ export function RalphRunner({
         <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs">
           {/* Left section: controls + status */}
           <div className="flex items-center gap-3">
-            {/* Control bar with Start/Pause/Stop-after-current buttons */}
+            {/* Control bar with Start/Resume/Pause/Stop-after-current buttons */}
             <ControlBar
               controlState={controlState}
               isConnected={isConnected}
               isStoppingAfterCurrent={isStoppingAfterCurrent}
               onStart={onStart}
+              onResume={onResume}
               onPause={onPause}
               onStopAfterCurrent={onStopAfterCurrent}
               onCancelStopAfterCurrent={onCancelStopAfterCurrent}
@@ -151,7 +153,7 @@ export type RalphRunnerProps = {
   events: ChatEvent[]
   /** Whether the agent is currently streaming/active. */
   isStreaming: boolean
-  /** Current control state (idle or running). */
+  /** Current control state (idle, running, or paused). */
   controlState: ControlState
   /** Connection status to the agent server. */
   connectionStatus: ConnectionStatus
@@ -167,8 +169,10 @@ export type RalphRunnerProps = {
   context?: Partial<AgentViewContextValue>
   /** Called when the user sends a message via the chat input. */
   onSendMessage: (message: string) => void
-  /** Called when start button is clicked. */
+  /** Called when start button is clicked (from idle state). */
   onStart?: () => void
+  /** Called when resume button is clicked (from paused state). */
+  onResume?: () => void
   /** Called when the pause button is clicked. */
   onPause: () => void
   /** Called when stop-after-current button is clicked. */
