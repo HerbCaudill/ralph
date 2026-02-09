@@ -487,6 +487,8 @@ Task closes → `saveEventLogAndAddComment()` saves to IndexedDB → closing com
 
 Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Core event types (AgentEvent, AgentMessageEvent, etc.) are type aliases re-exported from `@herbcaudill/agent-view`; wire protocol types and event guards remain defined locally. Node-only subpath (`@herbcaudill/ralph-shared/prompts`): prompt loading utilities. Beads types import from `@herbcaudill/beads-sdk`.
 
+**Worker names** (`@herbcaudill/ralph-shared`): `WORKER_NAMES` array of Simpsons character names, `WorkerName` type, `getWorkerName(index)` for indexing with wrapping, and `isValidWorkerName(name)` for validation. Used for branch naming (`ralph/<name>/<task-id>`) and task assignment (`--assignee=<name>`).
+
 ## Environment variables
 
 - `ANTHROPIC_API_KEY` - Required for Claude agent
