@@ -1,35 +1,40 @@
 # Suggested Commands
 
 ## Development
-| Command | Description |
-|---------|-------------|
-| `pnpm build` | Build all packages |
-| `pnpm --filter @herbcaudill/ralph-shared build` | Build shared package (required after changes) |
-| `pnpm typecheck` | Typecheck all packages |
-| `pnpm cli` | Run Ralph CLI in development |
-| `pnpm ui` | Start UI dev server (Vite) |
-| `pnpm serve` | Start server only |
-| `pnpm dev` | Start both server and UI |
-| `pnpm storybook` | Start Storybook |
+
+| Command                            | Description                                   |
+| ---------------------------------- | --------------------------------------------- |
+| `pnpm build`                       | Build all packages                            |
+| `pnpm --filter ralph-shared build` | Build shared package (required after changes) |
+| `pnpm typecheck`                   | Typecheck all packages                        |
+| `pnpm cli`                         | Run Ralph CLI in development                  |
+| `pnpm ui`                          | Start UI dev server (Vite)                    |
+| `pnpm serve`                       | Start server only                             |
+| `pnpm dev`                         | Start both server and UI                      |
+| `pnpm storybook`                   | Start Storybook                               |
 
 ## Testing
-| Command | Description |
-|---------|-------------|
-| `pnpm test:all` | Run all tests (CLI + UI) |
+
+| Command             | Description              |
+| ------------------- | ------------------------ |
+| `pnpm test:all`     | Run all tests (CLI + UI) |
 | `pnpm test:changed` | Only affected unit tests |
-| `pnpm cli:test` | CLI tests only |
-| `pnpm ui:test` | UI tests only |
-| `pnpm test:pw` | Playwright E2E tests |
+| `pnpm cli:test`     | CLI tests only           |
+| `pnpm ui:test`      | UI tests only            |
+| `pnpm test:pw`      | Playwright E2E tests     |
 
 ## Formatting & Quality
-| Command | Description |
-|---------|-------------|
+
+| Command       | Description                        |
+| ------------- | ---------------------------------- |
 | `pnpm format` | Format changed files with Prettier |
 
 ## Publishing
-| Command | Description |
-|---------|-------------|
+
+| Command    | Description               |
+| ---------- | ------------------------- |
 | `pnpm pub` | Publish CLI + UI packages |
 
 ## System Utilities (macOS/Darwin)
+
 Standard unix commands: `git`, `ls`, `cd`, `grep`, `find`, `cat`, `mkdir`, `rm`, etc.
