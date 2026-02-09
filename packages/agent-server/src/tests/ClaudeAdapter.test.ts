@@ -630,6 +630,103 @@ describe("ClaudeAdapter", () => {
       expect(resultEvent.usage!.outputTokens).toBe(60)
     })
 
+    it("emits turn_usage events at message_stop for incremental usage tracking", async () => {
+      const sdkMessages = [
+        // Turn 1: message_start → content → message_delta → message_stop
+        {
+          type: "stream_event",
+          event: {
+            type: "message_start",
+            message: { usage: { input_tokens: 100, cache_creation_input_tokens: 0 } },
+          },
+        },
+        {
+          type: "stream_event",
+          event: {
+            type: "content_block_delta",
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        {
+          type: "stream_event",
+          event: {
+            type: "message_delta",
+            usage: { output_tokens: 50 },
+          },
+        },
+        { type: "stream_event", event: { type: "message_stop" } },
+        // Turn 2: message_start → content → message_delta → message_stop
+        {
+          type: "stream_event",
+          event: {
+            type: "message_start",
+            message: { usage: { input_tokens: 200 } },
+          },
+        },
+        {
+          type: "stream_event",
+          event: {
+            type: "content_block_delta",
+            delta: { type: "text_delta", text: "World" },
+          },
+        },
+        {
+          type: "stream_event",
+          event: {
+            type: "message_delta",
+            usage: { output_tokens: 75 },
+          },
+        },
+        { type: "stream_event", event: { type: "message_stop" } },
+        // Final result
+        {
+          type: "result",
+          subtype: "success",
+          result: "Done",
+          usage: { input_tokens: 300, output_tokens: 125 },
+        },
+      ]
+
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn(sdkMessages),
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      // Should have two turn_usage events
+      const turnUsageEvents = events.filter(e => e.type === "turn_usage") as Array<
+        AgentEvent & { usage: { inputTokens: number; outputTokens: number; totalTokens: number } }
+      >
+      expect(turnUsageEvents).toHaveLength(2)
+
+      // First turn: 100 input, 50 output
+      expect(turnUsageEvents[0].usage.inputTokens).toBe(100)
+      expect(turnUsageEvents[0].usage.outputTokens).toBe(50)
+
+      // Second turn: 200 input, 75 output
+      expect(turnUsageEvents[1].usage.inputTokens).toBe(200)
+      expect(turnUsageEvents[1].usage.outputTokens).toBe(75)
+
+      // Result event should NOT have usage (turn_usage events already cover it)
+      const resultEvent = events.find(e => e.type === "result") as AgentEvent & {
+        usage?: { inputTokens?: number; outputTokens?: number }
+      }
+      expect(resultEvent.usage).toBeUndefined()
+
+      // But conversation context should still track cumulative usage
+      const context = adapter.getConversationContext()
+      expect(context.usage.inputTokens).toBe(300)
+      expect(context.usage.outputTokens).toBe(125)
+    })
+
     it("deduplicates tool_use blocks when stream_event and top-level assistant both contain the same tool_use ID", async () => {
       const toolUseBlock = {
         type: "tool_use",

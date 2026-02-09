@@ -66,6 +66,20 @@ export function extractTokenUsageFromEvent(
     return null
   }
 
+  // Handle per-turn usage events (emitted at each message_stop during multi-turn queries)
+  if (event.type === "turn_usage") {
+    const usage = event.usage as NormalizedUsage | undefined
+    if (usage) {
+      const inputTokens = usage.inputTokens ?? usage.input_tokens ?? 0
+      const outputTokens = usage.outputTokens ?? usage.output_tokens ?? 0
+
+      if (inputTokens > 0 || outputTokens > 0) {
+        return { input: inputTokens, output: outputTokens }
+      }
+    }
+    return null
+  }
+
   return null
 }
 

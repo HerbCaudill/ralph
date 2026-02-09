@@ -165,6 +165,12 @@ export class ClaudeAdapter extends AgentAdapter {
   /** Usage accumulated from streaming lifecycle events (message_start, message_delta). */
   private streamingUsage = { inputTokens: 0, outputTokens: 0 }
 
+  /** Per-turn usage tracking (reset at each message_stop). */
+  private turnUsage = { inputTokens: 0, outputTokens: 0 }
+
+  /** Whether per-turn usage events were emitted during the current query. */
+  private emittedTurnUsage = false
+
   // Session tracking for retry/resume
   private currentSessionId: string | undefined
 
@@ -421,6 +427,8 @@ export class ClaudeAdapter extends AgentAdapter {
 
     // Reset streaming usage for this query
     this.streamingUsage = { inputTokens: 0, outputTokens: 0 }
+    this.turnUsage = { inputTokens: 0, outputTokens: 0 }
+    this.emittedTurnUsage = false
 
     while (attempt <= maxRetries) {
       this.abortController = new AbortController()
@@ -597,17 +605,18 @@ export class ClaudeAdapter extends AgentAdapter {
             this.currentAssistantMessage = null
           }
 
-          // Resolve usage: prefer SDK result usage, fall back to streaming lifecycle events
+          // Resolve usage: skip if per-turn events already emitted (prevents double-counting).
+          // Otherwise prefer SDK result usage, fall back to streaming lifecycle events.
           const hasStreamingUsage =
             this.streamingUsage.inputTokens > 0 || this.streamingUsage.outputTokens > 0
           const inputTokens =
             sdkUsage?.input_tokens ?? (hasStreamingUsage ? this.streamingUsage.inputTokens : 0)
           const outputTokens =
             sdkUsage?.output_tokens ?? (hasStreamingUsage ? this.streamingUsage.outputTokens : 0)
-          const hasUsage = sdkUsage || hasStreamingUsage
+          const hasUsage = !this.emittedTurnUsage && (sdkUsage || hasStreamingUsage)
 
-          // Update total usage
-          if (hasUsage) {
+          // Update total usage (always, for conversation context tracking)
+          if (sdkUsage || hasStreamingUsage) {
             this.totalUsage.inputTokens += inputTokens
             this.totalUsage.outputTokens += outputTokens
             this.totalUsage.totalTokens = this.totalUsage.inputTokens + this.totalUsage.outputTokens
@@ -946,17 +955,18 @@ export class ClaudeAdapter extends AgentAdapter {
           this.currentAssistantMessage = null
         }
 
-        // Resolve usage: prefer native event usage, fall back to streaming lifecycle events
+        // Resolve usage: skip if per-turn events already emitted (prevents double-counting).
+        // Otherwise prefer native event usage, fall back to streaming lifecycle events.
         const hasStreamUsage =
           this.streamingUsage.inputTokens > 0 || this.streamingUsage.outputTokens > 0
         const inTokens =
           nativeUsage?.input_tokens ?? (hasStreamUsage ? this.streamingUsage.inputTokens : 0)
         const outTokens =
           nativeUsage?.output_tokens ?? (hasStreamUsage ? this.streamingUsage.outputTokens : 0)
-        const hasAnyUsage = nativeUsage || hasStreamUsage
+        const hasAnyUsage = !this.emittedTurnUsage && (nativeUsage || hasStreamUsage)
 
-        // Update total usage
-        if (hasAnyUsage) {
+        // Update total usage (always, for conversation context tracking)
+        if (nativeUsage || hasStreamUsage) {
           this.totalUsage.inputTokens += inTokens
           this.totalUsage.outputTokens += outTokens
           this.totalUsage.totalTokens = this.totalUsage.inputTokens + this.totalUsage.outputTokens
@@ -1008,10 +1018,12 @@ export class ClaudeAdapter extends AgentAdapter {
           }
         }
         if (msg?.usage) {
-          this.streamingUsage.inputTokens +=
+          const turnInput =
             (msg.usage.input_tokens ?? 0) +
             (msg.usage.cache_creation_input_tokens ?? 0) +
             (msg.usage.cache_read_input_tokens ?? 0)
+          this.streamingUsage.inputTokens += turnInput
+          this.turnUsage.inputTokens = turnInput
         }
         break
       }
@@ -1021,13 +1033,31 @@ export class ClaudeAdapter extends AgentAdapter {
         const deltaUsage = nativeEvent.usage as { output_tokens?: number } | undefined
         if (deltaUsage?.output_tokens) {
           this.streamingUsage.outputTokens += deltaUsage.output_tokens
+          this.turnUsage.outputTokens += deltaUsage.output_tokens
         }
         break
       }
 
-      case "message_stop":
-        // Streaming lifecycle event - no usage data here
+      case "message_stop": {
+        // Emit per-turn usage so the UI can show token counts incrementally
+        // (rather than waiting for the final result event, which may never come
+        // if the session is interrupted)
+        if (this.turnUsage.inputTokens > 0 || this.turnUsage.outputTokens > 0) {
+          this.emit("event", {
+            type: "turn_usage",
+            timestamp: this.now(),
+            usage: {
+              inputTokens: this.turnUsage.inputTokens,
+              outputTokens: this.turnUsage.outputTokens,
+              totalTokens: this.turnUsage.inputTokens + this.turnUsage.outputTokens,
+            },
+          })
+          this.emittedTurnUsage = true
+        }
+        // Reset per-turn tracking for the next turn
+        this.turnUsage = { inputTokens: 0, outputTokens: 0 }
         break
+      }
 
       default:
         // Unknown event type - ignore

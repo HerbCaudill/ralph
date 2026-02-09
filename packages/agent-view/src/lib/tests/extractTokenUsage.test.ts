@@ -66,6 +66,22 @@ describe("extractTokenUsageFromEvent", () => {
     }
     expect(extractTokenUsageFromEvent(event)).toBeNull()
   })
+
+  it("extracts usage from turn_usage event", () => {
+    const event: ChatEvent = {
+      type: "turn_usage",
+      usage: { inputTokens: 500, outputTokens: 200, totalTokens: 700 },
+    }
+    expect(extractTokenUsageFromEvent(event)).toEqual({ input: 500, output: 200 })
+  })
+
+  it("returns null for turn_usage with zero usage", () => {
+    const event: ChatEvent = {
+      type: "turn_usage",
+      usage: { inputTokens: 0, outputTokens: 0 },
+    }
+    expect(extractTokenUsageFromEvent(event)).toBeNull()
+  })
 })
 
 describe("aggregateTokenUsage", () => {
@@ -76,6 +92,17 @@ describe("aggregateTokenUsage", () => {
       { type: "result", usage: { inputTokens: 200, outputTokens: 75 } },
     ]
     expect(aggregateTokenUsage(events)).toEqual({ input: 300, output: 125 })
+  })
+
+  it("sums usage from turn_usage events (multi-turn sessions)", () => {
+    const events: ChatEvent[] = [
+      { type: "turn_usage", usage: { inputTokens: 1000, outputTokens: 300 } },
+      { type: "assistant" },
+      { type: "tool_use" },
+      { type: "turn_usage", usage: { inputTokens: 1200, outputTokens: 400 } },
+      { type: "result" }, // result without usage (per-turn events cover it)
+    ]
+    expect(aggregateTokenUsage(events)).toEqual({ input: 2200, output: 700 })
   })
 
   it("returns zeros for empty array", () => {
