@@ -34,6 +34,15 @@ vi.mock("@herbcaudill/agent-view", () => ({
   ),
   useTokenUsage: () => ({ input: 1000, output: 500 }),
   useContextWindow: () => ({ used: 50000, max: 200000 }),
+  useAdapterInfo: (agentType: string) => {
+    if (agentType === "claude") return { version: "1.0.0", model: "claude-sonnet-4-20250514" }
+    return { version: undefined, model: undefined }
+  },
+  formatModelName: (modelId: string | undefined) => {
+    if (modelId === "claude-sonnet-4-20250514") return "Sonnet 4"
+    if (modelId === "claude-opus-4-5-20251101") return "Opus 4.5"
+    return modelId
+  },
   TokenUsageDisplay: ({ tokenUsage }: any) => (
     <div data-testid="token-usage">
       Tokens: {tokenUsage.input}/{tokenUsage.output}
@@ -248,6 +257,25 @@ describe("RalphRunner", () => {
       render(<RalphRunner {...defaultProps} isStoppingAfterCurrent={true} />)
       expect(screen.getByTestId("control-bar")).toHaveAttribute("data-stopping", "true")
       expect(screen.getByTestId("status-indicator")).toHaveAttribute("data-stopping", "true")
+    })
+
+    it("displays agent adapter name and formatted model in footer", () => {
+      render(<RalphRunner {...defaultProps} />)
+      const agentInfo = screen.getByTestId("agent-info")
+      expect(agentInfo).toHaveTextContent("Claude (Sonnet 4)")
+    })
+
+    it("displays agent adapter name without model when model is unavailable", () => {
+      render(<RalphRunner {...defaultProps} agentType="codex" />)
+      const agentInfo = screen.getByTestId("agent-info")
+      expect(agentInfo).toHaveTextContent("Codex")
+      expect(agentInfo).not.toHaveTextContent("(")
+    })
+
+    it("defaults agentType to claude", () => {
+      render(<RalphRunner {...defaultProps} />)
+      const agentInfo = screen.getByTestId("agent-info")
+      expect(agentInfo).toHaveTextContent("Claude")
     })
   })
 
