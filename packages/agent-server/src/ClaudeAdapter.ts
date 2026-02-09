@@ -341,7 +341,7 @@ export class ClaudeAdapter extends AgentAdapter {
     const interruptedEvent = {
       type: "interrupted" as const,
       timestamp: this.now(),
-      message: "Interrupted · What should Claude do instead?",
+      message: "Interrupted · What should Ralph do instead?",
     }
     this.emit("event", interruptedEvent)
 

@@ -189,14 +189,9 @@ export function handleWsConnection(
             ws.send(JSON.stringify({ type: "error", error: "sessionId is required" }))
             break
           }
-          manager
-            .interruptSession(sessionId)
-            .then(() => {
-              ws.send(JSON.stringify({ type: "interrupted", sessionId }))
-            })
-            .catch(err => {
-              ws.send(JSON.stringify({ type: "error", sessionId, error: (err as Error).message }))
-            })
+          manager.interruptSession(sessionId).catch(err => {
+            ws.send(JSON.stringify({ type: "error", sessionId, error: (err as Error).message }))
+          })
           break
         }
 
