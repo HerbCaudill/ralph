@@ -60,7 +60,7 @@ export function ToolUseCard({
   }
 
   return (
-    <div className={cn("max-w-[100ch] py-1.5 pr-12 pl-4", className)}>
+    <div className={cn("group/tool max-w-[100ch] py-1.5 pr-12 pl-4", className)}>
       <div
         className={cn("flex w-full items-center gap-2.5", hasExpandableContent && "cursor-pointer")}
         onClick={hasExpandableContent ? () => setIsToolOutputExpanded(prev => !prev) : undefined}
@@ -83,7 +83,10 @@ export function ToolUseCard({
           )}
 
           {hasExpandableContent && (
-            <span className="text-muted-foreground/50 shrink-0 text-xs">
+            <span
+              className="text-muted-foreground/50 shrink-0 text-xs opacity-0 transition-opacity group-hover/tool:opacity-100"
+              data-testid="toggle-indicator"
+            >
               {showToolOutput ? "▼" : "▶︎"}
             </span>
           )}
