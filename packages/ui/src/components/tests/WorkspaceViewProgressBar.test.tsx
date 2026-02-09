@@ -133,6 +133,7 @@ vi.mock("@herbcaudill/beads-view", () => {
     TaskDetailsController: () => null,
     updateTask: vi.fn(),
     deleteTask: vi.fn(),
+    useTaskMutations: () => ({ isConnected: false }),
   }
 })
 

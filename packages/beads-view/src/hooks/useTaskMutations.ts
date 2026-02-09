@@ -111,7 +111,7 @@ export function useTaskMutations(options: UseTaskMutationsOptions = {}): UseTask
         const message = JSON.parse(event.data as string) as { type: string; [key: string]: unknown }
 
         if (message.type === "mutation:event") {
-          const mutationMessage = message as MutationEventMessage
+          const mutationMessage = message as unknown as MutationEventMessage
           // Call onMutation callback if provided
           onMutation?.(mutationMessage.event)
           // Refresh tasks in the store

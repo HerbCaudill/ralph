@@ -6,6 +6,7 @@ import {
   useTasks,
   useTaskDialog,
   useTaskNavigation,
+  useTaskMutations,
   useBeadsHotkeys,
   useBeadsViewStore,
   useWorkspace,
@@ -34,6 +35,9 @@ function AppContent() {
   const clearTasks = useBeadsViewStore(state => state.clearTasks)
   const { state: ws, actions: wsActions } = useWorkspace({ onSwitchStart: clearTasks })
   const { isLoading, error, refresh } = useTasks({ all: true })
+
+  // Real-time task refresh via WebSocket
+  useTaskMutations({ workspacePath: ws.current?.path })
 
   // Apply workspace accent color as CSS custom property
   useEffect(() => {

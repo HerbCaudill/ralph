@@ -20,6 +20,7 @@ import {
   useTasks,
   useTaskDialog,
   useTaskNavigation,
+  useTaskMutations,
   useBeadsViewStore,
   beadsViewStore,
   selectSelectedTaskId,
@@ -108,6 +109,9 @@ export function WorkspaceView() {
 
   // Task state from beads-view
   const { tasks, refresh } = useTasks({ all: true })
+
+  // Real-time task refresh via WebSocket
+  useTaskMutations({ workspacePath: workspace?.path })
 
   // Sync initial task count to beads-view store so TaskProgressBar renders
   useEffect(() => {

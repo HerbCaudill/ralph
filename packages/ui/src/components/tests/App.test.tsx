@@ -150,6 +150,7 @@ vi.mock("@herbcaudill/beads-view", () => {
       task ? <div data-testid="task-details-controller">{task.title}</div> : null,
     updateTask: vi.fn(),
     deleteTask: vi.fn(),
+    useTaskMutations: () => ({ isConnected: false }),
   }
 })
 
