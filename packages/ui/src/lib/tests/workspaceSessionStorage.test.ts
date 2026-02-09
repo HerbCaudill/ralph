@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import {
   getSessionStorageKey,
+  getStateStorageKey,
   saveWorkspaceSession,
   loadWorkspaceSession,
   clearWorkspaceSession,
+  saveWorkspaceState,
+  loadWorkspaceState,
+  clearWorkspaceState,
 } from "../workspaceSessionStorage"
 
 describe("workspaceSessionStorage", () => {
@@ -61,6 +65,72 @@ describe("workspaceSessionStorage", () => {
 
     it("should not throw when clearing a non-existent session", () => {
       expect(() => clearWorkspaceSession("herbcaudill/ralph")).not.toThrow()
+    })
+  })
+
+  describe("getStateStorageKey", () => {
+    it("should return the prefixed key for a workspace state", () => {
+      expect(getStateStorageKey("herbcaudill/ralph")).toBe(
+        "ralph-workspace-state:herbcaudill/ralph",
+      )
+    })
+  })
+
+  describe("saveWorkspaceState", () => {
+    it("should store 'running' state in localStorage", () => {
+      saveWorkspaceState("herbcaudill/ralph", "running")
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("running")
+    })
+
+    it("should store 'paused' state in localStorage", () => {
+      saveWorkspaceState("herbcaudill/ralph", "paused")
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("paused")
+    })
+
+    it("should clear state from localStorage when set to 'idle'", () => {
+      saveWorkspaceState("herbcaudill/ralph", "running")
+      saveWorkspaceState("herbcaudill/ralph", "idle")
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
+    })
+
+    it("should store state independently per workspace", () => {
+      saveWorkspaceState("herbcaudill/ralph", "running")
+      saveWorkspaceState("herbcaudill/other", "paused")
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("running")
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/other")).toBe("paused")
+    })
+  })
+
+  describe("loadWorkspaceState", () => {
+    it("should return null when no state is stored", () => {
+      expect(loadWorkspaceState("herbcaudill/ralph")).toBeNull()
+    })
+
+    it("should return 'running' when stored", () => {
+      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
+      expect(loadWorkspaceState("herbcaudill/ralph")).toBe("running")
+    })
+
+    it("should return 'paused' when stored", () => {
+      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "paused")
+      expect(loadWorkspaceState("herbcaudill/ralph")).toBe("paused")
+    })
+
+    it("should return null for invalid values", () => {
+      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "invalid")
+      expect(loadWorkspaceState("herbcaudill/ralph")).toBeNull()
+    })
+  })
+
+  describe("clearWorkspaceState", () => {
+    it("should remove the stored state", () => {
+      saveWorkspaceState("herbcaudill/ralph", "running")
+      clearWorkspaceState("herbcaudill/ralph")
+      expect(loadWorkspaceState("herbcaudill/ralph")).toBeNull()
+    })
+
+    it("should not throw when clearing a non-existent state", () => {
+      expect(() => clearWorkspaceState("herbcaudill/ralph")).not.toThrow()
     })
   })
 })

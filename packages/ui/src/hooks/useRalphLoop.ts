@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import type { ChatEvent, ControlState, ConnectionStatus } from "@herbcaudill/agent-view"
 import type { WorkerMessage, WorkerEvent } from "../workers/ralphWorker"
-import { saveWorkspaceSession, loadWorkspaceSession } from "../lib/workspaceSessionStorage"
+import {
+  saveWorkspaceSession,
+  loadWorkspaceSession,
+  saveWorkspaceState,
+  loadWorkspaceState,
+} from "../lib/workspaceSessionStorage"
 
 /**
  * Hook that communicates with the SharedWorker (ralphWorker.ts) to control the Ralph loop.
@@ -43,6 +48,8 @@ export function useRalphLoop(
     switch (data.type) {
       case "state_change":
         setControlState(data.state)
+        // Persist control state to localStorage so it survives page reloads
+        saveWorkspaceState(data.workspaceId, data.state)
         break
 
       case "event":
@@ -70,8 +77,13 @@ export function useRalphLoop(
         break
 
       case "session_restored":
-        // Session restored from localStorage — no streaming, just for viewing past events
+        // Session restored from localStorage
         setSessionId(data.sessionId)
+        // If the session was running or paused before reload, restore that state
+        if (data.controlState === "running" || data.controlState === "paused") {
+          setControlState(data.controlState)
+          setIsStreaming(true) // Session is still active
+        }
         break
 
       case "error":
@@ -164,10 +176,12 @@ export function useRalphLoop(
       // Attempt to restore a previously saved session from localStorage
       const savedSessionId = loadWorkspaceSession(workspaceId)
       if (savedSessionId) {
+        const savedControlState = loadWorkspaceState(workspaceId)
         portRef.current.postMessage({
           type: "restore_session",
           workspaceId,
           sessionId: savedSessionId,
+          controlState: savedControlState ?? undefined,
         } satisfies WorkerMessage)
       }
     }, 0)

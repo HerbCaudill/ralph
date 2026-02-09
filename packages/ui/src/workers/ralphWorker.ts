@@ -43,7 +43,7 @@ export type WorkerMessage =
   | { type: "stop"; workspaceId: string }
   | { type: "message"; workspaceId: string; text: string }
   | { type: "get_state"; workspaceId: string }
-  | { type: "restore_session"; workspaceId: string; sessionId: string }
+  | { type: "restore_session"; workspaceId: string; sessionId: string; controlState?: ControlState }
 
 /** Events broadcast from the worker to connected tabs. */
 export type WorkerEvent =
@@ -53,7 +53,12 @@ export type WorkerEvent =
   | { type: "connected"; workspaceId: string }
   | { type: "disconnected"; workspaceId: string }
   | { type: "session_created"; workspaceId: string; sessionId: string }
-  | { type: "session_restored"; workspaceId: string; sessionId: string }
+  | {
+      type: "session_restored"
+      workspaceId: string
+      sessionId: string
+      controlState?: ControlState
+    }
   | { type: "pending_events"; workspaceId: string; events: unknown[] }
 
 /** All connected ports (for cleanup). */
@@ -474,10 +479,37 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       // Only restore if workspace is idle and has no active session
       if (state.controlState === "idle" && !state.currentSessionId) {
         state.currentSessionId = message.sessionId
+
+        // If the session was running/paused before reload, restore that state
+        // and reconnect to continue receiving events
+        if (message.controlState === "running" || message.controlState === "paused") {
+          state.controlState = message.controlState
+
+          // Ensure WebSocket is connected to resume the session
+          if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+            connectWorkspace(message.workspaceId)
+          }
+
+          // Once connected, send a reconnect message to get pending events
+          const checkAndReconnect = setInterval(() => {
+            if (state.ws?.readyState === WebSocket.OPEN) {
+              clearInterval(checkAndReconnect)
+              state.ws.send(
+                JSON.stringify({
+                  type: "reconnect",
+                  sessionId: state.currentSessionId,
+                }),
+              )
+            }
+          }, 100)
+          setTimeout(() => clearInterval(checkAndReconnect), 10000)
+        }
+
         broadcastToWorkspace(message.workspaceId, {
           type: "session_restored",
           workspaceId: message.workspaceId,
           sessionId: message.sessionId,
+          controlState: message.controlState,
         })
       }
       break
