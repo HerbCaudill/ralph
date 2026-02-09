@@ -137,6 +137,45 @@ describe("fetchRalphSessions", () => {
     )
   })
 
+  it("uses baseUrl for task title resolution", async () => {
+    const mockFetch = vi.fn()
+    // Session list response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "session-1",
+            adapter: "claude",
+            createdAt: 1000,
+            lastMessageAt: 2000,
+            taskId: "r-abc123",
+          },
+        ],
+      }),
+    })
+
+    // Task fetch response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        issue: { id: "r-abc123", title: "Fix the button" },
+      }),
+    })
+
+    await fetchRalphSessions({
+      fetchFn: mockFetch,
+      baseUrl: "http://localhost:4244",
+    })
+
+    // Both API calls should use the baseUrl
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:4244/api/sessions?app=ralph&include=summary",
+    )
+    expect(mockFetch).toHaveBeenCalledWith("http://localhost:4244/api/tasks/r-abc123")
+  })
+
   it("sorts sessions by lastMessageAt descending", async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce({
       ok: true,

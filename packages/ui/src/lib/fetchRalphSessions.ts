@@ -61,7 +61,7 @@ export async function fetchRalphSessions(
 
         // Resolve task title if we have a taskId
         if (session.taskId) {
-          const taskTitle = await resolveTaskTitle(session.taskId, fetchFn)
+          const taskTitle = await resolveTaskTitle(session.taskId, baseUrl, fetchFn)
           if (taskTitle) {
             entry.taskTitle = taskTitle
           }
@@ -82,11 +82,13 @@ export async function fetchRalphSessions(
 async function resolveTaskTitle(
   /** The task ID to look up. */
   taskId: string,
+  /** Base URL for the beads server. */
+  baseUrl: string,
   /** Fetch function to use. */
   fetchFn: typeof fetch,
 ): Promise<string | undefined> {
   try {
-    const response = await fetchFn(`/api/tasks/${taskId}`)
+    const response = await fetchFn(`${baseUrl}/api/tasks/${taskId}`)
     if (!response.ok) {
       return undefined
     }
