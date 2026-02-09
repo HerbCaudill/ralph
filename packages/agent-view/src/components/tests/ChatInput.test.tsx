@@ -219,4 +219,25 @@ describe("ChatInput", () => {
       expect(addon!.contains(button)).toBe(true)
     })
   })
+
+  describe("send button styling", () => {
+    it("uses up arrow icon", () => {
+      const { container } = render(<ChatInput onSend={() => {}} />)
+      const icon = container.querySelector(".tabler-icon-arrow-up")
+      expect(icon).toBeInTheDocument()
+    })
+
+    it("uses accent color", () => {
+      render(<ChatInput onSend={() => {}} />)
+      const button = screen.getByTitle("Send message")
+      expect(button).toHaveClass("bg-repo-accent")
+      expect(button).toHaveClass("text-repo-accent-foreground")
+    })
+
+    it("addon is bottom-aligned", () => {
+      const { container } = render(<ChatInput onSend={() => {}} />)
+      const addon = container.querySelector('[data-slot="input-group-addon"]')
+      expect(addon).toHaveClass("self-end")
+    })
+  })
 })

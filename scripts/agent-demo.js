@@ -8,7 +8,7 @@ runDev({
   services: [
     {
       name: "agent-server",
-      command: "pnpm --filter @herbcaudill/agent-server dev",
+      command: "pnpm --filter agent-server dev",
       portEnv: "AGENT_SERVER_PORT",
       defaultPort: 4244,
     },

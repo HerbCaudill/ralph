@@ -32,7 +32,7 @@ export default defineConfig({
     {
       // Use a dedicated test port for the agent server to avoid conflicts with
       // development servers (e.g., beads-server may be running on 4244).
-      command: "pnpm --filter @herbcaudill/agent-server dev",
+      command: "pnpm --filter agent-server dev",
       url: `http://localhost:${agentServerTestPort}/healthz`,
       reuseExistingServer: false,
       timeout: 30000,

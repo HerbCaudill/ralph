@@ -14,17 +14,17 @@ runDev({
   services: [
     {
       name: "components",
-      command: "pnpm --filter @herbcaudill/components dev",
+      command: "pnpm --filter components dev",
     },
     {
       name: "beads-server",
-      command: "pnpm --filter @herbcaudill/beads-server dev",
+      command: "pnpm --filter beads-server dev",
       portEnv: "BEADS_PORT",
       defaultPort: 4243,
     },
     {
       name: "agent-server",
-      command: "pnpm --filter @herbcaudill/ralph-ui serve:agent",
+      command: "pnpm --filter ralph-ui serve:agent",
       portEnv: "AGENT_SERVER_PORT",
       defaultPort: 4244,
     },

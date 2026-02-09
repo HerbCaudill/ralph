@@ -114,7 +114,7 @@ Tasks (in dependency order):
 2. **r-16pd6** - Support timestamp-based catch-up on reconnect _(blocked by r-uoyap)_
 3. **r-5fspp** - Write events directly to IndexedDB in ralphConnection _(blocked by r-uoyap)_
 4. **r-j4fbg** - Delete useEventPersistence hook _(blocked by r-5fspp)_
-5. **r-8sl3x** - Update session taskId immediately on ralph_task_started _(blocked by r-5fspp)_
+5. **r-8sl3x** - Update session taskId immediately on ralph*task_started *(blocked by r-5fspp)\_
 6. **r-67oz4** - Add taskId fallback calculation from events _(blocked by r-8sl3x)_
 7. **r-hv049** - Filter sessions without tasks from dropdown _(blocked by r-67oz4)_
 
@@ -139,7 +139,7 @@ Tasks (in dependency order):
    - Each session has correct taskId
 5. Refresh page - sessions and events restored correctly
 6. Session dropdown shows correct tasks
-7. Run tests: `pnpm --filter @herbcaudill/ralph-ui test`
+7. Run tests: `pnpm --filter ralph-ui test`
 
 ## Migration
 

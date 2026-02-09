@@ -14,7 +14,7 @@ Use Node.js 24.x (repo pins 24.13.0 in `.prototools`).
 
 ```bash
 pnpm build                # Build all packages
-pnpm --filter @herbcaudill/ralph-shared build  # Build shared (required after changes)
+pnpm --filter ralph-shared build  # Build shared (required after changes)
 pnpm typecheck            # Typecheck all packages
 
 pnpm test:all             # Run all tests (CLI + UI)

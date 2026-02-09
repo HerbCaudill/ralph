@@ -8,7 +8,7 @@ runDev({
   services: [
     {
       name: "beads-server",
-      command: "pnpm --filter @herbcaudill/beads-server dev",
+      command: "pnpm --filter beads-server dev",
       portEnv: "BEADS_PORT",
       defaultPort: 4243,
     },

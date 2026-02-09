@@ -59,7 +59,7 @@ From `navigation.spec.ts`:
 ### 1. Install Storybook test addon
 
 ```bash
-pnpm --filter @herbcaudill/ralph-ui add -D @storybook/addon-test @storybook/experimental-addon-test
+pnpm --filter ralph-ui add -D @storybook/addon-test @storybook/experimental-addon-test
 ```
 
 ### 2. Add test utilities
