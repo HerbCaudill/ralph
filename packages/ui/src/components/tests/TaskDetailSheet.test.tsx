@@ -86,16 +86,18 @@ describe("TaskDetailSheet", () => {
     expect(panel.className).toContain("left-0")
   })
 
-  it("allows content to scroll vertically", () => {
+  it("contains content without clipping (delegates scrolling to child)", () => {
     render(<TaskDetailSheet {...defaultProps} />)
 
     const panel = screen.getByTestId("task-detail-sheet")
     expect(panel).toBeInTheDocument()
 
-    // The panel should allow vertical scrolling via overflow-y-auto
-    // Previously it had overflow-hidden which clipped the content
-    expect(panel.className).toContain("overflow-y-auto")
-    expect(panel.className).not.toContain("overflow-hidden")
+    // The outer panel should have overflow-hidden to contain its child.
+    // The TaskDetails component inside handles its own scrolling via flex layout
+    // with a flex-1 scrollable content area. Having overflow-y-auto on both
+    // the outer container and inner content causes clipping issues.
+    expect(panel.className).toContain("overflow-hidden")
+    expect(panel.className).not.toContain("overflow-y-auto")
   })
 
   it("does not render a modal backdrop", () => {
