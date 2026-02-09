@@ -512,7 +512,7 @@ describe("ClaudeAdapter", () => {
       expect(context.usage.totalTokens).toBe(150)
     })
 
-    it("captures usage from message_start and message_delta when result has no usage", async () => {
+    it("emits turn_usage from streaming lifecycle events when result has no usage", async () => {
       const sdkMessages = [
         // stream_event with message_start (carries input tokens)
         {
@@ -545,7 +545,12 @@ describe("ClaudeAdapter", () => {
             usage: { output_tokens: 45 },
           },
         },
-        // result without usage (the bug scenario)
+        // message_stop triggers turn_usage emission
+        {
+          type: "stream_event",
+          event: { type: "message_stop" },
+        },
+        // result without usage
         {
           type: "result",
           subtype: "success",
@@ -567,24 +572,30 @@ describe("ClaudeAdapter", () => {
         expect(events.some(e => e.type === "result")).toBe(true)
       })
 
-      // The result event should have usage from streaming events
-      const resultEvent = events.find(e => e.type === "result") as AgentEvent & {
+      // Usage is emitted as turn_usage, not on the result event
+      const turnUsageEvent = events.find(e => e.type === "turn_usage") as AgentEvent & {
         usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
       }
-      expect(resultEvent.usage).toBeDefined()
+      expect(turnUsageEvent).toBeDefined()
       // input = 120 + 10 + 5 = 135
-      expect(resultEvent.usage!.inputTokens).toBe(135)
-      expect(resultEvent.usage!.outputTokens).toBe(45)
-      expect(resultEvent.usage!.totalTokens).toBe(180)
+      expect(turnUsageEvent.usage!.inputTokens).toBe(135)
+      expect(turnUsageEvent.usage!.outputTokens).toBe(45)
+      expect(turnUsageEvent.usage!.totalTokens).toBe(180)
 
-      // Conversation context should also have usage
+      // Result event should NOT carry usage (to avoid double-counting)
+      const resultEvent = events.find(e => e.type === "result") as AgentEvent & {
+        usage?: unknown
+      }
+      expect(resultEvent.usage).toBeUndefined()
+
+      // Conversation context should still have usage
       const context = adapter.getConversationContext()
       expect(context.usage.inputTokens).toBe(135)
       expect(context.usage.outputTokens).toBe(45)
       expect(context.usage.totalTokens).toBe(180)
     })
 
-    it("prefers result.usage over streaming usage when both are available", async () => {
+    it("tracks totalUsage from result.usage in conversation context even when turn_usage is emitted", async () => {
       const sdkMessages = [
         {
           type: "stream_event",
@@ -600,6 +611,12 @@ describe("ClaudeAdapter", () => {
             usage: { output_tokens: 30 },
           },
         },
+        // message_stop emits turn_usage
+        {
+          type: "stream_event",
+          event: { type: "message_stop" },
+        },
+        // result also carries usage (from SDK)
         {
           type: "result",
           subtype: "success",
@@ -622,12 +639,24 @@ describe("ClaudeAdapter", () => {
         expect(events.some(e => e.type === "result")).toBe(true)
       })
 
-      // Should use result.usage, not streaming usage
-      const resultEvent = events.find(e => e.type === "result") as AgentEvent & {
-        usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+      // turn_usage carries streaming counts
+      const turnUsageEvent = events.find(e => e.type === "turn_usage") as AgentEvent & {
+        usage?: { inputTokens?: number; outputTokens?: number }
       }
-      expect(resultEvent.usage!.inputTokens).toBe(200)
-      expect(resultEvent.usage!.outputTokens).toBe(60)
+      expect(turnUsageEvent).toBeDefined()
+      expect(turnUsageEvent.usage!.inputTokens).toBe(100)
+      expect(turnUsageEvent.usage!.outputTokens).toBe(30)
+
+      // Result event should NOT carry usage
+      const resultEvent = events.find(e => e.type === "result") as AgentEvent & {
+        usage?: unknown
+      }
+      expect(resultEvent.usage).toBeUndefined()
+
+      // Conversation context uses result.usage (preferred over streaming) for internal tracking
+      const context = adapter.getConversationContext()
+      expect(context.usage.inputTokens).toBe(200)
+      expect(context.usage.outputTokens).toBe(60)
     })
 
     it("emits turn_usage events at message_stop for incremental usage tracking", async () => {
