@@ -46,7 +46,7 @@
     "@herbcaudill/agent-view": "workspace:*"
   },
   "devDependencies": {
-    "@herbcaudill/beads-sdk": "^0.1.0",
+    "@herbcaudill/beads-sdk": "link:../../../beads-sdk",
     "@types/node": "^24.10.9",
     "prettier": "^3.5.3",
     "typescript": "~5.9.3",

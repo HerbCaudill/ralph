@@ -39,7 +39,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@herbcaudill/beads-sdk": "^0.1.0",
+    "@herbcaudill/beads-sdk": "link:../../../beads-sdk",
     "@herbcaudill/beads-view": "workspace:*",
     "@herbcaudill/ralph-shared": "workspace:*",
     "express": "^5.2.1",

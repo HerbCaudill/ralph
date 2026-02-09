@@ -384,8 +384,8 @@ importers:
   packages/beads-server:
     dependencies:
       "@herbcaudill/beads-sdk":
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: link:../../../beads-sdk
+        version: link:../../../beads-sdk
       "@herbcaudill/beads-view":
         specifier: workspace:*
         version: link:../beads-view
@@ -540,8 +540,8 @@ importers:
         version: 19.2.3
     devDependencies:
       "@herbcaudill/beads-sdk":
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: link:../../../beads-sdk
+        version: link:../../../beads-sdk
       "@herbcaudill/ralph-shared":
         specifier: workspace:*
         version: link:../shared
@@ -674,8 +674,8 @@ importers:
         version: link:../agent-view
     devDependencies:
       "@herbcaudill/beads-sdk":
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: link:../../../beads-sdk
+        version: link:../../../beads-sdk
       "@types/node":
         specifier: ^24.10.9
         version: 24.10.9
@@ -1320,13 +1320,6 @@ packages:
       {
         integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==,
       }
-
-  "@herbcaudill/beads-sdk@0.1.0":
-    resolution:
-      {
-        integrity: sha512-B0GZAUC87mqTB5/HmM0zYSyjfhJcIwAgc/jx8kAnmbdKFIaCcVDvqiQG7DjZqUdtWshFaO3vL4Oy03bAV3UF7Q==,
-      }
-    engines: { node: ">=18.0.0" }
 
   "@img/sharp-darwin-arm64@0.33.5":
     resolution:
@@ -7003,8 +6996,6 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
 
   "@floating-ui/utils@0.2.10": {}
-
-  "@herbcaudill/beads-sdk@0.1.0": {}
 
   "@img/sharp-darwin-arm64@0.33.5":
     optionalDependencies:

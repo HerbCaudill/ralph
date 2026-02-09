@@ -409,6 +409,13 @@ The `WorktreeManager` (`packages/agent-server/src/lib/WorktreeManager.ts`) manag
 - `list(workerName?)` - Lists all worktrees, optionally filtered by worker
 - `pullLatest()` - Pulls latest changes from remote
 
+**Conflict resolution methods:**
+
+- `getConflictingFiles()` - Lists files with merge conflicts in main workspace
+- `isMergeInProgress()` - Checks if a merge is in progress in main workspace
+- `abortMerge()` - Aborts an in-progress merge in main workspace
+- `completeMerge(workerName, taskId)` - Completes a merge after conflicts are resolved
+
 **Exported from `@herbcaudill/agent-server`:**
 
 - `WorktreeManager` - The manager class

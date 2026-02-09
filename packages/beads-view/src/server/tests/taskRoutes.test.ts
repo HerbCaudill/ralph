@@ -329,6 +329,39 @@ describe("registerTaskRoutes", () => {
       expect(res.status).toHaveBeenCalledWith(200)
     })
 
+    it("claims a task by setting status and assignee together", async () => {
+      const bdProxy = createMockBdProxy({
+        update: vi
+          .fn()
+          .mockResolvedValue([{ id: "task-1", status: "in_progress", assignee: "homer" }]),
+      })
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({ app, getBdProxy: () => bdProxy })
+
+      const handler = routes.patch.get("/api/tasks/:id")!
+      const { req, res } = createMockReqRes({
+        params: { id: "task-1" },
+        body: { status: "in_progress", assignee: "homer" },
+      })
+
+      await handler(req, res)
+
+      expect(bdProxy.update).toHaveBeenCalledWith("task-1", {
+        title: undefined,
+        description: undefined,
+        priority: undefined,
+        status: "in_progress",
+        type: undefined,
+        assignee: "homer",
+        parent: undefined,
+      })
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(res.json).toHaveBeenCalledWith({
+        ok: true,
+        issue: { id: "task-1", status: "in_progress", assignee: "homer" },
+      })
+    })
+
     it("returns 404 when update returns empty array", async () => {
       const bdProxy = createMockBdProxy({
         update: vi.fn().mockResolvedValue([]),

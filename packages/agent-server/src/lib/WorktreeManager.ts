@@ -135,6 +135,78 @@ export class WorktreeManager {
   }
 
   /**
+   * Get a list of files with merge conflicts.
+   * Returns an empty array if no merge is in progress or no conflicts exist.
+   */
+  async getConflictingFiles(): Promise<string[]> {
+    try {
+      const output = await this.git(["diff", "--name-only", "--diff-filter=U"])
+      if (!output.trim()) {
+        return []
+      }
+      return output.trim().split("\n")
+    } catch {
+      return []
+    }
+  }
+
+  /**
+   * Check if a merge is currently in progress.
+   */
+  async isMergeInProgress(): Promise<boolean> {
+    try {
+      // Check for MERGE_HEAD file which indicates a merge is in progress
+      await this.git(["rev-parse", "--verify", "MERGE_HEAD"])
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Abort an in-progress merge.
+   */
+  async abortMerge(): Promise<void> {
+    await this.git(["merge", "--abort"])
+  }
+
+  /**
+   * Complete a merge after conflicts have been resolved.
+   * The caller must stage resolved files before calling this.
+   */
+  async completeMerge(workerName: string, taskId: string): Promise<MergeResult> {
+    const branchName = this.getBranchName(workerName, taskId)
+
+    try {
+      // Check if there are still unresolved conflicts
+      const conflicts = await this.getConflictingFiles()
+      if (conflicts.length > 0) {
+        return {
+          success: false,
+          hadConflicts: true,
+          message: `Cannot complete merge: ${conflicts.length} file(s) still have conflicts`,
+        }
+      }
+
+      // Complete the merge commit
+      await this.git(["commit", "--no-edit"])
+
+      return {
+        success: true,
+        hadConflicts: false,
+        message: `Successfully completed merge of ${branchName}`,
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      return {
+        success: false,
+        hadConflicts: false,
+        message: `Failed to complete merge: ${errorMessage}`,
+      }
+    }
+  }
+
+  /**
    * Remove a worktree and optionally delete its branch.
    */
   async remove(

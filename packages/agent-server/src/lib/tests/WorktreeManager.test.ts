@@ -372,6 +372,121 @@ describe("WorktreeManager", () => {
     })
   })
 
+  describe("conflict resolution", () => {
+    it("getConflictingFiles returns empty when no merge in progress", async () => {
+      const conflicts = await manager.getConflictingFiles()
+      expect(conflicts).toEqual([])
+    })
+
+    it("isMergeInProgress returns false when no merge in progress", async () => {
+      const inProgress = await manager.isMergeInProgress()
+      expect(inProgress).toBe(false)
+    })
+
+    it("detects conflicting files during merge", async () => {
+      // Create worktree
+      const worktree = await manager.create({ workerName: "homer", taskId: "bd-abc123" })
+
+      // Make conflicting changes in main
+      await writeFile(join(mainWorkspacePath, "conflict.txt"), "main version")
+      await git(mainWorkspacePath, ["add", "."])
+      await git(mainWorkspacePath, ["commit", "-m", "Add conflict file on main"])
+
+      // Make conflicting changes in worktree
+      await writeFile(join(worktree.path, "conflict.txt"), "worktree version")
+      await git(worktree.path, ["add", "."])
+      await git(worktree.path, ["commit", "-m", "Add conflict file in worktree"])
+
+      // Attempt merge (will fail with conflicts)
+      await manager.merge("homer", "bd-abc123")
+
+      // Check merge state
+      const inProgress = await manager.isMergeInProgress()
+      expect(inProgress).toBe(true)
+
+      // Get conflicting files
+      const conflicts = await manager.getConflictingFiles()
+      expect(conflicts).toContain("conflict.txt")
+
+      // Clean up
+      await manager.abortMerge()
+    })
+
+    it("can abort a merge in progress", async () => {
+      // Create worktree
+      const worktree = await manager.create({ workerName: "homer", taskId: "bd-abc123" })
+
+      // Make conflicting changes
+      await writeFile(join(mainWorkspacePath, "conflict.txt"), "main version")
+      await git(mainWorkspacePath, ["add", "."])
+      await git(mainWorkspacePath, ["commit", "-m", "Add conflict file on main"])
+      await writeFile(join(worktree.path, "conflict.txt"), "worktree version")
+      await git(worktree.path, ["add", "."])
+      await git(worktree.path, ["commit", "-m", "Add conflict file in worktree"])
+
+      // Start merge (will fail with conflicts)
+      await manager.merge("homer", "bd-abc123")
+      expect(await manager.isMergeInProgress()).toBe(true)
+
+      // Abort merge
+      await manager.abortMerge()
+      expect(await manager.isMergeInProgress()).toBe(false)
+    })
+
+    it("can complete a merge after resolving conflicts", async () => {
+      // Create worktree
+      const worktree = await manager.create({ workerName: "homer", taskId: "bd-abc123" })
+
+      // Make conflicting changes
+      await writeFile(join(mainWorkspacePath, "conflict.txt"), "main version")
+      await git(mainWorkspacePath, ["add", "."])
+      await git(mainWorkspacePath, ["commit", "-m", "Add conflict file on main"])
+      await writeFile(join(worktree.path, "conflict.txt"), "worktree version")
+      await git(worktree.path, ["add", "."])
+      await git(worktree.path, ["commit", "-m", "Add conflict file in worktree"])
+
+      // Start merge (will fail with conflicts)
+      await manager.merge("homer", "bd-abc123")
+
+      // Resolve the conflict (choose worktree version)
+      await writeFile(join(mainWorkspacePath, "conflict.txt"), "resolved version")
+      await git(mainWorkspacePath, ["add", "conflict.txt"])
+
+      // Complete merge
+      const result = await manager.completeMerge("homer", "bd-abc123")
+      expect(result.success).toBe(true)
+      expect(await manager.isMergeInProgress()).toBe(false)
+
+      // Verify the resolved content
+      const content = await readFile(join(mainWorkspacePath, "conflict.txt"), "utf-8")
+      expect(content).toBe("resolved version")
+    })
+
+    it("completeMerge fails if conflicts remain", async () => {
+      // Create worktree
+      const worktree = await manager.create({ workerName: "homer", taskId: "bd-abc123" })
+
+      // Make conflicting changes
+      await writeFile(join(mainWorkspacePath, "conflict.txt"), "main version")
+      await git(mainWorkspacePath, ["add", "."])
+      await git(mainWorkspacePath, ["commit", "-m", "Add conflict file on main"])
+      await writeFile(join(worktree.path, "conflict.txt"), "worktree version")
+      await git(worktree.path, ["add", "."])
+      await git(worktree.path, ["commit", "-m", "Add conflict file in worktree"])
+
+      // Start merge (will fail with conflicts)
+      await manager.merge("homer", "bd-abc123")
+
+      // Try to complete without resolving
+      const result = await manager.completeMerge("homer", "bd-abc123")
+      expect(result.success).toBe(false)
+      expect(result.hadConflicts).toBe(true)
+
+      // Clean up
+      await manager.abortMerge()
+    })
+  })
+
   describe("prune", () => {
     it("prunes stale worktree entries", async () => {
       // This mainly verifies the command doesn't error
