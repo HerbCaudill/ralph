@@ -9,6 +9,7 @@ export {
   BaseEvent,
   CanonicalEvent,
   ErrorEvent,
+  InterruptedEvent,
   MessageEvent,
   ResultEvent,
   StatusEvent,
@@ -25,6 +26,7 @@ export type {
   CanonicalEventEncoded,
   CanonicalEventType,
   ErrorEventType,
+  InterruptedEventType,
   MessageEventType,
   ResultEventType,
   StatusEventType,
@@ -38,6 +40,7 @@ export type {
 export {
   isCoreEvent,
   isErrorEvent,
+  isInterruptedEvent,
   isMessageEvent,
   isResultEvent,
   isStatusEvent,

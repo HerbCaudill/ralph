@@ -9,6 +9,7 @@ import {
   BaseEvent,
   CanonicalEvent,
   ErrorEvent,
+  InterruptedEvent,
   MessageEvent,
   ResultEvent,
   StatusEvent,
@@ -43,6 +44,9 @@ export type ErrorEventType = S.Schema.Type<typeof ErrorEvent>
 
 /** Agent status changed. */
 export type StatusEventType = S.Schema.Type<typeof StatusEvent>
+
+/** Agent was interrupted by the user. */
+export type InterruptedEventType = S.Schema.Type<typeof InterruptedEvent>
 
 /** Catch-all for custom/unknown event types. */
 export type UnknownEventType = S.Schema.Type<typeof UnknownEvent>

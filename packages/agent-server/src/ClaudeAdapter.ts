@@ -331,6 +331,14 @@ export class ClaudeAdapter extends AgentAdapter {
       return
     }
 
+    // Emit interrupted event to inform the UI
+    const interruptedEvent = {
+      type: "interrupted" as const,
+      timestamp: this.now(),
+      message: "Interrupted · What should Claude do instead?",
+    }
+    this.emit("event", interruptedEvent)
+
     // Call the SDK's interrupt method if available
     if (this.currentQuery.interrupt) {
       this.currentQuery.interrupt()

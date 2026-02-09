@@ -87,6 +87,12 @@ export interface ErrorChatEvent extends ChatEvent {
   error: string
 }
 
+/** An interrupted event when the user stops the agent mid-stream. */
+export interface InterruptedChatEvent extends ChatEvent {
+  type: "interrupted"
+  message?: string
+}
+
 /** A tool use event with execution metadata. */
 export interface ToolUseChatEvent extends ChatEvent {
   type: "tool_use"

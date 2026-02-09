@@ -148,6 +148,7 @@ const RENDERABLE_EVENT_TYPES = new Set<string>([
   "tool_use",
   "error",
   "server_error",
+  "interrupted",
 ])
 
 /**

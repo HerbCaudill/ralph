@@ -104,6 +104,16 @@ export const StatusEvent = BaseEvent.pipe(
   ),
 )
 
+/** Agent was interrupted by the user. */
+export const InterruptedEvent = BaseEvent.pipe(
+  S.extend(
+    S.Struct({
+      type: S.Literal("interrupted"),
+      message: S.optional(S.String),
+    }),
+  ),
+)
+
 // Catch-all for custom/unknown event types
 
 /**
@@ -134,5 +144,6 @@ export const CanonicalEvent = S.Union(
   ResultEvent,
   ErrorEvent,
   StatusEvent,
+  InterruptedEvent,
   UnknownEvent,
 )

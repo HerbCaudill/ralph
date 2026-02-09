@@ -2,6 +2,7 @@ import { useContext } from "react"
 import { AssistantText } from "./AssistantText"
 import { UserMessage } from "./UserMessage"
 import { ErrorEvent } from "./ErrorEvent"
+import { InterruptedEvent } from "./InterruptedEvent"
 import { ThinkingBlock } from "./ThinkingBlock"
 import { ToolUseCard } from "./ToolUseCard"
 import type { ToolResult } from "../lib/buildToolResultsMap"
@@ -15,6 +16,7 @@ import { isAgentMessageEvent } from "../lib/isAgentMessageEvent"
 import { isAgentThinkingEvent } from "../lib/isAgentThinkingEvent"
 import { isAssistantMessage } from "../lib/isAssistantMessage"
 import { isErrorEvent } from "../lib/isErrorEvent"
+import { isInterruptedEvent } from "../lib/isInterruptedEvent"
 import { isRalphTaskCompletedEvent } from "../lib/isRalphTaskCompletedEvent"
 import { isRalphTaskStartedEvent } from "../lib/isRalphTaskStartedEvent"
 import { isToolUseChatEvent } from "../lib/isToolUseChatEvent"
@@ -142,6 +144,10 @@ export function EventStreamEventItem({
       error: event.error,
     }
     return <ErrorEvent event={errorEvent} />
+  }
+
+  if (isInterruptedEvent(event)) {
+    return <InterruptedEvent event={event} />
   }
 
   // Fallback: event passed filter but has no renderer

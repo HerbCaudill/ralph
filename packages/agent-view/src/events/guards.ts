@@ -7,6 +7,7 @@
 import type {
   CanonicalEventType,
   ErrorEventType,
+  InterruptedEventType,
   MessageEventType,
   ResultEventType,
   StatusEventType,
@@ -43,8 +44,19 @@ export const isErrorEvent = (event: CanonicalEventType): event is ErrorEventType
 export const isStatusEvent = (event: CanonicalEventType): event is StatusEventType =>
   event.type === "status"
 
+/** Check if an event is an interrupted event. */
+export const isInterruptedEvent = (event: CanonicalEventType): event is InterruptedEventType =>
+  event.type === "interrupted"
+
 /** Check if an event is a known core type (not an unknown/custom event). */
 export const isCoreEvent = (event: CanonicalEventType): boolean =>
-  ["message", "thinking", "tool_use", "tool_result", "result", "error", "status"].includes(
-    event.type,
-  )
+  [
+    "message",
+    "thinking",
+    "tool_use",
+    "tool_result",
+    "result",
+    "error",
+    "status",
+    "interrupted",
+  ].includes(event.type)
