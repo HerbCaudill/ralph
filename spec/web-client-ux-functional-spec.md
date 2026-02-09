@@ -372,6 +372,10 @@ Selection state:
 
 - Selected task has a tinted background and an accent ring.
 
+Click behavior:
+
+- Clicking on a task card copies the task ID to the clipboard.
+
 **Screenshot:** `spec/screenshots/14-task-card.png`
 
 ### 9.6 Task progress bar

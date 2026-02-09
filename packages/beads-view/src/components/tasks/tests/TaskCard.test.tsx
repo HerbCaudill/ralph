@@ -141,6 +141,33 @@ describe("TaskCard", () => {
 
       expect(onClick).toHaveBeenCalledWith(fullTask.id)
     })
+
+    it("copies task ID to clipboard when card is clicked", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, {
+        clipboard: { writeText },
+      })
+
+      render(<TaskCard task={baseTask} onClick={vi.fn()} />)
+
+      fireEvent.click(screen.getByRole("button", { name: baseTask.title }))
+
+      expect(writeText).toHaveBeenCalledWith(baseTask.id)
+    })
+
+    it("copies task ID to clipboard on keyboard navigation with Enter", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, {
+        clipboard: { writeText },
+      })
+
+      render(<TaskCard task={fullTask} onClick={vi.fn()} />)
+
+      const contentButton = screen.getByRole("button", { name: fullTask.title })
+      fireEvent.keyDown(contentButton, { key: "Enter" })
+
+      expect(writeText).toHaveBeenCalledWith(fullTask.id)
+    })
   })
 
   describe("onClick callback", () => {
