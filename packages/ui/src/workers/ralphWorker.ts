@@ -168,14 +168,35 @@ function connectWorkspace(workspaceId: string): void {
     ws.onmessage = e => {
       try {
         const raw = e.data as string
-
-        // Detect <promise>COMPLETE</promise> anywhere in the raw event data.
-        // This signals that the agent has no more work and the session is done.
-        if (raw.includes("<promise>COMPLETE</promise>")) {
-          state.sessionCompleted = true
-        }
-
         const message = JSON.parse(raw) as Record<string, unknown>
+
+        // Detect <promise>COMPLETE</promise> in assistant text content blocks.
+        // Only matches when the marker is at the end of the text — prevents false
+        // positives when the agent discusses code mentioning the marker pattern
+        // (e.g., reading ralphWorker.ts source or explaining the protocol).
+        if (message.type === "event") {
+          const event = message.event as Record<string, unknown> | undefined
+          if (event?.type === "assistant") {
+            // Content blocks may be at event.message.content (Anthropic API format)
+            // or event.content (normalized format)
+            const msg = event.message as Record<string, unknown> | undefined
+            const content = (msg?.content ?? event.content) as
+              | Array<Record<string, unknown>>
+              | undefined
+            if (content) {
+              for (const block of content) {
+                if (
+                  block.type === "text" &&
+                  typeof block.text === "string" &&
+                  /<promise>COMPLETE<\/promise>\s*$/i.test(block.text)
+                ) {
+                  state.sessionCompleted = true
+                  break
+                }
+              }
+            }
+          }
+        }
 
         if (message.type === "pong") return
 

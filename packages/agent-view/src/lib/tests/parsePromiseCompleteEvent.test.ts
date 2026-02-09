@@ -34,8 +34,8 @@ describe("parsePromiseCompleteEvent", () => {
     })
   })
 
-  it("should extract from text with surrounding content", () => {
-    const text = "All done! <promise>COMPLETE</promise> Goodbye."
+  it("should match when marker is at the end of text", () => {
+    const text = "All done! <promise>COMPLETE</promise>"
     const result = parsePromiseCompleteEvent(text, timestamp)
 
     expect(result).toEqual({
@@ -44,14 +44,39 @@ describe("parsePromiseCompleteEvent", () => {
     })
   })
 
-  it("should extract from multiline text", () => {
-    const text = "Work complete.\n<promise>COMPLETE</promise>\nExiting."
+  it("should match when marker is at the end of multiline text", () => {
+    const text = "Work complete.\n<promise>COMPLETE</promise>"
     const result = parsePromiseCompleteEvent(text, timestamp)
 
     expect(result).toEqual({
       type: "promise_complete",
       timestamp,
     })
+  })
+
+  it("should match with trailing whitespace after marker", () => {
+    const text = "<promise>COMPLETE</promise>  \n"
+    const result = parsePromiseCompleteEvent(text, timestamp)
+
+    expect(result).toEqual({
+      type: "promise_complete",
+      timestamp,
+    })
+  })
+
+  it("should NOT match when marker is in the middle of text", () => {
+    const text = "All done! <promise>COMPLETE</promise> Goodbye."
+    const result = parsePromiseCompleteEvent(text, timestamp)
+
+    expect(result).toBeNull()
+  })
+
+  it("should NOT match when marker is discussed in code context", () => {
+    const text =
+      "The worker tracks `sessionCompleted` flag when `<promise>COMPLETE</promise>` is detected"
+    const result = parsePromiseCompleteEvent(text, timestamp)
+
+    expect(result).toBeNull()
   })
 
   describe("invalid patterns", () => {

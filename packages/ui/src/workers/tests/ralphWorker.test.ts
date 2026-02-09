@@ -800,6 +800,17 @@ describe("ralphWorker", () => {
     })
   })
 
+  /** Helper to create a WebSocket event with the marker in an assistant content block. */
+  function assistantEvent(text: string) {
+    return JSON.stringify({
+      type: "event",
+      event: {
+        type: "assistant",
+        message: { content: [{ type: "text", text }] },
+      },
+    })
+  }
+
   /** Helper to set up a running workspace with an open WebSocket. */
   async function setupRunningWorkspace(workspaceId: string) {
     const port = createMockPort()
@@ -823,14 +834,9 @@ describe("ralphWorker", () => {
       const workspaceId = "herbcaudill/ralph"
       const { state } = await setupRunningWorkspace(workspaceId)
 
-      // Simulate receiving an event with <promise>COMPLETE</promise>
+      // Simulate receiving an assistant event with <promise>COMPLETE</promise> at end of text
       const ws = state.ws as MockWebSocket
-      ws.onmessage!({
-        data: JSON.stringify({
-          type: "event",
-          event: { type: "assistant", text: "All done! <promise>COMPLETE</promise>" },
-        }),
-      })
+      ws.onmessage!({ data: assistantEvent("All done! <promise>COMPLETE</promise>") })
 
       expect(state.sessionCompleted).toBe(true)
       ;(state.ws as any).send.mockClear()
@@ -847,18 +853,50 @@ describe("ralphWorker", () => {
       expect(state.sessionCompleted).toBe(false)
     })
 
+    it("should NOT set sessionCompleted when marker appears in a code discussion", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+
+      // Simulate the agent discussing the promise marker in a longer text
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: assistantEvent(
+          "The worker tracks `sessionCompleted` when `<promise>COMPLETE</promise>` is detected in the event stream.",
+        ),
+      })
+
+      // Should NOT have set sessionCompleted — marker is mid-text
+      expect(state.sessionCompleted).toBe(false)
+    })
+
+    it("should NOT set sessionCompleted when marker appears in tool_result (source code)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+
+      // Simulate the agent reading a file that contains the marker string
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "event",
+          event: {
+            type: "tool_result",
+            output:
+              "/** Set when `<promise>COMPLETE</promise>` is detected */\nsessionCompleted: boolean",
+          },
+        }),
+      })
+
+      // Should NOT have set sessionCompleted — it's a tool result, not agent output
+      expect(state.sessionCompleted).toBe(false)
+    })
+
     it("should not auto-start when paused", async () => {
       const workspaceId = "herbcaudill/ralph"
       const { port, state } = await setupRunningWorkspace(workspaceId)
 
       // Receive promise_complete
       const ws = state.ws as MockWebSocket
-      ws.onmessage!({
-        data: JSON.stringify({
-          type: "event",
-          event: { type: "assistant", text: "<promise>COMPLETE</promise>" },
-        }),
-      })
+      ws.onmessage!({ data: assistantEvent("<promise>COMPLETE</promise>") })
 
       // User pauses
       handlePortMessage({ type: "pause", workspaceId }, port)
@@ -981,12 +1019,7 @@ describe("ralphWorker", () => {
 
       // Simulate receiving promise_complete
       const ws = state.ws as MockWebSocket
-      ws.onmessage!({
-        data: JSON.stringify({
-          type: "event",
-          event: { type: "assistant", text: "All done! <promise>COMPLETE</promise>" },
-        }),
-      })
+      ws.onmessage!({ data: assistantEvent("All done! <promise>COMPLETE</promise>") })
 
       expect(state.sessionCompleted).toBe(true)
       ;(state.ws as any).send.mockClear()
@@ -1011,12 +1044,7 @@ describe("ralphWorker", () => {
 
       // Simulate receiving promise_complete and then idle
       const ws = state.ws as MockWebSocket
-      ws.onmessage!({
-        data: JSON.stringify({
-          type: "event",
-          event: { type: "assistant", text: "<promise>COMPLETE</promise>" },
-        }),
-      })
+      ws.onmessage!({ data: assistantEvent("<promise>COMPLETE</promise>") })
 
       port.postMessage.mockClear()
 
