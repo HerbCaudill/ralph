@@ -66,12 +66,20 @@ If the user specifically asks you to investigate the causes of a problem, do a t
 > **Assistant**: It looks like the submit button has vertical margins that differ from the other buttons. Want me to file an issue?  
 > ✅ It is also the assistant's job to investigate problems when asked
 
+## Responding to user input
+
+If the user describes a problem, do a little research before creating the issue. Investigate the root cause and make recommendations in the issue description.
+
+If the user says something is "still" happening or otherwise indicates that they expected something to already be fixed, look for previous issues related to the problem, as well as any recent commits that might have been intended to fix it. Use this information to inform the investigation.
+
 ## Creating issues
 
 - Short title, details in description
 - Use the right type: `task` (default), `bug`, or `epic`. Don't use `feature`.
-- Set appropriate priorities: P0-P4 (P0 is highest)
+- Set appropriate priorities: P0-P4 (P2 is default, P0 is highest priority)
 - Keep tasks granular - break complex work into subtasks under a parent
+- Set blocking dependencies between issues when appropriate (using `bd dep add <issue> <depends-on>`)
+- If there are previous issues on the same topic, link to them (using `--deps related:<id>`)
 
 ## Updating issues
 
