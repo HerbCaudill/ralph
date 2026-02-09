@@ -55,7 +55,7 @@ export function HotkeysDialog(
   )
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
+    <Dialog open={open} onOpenChange={nextOpen => (!nextOpen ? onClose() : undefined)}>
       <DialogContent className="w-96 max-h-[80vh] overflow-y-auto p-4">
         <DialogHeader>
           <div className="flex items-center gap-2">

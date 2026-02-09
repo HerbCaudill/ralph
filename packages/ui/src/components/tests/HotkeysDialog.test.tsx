@@ -23,7 +23,9 @@ describe("HotkeysDialog", () => {
     render(<HotkeysDialog open={true} onClose={handleClose} />)
 
     const closeButtons = screen.getAllByRole("button", { name: "Close" })
-    const closeButton = closeButtons.find((button) => button.getAttribute("data-variant") === "secondary")
+    const closeButton = closeButtons.find(
+      button => button.getAttribute("data-variant") === "secondary",
+    )
     expect(closeButton).toBeDefined()
     fireEvent.click(closeButton!)
 
