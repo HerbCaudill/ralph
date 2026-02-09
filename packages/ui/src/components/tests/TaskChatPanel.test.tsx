@@ -3,6 +3,22 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { TaskChatPanel } from "../TaskChatPanel"
 import type { ChatEvent, SessionIndexEntry } from "@herbcaudill/agent-view"
 
+// Mock Button component from @herbcaudill/components
+vi.mock("@herbcaudill/components", () => ({
+  Button: ({ children, variant, onClick, disabled, "aria-label": ariaLabel, ...props }: any) => (
+    <button
+      data-testid="button-component"
+      data-variant={variant || "default"}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      {...props}
+    >
+      {children}
+    </button>
+  ),
+}))
+
 // Mock agent-view components
 vi.mock("@herbcaudill/agent-view", () => ({
   AgentView: ({ events, isStreaming, header, footer, emptyState }: any) => (
@@ -137,6 +153,15 @@ describe("TaskChatPanel", () => {
 
       const newSessionButton = screen.getByLabelText("New session")
       expect(newSessionButton).toBeDisabled()
+    })
+
+    it("renders new session button using Button component with default variant", () => {
+      render(<TaskChatPanel {...defaultProps} />)
+
+      const newSessionButton = screen.getByLabelText("New session")
+      // The Button component mock sets data-variant to "default" when no variant is specified
+      expect(newSessionButton).toHaveAttribute("data-variant", "default")
+      expect(newSessionButton).toHaveAttribute("data-testid", "button-component")
     })
   })
 

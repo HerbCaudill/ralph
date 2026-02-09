@@ -1,4 +1,5 @@
-import { IconMessage, IconPlus, IconX } from "@tabler/icons-react"
+import { IconMessage, IconMessagePlus, IconX } from "@tabler/icons-react"
+import { Button } from "@herbcaudill/components"
 import { AgentView, ChatInput, SessionPicker, listSessions } from "@herbcaudill/agent-view"
 import type { ChatEvent, AgentViewToolOutputControl } from "@herbcaudill/agent-view"
 import { useMemo } from "react"
@@ -40,14 +41,14 @@ export function TaskChatPanel({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <button
+        <Button
           onClick={onNewSession}
           disabled={isStreaming}
-          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+          size="icon-xs"
           aria-label="New session"
         >
-          <IconPlus size={18} stroke={1.5} />
-        </button>
+          <IconMessagePlus size={18} stroke={1.5} />
+        </Button>
         {sessions.length > 0 && (
           <SessionPicker
             sessions={sessions}
