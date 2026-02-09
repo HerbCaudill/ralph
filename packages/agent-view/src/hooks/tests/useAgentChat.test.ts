@@ -293,9 +293,12 @@ describe("useAgentChat localStorage persistence", () => {
       expect(result.current.agentType).toBe("claude")
 
       // Verify no POST /api/sessions was called
-      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as [
+        string,
+        RequestInit?,
+      ][]
       const createCalls = fetchCalls.filter(
-        ([url, init]: [string, RequestInit?]) => url === "/api/sessions" && init?.method === "POST",
+        ([url, init]) => url === "/api/sessions" && init?.method === "POST",
       )
       expect(createCalls).toHaveLength(0)
     })
@@ -589,8 +592,11 @@ describe("useAgentChat localStorage persistence", () => {
       expect(result.current.agentType).toBe("codex")
 
       // Verify /api/sessions/latest was NOT called
-      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
-      const latestCalls = fetchCalls.filter(([url]: [string]) => url === "/api/sessions/latest")
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as [
+        string,
+        RequestInit?,
+      ][]
+      const latestCalls = fetchCalls.filter(([url]) => url === "/api/sessions/latest")
       expect(latestCalls).toHaveLength(0)
     })
   })
@@ -777,10 +783,11 @@ describe("useAgentChat localStorage persistence", () => {
       // Find the reconnect message sent to the WebSocket
       const sendMock = MockWebSocket.prototype.send || (vi.fn() as any)
       // The WS instance is internal, but we can check fetch was called with the right URL
-      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
-      const sessionFetchCalls = fetchCalls.filter(
-        ([url]: [string]) => url === "/api/sessions/ws-target",
-      )
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as [
+        string,
+        RequestInit?,
+      ][]
+      const sessionFetchCalls = fetchCalls.filter(([url]) => url === "/api/sessions/ws-target")
       expect(sessionFetchCalls.length).toBeGreaterThanOrEqual(1)
     })
 

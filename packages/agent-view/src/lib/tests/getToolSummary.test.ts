@@ -222,7 +222,6 @@ describe("getToolSummary", () => {
 
     it("should return empty string for unrecognized tool", () => {
       const input = { some_field: "value" }
-      // @ts-expect-error Testing unrecognized tool
       const result = getToolSummary("UnknownTool", input)
       expect(result).toBe("")
     })

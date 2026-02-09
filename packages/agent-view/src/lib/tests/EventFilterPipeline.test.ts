@@ -183,7 +183,12 @@ describe("EventFilterPipeline", () => {
     })
 
     it("should render tool_use blocks", () => {
-      const block: AssistantContentBlock = { type: "tool_use", name: "Read", id: "tool-1" }
+      const block: AssistantContentBlock = {
+        type: "tool_use",
+        name: "Read",
+        id: "tool-1",
+        input: {},
+      }
       const result = shouldFilterContentBlock(block, false, {})
 
       expect(result.shouldRender).toBe(true)
