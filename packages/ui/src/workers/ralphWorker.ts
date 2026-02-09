@@ -20,7 +20,7 @@ interface SharedWorkerGlobalScope {
 }
 
 /** Control state for the Ralph loop. Matches agent-view ControlState. */
-export type ControlState = "idle" | "running" | "paused"
+export type ControlState = "idle" | "running"
 
 /** Per-workspace state managed by the worker. */
 interface WorkspaceState {
@@ -39,8 +39,6 @@ export type WorkerMessage =
   | { type: "unsubscribe_workspace"; workspaceId: string }
   | { type: "start"; workspaceId: string; sessionId?: string }
   | { type: "pause"; workspaceId: string }
-  | { type: "resume"; workspaceId: string }
-  | { type: "stop"; workspaceId: string }
   | { type: "message"; workspaceId: string; text: string }
   | { type: "get_state"; workspaceId: string }
   | { type: "restore_session"; workspaceId: string; sessionId: string; controlState?: ControlState }
@@ -429,26 +427,11 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       break
     }
 
-    case "pause": {
-      const state = getWorkspace(message.workspaceId)
-      if (state.controlState === "running") {
-        setControlState(message.workspaceId, "paused")
-      }
-      break
-    }
-
-    case "resume": {
-      const state = getWorkspace(message.workspaceId)
-      if (state.controlState === "paused") {
-        setControlState(message.workspaceId, "running")
-      }
-      break
-    }
-
-    case "stop":
+    case "pause":
+      // Pause immediately interrupts the agent and goes to idle
       setControlState(message.workspaceId, "idle")
-      getWorkspace(message.workspaceId).currentSessionId = null
-      disconnectWorkspace(message.workspaceId)
+      // Note: We don't clear currentSessionId or disconnect - this allows
+      // viewing past events and sending new messages to continue the session
       break
 
     case "message": {
@@ -488,8 +471,8 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       if (state.controlState === "idle" && !state.currentSessionId) {
         state.currentSessionId = message.sessionId
 
-        // If the session was running/paused before reload, restore that state
-        if (message.controlState === "running" || message.controlState === "paused") {
+        // If the session was running before reload, restore that state
+        if (message.controlState === "running") {
           state.controlState = message.controlState
         }
 

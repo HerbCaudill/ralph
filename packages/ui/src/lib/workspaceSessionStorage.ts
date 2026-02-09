@@ -84,10 +84,10 @@ export function saveWorkspaceState(
 export function loadWorkspaceState(
   /** Workspace identifier in `owner/repo` format. */
   workspaceId: string,
-): ControlState | null {
+): "running" | null {
   try {
     const state = localStorage.getItem(getStateStorageKey(workspaceId))
-    if (state === "running" || state === "paused") {
+    if (state === "running") {
       return state
     }
     return null

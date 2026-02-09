@@ -111,9 +111,9 @@ describe("workspaceSessionStorage", () => {
       expect(loadWorkspaceState("herbcaudill/ralph")).toBe("running")
     })
 
-    it("should return 'paused' when stored", () => {
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "paused")
-      expect(loadWorkspaceState("herbcaudill/ralph")).toBe("paused")
+    it("should return null for idle state", () => {
+      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "idle")
+      expect(loadWorkspaceState("herbcaudill/ralph")).toBeNull()
     })
 
     it("should return null for invalid values", () => {

@@ -79,8 +79,8 @@ export function useRalphLoop(
       case "session_restored":
         // Session restored from localStorage
         setSessionId(data.sessionId)
-        // If the session was running or paused before reload, restore that state
-        if (data.controlState === "running" || data.controlState === "paused") {
+        // If the session was running before reload, restore that state
+        if (data.controlState === "running") {
           setControlState(data.controlState)
           setIsStreaming(true) // Session is still active
         }
@@ -198,23 +198,11 @@ export function useRalphLoop(
     postMessage({ type: "start", workspaceId })
   }, [workspaceId, postMessage])
 
-  /** Pause the Ralph loop. */
+  /** Pause/interrupt the Ralph loop immediately. */
   const pause = useCallback(() => {
     if (!workspaceId) return
-    postMessage({ type: "pause", workspaceId })
-  }, [workspaceId, postMessage])
-
-  /** Resume the Ralph loop after pausing. */
-  const resume = useCallback(() => {
-    if (!workspaceId) return
-    postMessage({ type: "resume", workspaceId })
-  }, [workspaceId, postMessage])
-
-  /** Stop the Ralph loop. */
-  const stop = useCallback(() => {
-    if (!workspaceId) return
     setIsStreaming(false)
-    postMessage({ type: "stop", workspaceId })
+    postMessage({ type: "pause", workspaceId })
   }, [workspaceId, postMessage])
 
   /** Send a message to Claude within the current session. */
@@ -234,8 +222,6 @@ export function useRalphLoop(
     sessionId,
     start,
     pause,
-    resume,
-    stop,
     sendMessage,
   }
 }
@@ -249,7 +235,7 @@ export interface UseRalphLoopReturn {
   events: ChatEvent[]
   /** Whether the agent is currently streaming a response. */
   isStreaming: boolean
-  /** Current state of the Ralph loop (stopped, running, paused). */
+  /** Current state of the Ralph loop (idle or running). */
   controlState: ControlState
   /** Status of the connection to the SharedWorker. */
   connectionStatus: ConnectionStatus
@@ -257,12 +243,8 @@ export interface UseRalphLoopReturn {
   sessionId: string | null
   /** Start the Ralph loop. */
   start: () => void
-  /** Pause the Ralph loop. */
+  /** Pause/interrupt the Ralph loop immediately. */
   pause: () => void
-  /** Resume the Ralph loop after pausing. */
-  resume: () => void
-  /** Stop the Ralph loop. */
-  stop: () => void
   /** Send a message to Claude within the current session. */
   sendMessage: (message: string) => void
 }

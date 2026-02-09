@@ -88,14 +88,13 @@ const defaultProps = {
   workspaceName: "ralph",
   branch: "main",
   workspacePath: "/Users/test/ralph",
+  isStoppingAfterCurrent: false,
   onSendMessage: vi.fn(),
   onPause: vi.fn(),
-  onResume: vi.fn(),
-  onStop: vi.fn(),
-  onNewSession: vi.fn(),
-  onStart: vi.fn(),
   onStopAfterCurrent: vi.fn(),
   onCancelStopAfterCurrent: vi.fn(),
+  onNewSession: vi.fn(),
+  onStart: vi.fn(),
 }
 
 describe("RalphRunner", () => {

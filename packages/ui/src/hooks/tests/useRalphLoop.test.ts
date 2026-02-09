@@ -533,31 +533,6 @@ describe("useRalphLoop", () => {
         expect(result.current.isStreaming).toBe(true)
       })
     })
-
-    it("should restore paused state correctly", async () => {
-      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "paused-session-id")
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "paused")
-
-      const { useRalphLoop } = await import("../useRalphLoop")
-      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
-
-      await flushSubscription()
-
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "session_restored",
-          workspaceId: TEST_WORKSPACE_ID,
-          sessionId: "paused-session-id",
-          controlState: "paused",
-        })
-      })
-
-      await waitFor(() => {
-        expect(result.current.sessionId).toBe("paused-session-id")
-        expect(result.current.controlState).toBe("paused")
-        expect(result.current.isStreaming).toBe(true) // Still streaming when paused
-      })
-    })
   })
 
   describe("no auto-start behavior", () => {

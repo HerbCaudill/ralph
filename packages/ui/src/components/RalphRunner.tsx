@@ -35,8 +35,6 @@ export function RalphRunner({
   onSendMessage,
   onStart,
   onPause,
-  onResume,
-  onStop,
   onStopAfterCurrent,
   onCancelStopAfterCurrent,
   onNewSession: _onNewSession, // Kept for API compatibility, will be used by subtask r-0p41v.5
@@ -96,20 +94,18 @@ export function RalphRunner({
         <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs">
           {/* Left section: controls + status */}
           <div className="flex items-center gap-3">
-            {/* Full control bar with Start/Pause/Stop/Stop-after-current */}
+            {/* Control bar with Start/Pause/Stop-after-current buttons */}
             <ControlBar
               controlState={controlState}
               isConnected={isConnected}
               isStoppingAfterCurrent={isStoppingAfterCurrent}
               onStart={onStart}
               onPause={onPause}
-              onResume={onResume}
-              onStop={onStop}
               onStopAfterCurrent={onStopAfterCurrent}
               onCancelStopAfterCurrent={onCancelStopAfterCurrent}
             />
 
-            {/* Status indicator - shows Running/Paused/Stopped with colored dot */}
+            {/* Status indicator - shows Running/Idle with colored dot */}
             <StatusIndicator
               controlState={controlState}
               isStoppingAfterCurrent={isStoppingAfterCurrent}
@@ -155,7 +151,7 @@ export type RalphRunnerProps = {
   events: ChatEvent[]
   /** Whether the agent is currently streaming/active. */
   isStreaming: boolean
-  /** Current control state (idle, running, or paused). */
+  /** Current control state (idle or running). */
   controlState: ControlState
   /** Connection status to the agent server. */
   connectionStatus: ConnectionStatus
@@ -165,7 +161,7 @@ export type RalphRunnerProps = {
   branch?: string | null
   /** Full path to the workspace (shown in tooltip). */
   workspacePath?: string | null
-  /** Whether currently stopping after the current task. */
+  /** Whether currently stopping after the current session. */
   isStoppingAfterCurrent?: boolean
   /** Context configuration passed to AgentViewProvider. */
   context?: Partial<AgentViewContextValue>
@@ -175,10 +171,6 @@ export type RalphRunnerProps = {
   onStart?: () => void
   /** Called when the pause button is clicked. */
   onPause: () => void
-  /** Called when the resume button is clicked. */
-  onResume: () => void
-  /** Called when the stop button is clicked. */
-  onStop: () => void
   /** Called when stop-after-current button is clicked. */
   onStopAfterCurrent?: () => void
   /** Called when cancel-stop-after-current button is clicked. */

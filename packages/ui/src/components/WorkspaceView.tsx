@@ -53,17 +53,8 @@ export function WorkspaceView() {
   }
 
   // Ralph loop state from SharedWorker
-  const {
-    events,
-    isStreaming,
-    controlState,
-    connectionStatus,
-    start,
-    pause,
-    resume,
-    stop,
-    sendMessage,
-  } = useRalphLoop(workspaceId)
+  const { events, isStreaming, controlState, connectionStatus, start, pause, sendMessage } =
+    useRalphLoop(workspaceId)
 
   // Task chat state from agent-server
   const { state: taskChatState, actions: taskChatActions } = useTaskChat()
@@ -104,9 +95,6 @@ export function WorkspaceView() {
   // Dialog state
   const [showHotkeysDialog, setShowHotkeysDialog] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
-
-  // Stop-after-current state (temporary local state until worker supports it)
-  const [isStoppingAfterCurrent, setIsStoppingAfterCurrent] = useState(false)
 
   // Tool output visibility from persisted UI store
   const showToolOutput = useUiStore(state => state.showToolOutput)
@@ -198,9 +186,9 @@ export function WorkspaceView() {
 
   // Handle new session
   const handleNewSession = useCallback(() => {
-    stop()
+    pause()
     setTimeout(start, 100)
-  }, [stop, start])
+  }, [pause, start])
 
   // Handle task chat message send
   const handleTaskChatSend = useCallback(
@@ -234,23 +222,17 @@ export function WorkspaceView() {
     start()
   }, [start])
 
-  const handleAgentStop = useCallback(() => {
-    stop()
-  }, [stop])
-
   const handleAgentPause = useCallback(() => {
-    if (controlState === "paused") {
-      resume()
-    } else {
-      pause()
-    }
-  }, [controlState, pause, resume])
+    pause()
+  }, [])
 
   const handleCycleTheme = useCallback(() => {
     console.log("Cycle theme")
   }, [])
 
-  // Stop after current task handlers
+  // Stop after current session state (local state)
+  const [isStoppingAfterCurrent, setIsStoppingAfterCurrent] = useState(false)
+
   const handleStopAfterCurrent = useCallback(() => {
     setIsStoppingAfterCurrent(true)
   }, [])
@@ -290,8 +272,6 @@ export function WorkspaceView() {
       onSendMessage={handleRalphSend}
       onStart={start}
       onPause={pause}
-      onResume={resume}
-      onStop={stop}
       onStopAfterCurrent={handleStopAfterCurrent}
       onCancelStopAfterCurrent={handleCancelStopAfterCurrent}
       onNewSession={handleNewSession}
@@ -333,7 +313,7 @@ export function WorkspaceView() {
         onClose={() => setShowCommandPalette(false)}
         handlers={{
           agentStart: handleAgentStart,
-          agentStop: handleAgentStop,
+          agentStop: handleAgentPause, // Pause now serves as stop
           agentPause: handleAgentPause,
           cycleTheme: handleCycleTheme,
           showHotkeys: handleShowHotkeys,

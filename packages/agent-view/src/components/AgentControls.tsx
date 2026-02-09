@@ -35,7 +35,6 @@ export function AgentControls({
   size = "md",
 }: AgentControlsProps) {
   const isRunning = state === "running"
-  const isPaused = state === "paused"
   const isIdle = state === "idle"
   const buttonSize = BUTTON_SIZE_MAP[size]
   const iconSize = ICON_SIZE_MAP[size]
@@ -55,31 +54,17 @@ export function AgentControls({
         </Button>
       )}
 
-      {/* Pause/Resume button */}
+      {/* Pause button */}
       {showPauseResume && (
-        <>
-          {isPaused ?
-            <Button
-              variant="ghost"
-              size={buttonSize}
-              onClick={onResume}
-              disabled={disabled}
-              title="Resume"
-              className="text-green-600"
-            >
-              <IconPlayerPlay size={iconSize} stroke={1.5} />
-            </Button>
-          : <Button
-              variant="ghost"
-              size={buttonSize}
-              onClick={onPause}
-              disabled={disabled || isIdle}
-              title="Pause"
-            >
-              <IconPlayerPause size={iconSize} stroke={1.5} />
-            </Button>
-          }
-        </>
+        <Button
+          variant="ghost"
+          size={buttonSize}
+          onClick={onPause}
+          disabled={disabled || isIdle}
+          title="Pause"
+        >
+          <IconPlayerPause size={iconSize} stroke={1.5} />
+        </Button>
       )}
 
       {/* Stop button */}

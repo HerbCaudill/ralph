@@ -3,15 +3,10 @@ import {
   IconPlayerPlayFilled,
   IconPlayerPauseFilled,
   IconPlayerStopFilled,
-  IconPlayerStop,
+  IconX,
 } from "@tabler/icons-react"
 import { cn } from "@herbcaudill/agent-view"
 import { Button } from "@herbcaudill/components"
-import {
-  getControlBarButtonStates,
-  controlStateToRalphStatus,
-  type RalphStatus,
-} from "@/lib/getControlBarButtonStates"
 import type { ControlState } from "@/hooks/useRalphLoop"
 
 /**
@@ -22,16 +17,12 @@ export interface ControlBarProps {
   controlState: ControlState
   /** Whether connected to the server. */
   isConnected: boolean
-  /** Whether currently stopping after the current task. */
+  /** Whether currently stopping after the current session. */
   isStoppingAfterCurrent?: boolean
   /** Called when start button is clicked. */
   onStart?: () => void
   /** Called when pause button is clicked. */
   onPause?: () => void
-  /** Called when resume button is clicked. */
-  onResume?: () => void
-  /** Called when stop button is clicked. */
-  onStop?: () => void
   /** Called when stop-after-current button is clicked. */
   onStopAfterCurrent?: () => void
   /** Called when cancel-stop-after-current button is clicked. */
@@ -41,8 +32,8 @@ export interface ControlBarProps {
 }
 
 /**
- * Control bar with buttons for Start, Pause, Stop, and Stop-after-current.
- * Button states are disabled based on Ralph status.
+ * Control bar with Start, Pause, and Stop-after-current buttons.
+ * Button states are disabled based on control state.
  */
 export function ControlBar({
   controlState,
@@ -50,8 +41,6 @@ export function ControlBar({
   isStoppingAfterCurrent = false,
   onStart,
   onPause,
-  onResume,
-  onStop,
   onStopAfterCurrent,
   onCancelStopAfterCurrent,
   className,
@@ -59,10 +48,10 @@ export function ControlBar({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Derive Ralph status from control state
-  const status: RalphStatus = controlStateToRalphStatus(controlState, isStoppingAfterCurrent)
-  const buttonStates = getControlBarButtonStates(status, isConnected)
-  const isPaused = status === "paused"
+  const isRunning = controlState === "running"
+  const canStart = !isRunning && isConnected
+  const canPause = isRunning && !isStoppingAfterCurrent
+  const canStopAfterCurrent = isRunning && !isStoppingAfterCurrent
 
   /**
    * Start a new Ralph session.
@@ -80,57 +69,49 @@ export function ControlBar({
   }, [onStart])
 
   /**
-   * Pause the current Ralph session or resume if paused.
+   * Pause/interrupt the current Ralph session immediately.
    */
   const handlePause = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
-      if (status === "paused" || status === "pausing") {
-        onResume?.()
-      } else {
-        onPause?.()
-      }
+      onPause?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to pause")
     } finally {
       setIsLoading(false)
     }
-  }, [status, onPause, onResume])
+  }, [onPause])
 
   /**
-   * Stop the current Ralph session immediately.
-   */
-  const handleStop = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      onStop?.()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to stop")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [onStop])
-
-  /**
-   * Stop Ralph after completing the current task, or cancel if already stopping after current.
+   * Stop after the current session completes.
    */
   const handleStopAfterCurrent = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
-      if (status === "stopping_after_current") {
-        onCancelStopAfterCurrent?.()
-      } else {
-        onStopAfterCurrent?.()
-      }
+      onStopAfterCurrent?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to stop after current")
+      setError(err instanceof Error ? err.message : "Failed to set stop after current")
     } finally {
       setIsLoading(false)
     }
-  }, [status, onStopAfterCurrent, onCancelStopAfterCurrent])
+  }, [onStopAfterCurrent])
+
+  /**
+   * Cancel the pending stop-after-current.
+   */
+  const handleCancelStopAfterCurrent = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      onCancelStopAfterCurrent?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [onCancelStopAfterCurrent])
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
@@ -139,55 +120,48 @@ export function ControlBar({
         variant="outline"
         size="icon-xs"
         onClick={handleStart}
-        disabled={!buttonStates.start || isLoading}
+        disabled={!canStart || isLoading}
         title="Start"
         aria-label="Start"
       >
         <IconPlayerPlayFilled size={14} stroke={1.5} />
       </Button>
 
-      {/* Pause/Resume button */}
+      {/* Pause button */}
       <Button
         variant="outline"
         size="icon-xs"
         onClick={handlePause}
-        disabled={!buttonStates.pause || isLoading}
-        title={isPaused ? "Resume" : "Pause"}
-        aria-label={isPaused ? "Resume" : "Pause"}
+        disabled={!canPause || isLoading}
+        title="Pause"
+        aria-label="Pause"
       >
         <IconPlayerPauseFilled size={14} stroke={1.5} />
       </Button>
 
-      {/* Stop button */}
-      <Button
-        variant="outline"
-        size="icon-xs"
-        onClick={handleStop}
-        disabled={!buttonStates.stop || isLoading}
-        title="Stop"
-        aria-label="Stop"
-      >
-        <IconPlayerStopFilled size={14} stroke={1.5} />
-      </Button>
-
-      {/* Stop after current button */}
-      <Button
-        variant="outline"
-        size="icon-xs"
-        onClick={handleStopAfterCurrent}
-        disabled={!buttonStates.stopAfterCurrent || isLoading}
-        title={
-          status === "stopping_after_current" ? "Cancel stop after current" : "Stop after current"
-        }
-        aria-label={
-          status === "stopping_after_current" ?
-            "Cancel stop after current"
-          : "Stop after current action"
-        }
-        className={cn(status === "stopping_after_current" && "bg-repo-accent/20 text-repo-accent")}
-      >
-        <IconPlayerStop size={14} stroke={1.5} />
-      </Button>
+      {/* Stop after current button or Cancel button */}
+      {isStoppingAfterCurrent ?
+        <Button
+          variant="outline"
+          size="icon-xs"
+          onClick={handleCancelStopAfterCurrent}
+          disabled={isLoading}
+          title="Cancel stop after current"
+          aria-label="Cancel stop after current"
+        >
+          <IconX size={14} stroke={1.5} />
+        </Button>
+      : <Button
+          variant="outline"
+          size="icon-xs"
+          onClick={handleStopAfterCurrent}
+          disabled={!canStopAfterCurrent || isLoading}
+          title="Stop after current"
+          aria-label="Stop after current"
+        >
+          <IconPlayerStopFilled size={14} stroke={1.5} />
+        </Button>
+      }
 
       {/* Error display */}
       {error && <span className="text-red-500 text-xs">{error}</span>}
