@@ -8,11 +8,7 @@ import {
   type ConversationMessage,
 } from "./agentTypes.js"
 import type { AgentEvent } from "@herbcaudill/ralph-shared"
-import {
-  createAdapter,
-  getFirstAvailableAdapter,
-  registerDefaultAdapters,
-} from "./AdapterRegistry.js"
+import { createAdapter, isAdapterRegistered, registerDefaultAdapters } from "./AdapterRegistry.js"
 
 /** Information about a chat session. */
 export interface SessionInfo {
@@ -103,9 +99,18 @@ export class ChatSessionManager extends EventEmitter {
     /** Options for the new session. */
     options: CreateSessionOptions = {},
   ): Promise<{ sessionId: string }> {
-    const adapter = options.adapter ?? (await getFirstAvailableAdapter())
-    if (!adapter) {
-      throw new Error("No available agent adapters. Check API keys.")
+    const adapter = options.adapter ?? "claude"
+    if (!isAdapterRegistered(adapter)) {
+      throw new Error(`Unknown adapter "${adapter}".`)
+    }
+    const tempAdapter = createAdapter(adapter)
+    if (!(await tempAdapter.isAvailable())) {
+      throw new Error(
+        `The "${adapter}" adapter is not available. ` +
+          (adapter === "claude" ?
+            `Ensure the Claude CLI is installed.`
+          : `Check your configuration.`),
+      )
     }
 
     const sessionId = generateId()

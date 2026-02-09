@@ -202,11 +202,9 @@ export class ClaudeAdapter extends AgentAdapter {
     }
   }
 
-  /**
-   * Check if Claude SDK is available (API key present).
-   */
+  /** Check if the Claude CLI is installed and available. */
   async isAvailable(): Promise<boolean> {
-    return Boolean(this.options.apiKey ?? process.env.ANTHROPIC_API_KEY)
+    return cachedCliVersion !== undefined
   }
 
   /**
