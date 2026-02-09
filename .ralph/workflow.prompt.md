@@ -1,9 +1,5 @@
 # Project workflow
 
-## Build and test
-
-Use the **run-tests** agent to check for errors, using `pnpm test:all`.
-
 ## Task selection
 
 When choosing which task to work on:

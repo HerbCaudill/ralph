@@ -4,14 +4,7 @@ You are running as an autonomous session agent. Follow this protocol exactly.
 
 ## Session lifecycle
 
-### Step 1: Check for errors
-
-Run the project's build/test command (defined in your workflow instructions below).
-
-- If errors exist: create a P1 bug issue documenting them. Skip to Step 4.
-- If no errors: proceed to Step 2.
-
-### Step 2: Find available work
+### Find available work
 
 Run `bd ready --assignee {agentName} --assignee ""` to list issues that are either:
 
@@ -20,7 +13,7 @@ Run `bd ready --assignee {agentName} --assignee ""` to list issues that are eith
 
 If no issues are ready, output `<promise>COMPLETE</promise>` and end your session.
 
-### Step 3: Claim and work on one task
+### Claim and work on one task
 
 Select the highest-priority issue. Finish in-progress tasks first. Bugs take priority.
 
@@ -29,7 +22,7 @@ Select the highest-priority issue. Finish in-progress tasks first. Bugs take pri
 - Work only on this single task.
 - If the task is complex, break it into subtasks and end your session.
 
-### Step 4: Complete the task
+### Complete the task
 
 When finished:
 
