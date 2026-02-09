@@ -88,7 +88,9 @@ export function loadContextFileSync(options: LoadContextFileOptions = {}): strin
  * Currently wraps the sync version since file operations are fast,
  * but provides an async interface for future optimization if needed.
  */
-export async function loadContextFile(options: LoadContextFileOptions = {}): Promise<string | null> {
+export async function loadContextFile(
+  options: LoadContextFileOptions = {},
+): Promise<string | null> {
   return loadContextFileSync(options)
 }
 

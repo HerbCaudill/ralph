@@ -73,7 +73,7 @@ export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSh
     <div
       ref={panelRef}
       data-testid="task-detail-sheet"
-      className="animate-slide-out-right bg-background absolute top-0 left-0 h-full overflow-hidden border-r border-border shadow-lg"
+      className="animate-slide-out-right bg-background absolute top-0 left-0 h-full overflow-y-auto border-r border-border shadow-lg"
       style={{ width: PANEL_WIDTH }}
       onClick={e => e.stopPropagation()}
     >

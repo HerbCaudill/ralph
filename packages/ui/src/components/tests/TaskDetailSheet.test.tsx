@@ -86,6 +86,18 @@ describe("TaskDetailSheet", () => {
     expect(panel.className).toContain("left-0")
   })
 
+  it("allows content to scroll vertically", () => {
+    render(<TaskDetailSheet {...defaultProps} />)
+
+    const panel = screen.getByTestId("task-detail-sheet")
+    expect(panel).toBeInTheDocument()
+
+    // The panel should allow vertical scrolling via overflow-y-auto
+    // Previously it had overflow-hidden which clipped the content
+    expect(panel.className).toContain("overflow-y-auto")
+    expect(panel.className).not.toContain("overflow-hidden")
+  })
+
   it("does not render a modal backdrop", () => {
     const { container } = render(<TaskDetailSheet {...defaultProps} />)
 

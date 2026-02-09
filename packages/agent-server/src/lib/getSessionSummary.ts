@@ -54,7 +54,9 @@ function extractTaskIdFromEvent(event: Record<string, unknown>): string | null {
 
   // Check assistant message with content array
   if (event.type === "assistant") {
-    const message = event.message as { content?: Array<{ type: string; text?: string }> } | undefined
+    const message = event.message as
+      | { content?: Array<{ type: string; text?: string }> }
+      | undefined
     if (Array.isArray(message?.content)) {
       for (const block of message.content) {
         if (block.type === "text" && typeof block.text === "string") {

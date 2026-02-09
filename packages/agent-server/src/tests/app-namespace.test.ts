@@ -129,11 +129,15 @@ describe("App-namespaced session storage", () => {
       const sessionId = "test-session-1"
       const app = "ralph"
 
-      await persister.appendEvent(sessionId, {
-        type: "session_created",
+      await persister.appendEvent(
         sessionId,
-        timestamp: Date.now(),
-      }, app)
+        {
+          type: "session_created",
+          sessionId,
+          timestamp: Date.now(),
+        },
+        app,
+      )
 
       // Should create the app subdirectory
       expect(existsSync(join(storageDir, "ralph"))).toBe(true)
@@ -183,16 +187,24 @@ describe("App-namespaced session storage", () => {
       const sessionId = "test-session"
       const app = "ralph"
 
-      await persister.appendEvent(sessionId, {
-        type: "session_created",
+      await persister.appendEvent(
         sessionId,
-        timestamp: 1000,
-      }, app)
-      await persister.appendEvent(sessionId, {
-        type: "user_message",
-        message: "Hello",
-        timestamp: 2000,
-      }, app)
+        {
+          type: "session_created",
+          sessionId,
+          timestamp: 1000,
+        },
+        app,
+      )
+      await persister.appendEvent(
+        sessionId,
+        {
+          type: "user_message",
+          message: "Hello",
+          timestamp: 2000,
+        },
+        app,
+      )
 
       const events = await persister.readEvents(sessionId, app)
       expect(events).toHaveLength(2)
@@ -206,13 +218,17 @@ describe("App-namespaced session storage", () => {
       const app = "ralph"
       const createdAt = Date.now()
 
-      await persister.appendEvent(sessionId, {
-        type: "session_created",
+      await persister.appendEvent(
         sessionId,
-        adapter: "stub",
-        cwd: "/test/dir",
-        timestamp: createdAt,
-      }, app)
+        {
+          type: "session_created",
+          sessionId,
+          adapter: "stub",
+          cwd: "/test/dir",
+          timestamp: createdAt,
+        },
+        app,
+      )
 
       const metadata = persister.readSessionMetadata(sessionId, app)
       expect(metadata).not.toBeNull()

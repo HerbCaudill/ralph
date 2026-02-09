@@ -33,12 +33,7 @@ function createTestApp(ctx?: PromptRouteContext) {
 }
 
 /** Make a request to the test app and return the parsed response. */
-async function request(
-  app: express.Express,
-  method: "GET" | "POST",
-  path: string,
-  body?: unknown,
-) {
+async function request(app: express.Express, method: "GET" | "POST", path: string, body?: unknown) {
   const server = app.listen(0)
   const address = server.address()
   const port = typeof address === "object" && address ? address.port : 0
