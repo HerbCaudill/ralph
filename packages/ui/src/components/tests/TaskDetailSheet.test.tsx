@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, act } from "@testing-library/react"
 import { TaskDetailSheet } from "../TaskDetailSheet"
+import { useUiStore } from "../../stores/uiStore"
 import type { TaskCardTask } from "@herbcaudill/beads-view"
 
 // Mock beads-view TaskDetailsController
@@ -174,5 +175,128 @@ describe("TaskDetailSheet", () => {
 
     // Cleanup
     document.body.removeChild(portalElement)
+  })
+
+  describe("resizable width", () => {
+    beforeEach(() => {
+      // Reset uiStore to default state before each test
+      useUiStore.setState({
+        issueSheetWidthPercent: 25,
+      })
+      // Mock window.innerWidth for consistent test results
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: 1920,
+      })
+    })
+
+    it("renders a resize handle on the right edge", () => {
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+      expect(handle).toBeInTheDocument()
+      expect(handle).toHaveClass("cursor-col-resize")
+    })
+
+    it("uses persisted width from uiStore", () => {
+      // Set a custom width in the store (30% of 1920px = 576px)
+      useUiStore.setState({ issueSheetWidthPercent: 30 })
+
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const panel = screen.getByTestId("task-detail-sheet")
+      expect(panel).toHaveStyle({ width: "576px" })
+    })
+
+    it("updates width while dragging", () => {
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+      const panel = screen.getByTestId("task-detail-sheet")
+
+      // Initial width: 25% of 1920px = 480px
+      expect(panel).toHaveStyle({ width: "480px" })
+
+      // Start dragging
+      fireEvent.mouseDown(handle, { clientX: 480 })
+
+      // Drag to new position (600px from left edge of sheet)
+      fireEvent.mouseMove(panel, { clientX: 600 })
+
+      // Width should update to 600px
+      expect(panel).toHaveStyle({ width: "600px" })
+    })
+
+    it("persists width to uiStore on mouse up", () => {
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+      const panel = screen.getByTestId("task-detail-sheet")
+
+      // Start dragging
+      fireEvent.mouseDown(handle, { clientX: 480 })
+
+      // Drag to new position (600px)
+      fireEvent.mouseMove(panel, { clientX: 600 })
+
+      // Release
+      fireEvent.mouseUp(panel)
+
+      // Store should be updated (600/1920 * 100 ≈ 31.25%)
+      const { issueSheetWidthPercent } = useUiStore.getState()
+      expect(issueSheetWidthPercent).toBeCloseTo(31.25, 1)
+    })
+
+    it("enforces minimum width constraint", () => {
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+      const panel = screen.getByTestId("task-detail-sheet")
+
+      // Start dragging
+      fireEvent.mouseDown(handle, { clientX: 480 })
+
+      // Try to drag below minimum (100px, below MIN_ISSUE_SHEET_WIDTH of 300px)
+      fireEvent.mouseMove(panel, { clientX: 100 })
+
+      // Width should be constrained to minimum
+      expect(panel).toHaveStyle({ width: "300px" })
+    })
+
+    it("enforces maximum width constraint", () => {
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+      const panel = screen.getByTestId("task-detail-sheet")
+
+      // Start dragging
+      fireEvent.mouseDown(handle, { clientX: 480 })
+
+      // Try to drag beyond maximum (1500px, above MAX_ISSUE_SHEET_WIDTH_PERCENT of 60%)
+      fireEvent.mouseMove(panel, { clientX: 1500 })
+
+      // Width should be constrained to maximum (60% of 1920px = 1152px)
+      expect(panel).toHaveStyle({ width: "1152px" })
+    })
+
+    it("does not call onClose when clicking on resize handle", async () => {
+      render(
+        <div>
+          <div data-testid="outside">Outside content</div>
+          <TaskDetailSheet {...defaultProps} />
+        </div>,
+      )
+
+      // Wait for the outside-click listener to be attached
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150))
+      })
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+      fireEvent.mouseDown(handle)
+
+      expect(defaultProps.onClose).not.toHaveBeenCalled()
+    })
   })
 })

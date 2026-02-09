@@ -12,6 +12,8 @@ interface UiState {
   rightPanelOpen: boolean
   /** Width of the right panel as a percentage of viewport width (0-100). */
   rightPanelWidthPercent: number
+  /** Width of the issue sheet as a percentage of viewport width (0-100). */
+  issueSheetWidthPercent: number
   /** Whether to show tool output in the event stream. */
   showToolOutput: boolean
   /** Current theme preference. */
@@ -29,6 +31,8 @@ interface UiState {
   toggleRightPanel: () => void
   /** Set the right panel width as a percentage of viewport width. */
   setRightPanelWidthPercent: (percent: number) => void
+  /** Set the issue sheet width as a percentage of viewport width. */
+  setIssueSheetWidthPercent: (percent: number) => void
   /** Toggle whether tool output is shown. */
   toggleToolOutput: () => void
   /** Set the theme preference. */
@@ -47,6 +51,9 @@ const DEFAULT_SIDEBAR_WIDTH_PERCENT = 20
 /** Default right panel width as percentage of viewport. */
 const DEFAULT_RIGHT_PANEL_WIDTH_PERCENT = 30
 
+/** Default issue sheet width as percentage of viewport. */
+const DEFAULT_ISSUE_SHEET_WIDTH_PERCENT = 25
+
 /**
  * Zustand store for UI preferences.
  * Manages layout state like panel widths and visibility.
@@ -58,6 +65,7 @@ export const useUiStore = create<UiState>()(
       sidebarWidthPercent: DEFAULT_SIDEBAR_WIDTH_PERCENT,
       rightPanelOpen: false,
       rightPanelWidthPercent: DEFAULT_RIGHT_PANEL_WIDTH_PERCENT,
+      issueSheetWidthPercent: DEFAULT_ISSUE_SHEET_WIDTH_PERCENT,
       showToolOutput: true,
       theme: "system",
       vscodeThemeId: null,
@@ -67,6 +75,7 @@ export const useUiStore = create<UiState>()(
       setSidebarWidthPercent: percent => set({ sidebarWidthPercent: percent }),
       toggleRightPanel: () => set(state => ({ rightPanelOpen: !state.rightPanelOpen })),
       setRightPanelWidthPercent: percent => set({ rightPanelWidthPercent: percent }),
+      setIssueSheetWidthPercent: percent => set({ issueSheetWidthPercent: percent }),
       toggleToolOutput: () => set(state => ({ showToolOutput: !state.showToolOutput })),
       setTheme: theme => set({ theme }),
       setVscodeThemeId: id => set({ vscodeThemeId: id }),
