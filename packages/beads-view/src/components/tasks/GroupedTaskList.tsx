@@ -68,7 +68,7 @@ function noop() {}
 export type TaskGroupDescriptor = {
   /** Unique identifier for this group. */
   key: string
-  /** Display label (e.g. "Open", "Children", "Blocked by"). */
+  /** Display label (e.g. "Open", "Subtasks", "Blocked by"). */
   label: string
   /** Task trees to render in this group. */
   trees: TaskTreeNode[]

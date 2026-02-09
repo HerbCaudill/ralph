@@ -91,7 +91,7 @@ describe("RelatedTasks", () => {
       expect(screen.queryByText("Unrelated task")).not.toBeInTheDocument()
     })
 
-    it("shows Children section with count", async () => {
+    it("shows Subtasks section with count", async () => {
       mockTasks = [
         { id: "rui-123.1", title: "Child 1", status: "open", parent: "rui-123" },
         { id: "rui-123.2", title: "Child 2", status: "closed", parent: "rui-123" },
@@ -104,7 +104,7 @@ describe("RelatedTasks", () => {
       renderWithContext("rui-123")
 
       await waitFor(() => {
-        expect(screen.getByLabelText("Children section, 2 tasks")).toBeInTheDocument()
+        expect(screen.getByLabelText("Subtasks section, 2 tasks")).toBeInTheDocument()
       })
     })
   })
@@ -211,12 +211,12 @@ describe("RelatedTasks", () => {
       })
 
       // Verify header is visible with correct aria-label
-      expect(screen.getByLabelText("Children section, 1 task")).toBeInTheDocument()
+      expect(screen.getByLabelText("Subtasks section, 1 task")).toBeInTheDocument()
       // Verify content is visible by default
       expect(screen.getByText("Child task")).toBeInTheDocument()
 
       // Header should be a button (collapsible)
-      const header = screen.getByLabelText("Children section, 1 task")
+      const header = screen.getByLabelText("Subtasks section, 1 task")
       expect(header).toHaveAttribute("role", "button")
     })
   })

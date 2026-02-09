@@ -53,7 +53,7 @@ describe("TaskRelationCombobox", () => {
       expect(screen.getByRole("button", { name: /add blocked task/i })).toBeInTheDocument()
     })
 
-    it("shows 'Add child' for child relation type", () => {
+    it("shows 'Add subtask' for child relation type", () => {
       render(
         <TaskRelationCombobox
           task={defaultTask}
@@ -63,7 +63,7 @@ describe("TaskRelationCombobox", () => {
           onSelect={vi.fn()}
         />,
       )
-      expect(screen.getByRole("button", { name: /add child/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /add subtask/i })).toBeInTheDocument()
     })
 
     it("shows 'Set parent' for parent relation type", () => {

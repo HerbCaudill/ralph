@@ -196,7 +196,7 @@ function getDefaultButtonText(relationType: TaskRelationType): string {
     case "blocked":
       return "Add blocked task"
     case "child":
-      return "Add child"
+      return "Add subtask"
     case "parent":
       return "Set parent"
   }

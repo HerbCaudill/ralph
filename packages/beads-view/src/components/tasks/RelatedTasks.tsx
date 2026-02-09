@@ -6,8 +6,8 @@ import { apiFetch } from "../../lib/apiClient"
 import type { RelatedTask, Task, TaskTreeNode } from "../../types"
 
 /**
- * Displays child tasks and blocking issues for a given task.
- * Shows grouped sections for children, blockers, and dependents.
+ * Displays subtasks and blocking issues for a given task.
+ * Shows grouped sections for subtasks, blockers, and dependents.
  * When not in read-only mode, allows adding and removing blockers.
  */
 export function RelatedTasks({
@@ -266,12 +266,12 @@ export function RelatedTasks({
 
     if (childTasks.length > 0) {
       result.push({
-        key: "children",
-        label: "Children",
+        key: "subtasks",
+        label: "Subtasks",
         trees: childTasks.map(toTreeNode),
         count: childTasks.length,
-        isCollapsed: collapsedGroups["children"] ?? false,
-        onToggle: () => handleToggleGroup("children"),
+        isCollapsed: collapsedGroups["subtasks"] ?? false,
+        onToggle: () => handleToggleGroup("subtasks"),
         onRemove: readOnly ? undefined : handleRemoveChild,
       })
     }
