@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { ThemePicker } from "../ThemePicker"
 
@@ -98,8 +98,14 @@ describe("ThemePicker", () => {
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
       expect(screen.getByTestId("theme-picker-dropdown")).toBeInTheDocument()
 
+      // Radix DismissableLayer registers its pointerdown listener via setTimeout(0),
+      // so we need to flush that timer before dispatching the event
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+
       // Click outside
-      fireEvent.mouseDown(document.body)
+      fireEvent.pointerDown(document.body)
 
       // Dropdown should be closed
       await waitFor(() => {
