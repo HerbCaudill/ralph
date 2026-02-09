@@ -87,6 +87,7 @@ packages/beads-view/                   # Beads-view package (task management UI/
       useTaskDetails.ts     # Single-task fetching with comments/blockers
       useTaskDialog.ts      # Dialog open/close state
       useTaskDialogRouter.ts # URL hash ↔ task dialog sync
+      useTaskMutations.ts   # Real-time task sync via WebSocket
       useWorkspace.ts       # Fetches workspace info and switching via /api/workspace endpoints
     lib/
       apiClient.ts          # Configurable API client (configureApiClient, apiFetch)

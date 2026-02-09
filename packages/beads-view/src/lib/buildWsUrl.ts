@@ -13,8 +13,8 @@
  * @returns A WebSocket URL string
  *
  * @example
- * buildWsUrl("http://localhost:3000") // "ws://localhost:3000"
- * buildWsUrl("https://example.com") // "wss://example.com"
+ * buildWsUrl("http://localhost:3000") // "ws://localhost:3000/ws"
+ * buildWsUrl("https://example.com") // "wss://example.com/ws"
  * buildWsUrl("http://localhost:3000", "/events") // "ws://localhost:3000/events"
  * buildWsUrl("") // "/ws"
  * buildWsUrl(undefined) // "/ws"
@@ -33,10 +33,9 @@ export function buildWsUrl(baseUrl: string | undefined, pathSuffix = "/ws"): str
     return match.toLowerCase() === "https:" ? "wss:" : "ws:"
   })
 
-  // Append path suffix if provided (and not the default /ws which might not be needed)
-  if (pathSuffix !== "/ws") {
-    return wsUrl + normalizedSuffix
-  }
+  // Remove trailing slash before appending path suffix
+  const cleanWsUrl = wsUrl.endsWith("/") ? wsUrl.slice(0, -1) : wsUrl
 
-  return wsUrl
+  // Append path suffix
+  return cleanWsUrl + normalizedSuffix
 }

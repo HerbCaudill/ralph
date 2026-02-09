@@ -24,3 +24,9 @@ export {
   type WorkspaceState,
   type UseWorkspaceOptions,
 } from "./useWorkspace"
+export {
+  useTaskMutations,
+  type MutationEventMessage,
+  type UseTaskMutationsOptions,
+  type UseTaskMutationsResult,
+} from "./useTaskMutations"
