@@ -90,6 +90,7 @@ packages/beads-view/                   # Beads-view package (task management UI/
       useWorkspace.ts       # Fetches workspace info and switching via /api/workspace endpoints
     lib/
       apiClient.ts          # Configurable API client (configureApiClient, apiFetch)
+      buildWsUrl.ts         # HTTP→WebSocket URL converter (http→ws, https→wss)
       buildTaskTree.ts      # Flat tasks → nested tree structure
       fetchTasks.ts         # API fetch helpers (fetchTasks, fetchTask, fetchBlockedTasks)
       matchesSearchQuery.ts # Client-side task search/filter
