@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { cn } from "../lib/utils"
 import { useAgentViewContext } from "../context/useAgentViewContext"
 import { TextWithLinks } from "./TextWithLinks"
@@ -26,15 +26,30 @@ export function ToolUseCard({
   defaultExpanded = true,
 }: ToolUseCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
-  const [isToolOutputExpanded, setIsToolOutputExpanded] = useState(true)
   const { workspacePath, toolOutput } = useAgentViewContext()
+  const globalIsVisible = toolOutput?.isVisible ?? true
+
+  // Local expanded state, initially synced with global state
+  const [isToolOutputExpanded, setIsToolOutputExpanded] = useState(globalIsVisible)
+
+  // Track previous global state to detect changes
+  const prevGlobalIsVisible = useRef(globalIsVisible)
+
+  // Sync local state when global state changes (ctrl+o toggle)
+  useEffect(() => {
+    if (prevGlobalIsVisible.current !== globalIsVisible) {
+      setIsToolOutputExpanded(globalIsVisible)
+      prevGlobalIsVisible.current = globalIsVisible
+    }
+  }, [globalIsVisible])
 
   const tool = normalizeToolName(event.tool)
   const summary = getToolSummary(tool, event.input, workspacePath)
   const outputSummary = getOutputSummary(tool, event.output)
   const statusColor = getStatusColor(event.status)
 
-  const showToolOutput = (toolOutput?.isVisible ?? true) && isToolOutputExpanded
+  // Individual toggle works independently - only local state matters after sync
+  const showToolOutput = isToolOutputExpanded
 
   const hasExpandableContent = Boolean(
     event.output ||
