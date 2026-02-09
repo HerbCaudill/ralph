@@ -186,6 +186,7 @@ Right to left:
 - Displays workspace name (or “No workspace” / “Server not running”).
 - Shows an optional pill with open + in-progress issue count.
 - The workspace name and folder icon reflect the active workspace and its accent color.
+- Does not display the git branch in the picker label.
 
 **Open state**
 

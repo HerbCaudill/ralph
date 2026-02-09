@@ -42,7 +42,7 @@ describe("WorkspaceSelector", () => {
       expect(screen.getByText("PROJ")).toBeInTheDocument()
     })
 
-    it("shows the branch name in parentheses when present", () => {
+    it("does not show the branch name when present", () => {
       render(
         <WorkspaceSelector
           current={makeWorkspace({ branch: "feature/foo" })}
@@ -51,7 +51,7 @@ describe("WorkspaceSelector", () => {
           onSwitch={() => {}}
         />,
       )
-      expect(screen.getByText("(feature/foo)")).toBeInTheDocument()
+      expect(screen.queryByText("(feature/foo)")).not.toBeInTheDocument()
     })
 
     it("does not show branch when not present", () => {

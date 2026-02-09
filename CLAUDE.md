@@ -80,7 +80,7 @@ packages/beads-view/                   # Beads-view package (task management UI/
     components/
       tasks/                # Task UI components (TaskCard, TaskList, TaskPanel, TaskDetails, etc.)
       ui/                   # Shared UI primitives (button, input, popover, command, etc.)
-      workspace/            # Workspace UI components (WorkspaceSelector for switching workspaces)
+      workspace/            # Workspace UI components (WorkspaceSelector for switching workspaces; name only, no branch)
     hooks/
       useTasks.ts           # Task list fetching and polling
       useTaskDetails.ts     # Single-task fetching with comments/blockers
