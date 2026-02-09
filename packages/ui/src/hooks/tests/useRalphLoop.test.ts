@@ -430,6 +430,91 @@ describe("useRalphLoop", () => {
   })
 
   describe("control state persistence across reload", () => {
+    it("should re-persist controlState to localStorage when session_restored arrives with running state (r-gjirp)", async () => {
+      // This test reproduces the race condition bug where:
+      // 1. localStorage has 'running' state saved from a previous session
+      // 2. On mount, subscribe_workspace triggers state_change:'idle' which clears localStorage
+      // 3. session_restored arrives with controlState:'running' and restores React state
+      // 4. BUG: localStorage is not re-persisted, so on next remount loadWorkspaceState() returns null
+      //
+      // The fix: re-persist controlState to localStorage in the session_restored handler
+
+      // Setup: localStorage has a running session
+      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
+      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
+
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Flush the deferred subscription
+      await flushSubscription()
+
+      // Simulate the race condition: worker sends state_change:'idle' first
+      // (this is what happens when subscribe_workspace is processed before restore_session)
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "idle",
+        })
+      })
+
+      // At this point, localStorage should have been cleared by the state_change handler
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
+
+      // Now the worker sends session_restored with the original running state
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_restored",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "previous-session-id",
+          controlState: "running",
+        })
+      })
+
+      // CRITICAL: localStorage should be re-persisted with 'running' so the next remount works
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("running")
+    })
+
+    it("should re-persist controlState to localStorage when session_restored arrives with paused state (r-gjirp)", async () => {
+      // Same race condition bug, but for paused state
+
+      // Setup: localStorage has a paused session
+      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
+      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "paused")
+
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Flush the deferred subscription
+      await flushSubscription()
+
+      // Simulate the race condition: worker sends state_change:'idle' first
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "idle",
+        })
+      })
+
+      // At this point, localStorage should have been cleared
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
+
+      // Now the worker sends session_restored with the original paused state
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_restored",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "previous-session-id",
+          controlState: "paused",
+        })
+      })
+
+      // CRITICAL: localStorage should be re-persisted with 'paused' so the next remount works
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("paused")
+    })
+
     it("should persist controlState to localStorage when running", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))

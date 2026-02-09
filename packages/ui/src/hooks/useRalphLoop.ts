@@ -97,10 +97,15 @@ export function useRalphLoop(
       case "session_restored":
         // Session restored from localStorage
         setSessionId(data.sessionId)
-        // If the session was running before reload, restore that state
-        if (data.controlState === "running") {
+        // If the session was running or paused before reload, restore that state
+        if (data.controlState === "running" || data.controlState === "paused") {
           setControlState(data.controlState)
-          setIsStreaming(true) // Session is still active
+          if (data.controlState === "running") {
+            setIsStreaming(true) // Session is still active
+          }
+          // Re-persist to localStorage to fix race condition where state_change:'idle'
+          // from subscribe_workspace cleared the saved state before session_restored arrived
+          saveWorkspaceState(data.workspaceId, data.controlState)
         }
         break
 
