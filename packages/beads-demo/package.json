@@ -17,6 +17,7 @@
   "dependencies": {
     "@herbcaudill/agent-view": "workspace:*",
     "@herbcaudill/beads-view": "workspace:*",
+    "@herbcaudill/components": "workspace:*",
     "@tabler/icons-react": "^3.36.1",
     "clsx": "^2.1.1",
     "react": "^19.2.0",

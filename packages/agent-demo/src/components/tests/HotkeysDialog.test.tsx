@@ -1,16 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { HotkeysDialog } from ".././HotkeysDialog"
-
-// jsdom does not implement HTMLDialogElement.showModal/close, so we polyfill them.
-beforeEach(() => {
-  HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
-    this.setAttribute("open", "")
-  })
-  HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
-    this.removeAttribute("open")
-  })
-})
 
 const sampleHotkeys = [
   { action: "focusChatInput", display: "/", description: "Focus chat input" },
@@ -20,14 +10,14 @@ const sampleHotkeys = [
 
 describe("HotkeysDialog", () => {
   describe("when open", () => {
-    it("calls showModal on the dialog element", () => {
+    it("renders the dialog", () => {
       render(<HotkeysDialog open={true} onClose={() => {}} hotkeys={sampleHotkeys} />)
-      expect(HTMLDialogElement.prototype.showModal).toHaveBeenCalled()
+      expect(screen.getByRole("dialog")).toBeInTheDocument()
     })
 
     it("displays the title", () => {
       render(<HotkeysDialog open={true} onClose={() => {}} hotkeys={sampleHotkeys} />)
-      expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument()
+      expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument()
     })
 
     it("displays all hotkey descriptions", () => {
@@ -52,9 +42,9 @@ describe("HotkeysDialog", () => {
   })
 
   describe("when closed", () => {
-    it("does not call showModal", () => {
+    it("does not render the dialog", () => {
       render(<HotkeysDialog open={false} onClose={() => {}} hotkeys={sampleHotkeys} />)
-      expect(HTMLDialogElement.prototype.showModal).not.toHaveBeenCalled()
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     })
   })
 
@@ -62,7 +52,10 @@ describe("HotkeysDialog", () => {
     it("calls onClose when the Close button is clicked", () => {
       const handleClose = vi.fn()
       render(<HotkeysDialog open={true} onClose={handleClose} hotkeys={sampleHotkeys} />)
-      fireEvent.click(screen.getByText("Close"))
+      const closeButtons = screen.getAllByRole("button", { name: "Close" })
+      const closeButton = closeButtons.find((button) => button.getAttribute("data-variant") === "secondary")
+      expect(closeButton).toBeDefined()
+      fireEvent.click(closeButton!)
       expect(handleClose).toHaveBeenCalledOnce()
     })
   })
@@ -70,7 +63,7 @@ describe("HotkeysDialog", () => {
   describe("empty hotkeys", () => {
     it("renders the dialog with no hotkey rows when the list is empty", () => {
       const { container } = render(<HotkeysDialog open={true} onClose={() => {}} hotkeys={[]} />)
-      expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument()
+      expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument()
       const kbdElements = container.querySelectorAll("kbd")
       expect(kbdElements).toHaveLength(0)
     })

@@ -16,6 +16,7 @@
     "format": "prettier --write . --log-level silent"
   },
   "dependencies": {
+    "@herbcaudill/components": "workspace:*",
     "@herbcaudill/agent-view": "workspace:*",
     "@herbcaudill/agent-view-claude": "workspace:*",
     "@herbcaudill/agent-view-codex": "workspace:*",

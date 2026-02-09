@@ -84,7 +84,7 @@ export function ToolUseCard({
 
           {hasExpandableContent && (
             <span className="text-muted-foreground/50 shrink-0 text-xs">
-              {showToolOutput ? "▾" : "▸"}
+              {showToolOutput ? "▼" : "▶︎"}
             </span>
           )}
         </div>

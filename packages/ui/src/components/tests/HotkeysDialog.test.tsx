@@ -1,16 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi, beforeAll } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { HotkeysDialog } from "../HotkeysDialog"
-
-// Mock dialog.showModal() and dialog.close() for jsdom
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
-    this.setAttribute("open", "")
-  })
-  HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
-    this.removeAttribute("open")
-  })
-})
 
 describe("HotkeysDialog", () => {
   it("renders when open", () => {
@@ -18,10 +8,9 @@ describe("HotkeysDialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument()
   })
 
-  it("does not show modal when closed", () => {
+  it("does not render when closed", () => {
     render(<HotkeysDialog open={false} onClose={() => {}} />)
-    const dialog = screen.getByRole("dialog", { hidden: true })
-    expect(dialog).not.toHaveAttribute("open")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   it("displays keyboard shortcuts title", () => {
@@ -33,15 +22,17 @@ describe("HotkeysDialog", () => {
     const handleClose = vi.fn()
     render(<HotkeysDialog open={true} onClose={handleClose} />)
 
-    fireEvent.click(screen.getByText("Close"))
+    const closeButtons = screen.getAllByRole("button", { name: "Close" })
+    const closeButton = closeButtons.find((button) => button.getAttribute("data-variant") === "secondary")
+    expect(closeButton).toBeDefined()
+    fireEvent.click(closeButton!)
 
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
 
-  it("has centering styles applied to dialog", () => {
+  it("has dialog styles applied to the content", () => {
     render(<HotkeysDialog open={true} onClose={() => {}} />)
     const dialog = screen.getByRole("dialog")
-    // The dialog should have margin auto to center it both horizontally and vertically
-    expect(dialog.className).toContain("m-auto")
+    expect(dialog.className).toContain("max-w-lg")
   })
 })

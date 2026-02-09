@@ -1,35 +1,24 @@
-import { useEffect, useRef } from "react"
 import { IconKeyboard } from "@tabler/icons-react"
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@herbcaudill/components"
 import { hotkeys as agentHotkeys, getHotkeyDisplayString } from "@herbcaudill/agent-view"
 import {
   hotkeys as beadsHotkeys,
   getHotkeyDisplayString as getBeadsHotkeyDisplayString,
 } from "@herbcaudill/beads-view"
 
-export type HotkeysDialogProps = {
-  /** Whether the dialog is open */
-  open: boolean
-  /** Callback when the dialog is closed */
-  onClose: () => void
-}
-
-/**
- * Dialog showing all available keyboard shortcuts from agent-view and beads-view.
- * Combines hotkeys from both packages and displays them in a modal.
- */
-export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) {
-      dialog.showModal()
-    } else if (!open && dialog.open) {
-      dialog.close()
-    }
-  }, [open])
-
+/** Dialog showing all available keyboard shortcuts from agent-view and beads-view. */
+export function HotkeysDialog(
+  /** Props for HotkeysDialog. */
+  { open, onClose }: HotkeysDialogProps,
+) {
   // Combine hotkeys from both packages, deduplicating shared actions (e.g. showHotkeys)
   const agentEntries = Object.entries(agentHotkeys).map(([action, config]) => ({
     key: `agent-${action}`,
@@ -66,16 +55,14 @@ export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
   )
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="m-auto rounded-lg border border-border bg-background p-0 shadow-lg backdrop:bg-black/50"
-      onClose={onClose}
-    >
-      <div className="w-96 max-h-[80vh] overflow-y-auto p-4">
-        <div className="mb-4 flex items-center gap-2">
-          <IconKeyboard className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-base font-semibold">Keyboard shortcuts</h2>
-        </div>
+    <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
+      <DialogContent className="w-96 max-h-[80vh] overflow-y-auto p-4">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <IconKeyboard className="h-5 w-5 text-muted-foreground" />
+            <DialogTitle className="text-base">Keyboard shortcuts</DialogTitle>
+          </div>
+        </DialogHeader>
         <div className="space-y-4">
           {Object.entries(categories).map(([category, hotkeys]) => (
             <div key={category}>
@@ -95,15 +82,21 @@ export function HotkeysDialog({ open, onClose }: HotkeysDialogProps) {
             </div>
           ))}
         </div>
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={onClose}
-            className="rounded-md bg-muted px-3 py-1.5 text-sm text-foreground hover:bg-muted/80"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </dialog>
+        <DialogFooter className="mt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="secondary">
+              Close
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
+}
+
+export type HotkeysDialogProps = {
+  /** Whether the dialog is open. */
+  open: boolean
+  /** Callback when the dialog is closed. */
+  onClose: () => void
 }

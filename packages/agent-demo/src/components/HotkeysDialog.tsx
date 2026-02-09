@@ -1,41 +1,28 @@
-import { useEffect, useRef } from "react"
 import { IconKeyboard } from "@tabler/icons-react"
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@herbcaudill/components"
 
-export type HotkeysDialogProps = {
-  open: boolean
-  onClose: () => void
-  hotkeys: Array<{ action: string; display: string; description: string }>
-}
-
-/**
- * Simple dialog showing all available keyboard shortcuts.
- * Uses the native HTML dialog element for accessibility.
- */
-export function HotkeysDialog({ open, onClose, hotkeys }: HotkeysDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-
-    if (open && !dialog.open) {
-      dialog.showModal()
-    } else if (!open && dialog.open) {
-      dialog.close()
-    }
-  }, [open])
-
+/** Simple dialog showing all available keyboard shortcuts. */
+export function HotkeysDialog(
+  /** Props for HotkeysDialog. */
+  { open, onClose, hotkeys }: HotkeysDialogProps,
+) {
   return (
-    <dialog
-      ref={dialogRef}
-      className="m-auto rounded-lg border border-border bg-background p-0 shadow-lg backdrop:bg-black/50"
-      onClose={onClose}
-    >
-      <div className="w-80 p-4">
-        <div className="mb-4 flex items-center gap-2">
-          <IconKeyboard className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-base font-semibold">Keyboard Shortcuts</h2>
-        </div>
+    <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
+      <DialogContent className="w-80 p-4">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <IconKeyboard className="h-5 w-5 text-muted-foreground" />
+            <DialogTitle className="text-base">Keyboard shortcuts</DialogTitle>
+          </div>
+        </DialogHeader>
 
         <div className="space-y-1">
           {hotkeys.map(({ action, display, description }) => (
@@ -48,15 +35,23 @@ export function HotkeysDialog({ open, onClose, hotkeys }: HotkeysDialogProps) {
           ))}
         </div>
 
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={onClose}
-            className="rounded-md bg-muted px-3 py-1.5 text-sm text-foreground hover:bg-muted/80"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </dialog>
+        <DialogFooter className="mt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="secondary">
+              Close
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
+}
+
+export type HotkeysDialogProps = {
+  /** Whether the dialog is open. */
+  open: boolean
+  /** Callback when the dialog is closed. */
+  onClose: () => void
+  /** Hotkeys to display in the dialog. */
+  hotkeys: Array<{ action: string; display: string; description: string }>
 }
