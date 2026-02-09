@@ -11,12 +11,12 @@ export function useTasks(
   /** Options for filtering and polling. */
   options: UseTasksOptions = {},
 ): UseTasksResult {
-  const { status, ready, all, pollInterval = 5000 } = options
-
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { status, ready, all, pollInterval = 30000 } = options
 
   const storeTasks = useBeadsViewStore(state => state.tasks)
+
+  const [isLoading, setIsLoading] = useState(storeTasks.length === 0)
+  const [error, setError] = useState<string | null>(null)
   const setStoreTasks = useBeadsViewStore(state => state.setTasks)
 
   const tasks = useMemo(
@@ -58,7 +58,7 @@ export interface UseTasksOptions {
   ready?: boolean
   /** Include closed tasks. */
   all?: boolean
-  /** Polling interval in ms (default: 5000). */
+  /** Polling interval in ms (default: 30000). */
   pollInterval?: number
 }
 

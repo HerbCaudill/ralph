@@ -240,7 +240,18 @@ function connectWorkspace(workspaceId: string): void {
 
         if (message.type === "pending_events") {
           const events = message.events as unknown[]
-          // Always broadcast pending_events, even if empty - the UI needs to know
+          const pendingSessionId = message.sessionId as string | undefined
+
+          // Drop stale pending_events from a previous session. This prevents a
+          // race where: (1) page loads and restores old session, (2) worker sends
+          // reconnect for old session, (3) user starts a NEW session, (4) server
+          // responds with pending_events for the OLD session. Without this check
+          // those old events would be appended to the new session's stream.
+          if (pendingSessionId && pendingSessionId !== state.currentSessionId) {
+            return
+          }
+
+          // Broadcast pending_events (even if empty) - the UI needs to know
           // event restoration is complete (e.g., for newly created sessions)
           broadcastToWorkspace(workspaceId, {
             type: "pending_events",

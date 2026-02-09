@@ -1101,4 +1101,154 @@ describe("ralphWorker", () => {
       expect(stopMessages[0].isStoppingAfterCurrent).toBe(true)
     })
   })
+
+  describe("pending_events session ID validation (r-aeuc1)", () => {
+    it("should broadcast pending_events when sessionId matches currentSessionId", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Set up an active session
+      state.currentSessionId = "session-abc"
+      port.postMessage.mockClear()
+
+      // Server sends pending_events with matching sessionId
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "pending_events",
+          sessionId: "session-abc",
+          events: [{ type: "assistant", text: "hello" }],
+        }),
+      })
+
+      // Should broadcast the events
+      const pendingMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "pending_events")
+
+      expect(pendingMessages).toHaveLength(1)
+      expect(pendingMessages[0].events).toEqual([{ type: "assistant", text: "hello" }])
+    })
+
+    it("should NOT broadcast pending_events when sessionId does NOT match currentSessionId", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Worker has moved to a NEW session
+      state.currentSessionId = "session-xyz"
+      port.postMessage.mockClear()
+
+      // Server sends pending_events for the OLD session
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "pending_events",
+          sessionId: "session-abc",
+          events: [{ type: "assistant", text: "old event" }],
+        }),
+      })
+
+      // Should NOT broadcast old events into the new session
+      const pendingMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "pending_events")
+
+      expect(pendingMessages).toHaveLength(0)
+    })
+
+    it("should drop stale pending_events when session changes between reconnect and response", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // 1. Restore old session "abc123"
+      handlePortMessage({ type: "restore_session", workspaceId, sessionId: "abc123" }, port)
+      expect(state.currentSessionId).toBe("abc123")
+
+      // 2. User starts a new session — worker sends create_session
+      //    Simulate the server responding with a new session_created
+      state.controlState = "idle" // Reset for start
+      state.currentSessionId = null // Reset for start
+      handlePortMessage({ type: "start", workspaceId }, port)
+
+      // Simulate server responding with session_created for the new session
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "session_created",
+          sessionId: "xyz789",
+        }),
+      })
+
+      expect(state.currentSessionId).toBe("xyz789")
+      port.postMessage.mockClear()
+
+      // 3. Server finishes reading old events and sends pending_events for "abc123"
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "pending_events",
+          sessionId: "abc123",
+          events: [{ type: "assistant", text: "old event from previous session" }],
+        }),
+      })
+
+      // Should NOT broadcast — sessionId doesn't match currentSessionId
+      const pendingMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "pending_events")
+
+      expect(pendingMessages).toHaveLength(0)
+    })
+
+    it("should broadcast pending_events when sessionId is missing (backward compat)", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      state.currentSessionId = "session-abc"
+      port.postMessage.mockClear()
+
+      // Server sends pending_events without sessionId (backward compat)
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "pending_events",
+          events: [{ type: "assistant", text: "hello" }],
+        }),
+      })
+
+      // Should still broadcast for backward compatibility
+      const pendingMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "pending_events")
+
+      expect(pendingMessages).toHaveLength(1)
+    })
+  })
 })

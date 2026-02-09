@@ -77,7 +77,7 @@ describe("useTasks", () => {
       expect(mockFetch).toHaveBeenCalledWith("/api/tasks?all=true", undefined)
     })
 
-    it("sets isLoading while fetching", async () => {
+    it("sets isLoading while fetching when store is empty", async () => {
       let resolvePromise: (value: unknown) => void
       const controlledPromise = new Promise(resolve => {
         resolvePromise = resolve
@@ -98,6 +98,47 @@ describe("useTasks", () => {
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
+      })
+    })
+
+    it("starts with isLoading false when store has cached tasks", async () => {
+      // Pre-populate the store to simulate Zustand persist rehydration
+      beadsViewStore.setState({ tasks: mockTasks })
+
+      let resolvePromise: (value: unknown) => void
+      const controlledPromise = new Promise(resolve => {
+        resolvePromise = resolve
+      })
+
+      mockFetch.mockReturnValue({
+        ok: true,
+        json: () => controlledPromise,
+      })
+
+      const { result } = renderHook(() => useTasks({ all: true }))
+
+      // isLoading should be false immediately because we have cached tasks
+      expect(result.current.isLoading).toBe(false)
+      // And we should already see the cached tasks
+      expect(result.current.tasks).toHaveLength(5)
+
+      await act(async () => {
+        resolvePromise!({ ok: true, issues: mockTasks })
+      })
+
+      // Still false after fetch completes
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    it("still fetches from API even when store has cached tasks", async () => {
+      // Pre-populate the store
+      beadsViewStore.setState({ tasks: mockTasks })
+
+      const { result } = renderHook(() => useTasks({ all: true }))
+
+      // Should still fetch from API to get fresh data
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith("/api/tasks?all=true", undefined)
       })
     })
 
@@ -286,6 +327,18 @@ describe("useTasks", () => {
   })
 
   describe("polling", () => {
+    it("uses 30s default poll interval", async () => {
+      const setIntervalSpy = vi.spyOn(global, "setInterval")
+
+      renderHook(() => useTasks())
+
+      await waitFor(() => {
+        expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 30000)
+      })
+
+      setIntervalSpy.mockRestore()
+    })
+
     it("sets up interval when pollInterval is provided", async () => {
       const setIntervalSpy = vi.spyOn(global, "setInterval")
       const clearIntervalSpy = vi.spyOn(global, "clearInterval")
