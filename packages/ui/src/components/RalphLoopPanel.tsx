@@ -58,7 +58,9 @@ export function RalphLoopPanel({
 
   const isConnected = connectionStatus === "connected"
   const isSessionActive = controlState !== "idle"
-  const isChatDisabled = isStreaming || isViewingHistoricalSession || !isConnected
+  // Chat is only disabled when viewing historical sessions or disconnected
+  // (users can send messages while Ralph is streaming — they are queued)
+  const isChatDisabled = isViewingHistoricalSession || !isConnected
 
   // Header with title and session picker
   const header = (

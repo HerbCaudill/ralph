@@ -253,10 +253,10 @@ describe("RalphLoopPanel", () => {
       expect(input).toBeDisabled()
     })
 
-    it("disables chat input when streaming", () => {
+    it("enables chat input even when streaming", () => {
       render(<RalphLoopPanel {...defaultProps} controlState="running" isStreaming={true} />)
       const input = screen.getByTestId("chat-input-field")
-      expect(input).toBeDisabled()
+      expect(input).not.toBeDisabled()
     })
 
     it("calls onSendMessage when enter is pressed", () => {

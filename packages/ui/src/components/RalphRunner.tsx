@@ -86,9 +86,9 @@ export function RalphRunner({
 
       {/* Bottom bar: comprehensive controls and chat input */}
       <div className="flex flex-col border-t border-border">
-        {/* Chat input - only show when session is active */}
+        {/* Chat input - show when session is active, always enabled (messages are queued) */}
         {controlState !== "idle" && (
-          <ChatInput onSend={onSendMessage} disabled={isStreaming} placeholder="Send a message…" />
+          <ChatInput onSend={onSendMessage} disabled={false} placeholder="Send a message…" />
         )}
 
         {/* Status bar footer */}

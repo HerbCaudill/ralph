@@ -229,9 +229,22 @@ describe("RalphRunner", () => {
       expect(screen.getByTestId("chat-input")).toBeInTheDocument()
     })
 
-    it("disables chat input when streaming", () => {
+    it("enables chat input even when streaming", () => {
       render(<RalphRunner {...defaultProps} controlState="running" isStreaming={true} />)
-      expect(screen.getByTestId("chat-input")).toBeDisabled()
+      expect(screen.getByTestId("chat-input")).not.toBeDisabled()
+    })
+
+    it("enables chat input when session is active regardless of streaming state", () => {
+      const { rerender } = render(
+        <RalphRunner {...defaultProps} controlState="running" isStreaming={false} />,
+      )
+      expect(screen.getByTestId("chat-input")).not.toBeDisabled()
+
+      rerender(<RalphRunner {...defaultProps} controlState="running" isStreaming={true} />)
+      expect(screen.getByTestId("chat-input")).not.toBeDisabled()
+
+      rerender(<RalphRunner {...defaultProps} controlState="paused" isStreaming={false} />)
+      expect(screen.getByTestId("chat-input")).not.toBeDisabled()
     })
   })
 })
