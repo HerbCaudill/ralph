@@ -13,7 +13,7 @@ export function ThinkingBlock({ content, className, defaultExpanded = false }: P
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   return (
-    <div className={cn("max-w-[100ch] py-1.5 pr-12 pl-4", className)}>
+    <div className={cn("py-1.5 pr-12 pl-4", className)}>
       <Button
         variant="ghost"
         type="button"

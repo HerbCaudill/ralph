@@ -7,7 +7,7 @@ export function PromiseCompleteEvent({ event: _event, className }: Props) {
   return (
     <div
       className={cn(
-        "mx-4 my-2 flex items-center gap-3 rounded-lg border px-4 py-3",
+        "my-2 ml-4 mr-12 flex items-center gap-3 rounded-lg border px-4 py-3",
         "border-purple-500 dark:border-purple-800",
         className,
       )}

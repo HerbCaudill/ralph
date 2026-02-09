@@ -59,7 +59,7 @@ export function ToolUseCard({
 
   if (tool === "TodoWrite" && event.input?.todos && Array.isArray(event.input.todos)) {
     return (
-      <div className={cn("max-w-[100ch] py-1.5 pr-12 pl-4", className)}>
+      <div className={cn("py-1.5 pr-12 pl-4", className)}>
         <div className="flex items-center gap-2.5">
           <span className={cn("size-1.5 shrink-0 rounded-full", statusColor)} />
           <span className="text-foreground text-xs font-semibold">Update Todos</span>
@@ -75,7 +75,7 @@ export function ToolUseCard({
   }
 
   return (
-    <div className={cn("group/tool max-w-[100ch] py-1.5 pr-12 pl-4", className)}>
+    <div className={cn("group/tool py-1.5 pr-12 pl-4", className)}>
       <div
         className={cn("flex w-full items-center gap-2.5", hasExpandableContent && "cursor-pointer")}
         onClick={hasExpandableContent ? () => setIsToolOutputExpanded(prev => !prev) : undefined}

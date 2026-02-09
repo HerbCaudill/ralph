@@ -9,7 +9,7 @@ export function ErrorEvent({ event, className }: Props) {
   return (
     <div
       className={cn(
-        "mx-4 my-2 flex items-start gap-3 rounded-lg border px-4 py-3",
+        "my-2 ml-4 mr-12 flex items-start gap-3 rounded-lg border px-4 py-3",
         "bg-status-error/5 border-status-error text-status-error",
         className,
       )}

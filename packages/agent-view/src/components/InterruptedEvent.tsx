@@ -9,7 +9,7 @@ export function InterruptedEvent({ event, className }: Props) {
   return (
     <div
       className={cn(
-        "mx-4 my-2 flex items-center gap-2 rounded-lg border px-4 py-3",
+        "my-2 ml-4 mr-12 flex items-center gap-2 rounded-lg border px-4 py-3",
         "bg-amber-500/5 border-amber-500 text-amber-700 dark:text-amber-400",
         className,
       )}

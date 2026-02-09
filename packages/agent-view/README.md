@@ -63,21 +63,21 @@ import {
 
 ## Components
 
-| Component            | Description                                                                |
-| -------------------- | -------------------------------------------------------------------------- |
-| `AgentView`          | High-level composition with scrollable container, auto-scroll, and slots   |
-| `EventList`          | Headless event list (no container/scroll)                                  |
-| `EventDisplay`       | Event list with scrollable container and empty state                       |
-| `ToolUseCard`        | Collapsible tool use with output preview (`max-w-[100ch]` for readability) |
-| `AssistantText`      | Markdown-rendered assistant message (`max-w-[100ch]` for readability)      |
-| `UserMessage`        | User message display                                                       |
-| `ThinkingBlock`      | Collapsible extended thinking block (`max-w-[100ch]` for readability)      |
-| `ErrorEvent`         | Error message display                                                      |
-| `DiffView`           | Side-by-side code diff                                                     |
-| `AnsiOutput`         | Terminal output with ANSI color support                                    |
-| `CodeBlock`          | Syntax-highlighted code with Shiki                                         |
-| `MarkdownContent`    | Markdown renderer with prose styling                                       |
-| `TaskLifecycleEvent` | Task start/complete lifecycle card                                         |
+| Component            | Description                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `AgentView`          | High-level composition with scrollable container, auto-scroll, and slots                           |
+| `EventList`          | Headless event list wrapped in `max-w-[100ch]` container (no scroll) - constrains all child events |
+| `EventDisplay`       | Event list with scrollable container and empty state                                               |
+| `ToolUseCard`        | Collapsible tool use with output preview                                                           |
+| `AssistantText`      | Markdown-rendered assistant message                                                                |
+| `UserMessage`        | User message display                                                                               |
+| `ThinkingBlock`      | Collapsible extended thinking block                                                                |
+| `ErrorEvent`         | Error message display                                                                              |
+| `DiffView`           | Side-by-side code diff                                                                             |
+| `AnsiOutput`         | Terminal output with ANSI color support                                                            |
+| `CodeBlock`          | Syntax-highlighted code with Shiki                                                                 |
+| `MarkdownContent`    | Markdown renderer with prose styling                                                               |
+| `TaskLifecycleEvent` | Task start/complete lifecycle card                                                                 |
 
 ## Tool input parsing
 

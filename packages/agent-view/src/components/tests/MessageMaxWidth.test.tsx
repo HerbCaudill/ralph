@@ -1,67 +1,70 @@
 import { render } from "@testing-library/react"
 import { describe, it, expect } from "vitest"
-import { AssistantText } from "../AssistantText"
-import { ToolUseCard } from "../ToolUseCard"
-import { ThinkingBlock } from "../ThinkingBlock"
+import { EventList } from "../EventList"
 import { AgentViewContext, DEFAULT_AGENT_VIEW_CONTEXT } from "../../context/AgentViewContext"
+import type { ChatEvent } from "../../types"
 
 /**
- * Tests to verify message blocks have max-width for improved readability.
+ * Tests to verify that EventList wraps content in a max-width container for improved readability.
  * On wide screens, text that stretches too far becomes hard to read.
+ * The width constraint is set on the EventList wrapper, not on individual components.
  */
-describe("Message max-width for readability", () => {
+describe("EventList max-width for readability", () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <AgentViewContext.Provider value={DEFAULT_AGENT_VIEW_CONTEXT}>
       {children}
     </AgentViewContext.Provider>
   )
 
-  describe("AssistantText", () => {
-    it("has max-width constraint for readability", () => {
-      const { container } = render(
-        <AssistantText
-          event={{
-            type: "text",
-            timestamp: Date.now(),
-            content: "Hello world",
-          }}
-        />,
-        { wrapper },
-      )
+  it("wraps events in a max-width container", () => {
+    const events: ChatEvent[] = [
+      {
+        type: "text",
+        timestamp: Date.now(),
+        content: "Hello world",
+      },
+    ]
 
-      const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv.className).toContain("max-w-[100ch]")
-    })
+    const { container } = render(<EventList events={events} />, { wrapper })
+
+    // The EventList should wrap content in a div with max-w-[100ch]
+    const wrapperDiv = container.firstChild as HTMLElement
+    expect(wrapperDiv.className).toContain("max-w-[100ch]")
   })
 
-  describe("ToolUseCard", () => {
-    it("has max-width constraint for readability", () => {
-      const { container } = render(
-        <ToolUseCard
-          event={{
-            type: "tool_use",
-            timestamp: Date.now(),
-            tool: "Bash",
-            input: { command: "ls" },
-            status: "success",
-          }}
-        />,
-        { wrapper },
-      )
+  it("constrains all event types to the same max width", () => {
+    const events: ChatEvent[] = [
+      {
+        type: "text",
+        timestamp: Date.now(),
+        content: "First message",
+      },
+      {
+        type: "tool_use",
+        timestamp: Date.now() + 1,
+        tool: "Bash",
+        input: { command: "ls" },
+        status: "success",
+      },
+      {
+        type: "text",
+        timestamp: Date.now() + 2,
+        content: "Second message",
+      },
+    ]
 
-      const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv.className).toContain("max-w-[100ch]")
-    })
+    const { container } = render(<EventList events={events} />, { wrapper })
+
+    // All events should be constrained by the same parent wrapper
+    const wrapperDiv = container.firstChild as HTMLElement
+    expect(wrapperDiv.className).toContain("max-w-[100ch]")
+
+    // All events should be children of the same max-width container
+    expect(wrapperDiv.children.length).toBeGreaterThan(0)
   })
 
-  describe("ThinkingBlock", () => {
-    it("has max-width constraint for readability", () => {
-      const { container } = render(<ThinkingBlock content="Thinking about the problem..." />, {
-        wrapper,
-      })
-
-      const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv.className).toContain("max-w-[100ch]")
-    })
+  it("returns null when there are no events", () => {
+    const { container } = render(<EventList events={[]} />, { wrapper })
+    expect(container.firstChild).toBeNull()
   })
 })

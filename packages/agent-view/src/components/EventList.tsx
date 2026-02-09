@@ -42,7 +42,7 @@ export function EventList({ events, maxEvents = 1000, loadingIndicator }: EventL
   }
 
   return (
-    <>
+    <div className="max-w-[100ch]">
       {displayedEvents.map((event, index) => (
         <EventStreamEventItem
           key={`${event.timestamp}-${index}`}
@@ -54,7 +54,7 @@ export function EventList({ events, maxEvents = 1000, loadingIndicator }: EventL
       ))}
       {streamingMessage && <StreamingContentRenderer message={streamingMessage} />}
       {loadingIndicator}
-    </>
+    </div>
   )
 }
 

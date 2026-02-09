@@ -14,7 +14,7 @@ export function TaskLifecycleEvent({ event, className }: Props) {
   return (
     <div
       className={cn(
-        "mx-4 my-2 flex items-center gap-3 rounded-lg border px-4 py-3",
+        "my-2 ml-4 mr-12 flex items-center gap-3 rounded-lg border px-4 py-3",
         isStarting ?
           "border-blue-500 dark:border-blue-800"
         : "border-green-500 dark:border-green-800",
