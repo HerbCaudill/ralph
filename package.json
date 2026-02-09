@@ -21,7 +21,7 @@
     "storybook:comp": "pnpm --filter components storybook",
     "storybook:agent": "pnpm --filter agent-view storybook",
     "storybook:beads": "pnpm --filter beads-view storybook",
-    "test": "pnpm --filter ralph-shared test && pnpm --filter ralph test && pnpm --filter ralph-ui test",
+    "test": "pnpm -r test",
     "test:all": "node scripts/lib/testAll.js",
     "test:pw": "node scripts/playwright.js",
     "test:pw:agent": "pnpm --filter agent-demo test:pw",
