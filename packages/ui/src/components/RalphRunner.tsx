@@ -68,30 +68,26 @@ export function RalphRunner({
   // Chat is only disabled when viewing historical sessions or disconnected
   const isChatDisabled = isViewingHistoricalSession || !isConnected
 
-  // Header with current task info and session picker
+  // Header with robot icon, session picker (includes task info), and history badge
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
-      <div className="flex items-center gap-2">
-        <IconRobot size={18} stroke={1.5} className="text-muted-foreground" />
-        {taskId && (
-          <div className="flex min-w-0 items-center gap-2" data-testid="current-task-info">
-            <span className="shrink-0 text-xs font-medium text-muted-foreground">{taskId}</span>
-            {taskTitle && <span className="truncate text-sm font-medium">{taskTitle}</span>}
-          </div>
-        )}
-        {isViewingHistoricalSession && (
-          <span className="flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-            <IconHistory size={12} stroke={1.5} />
-            Viewing history
-          </span>
-        )}
+      <div className="flex min-w-0 items-center gap-2">
+        <IconRobot size={18} stroke={1.5} className="shrink-0 text-muted-foreground" />
+        <SessionPicker
+          sessions={sessions}
+          currentSessionId={sessionId}
+          onSelectSession={onSelectSession ?? (() => {})}
+          disabled={isStreaming}
+          taskId={taskId}
+          taskTitle={taskTitle}
+        />
       </div>
-      <SessionPicker
-        sessions={sessions}
-        currentSessionId={sessionId}
-        onSelectSession={onSelectSession ?? (() => {})}
-        disabled={isStreaming}
-      />
+      {isViewingHistoricalSession && (
+        <span className="flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+          <IconHistory size={12} stroke={1.5} />
+          Viewing history
+        </span>
+      )}
     </div>
   )
 

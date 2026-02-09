@@ -208,4 +208,38 @@ describe("SessionPicker", () => {
       expect(screen.queryByText("Recent Sessions")).toBeNull()
     })
   })
+
+  describe("task info display", () => {
+    it("should display task ID and title when provided", () => {
+      renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
+      const button = screen.getByRole("button")
+      expect(button.textContent).toContain("r-abc99")
+      expect(button.textContent).toContain("Fix authentication bug")
+    })
+
+    it("should display only task ID when title is not provided", () => {
+      renderPicker({ taskId: "r-abc99" })
+      const button = screen.getByRole("button")
+      expect(button.textContent).toContain("r-abc99")
+    })
+
+    it("should show history icon only when no task info is provided", () => {
+      renderPicker()
+      const button = screen.getByRole("button")
+      // Button should only contain the icon (no text content)
+      expect(button.textContent?.trim()).toBe("")
+    })
+
+    it("should use sm size when task info is provided", () => {
+      renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
+      const button = screen.getByRole("button")
+      expect(button.getAttribute("data-size")).toBe("sm")
+    })
+
+    it("should use icon-sm size when no task info is provided", () => {
+      renderPicker()
+      const button = screen.getByRole("button")
+      expect(button.getAttribute("data-size")).toBe("icon-sm")
+    })
+  })
 })

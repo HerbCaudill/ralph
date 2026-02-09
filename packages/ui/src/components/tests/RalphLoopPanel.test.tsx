@@ -59,8 +59,14 @@ vi.mock("@herbcaudill/agent-view", () => ({
       )}
     </div>
   ),
-  SessionPicker: ({ sessions, currentSessionId, onSelectSession, disabled }: any) => (
+  SessionPicker: ({ sessions, currentSessionId, onSelectSession, disabled, taskId, taskTitle }: any) => (
     <div data-testid="session-picker" data-disabled={disabled}>
+      {taskId && (
+        <div data-testid="session-picker-task-info">
+          <span>{taskId}</span>
+          {taskTitle && <span>{taskTitle}</span>}
+        </div>
+      )}
       <select
         value={currentSessionId || ""}
         onChange={e => onSelectSession(e.target.value)}
@@ -183,9 +189,22 @@ describe("RalphLoopPanel", () => {
       expect(screen.getByTestId("session-picker")).toHaveAttribute("data-disabled", "true")
     })
 
-    it("renders Ralph Loop title in header", () => {
+    it("does not show 'Ralph Loop' text in header", () => {
       render(<RalphLoopPanel {...defaultProps} />)
-      expect(screen.getByText("Ralph Loop")).toBeInTheDocument()
+      // The header should no longer show "Ralph Loop" text, just the robot icon
+      expect(screen.queryByText("Ralph Loop")).not.toBeInTheDocument()
+    })
+
+    it("shows task ID and title in SessionPicker when provided", () => {
+      render(<RalphLoopPanel {...defaultProps} taskId="r-abc123" taskTitle="Fix login bug" />)
+      const taskInfo = screen.getByTestId("session-picker-task-info")
+      expect(taskInfo).toHaveTextContent("r-abc123")
+      expect(taskInfo).toHaveTextContent("Fix login bug")
+    })
+
+    it("does not show task info in SessionPicker when no task", () => {
+      render(<RalphLoopPanel {...defaultProps} />)
+      expect(screen.queryByTestId("session-picker-task-info")).not.toBeInTheDocument()
     })
   })
 

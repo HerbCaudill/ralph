@@ -21,7 +21,7 @@ vi.mock("@herbcaudill/agent-view", () => ({
   ChatInput: ({ disabled, placeholder }: any) => (
     <input data-testid="chat-input" disabled={disabled} placeholder={placeholder} />
   ),
-  SessionPicker: ({ sessions, currentSessionId, disabled }: any) => (
+  SessionPicker: ({ sessions, currentSessionId, disabled, taskId, taskTitle }: any) => (
     <button
       data-testid="session-picker"
       title={sessions?.length > 0 ? "Session history" : "No previous sessions"}
@@ -29,7 +29,12 @@ vi.mock("@herbcaudill/agent-view", () => ({
       data-session-count={sessions?.length ?? 0}
       data-current-session={currentSessionId ?? ""}
     >
-      Sessions
+      {taskId ?
+        <>
+          <span>{taskId}</span>
+          {taskTitle && <span>{taskTitle}</span>}
+        </>
+      : "Sessions"}
     </button>
   ),
   useTokenUsage: () => ({ input: 1000, output: 500 }),
@@ -130,20 +135,24 @@ describe("RalphRunner", () => {
       expect(header).not.toHaveTextContent("Ralph")
     })
 
-    it("shows task ID and title in header when provided", () => {
+    it("shows task ID and title in SessionPicker when provided", () => {
       render(<RalphRunner {...defaultProps} taskId="r-abc123" taskTitle="Fix the login bug" />)
-      expect(screen.getByText("r-abc123")).toBeInTheDocument()
-      expect(screen.getByText("Fix the login bug")).toBeInTheDocument()
+      const sessionPicker = screen.getByTestId("session-picker")
+      expect(sessionPicker).toHaveTextContent("r-abc123")
+      expect(sessionPicker).toHaveTextContent("Fix the login bug")
     })
 
-    it("shows task ID without title when title is not available", () => {
+    it("shows task ID in SessionPicker without title when title is not available", () => {
       render(<RalphRunner {...defaultProps} taskId="r-abc123" />)
-      expect(screen.getByText("r-abc123")).toBeInTheDocument()
+      const sessionPicker = screen.getByTestId("session-picker")
+      expect(sessionPicker).toHaveTextContent("r-abc123")
     })
 
-    it("does not show task info when no task is running", () => {
+    it("does not show task info in SessionPicker when no task is running", () => {
       render(<RalphRunner {...defaultProps} />)
-      expect(screen.queryByTestId("current-task-info")).not.toBeInTheDocument()
+      const sessionPicker = screen.getByTestId("session-picker")
+      expect(sessionPicker).toHaveTextContent("Sessions")
+      expect(sessionPicker).not.toHaveTextContent("r-")
     })
 
     it("shows 'Viewing history' badge when isViewingHistoricalSession is true", () => {

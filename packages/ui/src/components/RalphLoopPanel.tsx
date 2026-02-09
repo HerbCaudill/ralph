@@ -41,6 +41,8 @@ export function RalphLoopPanel({
   sessions,
   error,
   isViewingHistoricalSession = false,
+  taskId,
+  taskTitle,
   onSendMessage,
   onPause: _onPause,
   onResume: _onResume,
@@ -62,25 +64,26 @@ export function RalphLoopPanel({
   // (users can send messages while Ralph is streaming — they are queued)
   const isChatDisabled = isViewingHistoricalSession || !isConnected
 
-  // Header with title and session picker
+  // Header with robot icon, session picker (includes task info), and history badge
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
-      <div className="flex items-center gap-2">
-        <IconRobot size={18} stroke={1.5} className="text-muted-foreground" />
-        <span className="text-sm font-medium">Ralph Loop</span>
-        {isViewingHistoricalSession && (
-          <span className="flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-            <IconHistory size={12} stroke={1.5} />
-            Viewing history
-          </span>
-        )}
+      <div className="flex min-w-0 items-center gap-2">
+        <IconRobot size={18} stroke={1.5} className="shrink-0 text-muted-foreground" />
+        <SessionPicker
+          sessions={sessions}
+          currentSessionId={sessionId}
+          onSelectSession={onSelectSession}
+          disabled={isStreaming}
+          taskId={taskId}
+          taskTitle={taskTitle}
+        />
       </div>
-      <SessionPicker
-        sessions={sessions}
-        currentSessionId={sessionId}
-        onSelectSession={onSelectSession}
-        disabled={isStreaming}
-      />
+      {isViewingHistoricalSession && (
+        <span className="flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+          <IconHistory size={12} stroke={1.5} />
+          Viewing history
+        </span>
+      )}
     </div>
   )
 
@@ -216,6 +219,10 @@ export type RalphLoopPanelProps = {
   error: string | null
   /** Whether viewing a historical session (not the current active one). */
   isViewingHistoricalSession?: boolean
+  /** Current task ID being worked on (from task lifecycle events). */
+  taskId?: string | null
+  /** Title of the current task being worked on. */
+  taskTitle?: string | null
   /** Called when the user sends a message via the chat input. */
   onSendMessage: (message: string) => void
   /** Called when the pause button is clicked. */
