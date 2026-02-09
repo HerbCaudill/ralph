@@ -2,7 +2,6 @@ import type { Express, Request, Response } from "express"
 import type { ChatSessionManager, SessionInfo } from "./ChatSessionManager.js"
 import { getAvailableAdapters } from "./AdapterRegistry.js"
 import { registerPromptRoutes } from "./routes/promptRoutes.js"
-import { getRalphPrompt } from "./routes/ralphPromptRoute.js"
 import { getSessionSummary } from "./lib/getSessionSummary.js"
 
 /** Context for route handlers. */
@@ -144,9 +143,6 @@ export function registerRoutes(
   app.get("/api/adapters", async (_req: Request, res: Response) => {
     res.json({ adapters: await getAvailableAdapters() })
   })
-
-  // Get Ralph prompt content
-  app.get("/api/prompts/ralph", getRalphPrompt)
 
   // Health check
   app.get("/healthz", (_req: Request, res: Response) => {

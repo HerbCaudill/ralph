@@ -73,9 +73,9 @@ packages/cli/                       # CLI package
       beadsClient.ts        # Unix socket RPC client for beads daemon
       MessageQueue.ts       # Async iterable message queue
       rel.ts                # Convert absolute -> relative paths
-  templates/                # Template files for ralph init
-    core.prompt.md          # Bundled session protocol
-    workflow.prompt.md             # Default workflow -> .ralph/workflow.prompt.md
+  templates/                # Symlinks to packages/shared/templates/
+    core.prompt.md          # → ../../shared/templates/core.prompt.md
+    workflow.prompt.md      # → ../../shared/templates/workflow.prompt.md
 
 packages/beads-view/                   # Beads-view package (task management UI/state)
   src/
@@ -214,8 +214,9 @@ packages/beads-demo/                   # Beads task manager demo
       DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
 
 packages/ui/                        # UI package (continued)
-  server/                   # Express backend
-    index.ts                # Server entry + REST API + WebSocket (imports task routes from beads-view)
+  server/                   # Agent-server wrapper with Ralph-specific routes
+    ralphRoutes.ts          # GET /api/prompts/ralph (Ralph session prompt)
+    startAgentServer.ts     # Wrapper entry: starts agent-server with Ralph routes
     RalphManager.ts         # Re-export from @herbcaudill/agent-server
     RalphRegistry.ts        # Re-export from @herbcaudill/agent-server
     InstanceStore.ts        # Re-export from @herbcaudill/agent-server
@@ -253,6 +254,9 @@ packages/shared/                    # Shared package
     events/                 # Agent event types (re-exported from @herbcaudill/agent-view) and guards
     prompts/                # Prompt loading utilities
     index.ts                # Package exports
+  templates/                # Single source of truth for Ralph session prompts
+    core.prompt.md          # Session lifecycle protocol
+    workflow.prompt.md      # Default workflow instructions
 ```
 
 ## Core architecture
@@ -271,7 +275,7 @@ packages/shared/                    # Shared package
 
 Two-tier prompt system:
 
-- **Core prompt** (`packages/cli/templates/core.prompt.md`) - Session lifecycle, task assignment, output tokens
+- **Core prompt** (`packages/shared/templates/core.prompt.md`) - Session lifecycle, task assignment, output tokens (CLI templates symlink here)
 - **Workflow** (`.ralph/workflow.prompt.md`) - Repo-specific build/test commands, prioritization, wrap-up steps
 
 ### Contract with Claude CLI
@@ -286,7 +290,9 @@ The server layer consists of two independent packages:
 
 - **`@herbcaudill/beads-server`** — Task management server. Provides REST API for tasks/labels/workspace, WebSocket for mutation events. Port 4243.
 
-- **`@herbcaudill/agent-server`** — Generic agent chat server. Agent adapters (ClaudeAdapter, CodexAdapter, AdapterRegistry), the AgentAdapter base class, session management (ChatSessionManager, SessionPersister), utility functions (isRetryableError, calculateBackoffDelay, generateId), and findClaudeExecutable. Port 4244.
+- **`@herbcaudill/agent-server`** — Generic agent chat server. Agent adapters (ClaudeAdapter, CodexAdapter, AdapterRegistry), the AgentAdapter base class, session management (ChatSessionManager, SessionPersister), utility functions (isRetryableError, calculateBackoffDelay, generateId), and findClaudeExecutable. Supports `customRoutes` in config for app-specific route injection. Port 4244.
+
+In dev mode, the agent-server is started via `packages/ui/server/startAgentServer.ts`, which injects Ralph-specific routes (e.g., `GET /api/prompts/ralph`) via `customRoutes`. This keeps the agent-server generic.
 
 The UI is a frontend-only package that connects to these servers. Ralph-specific loop orchestration happens client-side in a SharedWorker.
 

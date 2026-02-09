@@ -24,7 +24,7 @@ runDev({
     },
     {
       name: "agent-server",
-      command: "pnpm --filter @herbcaudill/agent-server dev",
+      command: "pnpm --filter @herbcaudill/ralph-ui serve:agent",
       portEnv: "AGENT_SERVER_PORT",
       defaultPort: 4244,
     },

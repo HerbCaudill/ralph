@@ -13,3 +13,5 @@ export {
 } from "./loadPrompt.js"
 
 export { getWorkspaceRoot } from "./getWorkspaceRoot.js"
+
+export { TEMPLATES_DIR } from "./templatesDir.js"

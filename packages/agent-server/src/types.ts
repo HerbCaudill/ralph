@@ -8,4 +8,6 @@ export interface AgentServerConfig {
   storageDir?: string
   /** Default working directory for agents. */
   cwd?: string
+  /** Optional callback to register additional routes on the Express app. Called after standard routes. */
+  customRoutes?: (app: import("express").Express) => void
 }

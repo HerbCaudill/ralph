@@ -191,6 +191,9 @@ export async function startServer(config: AgentServerConfig): Promise<{
     getSessionManager: () => sessionManager,
   })
 
+  // Register custom routes if provided
+  config.customRoutes?.(app)
+
   // Handle WebSocket connections
   wss.on("connection", (ws: WebSocket) => {
     handleWsConnection(ws, wsClients, {
