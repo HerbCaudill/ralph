@@ -800,25 +800,25 @@ describe("ralphWorker", () => {
     })
   })
 
+  /** Helper to set up a running workspace with an open WebSocket. */
+  async function setupRunningWorkspace(workspaceId: string) {
+    const port = createMockPort()
+    handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+    const state = getWorkspace(workspaceId)
+
+    await vi.waitFor(() => {
+      expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+    })
+
+    // Start and create session
+    handlePortMessage({ type: "start", workspaceId }, port)
+    state.currentSessionId = "session-123"
+    ;(state.ws as any).send.mockClear()
+
+    return { port, state }
+  }
+
   describe("auto-start on session completion", () => {
-    /** Helper to set up a running workspace with an open WebSocket. */
-    async function setupRunningWorkspace(workspaceId: string) {
-      const port = createMockPort()
-      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
-      const state = getWorkspace(workspaceId)
-
-      await vi.waitFor(() => {
-        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
-      })
-
-      // Start and create session
-      handlePortMessage({ type: "start", workspaceId }, port)
-      state.currentSessionId = "session-123"
-      ;(state.ws as any).send.mockClear()
-
-      return { port, state }
-    }
-
     it("should create a new session when promise_complete is followed by status idle", async () => {
       const workspaceId = "herbcaudill/ralph"
       const { state } = await setupRunningWorkspace(workspaceId)
@@ -906,6 +906,171 @@ describe("ralphWorker", () => {
 
       handlePortMessage({ type: "start", workspaceId }, port)
       expect(state.sessionCompleted).toBe(false)
+    })
+  })
+
+  describe("stop after current (r-6mx58)", () => {
+    it("should set stopAfterCurrentPending when receiving stop_after_current message", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port, state } = await setupRunningWorkspace(workspaceId)
+
+      // Send stop_after_current
+      handlePortMessage({ type: "stop_after_current", workspaceId }, port)
+
+      expect(state.stopAfterCurrentPending).toBe(true)
+    })
+
+    it("should broadcast stop_after_current_change event when flag is set", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port } = await setupRunningWorkspace(workspaceId)
+      port.postMessage.mockClear()
+
+      handlePortMessage({ type: "stop_after_current", workspaceId }, port)
+
+      const stopMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "stop_after_current_change")
+
+      expect(stopMessages).toHaveLength(1)
+      expect(stopMessages[0]).toEqual({
+        type: "stop_after_current_change",
+        workspaceId,
+        isStoppingAfterCurrent: true,
+      })
+    })
+
+    it("should clear stopAfterCurrentPending when receiving cancel_stop_after_current message", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port, state } = await setupRunningWorkspace(workspaceId)
+
+      // Set the flag first
+      state.stopAfterCurrentPending = true
+
+      handlePortMessage({ type: "cancel_stop_after_current", workspaceId }, port)
+
+      expect(state.stopAfterCurrentPending).toBe(false)
+    })
+
+    it("should broadcast stop_after_current_change false event when cancelled", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port, state } = await setupRunningWorkspace(workspaceId)
+
+      state.stopAfterCurrentPending = true
+      port.postMessage.mockClear()
+
+      handlePortMessage({ type: "cancel_stop_after_current", workspaceId }, port)
+
+      const stopMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "stop_after_current_change")
+
+      expect(stopMessages).toHaveLength(1)
+      expect(stopMessages[0]).toEqual({
+        type: "stop_after_current_change",
+        workspaceId,
+        isStoppingAfterCurrent: false,
+      })
+    })
+
+    it("should NOT auto-start when stop_after_current is pending", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port, state } = await setupRunningWorkspace(workspaceId)
+
+      // Set stop after current
+      handlePortMessage({ type: "stop_after_current", workspaceId }, port)
+
+      // Simulate receiving promise_complete
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "event",
+          event: { type: "assistant", text: "All done! <promise>COMPLETE</promise>" },
+        }),
+      })
+
+      expect(state.sessionCompleted).toBe(true)
+      ;(state.ws as any).send.mockClear()
+
+      // Status goes idle
+      ws.onmessage!({
+        data: JSON.stringify({ type: "status", status: "idle" }),
+      })
+
+      // Should NOT have sent a create_session message
+      const calls = (state.ws!.send as any).mock.calls
+      const createSessionCalls = calls.filter((c: string[]) => c[0].includes("create_session"))
+      expect(createSessionCalls).toHaveLength(0)
+    })
+
+    it("should transition to idle when stop_after_current completes", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port, state } = await setupRunningWorkspace(workspaceId)
+
+      // Set stop after current
+      handlePortMessage({ type: "stop_after_current", workspaceId }, port)
+
+      // Simulate receiving promise_complete and then idle
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({
+          type: "event",
+          event: { type: "assistant", text: "<promise>COMPLETE</promise>" },
+        }),
+      })
+
+      port.postMessage.mockClear()
+
+      ws.onmessage!({
+        data: JSON.stringify({ type: "status", status: "idle" }),
+      })
+
+      // Should be idle now
+      expect(state.controlState).toBe("idle")
+      // Flag should be cleared
+      expect(state.stopAfterCurrentPending).toBe(false)
+    })
+
+    it("should clear stop_after_current flag on new start", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const port = createMockPort()
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      state.stopAfterCurrentPending = true
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      handlePortMessage({ type: "start", workspaceId }, port)
+      expect(state.stopAfterCurrentPending).toBe(false)
+    })
+
+    it("should include stopAfterCurrentPending in initial state sync", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const port = createMockPort()
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Manually set the flag
+      state.stopAfterCurrentPending = true
+
+      // New port subscribes
+      const port2 = createMockPort()
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port2)
+
+      // Port2 should receive the current stop_after_current state
+      const stopMessages = port2.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "stop_after_current_change")
+
+      expect(stopMessages).toHaveLength(1)
+      expect(stopMessages[0].isStoppingAfterCurrent).toBe(true)
     })
   })
 })

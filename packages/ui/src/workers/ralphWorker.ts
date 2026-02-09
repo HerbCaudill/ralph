@@ -33,6 +33,8 @@ interface WorkspaceState {
   subscribedPorts: Set<MessagePort>
   /** Set when `<promise>COMPLETE</promise>` is detected; cleared on next session start. */
   sessionCompleted: boolean
+  /** Set when user requests stop after current; prevents auto-start. */
+  stopAfterCurrentPending: boolean
 }
 
 /** Messages sent from browser tabs to the worker. */
@@ -42,6 +44,8 @@ export type WorkerMessage =
   | { type: "start"; workspaceId: string; sessionId?: string }
   | { type: "pause"; workspaceId: string }
   | { type: "resume"; workspaceId: string }
+  | { type: "stop_after_current"; workspaceId: string }
+  | { type: "cancel_stop_after_current"; workspaceId: string }
   | { type: "message"; workspaceId: string; text: string }
   | { type: "get_state"; workspaceId: string }
   | { type: "restore_session"; workspaceId: string; sessionId: string; controlState?: ControlState }
@@ -62,6 +66,7 @@ export type WorkerEvent =
     }
   | { type: "pending_events"; workspaceId: string; events: unknown[] }
   | { type: "streaming_state"; workspaceId: string; isStreaming: boolean }
+  | { type: "stop_after_current_change"; workspaceId: string; isStoppingAfterCurrent: boolean }
 
 /** All connected ports (for cleanup). */
 export const allPorts: Set<MessagePort> = new Set()
@@ -81,6 +86,7 @@ export function getWorkspace(workspaceId: string): WorkspaceState {
       pingInterval: null,
       subscribedPorts: new Set(),
       sessionCompleted: false,
+      stopAfterCurrentPending: false,
     }
     workspaces.set(workspaceId, state)
   }
@@ -236,13 +242,26 @@ function connectWorkspace(workspaceId: string): void {
 
           // Auto-start: when the agent finishes and we saw promise_complete,
           // immediately start a new session (the core Ralph loop).
+          // Unless stopAfterCurrentPending is set — then transition to idle.
           if (
             status !== "processing" &&
             state.sessionCompleted &&
             state.controlState === "running"
           ) {
             state.sessionCompleted = false
-            createOrResumeSession(workspaceId)
+
+            if (state.stopAfterCurrentPending) {
+              // User requested stop after current — transition to idle
+              state.stopAfterCurrentPending = false
+              setControlState(workspaceId, "idle")
+              broadcastToWorkspace(workspaceId, {
+                type: "stop_after_current_change",
+                workspaceId,
+                isStoppingAfterCurrent: false,
+              })
+            } else {
+              createOrResumeSession(workspaceId)
+            }
           }
           return
         }
@@ -406,6 +425,15 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
         } satisfies WorkerEvent)
       }
 
+      // Send current stop_after_current state (if set)
+      if (state.stopAfterCurrentPending) {
+        port.postMessage({
+          type: "stop_after_current_change",
+          workspaceId: message.workspaceId,
+          isStoppingAfterCurrent: true,
+        } satisfies WorkerEvent)
+      }
+
       // Connect if not already connected
       if (state.ws?.readyState === WebSocket.OPEN) {
         port.postMessage({
@@ -449,6 +477,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       const state = getWorkspace(message.workspaceId)
       if (state.controlState === "idle") {
         state.sessionCompleted = false
+        state.stopAfterCurrentPending = false
         setControlState(message.workspaceId, "running")
         if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
           connectWorkspace(message.workspaceId)
@@ -515,6 +544,34 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
               })
             })
         }
+      }
+      break
+    }
+
+    case "stop_after_current": {
+      // Set flag to stop after the current session completes
+      const state = getWorkspace(message.workspaceId)
+      if (!state.stopAfterCurrentPending) {
+        state.stopAfterCurrentPending = true
+        broadcastToWorkspace(message.workspaceId, {
+          type: "stop_after_current_change",
+          workspaceId: message.workspaceId,
+          isStoppingAfterCurrent: true,
+        })
+      }
+      break
+    }
+
+    case "cancel_stop_after_current": {
+      // Clear the stop after current flag
+      const state = getWorkspace(message.workspaceId)
+      if (state.stopAfterCurrentPending) {
+        state.stopAfterCurrentPending = false
+        broadcastToWorkspace(message.workspaceId, {
+          type: "stop_after_current_change",
+          workspaceId: message.workspaceId,
+          isStoppingAfterCurrent: false,
+        })
       }
       break
     }

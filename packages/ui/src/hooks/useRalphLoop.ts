@@ -27,6 +27,7 @@ export function useRalphLoop(
   const [controlState, setControlState] = useState<ControlState>("idle")
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [isStoppingAfterCurrent, setIsStoppingAfterCurrent] = useState(false)
 
   const portRef = useRef<MessagePort | null>(null)
   const currentWorkspaceRef = useRef<string | undefined>(undefined)
@@ -106,6 +107,10 @@ export function useRalphLoop(
       case "streaming_state":
         // Toggle streaming state based on agent processing status
         setIsStreaming(data.isStreaming)
+        break
+
+      case "stop_after_current_change":
+        setIsStoppingAfterCurrent(data.isStoppingAfterCurrent)
         break
 
       case "error":
@@ -252,16 +257,31 @@ export function useRalphLoop(
     [workspaceId, postMessage],
   )
 
+  /** Stop after the current session completes. */
+  const stopAfterCurrent = useCallback(() => {
+    if (!workspaceId) return
+    postMessage({ type: "stop_after_current", workspaceId })
+  }, [workspaceId, postMessage])
+
+  /** Cancel the pending stop-after-current request. */
+  const cancelStopAfterCurrent = useCallback(() => {
+    if (!workspaceId) return
+    postMessage({ type: "cancel_stop_after_current", workspaceId })
+  }, [workspaceId, postMessage])
+
   return {
     events,
     isStreaming,
     controlState,
     connectionStatus,
     sessionId,
+    isStoppingAfterCurrent,
     start,
     pause,
     resume,
     sendMessage,
+    stopAfterCurrent,
+    cancelStopAfterCurrent,
   }
 }
 
@@ -280,6 +300,8 @@ export interface UseRalphLoopReturn {
   connectionStatus: ConnectionStatus
   /** The current session ID (active or restored from localStorage). */
   sessionId: string | null
+  /** Whether the loop is pending stop after the current session completes. */
+  isStoppingAfterCurrent: boolean
   /** Start the Ralph loop. */
   start: () => void
   /** Pause/interrupt the Ralph loop immediately. */
@@ -288,4 +310,8 @@ export interface UseRalphLoopReturn {
   resume: () => void
   /** Send a message to Claude within the current session. */
   sendMessage: (message: string) => void
+  /** Stop after the current session completes. */
+  stopAfterCurrent: () => void
+  /** Cancel the pending stop-after-current request. */
+  cancelStopAfterCurrent: () => void
 }

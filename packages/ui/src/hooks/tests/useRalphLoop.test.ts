@@ -781,4 +781,95 @@ describe("useRalphLoop", () => {
       })
     })
   })
+
+  describe("stop after current (r-6mx58)", () => {
+    it("should initialize isStoppingAfterCurrent as false", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      expect(result.current.isStoppingAfterCurrent).toBe(false)
+    })
+
+    it("should send stop_after_current message when stopAfterCurrent is called", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      act(() => {
+        result.current.stopAfterCurrent()
+      })
+
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      expect(calls).toContainEqual({
+        type: "stop_after_current",
+        workspaceId: TEST_WORKSPACE_ID,
+      })
+    })
+
+    it("should send cancel_stop_after_current message when cancelStopAfterCurrent is called", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      act(() => {
+        result.current.cancelStopAfterCurrent()
+      })
+
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      expect(calls).toContainEqual({
+        type: "cancel_stop_after_current",
+        workspaceId: TEST_WORKSPACE_ID,
+      })
+    })
+
+    it("should update isStoppingAfterCurrent when receiving stop_after_current_change event", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      expect(result.current.isStoppingAfterCurrent).toBe(false)
+
+      // Simulate receiving stop_after_current_change with isStoppingAfterCurrent: true
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "stop_after_current_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          isStoppingAfterCurrent: true,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isStoppingAfterCurrent).toBe(true)
+      })
+
+      // Simulate receiving stop_after_current_change with isStoppingAfterCurrent: false
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "stop_after_current_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          isStoppingAfterCurrent: false,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.isStoppingAfterCurrent).toBe(false)
+      })
+    })
+
+    it("should ignore stop_after_current_change from other workspaces", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate receiving stop_after_current_change for a different workspace
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "stop_after_current_change",
+          workspaceId: "other/workspace",
+          isStoppingAfterCurrent: true,
+        })
+      })
+
+      // Should remain false
+      await waitFor(() => {
+        expect(result.current.isStoppingAfterCurrent).toBe(false)
+      })
+    })
+  })
 })

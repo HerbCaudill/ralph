@@ -54,8 +54,19 @@ export function WorkspaceView() {
   }
 
   // Ralph loop state from SharedWorker
-  const { events, isStreaming, controlState, connectionStatus, start, pause, resume, sendMessage } =
-    useRalphLoop(workspaceId)
+  const {
+    events,
+    isStreaming,
+    controlState,
+    connectionStatus,
+    isStoppingAfterCurrent,
+    start,
+    pause,
+    resume,
+    sendMessage,
+    stopAfterCurrent,
+    cancelStopAfterCurrent,
+  } = useRalphLoop(workspaceId)
 
   // Task chat state from agent-server
   const { state: taskChatState, actions: taskChatActions } = useTaskChat()
@@ -234,16 +245,14 @@ export function WorkspaceView() {
     console.log("Cycle theme")
   }, [])
 
-  // Stop after current session state (local state)
-  const [isStoppingAfterCurrent, setIsStoppingAfterCurrent] = useState(false)
-
+  // Stop after current session handlers
   const handleStopAfterCurrent = useCallback(() => {
-    setIsStoppingAfterCurrent(true)
-  }, [])
+    stopAfterCurrent()
+  }, [stopAfterCurrent])
 
   const handleCancelStopAfterCurrent = useCallback(() => {
-    setIsStoppingAfterCurrent(false)
-  }, [])
+    cancelStopAfterCurrent()
+  }, [cancelStopAfterCurrent])
 
   // Left sidebar: always show TaskChatPanel
   const sidebar = (
