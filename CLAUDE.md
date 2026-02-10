@@ -6,7 +6,7 @@
 
 Ralph is an autonomous AI session engine that wraps the Claude CLI to run iterative development workflows. It spawns Claude CLI processes with a custom prompt and todo list, captures streaming JSON output, displays it in a formatted terminal UI using Ink (React for CLIs), and orchestrates multiple sessions.
 
-See `spec/web-client-ux-functional-spec.md` and `spec/screenshots/` for the UX-only functional spec and supporting screenshots.
+See `spec/web-client-ux-functional-spec.md` for the UX functional spec.
 
 ## Development commands
 
@@ -42,256 +42,34 @@ UI vitest setup polyfills `HTMLDialogElement.showModal` and `close` for dialog-b
 
 ## Workspace structure
 
-pnpm workspace with these main packages:
+pnpm workspace with these packages:
 
-- **`packages/cli/`** (`@herbcaudill/ralph`) - CLI tool (published to npm)
-- **`packages/ui/`** (`@herbcaudill/ralph-ui`) - Web UI for Ralph with React frontend and SharedWorker for loop orchestration
-- **`packages/shared/`** (`@herbcaudill/ralph-shared`) - Shared utilities and types
-- **`packages/beads-view/`** (`@herbcaudill/beads-view`) - Task management UI/state, hooks, hotkey registration, configurable API client, and reusable Express task routes (see `plans/018-beads-view.md`). Two export paths: `@herbcaudill/beads-view` (client) and `@herbcaudill/beads-view/server` (Express task routes)
-- **`packages/beads-server/`** (`@herbcaudill/beads-server`) - Standalone Express server for beads task management. Extracts beads concerns (task/label/workspace APIs, WebSocket mutation events, BdProxy/BeadsClient wrappers around `@herbcaudill/beads-sdk`, workspace registry utilities) from the UI server. Default port 4243 (configurable via `BEADS_PORT` or `PORT`). Dev: `pnpm dev` (tsx)
-- **`packages/agent-view/`** (`@herbcaudill/agent-view`) - Agent chat UI components, canonical event schema (Effect Schema), hotkey registration, hooks (useAgentChat with systemPrompt/storageKey options, useAgentHotkeys, useAgentControl), and reusable React context. Exports event types consumed by shared and UI packages
-- **`packages/agent-server/`** (`@herbcaudill/agent-server`) - Generic agent chat server with JSONL persistence, multi-adapter support (Claude, Codex), session-based WebSocket protocol, and no built-in system prompt. Default port 4244 (configurable via `AGENT_SERVER_PORT`). Dev: `pnpm dev` (tsx)
-- **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) - Functional chat demo connecting to agent-server via session-based WebSocket protocol (`/ws`), sends messages, receives streaming ChatEvent objects, and renders them with the AgentView component from `@herbcaudill/agent-view`. Supports Claude Code and Codex agents, session persistence across page reloads via localStorage session index (falls back to `/api/sessions/latest`), session switching via SessionPicker and `useAgentChat.restoreSession`, displays model name in status bar via `/api/adapters` endpoint. Includes a workspace chooser (WorkspaceSelector from beads-view) in the header, with Vite proxy forwarding `/api/workspace(s)` to the beads-server. Registers handlers for agent-view hotkey actions (focusChatInput, newSession, toggleToolOutput, scrollToBottom, showHotkeys)
-- **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) - Functional task manager demo using beads-view controller components (TaskPanelController, TaskDetailsController) with useTasks/useTaskDialog hooks for data management. Shows centered QuickTaskInput (from beads-view) when no task is selected. Registers handlers for all beads-view hotkey actions (focusSearch, focusTaskInput, previousTask, nextTask, openTask, showHotkeys) and includes a HotkeysDialog component. Vite proxy forwards /api requests to the beads-server
-
-### Project structure
-
-```
-packages/cli/                       # CLI package
-  src/
-    cli.ts                  # Commander program definition
-    index.ts                # Entry point
-    components/
-      App.tsx               # Root component (router)
-      SessionRunner.tsx     # Spawns Claude CLI, handles sessions
-      InitRalph.tsx         # Initialization flow
-      EventDisplay.tsx      # Renders event stream
-      eventToBlocks.ts      # Parses events -> display blocks
-      ToolUse.tsx           # Renders individual tool calls
-    lib/
-      beadsClient.ts        # Unix socket RPC client for beads daemon
-      MessageQueue.ts       # Async iterable message queue
-      rel.ts                # Convert absolute -> relative paths
-  templates/                # Symlinks to packages/shared/templates/
-    core.prompt.md          # → ../../shared/templates/core.prompt.md
-    workflow.prompt.md      # → ../../shared/templates/workflow.prompt.md
-
-packages/beads-view/                   # Beads-view package (task management UI/state)
-  src/
-    components/
-      tasks/                # Task UI components (TaskCard, TaskList, TaskPanel, TaskDetails, etc.)
-      ui/                   # Shared UI primitives (button, input, popover, command, etc.)
-      workspace/            # Workspace UI components (WorkspaceSelector for switching workspaces; name only, no branch)
-    hooks/
-      useTasks.ts           # Task list fetching and polling
-      useTaskDetails.ts     # Single-task fetching with comments/blockers
-      useTaskDialog.ts      # Dialog open/close state
-      useTaskDialogRouter.ts # URL hash ↔ task dialog sync
-      useTaskMutations.ts   # Real-time task sync via WebSocket
-      useWorkspace.ts       # Fetches workspace info and switching via /api/workspace endpoints
-    lib/
-      apiClient.ts          # Configurable API client (configureApiClient, apiFetch)
-      buildWsUrl.ts         # HTTP→WebSocket URL converter (http→ws, https→wss)
-      buildTaskTree.ts      # Flat tasks → nested tree structure
-      fetchTasks.ts         # API fetch helpers (fetchTasks, fetchTask, fetchBlockedTasks)
-      matchesSearchQuery.ts # Client-side task search/filter
-    server/
-      taskRoutes.ts         # Reusable Express task routes (registerTaskRoutes)
-    hotkeys/
-      config.ts             # Hotkey config parser, types (BeadsHotkeyAction, HotkeyConfig, HotkeysConfig)
-      hotkeys.json          # Hotkey definitions (key bindings, descriptions, categories)
-      useHotkeys.ts         # useBeadsHotkeys hook, getHotkeyDisplayString utility
-      index.ts              # Barrel exports
-    store/
-      beadsViewStore.ts     # Zustand store for task UI state
-      BeadsViewProvider.tsx  # React context provider for store
-      selectors.ts          # Store selectors
-
-packages/agent-view/                   # Agent-view package (chat UI components, event schema, hotkeys)
-  src/
-    components/             # Agent chat UI components (AgentView, MessageBlock, ToolUseBlock, etc.)
-    context/                # React context providers
-    events/                 # Canonical event schema (Effect Schema)
-    hooks/
-      useAgentChat.ts       # WebSocket connection and chat session management (supports systemPrompt, storageKey options)
-      useAdapterInfo.ts     # useAdapterInfo, useAdapterVersion hooks for /api/adapters endpoint
-    hotkeys/
-      config.ts             # Hotkey config parser, types (AgentHotkeyAction, HotkeyConfig, AgentHotkeysConfig)
-      hotkeys.json          # Hotkey definitions (key bindings, descriptions, categories)
-      useHotkeys.ts         # useAgentHotkeys hook, getHotkeyDisplayString utility
-      index.ts              # Barrel exports
-    lib/
-      formatModelName.ts    # Formats Claude model IDs for display (e.g., "claude-sonnet-4-20250514" → "Sonnet 4")
-    tests/                  # Test files
-
-packages/beads-server/                 # Beads server package
-  src/
-    index.ts                # Express server entry + WebSocket setup
-    BdProxy.ts              # Proxy for beads CLI commands
-    BeadsClient.ts          # Wrapper around @herbcaudill/beads-sdk
-    getAliveWorkspaces.ts   # Workspace registry helpers
-    readRegistry.ts         # Read ~/.beads/registry.json
-
-packages/agent-server/                 # Generic agent server package
-  src/
-    index.ts                # Barrel exports + startServer()
-    main.ts                 # Dev entry point (port 4244)
-    types.ts                # AgentServerConfig
-    agentTypes.ts           # AgentAdapter base class, ConversationContext (no BdProxy)
-    ClaudeAdapter.ts        # Claude agent adapter (Anthropic API, supports model option)
-    CodexAdapter.ts         # Codex agent adapter (OpenAI API)
-    AdapterRegistry.ts      # Registry mapping agent names to adapter classes
-    SessionPersister.ts     # JSONL event persistence by session ID
-    ChatSessionManager.ts   # Multi-session management, supports systemPrompt storage
-    routes.ts               # HTTP routes (/api/sessions, /api/adapters, /healthz)
-    routes/
-      promptRoutes.ts       # Prompt assembly endpoint (GET /api/sessions/:id/prompt)
-    wsHandler.ts            # Session-based WebSocket protocol
-    findClaudeExecutable.ts # Locates the Claude CLI binary
-    lib/
-      isRetryableError.ts   # Retry classification for API errors
-      calculateBackoffDelay.ts # Exponential backoff delay calculation
-      generateId.ts         # Unique ID generation utility
-      createEventStream.ts  # SSE event stream factory
-      createMessageStream.ts # Message stream factory
-      loadContextFile.ts    # Adapter-specific context file loading (CLAUDE.md, AGENTS.md)
-      loadPrompt.ts         # Prompt assembly (context file + cwd context + system prompt)
-      loadClaudeMd.ts       # Claude-specific context loading (legacy, still exported)
-      WorktreeManager.ts    # Git worktree management for concurrent workers
-
-packages/ui/                           # UI package
-  src/
-    main.tsx                # App entry point
-    App.tsx                 # Root component
-    index.css               # Tailwind CSS entry
-    assets/
-      logo.svg              # Ralph robot icon (uses currentColor for theming)
-    components/
-      ControlBar.tsx        # Agent control buttons (start/pause/resume/stop)
-      WorkerControlBar.tsx  # Per-worker controls (pause/resume/stop for each worker, global "Stop All")
-      Header.tsx            # App header (logo, workspace selector, settings)
-      HelpButton.tsx        # Help button for opening hotkeys dialog
-      HotkeysDialog.tsx     # Keyboard shortcuts dialog
-      Logo.tsx              # Ralph logo component
-      MainLayout.tsx        # Main layout with sidebar and content
-      RalphRunner.tsx       # Ralph session display with AgentView and comprehensive footer (controls, status, timer, repo/branch, token usage, context window)
-      RalphLoopPanel.tsx    # Full-featured Ralph loop panel with session history, controls, and status bar
-      RepoBranch.tsx        # Workspace name and git branch with branch icon (status bar footer)
-      RunDuration.tsx       # Session timer display
-      SessionProgress.tsx   # Session task completion progress
-      SettingsDropdown.tsx  # Settings dropdown (placeholder)
-      StatusIndicator.tsx   # Connection/status indicator
-      TaskChatPanel.tsx     # Task chat panel with AgentView
-      TaskDetailPanel.tsx   # Task detail panel with inline editing (wraps TaskDetailsController)
-      ThemePicker.tsx       # Theme color picker
-      ThemeToggle.tsx       # Light/dark mode toggle
-    hooks/
-      useRalphLoop.ts       # Hook connecting to SharedWorker for Ralph loop
-      useThemes.ts          # Hook fetching VS Code themes from /api/themes
-    stores/
-      uiStore.ts            # Zustand store for UI state
-    workers/
-      ralphWorker.ts        # SharedWorker for Ralph loop orchestration
-    lib/
-      getContrastingColor.ts # WCAG-compliant foreground color calculator
-      utils.ts              # Utility functions (cn for class merging)
-      workspaceSessionStorage.ts # Per-workspace session ID persistence in localStorage
-    constants.ts            # UI constants (DEFAULT_ACCENT_COLOR, storage keys)
-
-packages/agent-demo/              # Agent chat demo
-  src/
-    App.tsx                 # Main app with AgentView, session management, agent selector, SessionPicker, workspace chooser, hotkey handlers
-    components/
-      AgentSelector.tsx     # Toggle buttons for Claude Code / Codex selection
-      HotkeysDialog.tsx     # Dialog showing available keyboard shortcuts (triggered by showHotkeys action)
-      StatusBar.tsx         # Connection status, streaming indicator, agent type, model name, session ID, token usage display
-      DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
-
-packages/beads-demo/                   # Beads task manager demo
-  src/
-    App.tsx                 # Main app wrapping BeadsViewProvider, TaskPanelController, task dialog, workspace selector
-    components/
-      TaskDetailPanel.tsx   # Panel displaying task details with inline editing (wraps TaskDetailsController)
-      TaskStatusBar.tsx     # Connection status, workspace path, task counts (open/closed/total)
-      HotkeysDialog.tsx     # Dialog showing available keyboard shortcuts (triggered by showHotkeys action)
-      DemoShell.tsx         # Shared layout: header (title, subtitle, actions), sidebar, content, status bar
-
-packages/ui/                        # UI package (continued)
-  server/                   # Agent-server wrapper with Ralph-specific routes
-    ralphRoutes.ts          # GET /api/prompts/ralph (Ralph session prompt)
-    startAgentServer.ts     # Wrapper entry: starts agent-server with Ralph routes
-    RalphManager.ts         # Re-export from @herbcaudill/agent-server
-    RalphRegistry.ts        # Re-export from @herbcaudill/agent-server
-    InstanceStore.ts        # Re-export from @herbcaudill/agent-server
-    SessionEventPersister.ts # Re-export from @herbcaudill/agent-server
-    SessionStateStore.ts    # Re-export from @herbcaudill/agent-server
-    SessionRunner.ts        # Re-export from @herbcaudill/agent-server
-    WorktreeManager.ts      # Re-export from @herbcaudill/agent-server
-    findClaudeExecutable.ts # Re-export from @herbcaudill/agent-server
-    systemPrompt.ts         # Re-export from @herbcaudill/agent-server
-    loadSkill.ts            # Re-export from @herbcaudill/agent-server
-    ClaudeAdapter.ts        # Re-export from @herbcaudill/agent-server
-    CodexAdapter.ts         # Re-export from @herbcaudill/agent-server
-    AdapterRegistry.ts      # Re-export from @herbcaudill/agent-server
-    TaskChatManager.ts      # Re-export from @herbcaudill/agent-server
-    TaskChatEventLog.ts     # Re-export from @herbcaudill/agent-server
-    TaskChatEventPersister.ts # Re-export from @herbcaudill/agent-server
-    isRetryableError.ts     # Re-export from @herbcaudill/agent-server
-    calculateBackoffDelay.ts # Re-export from @herbcaudill/agent-server
-    generateId.ts           # Re-export from @herbcaudill/agent-server
-    createEventStream.ts    # Re-export from @herbcaudill/agent-server
-    createMessageStream.ts  # Re-export from @herbcaudill/agent-server
-    BdProxy.ts              # Proxy for beads CLI commands
-    ThemeDiscovery.ts       # Discovers VS Code themes
-  src/                      # React frontend
-    components/             # React components (chat, events, tasks, layout)
-    store/                  # Zustand global state
-    hooks/                  # Custom React hooks
-    lib/                    # Utilities and theme management
-      serverConfig.ts       # Server URL config for dual-server architecture (combined vs split mode)
-    constants.ts            # Shared UI constants
-    types.ts                # Shared UI types
-
-packages/shared/                    # Shared package
-  src/
-    events/                 # Agent event types (re-exported from @herbcaudill/agent-view) and guards
-    prompts/                # Prompt loading utilities
-    index.ts                # Package exports
-  templates/                # Single source of truth for Ralph session prompts
-    core.prompt.md          # Session lifecycle protocol
-    workflow.prompt.md      # Default workflow instructions
-    manage-tasks.prompt.md  # Task management skill prompt (used by task chat)
-```
+- **`packages/cli/`** (`@herbcaudill/ralph`) — CLI tool (published to npm)
+- **`packages/ui/`** (`@herbcaudill/ralph-ui`) — Web UI with React frontend and SharedWorker for loop orchestration
+- **`packages/shared/`** (`@herbcaudill/ralph-shared`) — Shared utilities, types, and prompt templates
+- **`packages/beads-view/`** (`@herbcaudill/beads-view`) — Task management UI/state/hooks. Two export paths: main (client) and `/server` (Express task routes)
+- **`packages/beads-server/`** (`@herbcaudill/beads-server`) — Express server for task management (port 4243)
+- **`packages/agent-view/`** (`@herbcaudill/agent-view`) — Agent chat UI components, event schema (Effect Schema), hotkeys, hooks
+- **`packages/agent-server/`** (`@herbcaudill/agent-server`) — Generic agent chat server with JSONL persistence, multi-adapter support (port 4244)
+- **`packages/agent-demo/`** (`@herbcaudill/agent-demo`) — Functional chat demo
+- **`packages/beads-demo/`** (`@herbcaudill/beads-demo`) — Functional task manager demo
 
 ## Core architecture
 
-### Core flow
+### CLI flow
 
 1. **CLI entry** (`cli.ts`): Main mode (`ralph [sessions]`), watch mode (`--watch`), agent selection (`--agent <name>`), init mode (`ralph init`), replay mode (`--replay [file]`)
-
 2. **Session runner** (`SessionRunner.tsx`): Combines `core.prompt.md` with `.ralph/workflow.prompt.md`, spawns `claude` CLI with `--output-format stream-json`, parses streaming JSON events, appends to `.ralph/events-*.jsonl`, detects `<promise>COMPLETE</promise>` to exit or enter watch mode
-
-3. **Event processing** (`eventToBlocks.ts`): Transforms raw JSON events into display blocks (tool calls, file paths, React keys)
-
+3. **Event processing** (`eventToBlocks.ts`): Transforms raw JSON events into display blocks
 4. **Display layer** (`EventDisplay.tsx`, `ToolUse.tsx`): Renders events using Ink components
 
 ### Template system
 
-All prompt templates live in `packages/shared/templates/` as the single source of truth:
-
-- **Core prompt** (`core.prompt.md`) - Session lifecycle, task assignment, output tokens (CLI templates symlink here)
-- **Workflow** (`workflow.prompt.md`) - Default workflow instructions; repos override via `.ralph/workflow.prompt.md`
-- **Manage tasks** (`manage-tasks.prompt.md`) - Task management skill prompt for task chat UI
-
-**Importing templates in UI code:**
-
-Templates can be imported as raw strings via Vite's `?raw` suffix:
+All prompt templates live in `packages/shared/templates/` as the single source of truth. Templates can be imported as raw strings via Vite's `?raw` suffix:
 
 ```typescript
 import MANAGE_TASKS_SYSTEM_PROMPT from "@herbcaudill/ralph-shared/templates/manage-tasks.prompt.md?raw"
 ```
-
-The shared package exports templates via `"./templates/*": "./templates/*"` in package.json. TypeScript declarations for `*.md?raw` modules are in `packages/ui/src/vite-env.d.ts`. This pattern inlines the template content at build time with no runtime overhead.
 
 ### Contract with Claude CLI
 
@@ -301,439 +79,76 @@ Claude outputs: `<start_task>{id}</start_task>` when starting, `<end_task>{id}</
 
 ### Server architecture
 
-The server layer consists of two independent packages:
+Two independent servers:
 
-- **`@herbcaudill/beads-server`** — Task management server. Provides REST API for tasks/labels/workspace, WebSocket for mutation events. Port 4243.
+- **beads-server** (port 4243) — Task management REST API + WebSocket for mutation events
+- **agent-server** (port 4244) — Agent chat server with adapters (Claude, Codex), session management (ChatSessionManager, SessionPersister), JSONL persistence, WebSocket streaming. Supports `customRoutes` in config for app-specific route injection.
 
-- **`@herbcaudill/agent-server`** — Generic agent chat server. Agent adapters (ClaudeAdapter, CodexAdapter, AdapterRegistry), the AgentAdapter base class, session management (ChatSessionManager, SessionPersister), utility functions (isRetryableError, calculateBackoffDelay, generateId), and findClaudeExecutable. Supports `customRoutes` in config for app-specific route injection. Port 4244.
+In dev mode, `packages/ui/server/startAgentServer.ts` starts the agent-server with Ralph-specific routes injected via `customRoutes`.
 
-In dev mode, the agent-server is started via `packages/ui/server/startAgentServer.ts`, which injects Ralph-specific routes (e.g., `GET /api/prompts/ralph`) via `customRoutes`. This keeps the agent-server generic.
-
-The UI is a frontend-only package that connects to these servers. Ralph-specific loop orchestration happens client-side in a SharedWorker.
-
-### Per-workspace session persistence
-
-The most recent session ID for each workspace is persisted in localStorage (key: `ralph-workspace-session:{workspaceId}`). On page reload, `useRalphLoop` sends a `restore_session` message to the SharedWorker, which sets the session ID without auto-starting Ralph. The restored session is in idle state, allowing past events to be viewed. The worker broadcasts a `session_restored` event (distinct from `session_created`) so the hook can set the session ID without entering streaming mode.
-
-**Server-side persistence with app namespaces:**
-
-Sessions are stored as JSONL files with an optional app namespace. Sessions are organized as:
-
-- **Root sessions**: `{storageDir}/{sessionId}.jsonl` (for sessions without an app namespace)
-- **App-namespaced sessions**: `{storageDir}/{app}/{sessionId}.jsonl` (e.g., `{storageDir}/ralph/session123.jsonl`)
-
-The `SessionPersister` reads and writes to the correct directory based on the `app` namespace parameter. When a client reconnects via the `reconnect` WebSocket message, the server extracts the session's stored `app` namespace from `getSessionInfo()` and passes it to `persister.readEvents()` or `persister.readEventsSince()`. This ensures sessions stored in app subdirectories are correctly restored on browser reload. The `pending_events` message is always sent (even if empty) to signal event restoration completion.
-
-### Server connectivity
-
-The UI connects to:
-
-- **beads-server** (port 4243) for task management via HTTP and WebSocket
-- **agent-server** (port 4244) for chat sessions via HTTP and WebSocket
-
-Set server URLs via environment variables: `VITE_BEADS_SERVER_URL` and `VITE_AGENT_SERVER_URL`.
+The UI is frontend-only, connecting to both servers. Ralph loop orchestration happens client-side in a SharedWorker (`ralphWorker.ts`).
 
 ### Multi-agent support
 
-Agents implement `AgentAdapter` base class (`server/AgentAdapter.ts`). Available: **Claude** (default, requires `ANTHROPIC_API_KEY`) and **Codex** (`OPENAI_API_KEY` optional). Each adapter normalizes native events into `AgentEvent` types. Core event types (AgentEvent, AgentMessageEvent, etc.) are defined in `@herbcaudill/agent-view` and re-exported by `packages/shared/` for backward compatibility; wire protocol types remain defined locally in shared.
-
-ClaudeAdapter accepts an optional `model` in `ClaudeAdapterOptions`, falling back to the `CLAUDE_MODEL` environment variable. Per-message model overrides the default. `AgentInfo` (returned by `getInfo()`) includes a `model` field showing the configured default.
-
-**Model detection from streaming:** ClaudeAdapter detects the model being used from `message_start` streaming events. The detected model is cached at the module level so that new adapter instances created by `getAvailableAdapters()` can return the model even before they've processed any messages. Model priority is: explicit option > `CLAUDE_MODEL` env var > detected from streaming > undefined. Testing utilities `clearCachedDetectedModel()` and `getCachedDetectedModel()` are exported for test isolation.
+Agents implement `AgentAdapter` base class. Available: **Claude** (default, requires `ANTHROPIC_API_KEY`) and **Codex** (`OPENAI_API_KEY` optional). Each adapter normalizes native events into `AgentEvent` types. Core event types are defined in `@herbcaudill/agent-view` and re-exported by `packages/shared/`.
 
 ### Context file loading
 
-The agent-server loads adapter-specific context files (CLAUDE.md for Claude, AGENTS.md for Codex) and prepends their content to system prompts.
-
-**Adapter-specific files:**
+The agent-server loads adapter-specific context files and prepends them to system prompts:
 
 | Adapter  | Context file | Global directory |
 | -------- | ------------ | ---------------- |
 | `claude` | CLAUDE.md    | `~/.claude/`     |
 | `codex`  | AGENTS.md    | `~/.codex/`      |
 
-**Load order:**
+Load order: user global → workspace → working directory context → caller-provided `systemPrompt`. Key exports from `@herbcaudill/agent-server`: `loadContextFile()`, `assemblePrompt()`, `getContextFilename()`.
 
-1. User global: `~/{globalDir}/{filename}` (e.g., `~/.claude/CLAUDE.md`)
-2. Workspace: `{cwd}/{filename}` (e.g., `/project/CLAUDE.md`)
-3. Working directory context (injected automatically)
-4. Caller-provided `systemPrompt`
+### Session persistence
 
-If both global and workspace files exist, their contents are combined (global first, then workspace, separated by a blank line).
+Sessions are stored as JSONL files, optionally namespaced by app (e.g., `{storageDir}/ralph/session123.jsonl`). Per-workspace session IDs persist in localStorage. On reconnect, the server sends `pending_events` (even if empty) to signal restoration is complete.
 
-**Exported utilities** (from `@herbcaudill/agent-server`):
+### Concurrent workers
 
-- `loadContextFile(options?)` - Load adapter-specific context file content
-- `loadContextFileSync(options?)` - Sync version
-- `getContextFilename(adapter)` - Get filename for adapter (e.g., `"CLAUDE.md"`)
-- `getGlobalConfigDir(adapter)` - Get global config dir (e.g., `".claude"`)
-- `assemblePrompt(options?)` - Assemble complete prompt (context file + cwd context + system prompt)
-- `AdapterType` - Type for adapter IDs (`"claude" | "codex" | string`)
+`WorktreeManager`, `WorkerLoop`, and `WorkerOrchestrator` (all in `packages/agent-server/src/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from shared). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), spawns Claude, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers. See the source files for full API details.
 
-**Legacy utilities** (still exported for backward compatibility):
+## Runtime interaction (CLI)
 
-- `loadClaudeMd(options?)` - Claude-specific context loading
-- `loadClaudeMdSync(options?)` - Sync version
-- `CLAUDE_MD_FILENAME` - The constant `"CLAUDE.md"`
-
-**ClaudeAdapter configuration:** Set `loadClaudeMd: false` in `ClaudeAdapterOptions` to disable auto-loading (default: `true`).
-
-### System prompt injection
-
-Sessions can store a system prompt at creation time, which is used as the default for all messages in that session.
-
-**API support:**
-
-- `POST /api/sessions` - Accepts `systemPrompt` in request body
-- `GET /api/sessions/:id/prompt` - Returns assembled prompt for a session (context file + cwd context + system prompt)
-- WebSocket `create_session` message - Accepts `systemPrompt` field
-- `CreateSessionOptions.systemPrompt` - Stored with the session
-- `SendMessageOptions.systemPrompt` - Per-message override (takes precedence over session-level)
-
-### WorktreeManager
-
-The `WorktreeManager` (`packages/agent-server/src/lib/WorktreeManager.ts`) manages git worktrees for concurrent Ralph workers, allowing parallel work without conflicts.
-
-**Directory structure:**
-
-- Worktrees stored in sibling folder: `{project}-worktrees/`
-- Each worker gets a subdirectory: `{project}-worktrees/{worker-name}/{task-id}`
-
-**Branch naming:** `ralph/{worker-name}/{task-id}`
-
-**Key methods:**
-
-- `create(options)` - Creates a worktree with a task-specific branch, pulls latest main first
-- `merge(workerName, taskId)` - Merges worktree branch back to main
-- `remove(workerName, taskId, options?)` - Removes worktree and optionally deletes branch
-- `cleanup(workerName, taskId)` - Merges and removes worktree (only removes on successful merge)
-- `list(workerName?)` - Lists all worktrees, optionally filtered by worker
-- `pullLatest()` - Pulls latest changes from remote
-
-**Conflict resolution methods:**
-
-- `getConflictingFiles()` - Lists files with merge conflicts in main workspace
-- `isMergeInProgress()` - Checks if a merge is in progress in main workspace
-- `abortMerge()` - Aborts an in-progress merge in main workspace
-- `completeMerge(workerName, taskId)` - Completes a merge after conflicts are resolved
-
-**Exported from `@herbcaudill/agent-server`:**
-
-- `WorktreeManager` - The manager class
-- `WorktreeInfo` - Worktree metadata type
-- `CreateWorktreeOptions` - Options for `create()`
-- `RemoveWorktreeOptions` - Options for `remove()`
-- `MergeResult` - Result of merge operations
-- `CleanupResult` - Result of cleanup operations
-
-### WorkerLoop
-
-The `WorkerLoop` (`packages/agent-server/src/lib/WorkerLoop.ts`) implements the core worker loop for concurrent Ralph workers. Each worker runs this loop to:
-
-1. Pull latest main
-2. Create a worktree with a task-specific branch
-3. Spawn Claude CLI in the worktree directory
-4. On completion, merge branch into main
-5. Resolve any merge conflicts (via callback or retry)
-6. Run tests to verify clean merge
-7. Clean up worktree and branch
-8. Repeat
-
-**Key principle:** Worker never gives up on a task - retries until successful merge and tests pass.
-
-**Constructor options:**
-
-- `workerName` - The worker's name (e.g., "homer", used for branch naming)
-- `mainWorkspacePath` - Path to the main git repository
-- `spawnClaude(cwd)` - Function to spawn Claude CLI in the given working directory
-- `getReadyTask()` - Async function returning the next task to work on (or null if none)
-- `claimTask(taskId)` - Async function to claim a task (set assignee, status)
-- `closeTask(taskId)` - Async function to close/complete a task
-- `runTests?()` - Optional async function to run tests after merge
-- `onMergeConflict?(context)` - Optional callback for merge conflicts, returns "resolved" or "abort"
-
-**Methods:**
-
-- `runLoop()` - Run continuously until stopped or no tasks available
-- `runOnce()` - Run a single iteration (one task)
-- `stop()` - Stop gracefully after current task
-- `forceStop()` - Kill current Claude process and stop
-
-**Per-worker control methods:**
-
-- `pause()` - Pauses the worker loop (waits for current task to complete)
-- `resume()` - Resumes a paused worker
-- `isPaused()` - Returns true if worker is paused
-- `getState()` - Returns current state (`"idle" | "running" | "paused"`)
-- `getCurrentTaskId()` - Returns the current task ID if any, or null
-
-**Events:**
-
-- `idle` - No tasks available
-- `task_started` - Task claimed and started
-- `worktree_created` - Git worktree created for task
-- `claude_started` - Claude CLI process spawned
-- `claude_completed` - Claude CLI process finished
-- `merge_completed` - Branch merged to main successfully
-- `merge_conflict` - Merge had conflicts
-- `tests_passed` - Tests passed after merge
-- `tests_failed` - Tests failed after merge
-- `task_completed` - Task fully completed
-- `paused` - Worker was paused
-- `resumed` - Worker was resumed
-- `error` - Error occurred
-
-**Exported from `@herbcaudill/agent-server`:**
-
-- `WorkerLoop` - The worker loop class
-- `WorkerLoopOptions` - Constructor options type
-- `WorkerLoopEvents` - Event types
-- `WorkerState` - Worker state type (`"idle" | "running" | "paused"`)
-- `ReadyTask` - Task info type
-- `TestResult` - Test result type
-- `MergeConflictContext` - Conflict callback context type
-
-### WorkerOrchestrator
-
-The `WorkerOrchestrator` (`packages/agent-server/src/lib/WorkerOrchestrator.ts`) manages a pool of concurrent Ralph workers. It builds on top of `WorkerLoop` to:
-
-1. Manage up to N workers (configurable, default 3)
-2. Spin up workers based on available ready tasks
-3. Each worker runs its own loop independently
-4. Support graceful shutdown (stop after current tasks complete)
-5. Use Simpsons character names for worker identification
-
-**Constructor options:**
-
-- `maxWorkers?` - Maximum concurrent workers (default: 3)
-- `mainWorkspacePath` - Path to the main git repository
-- `spawnClaude(cwd)` - Function to spawn Claude CLI in the given working directory
-- `getReadyTasksCount()` - Async function returning the count of ready tasks
-- `getReadyTask(workerName)` - Async function returning the next task for a worker
-- `claimTask(taskId, workerName)` - Async function to claim a task
-- `closeTask(taskId)` - Async function to close/complete a task
-- `runTests?()` - Optional async function to run tests after merge
-- `pollingInterval?` - How often to check for new tasks (default: 5000ms)
-
-**Methods:**
-
-- `start()` - Start the orchestrator, spinning up workers based on available tasks
-- `stop()` - Stop all workers immediately
-- `stopAfterCurrent()` - Stop gracefully after current tasks complete
-- `getState()` - Get current state ("stopped", "running", "stopping")
-- `getMaxWorkers()` - Get the maximum worker count
-- `getActiveWorkerCount()` - Get the number of currently active workers
-- `getWorkerNames()` - Get the names of all active workers
-
-**Per-worker control methods:**
-
-- `pauseWorker(workerName)` - Pause a specific worker
-- `resumeWorker(workerName)` - Resume a paused worker
-- `stopWorker(workerName)` - Stop a specific worker immediately
-- `getWorkerState(workerName)` - Get state of a specific worker
-- `getWorkerStates()` - Get states of all active workers (returns `Map<string, WorkerInfo>`)
-
-**Events:**
-
-- `worker_started` - Worker started
-- `worker_stopped` - Worker stopped (with reason: "completed", "stopped", or "error")
-- `worker_paused` - Worker was paused
-- `worker_resumed` - Worker was resumed
-- `task_started` - Worker started a task
-- `task_completed` - Worker completed a task
-- `state_changed` - Orchestrator state changed
-- `error` - Error occurred
-
-**Exported from `@herbcaudill/agent-server`:**
-
-- `WorkerOrchestrator` - The orchestrator class
-- `WorkerOrchestratorOptions` - Constructor options type
-- `WorkerOrchestratorEvents` - Event types
-- `OrchestratorState` - Orchestrator state type
-- `WorkerInfo` - Worker info type (includes name, state, current task ID)
-
-## Runtime interaction
-
-- **Escape** - Send a message to Claude
-- **Ctrl+T** - Add a todo item (if `todo.md` exists)
-- **Ctrl+S** - Stop after current session
-- **Ctrl+P** - Pause/resume
+- **Escape** — Send a message to Claude
+- **Ctrl+T** — Add a todo item (if `todo.md` exists)
+- **Ctrl+S** — Stop after current session
+- **Ctrl+P** — Pause/resume
 
 JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": "..."}`, `{"type": "stop"}`, `{"type": "pause"}`, `{"type": "resume"}`.
 
-Messages are delivered via `MessageQueue` (async iterable) through the Claude Agent SDK's streaming input mode.
+## UI conventions
 
-## UI package details
-
-### UI conventions
-
-- Components lead files; helper functions live in `packages/ui/src/lib` (one function per file)
-- Shared types in `types.ts`, constants in `constants.ts`
-- Task UI state, hooks, and API client live in `packages/beads-view`; UI re-exports via `@herbcaudill/beads-view`. Server-side task routes are imported from `@herbcaudill/beads-view/server`
+- Components lead files; helpers in `packages/ui/src/lib` (one function per file)
+- Use discriminated `*ChatEvent` interfaces with type-guard functions in `packages/agent-view/src/lib/is*.ts`
+- Controller/presentational pattern: **FooController** connects hooks to **Foo** (pure presentational)
 - Use the shared Dialog component from `@herbcaudill/components` instead of native `<dialog>` elements
-- Use discriminated `*ChatEvent` interfaces (e.g. `AssistantChatEvent`, `UserMessageChatEvent`) with type-guard functions in `packages/agent-view/src/lib/is*.ts`
-- `ToolUseChatEvent` includes `toolUseId` for matching tool_use events with their corresponding tool_result events. This enables consistent rendering of tool output across different event flows (task chat vs Ralph panel)
-- Streaming `tool_use` inputs can arrive in `content_block_start`; `useStreamingState` preserves that input when no `input_json_delta` is emitted so commands render in the Ralph panel.
-- Deprecated aliases (`ErrorEventData`, `UserMessageEvent`, etc.) exist for backward compatibility — don't use in new code
-
-### Controller/presentational pattern
-
-- **FooController** - Thin wrapper connecting hooks to presentational component
-- **Foo** - Presentational component receiving all data via props
-- Hooks organized by domain (`src/hooks/useTaskChat.ts`, etc.)
-- Storybook stories test presentational components directly — no store mocking needed
-
-### Storybook decorators
-
-Defined in `.storybook/decorators.tsx`: `withStoreState(state)`, `fullPageDecorator`, `withImportedState(url)` (loads compressed `.json.gz` state files from `public/fixtures/`).
-
-### Zustand store architecture
-
-Multi-instance state via `instances: Map<string, RalphInstance>` with `activeInstanceId`. Selectors read from the Map (e.g., `selectRalphStatus`, `selectEvents`). Token usage and context window are derived from session events, not stored properties.
-
-In-memory events capped at `MAX_STORE_EVENTS` (2000). Legacy flat fields (`ralphStatus`, `events`, etc.) are deprecated — use selectors.
-
-### IndexedDB (v8)
-
-Four stores: `sessions`, `events`, `chat_sessions`, `sync_state`. Persistence via `useSessionPersistence` (session metadata), `useEventPersistence` (append-only events), `useDevStateExport` (dev-only server state snapshots).
-
-Key behaviors:
-
-- Event dedup uses `event.uuid` as IndexedDB key
-- `useSessionPersistence` is the single source of truth for session IDs
-- Eviction removes completed sessions/chats older than 7 days, caps at 200 each
-- Hydration is workspace-scoped; `useStoreHydration` restores session IDs on reload
+- Zustand store uses multi-instance state via `instances: Map<string, RalphInstance>` with `activeInstanceId`; use selectors (e.g., `selectRalphStatus`, `selectEvents`)
+- IndexedDB (v8) stores: `sessions`, `events`, `chat_sessions`, `sync_state`. Event dedup uses `event.uuid` as key.
 - HMR preserves WebSocket state via `import.meta.hot.data`; no `<StrictMode>` wrapper
-
-### WebSocket protocol
-
-All messages include `instanceId`, `workspaceId`, `timestamp`. Unified `agent:event` envelope (`AgentEventEnvelope`) with `source` field (`"ralph" | "task-chat"`). Reconnection via `agent:reconnect` / `agent:pending_events`. Legacy wire types preserved for backward compatibility but being phased out.
-
-**Session reconnection and event restoration:**
-
-When a client reconnects (e.g., after browser reload), it sends a `reconnect` message with the session ID. The server's WebSocket handler (`wsHandler.ts`) retrieves the session's metadata via `getSessionInfo(sessionId)` to extract the `app` namespace. It then reads the session's events from the persister using `readEvents(sessionId, app)` or `readEventsSince(sessionId, lastTimestamp, app)`. The events are sent to the client via a `pending_events` message, including an empty array for newly created sessions to signal event restoration is complete.
-
-### Event logs
-
-Task closes → `saveEventLogAndAddComment()` saves to IndexedDB → closing comment includes `/session/abcd1234` link → `useEventLogRouter` handles navigation.
-
-## Shared package
-
-Browser-safe main entry (`@herbcaudill/ralph-shared`): events, VERSION. Core event types (AgentEvent, AgentMessageEvent, etc.) are type aliases re-exported from `@herbcaudill/agent-view`; wire protocol types and event guards remain defined locally. Node-only subpath (`@herbcaudill/ralph-shared/prompts`): prompt loading utilities. Beads types import from `@herbcaudill/beads-sdk`.
-
-**Worker names** (`@herbcaudill/ralph-shared`): `WORKER_NAMES` array of Simpsons character names, `WorkerName` type, `getWorkerName(index)` for indexing with wrapping, and `isValidWorkerName(name)` for validation. Used for branch naming (`ralph/<name>/<task-id>`) and task assignment (`--assignee=<name>`).
+- Deprecated aliases (`ErrorEventData`, `UserMessageEvent`, etc.) exist — don't use in new code
 
 ## Environment variables
 
-- `ANTHROPIC_API_KEY` - Required for Claude agent
-- `OPENAI_API_KEY` - Optional for Codex agent
-- `BEADS_PORT` - Beads server port (default: 4243)
-- `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` - Agent server host/port (defaults: localhost / 4244)
-- `VITE_BEADS_SERVER_URL` - Full URL for beads-server (e.g., `http://localhost:4243`)
-- `VITE_AGENT_SERVER_URL` - Full URL for agent-server (e.g., `http://localhost:4244`)
-- `CLAUDE_MODEL` - Default Claude model for ClaudeAdapter (e.g., `claude-sonnet-4-20250514`). Can be overridden per-adapter via `ClaudeAdapterOptions.model`. Agent-demo Playwright tests default to `claude-haiku-4-5-20251001`
-- `RALPH_DEBUG` - Debug logging (`1` for all, or comma-separated namespaces: `messagequeue`, `session`)
-- `RALPH_CWD` - Override base path for relative path rendering
+- `ANTHROPIC_API_KEY` — Required for Claude agent
+- `OPENAI_API_KEY` — Optional for Codex agent
+- `BEADS_PORT` — Beads server port (default: 4243)
+- `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` — Agent server host/port (defaults: localhost / 4244)
+- `VITE_BEADS_SERVER_URL` — Full URL for beads-server (e.g., `http://localhost:4243`)
+- `VITE_AGENT_SERVER_URL` — Full URL for agent-server (e.g., `http://localhost:4244`)
+- `CLAUDE_MODEL` — Default Claude model for ClaudeAdapter. Overridable per-adapter via `ClaudeAdapterOptions.model`
+- `RALPH_DEBUG` — Debug logging (`1` for all, or comma-separated namespaces: `messagequeue`, `session`)
+- `RALPH_CWD` — Override base path for relative path rendering
 
 ## Terminology
 
-**Sessions** - A single autonomous work cycle where Ralph spawns an agent to complete a task. Previously called "iterations".
+**Sessions** — A single autonomous work cycle where Ralph spawns an agent to complete a task. Previously called "iterations".
 
-## Vendor documentation index
+## Reference documentation
 
-Reference docs for key libraries used in this project:
-
-- **Effect TS** — `vendor-docs/effect-ts.md` — Typed functional effects, error handling, dependency injection, concurrency, resource management
-- **Effect Schema** — `vendor-docs/effect-schema.md` — Type-safe data validation, parsing, transformation, encoding/decoding
-
-## Architecture documentation
-
-- **Server responsibilities map** — `docs/server-responsibilities-map.md` — All server routes, WebSocket channels, and types for the planned server split
-
-<!-- BEGIN BEADS INTEGRATION -->
-
-## Issue Tracking with bd (beads)
-
-**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
-
-### Why bd?
-
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Auto-syncs to JSONL for version control
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking systems and confusion
-
-### Quick Start
-
-**Check for ready work:**
-
-```bash
-bd ready --json
-```
-
-**Create new issues:**
-
-```bash
-bd create "Issue title" --description="Detailed context" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" --description="What this issue is about" -p 1 --deps discovered-from:bd-123 --json
-```
-
-**Claim and update:**
-
-```bash
-bd update bd-42 --status in_progress --json
-bd update bd-42 --priority 1 --json
-```
-
-**Complete work:**
-
-```bash
-bd close bd-42 --reason "Completed" --json
-```
-
-### Issue Types
-
-- `bug` - Something broken
-- `feature` - New functionality
-- `task` - Work item (tests, docs, refactoring)
-- `epic` - Large feature with subtasks
-- `chore` - Maintenance (dependencies, tooling)
-
-### Priorities
-
-- `0` - Critical (security, data loss, broken builds)
-- `1` - High (major features, important bugs)
-- `2` - Medium (default, nice-to-have)
-- `3` - Low (polish, optimization)
-- `4` - Backlog (future ideas)
-
-### Workflow for AI Agents
-
-1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task**: `bd update <id> --status in_progress`
-3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-
-### Auto-Sync
-
-bd automatically syncs with git:
-
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
-
-### Important Rules
-
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
-
-For more details, see README.md and docs/QUICKSTART.md.
-
-<!-- END BEADS INTEGRATION -->
+- **Effect TS** — `vendor-docs/effect-ts.md`
+- **Effect Schema** — `vendor-docs/effect-schema.md`
+- **Server responsibilities map** — `docs/server-responsibilities-map.md`
