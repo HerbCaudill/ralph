@@ -17,6 +17,7 @@ runDev({
     "pnpm --filter agent-view build",
     "pnpm --filter ralph-shared --filter agent-view-claude --filter agent-view-codex build",
     "pnpm --filter beads-view build",
+    "pnpm --filter agent-server --filter beads-server build",
   ],
   services: [
     // Watchers for dependency packages
@@ -28,7 +29,17 @@ runDev({
     { name: "shared", command: "pnpm --filter ralph-shared dev" },
     { name: "beads-view", command: "pnpm --filter beads-view dev" },
 
-    // Backend servers
+    // Backend servers — tsc watchers keep dist/ in sync with source
+    {
+      name: "agent-server-build",
+      command: "pnpm --filter agent-server exec tsc --watch --preserveWatchOutput",
+    },
+    {
+      name: "beads-server-build",
+      command: "pnpm --filter beads-server exec tsc --watch --preserveWatchOutput",
+    },
+
+    // Backend servers — tsx --watch restarts when dist/ changes
     {
       name: "beads-server",
       command: "pnpm --filter beads-server dev",
