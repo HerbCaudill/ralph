@@ -175,6 +175,15 @@ vi.mock("@herbcaudill/agent-view", () => ({
   getHotkeyDisplayString: () => "",
   // Utility functions used by ControlBar
   cn: (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(" "),
+  // Hooks for deriving agent/model info in WorkspaceView
+  useAdapterInfo: () => ({ model: "claude-sonnet-4-20250514" }),
+  useDetectedModel: () => "claude-sonnet-4-20250514",
+  formatModelName: (model: string | null) => {
+    if (!model) return null
+    if (model.includes("sonnet")) return "Sonnet 4"
+    if (model.includes("opus")) return "Opus 4"
+    return model
+  },
 }))
 
 // Mock TaskDetailSheet to verify it gets rendered as a side panel

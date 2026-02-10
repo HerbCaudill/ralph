@@ -6,10 +6,6 @@ import {
   ContextWindowProgress,
   useTokenUsage,
   useContextWindow,
-  useAdapterInfo,
-  useDetectedModel,
-  formatModelName,
-  type AgentType,
   type ChatEvent,
   type ControlState,
   type AgentViewContextValue,
@@ -18,7 +14,6 @@ import {
 } from "@herbcaudill/agent-view"
 import { IconPlayerPlayFilled, IconRobot } from "@tabler/icons-react"
 import { ControlBar } from "@/components/ControlBar"
-import { RepoBranch } from "@/components/RepoBranch"
 import { RunDuration } from "@/components/RunDuration"
 import { StatusIndicator } from "@/components/StatusIndicator"
 import { useSessionTimer } from "@/hooks/useSessionTimer"
@@ -33,9 +28,6 @@ export function RalphRunner({
   isStreaming,
   controlState,
   connectionStatus,
-  workspaceName,
-  branch,
-  workspacePath,
   isStoppingAfterCurrent = false,
   sessions = [],
   sessionId,
@@ -43,7 +35,6 @@ export function RalphRunner({
   taskTitle,
   workerName,
   isViewingHistoricalSession = false,
-  agentType = "claude",
   context,
   onSendMessage,
   onStart,
@@ -58,13 +49,6 @@ export function RalphRunner({
   const tokenUsage = useTokenUsage(events)
   const contextWindow = useContextWindow(events)
   const { elapsedMs } = useSessionTimer(events)
-  const { model: adapterModel } = useAdapterInfo(agentType)
-  // Prefer model detected from streaming events; fall back to adapter info for initial state
-  const detectedModel = useDetectedModel(events)
-  const modelName = formatModelName(detectedModel ?? adapterModel)
-
-  /** Capitalized adapter display name (e.g. "Claude", "Codex"). */
-  const adapterDisplayName = agentType.charAt(0).toUpperCase() + agentType.slice(1)
 
   const isConnected = connectionStatus === "connected"
   const showIdleState = controlState === "idle"
@@ -177,34 +161,15 @@ export function RalphRunner({
 
           {/* Right section: info displays */}
           <div className="flex items-center">
-            {/* Agent adapter and model */}
-            <span
-              data-testid="agent-info"
-              className="border-r border-border pr-4 text-muted-foreground"
-            >
-              {adapterDisplayName}
-              {modelName && ` (${modelName})`}
-            </span>
-
-            {/* Workspace name and branch */}
-            {(workspaceName || branch) && (
-              <RepoBranch
-                workspaceName={workspaceName}
-                branch={branch}
-                workspacePath={workspacePath}
-                className="border-r border-border px-4"
-              />
-            )}
-
             {/* Token usage */}
             {(tokenUsage.input > 0 || tokenUsage.output > 0) && (
-              <div className="border-r border-border px-4">
+              <div className="border-r border-border pr-4">
                 <TokenUsageDisplay tokenUsage={tokenUsage} />
               </div>
             )}
 
             {/* Context window */}
-            <div className="pl-4">
+            <div className={tokenUsage.input > 0 || tokenUsage.output > 0 ? "pl-4" : ""}>
               <ContextWindowProgress contextWindow={contextWindow} />
             </div>
           </div>
@@ -223,12 +188,6 @@ export type RalphRunnerProps = {
   controlState: ControlState
   /** Connection status to the agent server. */
   connectionStatus: ConnectionStatus
-  /** Workspace/repository name. */
-  workspaceName?: string | null
-  /** Git branch name. */
-  branch?: string | null
-  /** Full path to the workspace (shown in tooltip). */
-  workspacePath?: string | null
   /** Whether currently stopping after the current session. */
   isStoppingAfterCurrent?: boolean
   /** List of available sessions for the session picker. */
@@ -243,8 +202,6 @@ export type RalphRunnerProps = {
   workerName?: string | null
   /** Whether viewing a historical session (not the current active one). */
   isViewingHistoricalSession?: boolean
-  /** Agent adapter type, used to fetch adapter info for display. Defaults to "claude". */
-  agentType?: AgentType
   /** Context configuration passed to AgentViewProvider. */
   context?: Partial<AgentViewContextValue>
   /** Called when the user sends a message via the chat input. */

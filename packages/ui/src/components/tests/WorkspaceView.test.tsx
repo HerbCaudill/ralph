@@ -208,6 +208,15 @@ vi.mock("@herbcaudill/agent-view", () => ({
   hotkeys: {},
   getHotkeyDisplayString: () => "",
   cn: (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(" "),
+  // Hooks for deriving agent/model info
+  useAdapterInfo: () => ({ model: "claude-sonnet-4-20250514" }),
+  useDetectedModel: () => "claude-sonnet-4-20250514",
+  formatModelName: (model: string | null) => {
+    if (!model) return null
+    if (model.includes("sonnet")) return "Sonnet 4"
+    if (model.includes("opus")) return "Opus 4"
+    return model
+  },
 }))
 
 vi.mock("../TaskDetailSheet", () => ({
@@ -216,6 +225,15 @@ vi.mock("../TaskDetailSheet", () => ({
 
 vi.mock("../TaskChatPanel", () => ({
   TaskChatPanel: () => <div data-testid="task-chat-panel">Chat</div>,
+}))
+
+// Capture the props passed to Header so we can assert on them
+let capturedHeaderProps: Record<string, unknown> = {}
+vi.mock("../Header", () => ({
+  Header: (props: Record<string, unknown>) => {
+    capturedHeaderProps = props
+    return <div data-testid="header">Header</div>
+  },
 }))
 
 // Capture the props passed to RalphRunner so we can assert on them
@@ -252,6 +270,7 @@ function renderWorkspaceView() {
 describe("WorkspaceView session history wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    capturedHeaderProps = {}
     capturedRalphRunnerProps = {}
     capturedWorkerControlBarProps = null
 
@@ -389,6 +408,7 @@ describe("WorkspaceView session history wiring", () => {
 describe("WorkspaceView worker orchestrator integration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    capturedHeaderProps = {}
     capturedRalphRunnerProps = {}
     capturedWorkerControlBarProps = null
 
@@ -520,6 +540,57 @@ describe("WorkspaceView worker orchestrator integration", () => {
       handler()
 
       expect(mockOrchestratorCancelStop).toHaveBeenCalled()
+    })
+  })
+})
+
+describe("WorkspaceView Header agent/model and workspace props", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedHeaderProps = {}
+    capturedRalphRunnerProps = {}
+    capturedWorkerControlBarProps = null
+
+    // Reset mock state to defaults
+    mockSessionId = "live-session-1"
+    mockLiveEvents = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
+    mockIsStreaming = false
+    mockControlState = "idle"
+    mockOrchestratorState = "stopped"
+    mockOrchestratorWorkers = {}
+    mockSessions = []
+    mockHistoricalEvents = null
+    mockIsViewingHistorical = false
+  })
+
+  describe("agent/model info props", () => {
+    it("passes agentDisplayName to Header", () => {
+      renderWorkspaceView()
+      // Should be capitalized adapter name (e.g., "Claude")
+      expect(capturedHeaderProps.agentDisplayName).toBe("Claude")
+    })
+
+    it("passes modelName to Header", () => {
+      renderWorkspaceView()
+      // Should be formatted model name (e.g., "Sonnet 4")
+      expect(capturedHeaderProps.modelName).toBe("Sonnet 4")
+    })
+  })
+
+  describe("workspace info props", () => {
+    it("passes workspaceName to Header", () => {
+      renderWorkspaceView()
+      expect(capturedHeaderProps.workspaceName).toBe("Test Workspace")
+    })
+
+    it("passes branch to Header", () => {
+      renderWorkspaceView()
+      expect(capturedHeaderProps.branch).toBe("main")
+    })
+
+    it("passes workspacePath to Header", () => {
+      renderWorkspaceView()
+      expect(capturedHeaderProps.workspacePath).toBe("/test/workspace")
     })
   })
 })

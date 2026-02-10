@@ -29,7 +29,13 @@ import {
   useBeadsHotkeys,
   type SearchInputHandle,
 } from "@herbcaudill/beads-view"
-import { useAgentHotkeys, type ChatInputHandle } from "@herbcaudill/agent-view"
+import {
+  useAgentHotkeys,
+  useAdapterInfo,
+  useDetectedModel,
+  formatModelName,
+  type ChatInputHandle,
+} from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 import { useCurrentTask } from "@/hooks/useCurrentTask"
 import { useWorkerName } from "@/hooks/useWorkerName"
@@ -147,6 +153,13 @@ export function WorkspaceView() {
 
   // Active worker name from Ralph events
   const workerName = useWorkerName(events)
+
+  // Agent adapter and model info for the Header
+  const agentType = "claude" as const
+  const { model: adapterModel } = useAdapterInfo(agentType)
+  const detectedModel = useDetectedModel(events)
+  const modelName = formatModelName(detectedModel ?? adapterModel)
+  const agentDisplayName = agentType.charAt(0).toUpperCase() + agentType.slice(1)
 
   // Worker orchestrator for parallel execution control
   const orchestrator = useWorkerOrchestrator(workspaceId)
@@ -360,9 +373,6 @@ export function WorkspaceView() {
       isStreaming={isStreaming}
       controlState={controlState}
       connectionStatus={connectionStatus}
-      workspaceName={workspace?.name}
-      branch={workspace?.branch}
-      workspacePath={workspace?.path}
       isStoppingAfterCurrent={effectiveIsStoppingAfterCurrent}
       sessions={sessions}
       sessionId={sessionId}
@@ -394,6 +404,11 @@ export function WorkspaceView() {
         workspace={workspace}
         workspaces={workspaces}
         isWorkspaceLoading={isWorkspaceLoading}
+        agentDisplayName={agentDisplayName}
+        modelName={modelName}
+        workspaceName={workspace?.name}
+        branch={workspace?.branch}
+        workspacePath={workspace?.path}
         onWorkspaceSwitch={handleWorkspaceSwitch}
         onHelpClick={handleShowHotkeys}
       />

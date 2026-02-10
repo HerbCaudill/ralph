@@ -39,16 +39,6 @@ vi.mock("@herbcaudill/agent-view", () => ({
   ),
   useTokenUsage: () => ({ input: 1000, output: 500 }),
   useContextWindow: () => ({ used: 50000, max: 200000 }),
-  useAdapterInfo: (agentType: string) => {
-    if (agentType === "claude") return { version: "1.0.0", model: "claude-sonnet-4-20250514" }
-    return { version: undefined, model: undefined }
-  },
-  useDetectedModel: () => undefined, // Model from events (fallback to adapterModel)
-  formatModelName: (modelId: string | undefined) => {
-    if (modelId === "claude-sonnet-4-20250514") return "Sonnet 4"
-    if (modelId === "claude-opus-4-5-20251101") return "Opus 4.5"
-    return modelId
-  },
   TokenUsageDisplay: ({ tokenUsage }: any) => (
     <div data-testid="token-usage">
       Tokens: {tokenUsage.input}/{tokenUsage.output}
@@ -80,14 +70,6 @@ vi.mock("../RunDuration", () => ({
   ),
 }))
 
-vi.mock("../RepoBranch", () => ({
-  RepoBranch: ({ workspaceName, branch }: any) => (
-    <div data-testid="repo-branch">
-      {workspaceName}/{branch}
-    </div>
-  ),
-}))
-
 vi.mock("../ControlBar", () => ({
   ControlBar: ({ controlState, isConnected, isStoppingAfterCurrent }: any) => (
     <div
@@ -112,9 +94,6 @@ const defaultProps = {
   isStreaming: false,
   controlState: "idle" as ControlState,
   connectionStatus: "connected" as const,
-  workspaceName: "ralph",
-  branch: "main",
-  workspacePath: "/Users/test/ralph",
   isStoppingAfterCurrent: false,
   onSendMessage: vi.fn(),
   onPause: vi.fn(),
@@ -241,12 +220,6 @@ describe("RalphRunner", () => {
       expect(screen.getByTestId("run-duration")).toBeInTheDocument()
     })
 
-    it("renders repo branch info", () => {
-      render(<RalphRunner {...defaultProps} />)
-      expect(screen.getByTestId("repo-branch")).toBeInTheDocument()
-      expect(screen.getByTestId("repo-branch")).toHaveTextContent("ralph/main")
-    })
-
     it("renders token usage display", () => {
       render(<RalphRunner {...defaultProps} />)
       expect(screen.getByTestId("token-usage")).toBeInTheDocument()
@@ -255,11 +228,6 @@ describe("RalphRunner", () => {
     it("renders context window progress", () => {
       render(<RalphRunner {...defaultProps} />)
       expect(screen.getByTestId("context-window")).toBeInTheDocument()
-    })
-
-    it("hides repo branch when not provided", () => {
-      render(<RalphRunner {...defaultProps} workspaceName={null} branch={null} />)
-      expect(screen.queryByTestId("repo-branch")).not.toBeInTheDocument()
     })
 
     it("passes connection status to control bar", () => {
@@ -271,25 +239,6 @@ describe("RalphRunner", () => {
       render(<RalphRunner {...defaultProps} isStoppingAfterCurrent={true} />)
       expect(screen.getByTestId("control-bar")).toHaveAttribute("data-stopping", "true")
       expect(screen.getByTestId("status-indicator")).toHaveAttribute("data-stopping", "true")
-    })
-
-    it("displays agent adapter name and formatted model in footer", () => {
-      render(<RalphRunner {...defaultProps} />)
-      const agentInfo = screen.getByTestId("agent-info")
-      expect(agentInfo).toHaveTextContent("Claude (Sonnet 4)")
-    })
-
-    it("displays agent adapter name without model when model is unavailable", () => {
-      render(<RalphRunner {...defaultProps} agentType="codex" />)
-      const agentInfo = screen.getByTestId("agent-info")
-      expect(agentInfo).toHaveTextContent("Codex")
-      expect(agentInfo).not.toHaveTextContent("(")
-    })
-
-    it("defaults agentType to claude", () => {
-      render(<RalphRunner {...defaultProps} />)
-      const agentInfo = screen.getByTestId("agent-info")
-      expect(agentInfo).toHaveTextContent("Claude")
     })
   })
 
