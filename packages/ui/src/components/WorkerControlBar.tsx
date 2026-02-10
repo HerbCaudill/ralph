@@ -82,9 +82,7 @@ export function WorkerControlBar({
           size="sm"
           onClick={isStoppingAfterCurrent ? handleCancelStopAfterCurrent : handleStopAfterCurrent}
           disabled={!isConnected}
-          title={
-            isStoppingAfterCurrent ? "Cancel stop after current" : "Stop all after current task"
-          }
+          title={isStoppingAfterCurrent ? "Cancel stop after current" : "Stop all after current task"}
         >
           {isStoppingAfterCurrent ? "Cancel Stop" : "Stop All"}
         </Button>

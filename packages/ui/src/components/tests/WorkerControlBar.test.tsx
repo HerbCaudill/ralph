@@ -169,9 +169,7 @@ describe("WorkerControlBar", () => {
     })
 
     it("disables stop on idle worker", () => {
-      const idleWorkers: WorkerInfo[] = [
-        { workerName: "homer", state: "idle", currentTaskId: null },
-      ]
+      const idleWorkers: WorkerInfo[] = [{ workerName: "homer", state: "idle", currentTaskId: null }]
       render(<WorkerControlBar {...defaultProps} workers={idleWorkers} />)
 
       expect(screen.getByRole("button", { name: "Stop homer" })).toBeDisabled()
