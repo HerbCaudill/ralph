@@ -231,6 +231,44 @@ describe("fetchRalphSessions", () => {
     expect(result.find(s => s.sessionId === "idle-session")?.isActive).toBe(false)
   })
 
+  it("includes workspace query parameter when resolving task titles", async () => {
+    const mockFetch = vi.fn()
+    // Session list response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "session-1",
+            adapter: "claude",
+            createdAt: 1000,
+            lastMessageAt: 2000,
+            taskId: "r-abc123",
+          },
+        ],
+      }),
+    })
+
+    // Task fetch response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        issue: { id: "r-abc123", title: "Fix the button" },
+      }),
+    })
+
+    await fetchRalphSessions({
+      fetchFn: mockFetch,
+      workspaceId: "HerbCaudill/ralph",
+    })
+
+    // The task API call should include the workspace query parameter
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/tasks/r-abc123?workspace=HerbCaudill%2Fralph",
+    )
+  })
+
   it("caches task titles to avoid repeated API calls", async () => {
     const mockFetch = vi.fn()
 

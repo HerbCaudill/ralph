@@ -31,6 +31,8 @@ export interface FetchRalphSessionsOptions {
   baseUrl?: string
   /** Custom fetch function for testing. */
   fetchFn?: typeof fetch
+  /** Workspace ID (`owner/repo`) to include as a query parameter for task lookups. */
+  workspaceId?: string
 }
 
 /**
@@ -41,7 +43,7 @@ export async function fetchRalphSessions(
   /** Options for the fetch operation. */
   options: FetchRalphSessionsOptions = {},
 ): Promise<RalphSessionIndexEntry[]> {
-  const { baseUrl = "", fetchFn = fetch } = options
+  const { baseUrl = "", fetchFn = fetch, workspaceId } = options
 
   try {
     const response = await fetchFn(`${baseUrl}/api/sessions?app=ralph&include=summary`)
@@ -68,7 +70,7 @@ export async function fetchRalphSessions(
 
         // Resolve task title if we have a taskId
         if (session.taskId) {
-          const taskTitle = await resolveTaskTitle(session.taskId, baseUrl, fetchFn)
+          const taskTitle = await resolveTaskTitle(session.taskId, baseUrl, fetchFn, workspaceId)
           if (taskTitle) {
             entry.taskTitle = taskTitle
           }
@@ -96,6 +98,8 @@ async function resolveTaskTitle(
   baseUrl: string,
   /** Fetch function to use. */
   fetchFn: typeof fetch,
+  /** Workspace ID to include as query param. */
+  workspaceId?: string,
 ): Promise<string | undefined> {
   // Check cache first
   const cached = taskTitleCache.get(taskId)
@@ -104,7 +108,11 @@ async function resolveTaskTitle(
   }
 
   try {
-    const response = await fetchFn(`${baseUrl}/api/tasks/${taskId}`)
+    let url = `${baseUrl}/api/tasks/${taskId}`
+    if (workspaceId) {
+      url += `?workspace=${encodeURIComponent(workspaceId)}`
+    }
+    const response = await fetchFn(url)
     if (!response.ok) {
       return undefined
     }

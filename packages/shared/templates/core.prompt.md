@@ -8,16 +8,15 @@ Note: Your working directory is the root of the codebase.
 
 ### Find available work
 
-Run `bd ready --assignee {agentName} --assignee ""` to list issues that are either:
+Run `bd ready --assignee {agentName} ""` to list issues that are assigned to you.
 
-- Unassigned, or
-- Assigned to you
+If there are no issues assigned to you, run `bd ready --unassigned` to find unassigned issues.
 
 If no issues are ready, output `<promise>COMPLETE</promise>` and end your session.
 
 ### Claim and work on one task
 
-Select the highest-priority issue. Finish in-progress tasks first. Bugs take priority.
+Select the highest-priority issue. Finish in-progress tasks first. Bugs take priority. Otherwise use your judgement.
 
 - Output `<start_task>{id}</start_task>`
 - Assign the issue to yourself: `bd update {id} --status=in_progress --assignee={agentName}`
