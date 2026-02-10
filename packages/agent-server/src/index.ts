@@ -137,6 +137,15 @@ export type {
   MergeConflictContext,
 } from "./lib/WorkerLoop.js"
 
+// ── Worker orchestrator ──────────────────────────────────────────────
+
+export { WorkerOrchestrator } from "./lib/WorkerOrchestrator.js"
+export type {
+  WorkerOrchestratorOptions,
+  WorkerOrchestratorEvents,
+  OrchestratorState,
+} from "./lib/WorkerOrchestrator.js"
+
 // ── Server ───────────────────────────────────────────────────────────
 
 /** Module state: connected WebSocket clients. */

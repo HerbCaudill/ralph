@@ -1,0 +1,397 @@
+import { EventEmitter } from "node:events"
+import type { ChildProcess } from "node:child_process"
+import { WorkerLoop, type ReadyTask } from "./WorkerLoop.js"
+import { getWorkerName, type WorkerName } from "@herbcaudill/ralph-shared"
+
+/**
+ * State of the orchestrator.
+ */
+export type OrchestratorState = "stopped" | "running" | "stopping"
+
+/**
+ * Options for creating a WorkerOrchestrator instance.
+ */
+export interface WorkerOrchestratorOptions {
+  /** Maximum number of concurrent workers (default: 3) */
+  maxWorkers?: number
+
+  /** Path to the main workspace/repository */
+  mainWorkspacePath: string
+
+  /**
+   * Function to spawn a Claude CLI process.
+   * Receives the working directory (worktree path) where Claude should run.
+   * Should return a ChildProcess.
+   */
+  spawnClaude: (cwd: string) => ChildProcess
+
+  /**
+   * Function to get the count of ready tasks.
+   * Used to determine how many workers to spin up.
+   */
+  getReadyTasksCount: () => Promise<number>
+
+  /**
+   * Function to get the next ready task for a specific worker.
+   * Should return null if no tasks are available.
+   */
+  getReadyTask: (workerName: string) => Promise<ReadyTask | null>
+
+  /**
+   * Function to claim a task (mark it as in_progress with this worker as assignee).
+   */
+  claimTask: (taskId: string, workerName: string) => Promise<void>
+
+  /**
+   * Function to close/complete a task.
+   */
+  closeTask: (taskId: string) => Promise<void>
+
+  /**
+   * Optional function to run tests after merge.
+   * If not provided, tests are skipped.
+   */
+  runTests?: () => Promise<{ success: boolean; output?: string }>
+
+  /**
+   * How often to check for new tasks and spin up workers (ms).
+   * Default: 5000ms
+   */
+  pollingInterval?: number
+}
+
+/**
+ * Events emitted by WorkerOrchestrator.
+ */
+export interface WorkerOrchestratorEvents {
+  /** Emitted when a worker starts */
+  worker_started: [{ workerName: string }]
+
+  /** Emitted when a worker stops (finishes or is terminated) */
+  worker_stopped: [{ workerName: string; reason: "completed" | "stopped" | "error" }]
+
+  /** Emitted when a worker starts a task */
+  task_started: [{ workerName: string; taskId: string; title: string }]
+
+  /** Emitted when a worker completes a task */
+  task_completed: [{ workerName: string; taskId: string }]
+
+  /** Emitted when orchestrator state changes */
+  state_changed: [{ state: OrchestratorState }]
+
+  /** Emitted on error */
+  error: [{ workerName?: string; error: Error }]
+}
+
+/**
+ * Internal state for a running worker.
+ */
+interface WorkerState {
+  workerName: WorkerName
+  loop: WorkerLoop
+  isActive: boolean
+}
+
+/**
+ * Orchestrates multiple concurrent Ralph workers.
+ *
+ * - Manages a pool of up to N workers (hard-coded count, default 3)
+ * - Each worker runs its own loop independently
+ * - Workers are spun up based on available ready tasks
+ * - Supports graceful shutdown (stop after current tasks complete)
+ */
+export class WorkerOrchestrator extends EventEmitter {
+  private maxWorkers: number
+  private mainWorkspacePath: string
+  private spawnClaude: (cwd: string) => ChildProcess
+  private getReadyTasksCount: () => Promise<number>
+  private getReadyTask: (workerName: string) => Promise<ReadyTask | null>
+  private claimTask: (taskId: string, workerName: string) => Promise<void>
+  private closeTask: (taskId: string) => Promise<void>
+  private runTests?: () => Promise<{ success: boolean; output?: string }>
+  private pollingInterval: number
+
+  private state: OrchestratorState = "stopped"
+  private workers = new Map<WorkerName, WorkerState>()
+  private nextWorkerIndex = 0
+  private pollingTimer: ReturnType<typeof setInterval> | null = null
+
+  constructor(options: WorkerOrchestratorOptions) {
+    super()
+    this.maxWorkers = options.maxWorkers ?? 3
+    this.mainWorkspacePath = options.mainWorkspacePath
+    this.spawnClaude = options.spawnClaude
+    this.getReadyTasksCount = options.getReadyTasksCount
+    this.getReadyTask = options.getReadyTask
+    this.claimTask = options.claimTask
+    this.closeTask = options.closeTask
+    this.runTests = options.runTests
+    this.pollingInterval = options.pollingInterval ?? 5000
+  }
+
+  /**
+   * Type-safe event emitter methods.
+   */
+  override emit<K extends keyof WorkerOrchestratorEvents>(
+    event: K,
+    ...args: WorkerOrchestratorEvents[K]
+  ): boolean {
+    return super.emit(event, ...args)
+  }
+
+  override on<K extends keyof WorkerOrchestratorEvents>(
+    event: K,
+    listener: (...args: WorkerOrchestratorEvents[K]) => void,
+  ): this {
+    return super.on(event, listener as (...args: unknown[]) => void)
+  }
+
+  /**
+   * Get the current orchestrator state.
+   */
+  getState(): OrchestratorState {
+    return this.state
+  }
+
+  /**
+   * Get the maximum number of workers.
+   */
+  getMaxWorkers(): number {
+    return this.maxWorkers
+  }
+
+  /**
+   * Get the number of currently active workers.
+   */
+  getActiveWorkerCount(): number {
+    return Array.from(this.workers.values()).filter(w => w.isActive).length
+  }
+
+  /**
+   * Get the names of all active workers.
+   */
+  getWorkerNames(): WorkerName[] {
+    return Array.from(this.workers.values())
+      .filter(w => w.isActive)
+      .map(w => w.workerName)
+  }
+
+  /**
+   * Start the orchestrator. Spins up workers based on available tasks.
+   */
+  async start(): Promise<void> {
+    if (this.state === "running") {
+      return // Already running
+    }
+
+    this.setState("running")
+
+    // Initial spin-up of workers
+    await this.checkAndSpinUpWorkers()
+
+    // Start polling for new tasks
+    this.startPolling()
+  }
+
+  /**
+   * Stop all workers immediately.
+   */
+  async stop(): Promise<void> {
+    if (this.state === "stopped") {
+      return
+    }
+
+    this.stopPolling()
+
+    // Force stop all workers
+    for (const worker of this.workers.values()) {
+      if (worker.isActive) {
+        worker.loop.forceStop()
+        worker.isActive = false
+        this.emit("worker_stopped", { workerName: worker.workerName, reason: "stopped" })
+      }
+    }
+
+    this.workers.clear()
+    this.setState("stopped")
+  }
+
+  /**
+   * Stop after all current tasks complete.
+   * Workers will finish their current task, then not pick up new ones.
+   */
+  stopAfterCurrent(): void {
+    if (this.state !== "running") {
+      return
+    }
+
+    this.setState("stopping")
+    this.stopPolling()
+
+    // Tell all workers to stop after their current task
+    for (const worker of this.workers.values()) {
+      if (worker.isActive) {
+        worker.loop.stop()
+      }
+    }
+  }
+
+  /**
+   * Check available tasks and spin up workers as needed.
+   */
+  private async checkAndSpinUpWorkers(): Promise<void> {
+    if (this.state !== "running") {
+      return
+    }
+
+    try {
+      const readyCount = await this.getReadyTasksCount()
+      const activeCount = this.getActiveWorkerCount()
+      const workersNeeded = Math.min(readyCount, this.maxWorkers) - activeCount
+
+      if (workersNeeded <= 0) {
+        return
+      }
+
+      // Spin up the needed workers
+      const spinUpPromises: Promise<void>[] = []
+      for (let i = 0; i < workersNeeded; i++) {
+        spinUpPromises.push(this.spinUpWorker())
+      }
+
+      await Promise.all(spinUpPromises)
+    } catch (error) {
+      this.emit("error", { error: error instanceof Error ? error : new Error(String(error)) })
+    }
+  }
+
+  /**
+   * Spin up a new worker.
+   */
+  private async spinUpWorker(): Promise<void> {
+    if (this.state !== "running") {
+      return
+    }
+
+    const workerName = this.getNextWorkerName()
+
+    // Check if this worker is already active
+    if (this.workers.has(workerName) && this.workers.get(workerName)!.isActive) {
+      return
+    }
+
+    const loop = new WorkerLoop({
+      workerName,
+      mainWorkspacePath: this.mainWorkspacePath,
+      spawnClaude: this.spawnClaude,
+      getReadyTask: () => this.getReadyTask(workerName),
+      claimTask: taskId => this.claimTask(taskId, workerName),
+      closeTask: this.closeTask,
+      runTests: this.runTests,
+    })
+
+    const workerState: WorkerState = {
+      workerName,
+      loop,
+      isActive: true,
+    }
+
+    this.workers.set(workerName, workerState)
+    this.emit("worker_started", { workerName })
+
+    // Wire up loop events
+    loop.on("task_started", ({ taskId, title }) => {
+      this.emit("task_started", { workerName, taskId, title })
+    })
+
+    loop.on("task_completed", ({ taskId }) => {
+      this.emit("task_completed", { workerName, taskId })
+    })
+
+    loop.on("error", error => {
+      this.emit("error", { workerName, error })
+    })
+
+    loop.on("idle", () => {
+      // Worker has no more tasks - the runLoop promise will handle cleanup
+      // This event can fire before the loop promise resolves, so we just log it
+    })
+
+    // Run the loop (non-blocking)
+    loop
+      .runLoop()
+      .then(() => {
+        // Loop completed (either no more tasks or stopped)
+        if (workerState.isActive) {
+          workerState.isActive = false
+          this.emit("worker_stopped", { workerName, reason: "completed" })
+          this.workers.delete(workerName)
+
+          // Check if all workers are done when stopping
+          if (this.state === "stopping" && this.getActiveWorkerCount() === 0) {
+            this.setState("stopped")
+          }
+        }
+      })
+      .catch(error => {
+        workerState.isActive = false
+        this.emit("error", { workerName, error: error instanceof Error ? error : new Error(String(error)) })
+        this.emit("worker_stopped", { workerName, reason: "error" })
+        this.workers.delete(workerName)
+
+        // Check if all workers are done when stopping
+        if (this.state === "stopping" && this.getActiveWorkerCount() === 0) {
+          this.setState("stopped")
+        }
+      })
+  }
+
+  /**
+   * Get the next worker name to use.
+   */
+  private getNextWorkerName(): WorkerName {
+    // Find a name that's not currently in use
+    for (let i = 0; i < this.maxWorkers * 2; i++) {
+      const name = getWorkerName(this.nextWorkerIndex)
+      this.nextWorkerIndex++
+      if (!this.workers.has(name) || !this.workers.get(name)!.isActive) {
+        return name
+      }
+    }
+    // Fallback - this shouldn't happen in practice
+    return getWorkerName(this.nextWorkerIndex++)
+  }
+
+  /**
+   * Start the polling timer.
+   */
+  private startPolling(): void {
+    if (this.pollingTimer) {
+      return
+    }
+
+    this.pollingTimer = setInterval(async () => {
+      await this.checkAndSpinUpWorkers()
+    }, this.pollingInterval)
+  }
+
+  /**
+   * Stop the polling timer.
+   */
+  private stopPolling(): void {
+    if (this.pollingTimer) {
+      clearInterval(this.pollingTimer)
+      this.pollingTimer = null
+    }
+  }
+
+  /**
+   * Set the orchestrator state and emit event.
+   */
+  private setState(newState: OrchestratorState): void {
+    if (this.state !== newState) {
+      this.state = newState
+      this.emit("state_changed", { state: newState })
+    }
+  }
+}

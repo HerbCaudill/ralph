@@ -481,6 +481,54 @@ The `WorkerLoop` (`packages/agent-server/src/lib/WorkerLoop.ts`) implements the 
 - `TestResult` - Test result type
 - `MergeConflictContext` - Conflict callback context type
 
+### WorkerOrchestrator
+
+The `WorkerOrchestrator` (`packages/agent-server/src/lib/WorkerOrchestrator.ts`) manages a pool of concurrent Ralph workers. It builds on top of `WorkerLoop` to:
+
+1. Manage up to N workers (configurable, default 3)
+2. Spin up workers based on available ready tasks
+3. Each worker runs its own loop independently
+4. Support graceful shutdown (stop after current tasks complete)
+5. Use Simpsons character names for worker identification
+
+**Constructor options:**
+
+- `maxWorkers?` - Maximum concurrent workers (default: 3)
+- `mainWorkspacePath` - Path to the main git repository
+- `spawnClaude(cwd)` - Function to spawn Claude CLI in the given working directory
+- `getReadyTasksCount()` - Async function returning the count of ready tasks
+- `getReadyTask(workerName)` - Async function returning the next task for a worker
+- `claimTask(taskId, workerName)` - Async function to claim a task
+- `closeTask(taskId)` - Async function to close/complete a task
+- `runTests?()` - Optional async function to run tests after merge
+- `pollingInterval?` - How often to check for new tasks (default: 5000ms)
+
+**Methods:**
+
+- `start()` - Start the orchestrator, spinning up workers based on available tasks
+- `stop()` - Stop all workers immediately
+- `stopAfterCurrent()` - Stop gracefully after current tasks complete
+- `getState()` - Get current state ("stopped", "running", "stopping")
+- `getMaxWorkers()` - Get the maximum worker count
+- `getActiveWorkerCount()` - Get the number of currently active workers
+- `getWorkerNames()` - Get the names of all active workers
+
+**Events:**
+
+- `worker_started` - Worker started
+- `worker_stopped` - Worker stopped (with reason: "completed", "stopped", or "error")
+- `task_started` - Worker started a task
+- `task_completed` - Worker completed a task
+- `state_changed` - Orchestrator state changed
+- `error` - Error occurred
+
+**Exported from `@herbcaudill/agent-server`:**
+
+- `WorkerOrchestrator` - The orchestrator class
+- `WorkerOrchestratorOptions` - Constructor options type
+- `WorkerOrchestratorEvents` - Event types
+- `OrchestratorState` - Orchestrator state type
+
 ## Runtime interaction
 
 - **Escape** - Send a message to Claude
