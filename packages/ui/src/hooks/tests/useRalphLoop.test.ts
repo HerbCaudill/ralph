@@ -955,6 +955,74 @@ describe("useRalphLoop", () => {
         expect(result.current.events.map(e => e.id)).toEqual(["event-1", "event-2"])
       })
     })
+
+    it("should deduplicate events with uuid field (r-58o19)", async () => {
+      // Events persisted by Claude CLI use 'uuid' instead of 'id'
+      // On session restore, these should be deduplicated by their uuid
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      const eventWithUuid = {
+        type: "assistant",
+        uuid: "27137a9a-09de-4a16-951a-aafa6ab2d3f2",
+        timestamp: 1234567890,
+        message: { content: [{ type: "text", text: "Hello" }] },
+      }
+
+      // First event arrives via streaming
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: eventWithUuid,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.events).toHaveLength(1)
+      })
+
+      // Same event arrives again via pending_events (on reconnect)
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "pending_events",
+          workspaceId: TEST_WORKSPACE_ID,
+          events: [eventWithUuid],
+        })
+      })
+
+      // Should still only have one event (deduplicated by uuid)
+      await waitFor(() => {
+        expect(result.current.events).toHaveLength(1)
+      })
+    })
+
+    it("should normalize uuid to id in events (r-58o19)", async () => {
+      // Events with 'uuid' should have that value accessible as 'id' for consistent deduplication
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      const eventWithUuid = {
+        type: "assistant",
+        uuid: "27137a9a-09de-4a16-951a-aafa6ab2d3f2",
+        timestamp: 1234567890,
+        message: { content: [{ type: "text", text: "Hello" }] },
+      }
+
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: eventWithUuid,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.events).toHaveLength(1)
+        // The event should have 'id' set to the 'uuid' value
+        expect(result.current.events[0].id).toBe("27137a9a-09de-4a16-951a-aafa6ab2d3f2")
+      })
+    })
   })
 
   describe("task lifecycle event parsing (r-c7n1g)", () => {

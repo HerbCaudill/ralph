@@ -8,6 +8,7 @@ import {
   loadWorkspaceState,
 } from "../lib/workspaceSessionStorage"
 import { extractTaskLifecycleEvent } from "../lib/extractTaskLifecycleEvent"
+import { normalizeEventId } from "../lib/normalizeEventId"
 
 /**
  * Hook that communicates with the SharedWorker (ralphWorker.ts) to control the Ralph loop.
@@ -55,7 +56,8 @@ export function useRalphLoop(
         break
 
       case "event": {
-        const event = data.event as ChatEvent
+        // Normalize uuid -> id for Claude CLI events
+        const event = normalizeEventId(data.event as ChatEvent)
         setEvents(prev => {
           // Deduplicate by event id if present
           if (event.id && prev.some(e => e.id === event.id)) {
@@ -91,7 +93,9 @@ export function useRalphLoop(
           const existingIds = new Set(prev.filter(e => e.id).map(e => e.id))
           const newEvents: ChatEvent[] = []
 
-          for (const event of pendingEvents) {
+          for (const rawEvent of pendingEvents) {
+            // Normalize uuid -> id for Claude CLI events
+            const event = normalizeEventId(rawEvent)
             // Skip if we already have this event
             if (event.id && existingIds.has(event.id)) continue
 
