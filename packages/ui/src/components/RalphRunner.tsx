@@ -80,7 +80,6 @@ export function RalphRunner({
           sessions={sessions}
           currentSessionId={sessionId}
           onSelectSession={onSelectSession ?? (() => {})}
-          disabled={isStreaming}
           taskId={taskId}
           taskTitle={taskTitle}
         />

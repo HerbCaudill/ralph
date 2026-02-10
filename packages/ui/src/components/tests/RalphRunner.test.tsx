@@ -189,7 +189,7 @@ describe("RalphRunner", () => {
       )
     })
 
-    it("disables SessionPicker when streaming", () => {
+    it("enables SessionPicker while streaming so users can switch sessions", () => {
       const sessions: SessionIndexEntry[] = [
         {
           sessionId: "session-1",
@@ -207,7 +207,7 @@ describe("RalphRunner", () => {
           isStreaming={true}
         />,
       )
-      expect(screen.getByTestId("session-picker")).toBeDisabled()
+      expect(screen.getByTestId("session-picker")).not.toBeDisabled()
     })
 
     it("disables ChatInput when viewing historical session", () => {
