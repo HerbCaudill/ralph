@@ -48,34 +48,34 @@ export function Header({
           isLoading={isWorkspaceLoading}
           onSwitch={onWorkspaceSwitch}
         />
-
-        {/* Separator and agent/repo info */}
-        {(showAgentInfo || showRepoBranch) && (
-          <>
-            <div className="flex items-center gap-4">
-              {showAgentInfo && (
-                <HeaderAgentInfo
-                  agentDisplayName={agentDisplayName}
-                  modelName={modelName ?? null}
-                  textColor={textColor}
-                />
-              )}
-              {showRepoBranch && (
-                <HeaderRepoBranch
-                  workspaceName={workspaceName ?? null}
-                  branch={branch ?? null}
-                  workspacePath={workspacePath ?? null}
-                  textColor={textColor}
-                />
-              )}
-            </div>
-          </>
-        )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <HelpButton textColor={textColor} onClick={onHelpClick} />
-        <SettingsDropdown textColor={textColor} />
+      <div className="flex items-center gap-4" style={{ color: textColor }}>
+        {/* Agent and repo/branch info */}
+        {(showAgentInfo || showRepoBranch) && (
+          <div className="flex items-center gap-4">
+            {showAgentInfo && (
+              <HeaderAgentInfo
+                agentDisplayName={agentDisplayName}
+                modelName={modelName ?? null}
+                textColor={textColor}
+              />
+            )}
+            {showRepoBranch && (
+              <HeaderRepoBranch
+                workspaceName={workspaceName ?? null}
+                branch={branch ?? null}
+                workspacePath={workspacePath ?? null}
+                textColor={textColor}
+              />
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <HelpButton textColor={textColor} onClick={onHelpClick} />
+          <SettingsDropdown textColor={textColor} />
+        </div>
       </div>
     </header>
   )
