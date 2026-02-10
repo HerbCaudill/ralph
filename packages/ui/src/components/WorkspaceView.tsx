@@ -94,7 +94,18 @@ export function WorkspaceView() {
   // Workspace state from beads-view
   const {
     state: { current: workspace, workspaces, isLoading: isWorkspaceLoading },
+    actions: { switchWorkspace },
   } = useWorkspace()
+
+  // When the route changes (user switches workspace via URL), sync workspace state.
+  // Skip the initial render — useWorkspace's init effect handles that.
+  const prevWorkspaceId = useRef(workspaceId)
+  useEffect(() => {
+    if (workspaceId && workspaceId !== prevWorkspaceId.current) {
+      prevWorkspaceId.current = workspaceId
+      switchWorkspace(workspaceId)
+    }
+  }, [workspaceId, switchWorkspace])
 
   /** Switch workspace by navigating to its URL. */
   const handleWorkspaceSwitch = useCallback(
