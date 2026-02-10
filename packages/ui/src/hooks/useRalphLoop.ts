@@ -56,43 +56,56 @@ export function useRalphLoop(
 
       case "event": {
         const event = data.event as ChatEvent
-        // Deduplicate user_message events — the optimistic update in sendMessage
-        // already added the message locally, so skip the server echo
-        if (event.type === "user_message") {
-          setEvents(prev => {
+        setEvents(prev => {
+          // Deduplicate by event id if present
+          if (event.id && prev.some(e => e.id === event.id)) {
+            return prev
+          }
+
+          // Deduplicate user_message events by content (for optimistic updates)
+          if (event.type === "user_message") {
             const msg = (event as ChatEvent & { message?: string }).message
             const alreadyExists = prev.some(
               e =>
                 e.type === "user_message" &&
                 (e as ChatEvent & { message?: string }).message === msg,
             )
-            return alreadyExists ? prev : [...prev, event]
-          })
-        } else {
+            if (alreadyExists) return prev
+          }
+
           // Check for task lifecycle markers in assistant events
           const lifecycleEvent = extractTaskLifecycleEvent(event)
           if (lifecycleEvent) {
             // Emit both the original event and the derived task_lifecycle event
-            setEvents(prev => [...prev, event, lifecycleEvent])
-          } else {
-            setEvents(prev => [...prev, event])
+            return [...prev, event, lifecycleEvent]
           }
-        }
+          return [...prev, event]
+        })
         break
       }
 
       case "pending_events": {
         // Process each pending event, extracting task lifecycle events as needed
         const pendingEvents = data.events as ChatEvent[]
-        const allEvents: ChatEvent[] = []
-        for (const event of pendingEvents) {
-          allEvents.push(event)
-          const lifecycleEvent = extractTaskLifecycleEvent(event)
-          if (lifecycleEvent) {
-            allEvents.push(lifecycleEvent)
+        setEvents(prev => {
+          const existingIds = new Set(prev.filter(e => e.id).map(e => e.id))
+          const newEvents: ChatEvent[] = []
+
+          for (const event of pendingEvents) {
+            // Skip if we already have this event
+            if (event.id && existingIds.has(event.id)) continue
+
+            newEvents.push(event)
+            existingIds.add(event.id) // Track for duplicates within pending_events
+
+            const lifecycleEvent = extractTaskLifecycleEvent(event)
+            if (lifecycleEvent) {
+              newEvents.push(lifecycleEvent)
+            }
           }
-        }
-        setEvents(prev => [...prev, ...allEvents])
+
+          return [...prev, ...newEvents]
+        })
         break
       }
 

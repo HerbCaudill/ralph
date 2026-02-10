@@ -867,6 +867,96 @@ describe("useRalphLoop", () => {
     })
   })
 
+  describe("event deduplication (r-1zc78)", () => {
+    it("should deduplicate events by id when the same event arrives multiple times", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate the same event arriving twice (e.g., from both 'event' and 'pending_events')
+      const eventWithId = {
+        type: "assistant",
+        id: "unique-event-id-123",
+        timestamp: 1234567890,
+        message: {
+          content: [{ type: "text", text: "Hello world" }],
+        },
+      }
+
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: eventWithId,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.events).toHaveLength(1)
+      })
+
+      // Same event arrives again (e.g., from pending_events on reconnect)
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: eventWithId,
+        })
+      })
+
+      // Should still only have one event (deduplicated by id)
+      await waitFor(() => {
+        expect(result.current.events).toHaveLength(1)
+        expect(result.current.events[0].id).toBe("unique-event-id-123")
+      })
+    })
+
+    it("should deduplicate pending_events that already exist in the events array", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      const event1 = {
+        type: "assistant",
+        id: "event-1",
+        timestamp: 1234567890,
+        message: { content: [{ type: "text", text: "First" }] },
+      }
+      const event2 = {
+        type: "assistant",
+        id: "event-2",
+        timestamp: 1234567891,
+        message: { content: [{ type: "text", text: "Second" }] },
+      }
+
+      // First event arrives
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: event1,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.events).toHaveLength(1)
+      })
+
+      // pending_events arrives containing both event1 and event2
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "pending_events",
+          workspaceId: TEST_WORKSPACE_ID,
+          events: [event1, event2],
+        })
+      })
+
+      // Should have 2 events, not 3 (event1 should be deduplicated)
+      await waitFor(() => {
+        expect(result.current.events).toHaveLength(2)
+        expect(result.current.events.map(e => e.id)).toEqual(["event-1", "event-2"])
+      })
+    })
+  })
+
   describe("task lifecycle event parsing (r-c7n1g)", () => {
     it("should emit task_lifecycle event when assistant event contains <start_task>", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
