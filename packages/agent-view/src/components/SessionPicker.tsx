@@ -42,11 +42,17 @@ export function SessionPicker({
             size="sm"
             disabled={disabled || !hasSessions}
             title={hasSessions ? "Session history" : "No previous sessions"}
-            className="min-w-0 gap-2"
+            className="group min-w-0 gap-2"
           >
-            <span className="shrink-0 text-xs font-medium text-muted-foreground">{taskId}</span>
+            <span className="shrink-0 text-xs font-medium text-muted-foreground group-hover:text-accent-foreground">
+              {taskId}
+            </span>
             {taskTitle && <span className="min-w-0 truncate text-sm font-medium">{taskTitle}</span>}
-            <IconChevronDown size={14} stroke={1.5} className="shrink-0 text-muted-foreground" />
+            <IconChevronDown
+              size={14}
+              stroke={1.5}
+              className="shrink-0 text-muted-foreground group-hover:text-accent-foreground"
+            />
           </Button>
         : <Button
             variant="outline"

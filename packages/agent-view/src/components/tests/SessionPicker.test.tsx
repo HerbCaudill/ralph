@@ -242,6 +242,26 @@ describe("SessionPicker", () => {
       expect(button.getAttribute("data-size")).toBe("icon-sm")
     })
 
+    it("should use accent color on hover for task ID and caret icon", () => {
+      renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
+      const button = screen.getByRole("button")
+
+      // The button should have "group" class for group-hover to work
+      expect(button.classList.contains("group")).toBe(true)
+
+      // Find the task ID span (contains the task ID text)
+      const taskIdSpan = Array.from(button.querySelectorAll("span")).find(span =>
+        span.textContent?.includes("r-abc99"),
+      )
+      expect(taskIdSpan).toBeDefined()
+      expect(taskIdSpan?.classList.contains("group-hover:text-accent-foreground")).toBe(true)
+
+      // Find the caret icon (IconChevronDown)
+      const caretIcon = button.querySelector("svg")
+      expect(caretIcon).not.toBeNull()
+      expect(caretIcon?.classList.contains("group-hover:text-accent-foreground")).toBe(true)
+    })
+
     it("should not constrain task title width with max-w-48", () => {
       renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
       const button = screen.getByRole("button")
