@@ -72,7 +72,7 @@ export function SessionPicker({
         }
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-80 p-0">
+      <PopoverContent align="start" className="w-80 p-0">
         <div className="max-h-64 overflow-y-auto py-1">
           {sessions.map(session => {
             const isCurrentSession = session.sessionId === currentSessionId
