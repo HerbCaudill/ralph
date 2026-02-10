@@ -1,9 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
-import { fetchRalphSessions } from "../fetchRalphSessions"
+import { fetchRalphSessions, clearTaskTitleCache } from "../fetchRalphSessions"
 
 describe("fetchRalphSessions", () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    // Clear the cache between tests to ensure test isolation
+    clearTaskTitleCache()
   })
 
   it("transforms SessionInfo[] to RalphSessionIndexEntry[]", async () => {
@@ -227,5 +229,62 @@ describe("fetchRalphSessions", () => {
     expect(result.find(s => s.sessionId === "active-session")?.isActive).toBe(true)
     // Idle session should have isActive: false
     expect(result.find(s => s.sessionId === "idle-session")?.isActive).toBe(false)
+  })
+
+  it("caches task titles to avoid repeated API calls", async () => {
+    const mockFetch = vi.fn()
+
+    // First call: session list response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "session-1",
+            adapter: "claude",
+            createdAt: 1000,
+            lastMessageAt: 2000,
+            taskId: "r-cached",
+          },
+        ],
+      }),
+    })
+
+    // First call: task fetch response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        issue: { id: "r-cached", title: "Cached Task" },
+      }),
+    })
+
+    // First fetch - should call the task API
+    const result1 = await fetchRalphSessions({ fetchFn: mockFetch })
+    expect(result1[0].taskTitle).toBe("Cached Task")
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    // Second call: session list response (same task ID)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "session-2",
+            adapter: "claude",
+            createdAt: 3000,
+            lastMessageAt: 4000,
+            taskId: "r-cached", // Same task ID
+          },
+        ],
+      }),
+    })
+
+    // Second fetch - should NOT call the task API again (cached)
+    const result2 = await fetchRalphSessions({ fetchFn: mockFetch })
+    expect(result2[0].taskTitle).toBe("Cached Task")
+    // Only 3 calls total: 2 from first fetch + 1 session list from second fetch
+    // The task API should not be called again because the title is cached
+    expect(mockFetch).toHaveBeenCalledTimes(3)
   })
 })

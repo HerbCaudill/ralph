@@ -450,19 +450,18 @@ Click behavior:
 - Shows current task ID + title, or “No active task” / “Choosing a task…”
 - Previous / Next session buttons
 - “Current” button returns to live session
-- Session history dropdown opens a list grouped by date
-- History groups are labeled “Today”, “Yesterday”, or a specific date label.
+- Session history dropdown opens a list (no date grouping or "Recent Sessions" heading).
 - The currently viewed session is highlighted and marked with a check icon.
-- The most recent “Today” session shows a running spinner when the agent is active.
-- When no sessions are available, the dropdown shows “No session history yet.”
+- Active sessions show a spinner icon; inactive sessions are indented with a spacer to align task IDs.
+- When no sessions are available, the dropdown shows "No session history yet."
 - A search field appears only when there are 5+ sessions.
-- Search placeholder: “Search sessions...”.
+- Search placeholder: "Search sessions...".
 - Search matches task ID, task title, and session ID.
-- Empty search shows “No sessions found.”
-- Items show task title + task ID when available; they do not show a history icon, timestamps, or event counts.
+- Empty search shows "No sessions found."
+- Items show task ID (muted) + task title; sessions without a task ID display "No task".
 - Selecting a session replaces the current main view (does not open a sidebar).
 - The dropdown is available while viewing historical sessions.
-- The dropdown does not include a separate “Current session” row; the current session appears as the highlighted item.
+- The dropdown does not include a separate "Current session" row; the current session appears as the highlighted item.
 
 **Screenshots:**
 
@@ -730,7 +729,7 @@ This section captures UX constraints surfaced by closed bd issues and commit his
 
 ### 17.2 Session history and event stream
 
-- Session dropdown entries show the associated task title when available; do not show “No task” for sessions that have a task.
+- Session dropdown entries show task ID (muted) + task title; sessions without a task ID display "No task".
 - Historical session loading is stable (no flicker/loop). If no events exist, show “No events found for this session.”
 - `<promise>COMPLETE</promise>` renders as a purple “Session complete” event card styled like task start/end cards.
 - Event stream does not duplicate events on reconnect or hot reload.

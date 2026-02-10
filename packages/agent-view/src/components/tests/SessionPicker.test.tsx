@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react"
-import { SessionPicker, type SessionPickerProps } from "../SessionPicker"
-import type { SessionIndexEntry } from "../../lib/sessionIndex"
+import { SessionPicker, type SessionPickerProps, type SessionPickerEntry } from "../SessionPicker"
 
-function makeSession(overrides: Partial<SessionIndexEntry> = {}): SessionIndexEntry {
+function makeSession(overrides: Partial<SessionPickerEntry> = {}): SessionPickerEntry {
   return {
     sessionId: "s1",
     adapter: "claude",
@@ -96,67 +95,156 @@ describe("SessionPicker", () => {
 
   describe("dropdown", () => {
     it("should not show dropdown by default", () => {
-      renderPicker()
-      expect(screen.queryByText("Recent Sessions")).toBeNull()
+      renderPicker({
+        sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
+      })
+      expect(screen.queryByText("r-abc12")).toBeNull()
     })
 
     it("should show dropdown when trigger is clicked", () => {
-      renderPicker()
+      renderPicker({
+        sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
-      expect(screen.getByText("Recent Sessions")).toBeDefined()
+      // No "Recent Sessions" heading - removed per requirement
+      expect(screen.queryByText("Recent Sessions")).toBeNull()
     })
 
-    it("should display session text", () => {
-      renderPicker()
+    it("should not display Recent Sessions heading in dropdown", () => {
+      renderPicker({
+        sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
-      expect(screen.getByText("First session")).toBeDefined()
-      expect(screen.getByText("Second session")).toBeDefined()
+      expect(screen.queryByText("Recent Sessions")).toBeNull()
     })
 
-    it("should display relative time for sessions", () => {
-      renderPicker()
+    it("should display task ID and title in dropdown items", () => {
+      renderPicker({
+        sessions: [
+          makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "Fix the login bug" }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Update documentation",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
-      expect(screen.getByText("5 minutes ago")).toBeDefined()
-      expect(screen.getByText("1 hour ago")).toBeDefined()
+      // Should show task IDs
+      expect(screen.getByText("r-abc12")).toBeDefined()
+      expect(screen.getByText("r-def34")).toBeDefined()
+      // Should show task titles
+      expect(screen.getByText("Fix the login bug")).toBeDefined()
+      expect(screen.getByText("Update documentation")).toBeDefined()
     })
 
-    it("should display 'Empty session' for sessions without a first user message", () => {
+    it("should not display relative time for sessions", () => {
+      renderPicker({
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            taskId: "r-abc12",
+            taskTitle: "First session",
+            lastMessageAt: Date.now() - 5 * 60 * 1000,
+          }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Second session",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByTitle("Session history"))
+      // No timestamps should be displayed
+      expect(screen.queryByText("5 minutes ago")).toBeNull()
+      expect(screen.queryByText("1 hour ago")).toBeNull()
+    })
+
+    it("should display 'No task' when taskId is missing", () => {
       renderPicker({
         sessions: [makeSession({ sessionId: "s1", firstUserMessage: "" })],
       })
       fireEvent.click(screen.getByTitle("Session history"))
-      expect(screen.getByText("Empty session")).toBeDefined()
+      expect(screen.getByText("No task")).toBeDefined()
     })
 
     it("should toggle closed when trigger is clicked again", () => {
-      renderPicker()
+      renderPicker({
+        sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
+      })
       const trigger = screen.getByTitle("Session history")
       fireEvent.click(trigger)
-      expect(screen.getByText("Recent Sessions")).toBeDefined()
+      expect(screen.getByText("r-abc12")).toBeDefined()
       fireEvent.click(trigger)
-      expect(screen.queryByText("Recent Sessions")).toBeNull()
+      expect(screen.queryByText("r-abc12")).toBeNull()
     })
   })
 
   describe("session selection", () => {
     it("should call onSelectSession when a session row is clicked", () => {
-      const { props } = renderPicker()
+      const { props } = renderPicker({
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            taskId: "r-abc12",
+            taskTitle: "First session",
+          }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Second session",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
       fireEvent.click(screen.getByText("Second session"))
       expect(props.onSelectSession).toHaveBeenCalledWith("s2")
     })
 
     it("should close the dropdown after selecting a session", () => {
-      renderPicker()
+      renderPicker({
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            taskId: "r-abc12",
+            taskTitle: "First session",
+          }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Second session",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
       fireEvent.click(screen.getByText("Second session"))
-      expect(screen.queryByText("Recent Sessions")).toBeNull()
+      // Dropdown should be closed - task ID should no longer be visible
+      expect(screen.queryByText("r-abc12")).toBeNull()
     })
   })
 
   describe("current session indicator", () => {
     it("should show a checkmark for the current session", () => {
-      renderPicker({ currentSessionId: "s1" })
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            taskId: "r-abc12",
+            taskTitle: "First session",
+          }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Second session",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
 
       // The current session row should contain an SVG (the IconCheck)
@@ -170,7 +258,22 @@ describe("SessionPicker", () => {
     })
 
     it("should not show a checkmark for non-current sessions", () => {
-      renderPicker({ currentSessionId: "s1" })
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            taskId: "r-abc12",
+            taskTitle: "First session",
+          }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Second session",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
 
       const sessionButtons = screen
@@ -185,18 +288,22 @@ describe("SessionPicker", () => {
 
   describe("closing behavior", () => {
     it("should close on Escape key", () => {
-      renderPicker()
+      renderPicker({
+        sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
-      expect(screen.getByText("Recent Sessions")).toBeDefined()
+      expect(screen.getByText("r-abc12")).toBeDefined()
 
       fireEvent.keyDown(document, { key: "Escape" })
-      expect(screen.queryByText("Recent Sessions")).toBeNull()
+      expect(screen.queryByText("r-abc12")).toBeNull()
     })
 
     it("should close on outside click", async () => {
-      renderPicker()
+      renderPicker({
+        sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
+      })
       fireEvent.click(screen.getByTitle("Session history"))
-      expect(screen.getByText("Recent Sessions")).toBeDefined()
+      expect(screen.getByText("r-abc12")).toBeDefined()
 
       // Radix DismissableLayer registers its pointerdown listener via setTimeout(0),
       // so we need to flush that timer before dispatching the event
@@ -205,7 +312,7 @@ describe("SessionPicker", () => {
       })
 
       fireEvent.pointerDown(document.body)
-      expect(screen.queryByText("Recent Sessions")).toBeNull()
+      expect(screen.queryByText("r-abc12")).toBeNull()
     })
   })
 
@@ -277,17 +384,19 @@ describe("SessionPicker", () => {
   })
 
   describe("active session indicator", () => {
-    it("should show a pulsing green dot for active sessions", () => {
+    it("should show a spinner for active sessions", () => {
       renderPicker({
         sessions: [
           makeSession({
             sessionId: "s1",
-            firstUserMessage: "Active session",
+            taskId: "r-abc12",
+            taskTitle: "Active session",
             isActive: true,
           }),
           makeSession({
             sessionId: "s2",
-            firstUserMessage: "Inactive session",
+            taskId: "r-def34",
+            taskTitle: "Inactive session",
             isActive: false,
           }),
         ],
@@ -300,17 +409,20 @@ describe("SessionPicker", () => {
         .find(b => b.textContent?.includes("Active session"))
       expect(activeSessionButton).toBeDefined()
 
-      // Should have a pulsing dot element
-      const pulsingDot = activeSessionButton?.querySelector('[data-testid="active-indicator"]')
-      expect(pulsingDot).not.toBeNull()
+      // Should have a spinner element (IconLoader2 with animate-spin)
+      const spinner = activeSessionButton?.querySelector('[data-testid="active-indicator"]')
+      expect(spinner).not.toBeNull()
+      // Spinner should have animate-spin class
+      expect(spinner?.classList.contains("animate-spin")).toBe(true)
     })
 
-    it("should not show a pulsing dot for inactive sessions", () => {
+    it("should not show a spinner for inactive sessions", () => {
       renderPicker({
         sessions: [
           makeSession({
             sessionId: "s1",
-            firstUserMessage: "Inactive session",
+            taskId: "r-abc12",
+            taskTitle: "Inactive session",
             isActive: false,
           }),
         ],
@@ -322,16 +434,17 @@ describe("SessionPicker", () => {
         .find(b => b.textContent?.includes("Inactive session"))
       expect(sessionButton).toBeDefined()
 
-      const pulsingDot = sessionButton?.querySelector('[data-testid="active-indicator"]')
-      expect(pulsingDot).toBeNull()
+      const spinner = sessionButton?.querySelector('[data-testid="active-indicator"]')
+      expect(spinner).toBeNull()
     })
 
-    it("should not show a pulsing dot when isActive is undefined", () => {
+    it("should not show a spinner when isActive is undefined", () => {
       renderPicker({
         sessions: [
           makeSession({
             sessionId: "s1",
-            firstUserMessage: "Session without isActive",
+            taskId: "r-abc12",
+            taskTitle: "Session without isActive",
             // isActive is not set
           }),
         ],
@@ -343,8 +456,39 @@ describe("SessionPicker", () => {
         .find(b => b.textContent?.includes("Session without isActive"))
       expect(sessionButton).toBeDefined()
 
-      const pulsingDot = sessionButton?.querySelector('[data-testid="active-indicator"]')
-      expect(pulsingDot).toBeNull()
+      const spinner = sessionButton?.querySelector('[data-testid="active-indicator"]')
+      expect(spinner).toBeNull()
+    })
+
+    it("should indent inactive sessions so task IDs align with active sessions", () => {
+      renderPicker({
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            taskId: "r-abc12",
+            taskTitle: "Active session",
+            isActive: true,
+          }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Inactive session",
+            isActive: false,
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByTitle("Session history"))
+
+      // Find the inactive session row
+      const inactiveSessionButton = screen
+        .getAllByRole("button")
+        .find(b => b.textContent?.includes("Inactive session"))
+      expect(inactiveSessionButton).toBeDefined()
+
+      // Should have a spacer element for alignment
+      const spacer = inactiveSessionButton?.querySelector('[data-testid="spacer"]')
+      expect(spacer).not.toBeNull()
     })
   })
 })

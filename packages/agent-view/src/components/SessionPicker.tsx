@@ -1,12 +1,19 @@
 import { useState, useCallback } from "react"
-import { IconHistory, IconCheck, IconChevronDown } from "@tabler/icons-react"
+import { IconHistory, IconCheck, IconChevronDown, IconLoader2 } from "@tabler/icons-react"
 import { Button, Popover, PopoverTrigger, PopoverContent } from "@herbcaudill/components"
 import type { SessionIndexEntry } from "../lib/sessionIndex"
-import { formatRelativeTime } from "../lib/formatRelativeTime"
+
+/** Extended session entry with optional task information for Ralph sessions. */
+export interface SessionPickerEntry extends SessionIndexEntry {
+  /** The task ID this session worked on. */
+  taskId?: string
+  /** The resolved title of the task. */
+  taskTitle?: string
+}
 
 /**
  * A popover/dropdown that displays past sessions from the session index.
- * Each row shows the first user message text and a relative timestamp.
+ * Each row shows the task ID and title (like the trigger button format).
  * Clicking a row restores that session.
  *
  * When taskId is provided, the trigger button displays the task ID and title
@@ -65,39 +72,44 @@ export function SessionPicker({
         }
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-72 p-0">
-        <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Recent Sessions</div>
-        <div className="max-h-64 overflow-y-auto">
+      <PopoverContent align="end" className="w-80 p-0">
+        <div className="max-h-64 overflow-y-auto py-1">
           {sessions.map(session => {
             const isCurrentSession = session.sessionId === currentSessionId
             const isWorkerActive = session.isActive === true
+            const sessionTaskId = session.taskId
+            const sessionTaskTitle = session.taskTitle
             return (
               <button
                 key={session.sessionId}
                 onClick={() => handleSelect(session.sessionId)}
-                className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
               >
-                {/* Active indicator - pulsing green dot for active worker sessions */}
-                {isWorkerActive && (
-                  <span
+                {/* Active indicator - spinner for active worker sessions, spacer for inactive */}
+                {isWorkerActive ?
+                  <IconLoader2
                     data-testid="active-indicator"
-                    className="mt-1.5 flex h-2 w-2 shrink-0"
-                    title="Worker running"
-                  >
-                    <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">
-                    {session.firstUserMessage || "Empty session"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatRelativeTime(session.lastMessageAt)}
-                  </div>
-                </div>
+                    size={14}
+                    stroke={1.5}
+                    className="shrink-0 animate-spin text-muted-foreground"
+                    aria-label="Worker running"
+                  />
+                : <span data-testid="spacer" className="w-[14px] shrink-0" />}
+                {/* Task ID (muted) + Task title, like the trigger button format */}
+                {sessionTaskId ?
+                  <>
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                      {sessionTaskId}
+                    </span>
+                    {sessionTaskTitle && (
+                      <span className="min-w-0 flex-1 truncate font-medium">
+                        {sessionTaskTitle}
+                      </span>
+                    )}
+                  </>
+                : <span className="text-muted-foreground">No task</span>}
                 {isCurrentSession && (
-                  <IconCheck size={14} stroke={2} className="mt-0.5 shrink-0 text-primary" />
+                  <IconCheck size={14} stroke={2} className="shrink-0 text-primary" />
                 )}
               </button>
             )
@@ -111,7 +123,7 @@ export function SessionPicker({
 /** Props for the SessionPicker component. */
 export interface SessionPickerProps {
   /** List of sessions to display, sorted by recency (most recent first). */
-  sessions: SessionIndexEntry[]
+  sessions: SessionPickerEntry[]
   /** The ID of the currently active session, if any. */
   currentSessionId?: string | null
   /** Callback when a session row is clicked. */

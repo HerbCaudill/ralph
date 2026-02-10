@@ -83,7 +83,7 @@ import {
 
 Tool use summaries accept tool input as objects or JSON strings. JSON strings are parsed before rendering summaries (for example, Bash commands).
 | `PromiseCompleteEvent` | Session complete indicator |
-| `SessionPicker` | Popover listing past sessions with relative timestamps; shows pulsing green dot for active sessions |
+| `SessionPicker` | Popover listing past sessions; shows task ID + title for each session |
 | `ChatInput` | Auto-resizing textarea with send button and imperative focus handle |
 
 ## Session index
@@ -100,7 +100,21 @@ The `SessionIndexEntry` type represents a session in the session picker:
 | `hasResponse`      | `boolean` | Whether the session has received an assistant reply   |
 | `isActive`         | `boolean` | Whether a worker is currently running on this session |
 
-When `isActive` is true, `SessionPicker` displays a pulsing green dot indicator next to the session row.
+### SessionPickerEntry
+
+The `SessionPickerEntry` type extends `SessionIndexEntry` with optional task information:
+
+| Field       | Type                | Description                         |
+| ----------- | ------------------- | ----------------------------------- |
+| `taskId`    | `string` (optional) | Task ID associated with the session |
+| `taskTitle` | `string` (optional) | Task title for display              |
+
+### SessionPicker display
+
+- Each session row shows: task ID (muted) + task title
+- Sessions without a task ID display "No task"
+- Active sessions show a spinner icon
+- Inactive sessions are indented with a spacer to align task IDs with active sessions
 
 ## Utilities
 
@@ -111,13 +125,13 @@ When `isActive` is true, `SessionPicker` displays a pulsing green dot indicator 
 
 ## Hooks
 
-| Hook                    | Description                                                              |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `useAgentChat`          | WebSocket connection and chat session management                         |
-| `useAdapterInfo`        | Fetch adapter info (version, model) from `/api/adapters`                 |
-| `useAdapterVersion`     | Convenience hook returning just the adapter version string               |
-| `useAgentHotkeys`       | Register global keyboard listeners for agent hotkey actions              |
-| `useToolExpansionState` | Manage tool expansion state for a session; returns context-ready state   |
+| Hook                    | Description                                                            |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `useAgentChat`          | WebSocket connection and chat session management                       |
+| `useAdapterInfo`        | Fetch adapter info (version, model) from `/api/adapters`               |
+| `useAdapterVersion`     | Convenience hook returning just the adapter version string             |
+| `useAgentHotkeys`       | Register global keyboard listeners for agent hotkey actions            |
+| `useToolExpansionState` | Manage tool expansion state for a session; returns context-ready state |
 
 ## Context
 
@@ -137,15 +151,15 @@ return (
 
 ### Context options
 
-| Property                | Type                                      | Description                                                  |
-| ----------------------- | ----------------------------------------- | ------------------------------------------------------------ |
-| `isDark`                | `boolean`                                 | Dark mode flag                                               |
-| `toolOutput`            | `AgentViewToolOutputControl`              | Visibility state and toggle callback for tool output         |
-| `workspacePath`         | `string \| null`                          | Base path for relative path display                          |
-| `linkHandlers`          | `AgentViewLinkHandlers`                   | Click handlers for task/session links                        |
-| `tasks`                 | `AgentViewTask[]`                         | Task list for lifecycle event enrichment                     |
-| `toolExpansionState`    | `Map<string, boolean>`                    | Session-scoped store for tool expanded/collapsed state       |
-| `setToolExpansionState` | `(toolUseId: string, expanded: boolean) => void` | Callback to update tool expansion state              |
+| Property                | Type                                             | Description                                            |
+| ----------------------- | ------------------------------------------------ | ------------------------------------------------------ |
+| `isDark`                | `boolean`                                        | Dark mode flag                                         |
+| `toolOutput`            | `AgentViewToolOutputControl`                     | Visibility state and toggle callback for tool output   |
+| `workspacePath`         | `string \| null`                                 | Base path for relative path display                    |
+| `linkHandlers`          | `AgentViewLinkHandlers`                          | Click handlers for task/session links                  |
+| `tasks`                 | `AgentViewTask[]`                                | Task list for lifecycle event enrichment               |
+| `toolExpansionState`    | `Map<string, boolean>`                           | Session-scoped store for tool expanded/collapsed state |
+| `setToolExpansionState` | `(toolUseId: string, expanded: boolean) => void` | Callback to update tool expansion state                |
 
 Tool output visibility is controlled globally via `toolOutput.isVisible`, while each `ToolUseCard` can be toggled independently by clicking its header.
 
@@ -159,12 +173,7 @@ import { AgentView, useToolExpansionState } from "@herbcaudill/agent-view"
 function MyAgentView({ events, sessionId }) {
   const { toolExpansionState, setToolExpansionState } = useToolExpansionState()
 
-  return (
-    <AgentView
-      events={events}
-      context={{ toolExpansionState, setToolExpansionState }}
-    />
-  )
+  return <AgentView events={events} context={{ toolExpansionState, setToolExpansionState }} />
 }
 ```
 

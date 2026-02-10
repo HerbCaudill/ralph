@@ -1,6 +1,9 @@
 import type { AgentType, SessionIndexEntry } from "@herbcaudill/agent-view"
 import type { TaskResponse } from "@herbcaudill/beads-view"
 
+/** Cache for resolved task titles to avoid repeated API calls. */
+const taskTitleCache = new Map<string, string>()
+
 /** Extended session index entry with task details for Ralph sessions. */
 export interface RalphSessionIndexEntry extends SessionIndexEntry {
   /** The task ID this session worked on (from start_task tag). */
@@ -82,7 +85,10 @@ export async function fetchRalphSessions(
   }
 }
 
-/** Resolve a task title from the beads server. */
+/**
+ * Resolve a task title from the beads server.
+ * Results are cached to avoid repeated API calls for the same task ID.
+ */
 async function resolveTaskTitle(
   /** The task ID to look up. */
   taskId: string,
@@ -91,6 +97,12 @@ async function resolveTaskTitle(
   /** Fetch function to use. */
   fetchFn: typeof fetch,
 ): Promise<string | undefined> {
+  // Check cache first
+  const cached = taskTitleCache.get(taskId)
+  if (cached !== undefined) {
+    return cached
+  }
+
   try {
     const response = await fetchFn(`${baseUrl}/api/tasks/${taskId}`)
     if (!response.ok) {
@@ -99,6 +111,8 @@ async function resolveTaskTitle(
 
     const data = (await response.json()) as TaskResponse
     if (data.ok && data.issue) {
+      // Cache the result
+      taskTitleCache.set(taskId, data.issue.title)
       return data.issue.title
     }
 
@@ -106,4 +120,9 @@ async function resolveTaskTitle(
   } catch {
     return undefined
   }
+}
+
+/** Clear the task title cache. Useful for testing. */
+export function clearTaskTitleCache(): void {
+  taskTitleCache.clear()
 }

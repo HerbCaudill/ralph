@@ -34,7 +34,7 @@ export type { ScrollToBottomButtonProps } from "./components/ScrollToBottomButto
 
 // Components: Session
 export { SessionPicker } from "./components/SessionPicker"
-export type { SessionPickerProps } from "./components/SessionPicker"
+export type { SessionPickerProps, SessionPickerEntry } from "./components/SessionPicker"
 
 // Components: Controls
 export { AgentControls } from "./components/AgentControls"
