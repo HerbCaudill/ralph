@@ -31,8 +31,10 @@ interface WorkspaceState {
   pingInterval: ReturnType<typeof setInterval> | null
   /** Ports subscribed to this workspace's events. */
   subscribedPorts: Set<MessagePort>
-  /** Set when `<promise>COMPLETE</promise>` is detected; cleared on next session start. */
+  /** Set when `<end_task>...</end_task>` is detected; signals task completed, continue loop. */
   sessionCompleted: boolean
+  /** Set when `<promise>COMPLETE</promise>` is detected; signals no more tasks, stop loop. */
+  promiseComplete: boolean
   /** Set when user requests stop after current; prevents auto-start. */
   stopAfterCurrentPending: boolean
 }
@@ -92,6 +94,7 @@ export function getWorkspace(workspaceId: string): WorkspaceState {
       pingInterval: null,
       subscribedPorts: new Set(),
       sessionCompleted: false,
+      promiseComplete: false,
       stopAfterCurrentPending: false,
     }
     workspaces.set(workspaceId, state)
@@ -242,10 +245,10 @@ function connectWorkspace(workspaceId: string): void {
         const raw = e.data as string
         const message = JSON.parse(raw) as Record<string, unknown>
 
-        // Detect session completion markers in assistant text content blocks.
-        // Two markers indicate the session should auto-continue:
-        // 1. <promise>COMPLETE</promise> — no more tasks available
-        // 2. <end_task>...</end_task> — task completed, continue to next task
+        // Detect session markers in assistant text content blocks.
+        // Two markers indicate different behaviors:
+        // 1. <promise>COMPLETE</promise> — no more tasks available, STOP the loop
+        // 2. <end_task>...</end_task> — task completed, CONTINUE to next task
         //
         // Match markers at the START (common: marker then summary) or END of text.
         // The "start of text" pattern requires the marker to be followed by newlines
@@ -254,23 +257,32 @@ function connectWorkspace(workspaceId: string): void {
         if (message.type === "event") {
           const event = message.event as Record<string, unknown> | undefined
 
-          // Check for markers in the event content
-          const checkTextForMarkers = (text: string): boolean => {
-            // Check for promise complete marker
+          /** Check for markers in the event content. Returns the marker type found. */
+          const checkTextForMarkers = (text: string): "promise_complete" | "end_task" | null => {
+            // Check for promise complete marker (no more tasks, stop loop)
             if (
               /^\s*<promise>COMPLETE<\/promise>\s*(\n|$)/i.test(text) ||
               /<promise>COMPLETE<\/promise>\s*$/i.test(text)
             ) {
-              return true
+              return "promise_complete"
             }
             // Check for end_task marker (task completed, continue loop)
             if (
               /^\s*<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*(\n|$)/i.test(text) ||
               /<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*$/i.test(text)
             ) {
-              return true
+              return "end_task"
             }
-            return false
+            return null
+          }
+
+          /** Set the appropriate flag based on marker type. */
+          const setMarkerFlag = (marker: "promise_complete" | "end_task" | null): void => {
+            if (marker === "promise_complete") {
+              state.promiseComplete = true
+            } else if (marker === "end_task") {
+              state.sessionCompleted = true
+            }
           }
 
           // Check "assistant" events (complete messages with content blocks)
@@ -284,8 +296,9 @@ function connectWorkspace(workspaceId: string): void {
             if (content) {
               for (const block of content) {
                 if (block.type === "text" && typeof block.text === "string") {
-                  if (checkTextForMarkers(block.text)) {
-                    state.sessionCompleted = true
+                  const marker = checkTextForMarkers(block.text)
+                  if (marker) {
+                    setMarkerFlag(marker)
                     break
                   }
                 }
@@ -296,9 +309,8 @@ function connectWorkspace(workspaceId: string): void {
           // Check "message" events (streaming text deltas)
           // This is how markers actually arrive in practice - via streaming content
           if (event?.type === "message" && typeof event.content === "string") {
-            if (checkTextForMarkers(event.content)) {
-              state.sessionCompleted = true
-            }
+            const marker = checkTextForMarkers(event.content)
+            setMarkerFlag(marker)
           }
         }
 
@@ -379,15 +391,19 @@ function connectWorkspace(workspaceId: string): void {
           // When the agent finishes processing (status transitions away from "processing"):
           //
           // 1. If stopAfterCurrentPending is set, transition to idle regardless of
-          //    whether promise_complete was seen. This prevents the UI from being
-          //    stuck on "Stopping after task" when the session ends without the marker.
+          //    which marker was seen. This prevents the UI from being stuck on
+          //    "Stopping after task" when the session ends without the marker.
           //
-          // 2. If sessionCompleted (promise_complete was seen), auto-start a new session
-          //    (the core Ralph loop).
+          // 2. If promiseComplete (<promise>COMPLETE</promise> was seen), stop the loop
+          //    — no more tasks are available.
+          //
+          // 3. If sessionCompleted (<end_task>...</end_task> was seen), continue the loop
+          //    — start a new session for the next task.
           if (status !== "processing" && state.controlState === "running") {
             if (state.stopAfterCurrentPending) {
               // User requested stop after current — transition to idle
               state.sessionCompleted = false
+              state.promiseComplete = false
               state.stopAfterCurrentPending = false
               setControlState(workspaceId, "idle")
               broadcastToWorkspace(workspaceId, {
@@ -395,7 +411,12 @@ function connectWorkspace(workspaceId: string): void {
                 workspaceId,
                 isStoppingAfterCurrent: false,
               })
+            } else if (state.promiseComplete) {
+              // No more tasks available — stop the loop
+              state.promiseComplete = false
+              setControlState(workspaceId, "idle")
             } else if (state.sessionCompleted) {
+              // Task completed — continue to next task
               state.sessionCompleted = false
               createOrResumeSession(workspaceId)
             }
@@ -622,6 +643,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       const state = getWorkspace(message.workspaceId)
       if (state.controlState === "idle") {
         state.sessionCompleted = false
+        state.promiseComplete = false
         state.stopAfterCurrentPending = false
         setControlState(message.workspaceId, "running")
         if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
@@ -642,6 +664,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       // Pause immediately interrupts the agent and goes to paused state
       const state = getWorkspace(message.workspaceId)
       state.sessionCompleted = false
+      state.promiseComplete = false
 
       // Send interrupt message to the agent-server if we have an active session
       if (state.currentSessionId && state.ws?.readyState === WebSocket.OPEN) {

@@ -958,30 +958,46 @@ describe("ralphWorker", () => {
       const text = "<promise>COMPLETE</promise>\n\nNo more tasks to work on."
       ws.onmessage!({ data: assistantEvent(text) })
 
-      expect(state.sessionCompleted).toBe(true)
+      expect(state.promiseComplete).toBe(true)
+      expect(state.sessionCompleted).toBe(false)
     })
 
-    it("should create a new session when promise_complete is followed by status idle", async () => {
+    it("should STOP the loop (transition to idle) when promise_complete is followed by status idle (r-vyd33)", async () => {
       const workspaceId = "herbcaudill/ralph"
-      const { state } = await setupRunningWorkspace(workspaceId)
+      const { port, state } = await setupRunningWorkspace(workspaceId)
 
       // Simulate receiving an assistant event with <promise>COMPLETE</promise> at end of text
       const ws = state.ws as MockWebSocket
       ws.onmessage!({ data: assistantEvent("All done! <promise>COMPLETE</promise>") })
 
-      expect(state.sessionCompleted).toBe(true)
+      expect(state.promiseComplete).toBe(true)
+      expect(state.sessionCompleted).toBe(false) // end_task was not received
       ;(state.ws as any).send.mockClear()
+      port.postMessage.mockClear()
 
       // Simulate status going idle
       ws.onmessage!({
         data: JSON.stringify({ type: "status", status: "idle" }),
       })
 
-      // Should have sent a create_session message
-      expect(state.ws!.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: "create_session", app: "ralph", workspaceId }),
+      // Should NOT have created a new session - instead should stop the loop
+      const createSessionCalls = (state.ws!.send as any).mock.calls.filter((c: string[]) =>
+        c[0].includes("create_session"),
       )
-      expect(state.sessionCompleted).toBe(false)
+      expect(createSessionCalls).toHaveLength(0)
+
+      // Control state should be idle
+      expect(state.controlState).toBe("idle")
+
+      // Should broadcast state_change to idle
+      const stateChangeMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "state_change")
+      expect(stateChangeMessages).toHaveLength(1)
+      expect(stateChangeMessages[0].state).toBe("idle")
+
+      // promiseComplete flag should be cleared
+      expect(state.promiseComplete).toBe(false)
     })
 
     it("should create a new session when end_task is followed by status idle (r-i5cfi)", async () => {
@@ -1031,14 +1047,15 @@ describe("ralphWorker", () => {
       const workspaceId = "herbcaudill/ralph"
       const { state } = await setupRunningWorkspace(workspaceId)
 
-      // Same bug: promise_complete comes via streaming 'message' events
+      // Promise_complete comes via streaming 'message' events
       const ws = state.ws as MockWebSocket
       ws.onmessage!({ data: messageEvent("<promise>COMPLETE</promise>\n\nNo more tasks.") })
 
-      expect(state.sessionCompleted).toBe(true)
+      expect(state.promiseComplete).toBe(true)
+      expect(state.sessionCompleted).toBe(false)
     })
 
-    it("should NOT set sessionCompleted when marker appears in a code discussion", async () => {
+    it("should NOT set promiseComplete when marker appears in a code discussion", async () => {
       const workspaceId = "herbcaudill/ralph"
       const { state } = await setupRunningWorkspace(workspaceId)
 
@@ -1046,11 +1063,12 @@ describe("ralphWorker", () => {
       const ws = state.ws as MockWebSocket
       ws.onmessage!({
         data: assistantEvent(
-          "The worker tracks `sessionCompleted` when `<promise>COMPLETE</promise>` is detected in the event stream.",
+          "The worker tracks `promiseComplete` when `<promise>COMPLETE</promise>` is detected in the event stream.",
         ),
       })
 
-      // Should NOT have set sessionCompleted — marker is mid-text
+      // Should NOT have set promiseComplete — marker is mid-text
+      expect(state.promiseComplete).toBe(false)
       expect(state.sessionCompleted).toBe(false)
     })
 
@@ -1130,14 +1148,15 @@ describe("ralphWorker", () => {
       expect(createSessionCalls).toHaveLength(0)
     })
 
-    it("should clear sessionCompleted on manual start", async () => {
+    it("should clear sessionCompleted and promiseComplete on manual start", async () => {
       const workspaceId = "herbcaudill/ralph"
       const port = createMockPort()
       handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
       const state = getWorkspace(workspaceId)
 
-      // Set a stale flag
+      // Set stale flags
       state.sessionCompleted = true
+      state.promiseComplete = true
 
       await vi.waitFor(() => {
         expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
@@ -1145,6 +1164,7 @@ describe("ralphWorker", () => {
 
       handlePortMessage({ type: "start", workspaceId }, port)
       expect(state.sessionCompleted).toBe(false)
+      expect(state.promiseComplete).toBe(false)
     })
   })
 
@@ -1222,7 +1242,7 @@ describe("ralphWorker", () => {
       const ws = state.ws as MockWebSocket
       ws.onmessage!({ data: assistantEvent("All done! <promise>COMPLETE</promise>") })
 
-      expect(state.sessionCompleted).toBe(true)
+      expect(state.promiseComplete).toBe(true)
       ;(state.ws as any).send.mockClear()
 
       // Status goes idle
