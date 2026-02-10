@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/components",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Reusable UI components built on Radix UI and Tailwind CSS",
   "type": "module",
   "main": "./dist/index.js",

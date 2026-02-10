@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/agent-view-claude",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Claude SDK adapter for @herbcaudill/agent-view",
   "type": "module",
   "main": "./dist/index.js",

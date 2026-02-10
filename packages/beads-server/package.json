@@ -1,6 +1,6 @@
 {
   "name": "@herbcaudill/beads-server",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Standalone beads task management server with HTTP and WebSocket APIs",
   "type": "module",
   "main": "./dist/index.js",
