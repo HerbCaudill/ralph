@@ -4,9 +4,7 @@ import { HeaderAgentInfo } from "../HeaderAgentInfo"
 
 describe("HeaderAgentInfo", () => {
   it("renders agent name and model when both provided", () => {
-    render(
-      <HeaderAgentInfo agentDisplayName="Claude" modelName="Sonnet 4" textColor="#ffffff" />,
-    )
+    render(<HeaderAgentInfo agentDisplayName="Claude" modelName="Sonnet 4" textColor="#ffffff" />)
 
     expect(screen.getByTestId("header-agent-info")).toBeInTheDocument()
     expect(screen.getByText("Claude")).toBeInTheDocument()
@@ -21,9 +19,7 @@ describe("HeaderAgentInfo", () => {
   })
 
   it("applies the text color style", () => {
-    render(
-      <HeaderAgentInfo agentDisplayName="Claude" modelName="Sonnet 4" textColor="#ff0000" />,
-    )
+    render(<HeaderAgentInfo agentDisplayName="Claude" modelName="Sonnet 4" textColor="#ff0000" />)
 
     const container = screen.getByTestId("header-agent-info")
     expect(container).toHaveStyle({ color: "#ff0000" })
