@@ -11,6 +11,8 @@ export type SessionIndexEntry = {
   firstUserMessage: string
   /** Whether the session has received at least one assistant response. */
   hasResponse?: boolean
+  /** Whether the session is currently active (worker running). */
+  isActive?: boolean
 }
 
 /** Read all entries from localStorage, sorted by recency (most recent first). */

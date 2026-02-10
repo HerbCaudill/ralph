@@ -65,13 +65,25 @@ export function SessionPicker({
         <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Recent Sessions</div>
         <div className="max-h-64 overflow-y-auto">
           {sessions.map(session => {
-            const isActive = session.sessionId === currentSessionId
+            const isCurrentSession = session.sessionId === currentSessionId
+            const isWorkerActive = session.isActive === true
             return (
               <button
                 key={session.sessionId}
                 onClick={() => handleSelect(session.sessionId)}
                 className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
               >
+                {/* Active indicator - pulsing green dot for active worker sessions */}
+                {isWorkerActive && (
+                  <span
+                    data-testid="active-indicator"
+                    className="mt-1.5 flex h-2 w-2 shrink-0"
+                    title="Worker running"
+                  >
+                    <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
                     {session.firstUserMessage || "Empty session"}
@@ -80,7 +92,7 @@ export function SessionPicker({
                     {formatRelativeTime(session.lastMessageAt)}
                   </div>
                 </div>
-                {isActive && (
+                {isCurrentSession && (
                   <IconCheck size={14} stroke={2} className="mt-0.5 shrink-0 text-primary" />
                 )}
               </button>

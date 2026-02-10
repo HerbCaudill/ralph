@@ -17,6 +17,8 @@ interface SessionsResponse {
     createdAt: number
     lastMessageAt?: number
     taskId?: string
+    /** Session status: "idle" | "processing" | "error". */
+    status?: string
   }>
 }
 
@@ -57,6 +59,8 @@ export async function fetchRalphSessions(
           lastMessageAt: session.lastMessageAt ?? session.createdAt,
           firstUserMessage: session.taskId ?? "",
           taskId: session.taskId,
+          // Mark session as active when status is "processing"
+          isActive: session.status === "processing",
         }
 
         // Resolve task title if we have a taskId

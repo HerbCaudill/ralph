@@ -242,4 +242,76 @@ describe("SessionPicker", () => {
       expect(button.getAttribute("data-size")).toBe("icon-sm")
     })
   })
+
+  describe("active session indicator", () => {
+    it("should show a pulsing green dot for active sessions", () => {
+      renderPicker({
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            firstUserMessage: "Active session",
+            isActive: true,
+          }),
+          makeSession({
+            sessionId: "s2",
+            firstUserMessage: "Inactive session",
+            isActive: false,
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByTitle("Session history"))
+
+      // Find the active session row
+      const activeSessionButton = screen
+        .getAllByRole("button")
+        .find(b => b.textContent?.includes("Active session"))
+      expect(activeSessionButton).toBeDefined()
+
+      // Should have a pulsing dot element
+      const pulsingDot = activeSessionButton?.querySelector('[data-testid="active-indicator"]')
+      expect(pulsingDot).not.toBeNull()
+    })
+
+    it("should not show a pulsing dot for inactive sessions", () => {
+      renderPicker({
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            firstUserMessage: "Inactive session",
+            isActive: false,
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByTitle("Session history"))
+
+      const sessionButton = screen
+        .getAllByRole("button")
+        .find(b => b.textContent?.includes("Inactive session"))
+      expect(sessionButton).toBeDefined()
+
+      const pulsingDot = sessionButton?.querySelector('[data-testid="active-indicator"]')
+      expect(pulsingDot).toBeNull()
+    })
+
+    it("should not show a pulsing dot when isActive is undefined", () => {
+      renderPicker({
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            firstUserMessage: "Session without isActive",
+            // isActive is not set
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByTitle("Session history"))
+
+      const sessionButton = screen
+        .getAllByRole("button")
+        .find(b => b.textContent?.includes("Session without isActive"))
+      expect(sessionButton).toBeDefined()
+
+      const pulsingDot = sessionButton?.querySelector('[data-testid="active-indicator"]')
+      expect(pulsingDot).toBeNull()
+    })
+  })
 })

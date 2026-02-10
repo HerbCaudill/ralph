@@ -51,6 +51,7 @@ describe("fetchRalphSessions", () => {
         lastMessageAt: 4000,
         firstUserMessage: "",
         taskId: undefined,
+        isActive: false,
       },
       {
         sessionId: "session-1",
@@ -60,6 +61,7 @@ describe("fetchRalphSessions", () => {
         firstUserMessage: "r-abc123",
         taskId: "r-abc123",
         taskTitle: "Fix the button",
+        isActive: false,
       },
     ])
 
@@ -106,6 +108,7 @@ describe("fetchRalphSessions", () => {
         firstUserMessage: "r-abc123",
         taskId: "r-abc123",
         taskTitle: undefined,
+        isActive: false,
       },
     ])
   })
@@ -191,5 +194,38 @@ describe("fetchRalphSessions", () => {
     const result = await fetchRalphSessions({ fetchFn: mockFetch })
 
     expect(result.map(s => s.sessionId)).toEqual(["newest", "middle", "old"])
+  })
+
+  it("sets isActive to true when session status is 'processing'", async () => {
+    const mockFetch = vi.fn()
+    // Session list response with status field
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "active-session",
+            adapter: "claude",
+            createdAt: 1000,
+            lastMessageAt: 2000,
+            status: "processing",
+          },
+          {
+            sessionId: "idle-session",
+            adapter: "claude",
+            createdAt: 3000,
+            lastMessageAt: 4000,
+            status: "idle",
+          },
+        ],
+      }),
+    })
+
+    const result = await fetchRalphSessions({ fetchFn: mockFetch })
+
+    // Active session should have isActive: true
+    expect(result.find(s => s.sessionId === "active-session")?.isActive).toBe(true)
+    // Idle session should have isActive: false
+    expect(result.find(s => s.sessionId === "idle-session")?.isActive).toBe(false)
   })
 })
