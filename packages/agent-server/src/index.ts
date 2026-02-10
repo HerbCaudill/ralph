@@ -85,6 +85,8 @@ export type {
 
 export { registerRoutes } from "./routes.js"
 export type { RouteContext } from "./routes.js"
+export { registerOrchestratorRoutes } from "./routes/orchestratorRoutes.js"
+export type { OrchestratorRouteContext } from "./routes/orchestratorRoutes.js"
 export { handleWsConnection } from "./wsHandler.js"
 export type { WsClient, WsHandlerOptions } from "./wsHandler.js"
 
@@ -147,6 +149,13 @@ export type {
   OrchestratorState,
   WorkerInfo,
 } from "./lib/WorkerOrchestrator.js"
+
+export { WorkerOrchestratorManager } from "./lib/WorkerOrchestratorManager.js"
+export type {
+  WorkerOrchestratorManagerOptions,
+  WorkerOrchestratorManagerEvents,
+  TaskSource,
+} from "./lib/WorkerOrchestratorManager.js"
 
 // ── Server ───────────────────────────────────────────────────────────
 
