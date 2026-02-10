@@ -235,7 +235,11 @@ export function useWorkerOrchestrator(workspaceId?: string): UseWorkerOrchestrat
     }
   }, [])
 
-  /** Initialize WebSocket connection. */
+  /** Initialize WebSocket connection.
+   * Connection deferred with setTimeout(0) so React StrictMode's synchronous
+   * mount→unmount→remount cycle doesn't create a WebSocket that is immediately
+   * torn down — which causes ECONNRESET on the proxy.
+   */
   useEffect(() => {
     currentWorkspaceRef.current = workspaceId
 
@@ -248,37 +252,43 @@ export function useWorkerOrchestrator(workspaceId?: string): UseWorkerOrchestrat
     const host = window.location.host
     const wsUrl = `${protocol}//${host}/ws`
 
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
+    // Defer connection to avoid ECONNRESET in React StrictMode's double-mount
+    const connectTimer = setTimeout(() => {
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
 
-    ws.onopen = () => {
-      // Subscribe to orchestrator events for this workspace
-      sendMessage({
-        type: "subscribe_orchestrator",
-        workspaceId,
-      })
-    }
+      ws.onopen = () => {
+        // Subscribe to orchestrator events for this workspace
+        sendMessage({
+          type: "subscribe_orchestrator",
+          workspaceId,
+        })
+      }
 
-    ws.onmessage = handleMessage
+      ws.onmessage = handleMessage
 
-    ws.onclose = () => {
-      setIsConnected(false)
-    }
+      ws.onclose = () => {
+        setIsConnected(false)
+      }
 
-    ws.onerror = () => {
-      setIsConnected(false)
-    }
+      ws.onerror = () => {
+        setIsConnected(false)
+      }
+    }, 0)
 
     return () => {
+      clearTimeout(connectTimer)
       // Unsubscribe before closing
-      if (ws.readyState === WebSocket.OPEN) {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         sendMessage({
           type: "unsubscribe_orchestrator",
           workspaceId,
         })
       }
-      ws.close()
-      wsRef.current = null
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
     }
   }, [workspaceId, handleMessage, sendMessage])
 

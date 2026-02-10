@@ -151,6 +151,16 @@ JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": 
 
 **Sessions** — A single autonomous work cycle where Ralph spawns an agent to complete a task. Previously called "iterations".
 
+## React StrictMode and WebSocket patterns
+
+**Development-only:** In React 18 StrictMode (dev mode), components are intentionally double-mounted to catch side effects. WebSocket connections should be deferred with `setTimeout(0)` to avoid immediate teardown on the first mount, which causes ECONNRESET errors in Vite's WebSocket proxy.
+
+This pattern is used in:
+- `packages/ui/src/hooks/useWorkerOrchestrator.ts` — Defers WebSocket creation via `setTimeout(0)` with cleanup in the return function to clear the timeout
+- `packages/ui/src/hooks/useRalphLoop.ts` — Follows the same pattern
+
+The fix wraps the WebSocket constructor and handlers in a setTimeout, then clears the timeout in the cleanup function if unmounted before the deferred connection occurs.
+
 ## Reference documentation
 
 - **Effect TS** — `vendor-docs/effect-ts.md`

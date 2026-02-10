@@ -734,4 +734,47 @@ describe("useWorkerOrchestrator", () => {
       consoleError.mockRestore()
     })
   })
+
+  describe("React StrictMode double-mount handling", () => {
+    it("should not create a WebSocket if component unmounts synchronously before timeout fires", async () => {
+      // This test simulates React StrictMode's synchronous mount → unmount → remount behavior
+      // The hook should defer WebSocket creation via setTimeout(0) so that if unmount happens
+      // before the timer fires, no WebSocket is created (preventing ECONNRESET errors)
+      const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
+
+      // Mount the hook
+      const { unmount } = renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
+
+      // Unmount immediately (synchronously, before any timers fire)
+      unmount()
+
+      // At this point, no WebSocket should have been created yet
+      // because the connection is deferred via setTimeout(0)
+      expect(MockWebSocket.instances.length).toBe(0)
+
+      // Now let the timer fire
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10))
+      })
+
+      // Still no WebSocket should be created because the timer was cleared on unmount
+      expect(MockWebSocket.instances.length).toBe(0)
+    })
+
+    it("should only create one WebSocket after deferred connection in normal mount", async () => {
+      const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
+
+      renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
+
+      // Before timer fires, no WebSocket yet
+      // (This may be 0 or 1 depending on if timer already ran - need to check)
+
+      // After timer fires, exactly one WebSocket should exist
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10))
+      })
+
+      expect(MockWebSocket.instances.length).toBe(1)
+    })
+  })
 })
