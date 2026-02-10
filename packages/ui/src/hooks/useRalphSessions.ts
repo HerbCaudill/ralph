@@ -11,24 +11,32 @@ import { fetchSessionEvents } from "../lib/fetchSessionEvents"
 export function useRalphSessions(
   /** The current active session ID (from useRalphLoop). */
   currentSessionId: string | null,
+  /** Workspace ID for resolving task titles. */
+  workspaceId?: string,
 ): UseRalphSessionsReturn {
   const [sessions, setSessions] = useState<RalphSessionIndexEntry[]>([])
   const [historicalEvents, setHistoricalEvents] = useState<ChatEvent[] | null>(null)
 
-  // Track the last session ID to avoid unnecessary refetches
-  const lastSessionIdRef = useRef<string | null | undefined>(undefined)
+  // Track the last session ID and workspace ID to avoid unnecessary refetches
+  const lastParamsRef = useRef<{ sessionId: string | null; workspaceId: string | undefined }>({
+    sessionId: undefined as unknown as string | null,
+    workspaceId: undefined,
+  })
 
-  // Fetch sessions on mount and when currentSessionId changes
+  // Fetch sessions on mount and when currentSessionId or workspaceId changes
   useEffect(() => {
-    // Skip if session ID hasn't changed
-    if (lastSessionIdRef.current === currentSessionId) {
+    // Skip if neither session ID nor workspace ID has changed
+    if (
+      lastParamsRef.current.sessionId === currentSessionId &&
+      lastParamsRef.current.workspaceId === workspaceId
+    ) {
       return
     }
-    lastSessionIdRef.current = currentSessionId
+    lastParamsRef.current = { sessionId: currentSessionId, workspaceId }
 
     const loadSessions = async () => {
       try {
-        const result = await fetchRalphSessions()
+        const result = await fetchRalphSessions({ workspaceId })
         setSessions(result)
       } catch (error) {
         console.error("[useRalphSessions] Failed to fetch sessions:", error)
@@ -36,7 +44,7 @@ export function useRalphSessions(
     }
 
     loadSessions()
-  }, [currentSessionId])
+  }, [currentSessionId, workspaceId])
 
   /**
    * Select a historical session and load its events.

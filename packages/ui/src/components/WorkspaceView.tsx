@@ -79,7 +79,7 @@ export function WorkspaceView() {
 
   // Session history management
   const { sessions, historicalEvents, isViewingHistorical, selectSession, clearHistorical } =
-    useRalphSessions(sessionId)
+    useRalphSessions(sessionId, workspaceId)
 
   // Effective events and streaming state: use historical when viewing past sessions
   const events = isViewingHistorical && historicalEvents ? historicalEvents : liveEvents

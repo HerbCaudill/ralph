@@ -266,4 +266,34 @@ describe("useRalphSessions", () => {
       consoleSpy.mockRestore()
     })
   })
+
+  describe("workspaceId parameter", () => {
+    it("should pass workspaceId to fetchRalphSessions", async () => {
+      renderHook(() => useRalphSessions("session-current", "HerbCaudill/ralph"))
+
+      await waitFor(() => {
+        expect(mockFetchRalphSessions).toHaveBeenCalledWith({ workspaceId: "HerbCaudill/ralph" })
+      })
+    })
+
+    it("should refetch when workspaceId changes", async () => {
+      const { rerender } = renderHook(
+        ({ sessionId, workspaceId }) => useRalphSessions(sessionId, workspaceId),
+        {
+          initialProps: { sessionId: "session-1" as string | null, workspaceId: "owner/repo1" },
+        },
+      )
+
+      await waitFor(() => {
+        expect(mockFetchRalphSessions).toHaveBeenCalledTimes(1)
+      })
+
+      // Change the workspaceId
+      rerender({ sessionId: "session-1", workspaceId: "owner/repo2" })
+
+      await waitFor(() => {
+        expect(mockFetchRalphSessions).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
 })
