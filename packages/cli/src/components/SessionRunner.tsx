@@ -289,11 +289,12 @@ export const SessionRunner = ({
   useEffect(() => {
     const newItems: StaticItem[] = []
 
-    // Add session header if this is a new session
-    if (currentSession > lastSessionRef.current) {
+    // Add session header once we have the session ID from the SDK
+    if (currentSession > lastSessionRef.current && sessionId) {
       newItems.push({
         type: "session",
         session: currentSession,
+        sessionId,
         key: `session-${currentSession}`,
       })
       lastSessionRef.current = currentSession
@@ -317,7 +318,7 @@ export const SessionRunner = ({
     if (newItems.length > 0) {
       setStaticItems(prev => [...prev, ...newItems])
     }
-  }, [events, currentSession])
+  }, [events, currentSession, sessionId])
 
   useEffect(() => {
     if (currentSession > totalSessions) {

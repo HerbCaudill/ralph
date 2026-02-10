@@ -10,7 +10,7 @@ export type SessionEvents = {
 /**  Static item representing either header, session header, or content block. */
 export type StaticItem =
   | { type: "header"; claudeVersion: string; ralphVersion: string; key: string }
-  | { type: "session"; session: number; key: string }
+  | { type: "session"; session: number; sessionId?: string; key: string }
   | { type: "block"; block: ContentBlock; key: string }
 
 /**  Props for the SessionRunner component. */
