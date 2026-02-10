@@ -41,6 +41,7 @@ export function RalphRunner({
   sessionId,
   taskId,
   taskTitle,
+  workerName,
   isViewingHistoricalSession = false,
   agentType = "claude",
   context,
@@ -68,11 +69,22 @@ export function RalphRunner({
   const isConnected = connectionStatus === "connected"
   const showIdleState = controlState === "idle"
 
-  // Header with robot icon, session picker (includes task info), and history badge
+  /** Capitalize the first letter of a string. */
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+
+  /** Display name for the worker (e.g., "Homer", "Ralph"). */
+  const workerDisplayName = workerName ? capitalize(workerName) : null
+
+  // Header with robot icon, worker name, session picker (includes task info), and history badge
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
       <div className="flex min-w-0 items-center gap-2">
         <IconRobot size={18} stroke={1.5} className="shrink-0 text-muted-foreground" />
+        {workerDisplayName && (
+          <span data-testid="worker-name" className="shrink-0 text-sm font-medium text-foreground">
+            {workerDisplayName}
+          </span>
+        )}
         <SessionPicker
           sessions={sessions}
           currentSessionId={sessionId}
@@ -226,6 +238,8 @@ export type RalphRunnerProps = {
   taskId?: string | null
   /** Title of the current task being worked on. */
   taskTitle?: string | null
+  /** Name of the active worker (e.g., "Homer", "Ralph"). */
+  workerName?: string | null
   /** Whether viewing a historical session (not the current active one). */
   isViewingHistoricalSession?: boolean
   /** Agent adapter type, used to fetch adapter info for display. Defaults to "claude". */

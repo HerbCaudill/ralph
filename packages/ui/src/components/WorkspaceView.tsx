@@ -31,6 +31,7 @@ import {
 import { useAgentHotkeys, type ChatInputHandle } from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 import { useCurrentTask } from "@/hooks/useCurrentTask"
+import { useWorkerName } from "@/hooks/useWorkerName"
 import { createRalphEventRenderers } from "@/lib/createRalphEventRenderers"
 
 /**
@@ -125,6 +126,9 @@ export function WorkspaceView() {
 
   // Current task from Ralph events (resolved against the tasks list)
   const { taskId: currentTaskId, taskTitle: currentTaskTitle } = useCurrentTask(events, tasks)
+
+  // Active worker name from Ralph events
+  const workerName = useWorkerName(events)
   const { selectedTask, openDialogById, closeDialog } = useTaskDialog({
     onTaskUpdated: refresh,
     onTaskDeleted: refresh,
@@ -340,6 +344,7 @@ export function WorkspaceView() {
       isViewingHistoricalSession={isViewingHistorical}
       taskId={currentTaskId}
       taskTitle={currentTaskTitle}
+      workerName={workerName}
       context={{
         toolOutput: toolOutputContext,
         workspacePath: workspace?.path,
