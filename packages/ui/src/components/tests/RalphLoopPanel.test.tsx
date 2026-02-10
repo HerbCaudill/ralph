@@ -357,6 +357,61 @@ describe("RalphLoopPanel", () => {
     })
   })
 
+  describe("loading state during initial connection", () => {
+    it("does not show empty state when connecting with no events", () => {
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          events={[]}
+          controlState="idle"
+          connectionStatus="connecting"
+        />,
+      )
+      // Should NOT show "Ralph is not running" during initial connection
+      expect(screen.queryByText("Ralph is not running")).not.toBeInTheDocument()
+    })
+
+    it("shows loading indicator when connecting with no events", () => {
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          events={[]}
+          controlState="idle"
+          connectionStatus="connecting"
+        />,
+      )
+      // Should show a loading state during initial connection
+      expect(screen.getByText("Connecting...")).toBeInTheDocument()
+    })
+
+    it("shows empty state once connected with no events", () => {
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          events={[]}
+          controlState="idle"
+          connectionStatus="connected"
+        />,
+      )
+      // Only show empty state once we're connected and confirmed idle
+      expect(screen.getByText("Ralph is not running")).toBeInTheDocument()
+    })
+
+    it("does not show loading state when disconnected with no events", () => {
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          events={[]}
+          controlState="idle"
+          connectionStatus="disconnected"
+        />,
+      )
+      // Disconnected is a terminal state, show the empty state (with disabled button)
+      expect(screen.getByText("Ralph is not running")).toBeInTheDocument()
+      expect(screen.queryByText("Connecting...")).not.toBeInTheDocument()
+    })
+  })
+
   describe("start button", () => {
     it("shows centered start button when idle with no events", () => {
       render(<RalphLoopPanel {...defaultProps} events={[]} controlState="idle" />)

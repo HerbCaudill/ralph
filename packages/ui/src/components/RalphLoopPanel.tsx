@@ -58,6 +58,7 @@ export function RalphLoopPanel({
   const customEventRenderers = useMemo(() => createRalphEventRenderers(), [])
 
   const isConnected = connectionStatus === "connected"
+  const isConnecting = connectionStatus === "connecting"
   const isSessionActive = controlState !== "idle"
 
   // Header with robot icon, session picker (includes task info), and history badge
@@ -77,9 +78,21 @@ export function RalphLoopPanel({
     </div>
   )
 
+  // Loading state shown during initial connection - prevents flash of "not running" on page reload
+  const connectingState = (
+    <div className="flex h-full items-center justify-center p-8">
+      <div className="flex flex-col items-center gap-4">
+        <IconLoader2 size={48} stroke={1.5} className="animate-spin text-muted-foreground" />
+        <div className="text-center">
+          <div className="text-lg font-medium text-foreground">Connecting...</div>
+        </div>
+      </div>
+    </div>
+  )
+
   // Empty state shown when no events - shows start button when idle
   const showStartButton = controlState === "idle"
-  const emptyState = (
+  const idleEmptyState = (
     <div className="flex h-full items-center justify-center p-8">
       <div className="flex flex-col items-center gap-4">
         <IconRobot size={48} stroke={1.5} className="text-muted-foreground" />
@@ -103,6 +116,9 @@ export function RalphLoopPanel({
       </div>
     </div>
   )
+
+  // Show connecting state during initial connection, otherwise show the idle empty state
+  const emptyState = isConnecting ? connectingState : idleEmptyState
 
   // Footer with chat input and status bar
   const footer = (
