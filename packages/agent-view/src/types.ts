@@ -290,4 +290,15 @@ export interface AgentViewContextValue {
    * Unknown event types with no matching renderer are silently discarded.
    */
   customEventRenderers?: Record<string, CustomEventRenderer>
+  /**
+   * Session-scoped store for tool expansion state.
+   * Maps toolUseId to expanded/collapsed boolean.
+   * Persists expansion state across re-renders when new events stream in.
+   */
+  toolExpansionState?: Map<string, boolean>
+  /**
+   * Callback to update tool expansion state.
+   * Called by ToolUseCard when user toggles expansion.
+   */
+  setToolExpansionState?: (toolUseId: string, expanded: boolean) => void
 }

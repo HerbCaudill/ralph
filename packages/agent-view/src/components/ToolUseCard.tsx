@@ -26,11 +26,17 @@ export function ToolUseCard({
   defaultExpanded = true,
 }: ToolUseCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
-  const { workspacePath, toolOutput } = useAgentViewContext()
+  const { workspacePath, toolOutput, toolExpansionState, setToolExpansionState } =
+    useAgentViewContext()
   const globalIsVisible = toolOutput?.isVisible ?? true
 
-  // Local expanded state, initially synced with global state
-  const [isToolOutputExpanded, setIsToolOutputExpanded] = useState(globalIsVisible)
+  // Get the persisted expansion state for this tool use, or fall back to global state
+  const toolUseId = event.toolUseId
+  const persistedExpansion = toolUseId ? toolExpansionState?.get(toolUseId) : undefined
+  const initialExpansion = persistedExpansion !== undefined ? persistedExpansion : globalIsVisible
+
+  // Local expanded state, initialized from persisted state or global state
+  const [isToolOutputExpanded, setIsToolOutputExpanded] = useState(initialExpansion)
 
   // Track previous global state to detect changes
   const prevGlobalIsVisible = useRef(globalIsVisible)
@@ -39,9 +45,22 @@ export function ToolUseCard({
   useEffect(() => {
     if (prevGlobalIsVisible.current !== globalIsVisible) {
       setIsToolOutputExpanded(globalIsVisible)
+      // Also update persisted state when global changes
+      if (toolUseId && setToolExpansionState) {
+        setToolExpansionState(toolUseId, globalIsVisible)
+      }
       prevGlobalIsVisible.current = globalIsVisible
     }
-  }, [globalIsVisible])
+  }, [globalIsVisible, toolUseId, setToolExpansionState])
+
+  // Wrapper to toggle expansion and persist the state
+  const handleToggleExpansion = () => {
+    const newValue = !isToolOutputExpanded
+    setIsToolOutputExpanded(newValue)
+    if (toolUseId && setToolExpansionState) {
+      setToolExpansionState(toolUseId, newValue)
+    }
+  }
 
   const tool = normalizeToolName(event.tool)
   const summary = getToolSummary(tool, event.input, workspacePath)
@@ -78,7 +97,7 @@ export function ToolUseCard({
     <div className={cn("group/tool py-1.5 pr-12 pl-4", className)}>
       <div
         className={cn("flex w-full items-center gap-2.5", hasExpandableContent && "cursor-pointer")}
-        onClick={hasExpandableContent ? () => setIsToolOutputExpanded(prev => !prev) : undefined}
+        onClick={hasExpandableContent ? handleToggleExpansion : undefined}
         role={hasExpandableContent ? "button" : undefined}
         aria-expanded={hasExpandableContent ? showToolOutput : undefined}
         aria-label={hasExpandableContent ? `Toggle ${tool} output` : undefined}

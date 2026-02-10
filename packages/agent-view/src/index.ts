@@ -79,6 +79,7 @@ export type { UseAutoScrollOptions, UseAutoScrollReturn } from "./hooks/useAutoS
 export { useHighlightedCode } from "./hooks/useHighlightedCode"
 export { useStreamingState } from "./hooks/useStreamingState"
 export { useTokenUsage, useContextWindow } from "./hooks/useTokenUsage"
+export { useToolExpansionState } from "./hooks/useToolExpansionState"
 
 // Lib: Session Index
 export {

@@ -8,6 +8,8 @@ export const DEFAULT_AGENT_VIEW_CONTEXT: AgentViewContextValue = {
   toolOutput: undefined,
   workspacePath: undefined,
   customEventRenderers: {},
+  toolExpansionState: undefined,
+  setToolExpansionState: undefined,
 }
 
 /** Shared context for agent-view components. */

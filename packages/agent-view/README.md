@@ -111,12 +111,13 @@ When `isActive` is true, `SessionPicker` displays a pulsing green dot indicator 
 
 ## Hooks
 
-| Hook                | Description                                                 |
-| ------------------- | ----------------------------------------------------------- |
-| `useAgentChat`      | WebSocket connection and chat session management            |
-| `useAdapterInfo`    | Fetch adapter info (version, model) from `/api/adapters`    |
-| `useAdapterVersion` | Convenience hook returning just the adapter version string  |
-| `useAgentHotkeys`   | Register global keyboard listeners for agent hotkey actions |
+| Hook                    | Description                                                              |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `useAgentChat`          | WebSocket connection and chat session management                         |
+| `useAdapterInfo`        | Fetch adapter info (version, model) from `/api/adapters`                 |
+| `useAdapterVersion`     | Convenience hook returning just the adapter version string               |
+| `useAgentHotkeys`       | Register global keyboard listeners for agent hotkey actions              |
+| `useToolExpansionState` | Manage tool expansion state for a session; returns context-ready state   |
 
 ## Context
 
@@ -136,15 +137,38 @@ return (
 
 ### Context options
 
-| Property        | Type                         | Description                                          |
-| --------------- | ---------------------------- | ---------------------------------------------------- |
-| `isDark`        | `boolean`                    | Dark mode flag                                       |
-| `toolOutput`    | `AgentViewToolOutputControl` | Visibility state and toggle callback for tool output |
-| `workspacePath` | `string \| null`             | Base path for relative path display                  |
-| `linkHandlers`  | `AgentViewLinkHandlers`      | Click handlers for task/session links                |
-| `tasks`         | `AgentViewTask[]`            | Task list for lifecycle event enrichment             |
+| Property                | Type                                      | Description                                                  |
+| ----------------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| `isDark`                | `boolean`                                 | Dark mode flag                                               |
+| `toolOutput`            | `AgentViewToolOutputControl`              | Visibility state and toggle callback for tool output         |
+| `workspacePath`         | `string \| null`                          | Base path for relative path display                          |
+| `linkHandlers`          | `AgentViewLinkHandlers`                   | Click handlers for task/session links                        |
+| `tasks`                 | `AgentViewTask[]`                         | Task list for lifecycle event enrichment                     |
+| `toolExpansionState`    | `Map<string, boolean>`                    | Session-scoped store for tool expanded/collapsed state       |
+| `setToolExpansionState` | `(toolUseId: string, expanded: boolean) => void` | Callback to update tool expansion state              |
 
 Tool output visibility is controlled globally via `toolOutput.isVisible`, while each `ToolUseCard` can be toggled independently by clicking its header.
+
+### Persisting tool expansion state
+
+By default, tool cards reset to collapsed when new events stream in (causing re-renders). To persist expansion state across re-renders, use the `useToolExpansionState` hook:
+
+```tsx
+import { AgentView, useToolExpansionState } from "@herbcaudill/agent-view"
+
+function MyAgentView({ events, sessionId }) {
+  const { toolExpansionState, setToolExpansionState } = useToolExpansionState()
+
+  return (
+    <AgentView
+      events={events}
+      context={{ toolExpansionState, setToolExpansionState }}
+    />
+  )
+}
+```
+
+The state persists for the component's lifecycle. When switching sessions, unmount and remount the component to reset the state, or call `clearToolExpansionState()` returned by the hook.
 
 ## Agent adapters
 
