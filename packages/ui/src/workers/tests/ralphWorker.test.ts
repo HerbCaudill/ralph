@@ -865,6 +865,90 @@ describe("ralphWorker", () => {
   }
 
   describe("auto-start on session completion", () => {
+    it("should create new sessions for consecutive tasks (r-cgchi)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+      const ws = state.ws as MockWebSocket
+
+      // First task completes
+      ws.onmessage!({ data: assistantEvent("First task done! <end_task>r-task1</end_task>") })
+      expect(state.sessionCompleted).toBe(true)
+      ;(state.ws as any).send.mockClear()
+
+      // Status goes idle - should trigger new session
+      ws.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "create_session", app: "ralph", workspaceId }),
+      )
+      expect(state.sessionCompleted).toBe(false)
+
+      // Simulate server responding with session_created
+      ws.onmessage!({ data: JSON.stringify({ type: "session_created", sessionId: "session-456" }) })
+      expect(state.currentSessionId).toBe("session-456")
+      ;(state.ws as any).send.mockClear()
+
+      // Second task completes
+      ws.onmessage!({ data: assistantEvent("Second task done! <end_task>r-task2</end_task>") })
+      expect(state.sessionCompleted).toBe(true)
+      ;(state.ws as any).send.mockClear()
+
+      // Status goes idle - should trigger another new session
+      ws.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "create_session", app: "ralph", workspaceId }),
+      )
+    })
+
+    it("should NOT auto-start if status arrives BEFORE end_task marker (r-cgchi)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+      const ws = state.ws as MockWebSocket
+
+      // Status goes idle BEFORE the end_task marker arrives
+      // (This is a potential race condition in the real world)
+      ws.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+
+      // Since sessionCompleted is false, should NOT create a new session
+      const calls = (state.ws!.send as any).mock.calls
+      const createSessionCalls = calls.filter((c: string[]) => c[0].includes("create_session"))
+      expect(createSessionCalls).toHaveLength(0)
+    })
+
+    it("should detect end_task marker at START of text followed by summary (r-cgchi)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+      const ws = state.ws as MockWebSocket
+
+      // Real-world format: marker at start, then newlines, then task summary
+      const realWorldText =
+        "<end_task>r-d67mv</end_task>\n\n✅ **Task complete!** \n\nFixed the labels row alignment."
+      ws.onmessage!({ data: assistantEvent(realWorldText) })
+
+      expect(state.sessionCompleted).toBe(true)
+      ;(state.ws as any).send.mockClear()
+
+      // Status goes idle - should trigger new session
+      ws.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "create_session", app: "ralph", workspaceId }),
+      )
+    })
+
+    it("should detect promise_complete marker at START of text followed by summary (r-cgchi)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+      const ws = state.ws as MockWebSocket
+
+      // Marker at start, then newlines, then summary
+      const text = "<promise>COMPLETE</promise>\n\nNo more tasks to work on."
+      ws.onmessage!({ data: assistantEvent(text) })
+
+      expect(state.sessionCompleted).toBe(true)
+    })
+
     it("should create a new session when promise_complete is followed by status idle", async () => {
       const workspaceId = "herbcaudill/ralph"
       const { state } = await setupRunningWorkspace(workspaceId)

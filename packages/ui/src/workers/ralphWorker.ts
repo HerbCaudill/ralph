@@ -174,9 +174,11 @@ function connectWorkspace(workspaceId: string): void {
         // Two markers indicate the session should auto-continue:
         // 1. <promise>COMPLETE</promise> — no more tasks available
         // 2. <end_task>...</end_task> — task completed, continue to next task
-        // Only matches when the marker is at the end of the text — prevents false
-        // positives when the agent discusses code mentioning the marker pattern
-        // (e.g., reading ralphWorker.ts source or explaining the protocol).
+        //
+        // Match markers at the START (common: marker then summary) or END of text.
+        // The "start of text" pattern requires the marker to be followed by newlines
+        // or end-of-string to avoid false positives when the agent mentions markers
+        // mid-sentence (e.g., discussing the protocol or reading source code).
         if (message.type === "event") {
           const event = message.event as Record<string, unknown> | undefined
           if (event?.type === "assistant") {
@@ -190,12 +192,22 @@ function connectWorkspace(workspaceId: string): void {
               for (const block of content) {
                 if (block.type === "text" && typeof block.text === "string") {
                   // Check for promise complete marker
-                  if (/<promise>COMPLETE<\/promise>\s*$/i.test(block.text)) {
+                  // Match markers at the START of the text (common case: agent outputs marker then summary)
+                  // or at the END of the text (less common but still valid)
+                  if (
+                    /^\s*<promise>COMPLETE<\/promise>\s*(\n|$)/i.test(block.text) ||
+                    /<promise>COMPLETE<\/promise>\s*$/i.test(block.text)
+                  ) {
                     state.sessionCompleted = true
                     break
                   }
                   // Check for end_task marker (task completed, continue loop)
+                  // Match markers at the START of the text (common case: agent outputs marker then summary)
+                  // or at the END of the text (less common but still valid)
                   if (
+                    /^\s*<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*(\n|$)/i.test(
+                      block.text,
+                    ) ||
                     /<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*$/i.test(block.text)
                   ) {
                     state.sessionCompleted = true
