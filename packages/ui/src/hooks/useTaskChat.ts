@@ -4,12 +4,13 @@ import MANAGE_TASKS_SYSTEM_PROMPT from "@herbcaudill/ralph-shared/templates/mana
 /**
  * Hook for task-specific chat functionality.
  * Uses agent-server with manage-tasks system prompt.
- * Separate storage from the main Ralph chat.
+ * Sessions are stored in the "task-chat" app namespace.
  */
 export function useTaskChat() {
   const { state, actions, agentType } = useAgentChat({
     systemPrompt: MANAGE_TASKS_SYSTEM_PROMPT,
     storageKey: "ralph-task-chat",
+    app: "task-chat",
   })
 
   return {

@@ -11,6 +11,7 @@ import { useRalphLoop } from "../hooks/useRalphLoop"
 import { useRalphSessions } from "../hooks/useRalphSessions"
 import { useAccentColor } from "../hooks/useAccentColor"
 import { useTaskChat } from "../hooks/useTaskChat"
+import { useTaskChatSessions } from "../hooks/useTaskChatSessions"
 import { useWorkspaceParams } from "../hooks/useWorkspaceParams"
 import { useUiStore } from "../stores/uiStore"
 import {
@@ -84,6 +85,9 @@ export function WorkspaceView() {
 
   // Task chat state from agent-server
   const { state: taskChatState, actions: taskChatActions } = useTaskChat()
+
+  // Task chat session history from server
+  const { sessions: taskChatSessions } = useTaskChatSessions(taskChatState.sessionId)
 
   // Workspace state from beads-view
   const {
@@ -320,6 +324,7 @@ export function WorkspaceView() {
       events={taskChatState.events}
       isStreaming={taskChatState.isStreaming}
       sessionId={taskChatState.sessionId}
+      sessions={taskChatSessions}
       toolOutput={toolOutputContext}
       onSendMessage={handleTaskChatSend}
       onSessionSelect={handleTaskChatSessionSelect}

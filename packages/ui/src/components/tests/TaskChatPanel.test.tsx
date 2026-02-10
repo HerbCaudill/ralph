@@ -81,6 +81,7 @@ const defaultProps = {
   events: mockEvents,
   isStreaming: false,
   sessionId: "session-1",
+  sessions: [] as SessionIndexEntry[],
   onSendMessage: vi.fn(),
   onSessionSelect: vi.fn(),
   onNewSession: vi.fn(),

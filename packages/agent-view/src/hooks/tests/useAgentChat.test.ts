@@ -880,6 +880,100 @@ describe("useAgentChat localStorage persistence", () => {
     })
   })
 
+  // ── app namespace ─────────────────────────────────────────────────────
+
+  describe("app namespace", () => {
+    it("includes app in session creation request when provided in options", async () => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === "/api/sessions" && init?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ sessionId: "app-session-123" }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderHook(() =>
+        useAgentChat({
+          initialAgent: "claude",
+          app: "task-chat",
+        }),
+      )
+
+      // Let WebSocket connect
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // Send a message to trigger session creation
+      await act(async () => {
+        result.current.actions.sendMessage("Hello")
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // Verify the POST request includes the app parameter
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as [
+        string,
+        RequestInit?,
+      ][]
+      const createCall = fetchCalls.find(
+        ([url, init]) => url === "/api/sessions" && init?.method === "POST",
+      )
+      expect(createCall).toBeDefined()
+      const body = JSON.parse(createCall![1]!.body as string)
+      expect(body.app).toBe("task-chat")
+    })
+
+    it("does not include app when not provided in options", async () => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === "/api/sessions" && init?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ sessionId: "no-app-session" }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderHook(() =>
+        useAgentChat({
+          initialAgent: "claude",
+        }),
+      )
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      await act(async () => {
+        result.current.actions.sendMessage("Hello")
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as [
+        string,
+        RequestInit?,
+      ][]
+      const createCall = fetchCalls.find(
+        ([url, init]) => url === "/api/sessions" && init?.method === "POST",
+      )
+      expect(createCall).toBeDefined()
+      const body = JSON.parse(createCall![1]!.body as string)
+      expect(body.app).toBeUndefined()
+    })
+  })
+
   // ── localStorage error resilience ─────────────────────────────────────
 
   describe("localStorage error resilience", () => {

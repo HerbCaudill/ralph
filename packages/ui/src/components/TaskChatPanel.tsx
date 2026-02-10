@@ -1,8 +1,11 @@
 import { IconMessage, IconMessagePlus, IconX } from "@tabler/icons-react"
 import { Button } from "@herbcaudill/components"
-import { AgentView, ChatInput, SessionPicker, listSessions } from "@herbcaudill/agent-view"
-import type { ChatEvent, AgentViewToolOutputControl } from "@herbcaudill/agent-view"
-import { useMemo } from "react"
+import { AgentView, ChatInput, SessionPicker } from "@herbcaudill/agent-view"
+import type {
+  ChatEvent,
+  AgentViewToolOutputControl,
+  SessionIndexEntry,
+} from "@herbcaudill/agent-view"
 
 /**
  * Side panel for task-focused chat with the agent.
@@ -14,19 +17,13 @@ export function TaskChatPanel({
   events,
   isStreaming,
   sessionId,
+  sessions,
   toolOutput,
   onSendMessage,
   onSessionSelect,
   onNewSession,
   onClose,
 }: TaskChatPanelProps) {
-  // Get session list for the SessionPicker
-  // Filter out empty sessions (no messages or only user message with no response)
-  const sessions = useMemo(
-    () => listSessions().filter(s => s.hasResponse === true),
-    [sessionId, events.length],
-  )
-
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
       <div className="flex items-center gap-2">
@@ -112,6 +109,8 @@ export type TaskChatPanelProps = {
   isStreaming: boolean
   /** Current session ID. */
   sessionId: string | null
+  /** List of available sessions for the session picker. */
+  sessions: SessionIndexEntry[]
   /** Tool output visibility control (from global UI state). */
   toolOutput?: AgentViewToolOutputControl
   /** Callback when user sends a message. */
