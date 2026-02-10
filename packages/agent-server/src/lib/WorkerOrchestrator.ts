@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events"
 import type { ChildProcess } from "node:child_process"
-import { WorkerLoop, type ReadyTask } from "./WorkerLoop.js"
+import { WorkerLoop, type ReadyTask, type WorkerState as WorkerLoopState } from "./WorkerLoop.js"
 import { getWorkerName, type WorkerName } from "@herbcaudill/ralph-shared"
 
 /**
@@ -70,6 +70,12 @@ export interface WorkerOrchestratorEvents {
   /** Emitted when a worker stops (finishes or is terminated) */
   worker_stopped: [{ workerName: string; reason: "completed" | "stopped" | "error" }]
 
+  /** Emitted when a worker is paused */
+  worker_paused: [{ workerName: string }]
+
+  /** Emitted when a worker is resumed */
+  worker_resumed: [{ workerName: string }]
+
   /** Emitted when a worker starts a task */
   task_started: [{ workerName: string; taskId: string; title: string }]
 
@@ -81,6 +87,15 @@ export interface WorkerOrchestratorEvents {
 
   /** Emitted on error */
   error: [{ workerName?: string; error: Error }]
+}
+
+/**
+ * Information about a worker's current state.
+ */
+export interface WorkerInfo {
+  workerName: string
+  state: WorkerLoopState
+  currentTaskId: string | null
 }
 
 /**
@@ -317,6 +332,14 @@ export class WorkerOrchestrator extends EventEmitter {
       // This event can fire before the loop promise resolves, so we just log it
     })
 
+    loop.on("paused", () => {
+      this.emit("worker_paused", { workerName })
+    })
+
+    loop.on("resumed", () => {
+      this.emit("worker_resumed", { workerName })
+    })
+
     // Run the loop (non-blocking)
     loop
       .runLoop()
@@ -335,7 +358,10 @@ export class WorkerOrchestrator extends EventEmitter {
       })
       .catch(error => {
         workerState.isActive = false
-        this.emit("error", { workerName, error: error instanceof Error ? error : new Error(String(error)) })
+        this.emit("error", {
+          workerName,
+          error: error instanceof Error ? error : new Error(String(error)),
+        })
         this.emit("worker_stopped", { workerName, reason: "error" })
         this.workers.delete(workerName)
 
@@ -393,5 +419,72 @@ export class WorkerOrchestrator extends EventEmitter {
       this.state = newState
       this.emit("state_changed", { state: newState })
     }
+  }
+
+  // ── Per-worker controls ──────────────────────────────────────────────
+
+  /**
+   * Pause a specific worker. The worker will complete its current Claude
+   * process step but will wait before continuing.
+   */
+  pauseWorker(workerName: string): void {
+    const worker = this.workers.get(workerName as WorkerName)
+    if (worker && worker.isActive) {
+      worker.loop.pause()
+      this.emit("worker_paused", { workerName })
+    }
+  }
+
+  /**
+   * Resume a paused worker.
+   */
+  resumeWorker(workerName: string): void {
+    const worker = this.workers.get(workerName as WorkerName)
+    if (worker && worker.isActive && worker.loop.isPaused()) {
+      worker.loop.resume()
+      this.emit("worker_resumed", { workerName })
+    }
+  }
+
+  /**
+   * Stop a specific worker. The worker will be force-stopped immediately.
+   */
+  stopWorker(workerName: string): void {
+    const worker = this.workers.get(workerName as WorkerName)
+    if (worker && worker.isActive) {
+      worker.loop.forceStop()
+      worker.isActive = false
+      this.emit("worker_stopped", { workerName, reason: "stopped" })
+      this.workers.delete(workerName as WorkerName)
+    }
+  }
+
+  /**
+   * Get the state of a specific worker.
+   * Returns null if the worker doesn't exist.
+   */
+  getWorkerState(workerName: string): WorkerLoopState | null {
+    const worker = this.workers.get(workerName as WorkerName)
+    if (!worker || !worker.isActive) {
+      return null
+    }
+    return worker.loop.getState()
+  }
+
+  /**
+   * Get the states of all active workers.
+   */
+  getWorkerStates(): Record<string, WorkerInfo> {
+    const states: Record<string, WorkerInfo> = {}
+    for (const [name, worker] of this.workers) {
+      if (worker.isActive) {
+        states[name] = {
+          workerName: name,
+          state: worker.loop.getState(),
+          currentTaskId: worker.loop.getCurrentTaskId(),
+        }
+      }
+    }
+    return states
   }
 }

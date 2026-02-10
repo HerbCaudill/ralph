@@ -406,7 +406,9 @@ describe("WorkerOrchestrator", () => {
       expect(workerNames.size).toBeGreaterThan(0)
       // Names should be from the Simpsons character list
       for (const name of workerNames) {
-        expect(name).toMatch(/^(homer|marge|bart|lisa|maggie|grampa|patty|selma|ned|rod|todd|moe|barney|lenny|carl|milhouse|nelson|ralph|apu|wiggum|krusty|sideshow|smithers|burns|skinner|edna|otto|groundskeeper|comic|hans)$/)
+        expect(name).toMatch(
+          /^(homer|marge|bart|lisa|maggie|grampa|patty|selma|ned|rod|todd|moe|barney|lenny|carl|milhouse|nelson|ralph|apu|wiggum|krusty|sideshow|smithers|burns|skinner|edna|otto|groundskeeper|comic|hans)$/,
+        )
       }
     })
 
@@ -596,6 +598,257 @@ describe("WorkerOrchestrator", () => {
       const workerNames = orchestrator.getWorkerNames()
       expect(workerNames.length).toBeGreaterThan(0)
       expect(workerNames.length).toBeLessThanOrEqual(2)
+    })
+  })
+
+  describe("per-worker controls", () => {
+    it("can pause a specific worker", async () => {
+      const pausedWorkers: string[] = []
+
+      const orchestrator = createTrackedOrchestrator({
+        maxWorkers: 2,
+        mainWorkspacePath,
+        spawnClaude: cwd => {
+          return createMockClaudeProcess({
+            onStdout: async emit => {
+              // Long-running task
+              await new Promise(resolve => setTimeout(resolve, 300))
+              await writeFile(join(cwd, "work.txt"), "done")
+              await git(cwd, ["add", "."])
+              await git(cwd, ["commit", "-m", "Work done"])
+              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            },
+          })
+        },
+        getReadyTasksCount: async () => 2,
+        getReadyTask: async workerName => ({
+          id: `bd-${workerName}`,
+          title: `Task for ${workerName}`,
+        }),
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      orchestrator.on("worker_paused", ({ workerName }) => {
+        pausedWorkers.push(workerName)
+      })
+
+      await orchestrator.start()
+
+      // Wait for workers to start
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const workerNames = orchestrator.getWorkerNames()
+      expect(workerNames.length).toBeGreaterThan(0)
+
+      // Pause one worker
+      const workerToPause = workerNames[0]
+      orchestrator.pauseWorker(workerToPause)
+
+      // Wait for pause to take effect
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      expect(pausedWorkers).toContain(workerToPause)
+      expect(orchestrator.getWorkerState(workerToPause)).toBe("paused")
+    })
+
+    it("can resume a paused worker", async () => {
+      const events: Array<{ type: string; workerName: string }> = []
+
+      const orchestrator = createTrackedOrchestrator({
+        maxWorkers: 1,
+        mainWorkspacePath,
+        spawnClaude: cwd => {
+          return createMockClaudeProcess({
+            onStdout: async emit => {
+              await new Promise(resolve => setTimeout(resolve, 200))
+              await writeFile(join(cwd, "work.txt"), "done")
+              await git(cwd, ["add", "."])
+              await git(cwd, ["commit", "-m", "Work done"])
+              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            },
+          })
+        },
+        getReadyTasksCount: async () => 2,
+        getReadyTask: async workerName => ({
+          id: `bd-${workerName}`,
+          title: `Task for ${workerName}`,
+        }),
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      orchestrator.on("worker_paused", ({ workerName }) => {
+        events.push({ type: "paused", workerName })
+      })
+      orchestrator.on("worker_resumed", ({ workerName }) => {
+        events.push({ type: "resumed", workerName })
+      })
+
+      await orchestrator.start()
+
+      // Wait for worker to start
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const workerNames = orchestrator.getWorkerNames()
+      const workerName = workerNames[0]
+
+      // Pause worker
+      orchestrator.pauseWorker(workerName)
+      await new Promise(resolve => setTimeout(resolve, 50))
+      expect(orchestrator.getWorkerState(workerName)).toBe("paused")
+
+      // Resume worker
+      orchestrator.resumeWorker(workerName)
+      await new Promise(resolve => setTimeout(resolve, 50))
+      expect(orchestrator.getWorkerState(workerName)).toBe("running")
+
+      expect(events.some(e => e.type === "paused" && e.workerName === workerName)).toBe(true)
+      expect(events.some(e => e.type === "resumed" && e.workerName === workerName)).toBe(true)
+    })
+
+    it("can stop a specific worker without affecting others", async () => {
+      const stoppedWorkers: string[] = []
+      const startedWorkers: string[] = []
+
+      const orchestrator = createTrackedOrchestrator({
+        maxWorkers: 2,
+        mainWorkspacePath,
+        spawnClaude: cwd => {
+          return createMockClaudeProcess({
+            onStdout: async emit => {
+              await new Promise(resolve => setTimeout(resolve, 300))
+              await writeFile(join(cwd, "work.txt"), "done")
+              await git(cwd, ["add", "."])
+              await git(cwd, ["commit", "-m", "Work done"])
+              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            },
+          })
+        },
+        getReadyTasksCount: async () => 5,
+        getReadyTask: async workerName => ({
+          id: `bd-${workerName}-${Date.now()}`,
+          title: `Task for ${workerName}`,
+        }),
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      orchestrator.on("worker_started", ({ workerName }) => {
+        startedWorkers.push(workerName)
+      })
+      orchestrator.on("worker_stopped", ({ workerName }) => {
+        stoppedWorkers.push(workerName)
+      })
+
+      await orchestrator.start()
+
+      // Wait for workers to start
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const workerNames = orchestrator.getWorkerNames()
+      expect(workerNames.length).toBe(2)
+
+      // Stop one worker
+      const workerToStop = workerNames[0]
+      orchestrator.stopWorker(workerToStop)
+
+      // Wait for stop to take effect
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      expect(stoppedWorkers).toContain(workerToStop)
+
+      // Other worker should still be running
+      const remainingWorkers = orchestrator.getWorkerNames()
+      expect(remainingWorkers).not.toContain(workerToStop)
+      expect(remainingWorkers.length).toBeGreaterThan(0)
+    })
+
+    it("getWorkerState returns correct state for each worker", async () => {
+      const orchestrator = createTrackedOrchestrator({
+        maxWorkers: 2,
+        mainWorkspacePath,
+        spawnClaude: cwd => {
+          return createMockClaudeProcess({
+            onStdout: async emit => {
+              await new Promise(resolve => setTimeout(resolve, 300))
+              await writeFile(join(cwd, "work.txt"), "done")
+              await git(cwd, ["add", "."])
+              await git(cwd, ["commit", "-m", "Work done"])
+              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            },
+          })
+        },
+        getReadyTasksCount: async () => 2,
+        getReadyTask: async workerName => ({
+          id: `bd-${workerName}`,
+          title: `Task for ${workerName}`,
+        }),
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      await orchestrator.start()
+
+      // Wait for workers to start
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const workerNames = orchestrator.getWorkerNames()
+      expect(workerNames.length).toBe(2)
+
+      // All workers should be running
+      for (const name of workerNames) {
+        expect(orchestrator.getWorkerState(name)).toBe("running")
+      }
+
+      // Pause one
+      orchestrator.pauseWorker(workerNames[0])
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      expect(orchestrator.getWorkerState(workerNames[0])).toBe("paused")
+      expect(orchestrator.getWorkerState(workerNames[1])).toBe("running")
+
+      // Non-existent worker should return null
+      expect(orchestrator.getWorkerState("nonexistent")).toBe(null)
+    })
+
+    it("getWorkerStates returns all worker states", async () => {
+      const orchestrator = createTrackedOrchestrator({
+        maxWorkers: 2,
+        mainWorkspacePath,
+        spawnClaude: cwd => {
+          return createMockClaudeProcess({
+            onStdout: async emit => {
+              await new Promise(resolve => setTimeout(resolve, 300))
+              await writeFile(join(cwd, "work.txt"), "done")
+              await git(cwd, ["add", "."])
+              await git(cwd, ["commit", "-m", "Work done"])
+              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            },
+          })
+        },
+        getReadyTasksCount: async () => 2,
+        getReadyTask: async workerName => ({
+          id: `bd-${workerName}`,
+          title: `Task for ${workerName}`,
+        }),
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      await orchestrator.start()
+
+      // Wait for workers to start
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const states = orchestrator.getWorkerStates()
+      expect(Object.keys(states).length).toBe(2)
+
+      for (const [name, state] of Object.entries(states)) {
+        expect(state.state).toBe("running")
+        expect(state.workerName).toBe(name)
+        expect(state.currentTaskId).toBeDefined()
+      }
     })
   })
 })

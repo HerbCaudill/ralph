@@ -79,6 +79,11 @@ export interface WorkerLoopOptions {
 }
 
 /**
+ * State of a worker.
+ */
+export type WorkerState = "idle" | "running" | "paused"
+
+/**
  * Events emitted by WorkerLoop.
  */
 export interface WorkerLoopEvents {
@@ -112,6 +117,12 @@ export interface WorkerLoopEvents {
   /** Emitted when a task is completed */
   task_completed: [{ taskId: string }]
 
+  /** Emitted when worker is paused */
+  paused: [{ taskId?: string }]
+
+  /** Emitted when worker is resumed */
+  resumed: []
+
   /** Emitted on error */
   error: [Error]
 }
@@ -140,7 +151,11 @@ export class WorkerLoop extends EventEmitter {
   private runTests?: () => Promise<TestResult>
   private onMergeConflict?: (context: MergeConflictContext) => Promise<"resolved" | "abort">
   private stopped = false
+  private paused = false
+  private pauseResolver: (() => void) | null = null
   private currentProcess: ChildProcess | null = null
+  private currentTaskId: string | null = null
+  private state: WorkerState = "idle"
 
   constructor(options: WorkerLoopOptions) {
     super()
@@ -158,10 +173,7 @@ export class WorkerLoop extends EventEmitter {
   /**
    * Type-safe event emitter methods.
    */
-  override emit<K extends keyof WorkerLoopEvents>(
-    event: K,
-    ...args: WorkerLoopEvents[K]
-  ): boolean {
+  override emit<K extends keyof WorkerLoopEvents>(event: K, ...args: WorkerLoopEvents[K]): boolean {
     return super.emit(event, ...args)
   }
 
@@ -177,13 +189,23 @@ export class WorkerLoop extends EventEmitter {
    */
   async runLoop(): Promise<void> {
     this.stopped = false
+    this.state = "running"
 
     while (!this.stopped) {
+      // Check if paused before starting next iteration
+      await this.waitWhilePaused()
+      if (this.stopped) break
+
       const hadWork = await this.runOnce()
       if (!hadWork) {
         break
       }
+
+      // Check if paused after completing a task
+      await this.waitWhilePaused()
     }
+
+    this.state = "idle"
   }
 
   /**
@@ -201,6 +223,7 @@ export class WorkerLoop extends EventEmitter {
     try {
       // 2. Claim the task
       await this.claimTask(task.id)
+      this.currentTaskId = task.id
       this.emit("task_started", { taskId: task.id, title: task.title })
 
       // 3. Pull latest main
@@ -218,10 +241,12 @@ export class WorkerLoop extends EventEmitter {
 
       // 6. Complete the task
       await this.closeTask(task.id)
+      this.currentTaskId = null
       this.emit("task_completed", { taskId: task.id })
 
       return true
     } catch (error) {
+      this.currentTaskId = null
       this.emit("error", error instanceof Error ? error : new Error(String(error)))
       return true // We did work, even if it failed
     }
@@ -345,6 +370,70 @@ export class WorkerLoop extends EventEmitter {
     this.stopped = true
     if (this.currentProcess) {
       this.currentProcess.kill()
+    }
+  }
+
+  /**
+   * Pause the worker loop. The worker will complete the current Claude process
+   * step but will wait before continuing to the next step or task.
+   */
+  pause(): void {
+    if (this.paused) return
+    this.paused = true
+    this.state = "paused"
+    this.emit("paused", { taskId: this.currentTaskId ?? undefined })
+  }
+
+  /**
+   * Resume the worker loop from a paused state.
+   */
+  resume(): void {
+    if (!this.paused) return
+    this.paused = false
+    this.state = "running"
+    this.emit("resumed")
+    if (this.pauseResolver) {
+      this.pauseResolver()
+      this.pauseResolver = null
+    }
+  }
+
+  /**
+   * Check if the worker is currently paused.
+   */
+  isPaused(): boolean {
+    return this.paused
+  }
+
+  /**
+   * Get the current state of the worker.
+   */
+  getState(): WorkerState {
+    return this.state
+  }
+
+  /**
+   * Get the current task ID (if any).
+   */
+  getCurrentTaskId(): string | null {
+    return this.currentTaskId
+  }
+
+  /**
+   * Wait while paused. Returns a promise that resolves when resumed or stopped.
+   */
+  private async waitWhilePaused(): Promise<void> {
+    while (this.paused && !this.stopped) {
+      await new Promise<void>(resolve => {
+        this.pauseResolver = resolve
+        // Also set a timeout to re-check periodically in case of edge cases
+        setTimeout(() => {
+          if (this.pauseResolver === resolve) {
+            this.pauseResolver = null
+            resolve()
+          }
+        }, 100)
+      })
     }
   }
 }

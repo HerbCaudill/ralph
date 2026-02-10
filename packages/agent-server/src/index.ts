@@ -135,6 +135,7 @@ export type {
   ReadyTask,
   TestResult,
   MergeConflictContext,
+  WorkerState,
 } from "./lib/WorkerLoop.js"
 
 // ── Worker orchestrator ──────────────────────────────────────────────
@@ -144,6 +145,7 @@ export type {
   WorkerOrchestratorOptions,
   WorkerOrchestratorEvents,
   OrchestratorState,
+  WorkerInfo,
 } from "./lib/WorkerOrchestrator.js"
 
 // ── Server ───────────────────────────────────────────────────────────

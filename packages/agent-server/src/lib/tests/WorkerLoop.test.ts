@@ -478,4 +478,112 @@ describe("WorkerLoop", () => {
   // in a unit test context due to git lock contention. The WorktreeManager tests
   // verify the underlying git operations. WorkerLoop's retry logic is verified
   // via the other tests that show the loop continues on error.
+
+  describe("pause and resume", () => {
+    it("can be paused and isPaused returns true", () => {
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        spawnClaude: () => createMockClaudeProcess({}),
+        getReadyTask: async () => null,
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      expect(loop.isPaused()).toBe(false)
+
+      loop.pause()
+
+      expect(loop.isPaused()).toBe(true)
+      expect(loop.getState()).toBe("paused")
+    })
+
+    it("can be resumed after pause", () => {
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        spawnClaude: () => createMockClaudeProcess({}),
+        getReadyTask: async () => null,
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      loop.pause()
+      expect(loop.isPaused()).toBe(true)
+
+      loop.resume()
+      expect(loop.isPaused()).toBe(false)
+    })
+
+    it("emits paused event when paused", () => {
+      const events: Array<{ taskId?: string }> = []
+
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        spawnClaude: () => createMockClaudeProcess({}),
+        getReadyTask: async () => null,
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      loop.on("paused", data => events.push(data))
+
+      loop.pause()
+
+      expect(events.length).toBe(1)
+      expect(events[0].taskId).toBeUndefined()
+    })
+
+    it("emits resumed event when resumed", () => {
+      const events: string[] = []
+
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        spawnClaude: () => createMockClaudeProcess({}),
+        getReadyTask: async () => null,
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      loop.on("resumed", () => events.push("resumed"))
+
+      loop.pause()
+      loop.resume()
+
+      expect(events).toContain("resumed")
+    })
+
+    it("getState returns current worker state", async () => {
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        spawnClaude: () => createMockClaudeProcess({}),
+        getReadyTask: async () => null,
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      expect(loop.getState()).toBe("idle")
+
+      // Start a simple run
+      await loop.runOnce()
+
+      expect(loop.getState()).toBe("idle")
+    })
+
+    it("getCurrentTaskId returns null when no task", () => {
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        spawnClaude: () => createMockClaudeProcess({}),
+        getReadyTask: async () => null,
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      expect(loop.getCurrentTaskId()).toBe(null)
+    })
+  })
 })

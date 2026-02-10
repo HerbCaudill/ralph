@@ -168,6 +168,7 @@ packages/ui/                           # UI package
       logo.svg              # Ralph robot icon (uses currentColor for theming)
     components/
       ControlBar.tsx        # Agent control buttons (start/pause/resume/stop)
+      WorkerControlBar.tsx  # Per-worker controls (pause/resume/stop for each worker, global "Stop All")
       Header.tsx            # App header (logo, workspace selector, settings)
       HelpButton.tsx        # Help button for opening hotkeys dialog
       HotkeysDialog.tsx     # Keyboard shortcuts dialog
@@ -458,6 +459,14 @@ The `WorkerLoop` (`packages/agent-server/src/lib/WorkerLoop.ts`) implements the 
 - `stop()` - Stop gracefully after current task
 - `forceStop()` - Kill current Claude process and stop
 
+**Per-worker control methods:**
+
+- `pause()` - Pauses the worker loop (waits for current task to complete)
+- `resume()` - Resumes a paused worker
+- `isPaused()` - Returns true if worker is paused
+- `getState()` - Returns current state (`"idle" | "running" | "paused"`)
+- `getCurrentTaskId()` - Returns the current task ID if any, or null
+
 **Events:**
 
 - `idle` - No tasks available
@@ -470,6 +479,8 @@ The `WorkerLoop` (`packages/agent-server/src/lib/WorkerLoop.ts`) implements the 
 - `tests_passed` - Tests passed after merge
 - `tests_failed` - Tests failed after merge
 - `task_completed` - Task fully completed
+- `paused` - Worker was paused
+- `resumed` - Worker was resumed
 - `error` - Error occurred
 
 **Exported from `@herbcaudill/agent-server`:**
@@ -477,6 +488,7 @@ The `WorkerLoop` (`packages/agent-server/src/lib/WorkerLoop.ts`) implements the 
 - `WorkerLoop` - The worker loop class
 - `WorkerLoopOptions` - Constructor options type
 - `WorkerLoopEvents` - Event types
+- `WorkerState` - Worker state type (`"idle" | "running" | "paused"`)
 - `ReadyTask` - Task info type
 - `TestResult` - Test result type
 - `MergeConflictContext` - Conflict callback context type
@@ -513,10 +525,20 @@ The `WorkerOrchestrator` (`packages/agent-server/src/lib/WorkerOrchestrator.ts`)
 - `getActiveWorkerCount()` - Get the number of currently active workers
 - `getWorkerNames()` - Get the names of all active workers
 
+**Per-worker control methods:**
+
+- `pauseWorker(workerName)` - Pause a specific worker
+- `resumeWorker(workerName)` - Resume a paused worker
+- `stopWorker(workerName)` - Stop a specific worker immediately
+- `getWorkerState(workerName)` - Get state of a specific worker
+- `getWorkerStates()` - Get states of all active workers (returns `Map<string, WorkerInfo>`)
+
 **Events:**
 
 - `worker_started` - Worker started
 - `worker_stopped` - Worker stopped (with reason: "completed", "stopped", or "error")
+- `worker_paused` - Worker was paused
+- `worker_resumed` - Worker was resumed
 - `task_started` - Worker started a task
 - `task_completed` - Worker completed a task
 - `state_changed` - Orchestrator state changed
@@ -528,6 +550,7 @@ The `WorkerOrchestrator` (`packages/agent-server/src/lib/WorkerOrchestrator.ts`)
 - `WorkerOrchestratorOptions` - Constructor options type
 - `WorkerOrchestratorEvents` - Event types
 - `OrchestratorState` - Orchestrator state type
+- `WorkerInfo` - Worker info type (includes name, state, current task ID)
 
 ## Runtime interaction
 
