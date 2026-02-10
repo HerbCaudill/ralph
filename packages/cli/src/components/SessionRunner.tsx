@@ -413,7 +413,7 @@ export const SessionRunner = ({
             if (!existsSync(storageDir)) {
               mkdirSync(storageDir, { recursive: true })
             }
-            logFileRef.current = join(storageDir, `${message.session_id}.jsonl`)
+            logFileRef.current = join(storageDir, `${message.session_id.slice(0, 8)}.jsonl`)
             sessionIdRef.current = message.session_id
             setSessionId(message.session_id)
           }
