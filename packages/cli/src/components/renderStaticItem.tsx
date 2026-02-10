@@ -20,7 +20,7 @@ export const renderStaticItem = (
         <Gradient colors={["#30A6E4", "#EBC635"]}>
           <BigText text={`R${item.session}`} font="tiny" />
         </Gradient>
-        {item.sessionId && <Text dimColor>{item.sessionId}.jsonl</Text>}
+        {item.sessionId && <Text dimColor>{item.sessionId.slice(0, 8)}</Text>}
       </Box>
     )
   }
