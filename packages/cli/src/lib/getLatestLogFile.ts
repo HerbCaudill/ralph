@@ -1,16 +1,12 @@
-import { join } from "path"
-import { findMaxLogNumber } from "./findMaxLogNumber.js"
+import { SessionPersister, getDefaultStorageDir } from "@herbcaudill/ralph-shared"
 
 /**
- * Get the path to the most recent (highest numbered) log file in the .ralph directory.
- * Returns undefined if no event logs exist.
+ * Get the path to the most recent session log file.
+ * Returns undefined if no session logs exist.
  */
 export const getLatestLogFile = (): string | undefined => {
-  const maxNumber = findMaxLogNumber()
-  if (maxNumber === 0) {
-    return undefined
-  }
-
-  const ralphDir = join(process.cwd(), ".ralph")
-  return join(ralphDir, `events-${maxNumber}.jsonl`)
+  const persister = new SessionPersister(getDefaultStorageDir())
+  const latestId = persister.getLatestSessionId("ralph")
+  if (!latestId) return undefined
+  return persister.getSessionPath(latestId, "ralph")
 }

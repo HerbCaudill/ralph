@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events"
 import { generateId } from "./lib/generateId.js"
-import { SessionPersister } from "./SessionPersister.js"
+import { SessionPersister } from "@herbcaudill/ralph-shared"
 import {
   AgentAdapter,
   type AgentStartOptions,

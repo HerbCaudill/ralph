@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useApp, Text } from "ink"
-import { writeFileSync, readFileSync, existsSync } from "fs"
+import { readFileSync, existsSync } from "fs"
 import { join, basename } from "path"
-import { randomUUID } from "node:crypto"
 import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { getProgress } from "../lib/getProgress.js"
 import { captureStartupSnapshot } from "../lib/captureStartupSnapshot.js"
 import type { StartupSnapshot } from "../lib/types.js"
 import { createDebugLogger } from "../lib/debug.js"
-import { getNextLogFile } from "../lib/getNextLogFile.js"
 import { createStdinCommandHandler } from "../lib/createStdinCommandHandler.js"
 import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
 import { getPromptContent } from "../lib/getPromptContent.js"
@@ -36,8 +34,6 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
   const [isRunning, setIsRunning] = useState(false)
   const [startupSnapshot] = useState<StartupSnapshot | undefined>(() => captureStartupSnapshot())
   const messageQueueRef = useRef<MessageQueue | null>(null)
-  // Log file path for this run (set once at startup, persisted across sessions)
-  const logFileRef = useRef<string | null>(null)
   const [stopAfterCurrent, setStopAfterCurrent] = useState(false) // Stop gracefully after current session
   const stopAfterCurrentRef = useRef(false) // Ref to access in async callbacks
   const [isPaused, setIsPaused] = useState(false) // Pause after current session completes
@@ -114,13 +110,6 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
       return
     }
 
-    // Get or create the log file path for this run
-    // Only create a new sequential log file on the first session
-    if (!logFileRef.current) {
-      logFileRef.current = getNextLogFile()
-      writeFileSync(logFileRef.current, "")
-    }
-
     // Read prompt (from .ralph/prompt.md or falling back to templates)
     const promptContent = getPromptContent()
     const todoExists = existsSync(todoFile)
@@ -131,19 +120,8 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
     const abortController = new AbortController()
     setIsRunning(true)
 
-    // Output session start event with server-generated session ID
-    // The sessionId is a UUID that uniquely identifies this session, enabling
-    // the UI to use a stable ID for IndexedDB persistence without generating its own
-    const sessionId = randomUUID()
-    sessionIdRef.current = sessionId
-    outputEvent({
-      type: "ralph_session_start",
-      session: currentSession,
-      totalSessions,
-      repo: repoName,
-      taskId: currentTaskIdRef.current,
-      sessionId,
-    })
+    // Session ID will be set from the SDK init message
+    sessionIdRef.current = null
 
     // Create a message queue for this session
     const messageQueue = new MessageQueue()
@@ -173,6 +151,25 @@ export const JsonOutput = ({ totalSessions, agent }: Props) => {
           },
         })) {
           log(`Received message type: ${message.type}`)
+
+          // Extract session_id from the SDK init message
+          if (
+            !sessionIdRef.current &&
+            message.type === "system" &&
+            "session_id" in message &&
+            typeof message.session_id === "string"
+          ) {
+            sessionIdRef.current = message.session_id
+            // Emit session start event now that we have the SDK session ID
+            outputEvent({
+              type: "ralph_session_start",
+              session: currentSession,
+              totalSessions,
+              repo: repoName,
+              taskId: currentTaskIdRef.current,
+              sessionId: message.session_id,
+            })
+          }
 
           // Output the raw SDK message as JSON
           outputEvent(message as unknown as Record<string, unknown>)

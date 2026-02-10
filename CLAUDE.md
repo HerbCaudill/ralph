@@ -105,7 +105,7 @@ Load order: user global → workspace → working directory context → caller-p
 
 ### Session persistence
 
-Sessions are stored as JSONL files, optionally namespaced by app (e.g., `{storageDir}/ralph/session123.jsonl`). The default storage directory is `~/local/share/ralph/agent-sessions/ralph`. Per-workspace session IDs persist in localStorage. On reconnect, the server sends `pending_events` (even if empty) to signal restoration is complete.
+Both CLI and UI sessions are stored as JSONL files in `~/.local/share/ralph/agent-sessions/ralph/{sessionId}.jsonl`. The session ID comes from the Claude Agent SDK's init message. `SessionPersister` and `getDefaultStorageDir` live in `@herbcaudill/ralph-shared` and are used by both CLI and agent-server. Per-workspace session IDs persist in localStorage. On reconnect, the server sends `pending_events` (even if empty) to signal restoration is complete.
 
 ### Concurrent workers
 

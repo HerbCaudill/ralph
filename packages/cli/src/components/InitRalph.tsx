@@ -1,6 +1,6 @@
 import { Text, Box } from "ink"
 import React, { useEffect, useState } from "react"
-import { existsSync, readFileSync, appendFileSync, writeFileSync } from "fs"
+import { existsSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { copyTemplates } from "../lib/copyTemplates.js"
@@ -8,7 +8,7 @@ import { copyTemplates } from "../lib/copyTemplates.js"
 /**
  * Initializes Ralph by copying workflow templates and agent configurations to the project.
  * Creates .ralph/workflow.md, .claude/skills/, and .claude/agents/ directories with default files.
- * Also adds .ralph/events-*.jsonl to .gitignore.
+ * Session logs are stored in ~/.local/share/ralph/agent-sessions/ralph/.
  */
 export function InitRalph() {
   const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -64,21 +64,6 @@ export function InitRalph() {
         allCreated.push(...agentsResult.created.map(f => `.claude/${f}`))
         allSkipped.push(...agentsResult.skipped.map(f => `.claude/${f}`))
         allErrors.push(...agentsResult.errors)
-
-        // Add events log pattern to .gitignore
-        const gitignorePath = join(process.cwd(), ".gitignore")
-        const eventsLogEntry = ".ralph/events-*.jsonl"
-        if (existsSync(gitignorePath)) {
-          const content = readFileSync(gitignorePath, "utf-8")
-          if (!content.includes(eventsLogEntry)) {
-            const newline = content.endsWith("\n") ? "" : "\n"
-            appendFileSync(gitignorePath, `${newline}${eventsLogEntry}\n`)
-            allCreated.push("(added .ralph/events-*.jsonl to .gitignore)")
-          }
-        } else {
-          writeFileSync(gitignorePath, `${eventsLogEntry}\n`)
-          allCreated.push("(created .gitignore with .ralph/events-*.jsonl)")
-        }
 
         setCreatedFiles(allCreated)
         setSkippedFiles(allSkipped)

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from "react"
 import { Box, Text, useApp, Static, useInput } from "ink"
 import Spinner from "ink-spinner"
 import { EnhancedTextInput } from "./EnhancedTextInput.js"
-import { appendFileSync, writeFileSync, readFileSync, existsSync } from "fs"
+import { appendFileSync, readFileSync, existsSync, mkdirSync } from "fs"
 import { join, basename } from "path"
-import { randomUUID } from "node:crypto"
+import { getDefaultStorageDir } from "@herbcaudill/ralph-shared"
 import { query } from "@anthropic-ai/claude-agent-sdk"
 import { eventToBlocks } from "./eventToBlocks.js"
 import { addTodo } from "../lib/addTodo.js"
@@ -16,7 +16,6 @@ import { watchForNewIssues, type MutationEvent } from "../lib/beadsClient.js"
 import { MessageQueue, createUserMessage } from "../lib/MessageQueue.js"
 import { createDebugLogger } from "../lib/debug.js"
 import { useTerminalSize } from "../lib/useTerminalSize.js"
-import { getNextLogFile } from "../lib/getNextLogFile.js"
 import { parseTaskLifecycleEvent } from "../lib/parseTaskLifecycle.js"
 import { getPromptContent } from "../lib/getPromptContent.js"
 import { sdkMessageToEvent } from "../lib/sdkMessageToEvent.js"
@@ -94,7 +93,7 @@ export const SessionRunner = ({
   const lastSessionRef = useRef<number>(0)
   // Message queue for sending user messages to Claude while running
   const messageQueueRef = useRef<MessageQueue | null>(null)
-  // Log file path for this run (set once at startup, persisted across sessions)
+  // Log file path for the current session (set when we receive the session_id from the SDK)
   const logFileRef = useRef<string | null>(null)
 
   /** Whether stdin supports raw mode (required for keyboard input handling) */
@@ -343,13 +342,8 @@ export const SessionRunner = ({
       return
     }
 
-    // Get or create the log file path for this run
-    // Only create a new sequential log file on the first session
-    if (!logFileRef.current) {
-      logFileRef.current = getNextLogFile()
-      writeFileSync(logFileRef.current, "")
-    }
-    const logFile = logFileRef.current
+    // Reset log file for this session — will be set when we get the SDK session_id
+    logFileRef.current = null
     setEvents([])
 
     // Read prompt (from .ralph/prompt.md or falling back to templates)
@@ -367,9 +361,8 @@ export const SessionRunner = ({
     taskCompletedAbortRef.current = false
     setIsRunning(true)
 
-    // Generate a session ID for this session (used in log file events)
-    const sessionId = randomUUID()
-    sessionIdRef.current = sessionId
+    // Session ID will be set from the SDK init message
+    sessionIdRef.current = null
 
     // Create a message queue for this session
     // This allows us to send follow-up user messages to Claude while it's running
@@ -405,8 +398,26 @@ export const SessionRunner = ({
           },
         })) {
           log(`Received message type: ${message.type}`)
+
+          // Extract session_id from the SDK init message and create the log file
+          if (
+            !logFileRef.current &&
+            message.type === "system" &&
+            "session_id" in message &&
+            typeof message.session_id === "string"
+          ) {
+            const storageDir = join(getDefaultStorageDir(), "ralph")
+            if (!existsSync(storageDir)) {
+              mkdirSync(storageDir, { recursive: true })
+            }
+            logFileRef.current = join(storageDir, `${message.session_id}.jsonl`)
+            sessionIdRef.current = message.session_id
+          }
+
           // Log raw message to file (JSONL format - one JSON object per line)
-          appendFileSync(logFile, JSON.stringify(message) + "\n")
+          if (logFileRef.current) {
+            appendFileSync(logFileRef.current, JSON.stringify(message) + "\n")
+          }
 
           // Convert to event format for display
           const event = sdkMessageToEvent(message)
@@ -427,23 +438,30 @@ export const SessionRunner = ({
                       setCurrentTaskId(taskInfo.taskId ?? null)
                       log(`Task started: ${taskInfo.taskId}`)
                       // Emit ralph_task_started event to log file
-                      const taskStartedEvent = {
-                        type: "ralph_task_started",
-                        taskId: taskInfo.taskId,
-                        session: currentSession,
-                        sessionId: sessionIdRef.current,
+                      if (logFileRef.current) {
+                        const taskStartedEvent = {
+                          type: "ralph_task_started",
+                          taskId: taskInfo.taskId,
+                          session: currentSession,
+                          sessionId: sessionIdRef.current,
+                        }
+                        appendFileSync(logFileRef.current, JSON.stringify(taskStartedEvent) + "\n")
                       }
-                      appendFileSync(logFile, JSON.stringify(taskStartedEvent) + "\n")
                     } else if (taskInfo.action === "completed") {
                       log(`Task completed: ${taskInfo.taskId}`)
                       // Emit ralph_task_completed event to log file
-                      const taskCompletedEvent = {
-                        type: "ralph_task_completed",
-                        taskId: taskInfo.taskId,
-                        session: currentSession,
-                        sessionId: sessionIdRef.current,
+                      if (logFileRef.current) {
+                        const taskCompletedEvent = {
+                          type: "ralph_task_completed",
+                          taskId: taskInfo.taskId,
+                          session: currentSession,
+                          sessionId: sessionIdRef.current,
+                        }
+                        appendFileSync(
+                          logFileRef.current,
+                          JSON.stringify(taskCompletedEvent) + "\n",
+                        )
                       }
-                      appendFileSync(logFile, JSON.stringify(taskCompletedEvent) + "\n")
                       // Abort the current query to enforce one-task-per-session.
                       // Without this, Claude may ignore "end your turn" and loop
                       // through bd ready to pick up additional tasks in one session.
