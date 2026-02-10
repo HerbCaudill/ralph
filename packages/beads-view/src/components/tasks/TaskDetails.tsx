@@ -401,8 +401,8 @@ export function TaskDetails({
           </div>
 
           {/* Labels */}
-          <div className="flex items-start gap-3">
-            <Label className="text-muted-foreground mt-1.5 w-16 shrink-0 text-xs">Labels</Label>
+          <div className="flex items-center gap-3">
+            <Label className="text-muted-foreground w-16 shrink-0 text-xs">Labels</Label>
             <div className="flex flex-wrap items-center gap-1.5">
               {labels.map(label => (
                 <span

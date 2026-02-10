@@ -1218,7 +1218,30 @@ describe("TaskDetailsDialog", () => {
   })
 
   describe("label styling", () => {
-    it("label badges and input have consistent styling (text-sm, matching dimensions)", async () => {
+    it("labels row uses items-center for consistent vertical alignment with other metadata rows", async () => {
+      await renderAndWait(
+        <TaskDetailsController
+          task={mockTask}
+          open={true}
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      )
+
+      // Find the Labels label element
+      const labelsLabel = screen.getByText("Labels")
+      // Get the parent row container (the flex container with gap-3)
+      const labelsRow = labelsLabel.closest(".flex.gap-3")
+      expect(labelsRow).toBeInTheDocument()
+      // The row should use items-center like other metadata rows
+      expect(labelsRow?.className).toContain("items-center")
+      // The row should NOT use items-start (which causes misalignment)
+      expect(labelsRow?.className).not.toContain("items-start")
+      // The label should NOT have manual margin offset
+      expect(labelsLabel.className).not.toContain("mt-")
+    })
+
+    it("label badges and input have consistent styling (text-xs for badges, text-sm for input)", async () => {
       // Mock fetch to return labels
       globalThis.fetch = vi.fn().mockImplementation((url: string) => {
         if (typeof url === "string" && url.includes("/labels")) {
@@ -1252,9 +1275,9 @@ describe("TaskDetailsDialog", () => {
         expect(screen.getByText("urgent")).toBeInTheDocument()
       })
 
-      // Verify label badge has text-sm class (improved readability)
+      // Verify label badge has text-xs class (compact badge styling)
       const labelBadge = screen.getByText("urgent").closest("span")
-      expect(labelBadge?.className).toContain("text-sm")
+      expect(labelBadge?.className).toContain("text-xs")
 
       // Click "Add label" button to show the input
       const addButton = screen.getByText("Add label")
