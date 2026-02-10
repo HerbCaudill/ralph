@@ -5,7 +5,7 @@ import type { AgentServerConfig } from "./types.js"
 import { ChatSessionManager } from "./ChatSessionManager.js"
 import { registerRoutes } from "./routes.js"
 import { handleWsConnection, type WsClient } from "./wsHandler.js"
-import { getDefaultStorageDir } from "@herbcaudill/ralph-shared"
+import { getDefaultStorageDir } from "@herbcaudill/ralph-shared/server"
 
 // ── Type exports ─────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ export type { AdapterFactory, AdapterRegistration, AdapterAvailability } from ".
 
 // ── Session management ───────────────────────────────────────────────
 
-export { SessionPersister } from "@herbcaudill/ralph-shared"
+export { SessionPersister } from "@herbcaudill/ralph-shared/server"
 export { ChatSessionManager } from "./ChatSessionManager.js"
 export type {
   SessionInfo,
@@ -100,7 +100,7 @@ export { createEventStream } from "./lib/createEventStream.js"
 export { createMessageStream } from "./lib/createMessageStream.js"
 export { loadClaudeMd, loadClaudeMdSync, CLAUDE_MD_FILENAME } from "./lib/loadClaudeMd.js"
 export type { LoadClaudeMdOptions } from "./lib/loadClaudeMd.js"
-export { getDefaultStorageDir } from "@herbcaudill/ralph-shared"
+export { getDefaultStorageDir } from "@herbcaudill/ralph-shared/server"
 export {
   loadContextFile,
   loadContextFileSync,

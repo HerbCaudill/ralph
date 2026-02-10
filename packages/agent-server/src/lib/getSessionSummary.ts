@@ -1,5 +1,5 @@
 import { parseTaskLifecycleEvent } from "./parseTaskLifecycleEvent.js"
-import type { SessionPersister } from "@herbcaudill/ralph-shared"
+import type { SessionPersister } from "@herbcaudill/ralph-shared/server"
 
 /** Summary information extracted from a session's events. */
 export interface SessionSummary {

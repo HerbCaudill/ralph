@@ -1,2 +1,2 @@
 /** Re-export from shared package for backwards compatibility. */
-export { SessionPersister } from "@herbcaudill/ralph-shared"
+export { SessionPersister } from "@herbcaudill/ralph-shared/server"

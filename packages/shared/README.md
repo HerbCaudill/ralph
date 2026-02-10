@@ -76,10 +76,11 @@ Utilities for loading and managing prompt files with customization support.
 
 ## Subpath Exports
 
-The main entry point is browser-safe. Node-only utilities (prompt loading) are available via a separate subpath:
+The main entry point is browser-safe. Node-only utilities are available via separate subpaths:
 
 - `@herbcaudill/ralph-shared` — Browser-safe: events, beads types, VERSION
 - `@herbcaudill/ralph-shared/prompts` — Node-only: prompt loading utilities (uses `node:fs`)
+- `@herbcaudill/ralph-shared/server` — Node-only: session persistence utilities (uses `node:fs`, `node:os`)
 
 ## Usage
 
@@ -96,6 +97,9 @@ import {
 
 // Node-only imports (prompt loading)
 import { loadPrompt, initPrompt } from "@herbcaudill/ralph-shared/prompts"
+
+// Node-only imports (session persistence)
+import { SessionPersister, getDefaultStorageDir } from "@herbcaudill/ralph-shared/server"
 
 // Type guard example
 function handleEvent(event: AgentEvent) {

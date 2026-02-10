@@ -105,7 +105,7 @@ Load order: user global → workspace → working directory context → caller-p
 
 ### Session persistence
 
-Sessions are stored as JSONL files in `~/.local/share/ralph/agent-sessions/{app}/{sessionId}.jsonl`, where `{app}` is an app namespace (e.g., `ralph` for Ralph loop sessions, `task-chat` for task chat sessions). The session ID comes from the Claude Agent SDK's init message. `SessionPersister` and `getDefaultStorageDir` live in `@herbcaudill/ralph-shared` and are used by both CLI and agent-server. Per-workspace session IDs persist in localStorage. On reconnect, the server sends `pending_events` (even if empty) to signal restoration is complete.
+Sessions are stored as JSONL files in `~/.local/share/ralph/agent-sessions/{app}/{sessionId}.jsonl`, where `{app}` is an app namespace (e.g., `ralph` for Ralph loop sessions, `task-chat` for task chat sessions). The session ID comes from the Claude Agent SDK's init message. `SessionPersister` and `getDefaultStorageDir` are available at `@herbcaudill/ralph-shared/server` (Node-only, uses `node:fs` and `node:os`) and are used by both CLI and agent-server. Per-workspace session IDs persist in localStorage. On reconnect, the server sends `pending_events` (even if empty) to signal restoration is complete.
 
 Session history for both Ralph and task-chat is fetched from the server via `GET /api/sessions?app={app}` rather than localStorage, ensuring consistent data across browser tabs and sessions.
 

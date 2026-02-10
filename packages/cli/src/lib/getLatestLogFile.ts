@@ -1,4 +1,4 @@
-import { SessionPersister, getDefaultStorageDir } from "@herbcaudill/ralph-shared"
+import { SessionPersister, getDefaultStorageDir } from "@herbcaudill/ralph-shared/server"
 
 /**
  * Get the path to the most recent session log file.
