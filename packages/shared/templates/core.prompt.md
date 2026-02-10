@@ -2,6 +2,8 @@
 
 You are running as an autonomous session agent. Follow this protocol exactly.
 
+Note: Your working directory is the root of the codebase.
+
 ## Session lifecycle
 
 ### Find available work
