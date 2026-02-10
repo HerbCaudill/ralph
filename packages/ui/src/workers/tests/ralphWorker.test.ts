@@ -846,6 +846,18 @@ describe("ralphWorker", () => {
     })
   }
 
+  /** Helper to create a WebSocket event with a streaming message (text delta). */
+  function messageEvent(content: string) {
+    return JSON.stringify({
+      type: "event",
+      event: {
+        type: "message",
+        content,
+        isPartial: false,
+      },
+    })
+  }
+
   /** Helper to set up a running workspace with an open WebSocket. */
   async function setupRunningWorkspace(workspaceId: string) {
     const port = createMockPort()
@@ -993,6 +1005,37 @@ describe("ralphWorker", () => {
         JSON.stringify({ type: "create_session", app: "ralph", workspaceId }),
       )
       expect(state.sessionCompleted).toBe(false)
+    })
+
+    it("should detect end_task marker in streaming message events (r-9hmrc)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+
+      // In the real world, the marker comes via streaming 'message' events (text deltas)
+      // not just 'assistant' events with complete content blocks
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({ data: messageEvent("<end_task>r-task1</end_task>\n\nTask complete!") })
+
+      expect(state.sessionCompleted).toBe(true)
+      ;(state.ws as any).send.mockClear()
+
+      // Status goes idle - should trigger new session
+      ws.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "create_session", app: "ralph", workspaceId }),
+      )
+    })
+
+    it("should detect promise_complete marker in streaming message events (r-9hmrc)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { state } = await setupRunningWorkspace(workspaceId)
+
+      // Same bug: promise_complete comes via streaming 'message' events
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({ data: messageEvent("<promise>COMPLETE</promise>\n\nNo more tasks.") })
+
+      expect(state.sessionCompleted).toBe(true)
     })
 
     it("should NOT set sessionCompleted when marker appears in a code discussion", async () => {

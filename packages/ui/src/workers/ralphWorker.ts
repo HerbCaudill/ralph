@@ -181,6 +181,27 @@ function connectWorkspace(workspaceId: string): void {
         // mid-sentence (e.g., discussing the protocol or reading source code).
         if (message.type === "event") {
           const event = message.event as Record<string, unknown> | undefined
+
+          // Check for markers in the event content
+          const checkTextForMarkers = (text: string): boolean => {
+            // Check for promise complete marker
+            if (
+              /^\s*<promise>COMPLETE<\/promise>\s*(\n|$)/i.test(text) ||
+              /<promise>COMPLETE<\/promise>\s*$/i.test(text)
+            ) {
+              return true
+            }
+            // Check for end_task marker (task completed, continue loop)
+            if (
+              /^\s*<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*(\n|$)/i.test(text) ||
+              /<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*$/i.test(text)
+            ) {
+              return true
+            }
+            return false
+          }
+
+          // Check "assistant" events (complete messages with content blocks)
           if (event?.type === "assistant") {
             // Content blocks may be at event.message.content (Anthropic API format)
             // or event.content (normalized format)
@@ -191,30 +212,20 @@ function connectWorkspace(workspaceId: string): void {
             if (content) {
               for (const block of content) {
                 if (block.type === "text" && typeof block.text === "string") {
-                  // Check for promise complete marker
-                  // Match markers at the START of the text (common case: agent outputs marker then summary)
-                  // or at the END of the text (less common but still valid)
-                  if (
-                    /^\s*<promise>COMPLETE<\/promise>\s*(\n|$)/i.test(block.text) ||
-                    /<promise>COMPLETE<\/promise>\s*$/i.test(block.text)
-                  ) {
-                    state.sessionCompleted = true
-                    break
-                  }
-                  // Check for end_task marker (task completed, continue loop)
-                  // Match markers at the START of the text (common case: agent outputs marker then summary)
-                  // or at the END of the text (less common but still valid)
-                  if (
-                    /^\s*<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*(\n|$)/i.test(
-                      block.text,
-                    ) ||
-                    /<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*$/i.test(block.text)
-                  ) {
+                  if (checkTextForMarkers(block.text)) {
                     state.sessionCompleted = true
                     break
                   }
                 }
               }
+            }
+          }
+
+          // Check "message" events (streaming text deltas)
+          // This is how markers actually arrive in practice - via streaming content
+          if (event?.type === "message" && typeof event.content === "string") {
+            if (checkTextForMarkers(event.content)) {
+              state.sessionCompleted = true
             }
           }
         }
