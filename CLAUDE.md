@@ -111,7 +111,9 @@ Session history for both Ralph and task-chat is fetched from the server via `GET
 
 ### Concurrent workers
 
-`WorktreeManager`, `WorkerLoop`, and `WorkerOrchestrator` (all in `packages/agent-server/src/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from shared). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), spawns Claude, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers. See the source files for full API details.
+`WorktreeManager`, `WorkerLoop`, and `WorkerOrchestrator` (all in `packages/agent-server/src/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from shared). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), spawns Claude, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers.
+
+The UI layer uses `useWorkerOrchestrator` hook (in `packages/ui/src/hooks/`) to connect to the orchestrator via WebSocket, receiving real-time state updates for all workers. The `WorkerControlBar` component displays active workers with per-worker pause/resume/stop controls and a global stop-after-current button.
 
 ## Runtime interaction (CLI)
 

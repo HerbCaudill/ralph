@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { WorkspaceView } from "../WorkspaceView"
 import type { ChatEvent } from "@herbcaudill/agent-view"
 import type { RalphSessionIndexEntry } from "../../lib/fetchRalphSessions"
+import type { WorkerInfo, OrchestratorState } from "../../hooks/useWorkerOrchestrator"
 
 // ── Mock state that tests can mutate ───────────────────────────────────────
 
@@ -37,6 +38,17 @@ let mockHistoricalEvents: ChatEvent[] | null = null
 let mockIsViewingHistorical = false
 const mockSelectSession = vi.fn()
 const mockClearHistorical = vi.fn()
+
+// Mock orchestrator state
+let mockOrchestratorState: OrchestratorState = "stopped"
+let mockOrchestratorWorkers: Record<string, WorkerInfo> = {}
+const mockOrchestratorStart = vi.fn()
+const mockOrchestratorStop = vi.fn()
+const mockOrchestratorStopAfterCurrent = vi.fn()
+const mockOrchestratorCancelStop = vi.fn()
+const mockPauseWorker = vi.fn()
+const mockResumeWorker = vi.fn()
+const mockStopWorker = vi.fn()
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +84,23 @@ vi.mock("../../hooks/useRalphSessions", () => ({
     isViewingHistorical: mockIsViewingHistorical,
     selectSession: mockSelectSession,
     clearHistorical: mockClearHistorical,
+  }),
+}))
+
+vi.mock("../../hooks/useWorkerOrchestrator", () => ({
+  useWorkerOrchestrator: () => ({
+    state: mockOrchestratorState,
+    workers: mockOrchestratorWorkers,
+    maxWorkers: 3,
+    activeWorkerCount: Object.keys(mockOrchestratorWorkers).length,
+    isConnected: true,
+    start: mockOrchestratorStart,
+    stop: mockOrchestratorStop,
+    stopAfterCurrent: mockOrchestratorStopAfterCurrent,
+    cancelStopAfterCurrent: mockOrchestratorCancelStop,
+    pauseWorker: mockPauseWorker,
+    resumeWorker: mockResumeWorker,
+    stopWorker: mockStopWorker,
   }),
 }))
 
@@ -198,6 +227,17 @@ vi.mock("../RalphRunner", () => ({
   },
 }))
 
+// Capture the props passed to WorkerControlBar so we can assert on them
+let capturedWorkerControlBarProps: Record<string, unknown> | null = null
+vi.mock("../WorkerControlBar", () => ({
+  WorkerControlBar: (props: Record<string, unknown>) => {
+    capturedWorkerControlBarProps = props
+    const workers = props.workers as WorkerInfo[]
+    if (workers.length === 0) return null
+    return <div data-testid="worker-control-bar">Worker Control Bar</div>
+  },
+}))
+
 /** Render WorkspaceView at a workspace route. */
 function renderWorkspaceView() {
   return render(
@@ -213,12 +253,15 @@ describe("WorkspaceView session history wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedRalphRunnerProps = {}
+    capturedWorkerControlBarProps = null
 
     // Reset mock state to defaults
     mockSessionId = "live-session-1"
     mockLiveEvents = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
     mockIsStreaming = false
     mockControlState = "idle"
+    mockOrchestratorState = "stopped"
+    mockOrchestratorWorkers = {}
     mockSessions = [
       {
         sessionId: "live-session-1",
@@ -339,6 +382,144 @@ describe("WorkspaceView session history wiring", () => {
 
       expect(mockSelectSession).toHaveBeenCalledWith("old-session-2")
       expect(mockClearHistorical).not.toHaveBeenCalled()
+    })
+  })
+})
+
+describe("WorkspaceView worker orchestrator integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedRalphRunnerProps = {}
+    capturedWorkerControlBarProps = null
+
+    // Reset mock state to defaults
+    mockSessionId = "live-session-1"
+    mockLiveEvents = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
+    mockIsStreaming = false
+    mockControlState = "idle"
+    mockOrchestratorState = "stopped"
+    mockOrchestratorWorkers = {}
+    mockSessions = [
+      {
+        sessionId: "live-session-1",
+        adapter: "claude",
+        firstMessageAt: 1000,
+        lastMessageAt: 3000,
+        firstUserMessage: "task-1",
+        taskId: "task-1",
+        taskTitle: "Live session task",
+      },
+    ]
+    mockHistoricalEvents = null
+    mockIsViewingHistorical = false
+  })
+
+  describe("WorkerControlBar rendering", () => {
+    it("does not render WorkerControlBar when there are no active workers", () => {
+      mockOrchestratorWorkers = {}
+      renderWorkspaceView()
+      expect(screen.queryByTestId("worker-control-bar")).not.toBeInTheDocument()
+    })
+
+    it("renders WorkerControlBar when there are active workers", () => {
+      mockOrchestratorWorkers = {
+        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+      }
+      renderWorkspaceView()
+      expect(screen.getByTestId("worker-control-bar")).toBeInTheDocument()
+    })
+
+    it("passes workers array to WorkerControlBar", () => {
+      mockOrchestratorWorkers = {
+        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+        Homer: { workerName: "Homer", state: "paused", currentTaskId: "r-def456" },
+      }
+      renderWorkspaceView()
+
+      const workers = capturedWorkerControlBarProps?.workers as WorkerInfo[]
+      expect(workers).toHaveLength(2)
+      expect(workers).toContainEqual({
+        workerName: "Ralph",
+        state: "running",
+        currentTaskId: "r-abc123",
+      })
+      expect(workers).toContainEqual({
+        workerName: "Homer",
+        state: "paused",
+        currentTaskId: "r-def456",
+      })
+    })
+
+    it("passes isStoppingAfterCurrent when orchestrator is stopping", () => {
+      mockOrchestratorState = "stopping"
+      mockOrchestratorWorkers = {
+        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+      }
+      renderWorkspaceView()
+
+      expect(capturedWorkerControlBarProps?.isStoppingAfterCurrent).toBe(true)
+    })
+
+    it("passes isConnected to WorkerControlBar", () => {
+      mockOrchestratorWorkers = {
+        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+      }
+      renderWorkspaceView()
+
+      expect(capturedWorkerControlBarProps?.isConnected).toBe(true)
+    })
+  })
+
+  describe("WorkerControlBar callbacks", () => {
+    beforeEach(() => {
+      mockOrchestratorWorkers = {
+        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+      }
+    })
+
+    it("passes onPauseWorker callback", () => {
+      renderWorkspaceView()
+
+      const handler = capturedWorkerControlBarProps?.onPauseWorker as (name: string) => void
+      handler("Ralph")
+
+      expect(mockPauseWorker).toHaveBeenCalledWith("Ralph")
+    })
+
+    it("passes onResumeWorker callback", () => {
+      renderWorkspaceView()
+
+      const handler = capturedWorkerControlBarProps?.onResumeWorker as (name: string) => void
+      handler("Ralph")
+
+      expect(mockResumeWorker).toHaveBeenCalledWith("Ralph")
+    })
+
+    it("passes onStopWorker callback", () => {
+      renderWorkspaceView()
+
+      const handler = capturedWorkerControlBarProps?.onStopWorker as (name: string) => void
+      handler("Ralph")
+
+      expect(mockStopWorker).toHaveBeenCalledWith("Ralph")
+    })
+
+    it("passes onStopAfterCurrent callback", () => {
+      renderWorkspaceView()
+
+      const handler = capturedWorkerControlBarProps?.onStopAfterCurrent as () => void
+      handler()
+
+      expect(mockOrchestratorStopAfterCurrent).toHaveBeenCalled()
+    })
+
+    it("passes onCancelStopAfterCurrent callback", () => {
+      renderWorkspaceView()
+
+      const handler = capturedWorkerControlBarProps?.onCancelStopAfterCurrent as () => void
+      handler()
+
+      expect(mockOrchestratorCancelStop).toHaveBeenCalled()
     })
   })
 })

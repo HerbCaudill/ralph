@@ -33,7 +33,9 @@ import { useAgentHotkeys, type ChatInputHandle } from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 import { useCurrentTask } from "@/hooks/useCurrentTask"
 import { useWorkerName } from "@/hooks/useWorkerName"
+import { useWorkerOrchestrator } from "@/hooks/useWorkerOrchestrator"
 import { createRalphEventRenderers } from "@/lib/createRalphEventRenderers"
+import { WorkerControlBar } from "@/components/WorkerControlBar"
 
 /**
  * Workspace view — renders the main Ralph UI for a specific workspace.
@@ -133,6 +135,10 @@ export function WorkspaceView() {
 
   // Active worker name from Ralph events
   const workerName = useWorkerName(events)
+
+  // Worker orchestrator for parallel execution control
+  const orchestrator = useWorkerOrchestrator(workspaceId)
+
   const { selectedTask, openDialogById, closeDialog } = useTaskDialog({
     onTaskUpdated: refresh,
     onTaskDeleted: refresh,
@@ -389,6 +395,17 @@ export function WorkspaceView() {
           />
         }
       >
+        {/* Worker control bar for parallel worker orchestration */}
+        <WorkerControlBar
+          workers={Object.values(orchestrator.workers)}
+          isStoppingAfterCurrent={orchestrator.state === "stopping"}
+          isConnected={orchestrator.isConnected}
+          onPauseWorker={orchestrator.pauseWorker}
+          onResumeWorker={orchestrator.resumeWorker}
+          onStopWorker={orchestrator.stopWorker}
+          onStopAfterCurrent={orchestrator.stopAfterCurrent}
+          onCancelStopAfterCurrent={orchestrator.cancelStopAfterCurrent}
+        />
         <TaskPanelController
           searchInputRef={searchInputRef}
           onTaskClick={handleTaskClick}
