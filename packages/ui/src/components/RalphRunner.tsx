@@ -16,7 +16,7 @@ import {
   type ConnectionStatus,
   type SessionIndexEntry,
 } from "@herbcaudill/agent-view"
-import { IconPlayerPlayFilled, IconRobot, IconHistory } from "@tabler/icons-react"
+import { IconPlayerPlayFilled, IconRobot } from "@tabler/icons-react"
 import { ControlBar } from "@/components/ControlBar"
 import { RepoBranch } from "@/components/RepoBranch"
 import { RunDuration } from "@/components/RunDuration"
@@ -68,9 +68,6 @@ export function RalphRunner({
   const isConnected = connectionStatus === "connected"
   const showIdleState = controlState === "idle"
 
-  // Chat is only disabled when viewing historical sessions or disconnected
-  const isChatDisabled = isViewingHistoricalSession || !isConnected
-
   // Header with robot icon, session picker (includes task info), and history badge
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -84,12 +81,6 @@ export function RalphRunner({
           taskTitle={taskTitle}
         />
       </div>
-      {isViewingHistoricalSession && (
-        <span className="flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-          <IconHistory size={12} stroke={1.5} />
-          Viewing history
-        </span>
-      )}
     </div>
   )
 
@@ -132,42 +123,39 @@ export function RalphRunner({
 
       {/* Bottom bar: comprehensive controls and chat input */}
       <div className="flex flex-col border-t border-border">
-        {/* Chat input - show when session is active */}
-        {controlState !== "idle" && (
+        {/* Chat input - show when session is active and not viewing history */}
+        {controlState !== "idle" && !isViewingHistoricalSession && (
           <ChatInput
             onSend={onSendMessage}
-            disabled={isChatDisabled}
-            placeholder={
-              isViewingHistoricalSession ? "Switch to current session to send messages"
-              : !isConnected ?
-                "Waiting for connection..."
-              : "Send a message…"
-            }
+            disabled={!isConnected}
+            placeholder={!isConnected ? "Waiting for connection..." : "Send a message…"}
             storageKey="ralph-runner-chat-draft"
           />
         )}
 
         {/* Status bar footer */}
         <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs">
-          {/* Left section: controls + status */}
+          {/* Left section: controls + status (hide controls for historical sessions) */}
           <div className="flex items-center gap-3">
-            {/* Control bar with Start/Resume/Pause/Stop-after-current buttons */}
-            <ControlBar
-              controlState={controlState}
-              isConnected={isConnected}
-              isStoppingAfterCurrent={isStoppingAfterCurrent}
-              onStart={onStart}
-              onResume={onResume}
-              onPause={onPause}
-              onStopAfterCurrent={onStopAfterCurrent}
-              onCancelStopAfterCurrent={onCancelStopAfterCurrent}
-            />
+            {/* Control bar with Start/Resume/Pause/Stop-after-current buttons - hidden for historical sessions */}
+            {!isViewingHistoricalSession && (
+              <ControlBar
+                controlState={controlState}
+                isConnected={isConnected}
+                isStoppingAfterCurrent={isStoppingAfterCurrent}
+                onStart={onStart}
+                onResume={onResume}
+                onPause={onPause}
+                onStopAfterCurrent={onStopAfterCurrent}
+                onCancelStopAfterCurrent={onCancelStopAfterCurrent}
+              />
+            )}
 
             {/* Status indicator - shows Running/Idle with colored dot */}
             <StatusIndicator
               controlState={controlState}
               isStoppingAfterCurrent={isStoppingAfterCurrent}
-              className="border-l border-border pl-3"
+              className={isViewingHistoricalSession ? "" : "border-l border-border pl-3"}
             />
 
             {/* Session timer */}

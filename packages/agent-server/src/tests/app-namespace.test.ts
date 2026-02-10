@@ -375,6 +375,46 @@ describe("App-namespaced session storage", () => {
       expect(res.status).toBe(201)
       expect(createSession).toHaveBeenCalledWith({ adapter: "stub", app: "ralph" })
     })
+
+    it("GET /api/sessions/:id/events reads events from app-namespaced session", async () => {
+      // This test verifies the bug fix for r-vq4gx:
+      // When fetching events for a session with an app namespace (e.g., "ralph"),
+      // the endpoint must include the app parameter to find events stored in
+      // the app's subdirectory.
+      const readEvents = vi.fn().mockResolvedValue([
+        { type: "user_message", message: "Hello", timestamp: 1000 },
+        { type: "assistant_message", text: "Hi!", timestamp: 2000 },
+      ])
+      const readEventsSince = vi
+        .fn()
+        .mockResolvedValue([{ type: "assistant_message", text: "Hi!", timestamp: 2000 }])
+
+      const ctx = createMockContext({
+        persister: { readEvents, readEventsSince },
+        sessionManager: {
+          getSessionInfo: vi.fn().mockImplementation((id: string) => ({
+            sessionId: id,
+            adapter: "stub",
+            status: "idle" as const,
+            createdAt: Date.now(),
+            app: "ralph",
+          })),
+        },
+      })
+      const app = createTestApp(ctx)
+
+      // Test reading all events (no since param)
+      const res1 = await request(app, "GET", "/api/sessions/test-session/events")
+      expect(res1.status).toBe(200)
+      expect(res1.body.events).toHaveLength(2)
+      expect(readEvents).toHaveBeenCalledWith("test-session", "ralph")
+
+      // Test reading events since timestamp
+      const res2 = await request(app, "GET", "/api/sessions/test-session/events?since=1500")
+      expect(res2.status).toBe(200)
+      expect(res2.body.events).toHaveLength(1)
+      expect(readEventsSince).toHaveBeenCalledWith("test-session", 1500, "ralph")
+    })
   })
 
   describe("WebSocket reconnect", () => {

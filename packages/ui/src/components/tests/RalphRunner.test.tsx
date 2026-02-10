@@ -156,14 +156,18 @@ describe("RalphRunner", () => {
       expect(sessionPicker).not.toHaveTextContent("r-")
     })
 
-    it("shows 'Viewing history' badge when isViewingHistoricalSession is true", () => {
-      render(<RalphRunner {...defaultProps} isViewingHistoricalSession={true} />)
-      expect(screen.getByText("Viewing history")).toBeInTheDocument()
+    it("hides chat input when viewing historical session", () => {
+      render(
+        <RalphRunner {...defaultProps} controlState="running" isViewingHistoricalSession={true} />,
+      )
+      expect(screen.queryByTestId("chat-input")).not.toBeInTheDocument()
     })
 
-    it("does not show 'Viewing history' badge by default", () => {
-      render(<RalphRunner {...defaultProps} />)
-      expect(screen.queryByText("Viewing history")).not.toBeInTheDocument()
+    it("hides control bar when viewing historical session", () => {
+      render(
+        <RalphRunner {...defaultProps} controlState="running" isViewingHistoricalSession={true} />,
+      )
+      expect(screen.queryByTestId("control-bar")).not.toBeInTheDocument()
     })
 
     it("renders SessionPicker", () => {
@@ -210,13 +214,13 @@ describe("RalphRunner", () => {
       expect(screen.getByTestId("session-picker")).not.toBeDisabled()
     })
 
-    it("disables ChatInput when viewing historical session", () => {
+    it("still shows status indicator and run duration when viewing historical session", () => {
       render(
         <RalphRunner {...defaultProps} controlState="running" isViewingHistoricalSession={true} />,
       )
-      const input = screen.getByTestId("chat-input")
-      expect(input).toBeDisabled()
-      expect(input).toHaveAttribute("placeholder", "Switch to current session to send messages")
+      // Status indicator and run duration should still be visible
+      expect(screen.getByTestId("status-indicator")).toBeInTheDocument()
+      expect(screen.getByTestId("run-duration")).toBeInTheDocument()
     })
   })
 

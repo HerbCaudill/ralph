@@ -4,7 +4,6 @@ import {
   IconPlugConnected,
   IconPlugConnectedX,
   IconLoader2,
-  IconHistory,
   IconPlayerPlayFilled,
 } from "@tabler/icons-react"
 import {
@@ -60,9 +59,6 @@ export function RalphLoopPanel({
 
   const isConnected = connectionStatus === "connected"
   const isSessionActive = controlState !== "idle"
-  // Chat is only disabled when viewing historical sessions or disconnected
-  // (users can send messages while Ralph is streaming — they are queued)
-  const isChatDisabled = isViewingHistoricalSession || !isConnected
 
   // Header with robot icon, session picker (includes task info), and history badge
   const header = (
@@ -78,12 +74,6 @@ export function RalphLoopPanel({
           taskTitle={taskTitle}
         />
       </div>
-      {isViewingHistoricalSession && (
-        <span className="flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-          <IconHistory size={12} stroke={1.5} />
-          Viewing history
-        </span>
-      )}
     </div>
   )
 
@@ -117,17 +107,12 @@ export function RalphLoopPanel({
   // Footer with chat input and status bar
   const footer = (
     <div className="flex flex-col border-t border-border">
-      {/* Chat input - only show when there's an active session */}
-      {isSessionActive && (
+      {/* Chat input - only show when there's an active session and not viewing history */}
+      {isSessionActive && !isViewingHistoricalSession && (
         <ChatInput
           onSend={onSendMessage}
-          disabled={isChatDisabled}
-          placeholder={
-            isViewingHistoricalSession ? "Switch to current session to send messages"
-            : !isConnected ?
-              "Waiting for connection..."
-            : "Send a message…"
-          }
+          disabled={!isConnected}
+          placeholder={!isConnected ? "Waiting for connection..." : "Send a message…"}
           storageKey="ralph-loop-chat-draft"
         />
       )}

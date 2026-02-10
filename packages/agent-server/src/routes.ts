@@ -74,12 +74,17 @@ export function registerRoutes(
     try {
       const sessionId = param(req, "id")
       const since = req.query.since ? Number(req.query.since) : undefined
-      const persister = ctx.getSessionManager().getPersister()
+      const manager = ctx.getSessionManager()
+      const persister = manager.getPersister()
+
+      // Get the session's app namespace so we can read from the correct directory
+      const sessionInfo = manager.getSessionInfo(sessionId)
+      const app = sessionInfo?.app
 
       const events =
         since ?
-          await persister.readEventsSince(sessionId, since)
-        : await persister.readEvents(sessionId)
+          await persister.readEventsSince(sessionId, since, app)
+        : await persister.readEvents(sessionId, app)
 
       res.json({ events })
     } catch (err) {

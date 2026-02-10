@@ -267,7 +267,7 @@ describe("RalphLoopPanel", () => {
       expect(input).not.toBeDisabled()
     })
 
-    it("disables chat input when viewing historical session", () => {
+    it("hides chat input when viewing historical session", () => {
       render(
         <RalphLoopPanel
           {...defaultProps}
@@ -275,8 +275,8 @@ describe("RalphLoopPanel", () => {
           isViewingHistoricalSession={true}
         />,
       )
-      const input = screen.getByTestId("chat-input-field")
-      expect(input).toBeDisabled()
+      expect(screen.queryByTestId("chat-input")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("chat-input-field")).not.toBeInTheDocument()
     })
 
     it("enables chat input even when streaming", () => {
@@ -334,14 +334,26 @@ describe("RalphLoopPanel", () => {
   })
 
   describe("historical session viewing", () => {
-    it("shows indicator when viewing historical session", () => {
-      render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={true} />)
-      expect(screen.getByText(/viewing history/i)).toBeInTheDocument()
+    it("hides chat input when viewing historical session", () => {
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          controlState="running"
+          isViewingHistoricalSession={true}
+        />,
+      )
+      expect(screen.queryByTestId("chat-input")).not.toBeInTheDocument()
     })
 
-    it("does not show indicator when viewing current session", () => {
-      render(<RalphLoopPanel {...defaultProps} isViewingHistoricalSession={false} />)
-      expect(screen.queryByText(/viewing history/i)).not.toBeInTheDocument()
+    it("shows chat input when not viewing historical session", () => {
+      render(
+        <RalphLoopPanel
+          {...defaultProps}
+          controlState="running"
+          isViewingHistoricalSession={false}
+        />,
+      )
+      expect(screen.getByTestId("chat-input")).toBeInTheDocument()
     })
   })
 
