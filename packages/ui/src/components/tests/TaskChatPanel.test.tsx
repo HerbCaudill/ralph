@@ -5,10 +5,21 @@ import type { ChatEvent, SessionIndexEntry } from "@herbcaudill/agent-view"
 
 // Mock Button component from @herbcaudill/components
 vi.mock("@herbcaudill/components", () => ({
-  Button: ({ children, variant, onClick, disabled, "aria-label": ariaLabel, ...props }: any) => (
+  Button: ({
+    children,
+    variant,
+    size,
+    className,
+    onClick,
+    disabled,
+    "aria-label": ariaLabel,
+    ...props
+  }: any) => (
     <button
       data-testid="button-component"
       data-variant={variant || "default"}
+      data-size={size || "default"}
+      data-classname={className || ""}
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
@@ -164,6 +175,16 @@ describe("TaskChatPanel", () => {
       // The Button component mock sets data-variant to "default" when no variant is specified
       expect(newChatButton).toHaveAttribute("data-variant", "default")
       expect(newChatButton).toHaveAttribute("data-testid", "button-component")
+    })
+
+    it("renders new chat button with default size and normal font weight", () => {
+      render(<TaskChatPanel {...defaultProps} />)
+
+      const newChatButton = screen.getByLabelText("New chat")
+      // Button should use default size (larger than sm)
+      expect(newChatButton).toHaveAttribute("data-size", "default")
+      // Button should have font-normal class to override the default font-medium
+      expect(newChatButton).toHaveAttribute("data-classname", "font-normal")
     })
   })
 
