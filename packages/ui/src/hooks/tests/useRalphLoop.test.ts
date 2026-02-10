@@ -1250,11 +1250,9 @@ describe("useRalphLoop", () => {
       })
 
       // Events should still be visible (preserved for scrollback history)
-      // The current implementation clears events - this test documents that behavior
-      // but may need to change if we want to preserve events across sessions
-      expect(result.current.events.length).toBe(0) // Current behavior: events are cleared
-      // TODO: If we want to preserve events, change this to:
-      // expect(result.current.events.length).toBe(eventCountBeforeNewSession)
+      // Fixed in r-xpu16: session_created no longer clears events
+      expect(result.current.events.some(e => e.id === "session1-event1")).toBe(true)
+      expect(result.current.events.some(e => e.id === "session1-event2")).toBe(true)
     })
 
     it("should render all events when rapid events arrive near session end (r-xpu16)", async () => {

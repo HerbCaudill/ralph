@@ -122,8 +122,13 @@ export function useRalphLoop(
         break
 
       case "session_created":
-        // New session — clear old events, start streaming
-        setEvents([])
+        // New session — DON'T clear events here!
+        // Events are cleared in the start() callback when the user explicitly starts.
+        // When the Ralph loop auto-continues (after end_task), we want to preserve
+        // events from previous sessions for scrollback history.
+        // Clearing events here caused a bug (r-xpu16) where events near session end
+        // would disappear because session_created arrived while events were still
+        // being processed.
         setSessionId(data.sessionId)
         setIsStreaming(true)
         // Persist the session ID so it can be restored on page reload
