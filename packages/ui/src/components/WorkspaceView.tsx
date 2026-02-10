@@ -48,7 +48,7 @@ import { WorkerControlBar } from "@/components/WorkerControlBar"
  * Reads `owner` and `repo` from URL params to identify the workspace.
  */
 export function WorkspaceView() {
-  const { workspaceId } = useWorkspaceParams()
+  const { workspaceId, sessionId: urlSessionId } = useWorkspaceParams()
   const navigate = useNavigate()
 
   // Sync API client config with the workspace from the route.
@@ -87,6 +87,20 @@ export function WorkspaceView() {
   // Session history management
   const { sessions, historicalEvents, isViewingHistorical, selectSession, clearHistorical } =
     useRalphSessions(sessionId, workspaceId)
+
+  // Load session from URL when navigating directly to a session URL.
+  // Only triggers when URL sessionId is different from the live sessionId.
+  const urlSessionIdRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    // Skip if the URL session ID hasn't changed
+    if (urlSessionId === urlSessionIdRef.current) return
+    urlSessionIdRef.current = urlSessionId
+
+    // If URL has a session ID that differs from the current live session, load it
+    if (urlSessionId && urlSessionId !== sessionId) {
+      selectSession(urlSessionId)
+    }
+  }, [urlSessionId, sessionId, selectSession])
 
   // Effective events and streaming state: use historical when viewing past sessions
   const events = isViewingHistorical && historicalEvents ? historicalEvents : liveEvents
@@ -276,12 +290,16 @@ export function WorkspaceView() {
   const handleSelectSession = useCallback(
     (selectedSessionId: string) => {
       if (selectedSessionId === sessionId) {
+        // Going back to the live session - clear historical view and update URL
         clearHistorical()
+        navigate(`/${workspaceId}`, { replace: true })
       } else {
+        // Viewing a historical session - load events and update URL
         selectSession(selectedSessionId)
+        navigate(`/${workspaceId}/${selectedSessionId}`, { replace: true })
       }
     },
-    [sessionId, clearHistorical, selectSession],
+    [sessionId, clearHistorical, selectSession, navigate, workspaceId],
   )
 
   // Handle Ralph message send

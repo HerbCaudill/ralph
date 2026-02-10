@@ -50,12 +50,27 @@ const mockPauseWorker = vi.fn()
 const mockResumeWorker = vi.fn()
 const mockStopWorker = vi.fn()
 
+// Mock URL session ID (can be mutated per-test)
+let mockUrlSessionId: string | undefined = undefined
+
+// Track navigate calls
+const mockNavigate = vi.fn()
+
 // ── Mocks ──────────────────────────────────────────────────────────────────
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom")
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  }
+})
 
 vi.mock("../../hooks/useWorkspaceParams", () => ({
   useWorkspaceParams: () => ({
     owner: "test",
     repo: "workspace",
+    sessionId: mockUrlSessionId,
     workspaceId: "test/workspace",
   }),
 }))
@@ -281,6 +296,7 @@ describe("WorkspaceView session history wiring", () => {
     mockControlState = "idle"
     mockOrchestratorState = "stopped"
     mockOrchestratorWorkers = {}
+    mockUrlSessionId = undefined
     mockSessions = [
       {
         sessionId: "live-session-1",
@@ -591,6 +607,101 @@ describe("WorkspaceView Header agent/model and workspace props", () => {
     it("passes workspacePath to Header", () => {
       renderWorkspaceView()
       expect(capturedHeaderProps.workspacePath).toBe("/test/workspace")
+    })
+  })
+})
+
+describe("WorkspaceView session ID URL integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedHeaderProps = {}
+    capturedRalphRunnerProps = {}
+    capturedWorkerControlBarProps = null
+
+    // Reset mock state to defaults
+    mockSessionId = "live-session-1"
+    mockLiveEvents = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
+    mockIsStreaming = false
+    mockControlState = "idle"
+    mockOrchestratorState = "stopped"
+    mockOrchestratorWorkers = {}
+    mockUrlSessionId = undefined
+    mockSessions = [
+      {
+        sessionId: "live-session-1",
+        adapter: "claude",
+        firstMessageAt: 1000,
+        lastMessageAt: 3000,
+        firstUserMessage: "task-1",
+        taskId: "task-1",
+        taskTitle: "Live session task",
+      },
+      {
+        sessionId: "old-session-2",
+        adapter: "claude",
+        firstMessageAt: 500,
+        lastMessageAt: 900,
+        firstUserMessage: "task-2",
+        taskId: "task-2",
+        taskTitle: "Old session task",
+      },
+    ]
+    mockHistoricalEvents = null
+    mockIsViewingHistorical = false
+  })
+
+  describe("loading session from URL", () => {
+    it("calls selectSession when URL has a session ID different from live session", () => {
+      mockUrlSessionId = "old-session-2"
+      mockSessionId = "live-session-1"
+
+      renderWorkspaceView()
+
+      expect(mockSelectSession).toHaveBeenCalledWith("old-session-2")
+    })
+
+    it("does not call selectSession when URL session ID matches live session", () => {
+      mockUrlSessionId = "live-session-1"
+      mockSessionId = "live-session-1"
+
+      renderWorkspaceView()
+
+      expect(mockSelectSession).not.toHaveBeenCalled()
+    })
+
+    it("does not call selectSession when no session ID in URL", () => {
+      mockUrlSessionId = undefined
+      mockSessionId = "live-session-1"
+
+      renderWorkspaceView()
+
+      expect(mockSelectSession).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("updating URL when session changes", () => {
+    it("updates URL when selecting a historical session via onSelectSession", () => {
+      mockSessionId = "live-session-1"
+      mockUrlSessionId = undefined
+
+      renderWorkspaceView()
+
+      const handler = capturedRalphRunnerProps.onSelectSession as (id: string) => void
+      handler("old-session-2")
+
+      expect(mockNavigate).toHaveBeenCalledWith("/test/workspace/old-session-2", { replace: true })
+    })
+
+    it("updates URL to workspace root when selecting the live session", () => {
+      mockSessionId = "live-session-1"
+      mockUrlSessionId = "old-session-2"
+
+      renderWorkspaceView()
+
+      const handler = capturedRalphRunnerProps.onSelectSession as (id: string) => void
+      handler("live-session-1")
+
+      expect(mockNavigate).toHaveBeenCalledWith("/test/workspace", { replace: true })
     })
   })
 })
