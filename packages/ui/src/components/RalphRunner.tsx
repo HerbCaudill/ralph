@@ -139,6 +139,7 @@ export function RalphRunner({
         {controlState !== "idle" && !isViewingHistoricalSession && (
           <ChatInput
             onSend={onSendMessage}
+            onEscape={onPause}
             disabled={!isConnected}
             placeholder={!isConnected ? "Waiting for connection..." : "Send a message…"}
             storageKey="ralph-runner-chat-draft"

@@ -35,7 +35,7 @@ function writeDraft(storageKey: string | undefined, value: string): void {
  * so drafts survive page reloads.
  */
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { onSend, disabled = false, placeholder = "Send a message\u2026", storageKey },
+  { onSend, onEscape, disabled = false, placeholder = "Send a message\u2026", storageKey },
   ref,
 ) {
   const [value, setValue] = useState(() => readDraft(storageKey))
@@ -75,9 +75,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault()
         handleSend()
+      } else if (e.key === "Escape") {
+        e.preventDefault()
+        onEscape?.()
+        textareaRef.current?.blur()
       }
     },
-    [handleSend],
+    [handleSend, onEscape],
   )
 
   const handleInput = useCallback(
@@ -137,6 +141,8 @@ export type ChatInputHandle = {
 
 export type ChatInputProps = {
   onSend: (message: string) => void
+  /** Called when Escape key is pressed. Useful for pausing an agent or dismissing the input. */
+  onEscape?: () => void
   disabled?: boolean
   placeholder?: string
   /** Optional localStorage key for persisting draft messages across reloads. */

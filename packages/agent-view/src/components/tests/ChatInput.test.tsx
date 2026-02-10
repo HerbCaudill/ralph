@@ -264,6 +264,48 @@ describe("ChatInput", () => {
     })
   })
 
+  describe("escape key behavior", () => {
+    it("calls onEscape when Escape is pressed", () => {
+      const handleEscape = vi.fn()
+      render(<ChatInput onSend={() => {}} onEscape={handleEscape} />)
+      const textarea = screen.getByRole("textbox")
+
+      fireEvent.keyDown(textarea, { key: "Escape" })
+
+      expect(handleEscape).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not call onEscape when onEscape prop is not provided", () => {
+      // This test ensures the component doesn't break when onEscape is not provided
+      render(<ChatInput onSend={() => {}} />)
+      const textarea = screen.getByRole("textbox")
+
+      // Should not throw
+      fireEvent.keyDown(textarea, { key: "Escape" })
+    })
+
+    it("blurs the textarea when Escape is pressed", () => {
+      render(<ChatInput onSend={() => {}} />)
+      const textarea = screen.getByRole("textbox")
+
+      expect(textarea).toHaveFocus()
+      fireEvent.keyDown(textarea, { key: "Escape" })
+      expect(textarea).not.toHaveFocus()
+    })
+
+    it("calls onEscape and blurs when Escape is pressed together", () => {
+      const handleEscape = vi.fn()
+      render(<ChatInput onSend={() => {}} onEscape={handleEscape} />)
+      const textarea = screen.getByRole("textbox")
+
+      expect(textarea).toHaveFocus()
+      fireEvent.keyDown(textarea, { key: "Escape" })
+
+      expect(handleEscape).toHaveBeenCalledTimes(1)
+      expect(textarea).not.toHaveFocus()
+    })
+  })
+
   describe("localStorage persistence", () => {
     const STORAGE_KEY = "test-chat-input"
 

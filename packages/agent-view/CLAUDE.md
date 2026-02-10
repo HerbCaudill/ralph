@@ -34,6 +34,10 @@ The `hotkeys/` directory provides a hotkey registration system for host applicat
 
 Host applications provide handler callbacks; the hook handles platform-aware key matching and input element filtering.
 
+**ChatInput keyboard behavior:**
+
+- **Escape** — Calls the optional `onEscape` callback prop and blurs the textarea. In Ralph loop panels, this is wired to pause functionality.
+
 Tool output visibility is controlled globally via `toolOutput.isVisible`, while each `ToolUseCard` can be toggled independently by clicking its header.
 
 Tool use summaries accept tool input as objects or JSON strings; JSON strings are parsed before rendering summaries (for example, Bash commands).

@@ -43,7 +43,7 @@ export function RalphLoopPanel({
   taskId,
   taskTitle,
   onSendMessage,
-  onPause: _onPause,
+  onPause,
   onResume: _onResume,
   onStop: _onStop,
   onStart,
@@ -127,6 +127,7 @@ export function RalphLoopPanel({
       {isSessionActive && !isViewingHistoricalSession && (
         <ChatInput
           onSend={onSendMessage}
+          onEscape={onPause}
           disabled={!isConnected}
           placeholder={!isConnected ? "Waiting for connection..." : "Send a message…"}
           storageKey="ralph-loop-chat-draft"
