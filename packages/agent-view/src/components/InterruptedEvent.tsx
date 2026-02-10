@@ -4,7 +4,7 @@ import type { InterruptedChatEvent } from "../types"
 
 /** Renders an interrupted event when the user stops the agent mid-stream. */
 export function InterruptedEvent({ event, className }: Props) {
-  const message = event.message ?? "Interrupted · What should Ralph do instead?"
+  const message = event.message
 
   return (
     <div
@@ -19,7 +19,15 @@ export function InterruptedEvent({ event, className }: Props) {
         <IconPlayerPause className="size-4" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="text-foreground text-sm font-medium">{message}</span>
+        <span className="text-sm">
+          {message ?
+            <span className="text-foreground font-medium">{message}</span>
+          : <>
+              <span className="text-foreground font-medium">Interrupted</span>
+              <span className="text-foreground"> · What should Ralph do instead?</span>
+            </>
+          }
+        </span>
       </div>
     </div>
   )
