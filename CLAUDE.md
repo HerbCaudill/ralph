@@ -105,7 +105,7 @@ Load order: user global → workspace → working directory context → caller-p
 
 ### Session persistence
 
-Sessions are stored as JSONL files, optionally namespaced by app (e.g., `{storageDir}/ralph/session123.jsonl`). Per-workspace session IDs persist in localStorage. On reconnect, the server sends `pending_events` (even if empty) to signal restoration is complete.
+Sessions are stored as JSONL files, optionally namespaced by app (e.g., `{storageDir}/ralph/session123.jsonl`). The default storage directory is `~/local/share/ralph/agent-sessions/ralph`. Per-workspace session IDs persist in localStorage. On reconnect, the server sends `pending_events` (even if empty) to signal restoration is complete.
 
 ### Concurrent workers
 
