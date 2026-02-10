@@ -126,9 +126,39 @@ describe("useRalphSessions", () => {
         expect(mockFetchRalphSessions).toHaveBeenCalled()
       })
     })
+
+    it("should populate sessions when currentSessionId is null (Ralph is idle)", async () => {
+      const { result } = renderHook(() => useRalphSessions(null))
+
+      await waitFor(() => {
+        expect(result.current.sessions).toEqual(mockSessions)
+      })
+    })
   })
 
   describe("selectSession", () => {
+    it("should allow selecting a historical session when Ralph is idle (currentSessionId is null)", async () => {
+      // This is the key scenario: user lands on the page with Ralph not running,
+      // but should still be able to browse and view historical sessions
+      const { result } = renderHook(() => useRalphSessions(null))
+
+      // Sessions should be fetched and populated
+      await waitFor(() => {
+        expect(result.current.sessions).toEqual(mockSessions)
+      })
+
+      // User selects a historical session
+      await act(async () => {
+        await result.current.selectSession("session-1")
+      })
+
+      // Events should be loaded and displayed
+      await waitFor(() => {
+        expect(result.current.historicalEvents).toEqual(mockEvents)
+        expect(result.current.isViewingHistorical).toBe(true)
+      })
+    })
+
     it("should fetch events for the selected session", async () => {
       const { result } = renderHook(() => useRalphSessions("session-current"))
 
