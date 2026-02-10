@@ -89,7 +89,7 @@ export function WorkspaceView() {
   const { state: taskChatState, actions: taskChatActions } = useTaskChat()
 
   // Task chat session history from server
-  const { sessions: taskChatSessions } = useTaskChatSessions(taskChatState.sessionId)
+  const { sessions: taskChatSessions } = useTaskChatSessions(taskChatState.sessionId, workspaceId)
 
   // Workspace state from beads-view
   const {

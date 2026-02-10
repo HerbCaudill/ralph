@@ -1,5 +1,6 @@
 import type { AgentType, SessionIndexEntry } from "@herbcaudill/agent-view"
 import type { TaskResponse } from "@herbcaudill/beads-view"
+import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 
 /** Cache for resolved task titles to avoid repeated API calls. */
 const taskTitleCache = new Map<string, string>()
@@ -20,6 +21,8 @@ interface SessionsResponse {
     createdAt: number
     lastMessageAt?: number
     taskId?: string
+    /** Working directory this session was created in. */
+    cwd?: string
     /** Session status: "idle" | "processing" | "error". */
     status?: string
   }>
@@ -52,7 +55,13 @@ export async function fetchRalphSessions(
     }
 
     const data = (await response.json()) as SessionsResponse
-    const sessions = data.sessions ?? []
+    const allSessions = data.sessions ?? []
+
+    // Filter to sessions matching the current workspace
+    const sessions =
+      workspaceId ?
+        allSessions.filter(s => s.cwd && getWorkspaceId({ workspacePath: s.cwd }) === workspaceId)
+      : allSessions
 
     // Transform to RalphSessionIndexEntry and resolve task titles in parallel
     const entries = await Promise.all(

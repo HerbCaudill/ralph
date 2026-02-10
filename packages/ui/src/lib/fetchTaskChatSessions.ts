@@ -1,4 +1,5 @@
 import type { AgentType, SessionIndexEntry } from "@herbcaudill/agent-view"
+import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 
 /** Response from GET /api/sessions?app=task-chat. */
 interface SessionsResponse {
@@ -7,6 +8,8 @@ interface SessionsResponse {
     adapter: string
     createdAt: number
     lastMessageAt?: number
+    /** Working directory this session was created in. */
+    cwd?: string
     /** Session status: "idle" | "processing" | "error". */
     status?: string
   }>
@@ -18,6 +21,8 @@ export interface FetchTaskChatSessionsOptions {
   baseUrl?: string
   /** Custom fetch function for testing. */
   fetchFn?: typeof fetch
+  /** Workspace ID (`owner/repo`) to filter sessions by. */
+  workspaceId?: string
 }
 
 /**
@@ -28,7 +33,7 @@ export async function fetchTaskChatSessions(
   /** Options for the fetch operation. */
   options: FetchTaskChatSessionsOptions = {},
 ): Promise<SessionIndexEntry[]> {
-  const { baseUrl = "", fetchFn = fetch } = options
+  const { baseUrl = "", fetchFn = fetch, workspaceId } = options
 
   try {
     const response = await fetchFn(`${baseUrl}/api/sessions?app=task-chat`)
@@ -37,7 +42,13 @@ export async function fetchTaskChatSessions(
     }
 
     const data = (await response.json()) as SessionsResponse
-    const sessions = data.sessions ?? []
+    const allSessions = data.sessions ?? []
+
+    // Filter to sessions matching the current workspace
+    const sessions =
+      workspaceId ?
+        allSessions.filter(s => s.cwd && getWorkspaceId({ workspacePath: s.cwd }) === workspaceId)
+      : allSessions
 
     // Transform to SessionIndexEntry
     const entries: SessionIndexEntry[] = sessions.map(session => ({

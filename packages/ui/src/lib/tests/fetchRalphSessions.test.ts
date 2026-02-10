@@ -233,7 +233,7 @@ describe("fetchRalphSessions", () => {
 
   it("includes workspace query parameter when resolving task titles", async () => {
     const mockFetch = vi.fn()
-    // Session list response
+    // Session list response (cwd matches the workspaceId)
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -244,6 +244,7 @@ describe("fetchRalphSessions", () => {
             createdAt: 1000,
             lastMessageAt: 2000,
             taskId: "r-abc123",
+            cwd: "/Users/herbcaudill/Code/HerbCaudill/ralph",
           },
         ],
       }),
@@ -260,13 +261,11 @@ describe("fetchRalphSessions", () => {
 
     await fetchRalphSessions({
       fetchFn: mockFetch,
-      workspaceId: "HerbCaudill/ralph",
+      workspaceId: "herbcaudill/ralph",
     })
 
     // The task API call should include the workspace query parameter
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/tasks/r-abc123?workspace=HerbCaudill%2Fralph",
-    )
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/r-abc123?workspace=herbcaudill%2Fralph")
   })
 
   it("caches task titles to avoid repeated API calls", async () => {

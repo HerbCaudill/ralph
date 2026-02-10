@@ -4,28 +4,35 @@ import { fetchTaskChatSessions } from "../lib/fetchTaskChatSessions"
 
 /**
  * Hook that manages task-chat session history.
- * Fetches sessions on mount and when currentSessionId changes.
+ * Fetches sessions on mount and when currentSessionId or workspaceId changes.
  */
 export function useTaskChatSessions(
   /** The current active session ID (from useTaskChat). */
   currentSessionId: string | null,
+  /** Workspace ID to filter sessions by. */
+  workspaceId?: string,
 ): UseTaskChatSessionsReturn {
   const [sessions, setSessions] = useState<SessionIndexEntry[]>([])
 
-  // Track the last session ID to avoid unnecessary refetches
-  const lastSessionIdRef = useRef<string | null | undefined>(undefined)
+  // Track the last params to avoid unnecessary refetches
+  const lastParamsRef = useRef<{ sessionId: string | null; workspaceId: string | undefined }>({
+    sessionId: undefined as unknown as string | null,
+    workspaceId: undefined,
+  })
 
-  // Fetch sessions on mount and when currentSessionId changes
+  // Fetch sessions on mount and when currentSessionId or workspaceId changes
   useEffect(() => {
-    // Skip if session ID hasn't changed
-    if (lastSessionIdRef.current === currentSessionId) {
+    if (
+      lastParamsRef.current.sessionId === currentSessionId &&
+      lastParamsRef.current.workspaceId === workspaceId
+    ) {
       return
     }
-    lastSessionIdRef.current = currentSessionId
+    lastParamsRef.current = { sessionId: currentSessionId, workspaceId }
 
     const loadSessions = async () => {
       try {
-        const result = await fetchTaskChatSessions()
+        const result = await fetchTaskChatSessions({ workspaceId })
         setSessions(result)
       } catch (error) {
         console.error("[useTaskChatSessions] Failed to fetch sessions:", error)
@@ -33,7 +40,7 @@ export function useTaskChatSessions(
     }
 
     loadSessions()
-  }, [currentSessionId])
+  }, [currentSessionId, workspaceId])
 
   return {
     sessions,
