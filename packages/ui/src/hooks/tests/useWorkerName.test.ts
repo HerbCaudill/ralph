@@ -57,7 +57,8 @@ describe("useWorkerName", () => {
     const events: ChatEvent[] = [
       {
         type: "user_message",
-        message: "# Bart, round 42\n\n# Ralph session protocol\n\nYou are running as an autonomous session agent.",
+        message:
+          "# Bart, round 42\n\n# Ralph session protocol\n\nYou are running as an autonomous session agent.",
         timestamp: Date.now(),
       } as UserMessageChatEvent,
     ]
