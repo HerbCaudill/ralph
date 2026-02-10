@@ -82,6 +82,7 @@ export const SessionRunner = ({
   const [isPaused, setIsPaused] = useState(false) // Pause after current session completes
   const isPausedRef = useRef(false) // Ref to access in async callbacks
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
   const taskCompletedAbortRef = useRef(false) // Tracks abort triggered by task completion
 
@@ -363,6 +364,7 @@ export const SessionRunner = ({
 
     // Session ID will be set from the SDK init message
     sessionIdRef.current = null
+    setSessionId(null)
 
     // Create a message queue for this session
     // This allows us to send follow-up user messages to Claude while it's running
@@ -412,6 +414,7 @@ export const SessionRunner = ({
             }
             logFileRef.current = join(storageDir, `${message.session_id}.jsonl`)
             sessionIdRef.current = message.session_id
+            setSessionId(message.session_id)
           }
 
           // Log raw message to file (JSONL format - one JSON object per line)
@@ -676,7 +679,7 @@ export const SessionRunner = ({
             </Text>
           : <Text color="cyan">
               <Spinner type="dots" /> Running round <Text color="yellow">{currentSession}</Text>{" "}
-              (max {totalSessions})
+              (max {totalSessions}){sessionId && <Text dimColor> {sessionId.slice(0, 8)}</Text>}
             </Text>
 
         : <Text color="cyan">
