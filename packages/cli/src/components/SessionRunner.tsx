@@ -680,7 +680,7 @@ export const SessionRunner = ({
             </Text>
           : <Text color="cyan">
               <Spinner type="dots" /> Running round <Text color="yellow">{currentSession}</Text>{" "}
-              (max {totalSessions}){sessionId && <Text dimColor> {sessionId.slice(0, 8)}</Text>}
+              (max {totalSessions}){sessionId && <Text dimColor> {sessionId}.jsonl</Text>}
             </Text>
 
         : <Text color="cyan">
