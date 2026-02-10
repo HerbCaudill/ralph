@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 import { apiFetch, configureApiClient, getApiClientConfig } from "../lib/apiClient"
 
 export type Workspace = {
@@ -215,9 +216,13 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
       // Update localStorage and apiClient config first
       saveWorkspacePath(path)
 
-      // Use cached workspaces list for an instant UI update (name, accent color)
+      // Use cached workspaces list for an instant UI update (name, accent color).
+      // The path may be a workspaceId (e.g. "herbcaudill/ralph") or a filesystem path,
+      // so match against both.
       const cached = getCachedWorkspacesList()
-      const match = cached.find(ws => ws.path === path)
+      const match = cached.find(
+        ws => ws.path === path || getWorkspaceId({ workspacePath: ws.path }) === path,
+      )
       const immediate: Workspace = match ?? { path, name: path.split("/").pop() || path }
       setCurrent(immediate)
       setCachedWorkspaceInfo(immediate)
