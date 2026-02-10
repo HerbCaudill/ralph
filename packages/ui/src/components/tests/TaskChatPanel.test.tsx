@@ -132,36 +132,37 @@ describe("TaskChatPanel", () => {
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })
 
-    it("renders new session button", () => {
+    it("renders new chat button with text", () => {
       render(<TaskChatPanel {...defaultProps} />)
 
-      const newSessionButton = screen.getByLabelText("New session")
-      expect(newSessionButton).toBeInTheDocument()
+      const newChatButton = screen.getByLabelText("New chat")
+      expect(newChatButton).toBeInTheDocument()
+      expect(screen.getByText("New chat")).toBeInTheDocument()
     })
 
-    it("calls onNewSession when new session button is clicked", () => {
+    it("calls onNewSession when new chat button is clicked", () => {
       render(<TaskChatPanel {...defaultProps} />)
 
-      const newSessionButton = screen.getByLabelText("New session")
-      fireEvent.click(newSessionButton)
+      const newChatButton = screen.getByLabelText("New chat")
+      fireEvent.click(newChatButton)
 
       expect(defaultProps.onNewSession).toHaveBeenCalledTimes(1)
     })
 
-    it("disables new session button when streaming", () => {
+    it("disables new chat button when streaming", () => {
       render(<TaskChatPanel {...defaultProps} isStreaming={true} />)
 
-      const newSessionButton = screen.getByLabelText("New session")
-      expect(newSessionButton).toBeDisabled()
+      const newChatButton = screen.getByLabelText("New chat")
+      expect(newChatButton).toBeDisabled()
     })
 
-    it("renders new session button using Button component with default variant", () => {
+    it("renders new chat button using Button component with default variant", () => {
       render(<TaskChatPanel {...defaultProps} />)
 
-      const newSessionButton = screen.getByLabelText("New session")
+      const newChatButton = screen.getByLabelText("New chat")
       // The Button component mock sets data-variant to "default" when no variant is specified
-      expect(newSessionButton).toHaveAttribute("data-variant", "default")
-      expect(newSessionButton).toHaveAttribute("data-testid", "button-component")
+      expect(newChatButton).toHaveAttribute("data-variant", "default")
+      expect(newChatButton).toHaveAttribute("data-testid", "button-component")
     })
   })
 
