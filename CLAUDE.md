@@ -425,6 +425,62 @@ The `WorktreeManager` (`packages/agent-server/src/lib/WorktreeManager.ts`) manag
 - `MergeResult` - Result of merge operations
 - `CleanupResult` - Result of cleanup operations
 
+### WorkerLoop
+
+The `WorkerLoop` (`packages/agent-server/src/lib/WorkerLoop.ts`) implements the core worker loop for concurrent Ralph workers. Each worker runs this loop to:
+
+1. Pull latest main
+2. Create a worktree with a task-specific branch
+3. Spawn Claude CLI in the worktree directory
+4. On completion, merge branch into main
+5. Resolve any merge conflicts (via callback or retry)
+6. Run tests to verify clean merge
+7. Clean up worktree and branch
+8. Repeat
+
+**Key principle:** Worker never gives up on a task - retries until successful merge and tests pass.
+
+**Constructor options:**
+
+- `workerName` - The worker's name (e.g., "homer", used for branch naming)
+- `mainWorkspacePath` - Path to the main git repository
+- `spawnClaude(cwd)` - Function to spawn Claude CLI in the given working directory
+- `getReadyTask()` - Async function returning the next task to work on (or null if none)
+- `claimTask(taskId)` - Async function to claim a task (set assignee, status)
+- `closeTask(taskId)` - Async function to close/complete a task
+- `runTests?()` - Optional async function to run tests after merge
+- `onMergeConflict?(context)` - Optional callback for merge conflicts, returns "resolved" or "abort"
+
+**Methods:**
+
+- `runLoop()` - Run continuously until stopped or no tasks available
+- `runOnce()` - Run a single iteration (one task)
+- `stop()` - Stop gracefully after current task
+- `forceStop()` - Kill current Claude process and stop
+
+**Events:**
+
+- `idle` - No tasks available
+- `task_started` - Task claimed and started
+- `worktree_created` - Git worktree created for task
+- `claude_started` - Claude CLI process spawned
+- `claude_completed` - Claude CLI process finished
+- `merge_completed` - Branch merged to main successfully
+- `merge_conflict` - Merge had conflicts
+- `tests_passed` - Tests passed after merge
+- `tests_failed` - Tests failed after merge
+- `task_completed` - Task fully completed
+- `error` - Error occurred
+
+**Exported from `@herbcaudill/agent-server`:**
+
+- `WorkerLoop` - The worker loop class
+- `WorkerLoopOptions` - Constructor options type
+- `WorkerLoopEvents` - Event types
+- `ReadyTask` - Task info type
+- `TestResult` - Test result type
+- `MergeConflictContext` - Conflict callback context type
+
 ## Runtime interaction
 
 - **Escape** - Send a message to Claude

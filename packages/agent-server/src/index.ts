@@ -126,6 +126,17 @@ export type {
   CleanupResult,
 } from "./lib/WorktreeManager.js"
 
+// ── Worker loop ─────────────────────────────────────────────────────
+
+export { WorkerLoop } from "./lib/WorkerLoop.js"
+export type {
+  WorkerLoopOptions,
+  WorkerLoopEvents,
+  ReadyTask,
+  TestResult,
+  MergeConflictContext,
+} from "./lib/WorkerLoop.js"
+
 // ── Server ───────────────────────────────────────────────────────────
 
 /** Module state: connected WebSocket clients. */
