@@ -120,15 +120,18 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
   // This runs synchronously during the first render, before any effects, so that
   // other hooks (e.g. useTaskDetails) can make API calls that include the workspace
   // parameter even when the store has hydrated cached tasks from a previous session.
+  //
+  // IMPORTANT: Always configure with the localStorage value if present, even if the
+  // API client already has a workspace path configured. This handles the case where
+  // the client was configured with a stale value from a previous session or by
+  // another component. The localStorage value is authoritative. (Fix for r-0cqve)
   const eagerConfigApplied = useRef(false)
   if (!eagerConfigApplied.current) {
     eagerConfigApplied.current = true
     const savedPath = getSavedWorkspacePath(storageKey)
     if (savedPath) {
       const currentConfig = getApiClientConfig()
-      if (!currentConfig.workspacePath) {
-        configureApiClient({ ...currentConfig, workspacePath: savedPath })
-      }
+      configureApiClient({ ...currentConfig, workspacePath: savedPath })
     }
   }
 

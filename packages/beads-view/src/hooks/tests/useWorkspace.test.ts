@@ -235,6 +235,38 @@ describe("useWorkspace", () => {
       // The hook updates the config to match the saved localStorage path
       expect(getApiClientConfig().workspacePath).toBe("/home/user/other")
     })
+
+    it("overrides existing stale apiClient config with localStorage value synchronously", () => {
+      // This test verifies the fix for issue r-0cqve:
+      // When apiClient was pre-configured with a stale workspace path,
+      // the eager config should override it SYNCHRONOUSLY during render,
+      // not in an effect. This matters because other components may make
+      // API calls before effects run.
+
+      localStorage.setItem("ralph-workspace-path", "/home/user/correct-workspace")
+      configureApiClient({ workspacePath: "/home/user/stale-workspace" })
+
+      // Capture config state at various points during render
+      let configDuringRender: string | undefined
+      let configAfterRender: string | undefined
+
+      // Use a wrapper to capture the config during the hook's render
+      const { result } = renderHook(() => {
+        const hookResult = useWorkspace()
+        // This runs during render, BEFORE effects
+        configDuringRender = getApiClientConfig().workspacePath
+        return hookResult
+      })
+
+      // This runs after the hook has completed its first render pass
+      configAfterRender = getApiClientConfig().workspacePath
+
+      // The eager config should have updated the workspace path DURING render
+      // (not waiting for effects), so that other components rendered in the
+      // same pass can use the correct workspace
+      expect(configDuringRender).toBe("/home/user/correct-workspace")
+      expect(configAfterRender).toBe("/home/user/correct-workspace")
+    })
   })
 
   describe("deferred workspace list loading", () => {
