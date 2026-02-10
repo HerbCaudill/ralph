@@ -867,6 +867,146 @@ describe("useRalphLoop", () => {
     })
   })
 
+  describe("task lifecycle event parsing (r-c7n1g)", () => {
+    it("should emit task_lifecycle event when assistant event contains <start_task>", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate an assistant event with a <start_task> marker in the text
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: {
+            type: "assistant",
+            timestamp: 1234567890,
+            message: {
+              content: [
+                {
+                  type: "text",
+                  text: "<start_task>r-abc123</start_task>",
+                },
+              ],
+            },
+          },
+        })
+      })
+
+      await waitFor(() => {
+        // Should have both the original assistant event and the derived task_lifecycle event
+        expect(result.current.events).toHaveLength(2)
+        expect(result.current.events[0].type).toBe("assistant")
+        expect(result.current.events[1].type).toBe("task_lifecycle")
+        const lifecycleEvent = result.current.events[1] as any
+        expect(lifecycleEvent.action).toBe("starting")
+        expect(lifecycleEvent.taskId).toBe("r-abc123")
+      })
+    })
+
+    it("should emit task_lifecycle event when assistant event contains <end_task>", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate an assistant event with an <end_task> marker in the text
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: {
+            type: "assistant",
+            timestamp: 1234567890,
+            message: {
+              content: [
+                {
+                  type: "text",
+                  text: "<end_task>r-abc123</end_task>",
+                },
+              ],
+            },
+          },
+        })
+      })
+
+      await waitFor(() => {
+        // Should have both the original assistant event and the derived task_lifecycle event
+        expect(result.current.events).toHaveLength(2)
+        expect(result.current.events[0].type).toBe("assistant")
+        expect(result.current.events[1].type).toBe("task_lifecycle")
+        const lifecycleEvent = result.current.events[1] as any
+        expect(lifecycleEvent.action).toBe("completed")
+        expect(lifecycleEvent.taskId).toBe("r-abc123")
+      })
+    })
+
+    it("should not emit task_lifecycle for assistant events without task markers", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate a normal assistant event without task markers
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "event",
+          workspaceId: TEST_WORKSPACE_ID,
+          event: {
+            type: "assistant",
+            timestamp: 1234567890,
+            message: {
+              content: [
+                {
+                  type: "text",
+                  text: "Just a regular message without task markers",
+                },
+              ],
+            },
+          },
+        })
+      })
+
+      await waitFor(() => {
+        // Should only have the assistant event, no task_lifecycle
+        expect(result.current.events).toHaveLength(1)
+        expect(result.current.events[0].type).toBe("assistant")
+      })
+    })
+
+    it("should emit task_lifecycle events for pending_events with task markers", async () => {
+      const { useRalphLoop } = await import("../useRalphLoop")
+      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate pending_events containing an assistant event with task marker
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "pending_events",
+          workspaceId: TEST_WORKSPACE_ID,
+          events: [
+            {
+              type: "assistant",
+              timestamp: 1234567890,
+              message: {
+                content: [
+                  {
+                    type: "text",
+                    text: "<start_task>r-xyz789</start_task>",
+                  },
+                ],
+              },
+            },
+          ],
+        })
+      })
+
+      await waitFor(() => {
+        // Should have both the assistant event and the derived task_lifecycle event
+        expect(result.current.events).toHaveLength(2)
+        expect(result.current.events[0].type).toBe("assistant")
+        expect(result.current.events[1].type).toBe("task_lifecycle")
+        const lifecycleEvent = result.current.events[1] as any
+        expect(lifecycleEvent.action).toBe("starting")
+        expect(lifecycleEvent.taskId).toBe("r-xyz789")
+      })
+    })
+  })
+
   describe("stop after current (r-6mx58)", () => {
     it("should initialize isStoppingAfterCurrent as false", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")

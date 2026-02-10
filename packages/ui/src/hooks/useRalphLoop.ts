@@ -7,6 +7,7 @@ import {
   saveWorkspaceState,
   loadWorkspaceState,
 } from "../lib/workspaceSessionStorage"
+import { extractTaskLifecycleEvent } from "../lib/extractTaskLifecycleEvent"
 
 /**
  * Hook that communicates with the SharedWorker (ralphWorker.ts) to control the Ralph loop.
@@ -68,14 +69,32 @@ export function useRalphLoop(
             return alreadyExists ? prev : [...prev, event]
           })
         } else {
-          setEvents(prev => [...prev, event])
+          // Check for task lifecycle markers in assistant events
+          const lifecycleEvent = extractTaskLifecycleEvent(event)
+          if (lifecycleEvent) {
+            // Emit both the original event and the derived task_lifecycle event
+            setEvents(prev => [...prev, event, lifecycleEvent])
+          } else {
+            setEvents(prev => [...prev, event])
+          }
         }
         break
       }
 
-      case "pending_events":
-        setEvents(prev => [...prev, ...(data.events as ChatEvent[])])
+      case "pending_events": {
+        // Process each pending event, extracting task lifecycle events as needed
+        const pendingEvents = data.events as ChatEvent[]
+        const allEvents: ChatEvent[] = []
+        for (const event of pendingEvents) {
+          allEvents.push(event)
+          const lifecycleEvent = extractTaskLifecycleEvent(event)
+          if (lifecycleEvent) {
+            allEvents.push(lifecycleEvent)
+          }
+        }
+        setEvents(prev => [...prev, ...allEvents])
         break
+      }
 
       case "connected":
         setConnectionStatus("connected")
