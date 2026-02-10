@@ -10,6 +10,28 @@ import { spawn, type ChildProcess } from "node:child_process"
 import { EventEmitter } from "node:events"
 
 /**
+ * Simulates work in a worktree (writing a file, staging, and committing).
+ * Checks the abort signal before each operation to avoid ENOENT errors
+ * when tests clean up directories mid-operation.
+ *
+ * @param cwd - Working directory path
+ * @param signal - Abort signal to check for cancellation
+ * @param delayMs - Optional delay before starting work (to simulate long-running tasks)
+ */
+async function simulateWork(cwd: string, signal: AbortSignal, delayMs?: number): Promise<void> {
+  if (delayMs) {
+    await new Promise(resolve => setTimeout(resolve, delayMs))
+    if (signal.aborted) return
+  }
+  if (signal.aborted) return
+  await writeFile(join(cwd, "work.txt"), "done")
+  if (signal.aborted) return
+  await git(cwd, ["add", "."])
+  if (signal.aborted) return
+  await git(cwd, ["commit", "-m", "Work done"])
+}
+
+/**
  * Run a git command in the specified directory and return its stdout.
  * Rejects with an error if the command fails.
  */
@@ -49,15 +71,20 @@ function git(
 /**
  * Mock function for spawning Claude CLI process.
  * Returns a mock ChildProcess that immediately completes successfully.
+ *
+ * The onStdout callback receives an emit function and an AbortSignal.
+ * Use the signal to detect when the process has been killed and abort
+ * any pending async operations to avoid writing to cleaned-up directories.
  */
 function createMockClaudeProcess(options: {
   exitCode?: number
   stdout?: string[]
-  onStdout?: (callback: (chunk: Buffer) => void) => void
+  onStdout?: (callback: (chunk: Buffer) => void, signal: AbortSignal) => void | Promise<void>
 }): ChildProcess {
   const proc = new EventEmitter() as unknown as ChildProcess
   const stdout = new EventEmitter()
   const stderr = new EventEmitter()
+  const abortController = new AbortController()
 
   // @ts-expect-error - mocking ChildProcess
   proc.stdout = stdout
@@ -71,20 +98,33 @@ function createMockClaudeProcess(options: {
   proc.kill = () => {
     // @ts-expect-error - mocking ChildProcess
     proc.killed = true
+    abortController.abort()
     proc.emit("close", 0)
     return true
   }
 
   // Schedule stdout chunks and exit
-  setTimeout(() => {
-    if (options.onStdout) {
-      options.onStdout(chunk => stdout.emit("data", chunk))
-    } else if (options.stdout) {
-      for (const line of options.stdout) {
-        stdout.emit("data", Buffer.from(line + "\n"))
+  setTimeout(async () => {
+    // Don't run if already killed
+    if (abortController.signal.aborted) return
+
+    try {
+      if (options.onStdout) {
+        await options.onStdout(chunk => stdout.emit("data", chunk), abortController.signal)
+      } else if (options.stdout) {
+        for (const line of options.stdout) {
+          stdout.emit("data", Buffer.from(line + "\n"))
+        }
       }
+    } catch {
+      // Ignore errors from aborted operations (e.g., ENOENT after cleanup)
     }
-    proc.emit("close", options.exitCode ?? 0)
+
+    // Only emit close if not already killed
+    // @ts-expect-error - mocking ChildProcess
+    if (!proc.killed) {
+      proc.emit("close", options.exitCode ?? 0)
+    }
   }, 10)
 
   return proc
@@ -195,11 +235,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -315,11 +354,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -377,11 +415,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -421,11 +458,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -468,11 +504,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -507,11 +542,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -533,8 +567,11 @@ describe("WorkerOrchestrator", () => {
 
       await orchestrator.start()
 
-      // Wait for worker to complete
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Wait for worker to complete (with timeout)
+      const startTime = Date.now()
+      while (stoppedWorkers.length === 0 && Date.now() - startTime < 3000) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
 
       expect(stoppedWorkers.length).toBeGreaterThan(0)
     })
@@ -571,13 +608,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              // Long-running task
-              await new Promise(resolve => setTimeout(resolve, 200))
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal, 200)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -610,13 +644,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              // Long-running task
-              await new Promise(resolve => setTimeout(resolve, 300))
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal, 300)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -660,12 +691,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await new Promise(resolve => setTimeout(resolve, 200))
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal, 200)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -716,12 +745,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await new Promise(resolve => setTimeout(resolve, 300))
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal, 300)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -770,12 +797,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await new Promise(resolve => setTimeout(resolve, 300))
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal, 300)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
@@ -818,12 +843,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         spawnClaude: cwd => {
           return createMockClaudeProcess({
-            onStdout: async emit => {
-              await new Promise(resolve => setTimeout(resolve, 300))
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
+            onStdout: async (emit, signal) => {
+              await simulateWork(cwd, signal, 300)
+              if (!signal.aborted)
+                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
             },
           })
         },
