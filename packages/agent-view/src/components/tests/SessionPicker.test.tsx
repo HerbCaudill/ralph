@@ -241,6 +241,19 @@ describe("SessionPicker", () => {
       const button = screen.getByRole("button")
       expect(button.getAttribute("data-size")).toBe("icon-sm")
     })
+
+    it("should not constrain task title width with max-w-48", () => {
+      renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
+      const button = screen.getByRole("button")
+      // Find the task title span (contains the title text, not the task ID)
+      const titleSpan = Array.from(button.querySelectorAll("span")).find(span =>
+        span.textContent?.includes("Fix authentication bug"),
+      )
+      expect(titleSpan).toBeDefined()
+      // Should not have max-w-48 class which constrains width
+      // Instead should have min-w-0 to allow natural shrinking while using available space
+      expect(titleSpan?.classList.contains("max-w-48")).toBe(false)
+    })
   })
 
   describe("active session indicator", () => {
