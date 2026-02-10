@@ -210,29 +210,25 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
   /** Switch to a different workspace. Client-side only -- no server call needed. */
   const switchWorkspace = useCallback(
     async (path: string) => {
-      try {
-        setIsLoading(true)
-        onSwitchStart?.()
+      onSwitchStart?.()
 
-        // Update localStorage and apiClient config first
-        saveWorkspacePath(path)
+      // Update localStorage and apiClient config first
+      saveWorkspacePath(path)
 
-        // Fetch workspace info for the new workspace
-        const info = await fetchWorkspaceInfo(path)
+      // Use cached workspaces list for an instant UI update (name, accent color)
+      const cached = getCachedWorkspacesList()
+      const match = cached.find(ws => ws.path === path)
+      const immediate: Workspace = match ?? { path, name: path.split("/").pop() || path }
+      setCurrent(immediate)
+      setCachedWorkspaceInfo(immediate)
+
+      // Refresh full workspace info in the background
+      fetchWorkspaceInfo(path).then(info => {
         if (info) {
           setCurrent(info)
           setCachedWorkspaceInfo(info)
-        } else {
-          // Even if we can't get full info, set minimal workspace data
-          const minimal: Workspace = { path, name: path.split("/").pop() || path }
-          setCurrent(minimal)
-          setCachedWorkspaceInfo(minimal)
         }
-      } catch (e) {
-        setError((e as Error).message)
-      } finally {
-        setIsLoading(false)
-      }
+      })
     },
     [fetchWorkspaceInfo, onSwitchStart, saveWorkspacePath],
   )

@@ -1,12 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { tmpdir } from "node:os"
 import { mkdtempSync, existsSync, readdirSync, writeFileSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import express from "express"
+import { WebSocketServer, WebSocket } from "ws"
+import { createServer, type Server as HttpServer } from "node:http"
 import { SessionPersister } from ".././SessionPersister.js"
 import { ChatSessionManager } from ".././ChatSessionManager.js"
 import { clearRegistry, registerAdapter } from ".././AdapterRegistry.js"
 import { registerRoutes, type RouteContext } from ".././routes.js"
+import { handleWsConnection, type WsClient } from ".././wsHandler.js"
 import {
   AgentAdapter,
   type AgentInfo,
@@ -457,6 +460,140 @@ describe("App-namespaced session storage", () => {
       expect(eventsWithApp.length).toBeGreaterThanOrEqual(2)
       expect(eventsWithApp.some(e => e.type === "user_message")).toBe(true)
       expect(eventsWithApp.some(e => e.type === "assistant_message")).toBe(true)
+    })
+  })
+
+  describe("WebSocket reconnect", () => {
+    let httpServer: HttpServer
+    let wss: WebSocketServer
+    let manager: ChatSessionManager
+    let wsClients: Set<WsClient>
+    let serverPort: number
+
+    beforeEach(async () => {
+      manager = new ChatSessionManager({ storageDir })
+      wsClients = new Set()
+
+      httpServer = createServer()
+      wss = new WebSocketServer({ server: httpServer })
+
+      wss.on("connection", ws => {
+        handleWsConnection(ws, wsClients, {
+          getSessionManager: () => manager,
+        })
+      })
+
+      await new Promise<void>(resolve => {
+        httpServer.listen(0, () => {
+          const addr = httpServer.address()
+          serverPort = typeof addr === "object" && addr ? addr.port : 0
+          resolve()
+        })
+      })
+    })
+
+    afterEach(async () => {
+      wss.close()
+      await new Promise<void>(resolve => httpServer.close(() => resolve()))
+    })
+
+    it("reconnect should return events for app-namespaced sessions", async () => {
+      // Create a session with app="ralph" and add some events
+      const { sessionId } = await manager.createSession({ adapter: "stub", app: "ralph" })
+
+      // Simulate some events being persisted
+      const persister = manager.getPersister()
+      await persister.appendEvent(
+        sessionId,
+        { type: "user_message", message: "Hello", timestamp: 1000 },
+        "ralph",
+      )
+      await persister.appendEvent(
+        sessionId,
+        { type: "assistant_message", message: "Hi there!", timestamp: 2000 },
+        "ralph",
+      )
+
+      // Connect via WebSocket and send reconnect
+      const ws = new WebSocket(`ws://127.0.0.1:${serverPort}`)
+      const messages: Record<string, unknown>[] = []
+
+      ws.on("message", data => {
+        messages.push(JSON.parse(data.toString()))
+      })
+
+      await new Promise<void>(resolve => {
+        ws.on("open", resolve)
+      })
+
+      // Wait for connected message
+      await new Promise<void>(resolve => setTimeout(resolve, 50))
+
+      // Clear initial messages
+      messages.length = 0
+
+      // Send reconnect request
+      ws.send(JSON.stringify({ type: "reconnect", sessionId }))
+
+      // Wait for pending_events response
+      await new Promise<void>(resolve => setTimeout(resolve, 100))
+
+      ws.close()
+
+      // Should receive pending_events with all session events
+      const pendingEventsMsg = messages.find(m => m.type === "pending_events")
+      expect(pendingEventsMsg).toBeDefined()
+
+      const events = pendingEventsMsg!.events as Record<string, unknown>[]
+      // Should include session_created + 2 additional events we added
+      expect(events.length).toBeGreaterThanOrEqual(2)
+      expect(events.some(e => e.type === "user_message")).toBe(true)
+      expect(events.some(e => e.type === "assistant_message")).toBe(true)
+    })
+
+    it("reconnect should return empty events if session not found (regression test)", async () => {
+      // Create a session with app="ralph"
+      const { sessionId } = await manager.createSession({ adapter: "stub", app: "ralph" })
+
+      // Verify the session exists with app namespace
+      expect(existsSync(join(storageDir, "ralph", `${sessionId}.jsonl`))).toBe(true)
+
+      // Connect via WebSocket and send reconnect WITHOUT app info
+      // This simulates the bug: client only sends sessionId, not app
+      const ws = new WebSocket(`ws://127.0.0.1:${serverPort}`)
+      const messages: Record<string, unknown>[] = []
+
+      ws.on("message", data => {
+        messages.push(JSON.parse(data.toString()))
+      })
+
+      await new Promise<void>(resolve => {
+        ws.on("open", resolve)
+      })
+
+      // Wait for connected message
+      await new Promise<void>(resolve => setTimeout(resolve, 50))
+
+      // Clear initial messages
+      messages.length = 0
+
+      // Send reconnect request (without app - simulating the bug)
+      ws.send(JSON.stringify({ type: "reconnect", sessionId }))
+
+      // Wait for pending_events response
+      await new Promise<void>(resolve => setTimeout(resolve, 100))
+
+      ws.close()
+
+      // This test verifies the fix: even without app in the reconnect message,
+      // the server should look up the session's app and return the correct events
+      const pendingEventsMsg = messages.find(m => m.type === "pending_events")
+      expect(pendingEventsMsg).toBeDefined()
+
+      const events = pendingEventsMsg!.events as Record<string, unknown>[]
+      // Should include at least the session_created event
+      expect(events.length).toBeGreaterThanOrEqual(1)
+      expect(events.some(e => e.type === "session_created")).toBe(true)
     })
   })
 })
