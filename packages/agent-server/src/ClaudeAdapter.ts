@@ -1060,6 +1060,8 @@ export class ClaudeAdapter extends AgentAdapter {
               outputTokens: this.turnUsage.outputTokens,
               totalTokens: this.turnUsage.inputTokens + this.turnUsage.outputTokens,
             },
+            // Include the detected model for UI display
+            model: this.detectedModel,
           })
         }
         // Reset per-turn tracking for the next turn

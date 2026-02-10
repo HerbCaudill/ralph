@@ -10,6 +10,7 @@ import {
   listSessions,
   ChatInput,
   useAdapterInfo,
+  useDetectedModel,
   formatModelName,
   type ChatInputHandle,
 } from "@herbcaudill/agent-view"
@@ -45,8 +46,10 @@ export function App() {
     },
     [restoreSession],
   )
-  const { version: agentVersion, model } = useAdapterInfo(agentType)
-  const modelName = formatModelName(model)
+  const { version: agentVersion, model: adapterModel } = useAdapterInfo(agentType)
+  // Prefer model detected from streaming events; fall back to adapter info for initial state
+  const detectedModel = useDetectedModel(events)
+  const modelName = formatModelName(detectedModel ?? adapterModel)
   const [showToolOutput, setShowToolOutput] = useState(true)
 
   // Refs for hotkey targets

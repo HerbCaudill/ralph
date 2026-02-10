@@ -43,6 +43,7 @@ vi.mock("@herbcaudill/agent-view", () => ({
     if (agentType === "claude") return { version: "1.0.0", model: "claude-sonnet-4-20250514" }
     return { version: undefined, model: undefined }
   },
+  useDetectedModel: () => undefined, // Model from events (fallback to adapterModel)
   formatModelName: (modelId: string | undefined) => {
     if (modelId === "claude-sonnet-4-20250514") return "Sonnet 4"
     if (modelId === "claude-opus-4-5-20251101") return "Opus 4.5"

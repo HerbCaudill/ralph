@@ -769,6 +769,63 @@ describe("ClaudeAdapter", () => {
       expect(context.usage.outputTokens).toBe(125)
     })
 
+    it("includes model in turn_usage events for UI display", async () => {
+      const sdkMessages = [
+        {
+          type: "stream_event",
+          event: {
+            type: "message_start",
+            message: {
+              model: "claude-opus-4-20250514",
+              usage: { input_tokens: 100 },
+            },
+          },
+        },
+        {
+          type: "stream_event",
+          event: {
+            type: "content_block_delta",
+            delta: { type: "text_delta", text: "Hello" },
+          },
+        },
+        {
+          type: "stream_event",
+          event: {
+            type: "message_delta",
+            usage: { output_tokens: 50 },
+          },
+        },
+        { type: "stream_event", event: { type: "message_stop" } },
+        {
+          type: "result",
+          subtype: "success",
+          result: "Hello",
+        },
+      ]
+
+      adapter = new ClaudeAdapter({
+        queryFn: createMockQueryFn(sdkMessages),
+        apiKey: "test-key",
+      })
+
+      const events = collectEvents(adapter)
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "result")).toBe(true)
+      })
+
+      // turn_usage event should include the detected model
+      const turnUsageEvent = events.find(e => e.type === "turn_usage") as AgentEvent & {
+        model?: string
+        usage: { inputTokens: number; outputTokens: number }
+      }
+      expect(turnUsageEvent).toBeDefined()
+      expect(turnUsageEvent.model).toBe("claude-opus-4-20250514")
+    })
+
     it("deduplicates tool_use blocks when stream_event and top-level assistant both contain the same tool_use ID", async () => {
       const toolUseBlock = {
         type: "tool_use",

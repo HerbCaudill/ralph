@@ -7,6 +7,7 @@ import {
   useTokenUsage,
   useContextWindow,
   useAdapterInfo,
+  useDetectedModel,
   formatModelName,
   type AgentType,
   type ChatEvent,
@@ -56,8 +57,10 @@ export function RalphRunner({
   const tokenUsage = useTokenUsage(events)
   const contextWindow = useContextWindow(events)
   const { elapsedMs } = useSessionTimer(events)
-  const { model } = useAdapterInfo(agentType)
-  const modelName = formatModelName(model)
+  const { model: adapterModel } = useAdapterInfo(agentType)
+  // Prefer model detected from streaming events; fall back to adapter info for initial state
+  const detectedModel = useDetectedModel(events)
+  const modelName = formatModelName(detectedModel ?? adapterModel)
 
   /** Capitalized adapter display name (e.g. "Claude", "Codex"). */
   const adapterDisplayName = agentType.charAt(0).toUpperCase() + agentType.slice(1)

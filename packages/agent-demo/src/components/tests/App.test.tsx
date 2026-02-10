@@ -71,6 +71,7 @@ vi.mock("@herbcaudill/agent-view", () => ({
     version: "1.0.0",
     model: "claude-sonnet-4-20250514",
   }),
+  useDetectedModel: () => undefined, // Model from events (fallback to adapterModel)
   formatModelName: (model: string | undefined) => model ?? "Unknown",
   listSessions: () => [],
   AgentView: () => <div data-testid="agent-view" />,
