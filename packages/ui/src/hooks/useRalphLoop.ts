@@ -30,6 +30,7 @@ export function useRalphLoop(
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isStoppingAfterCurrent, setIsStoppingAfterCurrent] = useState(false)
+  const [isStoppingAfterCurrentGlobal, setIsStoppingAfterCurrentGlobal] = useState(false)
 
   const portRef = useRef<MessagePort | null>(null)
   const currentWorkspaceRef = useRef<string | undefined>(undefined)
@@ -45,8 +46,14 @@ export function useRalphLoop(
   const handleWorkerMessage = useCallback((e: MessageEvent<WorkerEvent>) => {
     const data = e.data
 
+    // Handle global events (no workspaceId)
+    if (data.type === "stop_after_current_global_change") {
+      setIsStoppingAfterCurrentGlobal(data.isStoppingAfterCurrentGlobal)
+      return
+    }
+
     // Only process events for our current workspace
-    if (data.workspaceId !== currentWorkspaceRef.current) return
+    if (!("workspaceId" in data) || data.workspaceId !== currentWorkspaceRef.current) return
 
     switch (data.type) {
       case "state_change":
@@ -310,6 +317,16 @@ export function useRalphLoop(
     postMessage({ type: "cancel_stop_after_current", workspaceId })
   }, [workspaceId, postMessage])
 
+  /** Stop after the current session completes for ALL workspaces globally. */
+  const stopAfterCurrentGlobal = useCallback(() => {
+    postMessage({ type: "stop_after_current_global" })
+  }, [postMessage])
+
+  /** Cancel the pending stop-after-current request for ALL workspaces globally. */
+  const cancelStopAfterCurrentGlobal = useCallback(() => {
+    postMessage({ type: "cancel_stop_after_current_global" })
+  }, [postMessage])
+
   return {
     events,
     isStreaming,
@@ -317,12 +334,15 @@ export function useRalphLoop(
     connectionStatus,
     sessionId,
     isStoppingAfterCurrent,
+    isStoppingAfterCurrentGlobal,
     start,
     pause,
     resume,
     sendMessage,
     stopAfterCurrent,
     cancelStopAfterCurrent,
+    stopAfterCurrentGlobal,
+    cancelStopAfterCurrentGlobal,
   }
 }
 
@@ -343,6 +363,8 @@ export interface UseRalphLoopReturn {
   sessionId: string | null
   /** Whether the loop is pending stop after the current session completes. */
   isStoppingAfterCurrent: boolean
+  /** Whether ALL loops globally are pending stop after their current sessions complete. */
+  isStoppingAfterCurrentGlobal: boolean
   /** Start the Ralph loop. */
   start: () => void
   /** Pause/interrupt the Ralph loop immediately. */
@@ -355,4 +377,8 @@ export interface UseRalphLoopReturn {
   stopAfterCurrent: () => void
   /** Cancel the pending stop-after-current request. */
   cancelStopAfterCurrent: () => void
+  /** Stop after the current session completes for ALL workspaces globally. */
+  stopAfterCurrentGlobal: () => void
+  /** Cancel the pending stop-after-current request for ALL workspaces globally. */
+  cancelStopAfterCurrentGlobal: () => void
 }

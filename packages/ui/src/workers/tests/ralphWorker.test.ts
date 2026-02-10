@@ -1491,4 +1491,244 @@ describe("ralphWorker", () => {
       expect(pendingMessages).toHaveLength(1)
     })
   })
+
+  describe("global stop after current (r-6erx7)", () => {
+    beforeEach(async () => {
+      vi.resetModules()
+      const workerModule = await import("../ralphWorker")
+      handlePortMessage = (workerModule as any).handlePortMessage
+      getWorkspace = (workerModule as any).getWorkspace
+    })
+
+    it("should set stopAfterCurrentPending for ALL workspaces when receiving stop_after_current_global", async () => {
+      const port = createMockPort()
+      const workspace1 = "herbcaudill/ralph"
+      const workspace2 = "herbcaudill/other-repo"
+
+      // Subscribe to both workspaces
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace1 }, port)
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace2 }, port)
+
+      const state1 = getWorkspace(workspace1)
+      const state2 = getWorkspace(workspace2)
+
+      // Wait for WebSocket connections
+      await vi.waitFor(() => {
+        expect(state1.ws?.readyState).toBe(MockWebSocket.OPEN)
+        expect(state2.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Start both workspaces
+      handlePortMessage({ type: "start", workspaceId: workspace1 }, port)
+      handlePortMessage({ type: "start", workspaceId: workspace2 }, port)
+      state1.currentSessionId = "session-1"
+      state2.currentSessionId = "session-2"
+
+      expect(state1.controlState).toBe("running")
+      expect(state2.controlState).toBe("running")
+
+      // Send global stop after current
+      handlePortMessage({ type: "stop_after_current_global" }, port)
+
+      // Both workspaces should have stopAfterCurrentPending set
+      expect(state1.stopAfterCurrentPending).toBe(true)
+      expect(state2.stopAfterCurrentPending).toBe(true)
+    })
+
+    it("should broadcast stop_after_current_global_change to all subscribed ports", async () => {
+      const port1 = createMockPort()
+      const port2 = createMockPort()
+      const workspace1 = "herbcaudill/ralph"
+      const workspace2 = "herbcaudill/other-repo"
+
+      // Subscribe ports to different workspaces
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace1 }, port1)
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace2 }, port2)
+
+      const state1 = getWorkspace(workspace1)
+      const state2 = getWorkspace(workspace2)
+
+      await vi.waitFor(() => {
+        expect(state1.ws?.readyState).toBe(MockWebSocket.OPEN)
+        expect(state2.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      port1.postMessage.mockClear()
+      port2.postMessage.mockClear()
+
+      // Send global stop after current
+      handlePortMessage({ type: "stop_after_current_global" }, port1)
+
+      // Both ports should receive stop_after_current_global_change
+      const globalStopMessages1 = port1.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "stop_after_current_global_change")
+
+      const globalStopMessages2 = port2.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "stop_after_current_global_change")
+
+      expect(globalStopMessages1).toHaveLength(1)
+      expect(globalStopMessages1[0].isStoppingAfterCurrentGlobal).toBe(true)
+
+      expect(globalStopMessages2).toHaveLength(1)
+      expect(globalStopMessages2[0].isStoppingAfterCurrentGlobal).toBe(true)
+    })
+
+    it("should clear stopAfterCurrentPending for ALL workspaces when receiving cancel_stop_after_current_global", async () => {
+      const port = createMockPort()
+      const workspace1 = "herbcaudill/ralph"
+      const workspace2 = "herbcaudill/other-repo"
+
+      // Subscribe to both workspaces
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace1 }, port)
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace2 }, port)
+
+      const state1 = getWorkspace(workspace1)
+      const state2 = getWorkspace(workspace2)
+
+      await vi.waitFor(() => {
+        expect(state1.ws?.readyState).toBe(MockWebSocket.OPEN)
+        expect(state2.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Set global stop after current first (via the message handler)
+      handlePortMessage({ type: "stop_after_current_global" }, port)
+      expect(state1.stopAfterCurrentPending).toBe(true)
+      expect(state2.stopAfterCurrentPending).toBe(true)
+
+      // Cancel global stop after current
+      handlePortMessage({ type: "cancel_stop_after_current_global" }, port)
+
+      // Both should be cleared
+      expect(state1.stopAfterCurrentPending).toBe(false)
+      expect(state2.stopAfterCurrentPending).toBe(false)
+    })
+
+    it("should NOT auto-start any workspace when global stop is pending", async () => {
+      const port = createMockPort()
+      const workspace1 = "herbcaudill/ralph"
+      const workspace2 = "herbcaudill/other-repo"
+
+      // Subscribe and start both
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace1 }, port)
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace2 }, port)
+
+      const state1 = getWorkspace(workspace1)
+      const state2 = getWorkspace(workspace2)
+
+      await vi.waitFor(() => {
+        expect(state1.ws?.readyState).toBe(MockWebSocket.OPEN)
+        expect(state2.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      handlePortMessage({ type: "start", workspaceId: workspace1 }, port)
+      handlePortMessage({ type: "start", workspaceId: workspace2 }, port)
+      state1.currentSessionId = "session-1"
+      state2.currentSessionId = "session-2"
+
+      // Set global stop after current
+      handlePortMessage({ type: "stop_after_current_global" }, port)
+
+      // Simulate workspace1 completing a task with end_task marker
+      const ws1 = state1.ws as MockWebSocket
+      ws1.onmessage!({
+        data: JSON.stringify({
+          type: "event",
+          event: {
+            type: "assistant",
+            message: { content: [{ type: "text", text: "<end_task>r-task1</end_task>" }] },
+          },
+        }),
+      })
+      ;(state1.ws as any).send.mockClear()
+
+      // Status goes idle
+      ws1.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+
+      // Should NOT have started a new session
+      const createSessionCalls = (state1.ws!.send as any).mock.calls.filter((c: string[]) =>
+        c[0].includes("create_session"),
+      )
+      expect(createSessionCalls).toHaveLength(0)
+
+      // State should be idle
+      expect(state1.controlState).toBe("idle")
+    })
+
+    it("should include global stop state in initial sync for new subscribers", async () => {
+      const port1 = createMockPort()
+      const workspace1 = "herbcaudill/ralph"
+
+      // Subscribe to first workspace
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace1 }, port1)
+      const state1 = getWorkspace(workspace1)
+
+      await vi.waitFor(() => {
+        expect(state1.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // Set global stop
+      handlePortMessage({ type: "stop_after_current_global" }, port1)
+
+      // New port subscribes to a different workspace
+      const port2 = createMockPort()
+      const workspace2 = "herbcaudill/other-repo"
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace2 }, port2)
+
+      // New port should receive the global stop state
+      const globalStopMessages = port2.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "stop_after_current_global_change")
+
+      expect(globalStopMessages).toHaveLength(1)
+      expect(globalStopMessages[0].isStoppingAfterCurrentGlobal).toBe(true)
+    })
+
+    it("should clear global stop flag when all workspaces become idle", async () => {
+      const port = createMockPort()
+      const workspace1 = "herbcaudill/ralph"
+      const workspace2 = "herbcaudill/other-repo"
+
+      // Subscribe and start both
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace1 }, port)
+      handlePortMessage({ type: "subscribe_workspace", workspaceId: workspace2 }, port)
+
+      const state1 = getWorkspace(workspace1)
+      const state2 = getWorkspace(workspace2)
+
+      await vi.waitFor(() => {
+        expect(state1.ws?.readyState).toBe(MockWebSocket.OPEN)
+        expect(state2.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      handlePortMessage({ type: "start", workspaceId: workspace1 }, port)
+      handlePortMessage({ type: "start", workspaceId: workspace2 }, port)
+      state1.currentSessionId = "session-1"
+      state2.currentSessionId = "session-2"
+
+      // Set global stop
+      handlePortMessage({ type: "stop_after_current_global" }, port)
+
+      // Workspace1 completes and goes idle
+      const ws1 = state1.ws as MockWebSocket
+      ws1.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+      expect(state1.controlState).toBe("idle")
+
+      port.postMessage.mockClear()
+
+      // Workspace2 completes and goes idle
+      const ws2 = state2.ws as MockWebSocket
+      ws2.onmessage!({ data: JSON.stringify({ type: "status", status: "idle" }) })
+      expect(state2.controlState).toBe("idle")
+
+      // Global stop flag should be cleared and broadcast
+      const globalStopMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "stop_after_current_global_change")
+
+      expect(globalStopMessages).toHaveLength(1)
+      expect(globalStopMessages[0].isStoppingAfterCurrentGlobal).toBe(false)
+    })
+  })
 })

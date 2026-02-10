@@ -69,12 +69,13 @@ export function WorkspaceView() {
     connectionStatus,
     sessionId,
     isStoppingAfterCurrent,
+    isStoppingAfterCurrentGlobal,
     start,
     pause,
     resume,
     sendMessage,
-    stopAfterCurrent,
-    cancelStopAfterCurrent,
+    stopAfterCurrentGlobal,
+    cancelStopAfterCurrentGlobal,
   } = useRalphLoop(workspaceId)
 
   // Session history management
@@ -324,14 +325,14 @@ export function WorkspaceView() {
     console.log("Cycle theme")
   }, [])
 
-  // Stop after current session handlers
+  // Stop after current session handlers (use global stop to stop ALL Ralph loops)
   const handleStopAfterCurrent = useCallback(() => {
-    stopAfterCurrent()
-  }, [stopAfterCurrent])
+    stopAfterCurrentGlobal()
+  }, [stopAfterCurrentGlobal])
 
   const handleCancelStopAfterCurrent = useCallback(() => {
-    cancelStopAfterCurrent()
-  }, [cancelStopAfterCurrent])
+    cancelStopAfterCurrentGlobal()
+  }, [cancelStopAfterCurrentGlobal])
 
   // Left sidebar: always show TaskChatPanel
   const sidebar = (
@@ -351,6 +352,8 @@ export function WorkspaceView() {
   )
 
   // Ralph loop panel (right side)
+  // Use global stopping state to show "Stopping..." for the global stop-after-current
+  const effectiveIsStoppingAfterCurrent = isStoppingAfterCurrent || isStoppingAfterCurrentGlobal
   const rightPanel = (
     <RalphRunner
       events={events}
@@ -360,7 +363,7 @@ export function WorkspaceView() {
       workspaceName={workspace?.name}
       branch={workspace?.branch}
       workspacePath={workspace?.path}
-      isStoppingAfterCurrent={isStoppingAfterCurrent}
+      isStoppingAfterCurrent={effectiveIsStoppingAfterCurrent}
       sessions={sessions}
       sessionId={sessionId}
       isViewingHistoricalSession={isViewingHistorical}

@@ -46,6 +46,8 @@ export type WorkerMessage =
   | { type: "resume"; workspaceId: string }
   | { type: "stop_after_current"; workspaceId: string }
   | { type: "cancel_stop_after_current"; workspaceId: string }
+  | { type: "stop_after_current_global" }
+  | { type: "cancel_stop_after_current_global" }
   | { type: "message"; workspaceId: string; text: string }
   | { type: "get_state"; workspaceId: string }
   | { type: "restore_session"; workspaceId: string; sessionId: string; controlState?: ControlState }
@@ -67,12 +69,16 @@ export type WorkerEvent =
   | { type: "pending_events"; workspaceId: string; events: unknown[] }
   | { type: "streaming_state"; workspaceId: string; isStreaming: boolean }
   | { type: "stop_after_current_change"; workspaceId: string; isStoppingAfterCurrent: boolean }
+  | { type: "stop_after_current_global_change"; isStoppingAfterCurrentGlobal: boolean }
 
 /** All connected ports (for cleanup). */
 export const allPorts: Set<MessagePort> = new Set()
 
 /** Per-workspace state keyed by workspace ID (owner/repo). */
 export const workspaces = new Map<string, WorkspaceState>()
+
+/** Global flag for stop-after-current across all workspaces. */
+export let isStoppingAfterCurrentGlobal = false
 
 /** Get or create state for a workspace. */
 export function getWorkspace(workspaceId: string): WorkspaceState {
@@ -107,12 +113,78 @@ function broadcastToWorkspace(workspaceId: string, event: WorkerEvent): void {
   })
 }
 
+/** Broadcast an event to ALL connected ports across all workspaces. */
+function broadcastToAllPorts(event: WorkerEvent): void {
+  // Create a set to avoid sending to the same port multiple times
+  // (a port may be subscribed to multiple workspaces)
+  const sentPorts = new Set<MessagePort>()
+
+  for (const state of workspaces.values()) {
+    state.subscribedPorts.forEach(port => {
+      if (!sentPorts.has(port)) {
+        try {
+          port.postMessage(event)
+          sentPorts.add(port)
+        } catch {
+          state.subscribedPorts.delete(port)
+          allPorts.delete(port)
+        }
+      }
+    })
+  }
+}
+
+/** Set global stop-after-current flag and broadcast to all ports. */
+function setGlobalStopAfterCurrent(value: boolean): void {
+  if (isStoppingAfterCurrentGlobal !== value) {
+    isStoppingAfterCurrentGlobal = value
+
+    // Also set/clear the per-workspace flags
+    for (const [workspaceId, state] of workspaces) {
+      if (state.stopAfterCurrentPending !== value) {
+        state.stopAfterCurrentPending = value
+        broadcastToWorkspace(workspaceId, {
+          type: "stop_after_current_change",
+          workspaceId,
+          isStoppingAfterCurrent: value,
+        })
+      }
+    }
+
+    broadcastToAllPorts({
+      type: "stop_after_current_global_change",
+      isStoppingAfterCurrentGlobal: value,
+    })
+  }
+}
+
+/** Check if all workspaces are idle and clear global stop flag if so. */
+function checkAndClearGlobalStopIfAllIdle(): void {
+  if (!isStoppingAfterCurrentGlobal) return
+
+  // Check if any workspace is still running or paused
+  for (const state of workspaces.values()) {
+    if (state.controlState === "running" || state.controlState === "paused") {
+      return // At least one workspace is still active
+    }
+  }
+
+  // All workspaces are idle — clear global stop flag
+  setGlobalStopAfterCurrent(false)
+}
+
 /** Update control state and broadcast the change. */
 function setControlState(workspaceId: string, newState: ControlState): void {
   const state = getWorkspace(workspaceId)
   if (state.controlState !== newState) {
     state.controlState = newState
     broadcastToWorkspace(workspaceId, { type: "state_change", workspaceId, state: newState })
+
+    // When transitioning to idle, check if all workspaces are now idle
+    // and clear the global stop flag if so
+    if (newState === "idle") {
+      checkAndClearGlobalStopIfAllIdle()
+    }
   }
 }
 
@@ -499,6 +571,14 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
         } satisfies WorkerEvent)
       }
 
+      // Send global stop_after_current state (if set)
+      if (isStoppingAfterCurrentGlobal) {
+        port.postMessage({
+          type: "stop_after_current_global_change",
+          isStoppingAfterCurrentGlobal: true,
+        } satisfies WorkerEvent)
+      }
+
       // Connect if not already connected
       if (state.ws?.readyState === WebSocket.OPEN) {
         port.postMessage({
@@ -638,6 +718,18 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
           isStoppingAfterCurrent: false,
         })
       }
+      break
+    }
+
+    case "stop_after_current_global": {
+      // Set stop after current for ALL workspaces
+      setGlobalStopAfterCurrent(true)
+      break
+    }
+
+    case "cancel_stop_after_current_global": {
+      // Clear stop after current for ALL workspaces
+      setGlobalStopAfterCurrent(false)
       break
     }
 
