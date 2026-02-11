@@ -25,7 +25,7 @@ describe("createBeadsViewStore workspace cache", () => {
     vi.useRealTimers()
   })
 
-  it("migrates legacy single-cache persisted tasks into workspace cache", async () => {
+  it("migrates legacy v0 state, restoring tasks from the tasks array", async () => {
     localStorage.setItem(WORKSPACE_STORAGE_KEY, "workspace/a")
     localStorage.setItem(
       STORAGE_KEY,
@@ -48,16 +48,9 @@ describe("createBeadsViewStore workspace cache", () => {
 
     const store = createBeadsViewStore()
     expect(store.getState().tasks).toEqual([TASK_A])
-
-    store.getState().setTaskSearchQuery("updated")
-
-    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as {
-      state?: { taskCacheByWorkspace?: Record<string, Task[]> }
-    }
-    expect(persisted.state?.taskCacheByWorkspace?.["workspace/a"]).toEqual([TASK_A])
   })
 
-  it("hydrates tasks for the selected workspace without showing other workspace tasks", () => {
+  it("migrates v2 state with workspace cache, preserving current workspace tasks", () => {
     localStorage.setItem(WORKSPACE_STORAGE_KEY, "workspace/a")
     localStorage.setItem(
       STORAGE_KEY,
@@ -70,6 +63,9 @@ describe("createBeadsViewStore workspace cache", () => {
             "workspace/a": [TASK_A],
             "workspace/b": [TASK_B],
           },
+          commentCacheByWorkspaceTask: {
+            "workspace/a::task-1": [{ id: 1, text: "comment" }],
+          },
           taskSearchQuery: "",
           selectedTaskId: null,
           closedTimeFilter: "past_day",
@@ -78,24 +74,42 @@ describe("createBeadsViewStore workspace cache", () => {
           taskInputDraft: "",
           commentDrafts: {},
         },
-        version: 1,
+        version: 2,
       }),
     )
 
     const store = createBeadsViewStore()
+    // Current workspace tasks are preserved
     expect(store.getState().tasks).toEqual([TASK_A])
 
-    const hydrateTasksForWorkspace = (
-      store.getState() as { hydrateTasksForWorkspace?: (workspacePath: string) => void }
-    ).hydrateTasksForWorkspace
+    // Large caches are no longer persisted
+    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as {
+      state?: { taskCacheByWorkspace?: unknown; commentCacheByWorkspaceTask?: unknown }
+    }
+    expect(persisted.state?.taskCacheByWorkspace).toBeUndefined()
+    expect(persisted.state?.commentCacheByWorkspaceTask).toBeUndefined()
+  })
 
-    expect(hydrateTasksForWorkspace).toBeTypeOf("function")
-    hydrateTasksForWorkspace?.("workspace/b")
+  it("hydrates tasks for the selected workspace from in-memory cache", () => {
+    const store = createBeadsViewStore()
 
+    // Simulate populating two workspaces via setTasks
+    localStorage.setItem(WORKSPACE_STORAGE_KEY, "workspace/a")
+    store.getState().setTasks([TASK_A])
+
+    localStorage.setItem(WORKSPACE_STORAGE_KEY, "workspace/b")
+    store.getState().setTasks([TASK_B])
+
+    // Switch back to workspace A via hydration
+    store.getState().hydrateTasksForWorkspace("workspace/a")
+    expect(store.getState().tasks).toEqual([TASK_A])
+
+    // Switch to workspace B
+    store.getState().hydrateTasksForWorkspace("workspace/b")
     expect(store.getState().tasks).toEqual([TASK_B])
   })
 
-  it("writes refresh results into the selected workspace cache", async () => {
+  it("writes refresh results into the in-memory workspace cache", async () => {
     vi.useFakeTimers()
     localStorage.setItem(WORKSPACE_STORAGE_KEY, "workspace/a")
     const fetchMock = vi.fn().mockResolvedValue({
@@ -109,14 +123,13 @@ describe("createBeadsViewStore workspace cache", () => {
 
     await vi.advanceTimersByTimeAsync(100)
 
-    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as {
-      state?: { taskCacheByWorkspace?: Record<string, Task[]> }
-    }
-
-    expect(persisted.state?.taskCacheByWorkspace?.["workspace/a"]).toEqual([TASK_A])
+    // Tasks should be updated
+    expect(store.getState().tasks).toEqual([TASK_A])
+    // In-memory cache should have the workspace entry
+    expect(store.getState().taskCacheByWorkspace["workspace/a"]).toEqual([TASK_A])
   })
 
-  it("caches comments by workspace and task ID", () => {
+  it("caches comments by workspace and task ID in memory", () => {
     const store = createBeadsViewStore()
     const commentsA = [
       {
@@ -143,15 +156,10 @@ describe("createBeadsViewStore workspace cache", () => {
     expect(store.getState().getCachedCommentsForTask("task-123", "workspace/a")).toEqual(commentsA)
     expect(store.getState().getCachedCommentsForTask("task-123", "workspace/b")).toEqual(commentsB)
 
+    // Comments should NOT be persisted to localStorage
     const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as {
-      state?: { commentCacheByWorkspaceTask?: Record<string, unknown[]> }
+      state?: { commentCacheByWorkspaceTask?: unknown }
     }
-
-    expect(Object.keys(persisted.state?.commentCacheByWorkspaceTask ?? {})).toContain(
-      "workspace/a::task-123",
-    )
-    expect(Object.keys(persisted.state?.commentCacheByWorkspaceTask ?? {})).toContain(
-      "workspace/b::task-123",
-    )
+    expect(persisted.state?.commentCacheByWorkspaceTask).toBeUndefined()
   })
 })

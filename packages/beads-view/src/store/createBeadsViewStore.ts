@@ -23,8 +23,8 @@ const WORKSPACE_STORAGE_KEY = "ralph-workspace-path"
 /** Fallback key when no workspace is selected. */
 const DEFAULT_WORKSPACE_CACHE_KEY = "__default__"
 
-/** Persist version for workspace-scoped task cache support. */
-const PERSIST_VERSION = 2
+/** Persist version — bumped to 3 to drop large caches from localStorage. */
+const PERSIST_VERSION = 3
 
 /** Separator used for workspace/task comment cache keys. */
 const WORKSPACE_TASK_KEY_SEPARATOR = "::"
@@ -284,53 +284,46 @@ export function createBeadsViewStore(
         name: "beads-view-store",
         version: PERSIST_VERSION,
         storage: createJSONStorage(() => localStorage),
-        migrate: persistedState => {
+        migrate: (persistedState, version) => {
           const state = persistedState as Partial<BeadsViewStore> | undefined
           if (!state) return persistedState
 
-          const hasWorkspaceCache =
-            typeof state.taskCacheByWorkspace === "object" && state.taskCacheByWorkspace !== null
-          const hasCommentWorkspaceTaskCache =
-            typeof state.commentCacheByWorkspaceTask === "object" &&
-            state.commentCacheByWorkspaceTask !== null
-
-          if (hasWorkspaceCache && hasCommentWorkspaceTaskCache) return state
-          if (hasWorkspaceCache) {
-            return {
-              ...state,
-              commentCacheByWorkspaceTask: state.commentCacheByWorkspaceTask ?? {},
-            }
+          // v2→v3: drop taskCacheByWorkspace and commentCacheByWorkspaceTask
+          // from persisted state (they were causing localStorage quota overflow).
+          // Recover tasks from the old cache if tasks array is empty.
+          if (version !== undefined && version < 3) {
+            const workspaceKey = getWorkspaceCacheKey()
+            const cachedTasks = state.taskCacheByWorkspace?.[workspaceKey]
+            const tasks =
+              Array.isArray(state.tasks) && state.tasks.length > 0 ?
+                state.tasks
+              : (cachedTasks ?? [])
+            const { taskCacheByWorkspace: _, commentCacheByWorkspaceTask: __, ...rest } = state
+            return { ...rest, tasks }
           }
 
-          const workspaceKey = getWorkspaceCacheKey()
-          const tasks = Array.isArray(state.tasks) ? state.tasks : []
-          return {
-            ...state,
-            taskCacheByWorkspace: {
-              [workspaceKey]: tasks,
-            },
-            commentCacheByWorkspaceTask: state.commentCacheByWorkspaceTask ?? {},
-          }
+          return state
         },
         merge: (persistedState, currentState) => {
           const state = persistedState as Partial<BeadsViewStore> | undefined
           if (!state) return currentState
 
-          const taskCacheByWorkspace = state.taskCacheByWorkspace ?? {}
+          const tasks = Array.isArray(state.tasks) ? state.tasks : []
           const workspaceKey = getWorkspaceCacheKey()
           return {
             ...currentState,
             ...state,
-            taskCacheByWorkspace,
-            tasks: taskCacheByWorkspace[workspaceKey] ?? [],
-            commentCacheByWorkspaceTask: state.commentCacheByWorkspaceTask ?? {},
+            // Seed the in-memory workspace cache from persisted tasks
+            taskCacheByWorkspace: { [workspaceKey]: tasks },
+            tasks,
+            // Comment cache is in-memory only
+            commentCacheByWorkspaceTask: {},
           }
         },
         partialize: state => ({
           issuePrefix: state.issuePrefix,
           accentColor: state.accentColor,
           tasks: state.tasks,
-          taskCacheByWorkspace: state.taskCacheByWorkspace,
           taskSearchQuery: state.taskSearchQuery,
           selectedTaskId: state.selectedTaskId,
           closedTimeFilter: state.closedTimeFilter,
@@ -338,7 +331,6 @@ export function createBeadsViewStore(
           parentCollapsedState: state.parentCollapsedState,
           taskInputDraft: state.taskInputDraft,
           commentDrafts: state.commentDrafts,
-          commentCacheByWorkspaceTask: state.commentCacheByWorkspaceTask,
         }),
       },
     ),
