@@ -203,34 +203,39 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
       }
     }
 
-    // Fall back to session index (most recent session)
-    const indexedSessions = listSessions()
-    if (indexedSessions.length > 0) {
-      const mostRecent = indexedSessions[0]
-      try {
-        const res = await fetch(`/api/sessions/${mostRecent.sessionId}`)
-        if (res.ok) {
-          const sessionInfo = (await res.json()) as {
-            sessionId: string
-            status?: string
-            adapter?: string
-          }
-          setSessionId(mostRecent.sessionId)
-          restoreSessionState(sessionInfo)
+    // Fall back to session index (most recent session), but only when
+    // no storageKey is provided. When a storageKey is set (workspace-scoped
+    // usage), the global session index is unpartitioned and would return
+    // sessions from other workspaces — so we skip this fallback entirely.
+    if (!storageKey) {
+      const indexedSessions = listSessions()
+      if (indexedSessions.length > 0) {
+        const mostRecent = indexedSessions[0]
+        try {
+          const res = await fetch(`/api/sessions/${mostRecent.sessionId}`)
+          if (res.ok) {
+            const sessionInfo = (await res.json()) as {
+              sessionId: string
+              status?: string
+              adapter?: string
+            }
+            setSessionId(mostRecent.sessionId)
+            restoreSessionState(sessionInfo)
 
-          // Reconnect to get pending events
-          if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(
-              JSON.stringify({
-                type: "reconnect",
-                sessionId: mostRecent.sessionId,
-              }),
-            )
+            // Reconnect to get pending events
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              wsRef.current.send(
+                JSON.stringify({
+                  type: "reconnect",
+                  sessionId: mostRecent.sessionId,
+                }),
+              )
+            }
+            return
           }
-          return
+        } catch {
+          // Session no longer valid on server, fall through
         }
-      } catch {
-        // Session no longer valid on server, fall through
       }
     }
 

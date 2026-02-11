@@ -1229,6 +1229,64 @@ describe("useAgentChat localStorage persistence", () => {
       // Should be null since workspace-b has no stored session
       expect(result.current.state.sessionId).toBeNull()
     })
+
+    it("does not leak sessions from another workspace via the global session index", async () => {
+      // Workspace A has a stored session and an entry in the global session index
+      localStorage.setItem("workspace-a-session-id", "session-for-workspace-a")
+      addSession({
+        sessionId: "session-for-workspace-a",
+        adapter: "claude",
+        firstMessageAt: 1000,
+        lastMessageAt: 2000,
+        firstUserMessage: "hello from workspace A",
+      })
+      // Workspace B has NO stored session
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/session-for-workspace-a") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "session-for-workspace-a",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      // Start with workspace-a
+      const { result, rerender } = renderHook(
+        ({ storageKey }: { storageKey: string }) =>
+          useAgentChat({ initialAgent: "claude", storageKey }),
+        { initialProps: { storageKey: "workspace-a" } },
+      )
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.sessionId).toBe("session-for-workspace-a")
+
+      // Switch to workspace-b (no stored session)
+      rerender({ storageKey: "workspace-b" })
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // BUG: Without the fix, initSession falls back to the global session
+      // index and picks up "session-for-workspace-a" even though we're in
+      // workspace-b. It should be null.
+      expect(result.current.state.sessionId).toBeNull()
+    })
   })
 
   // ── localStorage error resilience ─────────────────────────────────────
