@@ -53,6 +53,7 @@ ralph-ui start --open
 ```
 
 The UI provides real-time monitoring, task management, and support for multiple AI agents (Claude, Codex).
+Tool output details are hidden by default and can be toggled with `Ctrl+O`.
 
 ### Demo apps
 

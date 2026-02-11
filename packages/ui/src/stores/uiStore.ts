@@ -66,7 +66,7 @@ export const useUiStore = create<UiState>()(
       rightPanelOpen: false,
       rightPanelWidthPercent: DEFAULT_RIGHT_PANEL_WIDTH_PERCENT,
       issueSheetWidthPercent: DEFAULT_ISSUE_SHEET_WIDTH_PERCENT,
-      showToolOutput: true,
+      showToolOutput: false,
       theme: "system",
       vscodeThemeId: null,
       lastDarkThemeId: null,
