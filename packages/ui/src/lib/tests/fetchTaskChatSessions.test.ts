@@ -17,12 +17,14 @@ describe("fetchTaskChatSessions", () => {
             adapter: "claude",
             createdAt: 1000,
             lastMessageAt: 2000,
+            firstUserMessage: "First session prompt",
           },
           {
             sessionId: "session-2",
             adapter: "codex",
             createdAt: 3000,
             lastMessageAt: 4000,
+            firstUserMessage: "Second session prompt",
           },
         ],
       }),
@@ -37,7 +39,7 @@ describe("fetchTaskChatSessions", () => {
         adapter: "codex",
         firstMessageAt: 3000,
         lastMessageAt: 4000,
-        firstUserMessage: "",
+        firstUserMessage: "Second session prompt",
         isActive: false,
       },
       {
@@ -45,12 +47,12 @@ describe("fetchTaskChatSessions", () => {
         adapter: "claude",
         firstMessageAt: 1000,
         lastMessageAt: 2000,
-        firstUserMessage: "",
+        firstUserMessage: "First session prompt",
         isActive: false,
       },
     ])
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/sessions?app=task-chat")
+    expect(mockFetch).toHaveBeenCalledWith("/api/sessions?app=task-chat&include=summary")
   })
 
   it("returns empty array when session fetch fails", async () => {
@@ -75,7 +77,9 @@ describe("fetchTaskChatSessions", () => {
       baseUrl: "http://localhost:4244",
     })
 
-    expect(mockFetch).toHaveBeenCalledWith("http://localhost:4244/api/sessions?app=task-chat")
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:4244/api/sessions?app=task-chat&include=summary",
+    )
   })
 
   it("sorts sessions by lastMessageAt descending", async () => {

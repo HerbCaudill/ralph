@@ -1,7 +1,7 @@
 import type { AgentType, SessionIndexEntry } from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 
-/** Response from GET /api/sessions?app=task-chat. */
+/** Response from GET /api/sessions?app=task-chat&include=summary. */
 interface SessionsResponse {
   sessions: Array<{
     sessionId: string
@@ -12,6 +12,8 @@ interface SessionsResponse {
     cwd?: string
     /** Session status: "idle" | "processing" | "error". */
     status?: string
+    /** Preview text from the first user message in the session. */
+    firstUserMessage?: string
   }>
 }
 
@@ -36,7 +38,7 @@ export async function fetchTaskChatSessions(
   const { baseUrl = "", fetchFn = fetch, workspaceId } = options
 
   try {
-    const response = await fetchFn(`${baseUrl}/api/sessions?app=task-chat`)
+    const response = await fetchFn(`${baseUrl}/api/sessions?app=task-chat&include=summary`)
     if (!response.ok) {
       return []
     }
@@ -56,7 +58,7 @@ export async function fetchTaskChatSessions(
       adapter: (session.adapter || "claude") as AgentType,
       firstMessageAt: session.createdAt,
       lastMessageAt: session.lastMessageAt ?? session.createdAt,
-      firstUserMessage: "",
+      firstUserMessage: session.firstUserMessage ?? "",
       // Mark session as active when status is "processing"
       isActive: session.status === "processing",
     }))

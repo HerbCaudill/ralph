@@ -23,7 +23,7 @@ describe("getSessionSummary", () => {
     ])
     const result = await getSessionSummary("session-123", persister)
 
-    expect(result).toBeNull()
+    expect(result).toEqual({ firstUserMessage: "Hello" })
   })
 
   it("extracts taskId from start_task tag in message content", async () => {
@@ -38,7 +38,7 @@ describe("getSessionSummary", () => {
     ])
     const result = await getSessionSummary("session-123", persister)
 
-    expect(result).toEqual({ taskId: "r-abc123" })
+    expect(result).toEqual({ taskId: "r-abc123", firstUserMessage: "Start working" })
   })
 
   it("extracts taskId from content_block_delta text", async () => {
@@ -74,6 +74,7 @@ describe("getSessionSummary", () => {
   it("returns only the first task ID when multiple exist", async () => {
     const persister = createMockPersister([
       { type: "session_created", timestamp: 1000 },
+      { type: "user_message", message: "First user message", timestamp: 1000.5 },
       {
         type: "message",
         content: "<start_task>r-first</start_task>",
@@ -87,7 +88,18 @@ describe("getSessionSummary", () => {
     ])
     const result = await getSessionSummary("session-123", persister)
 
-    expect(result).toEqual({ taskId: "r-first" })
+    expect(result).toEqual({ taskId: "r-first", firstUserMessage: "First user message" })
+  })
+
+  it("extracts only the first user message", async () => {
+    const persister = createMockPersister([
+      { type: "session_created", timestamp: 1000 },
+      { type: "user_message", message: "First user message", timestamp: 1001 },
+      { type: "user_message", message: "Second user message", timestamp: 1002 },
+    ])
+    const result = await getSessionSummary("session-123", persister)
+
+    expect(result).toEqual({ firstUserMessage: "First user message" })
   })
 
   it("handles subtask IDs", async () => {

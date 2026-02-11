@@ -4,7 +4,9 @@ import type { SessionPersister } from "@herbcaudill/ralph-shared/server"
 /** Summary information extracted from a session's events. */
 export interface SessionSummary {
   /** The first task ID found in the session's events. */
-  taskId: string
+  taskId?: string
+  /** The first user message found in the session's events. */
+  firstUserMessage?: string
 }
 
 /**
@@ -20,15 +22,34 @@ export async function getSessionSummary(
   app?: string,
 ): Promise<SessionSummary | null> {
   const events = await persister.readEvents(sessionId, app)
+  let taskId: string | undefined
+  let firstUserMessage: string | undefined
 
   for (const event of events) {
-    const taskId = extractTaskIdFromEvent(event)
-    if (taskId) {
-      return { taskId }
+    if (!firstUserMessage && event.type === "user_message" && typeof event.message === "string") {
+      const trimmedMessage = event.message.trim()
+      if (trimmedMessage.length > 0) {
+        firstUserMessage = trimmedMessage
+      }
+    }
+
+    if (!taskId) {
+      taskId = extractTaskIdFromEvent(event) ?? undefined
+    }
+
+    if (taskId && firstUserMessage) {
+      break
     }
   }
 
-  return null
+  if (!taskId && !firstUserMessage) {
+    return null
+  }
+
+  return {
+    ...(taskId ? { taskId } : {}),
+    ...(firstUserMessage ? { firstUserMessage } : {}),
+  }
 }
 
 /** Extract text content from an event that might contain task lifecycle tags. */

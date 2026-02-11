@@ -112,7 +112,7 @@ The `SessionPickerEntry` type extends `SessionIndexEntry` with optional task inf
 ### SessionPicker display
 
 - Each session row shows: task ID (muted) + task title
-- Sessions without a task ID display "No task"
+- Sessions without a task ID display the first user message (or "No task" if missing)
 - Active sessions show a spinner icon
 - Inactive sessions are indented with a spacer to align task IDs with active sessions
 

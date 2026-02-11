@@ -162,7 +162,17 @@ describe("SessionPicker", () => {
       expect(screen.queryByText("1 hour ago")).toBeNull()
     })
 
-    it("should display 'No task' when taskId is missing", () => {
+    it("should display first user message when taskId is missing", () => {
+      renderPicker({
+        sessions: [
+          makeSession({ sessionId: "s1", firstUserMessage: "Find the regression source" }),
+        ],
+      })
+      fireEvent.click(screen.getByTitle("Session history"))
+      expect(screen.getByText("Find the regression source")).toBeDefined()
+    })
+
+    it("should display 'No task' when taskId and first user message are missing", () => {
       renderPicker({
         sessions: [makeSession({ sessionId: "s1", firstUserMessage: "" })],
       })

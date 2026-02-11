@@ -165,11 +165,10 @@ describe("routes", () => {
     it("returns sessions with taskId when include=summary is specified", async () => {
       const ctx = createMockContext({
         persister: {
-          readEvents: vi
-            .fn()
-            .mockResolvedValue([
-              { type: "message", content: "<start_task>r-abc123</start_task>", timestamp: 1000 },
-            ]),
+          readEvents: vi.fn().mockResolvedValue([
+            { type: "user_message", message: "Fix session picker labels", timestamp: 999 },
+            { type: "message", content: "<start_task>r-abc123</start_task>", timestamp: 1000 },
+          ]),
         },
         sessionManager: {
           listSessions: vi.fn().mockReturnValue([
@@ -190,14 +189,16 @@ describe("routes", () => {
       expect(res.status).toBe(200)
       expect(res.body.sessions).toHaveLength(1)
       expect(res.body.sessions[0].taskId).toBe("r-abc123")
+      expect(res.body.sessions[0].firstUserMessage).toBe("Fix session picker labels")
     })
 
     it("returns sessions without taskId when no task lifecycle events exist", async () => {
       const ctx = createMockContext({
         persister: {
-          readEvents: vi
-            .fn()
-            .mockResolvedValue([{ type: "message", content: "Hello", timestamp: 1000 }]),
+          readEvents: vi.fn().mockResolvedValue([
+            { type: "user_message", message: "How do I restore this session?", timestamp: 999 },
+            { type: "message", content: "Hello", timestamp: 1000 },
+          ]),
         },
         sessionManager: {
           listSessions: vi
@@ -214,6 +215,7 @@ describe("routes", () => {
       expect(res.status).toBe(200)
       expect(res.body.sessions).toHaveLength(1)
       expect(res.body.sessions[0].taskId).toBeUndefined()
+      expect(res.body.sessions[0].firstUserMessage).toBe("How do I restore this session?")
     })
 
     it("does not include taskId when include param is not specified", async () => {

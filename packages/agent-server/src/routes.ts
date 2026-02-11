@@ -126,7 +126,13 @@ export function registerRoutes(
       const sessionsWithSummary = await Promise.all(
         sessions.map(async session => {
           const summary = await getSessionSummary(session.sessionId, persister, session.app)
-          return summary ? { ...session, taskId: summary.taskId } : session
+          return summary ?
+              {
+                ...session,
+                ...(summary.taskId ? { taskId: summary.taskId } : {}),
+                ...(summary.firstUserMessage ? { firstUserMessage: summary.firstUserMessage } : {}),
+              }
+            : session
         }),
       )
       res.json({ sessions: sessionsWithSummary })

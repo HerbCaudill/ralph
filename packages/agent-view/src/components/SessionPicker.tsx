@@ -108,7 +108,10 @@ export function SessionPicker({
                       </span>
                     )}
                   </>
-                : <span className="text-muted-foreground">No task</span>}
+                : <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                    {session.firstUserMessage || "No task"}
+                  </span>
+                }
                 {isCurrentSession && (
                   <IconCheck size={14} stroke={2} className="shrink-0 text-primary" />
                 )}
