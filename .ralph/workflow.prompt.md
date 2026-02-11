@@ -15,7 +15,7 @@ When choosing which task to work on:
   If a task is too complex to solve in one session, break it into subtasks. Create child issues under the parent with `--parent={id}`. Apply the parent's priority to all children. End your turn after creating subtasks (you'll pick one up next session).
 
 - **Write tests first**  
-  Use the `Test-Driven Development (TDD)` skill. When fixing a bug, before doing anything else, start by writing a test that reproduces the bug. Then fix the bug and prove it with a passing test.
+  Use red/green TDD. When fixing a bug, before doing anything else, start by writing a test that reproduces the bug. Then fix the bug and prove it with a passing test.
 
 - **Report unrelated issues**  
   While you're working, if you notice unrelated bugs or other issues, use `bd create` to file issues for another agent to work on.
