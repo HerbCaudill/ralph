@@ -189,6 +189,34 @@ export function WorkspaceView() {
   const selectedTaskId = useBeadsViewStore(selectSelectedTaskId)
   const setSelectedTaskId = useBeadsViewStore(state => state.setSelectedTaskId)
 
+  /** Parse the active task ID from the URL hash (e.g. #taskid=r-abc123). */
+  const getTaskIdFromHash = useCallback(() => {
+    if (typeof window === "undefined") return null
+    const hash = window.location.hash
+    if (!hash) return null
+    const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash)
+    const taskId = params.get("taskid")
+    return taskId && taskId.length > 0 ? taskId : null
+  }, [])
+
+  /** Open/close the task sheet to match the current URL hash. */
+  const syncTaskSheetFromHash = useCallback(() => {
+    const taskIdFromHash = getTaskIdFromHash()
+
+    if (taskIdFromHash) {
+      if (taskIdFromHash !== selectedTaskId) {
+        setSelectedTaskId(taskIdFromHash)
+        openDialogById(taskIdFromHash)
+      }
+      return
+    }
+
+    if (selectedTaskId !== null) {
+      setSelectedTaskId(null)
+      closeDialog()
+    }
+  }, [closeDialog, getTaskIdFromHash, openDialogById, selectedTaskId, setSelectedTaskId])
+
   // Refs for hotkey targets
   const searchInputRef = useRef<SearchInputHandle>(null)
   const taskChatInputRef = useRef<ChatInputHandle>(null)
@@ -245,9 +273,24 @@ export function WorkspaceView() {
     (taskId: string) => {
       setSelectedTaskId(taskId)
       openDialogById(taskId)
+      if (window.location.hash !== `#taskid=${taskId}`) {
+        window.location.hash = `taskid=${taskId}`
+      }
     },
     [openDialogById, setSelectedTaskId],
   )
+
+  // Keep task sheet state synchronized with URL hash for deep-linking and back/forward navigation.
+  useEffect(() => {
+    syncTaskSheetFromHash()
+
+    const handleHashChange = () => {
+      syncTaskSheetFromHash()
+    }
+
+    window.addEventListener("hashchange", handleHashChange)
+    return () => window.removeEventListener("hashchange", handleHashChange)
+  }, [syncTaskSheetFromHash])
 
   // Task navigation with auto-open on arrow key navigation
   const { navigatePrevious, navigateNext, openSelected } = useTaskNavigation({
@@ -338,6 +381,9 @@ export function WorkspaceView() {
   const handleCloseDetail = useCallback(() => {
     setSelectedTaskId(null)
     closeDialog()
+    if (window.location.hash.startsWith("#taskid=")) {
+      window.location.hash = ""
+    }
   }, [setSelectedTaskId, closeDialog])
 
   // Handle task changes (updates/deletes)

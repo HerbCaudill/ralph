@@ -56,6 +56,8 @@ const mockTaskChatSendMessage = vi.fn()
 const mockTaskChatRestoreSession = vi.fn()
 const mockTaskChatNewSession = vi.fn()
 const mockTaskChatInputFocus = vi.fn()
+let capturedTaskPanelProps: Record<string, unknown> | null = null
+let capturedTaskDetailSheetProps: Record<string, unknown> | null = null
 const workspaceMocks = vi.hoisted(() => {
   const mockSwitchWorkspace = vi.fn()
   const mockClearTasks = vi.fn()
@@ -76,6 +78,12 @@ const workspaceMocks = vi.hoisted(() => {
 
   return { mockSwitchWorkspace, mockClearTasks, mockUseWorkspace }
 })
+const beadsMocks = vi.hoisted(() => ({
+  selectedTaskId: null as string | null,
+  mockSetSelectedTaskId: vi.fn(),
+  mockOpenDialogById: vi.fn(),
+  mockCloseDialog: vi.fn(),
+}))
 
 // Track navigate calls
 const mockNavigate = vi.fn()
@@ -176,18 +184,24 @@ vi.mock("@herbcaudill/ralph-shared", () => ({
 }))
 
 vi.mock("@herbcaudill/beads-view", () => {
-  const storeState = {
-    selectedTaskId: null,
-    setSelectedTaskId: vi.fn(),
+  const getStoreState = () => ({
+    selectedTaskId: beadsMocks.selectedTaskId,
+    setSelectedTaskId: (taskId: string | null) => {
+      beadsMocks.selectedTaskId = taskId
+      beadsMocks.mockSetSelectedTaskId(taskId)
+    },
     visibleTaskIds: [],
     accentColor: null,
     clearTasks: workspaceMocks.mockClearTasks,
     setAccentColor: vi.fn(),
     initialTaskCount: null,
     setInitialTaskCount: vi.fn(),
-  }
+  })
   return {
-    TaskPanelController: () => <div data-testid="task-sidebar">Tasks</div>,
+    TaskPanelController: (props: Record<string, unknown>) => {
+      capturedTaskPanelProps = props
+      return <div data-testid="task-sidebar">Tasks</div>
+    },
     BeadsViewProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     configureApiClient: vi.fn(),
     getApiClientConfig: vi.fn(() => ({ baseUrl: "" })),
@@ -195,11 +209,12 @@ vi.mock("@herbcaudill/beads-view", () => {
     useTaskDialog: () => ({
       selectedTask: null,
       isOpen: false,
-      openDialogById: vi.fn(),
-      closeDialog: vi.fn(),
+      openDialogById: beadsMocks.mockOpenDialogById,
+      closeDialog: beadsMocks.mockCloseDialog,
     }),
-    useBeadsViewStore: (selector: (state: typeof storeState) => unknown) => selector(storeState),
-    beadsViewStore: { getState: () => storeState },
+    useBeadsViewStore: (selector: (state: ReturnType<typeof getStoreState>) => unknown) =>
+      selector(getStoreState()),
+    beadsViewStore: { getState: () => getStoreState() },
     selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
     selectVisibleTaskIds: (state: { visibleTaskIds: string[] }) => state.visibleTaskIds,
     useWorkspace: workspaceMocks.mockUseWorkspace,
@@ -251,7 +266,10 @@ vi.mock("@herbcaudill/agent-view", () => ({
 }))
 
 vi.mock("../TaskDetailSheet", () => ({
-  TaskDetailSheet: () => null,
+  TaskDetailSheet: (props: Record<string, unknown>) => {
+    capturedTaskDetailSheetProps = props
+    return null
+  },
 }))
 
 vi.mock("../TaskChatPanel", () => ({
@@ -317,6 +335,7 @@ function renderWorkspaceView() {
 describe("WorkspaceView session history wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    beadsMocks.selectedTaskId = null
     capturedHeaderProps = {}
     capturedRalphRunnerProps = {}
     capturedWorkerControlBarProps = null
@@ -468,6 +487,7 @@ describe("WorkspaceView session history wiring", () => {
 describe("WorkspaceView workspace switching", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    beadsMocks.selectedTaskId = null
   })
 
   it("passes clearTasks to useWorkspace onSwitchStart", () => {
@@ -482,6 +502,7 @@ describe("WorkspaceView workspace switching", () => {
 describe("WorkspaceView worker orchestrator integration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    beadsMocks.selectedTaskId = null
     capturedHeaderProps = {}
     capturedRalphRunnerProps = {}
     capturedWorkerControlBarProps = null
@@ -566,6 +587,7 @@ describe("WorkspaceView worker orchestrator integration", () => {
 
   describe("WorkerControlBar callbacks", () => {
     beforeEach(() => {
+      beadsMocks.selectedTaskId = null
       mockOrchestratorWorkers = {
         Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
       }
@@ -621,6 +643,7 @@ describe("WorkspaceView worker orchestrator integration", () => {
 describe("WorkspaceView Header agent/model and workspace props", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    beadsMocks.selectedTaskId = null
     capturedHeaderProps = {}
     capturedRalphRunnerProps = {}
     capturedWorkerControlBarProps = null
@@ -672,6 +695,7 @@ describe("WorkspaceView Header agent/model and workspace props", () => {
 describe("WorkspaceView session ID URL integration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    beadsMocks.selectedTaskId = null
     capturedHeaderProps = {}
     capturedRalphRunnerProps = {}
     capturedWorkerControlBarProps = null
@@ -761,5 +785,73 @@ describe("WorkspaceView session ID URL integration", () => {
 
       expect(mockNavigate).toHaveBeenCalledWith("/test/workspace", { replace: true })
     })
+  })
+})
+
+describe("WorkspaceView task hash navigation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    beadsMocks.selectedTaskId = null
+    capturedTaskPanelProps = null
+    capturedTaskDetailSheetProps = null
+    window.location.hash = ""
+  })
+
+  it("sets #taskid hash when opening a task", () => {
+    renderWorkspaceView()
+
+    const onTaskClick = capturedTaskPanelProps?.onTaskClick as
+      | ((taskId: string) => void)
+      | undefined
+    onTaskClick?.("r-eg7ui")
+
+    expect(window.location.hash).toBe("#taskid=r-eg7ui")
+  })
+
+  it("clears hash when closing task sheet", () => {
+    renderWorkspaceView()
+
+    const onTaskClick = capturedTaskPanelProps?.onTaskClick as
+      | ((taskId: string) => void)
+      | undefined
+    onTaskClick?.("r-eg7ui")
+
+    const onClose = capturedTaskDetailSheetProps?.onClose as (() => void) | undefined
+    onClose?.()
+
+    expect(window.location.hash).toBe("")
+  })
+
+  it("opens task from URL hash on initial load", () => {
+    window.location.hash = "#taskid=r-eg7ui"
+
+    renderWorkspaceView()
+
+    expect(beadsMocks.mockSetSelectedTaskId).toHaveBeenCalledWith("r-eg7ui")
+    expect(beadsMocks.mockOpenDialogById).toHaveBeenCalledWith("r-eg7ui")
+  })
+
+  it("opens task when hash changes to include task ID", () => {
+    renderWorkspaceView()
+    expect(beadsMocks.mockOpenDialogById).not.toHaveBeenCalled()
+
+    window.location.hash = "#taskid=r-eg7ui"
+    window.dispatchEvent(new HashChangeEvent("hashchange"))
+
+    expect(beadsMocks.mockSetSelectedTaskId).toHaveBeenCalledWith("r-eg7ui")
+    expect(beadsMocks.mockOpenDialogById).toHaveBeenCalledWith("r-eg7ui")
+  })
+
+  it("closes task when hash is removed", () => {
+    beadsMocks.selectedTaskId = "r-eg7ui"
+    window.location.hash = "#taskid=r-eg7ui"
+
+    renderWorkspaceView()
+
+    window.location.hash = ""
+    window.dispatchEvent(new HashChangeEvent("hashchange"))
+
+    expect(beadsMocks.mockSetSelectedTaskId).toHaveBeenCalledWith(null)
+    expect(beadsMocks.mockCloseDialog).toHaveBeenCalled()
   })
 })
