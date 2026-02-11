@@ -244,7 +244,16 @@ export async function runDev(
 
   // Start frontend
   if (frontend) {
-    const uiArgs = ["--filter", frontend.package, "exec", "vite", "--port", String(ports._frontend)]
+    const uiArgs = [
+      "--filter",
+      frontend.package,
+      "exec",
+      "vite",
+      "--port",
+      String(ports._frontend),
+      "--clearScreen",
+      "false",
+    ]
     if (frontend.open && !process.env.RALPH_NO_OPEN) {
       uiArgs.push("--open")
     }
