@@ -1,26 +1,15 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import {
-  getSessionStorageKey,
-  getStateStorageKey,
   saveWorkspaceSession,
   loadWorkspaceSession,
   clearWorkspaceSession,
   saveWorkspaceState,
   loadWorkspaceState,
-  clearWorkspaceState,
 } from "../workspaceSessionStorage"
 
 describe("workspaceSessionStorage", () => {
   beforeEach(() => {
     localStorage.clear()
-  })
-
-  describe("getSessionStorageKey", () => {
-    it("should return the prefixed key for a workspace", () => {
-      expect(getSessionStorageKey("herbcaudill/ralph")).toBe(
-        "ralph-workspace-session:herbcaudill/ralph",
-      )
-    })
   })
 
   describe("saveWorkspaceSession", () => {
@@ -68,14 +57,6 @@ describe("workspaceSessionStorage", () => {
     })
   })
 
-  describe("getStateStorageKey", () => {
-    it("should return the prefixed key for a workspace state", () => {
-      expect(getStateStorageKey("herbcaudill/ralph")).toBe(
-        "ralph-workspace-state:herbcaudill/ralph",
-      )
-    })
-  })
-
   describe("saveWorkspaceState", () => {
     it("should store 'running' state in localStorage", () => {
       saveWorkspaceState("herbcaudill/ralph", "running")
@@ -119,18 +100,6 @@ describe("workspaceSessionStorage", () => {
     it("should return null for invalid values", () => {
       localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "invalid")
       expect(loadWorkspaceState("herbcaudill/ralph")).toBeNull()
-    })
-  })
-
-  describe("clearWorkspaceState", () => {
-    it("should remove the stored state", () => {
-      saveWorkspaceState("herbcaudill/ralph", "running")
-      clearWorkspaceState("herbcaudill/ralph")
-      expect(loadWorkspaceState("herbcaudill/ralph")).toBeNull()
-    })
-
-    it("should not throw when clearing a non-existent state", () => {
-      expect(() => clearWorkspaceState("herbcaudill/ralph")).not.toThrow()
     })
   })
 })

@@ -3,7 +3,6 @@ import { buildTaskTree } from ".././buildTaskTree"
 import { countAllNodes } from ".././countAllNodes"
 import { countDescendants } from ".././countDescendants"
 import { findRootAncestor } from ".././findRootAncestor"
-import { flattenTree } from ".././flattenTree"
 import type { TaskCardTask } from "../../types"
 
 describe("buildTaskTree", () => {
@@ -281,43 +280,6 @@ describe("buildTaskTree", () => {
         ],
       }
       expect(countAllNodes(node)).toBe(2)
-    })
-  })
-
-  describe("flattenTree", () => {
-    it("returns single item for leaf node", () => {
-      const node = {
-        task: { id: "leaf", title: "Leaf", status: "open" as const },
-        children: [],
-      }
-      const result = flattenTree(node)
-
-      expect(result).toHaveLength(1)
-      expect(result[0].id).toBe("leaf")
-    })
-
-    it("returns tasks in pre-order", () => {
-      const node = {
-        task: { id: "root", title: "Root", status: "open" as const },
-        children: [
-          {
-            task: { id: "child-1", title: "Child 1", status: "open" as const },
-            children: [
-              {
-                task: { id: "grandchild", title: "Grandchild", status: "open" as const },
-                children: [],
-              },
-            ],
-          },
-          {
-            task: { id: "child-2", title: "Child 2", status: "open" as const },
-            children: [],
-          },
-        ],
-      }
-      const result = flattenTree(node)
-
-      expect(result.map(t => t.id)).toEqual(["root", "child-1", "grandchild", "child-2"])
     })
   })
 })

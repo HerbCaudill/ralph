@@ -1,12 +1,12 @@
-import { existsSync, readFileSync, copyFileSync, mkdirSync } from "node:fs"
-import { join, dirname } from "node:path"
+import { existsSync, readFileSync } from "node:fs"
+import { join } from "node:path"
 import { getWorkspaceRoot } from "./getWorkspaceRoot.js"
 
 /** Placeholder in core prompt for workflow content */
 const WORKFLOW_PLACEHOLDER = "{WORKFLOW}"
 
 /**  Get the path to a custom prompt file. */
-export function getCustomPromptPath(
+function getCustomPromptPath(
   /** Configuration options */
   options: {
     filename: string
@@ -50,54 +50,6 @@ export function loadPrompt(
   }
 
   throw new Error(`Prompt file not found at ${customPath} or ${defaultPath}`)
-}
-
-/**
- * Initialize a prompt by copying the default to the custom directory if it doesn't exist.
- *
- * This allows users to customize the prompt on a per-project basis.
- */
-export function initPrompt(
-  /** Configuration for initializing the prompt */
-  options: LoadPromptOptions,
-): {
-  path: string
-  created: boolean
-} {
-  const { filename, customDir, defaultPath, cwd = process.cwd() } = options
-  const customPath = getCustomPromptPath({ filename, customDir, cwd })
-
-  // Already exists - no need to copy
-  if (existsSync(customPath)) {
-    return { path: customPath, created: false }
-  }
-
-  // Ensure custom directory exists
-  const customDirPath = dirname(customPath)
-  if (!existsSync(customDirPath)) {
-    mkdirSync(customDirPath, { recursive: true })
-  }
-
-  // Copy default prompt to custom directory
-  if (existsSync(defaultPath)) {
-    copyFileSync(defaultPath, customPath)
-    return { path: customPath, created: true }
-  }
-
-  throw new Error(`Default prompt not found at ${defaultPath}`)
-}
-
-/**  Check if a custom prompt file exists. */
-export function hasCustomPrompt(
-  /** Configuration options */
-  options: {
-    filename: string
-    customDir: string
-    cwd?: string
-  },
-): boolean {
-  const customPath = getCustomPromptPath(options)
-  return existsSync(customPath)
 }
 
 /**
@@ -157,14 +109,6 @@ export function hasCustomWorkflow(
   cwd: string = process.cwd(),
 ): boolean {
   return existsSync(join(getWorkspaceRoot(cwd), ".ralph", "workflow.prompt.md"))
-}
-
-/**  Get the path to the custom workflow file. */
-export function getCustomWorkflowPath(
-  /** Working directory (defaults to process.cwd()) */
-  cwd: string = process.cwd(),
-): string {
-  return join(getWorkspaceRoot(cwd), ".ralph", "workflow.prompt.md")
 }
 
 /**  Configuration for loading a prompt file. */

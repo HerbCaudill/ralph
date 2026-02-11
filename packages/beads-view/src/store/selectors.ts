@@ -33,9 +33,6 @@ export const selectTaskInputDraft = (state: BeadsViewState) => state.taskInputDr
 /** Select the initial task count. */
 export const selectInitialTaskCount = (state: BeadsViewState) => state.initialTaskCount
 
-/** Select the comment drafts map. */
-export const selectCommentDrafts = (state: BeadsViewState) => state.commentDrafts
-
 /** Select a comment draft by task ID. */
 export function selectCommentDraft(
   /** Store state. */

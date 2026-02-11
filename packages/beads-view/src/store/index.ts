@@ -15,6 +15,5 @@ export {
   selectParentCollapsedState,
   selectTaskInputDraft,
   selectInitialTaskCount,
-  selectCommentDrafts,
   selectCommentDraft,
 } from "./selectors"

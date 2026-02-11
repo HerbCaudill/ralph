@@ -7,7 +7,7 @@ const STORAGE_KEY_PREFIX = "ralph-workspace-session:"
 const STATE_KEY_PREFIX = "ralph-workspace-state:"
 
 /** Build the localStorage key for a workspace's session ID. */
-export function getSessionStorageKey(
+function getSessionStorageKey(
   /** Workspace identifier in `owner/repo` format. */
   workspaceId: string,
 ): string {
@@ -15,7 +15,7 @@ export function getSessionStorageKey(
 }
 
 /** Build the localStorage key for a workspace's control state. */
-export function getStateStorageKey(
+function getStateStorageKey(
   /** Workspace identifier in `owner/repo` format. */
   workspaceId: string,
 ): string {
@@ -94,17 +94,5 @@ export function loadWorkspaceState(
   } catch {
     // localStorage may be unavailable (e.g., in SharedWorker)
     return null
-  }
-}
-
-/** Clear the stored control state for a workspace. */
-export function clearWorkspaceState(
-  /** Workspace identifier in `owner/repo` format. */
-  workspaceId: string,
-): void {
-  try {
-    localStorage.removeItem(getStateStorageKey(workspaceId))
-  } catch {
-    // localStorage may be unavailable
   }
 }

@@ -18,7 +18,6 @@ describe("browser-safe exports", () => {
   it("exports browser-safe modules from main entry point", () => {
     // These modules should remain in the main export
     expect("getWorkspaceId" in mainExports).toBe(true)
-    expect("VERSION" in mainExports).toBe(true)
   })
 })
 

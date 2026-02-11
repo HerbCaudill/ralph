@@ -13,10 +13,8 @@ export type RalphStatus =
   | "stopping"
   | "stopping_after_current"
 
-/**
- * Button states for the control bar.
- */
-export interface ControlBarButtonStates {
+/** Button states for the control bar. */
+interface ControlBarButtonStates {
   start: boolean
   pause: boolean
   stop: boolean

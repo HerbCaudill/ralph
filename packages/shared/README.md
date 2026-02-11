@@ -64,9 +64,6 @@ Utilities for loading and managing prompt files with customization support.
 
 - `loadPrompt(options)` - Load a prompt file with fallback to default
 - `loadSessionPrompt(options)` - Combine core prompt with workflow prompt
-- `initPrompt(options)` - Initialize a prompt by copying default to custom directory
-- `getCustomPromptPath(options)` - Get the path to a custom prompt file
-- `hasCustomPrompt(options)` - Check if a custom prompt file exists
 - `getWorkspaceRoot(cwd?)` - Resolve the repo root (nearest `.git`)
 
 **Types:**
@@ -78,25 +75,24 @@ Utilities for loading and managing prompt files with customization support.
 
 The main entry point is browser-safe. Node-only utilities are available via separate subpaths:
 
-- `@herbcaudill/ralph-shared` — Browser-safe: events, beads types, VERSION
+- `@herbcaudill/ralph-shared` — Browser-safe: events, beads types
 - `@herbcaudill/ralph-shared/prompts` — Node-only: prompt loading utilities (uses `node:fs`)
 - `@herbcaudill/ralph-shared/server` — Node-only: session persistence utilities (uses `node:fs`, `node:os`)
 
 ## Usage
 
 ```typescript
-// Browser-safe imports (events, types, version)
+// Browser-safe imports (events, types)
 import {
   AgentEvent,
   AgentMessageEvent,
   isAgentMessageEvent,
   BdIssue,
   IssueStatus,
-  VERSION,
 } from "@herbcaudill/ralph-shared"
 
 // Node-only imports (prompt loading)
-import { loadPrompt, initPrompt } from "@herbcaudill/ralph-shared/prompts"
+import { loadPrompt } from "@herbcaudill/ralph-shared/prompts"
 
 // Node-only imports (session persistence)
 import { SessionPersister, getDefaultStorageDir } from "@herbcaudill/ralph-shared/server"
