@@ -21,19 +21,20 @@ export function useCurrentTask(
       return { taskId: null, taskTitle: null }
     }
 
-    // Get the last lifecycle event
-    const lastEvent = lifecycleEvents[lifecycleEvents.length - 1]
+    // Find the most recent "starting" event to get the task ID.
+    // We look for "starting" rather than using the last event because
+    // completed sessions still need to show which task they worked on
+    // (e.g., when viewing historical sessions in the SessionPicker).
+    const lastStartingEvent = [...lifecycleEvents].reverse().find(e => e.action === "starting")
 
-    // If it's a starting event, return the task ID and resolve title
-    if (lastEvent.action === "starting") {
-      const taskTitle = tasks?.find(t => t.id === lastEvent.taskId)?.title ?? null
-      return {
-        taskId: lastEvent.taskId,
-        taskTitle,
-      }
+    if (!lastStartingEvent) {
+      return { taskId: null, taskTitle: null }
     }
 
-    // If it's a completed event, no current task
-    return { taskId: null, taskTitle: null }
+    const taskTitle = tasks?.find(t => t.id === lastStartingEvent.taskId)?.title ?? null
+    return {
+      taskId: lastStartingEvent.taskId,
+      taskTitle,
+    }
   }, [events, tasks])
 }

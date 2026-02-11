@@ -51,14 +51,14 @@ export function SessionPicker({
             title={hasSessions ? "Session history" : "No previous sessions"}
             className="group min-w-0 gap-2"
           >
-            <span className="shrink-0 text-xs font-medium text-muted-foreground group-hover:text-repo-accent-foreground/75">
+            <span className="shrink-0 text-xs font-medium text-muted-foreground group-hover:text-white/75">
               {taskId}
             </span>
             {taskTitle && <span className="min-w-0 truncate text-sm font-medium">{taskTitle}</span>}
             <IconChevronDown
               size={14}
               stroke={1.5}
-              className="shrink-0 text-muted-foreground group-hover:text-repo-accent-foreground/75"
+              className="shrink-0 text-muted-foreground group-hover:text-white/75"
             />
           </Button>
         : <Button
@@ -77,8 +77,9 @@ export function SessionPicker({
           {sessions.map(session => {
             const isCurrentSession = session.sessionId === currentSessionId
             const isWorkerActive = session.isActive === true
-            const sessionTaskId = session.taskId
-            const sessionTaskTitle = session.taskTitle
+            const sessionTaskId = isCurrentSession ? (taskId ?? session.taskId) : session.taskId
+            const sessionTaskTitle =
+              isCurrentSession ? (taskTitle ?? session.taskTitle) : session.taskTitle
             return (
               <button
                 key={session.sessionId}
