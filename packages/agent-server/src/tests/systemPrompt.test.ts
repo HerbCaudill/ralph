@@ -116,6 +116,49 @@ describe("System Prompt Storage", () => {
     })
   })
 
+  describe("createSession with allowedTools", () => {
+    it("stores allowed tools when provided at session creation", async () => {
+      const manager = new ChatSessionManager({ storageDir })
+
+      const { sessionId } = await manager.createSession({
+        adapter: "stub",
+        allowedTools: ["Read", "Grep", "Bash"],
+      })
+
+      const info = manager.getSessionInfo(sessionId)
+      expect(info).not.toBeNull()
+      expect(info!.allowedTools).toEqual(["Read", "Grep", "Bash"])
+    })
+
+    it("persists allowed tools in session_created event", async () => {
+      const manager = new ChatSessionManager({ storageDir })
+
+      const { sessionId } = await manager.createSession({
+        adapter: "stub",
+        allowedTools: ["Read", "Glob", "Bash"],
+      })
+
+      const events = await manager.getPersister().readEvents(sessionId)
+      const createdEvent = events.find(e => e.type === "session_created")
+
+      expect(createdEvent).toBeDefined()
+      expect(createdEvent!.allowedTools).toEqual(["Read", "Glob", "Bash"])
+    })
+
+    it("restores allowed tools when session is restored from disk", async () => {
+      const manager1 = new ChatSessionManager({ storageDir })
+      const { sessionId } = await manager1.createSession({
+        adapter: "stub",
+        allowedTools: ["Read", "Grep", "LS", "Bash"],
+      })
+
+      const manager2 = new ChatSessionManager({ storageDir })
+      const restoredInfo = manager2.getSessionInfo(sessionId)
+      expect(restoredInfo).not.toBeNull()
+      expect(restoredInfo!.allowedTools).toEqual(["Read", "Grep", "LS", "Bash"])
+    })
+  })
+
   describe("sendMessage uses stored system prompt", () => {
     it("passes stored system prompt to adapter when sending message", async () => {
       const manager = new ChatSessionManager({ storageDir })
@@ -158,6 +201,19 @@ describe("System Prompt Storage", () => {
       await manager.sendMessage(sessionId, "Hello", {})
 
       expect(stubAdapter.lastStartOptions?.systemPrompt).toBe("Default session prompt")
+    })
+
+    it("passes stored allowed tools to adapter when sending message", async () => {
+      const manager = new ChatSessionManager({ storageDir })
+
+      const { sessionId } = await manager.createSession({
+        adapter: "stub",
+        allowedTools: ["Read", "Grep", "Bash"],
+      })
+
+      await manager.sendMessage(sessionId, "Hello")
+
+      expect(stubAdapter.lastStartOptions?.allowedTools).toEqual(["Read", "Grep", "Bash"])
     })
   })
 })

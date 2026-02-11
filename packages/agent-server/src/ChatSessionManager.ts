@@ -28,6 +28,8 @@ export interface SessionInfo {
   app?: string
   /** System prompt stored at session creation. */
   systemPrompt?: string
+  /** Allowed tools stored at session creation. */
+  allowedTools?: string[]
 }
 
 /** Options for creating a new session. */
@@ -40,6 +42,8 @@ export interface CreateSessionOptions {
   app?: string
   /** System prompt to store with the session (used as default for all messages). */
   systemPrompt?: string
+  /** Allowed tools for the session. */
+  allowedTools?: string[]
 }
 
 /** Options for sending a message. */
@@ -129,6 +133,7 @@ export class ChatSessionManager extends EventEmitter {
       messageQueue: [],
       app: options.app,
       systemPrompt: options.systemPrompt,
+      allowedTools: options.allowedTools,
     }
 
     this.sessions.set(sessionId, session)
@@ -143,6 +148,7 @@ export class ChatSessionManager extends EventEmitter {
         cwd: session.cwd,
         app: options.app,
         systemPrompt: options.systemPrompt,
+        allowedTools: options.allowedTools,
         timestamp: Date.now(),
       },
       options.app,
@@ -224,6 +230,7 @@ export class ChatSessionManager extends EventEmitter {
       const startOptions: AgentStartOptions = {
         cwd: session.cwd,
         systemPrompt: options.systemPrompt ?? session.systemPrompt,
+        allowedTools: session.allowedTools,
         model: options.model,
       }
 
@@ -320,6 +327,7 @@ export class ChatSessionManager extends EventEmitter {
       lastMessageAt: session.lastMessageAt,
       app: session.app,
       systemPrompt: session.systemPrompt,
+      allowedTools: session.allowedTools,
     }
   }
 
@@ -339,6 +347,7 @@ export class ChatSessionManager extends EventEmitter {
         lastMessageAt: s.lastMessageAt,
         app: s.app,
         systemPrompt: s.systemPrompt,
+        allowedTools: s.allowedTools,
       }))
   }
 
@@ -400,6 +409,7 @@ export class ChatSessionManager extends EventEmitter {
         messageQueue: [],
         app,
         systemPrompt: metadata?.systemPrompt,
+        allowedTools: metadata?.allowedTools,
       })
     }
   }
@@ -429,4 +439,6 @@ interface SessionState {
   app?: string
   /** System prompt stored at session creation. */
   systemPrompt?: string
+  /** Allowed tools stored at session creation. */
+  allowedTools?: string[]
 }

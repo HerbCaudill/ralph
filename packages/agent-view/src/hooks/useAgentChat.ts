@@ -85,13 +85,15 @@ export type UseAgentChatOptions = {
   storageKey?: string
   /** App namespace for session storage (e.g., "ralph", "task-chat"). Sessions are stored in separate directories per app. */
   app?: string
+  /** Allowed tools for new sessions. If omitted, adapter defaults are used. */
+  allowedTools?: string[]
 }
 
 export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "claude") {
   // Support both legacy AgentType argument and new options object
   const options: UseAgentChatOptions =
     typeof optionsOrAgent === "string" ? { initialAgent: optionsOrAgent } : optionsOrAgent
-  const { initialAgent = "claude", systemPrompt, storageKey, app } = options
+  const { initialAgent = "claude", systemPrompt, storageKey, app, allowedTools } = options
   const [events, setEvents] = useState<ChatEvent[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
@@ -131,7 +133,7 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adapter: agentType, systemPrompt, app }),
+        body: JSON.stringify({ adapter: agentType, systemPrompt, app, allowedTools }),
       })
       const data = (await res.json()) as { sessionId: string }
       setSessionId(data.sessionId)
@@ -153,7 +155,7 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
       setError("Failed to create session")
       return null
     }
-  }, [agentType, systemPrompt, app, setSessionId])
+  }, [agentType, systemPrompt, app, allowedTools, setSessionId])
 
   /**
    * Try to restore a previous session from localStorage or the session index.

@@ -1,5 +1,6 @@
 import { useAgentChat } from "@herbcaudill/agent-view"
 import MANAGE_TASKS_SYSTEM_PROMPT from "@herbcaudill/ralph-shared/templates/manage-tasks.prompt.md?raw"
+import { TASK_CHAT_ALLOWED_TOOLS } from "./constants"
 
 /**
  * Hook for task-specific chat functionality.
@@ -17,6 +18,7 @@ export function useTaskChat(
     systemPrompt: MANAGE_TASKS_SYSTEM_PROMPT,
     storageKey,
     app: "task-chat",
+    allowedTools: [...TASK_CHAT_ALLOWED_TOOLS],
   })
 
   return {

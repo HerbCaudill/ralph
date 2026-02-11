@@ -161,6 +161,7 @@ export class SessionPersister {
     createdAt: number
     app?: string
     systemPrompt?: string
+    allowedTools?: string[]
   } | null {
     const filePath = this.sessionPath(sessionId, app)
     if (!existsSync(filePath)) return null
@@ -178,6 +179,7 @@ export class SessionPersister {
           createdAt: (event.timestamp as number) ?? 0,
           app: event.app as string | undefined,
           systemPrompt: event.systemPrompt as string | undefined,
+          allowedTools: event.allowedTools as string[] | undefined,
         }
       }
       return null

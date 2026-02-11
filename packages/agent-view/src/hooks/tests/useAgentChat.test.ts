@@ -974,6 +974,99 @@ describe("useAgentChat localStorage persistence", () => {
     })
   })
 
+  // ── allowed tools ─────────────────────────────────────────────────────
+
+  describe("allowed tools", () => {
+    it("includes allowedTools in session creation request when provided in options", async () => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === "/api/sessions" && init?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ sessionId: "allowed-tools-session-123" }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderHook(() =>
+        useAgentChat({
+          initialAgent: "claude",
+          allowedTools: ["Read", "Grep", "Bash"],
+        }),
+      )
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      await act(async () => {
+        result.current.actions.sendMessage("Hello")
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as [
+        string,
+        RequestInit?,
+      ][]
+      const createCall = fetchCalls.find(
+        ([url, init]) => url === "/api/sessions" && init?.method === "POST",
+      )
+
+      expect(createCall).toBeDefined()
+      const body = JSON.parse(createCall![1]!.body as string)
+      expect(body.allowedTools).toEqual(["Read", "Grep", "Bash"])
+    })
+
+    it("does not include allowedTools when not provided in options", async () => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === "/api/sessions" && init?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ sessionId: "no-allowed-tools-session" }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderHook(() =>
+        useAgentChat({
+          initialAgent: "claude",
+        }),
+      )
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      await act(async () => {
+        result.current.actions.sendMessage("Hello")
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      const fetchCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as [
+        string,
+        RequestInit?,
+      ][]
+      const createCall = fetchCalls.find(
+        ([url, init]) => url === "/api/sessions" && init?.method === "POST",
+      )
+
+      expect(createCall).toBeDefined()
+      const body = JSON.parse(createCall![1]!.body as string)
+      expect(body.allowedTools).toBeUndefined()
+    })
+  })
+
   // ── storageKey changes (workspace switching) ─────────────────────────
 
   describe("storageKey changes", () => {

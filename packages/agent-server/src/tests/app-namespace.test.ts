@@ -379,6 +379,27 @@ describe("App-namespaced session storage", () => {
       expect(createSession).toHaveBeenCalledWith({ adapter: "stub", app: "ralph" })
     })
 
+    it("POST /api/sessions forwards allowedTools to session creation", async () => {
+      const createSession = vi.fn().mockResolvedValue({ sessionId: "new-session" })
+      const ctx = createMockContext({
+        sessionManager: { createSession },
+      })
+      const app = createTestApp(ctx)
+
+      const res = await request(app, "POST", "/api/sessions", {
+        adapter: "stub",
+        app: "task-chat",
+        allowedTools: ["Read", "Grep", "Bash"],
+      })
+
+      expect(res.status).toBe(201)
+      expect(createSession).toHaveBeenCalledWith({
+        adapter: "stub",
+        app: "task-chat",
+        allowedTools: ["Read", "Grep", "Bash"],
+      })
+    })
+
     it("GET /api/sessions/:id/events reads events from app-namespaced session", async () => {
       // This test verifies the bug fix for r-vq4gx:
       // When fetching events for a session with an app namespace (e.g., "ralph"),

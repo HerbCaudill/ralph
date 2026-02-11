@@ -104,6 +104,7 @@ export function handleWsConnection(
               cwd: msg.cwd as string | undefined,
               app: msg.app as string | undefined,
               systemPrompt: msg.systemPrompt as string | undefined,
+              allowedTools: msg.allowedTools as string[] | undefined,
             })
             .then(result => {
               client.subscribedSessions.add(result.sessionId)
@@ -217,6 +218,7 @@ export function handleWsConnection(
               .createSession({
                 adapter: msg.agentType as string | undefined,
                 app: msg.app as string | undefined,
+                allowedTools: msg.allowedTools as string[] | undefined,
               })
               .then(result => {
                 client.subscribedSessions.add(result.sessionId)
