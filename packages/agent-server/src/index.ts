@@ -48,7 +48,7 @@ export {
 
 // ── Adapters ─────────────────────────────────────────────────────────
 
-export { ClaudeAdapter, buildCwdContext } from "./ClaudeAdapter.js"
+export { ClaudeAdapter, buildCwdContext, DEFAULT_CLAUDE_MODEL } from "./ClaudeAdapter.js"
 export type { ClaudeAdapterOptions, QueryFn, RetryConfig } from "./ClaudeAdapter.js"
 
 export { CodexAdapter } from "./CodexAdapter.js"

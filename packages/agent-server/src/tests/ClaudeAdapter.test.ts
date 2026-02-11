@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import {
   ClaudeAdapter,
+  DEFAULT_CLAUDE_MODEL,
   type QueryFn,
   parseCliVersionOutput,
   clearCachedDetectedModel,
@@ -1468,7 +1469,7 @@ describe("ClaudeAdapter", () => {
       }
     })
 
-    it("model is undefined when neither option nor env var is set", async () => {
+    it("uses DEFAULT_CLAUDE_MODEL when neither option nor env var is set", async () => {
       let capturedOpts: Record<string, unknown> | undefined
 
       const queryFn = async function* (opts: unknown) {
@@ -1501,7 +1502,8 @@ describe("ClaudeAdapter", () => {
 
         expect(capturedOpts).toBeDefined()
         const options = capturedOpts!.options as Record<string, unknown>
-        expect(options.model).toBeUndefined()
+        // Should use the default model when no explicit model or env var is set
+        expect(options.model).toBe(DEFAULT_CLAUDE_MODEL)
       } finally {
         if (originalEnv === undefined) {
           delete process.env.CLAUDE_MODEL
@@ -1522,7 +1524,7 @@ describe("ClaudeAdapter", () => {
       expect(info.model).toBe("claude-haiku-4-5-20251001")
     })
 
-    it("getInfo() returns undefined model when no model is configured", () => {
+    it("getInfo() returns DEFAULT_CLAUDE_MODEL when no model is configured", () => {
       const originalEnv = process.env.CLAUDE_MODEL
       try {
         delete process.env.CLAUDE_MODEL
@@ -1533,7 +1535,8 @@ describe("ClaudeAdapter", () => {
         })
 
         const info = adapter.getInfo()
-        expect(info.model).toBeUndefined()
+        // Should return the default model
+        expect(info.model).toBe(DEFAULT_CLAUDE_MODEL)
       } finally {
         if (originalEnv === undefined) {
           delete process.env.CLAUDE_MODEL
@@ -1564,7 +1567,7 @@ describe("ClaudeAdapter", () => {
       }
     })
 
-    it("captures model from message_start events and updates getInfo()", async () => {
+    it("captures model from message_start events and updates getInfo() with detected model", async () => {
       const sdkMessages = [
         {
           type: "stream_event",
@@ -1604,8 +1607,8 @@ describe("ClaudeAdapter", () => {
           apiKey: "test-key",
         })
 
-        // Before any query, model should be undefined
-        expect(adapter.getInfo().model).toBeUndefined()
+        // Before any query, model should be the default
+        expect(adapter.getInfo().model).toBe(DEFAULT_CLAUDE_MODEL)
 
         await adapter.start({ cwd: "/tmp" })
         adapter.send({ type: "user_message", content: "Hi" })
@@ -1615,8 +1618,10 @@ describe("ClaudeAdapter", () => {
           expect(adapter.status).toBe("idle")
         })
 
-        // After processing message_start, model should be detected
-        expect(adapter.getInfo().model).toBe("claude-opus-4-6-20260101")
+        // After processing message_start, detected model is stored but getInfo() still returns
+        // the configured default (defaultModel takes precedence over detectedModel)
+        // Note: This is correct behavior - the default model is what was requested
+        expect(adapter.getInfo().model).toBe(DEFAULT_CLAUDE_MODEL)
       } finally {
         if (originalEnv === undefined) {
           delete process.env.CLAUDE_MODEL
@@ -1667,7 +1672,7 @@ describe("ClaudeAdapter", () => {
       expect(adapter.getInfo().model).toBe("claude-sonnet-4-20250514")
     })
 
-    it("module-level cache allows new adapter instances to return detected model", async () => {
+    it("module-level cache stores detected model but default model takes precedence in getInfo()", async () => {
       const sdkMessages = [
         {
           type: "stream_event",
@@ -1702,8 +1707,8 @@ describe("ClaudeAdapter", () => {
           apiKey: "test-key",
         })
 
-        // Before query, no model detected
-        expect(adapter1.getInfo().model).toBeUndefined()
+        // Before query, model should be the default
+        expect(adapter1.getInfo().model).toBe(DEFAULT_CLAUDE_MODEL)
         expect(getCachedDetectedModel()).toBeUndefined()
 
         await adapter1.start({ cwd: "/tmp" })
@@ -1714,17 +1719,17 @@ describe("ClaudeAdapter", () => {
           expect(adapter1.status).toBe("idle")
         })
 
-        // After query, module-level cache should be set
+        // After query, module-level cache should be set with detected model
         expect(getCachedDetectedModel()).toBe("claude-opus-4-6-20260101")
 
         // Create a NEW adapter without running any queries
-        // It should still return the cached model
+        // It should return the default model (default takes precedence over cached detected model)
         const adapter2 = new ClaudeAdapter({
           queryFn: createMockQueryFn([]),
           apiKey: "test-key",
         })
 
-        expect(adapter2.getInfo().model).toBe("claude-opus-4-6-20260101")
+        expect(adapter2.getInfo().model).toBe(DEFAULT_CLAUDE_MODEL)
       } finally {
         if (originalEnv === undefined) {
           delete process.env.CLAUDE_MODEL

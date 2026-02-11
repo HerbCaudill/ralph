@@ -46,6 +46,13 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 const DEFAULT_MAX_THINKING_TOKENS = 0
 
 /**
+ * Default Claude model to use when no explicit model is configured.
+ * This is the latest, most capable Claude model (Opus 4.6).
+ * Can be overridden via ClaudeAdapterOptions.model or CLAUDE_MODEL env var.
+ */
+export const DEFAULT_CLAUDE_MODEL = "claude-opus-4-6"
+
+/**
  * Parse a version string from `claude --version` output.
  * Expected format: "2.1.29 (Claude Code)" -> "2.1.29"
  */
@@ -109,8 +116,8 @@ export interface ClaudeAdapterOptions {
   /** Retry configuration for connection errors */
   retryConfig?: Partial<RetryConfig>
   /**
-   * Default model to use for queries (e.g., "claude-haiku-4-5-20251001", "claude-sonnet-4-20250514").
-   * Can also be set via the CLAUDE_MODEL environment variable.
+   * Model to use for queries (e.g., "claude-haiku-4-5-20251001", "claude-sonnet-4-20250514").
+   * Resolution order: this option > CLAUDE_MODEL env var > DEFAULT_CLAUDE_MODEL ("claude-opus-4-6").
    * Can be overridden per-message via AgentStartOptions.model.
    */
   model?: string
@@ -201,8 +208,8 @@ export class ClaudeAdapter extends AgentAdapter {
       ...DEFAULT_RETRY_CONFIG,
       ...options.retryConfig,
     }
-    // Resolve default model: explicit option > env var > undefined (SDK default)
-    this.defaultModel = options.model ?? process.env.CLAUDE_MODEL ?? undefined
+    // Resolve default model: explicit option > env var > DEFAULT_CLAUDE_MODEL
+    this.defaultModel = options.model ?? process.env.CLAUDE_MODEL ?? DEFAULT_CLAUDE_MODEL
     // Resolve thinking tokens: explicit option > env var > default
     const envThinkingTokens = process.env.CLAUDE_MAX_THINKING_TOKENS
     this.maxThinkingTokens =

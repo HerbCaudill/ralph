@@ -143,7 +143,7 @@ JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": 
 - `AGENT_SERVER_HOST` / `AGENT_SERVER_PORT` — Agent server host/port (defaults: localhost / 4244)
 - `VITE_BEADS_SERVER_URL` — Full URL for beads-server (e.g., `http://localhost:4243`)
 - `VITE_AGENT_SERVER_URL` — Full URL for agent-server (e.g., `http://localhost:4244`)
-- `CLAUDE_MODEL` — Default Claude model for ClaudeAdapter. Overridable per-adapter via `ClaudeAdapterOptions.model`
+- `CLAUDE_MODEL` — Override Claude model for ClaudeAdapter (defaults to `claude-opus-4-6` via `DEFAULT_CLAUDE_MODEL`). Overridable per-adapter via `ClaudeAdapterOptions.model`
 - `RALPH_DEBUG` — Debug logging (`1` for all, or comma-separated namespaces: `messagequeue`, `session`)
 - `RALPH_CWD` — Override base path for relative path rendering
 
@@ -156,6 +156,7 @@ JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": 
 **Development-only:** In React 18 StrictMode (dev mode), components are intentionally double-mounted to catch side effects. WebSocket connections should be deferred with `setTimeout(0)` to avoid immediate teardown on the first mount, which causes ECONNRESET errors in Vite's WebSocket proxy.
 
 This pattern is used in:
+
 - `packages/ui/src/hooks/useWorkerOrchestrator.ts` — Defers WebSocket creation via `setTimeout(0)` with cleanup in the return function to clear the timeout
 - `packages/ui/src/hooks/useRalphLoop.ts` — Follows the same pattern
 
