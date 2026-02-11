@@ -1751,4 +1751,108 @@ describe("ralphWorker", () => {
       expect(globalStopMessages[0].isStoppingAfterCurrentGlobal).toBe(false)
     })
   })
+
+  describe("session restoration after reload (r-29gl2)", () => {
+    it("should restore a running session after unsubscribe/subscribe cycle (single-tab reload)", async () => {
+      const port1 = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      // 1. Subscribe and start a running session
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port1)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      handlePortMessage({ type: "start", workspaceId }, port1)
+      state.currentSessionId = "active-session-123"
+      expect(state.controlState).toBe("running")
+
+      // 2. Simulate page unload — unsubscribe removes the last subscriber
+      handlePortMessage({ type: "unsubscribe_workspace", workspaceId }, port1)
+      expect(state.controlState).toBe("idle")
+      expect(state.currentSessionId).toBeNull()
+      expect(state.ws).toBeNull()
+
+      // 3. Simulate page reload — new port subscribes and restores
+      const port2 = createMockPort()
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port2)
+
+      // Wait for new WebSocket
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      // 4. Restore the session (as useRalphLoop does from localStorage)
+      handlePortMessage(
+        {
+          type: "restore_session",
+          workspaceId,
+          sessionId: "active-session-123",
+          controlState: "running",
+        },
+        port2,
+      )
+
+      // Session should be restored with running state
+      expect(state.currentSessionId).toBe("active-session-123")
+      expect(state.controlState).toBe("running")
+
+      // Should have sent reconnect to fetch historical events
+      expect(state.ws!.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: "reconnect", sessionId: "active-session-123" }),
+      )
+
+      // Should have broadcast session_restored
+      const restoredMessages = port2.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "session_restored")
+
+      expect(restoredMessages).toHaveLength(1)
+      expect(restoredMessages[0]).toEqual({
+        type: "session_restored",
+        workspaceId,
+        sessionId: "active-session-123",
+        controlState: "running",
+      })
+    })
+
+    it("should broadcast running state_change when restoring a running session", async () => {
+      const port = createMockPort()
+      const workspaceId = "herbcaudill/ralph"
+
+      handlePortMessage({ type: "subscribe_workspace", workspaceId }, port)
+      const state = getWorkspace(workspaceId)
+
+      await vi.waitFor(() => {
+        expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
+      })
+
+      port.postMessage.mockClear()
+
+      // Restore a running session
+      handlePortMessage(
+        {
+          type: "restore_session",
+          workspaceId,
+          sessionId: "session-456",
+          controlState: "running",
+        },
+        port,
+      )
+
+      // Should broadcast state_change to running
+      const stateChangeMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "state_change")
+
+      expect(stateChangeMessages).toHaveLength(1)
+      expect(stateChangeMessages[0]).toEqual({
+        type: "state_change",
+        workspaceId,
+        state: "running",
+      })
+    })
+  })
 })

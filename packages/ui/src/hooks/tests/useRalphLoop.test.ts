@@ -613,6 +613,53 @@ describe("useRalphLoop", () => {
       })
     })
 
+    it("should re-persist session ID to localStorage when session_restored arrives after state_change:idle clears it (r-29gl2)", async () => {
+      // This test reproduces the core reload bug:
+      // 1. localStorage has a saved session + running state
+      // 2. On reload, subscribe_workspace sends state_change:idle → clearWorkspaceSession()
+      // 3. session_restored arrives but session ID is already gone from localStorage
+      // 4. If user reloads AGAIN, there's no session to restore
+      //
+      // The fix: re-persist sessionId in the session_restored handler
+
+      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "active-session-999")
+      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
+
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      await flushSubscription()
+
+      // Step 1: Worker sends state_change:idle from subscribe_workspace initial sync
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "idle",
+        })
+      })
+
+      // Session ID should be cleared at this point
+      expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBeNull()
+
+      // Step 2: Worker sends session_restored
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "session_restored",
+          workspaceId: TEST_WORKSPACE_ID,
+          sessionId: "active-session-999",
+          controlState: "running",
+        })
+      })
+
+      // Session ID should be re-persisted
+      expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBe(
+        "active-session-999",
+      )
+      // Control state should also be re-persisted
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("running")
+    })
+
     it("should set isStreaming true when restoring a running session", async () => {
       // Simulate a previous running state
       localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")

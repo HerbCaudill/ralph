@@ -797,9 +797,10 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       if (state.controlState === "idle" && !state.currentSessionId) {
         state.currentSessionId = message.sessionId
 
-        // If the session was running before reload, restore that state
+        // If the session was running before reload, restore that state.
+        // Use setControlState to broadcast the change so the UI updates.
         if (message.controlState === "running") {
-          state.controlState = message.controlState
+          setControlState(message.workspaceId, message.controlState)
         }
 
         // Send reconnect to fetch historical events

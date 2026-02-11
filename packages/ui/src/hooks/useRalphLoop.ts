@@ -145,6 +145,9 @@ export function useRalphLoop(
       case "session_restored":
         // Session restored from localStorage
         setSessionId(data.sessionId)
+        // Re-persist the session ID to localStorage — the initial state_change:'idle'
+        // from subscribe_workspace may have cleared it via clearWorkspaceSession
+        saveWorkspaceSession(data.workspaceId, data.sessionId)
         // If the session was running or paused before reload, restore that state
         if (data.controlState === "running" || data.controlState === "paused") {
           setControlState(data.controlState)
