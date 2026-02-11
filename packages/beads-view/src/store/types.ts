@@ -10,6 +10,8 @@ export interface BeadsViewState {
   initialTaskCount: number | null
   /** Tasks loaded from beads. */
   tasks: Task[]
+  /** Persisted task caches keyed by workspace ID/path. */
+  taskCacheByWorkspace: Record<string, Task[]>
   /** Task search query string. */
   taskSearchQuery: string
   /** Selected task ID for keyboard navigation. */
@@ -42,6 +44,8 @@ export interface BeadsViewActions {
   removeTask: (id: string) => void
   /** Clear all tasks. */
   clearTasks: () => void
+  /** Hydrate tasks from cache for a workspace ID/path. */
+  hydrateTasksForWorkspace: (workspacePath?: string) => void
   /** Refresh tasks from the API (debounced). */
   refreshTasks: () => void
   /** Set the task search query. */

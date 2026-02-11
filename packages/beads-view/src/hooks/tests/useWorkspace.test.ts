@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { useWorkspace } from "../useWorkspace"
 import { configureApiClient, getApiClientConfig } from "../../lib/apiClient"
+import { beadsViewStore } from "../../store/beadsViewStore"
 
 // Mock fetch
 const mockFetch = vi.fn()
@@ -39,6 +40,7 @@ describe("useWorkspace", () => {
     localStorage.clear()
     // Reset the API client config
     configureApiClient({})
+    beadsViewStore.setState({ tasks: [], taskCacheByWorkspace: {} })
   })
 
   afterEach(() => {
@@ -450,6 +452,58 @@ describe("useWorkspace", () => {
   })
 
   describe("switchWorkspace", () => {
+    it("hydrates tasks immediately from the selected workspace cache on switch", async () => {
+      const otherWorkspace = {
+        path: "/home/user/other",
+        name: "other",
+        issueCount: 3,
+        branch: "develop",
+      }
+
+      beadsViewStore.setState({
+        tasks: [{ id: "r-aaa", title: "Task A", status: "open" }],
+        taskCacheByWorkspace: {
+          "/home/user/project": [{ id: "r-aaa", title: "Task A", status: "open" }],
+          "/home/user/other": [{ id: "r-bbb", title: "Task B", status: "open" }],
+        },
+      })
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspaces: mockWorkspaces }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, workspace: mockWorkspace }),
+        })
+        .mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              setTimeout(() => {
+                resolve({
+                  ok: true,
+                  json: () => Promise.resolve({ ok: true, workspace: otherWorkspace }),
+                })
+              }, 0)
+            }),
+        )
+
+      const { result } = renderHook(() => useWorkspace())
+
+      await waitFor(() => {
+        expect(result.current.state.isLoading).toBe(false)
+      })
+
+      await act(async () => {
+        void result.current.actions.switchWorkspace("/home/user/other")
+      })
+
+      expect(beadsViewStore.getState().tasks).toEqual([
+        { id: "r-bbb", title: "Task B", status: "open" },
+      ])
+    })
+
     it("switches workspace client-side and updates apiClient config", async () => {
       const otherWorkspace = {
         path: "/home/user/other",

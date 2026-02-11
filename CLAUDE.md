@@ -132,6 +132,7 @@ JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": 
 - Controller/presentational pattern: **FooController** connects hooks to **Foo** (pure presentational)
 - Use the shared Dialog component from `@herbcaudill/components` instead of native `<dialog>` elements
 - Zustand store uses multi-instance state via `instances: Map<string, RalphInstance>` with `activeInstanceId`; use selectors (e.g., `selectRalphStatus`, `selectEvents`)
+- `beads-view` persists task caches per workspace (`taskCacheByWorkspace`) and hydrates from the selected workspace cache on switch to prevent cross-workspace stale task flashes.
 - IndexedDB (v8) stores: `sessions`, `events`, `chat_sessions`, `sync_state`. Event dedup uses `event.uuid` as key.
 - HMR preserves WebSocket state via `import.meta.hot.data`; no `<StrictMode>` wrapper
 - Ralph loop idle UI: when no events are present and `controlState` is `idle`, render the "Ralph is not running" empty state even if connection status is `connecting`.

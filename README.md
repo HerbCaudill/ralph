@@ -55,6 +55,7 @@ ralph-ui start --open
 The UI provides real-time monitoring, task management, and support for multiple AI agents (Claude, Codex).
 Tool output details are hidden by default and can be toggled with `Ctrl+O`.
 In the Ralph loop idle empty state, the Start button uses the design-system accent token styles (`bg-accent`, `hover:bg-accent/90`).
+`@herbcaudill/beads-view` caches tasks per workspace in localStorage, so workspace switches hydrate instantly without briefly showing tasks from another workspace.
 
 ### Demo apps
 

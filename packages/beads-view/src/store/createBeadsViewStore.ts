@@ -1,6 +1,6 @@
 import { createStore } from "zustand/vanilla"
 import { createJSONStorage, persist } from "zustand/middleware"
-import { apiFetch } from "../lib/apiClient"
+import { apiFetch, getApiClientConfig } from "../lib/apiClient"
 import type { BeadsViewStore } from "./types"
 import type { Task, TaskGroup } from "../types"
 
@@ -17,6 +17,56 @@ const TASK_REFRESH_DEBOUNCE_MS = 50
 /** Maximum number of comment drafts to keep. */
 const MAX_COMMENT_DRAFTS = 50
 
+/** LocalStorage key for persisted workspace path. */
+const WORKSPACE_STORAGE_KEY = "ralph-workspace-path"
+
+/** Fallback key when no workspace is selected. */
+const DEFAULT_WORKSPACE_CACHE_KEY = "__default__"
+
+/** Persist version for workspace-scoped task cache support. */
+const PERSIST_VERSION = 1
+
+/**
+ * Resolve the active workspace cache key.
+ * Prefers explicit path, then localStorage, then apiClient config.
+ */
+function getWorkspaceCacheKey(
+  /** Explicit workspace path/ID to use. */
+  workspacePath?: string,
+): string {
+  if (workspacePath?.trim()) return workspacePath.trim()
+
+  try {
+    const savedWorkspacePath = localStorage.getItem(WORKSPACE_STORAGE_KEY)
+    if (savedWorkspacePath?.trim()) return savedWorkspacePath.trim()
+  } catch {
+    // Ignore storage errors.
+  }
+
+  const config = getApiClientConfig()
+  if (config.workspaceId?.trim()) return config.workspaceId.trim()
+  if (config.workspacePath?.trim()) return config.workspacePath.trim()
+  return DEFAULT_WORKSPACE_CACHE_KEY
+}
+
+/**
+ * Build an updated workspace task cache map from the current state and task list.
+ */
+function createUpdatedWorkspaceTaskCache(
+  /** Existing cache map. */
+  taskCacheByWorkspace: Record<string, Task[]>,
+  /** Task list to store for the active workspace. */
+  tasks: Task[],
+  /** Optional explicit workspace path/ID. */
+  workspacePath?: string,
+): Record<string, Task[]> {
+  const workspaceKey = getWorkspaceCacheKey(workspacePath)
+  return {
+    ...taskCacheByWorkspace,
+    [workspaceKey]: tasks,
+  }
+}
+
 /** Create a beads-view store instance. */
 export function createBeadsViewStore(
   /** Optional initial state overrides. */
@@ -32,6 +82,7 @@ export function createBeadsViewStore(
         accentColor: null,
         initialTaskCount: null,
         tasks: [],
+        taskCacheByWorkspace: {},
         taskSearchQuery: "",
         selectedTaskId: null,
         visibleTaskIds: [],
@@ -42,16 +93,42 @@ export function createBeadsViewStore(
         commentDrafts: {},
         setIssuePrefix: prefix => set({ issuePrefix: prefix }),
         setAccentColor: color => set({ accentColor: color }),
-        setTasks: tasks => set({ tasks }),
+        setTasks: tasks =>
+          set(state => ({
+            tasks,
+            taskCacheByWorkspace: createUpdatedWorkspaceTaskCache(
+              state.taskCacheByWorkspace,
+              tasks,
+            ),
+          })),
         updateTask: (id, updates) =>
           set(state => ({
             tasks: state.tasks.map(task => (task.id === id ? { ...task, ...updates } : task)),
+            taskCacheByWorkspace: createUpdatedWorkspaceTaskCache(
+              state.taskCacheByWorkspace,
+              state.tasks.map(task => (task.id === id ? { ...task, ...updates } : task)),
+            ),
           })),
         removeTask: id =>
           set(state => ({
             tasks: state.tasks.filter(task => task.id !== id),
+            taskCacheByWorkspace: createUpdatedWorkspaceTaskCache(
+              state.taskCacheByWorkspace,
+              state.tasks.filter(task => task.id !== id),
+            ),
           })),
-        clearTasks: () => set({ tasks: [] }),
+        clearTasks: () =>
+          set(state => ({
+            tasks: [],
+            taskCacheByWorkspace: createUpdatedWorkspaceTaskCache(state.taskCacheByWorkspace, []),
+          })),
+        hydrateTasksForWorkspace: workspacePath =>
+          set(state => {
+            const workspaceKey = getWorkspaceCacheKey(workspacePath)
+            return {
+              tasks: state.taskCacheByWorkspace[workspaceKey] ?? [],
+            }
+          }),
         refreshTasks: () => {
           taskRefreshPending = true
           if (taskRefreshDebounceTimeout !== null) return
@@ -64,8 +141,15 @@ export function createBeadsViewStore(
             try {
               const response = await apiFetch("/api/tasks?all=true")
               const data = (await response.json()) as { ok: boolean; issues?: Task[] }
-              if (data.ok && data.issues) {
-                set({ tasks: data.issues })
+              const issues = data.issues
+              if (data.ok && issues) {
+                set(state => ({
+                  tasks: issues,
+                  taskCacheByWorkspace: createUpdatedWorkspaceTaskCache(
+                    state.taskCacheByWorkspace,
+                    issues,
+                  ),
+                }))
               }
             } catch (err) {
               console.error("Failed to refresh tasks:", err)
@@ -131,11 +215,44 @@ export function createBeadsViewStore(
       }),
       {
         name: "beads-view-store",
+        version: PERSIST_VERSION,
         storage: createJSONStorage(() => localStorage),
+        migrate: persistedState => {
+          const state = persistedState as Partial<BeadsViewStore> | undefined
+          if (!state) return persistedState
+
+          const hasWorkspaceCache =
+            typeof state.taskCacheByWorkspace === "object" && state.taskCacheByWorkspace !== null
+
+          if (hasWorkspaceCache) return state
+
+          const workspaceKey = getWorkspaceCacheKey()
+          const tasks = Array.isArray(state.tasks) ? state.tasks : []
+          return {
+            ...state,
+            taskCacheByWorkspace: {
+              [workspaceKey]: tasks,
+            },
+          }
+        },
+        merge: (persistedState, currentState) => {
+          const state = persistedState as Partial<BeadsViewStore> | undefined
+          if (!state) return currentState
+
+          const taskCacheByWorkspace = state.taskCacheByWorkspace ?? {}
+          const workspaceKey = getWorkspaceCacheKey()
+          return {
+            ...currentState,
+            ...state,
+            taskCacheByWorkspace,
+            tasks: taskCacheByWorkspace[workspaceKey] ?? [],
+          }
+        },
         partialize: state => ({
           issuePrefix: state.issuePrefix,
           accentColor: state.accentColor,
           tasks: state.tasks,
+          taskCacheByWorkspace: state.taskCacheByWorkspace,
           taskSearchQuery: state.taskSearchQuery,
           selectedTaskId: state.selectedTaskId,
           closedTimeFilter: state.closedTimeFilter,

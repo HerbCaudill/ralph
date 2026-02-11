@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 import { apiFetch, configureApiClient, getApiClientConfig } from "../lib/apiClient"
+import { beadsViewStore } from "../store/beadsViewStore"
 
 export type Workspace = {
   path: string
@@ -215,6 +216,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
 
       // Update localStorage and apiClient config first
       saveWorkspacePath(path)
+      beadsViewStore.getState().hydrateTasksForWorkspace(path)
 
       // Use cached workspaces list for an instant UI update (name, accent color).
       // The path may be a workspaceId (e.g. "herbcaudill/ralph") or a filesystem path,
@@ -248,6 +250,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
       if (cachedWorkspace && savedPath) {
         // Ensure API client is configured
         saveWorkspacePath(savedPath)
+        beadsViewStore.getState().hydrateTasksForWorkspace(savedPath)
 
         // Refresh workspace info in background (updates cache if data changed)
         fetchWorkspaceInfo(savedPath).then(freshWorkspace => {
@@ -276,6 +279,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
       if (savedPath) {
         // Configure apiClient with the saved workspace path
         saveWorkspacePath(savedPath)
+        beadsViewStore.getState().hydrateTasksForWorkspace(savedPath)
 
         // Fetch saved workspace info
         const savedWorkspace = await fetchWorkspaceInfo(savedPath)
@@ -317,6 +321,7 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
 
       // Configure apiClient with the workspace path
       saveWorkspacePath(targetPath)
+      beadsViewStore.getState().hydrateTasksForWorkspace(targetPath)
 
       // Fetch detailed info for the selected workspace
       const info = await fetchWorkspaceInfo(targetPath)
