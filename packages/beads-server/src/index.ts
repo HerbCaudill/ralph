@@ -16,7 +16,7 @@ import {
   mapThemeToCSSVariables,
   createAppTheme,
 } from "@herbcaudill/agent-view-theme"
-import type { MutationEvent } from "@herbcaudill/beads-sdk"
+import type { MutationEvent } from "./lib/bdTypes.js"
 import { WorkspaceNotFoundError, type BeadsServerConfig, type WsClient } from "./types.js"
 
 export type { BeadsServerConfig, WsClient } from "./types.js"
