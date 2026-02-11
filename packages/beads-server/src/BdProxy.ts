@@ -48,7 +48,7 @@ export class BdProxy {
   /** List issues with optional filters. */
   async list(options: BdListOptions = {}): Promise<BdIssue[]> {
     const args = ["list", "--json"]
-    if (options.limit !== undefined) args.push("--limit", String(options.limit))
+    if (options.limit) args.push("--limit", String(options.limit))
     if (options.status) args.push("--status", options.status)
     if (options.priority !== undefined) args.push("--priority", String(options.priority))
     if (options.type) args.push("--type", options.type)
