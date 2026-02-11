@@ -286,6 +286,20 @@ describe("RalphRunner", () => {
       expect(startButton).toBeDisabled()
     })
 
+    it("uses accent styling for the start button", () => {
+      render(
+        <RalphRunner
+          {...defaultProps}
+          events={[]}
+          controlState="idle"
+          connectionStatus="connected"
+        />,
+      )
+      const startButton = screen.getByRole("button", { name: /start ralph/i })
+      expect(startButton).toHaveClass("bg-accent", "hover:bg-accent/90")
+      expect(startButton).not.toHaveClass("bg-green-600", "hover:bg-green-700")
+    })
+
     it("does not show idle state when running", () => {
       render(<RalphRunner {...defaultProps} events={[]} controlState="running" />)
       expect(screen.queryByRole("button", { name: /start ralph/i })).not.toBeInTheDocument()
