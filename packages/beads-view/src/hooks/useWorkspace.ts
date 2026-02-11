@@ -218,6 +218,9 @@ export function useWorkspace(options: UseWorkspaceOptions = {}) {
       saveWorkspacePath(path)
       beadsViewStore.getState().hydrateTasksForWorkspace(path)
 
+      // Fetch fresh tasks for the new workspace
+      beadsViewStore.getState().refreshTasks()
+
       // Use cached workspaces list for an instant UI update (name, accent color).
       // The path may be a workspaceId (e.g. "herbcaudill/ralph") or a filesystem path,
       // so match against both.
