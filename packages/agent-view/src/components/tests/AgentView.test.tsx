@@ -38,7 +38,7 @@ describe("AgentView", () => {
   describe("layout in flex container", () => {
     it("uses flex-1 and min-h-0 instead of h-full to prevent overflow in flex parents", () => {
       /**
-       * When AgentView is used inside a flex container (like RalphRunner or RalphLoopPanel),
+       * When AgentView is used inside a flex container (like RalphRunner),
        * it should NOT use h-full which causes content to overflow the container.
        * Instead, it should use min-h-0 to allow proper shrinking in flex layouts.
        *
