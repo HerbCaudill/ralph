@@ -88,6 +88,9 @@ export class ChatSessionManager extends EventEmitter {
     options: ChatSessionManagerOptions,
   ) {
     super()
+    // Each WebSocket client adds 3 listeners (event, status, error); raise the
+    // limit so multiple browser tabs don't trigger a false-positive leak warning.
+    this.setMaxListeners(50)
     this.persister = new SessionPersister(options.storageDir)
     this.defaultCwd = options.cwd ?? process.cwd()
 
