@@ -60,7 +60,7 @@ export function RelatedTasks({
       if (data.ok && data.issue) {
         const deps = data.issue.dependencies || []
         const blockingDeps = deps
-          .filter(d => d.dependency_type === "blocks" || d.dependency_type === "parent-child")
+          .filter(d => d.dependency_type === "blocks")
           .map(d => ({
             id: d.id,
             title: d.title,

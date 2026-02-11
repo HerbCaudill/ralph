@@ -120,10 +120,9 @@ describe("RelatedTasks", () => {
       await waitFor(() => {
         expect(screen.getByText("Blocking task 1")).toBeInTheDocument()
       })
-      expect(screen.getByText("Parent epic")).toBeInTheDocument()
     })
 
-    it("shows Blocked by section with count", async () => {
+    it("excludes parent-child dependencies from blockers", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
       })
@@ -131,7 +130,23 @@ describe("RelatedTasks", () => {
       renderWithContext("rui-123")
 
       await waitFor(() => {
-        expect(screen.getByLabelText("Blocked by section, 2 tasks")).toBeInTheDocument()
+        expect(screen.getByText("Blocking task 1")).toBeInTheDocument()
+      })
+
+      // Parent epic has dependency_type "parent-child" and should NOT appear in Blocked by
+      expect(screen.queryByText("Parent epic")).not.toBeInTheDocument()
+    })
+
+    it("shows Blocked by section with count excluding parent-child", async () => {
+      mockFetch.mockResolvedValueOnce({
+        json: () => Promise.resolve({ ok: true, issue: sampleTaskWithDependencies }),
+      })
+
+      renderWithContext("rui-123")
+
+      await waitFor(() => {
+        // Only the "blocks" dependency should be counted, not "parent-child"
+        expect(screen.getByLabelText("Blocked by section, 1 task")).toBeInTheDocument()
       })
     })
   })
@@ -517,7 +532,7 @@ describe("RelatedTasks", () => {
       })
     })
 
-    it("does not show remove button for parent-child dependencies", async () => {
+    it("does not show parent-child dependencies as blockers", async () => {
       mockFetch.mockResolvedValueOnce({
         json: () =>
           Promise.resolve({
@@ -540,13 +555,11 @@ describe("RelatedTasks", () => {
       renderWithTask("rui-123", mockTask)
 
       await waitFor(() => {
-        expect(screen.getByText("Parent epic")).toBeInTheDocument()
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
       })
 
-      // No remove button for parent-child dependencies
-      expect(
-        screen.queryByRole("button", { name: /remove rui-parent as blocker/i }),
-      ).not.toBeInTheDocument()
+      // Parent-child dependencies should not appear in the Blocked by section
+      expect(screen.queryByText("Parent epic")).not.toBeInTheDocument()
     })
   })
 })
