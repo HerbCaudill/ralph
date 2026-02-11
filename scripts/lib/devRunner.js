@@ -322,16 +322,19 @@ export async function runDev(
 
   // Run pre-build commands sequentially (topological dependency order).
   // Output is captured and only shown on failure.
-  for (const cmd of preBuild) {
-    const names = extractFilterNames(cmd)
-    try {
-      execSync(cmd, { stdio: "pipe" })
-    } catch (err) {
-      const output = (err.stdout?.toString() ?? "") + (err.stderr?.toString() ?? "")
-      if (output) process.stderr.write(output)
-      throw err
+  if (preBuild.length > 0) {
+    console.log("🛠️  building...")
+    for (const cmd of preBuild) {
+      const names = extractFilterNames(cmd)
+      try {
+        execSync(cmd, { stdio: "pipe" })
+      } catch (err) {
+        const output = (err.stdout?.toString() ?? "") + (err.stderr?.toString() ?? "")
+        if (output) process.stderr.write(output)
+        throw err
+      }
+      console.log(`   ✔︎ ${names}`)
     }
-    console.log(`🛠️  built ${names}`)
   }
 
   // Resolve all ports (only for services that have ports)
@@ -356,16 +359,25 @@ export async function runDev(
     baseEnv[frontend.portEnv] = String(ports._frontend)
   }
 
-  // Log services
-  for (const svc of services) {
-    if (ports[svc.name]) {
-      console.log(`🚀 running ${svc.name} http://localhost:${ports[svc.name]}`)
-    } else {
-      console.log(`👁️  watching ${svc.name}`)
+  // Log watchers
+  const watchers = services.filter(svc => !ports[svc.name])
+  if (watchers.length > 0) {
+    console.log("👁️  watching...")
+    for (const svc of watchers) {
+      console.log(`   ✔︎ ${svc.name}`)
     }
   }
-  if (frontend) {
-    console.log(`🚀 running frontend http://localhost:${ports._frontend}`)
+
+  // Log servers
+  const servers = services.filter(svc => ports[svc.name])
+  if (servers.length > 0 || frontend) {
+    console.log("🚀 running...")
+    for (const svc of servers) {
+      console.log(`   ✔︎ ${svc.name} http://localhost:${ports[svc.name]}`)
+    }
+    if (frontend) {
+      console.log(`   ✔︎ frontend http://localhost:${ports._frontend}`)
+    }
   }
 
   // Start services. Pipe stdout/stderr so we can disconnect them during
