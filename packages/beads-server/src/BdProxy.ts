@@ -60,10 +60,16 @@ export class BdProxy {
     return (await this.send("blocked", args)) as BdIssue[]
   }
 
+  /** Show a single issue by ID (with full dependencies/dependents). */
+  async showOne(id: string): Promise<BdIssue> {
+    return (await this.send("show", { id })) as BdIssue
+  }
+
   /** Show details for one or more issues. */
   async show(ids: string | string[]): Promise<BdIssue[]> {
     const idList = Array.isArray(ids) ? ids : [ids]
-    return (await this.send("show", { ids: idList })) as BdIssue[]
+    const results = await Promise.all(idList.map(id => this.showOne(id)))
+    return results
   }
 
   /** List issues enriched with parent and dependency fields. */
@@ -106,32 +112,34 @@ export class BdProxy {
     if (options.assignee) args.assignee = options.assignee
     if (options.parent) args.parent = options.parent
     if (options.labels?.length) args.labels = options.labels
-    const result = await this.send("create", args)
-    const issue: BdIssue = Array.isArray(result) ? result[0] : (result as BdIssue)
-    if (!issue || !issue.id) throw new Error("create did not return an issue")
-    return issue
+    return (await this.send("create", args)) as BdIssue
   }
 
-  /** Update one or more issues. */
+  /** Update an issue. */
   async update(ids: string | string[], options: BdUpdateOptions): Promise<BdIssue[]> {
     const idList = Array.isArray(ids) ? ids : [ids]
-    const args: Record<string, unknown> = { ids: idList }
-    if (options.title) args.title = options.title
-    if (options.description) args.description = options.description
-    if (options.priority !== undefined) args.priority = options.priority
-    if (options.status) args.status = options.status
-    if (options.type) args.issue_type = options.type
-    if (options.assignee) args.assignee = options.assignee
-    if (options.parent !== undefined) args.parent = options.parent
-    if (options.addLabels?.length) args.add_labels = options.addLabels
-    if (options.removeLabels?.length) args.remove_labels = options.removeLabels
-    return (await this.send("update", args)) as BdIssue[]
+    const results = await Promise.all(
+      idList.map(async id => {
+        const args: Record<string, unknown> = { id }
+        if (options.title) args.title = options.title
+        if (options.description) args.description = options.description
+        if (options.priority !== undefined) args.priority = options.priority
+        if (options.status) args.status = options.status
+        if (options.type) args.issue_type = options.type
+        if (options.assignee) args.assignee = options.assignee
+        if (options.parent !== undefined) args.parent = options.parent
+        if (options.addLabels?.length) args.add_labels = options.addLabels
+        if (options.removeLabels?.length) args.remove_labels = options.removeLabels
+        return (await this.send("update", args)) as BdIssue
+      }),
+    )
+    return results
   }
 
   /** Delete one or more issues. */
   async delete(ids: string | string[]): Promise<void> {
     const idList = Array.isArray(ids) ? ids : [ids]
-    await this.send("delete", { ids: idList, force: true })
+    await Promise.all(idList.map(id => this.send("delete", { id, force: true })))
   }
 
   /** Add a comment to an issue. */
@@ -158,14 +166,12 @@ export class BdProxy {
 
   /** Add a label to an issue. */
   async addLabel(id: string, label: string): Promise<BdLabelResult> {
-    const result = (await this.send("label_add", { id, label })) as BdLabelResult[]
-    return result[0]
+    return (await this.send("label_add", { id, label })) as BdLabelResult
   }
 
   /** Remove a label from an issue. */
   async removeLabel(id: string, label: string): Promise<BdLabelResult> {
-    const result = (await this.send("label_remove", { id, label })) as BdLabelResult[]
-    return result[0]
+    return (await this.send("label_remove", { id, label })) as BdLabelResult
   }
 
   /** List all unique labels in the database. */
