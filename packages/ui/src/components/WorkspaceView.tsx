@@ -106,8 +106,8 @@ export function WorkspaceView() {
   const events = isViewingHistorical && historicalEvents ? historicalEvents : liveEvents
   const isStreaming = isViewingHistorical ? false : liveIsStreaming
 
-  // Task chat state from agent-server
-  const { state: taskChatState, actions: taskChatActions } = useTaskChat()
+  // Task chat state from agent-server (scoped to workspace)
+  const { state: taskChatState, actions: taskChatActions } = useTaskChat(workspaceId)
 
   // Task chat session history from server
   const { sessions: taskChatSessions } = useTaskChatSessions(taskChatState.sessionId, workspaceId)

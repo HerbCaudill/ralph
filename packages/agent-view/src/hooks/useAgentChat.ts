@@ -104,6 +104,7 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sessionIdRef = useRef<string | null>(sessionId)
+  const prevStorageKeyRef = useRef(storageKey)
 
   // Wrapper that persists sessionId to localStorage
   const setSessionId = useCallback(
@@ -234,6 +235,23 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
     // No restorable session found — leave sessionId null.
     // A session will be created lazily on first sendMessage.
   }, [setSessionId, setAgentType, storageKey])
+
+  // When storageKey changes (e.g. workspace switch), reset session state
+  // and re-initialize from the new storage key.
+  useEffect(() => {
+    if (storageKey === prevStorageKeyRef.current) return
+    prevStorageKeyRef.current = storageKey
+
+    // Clear session state for the old workspace
+    setEvents([])
+    setIsStreaming(false)
+    setError(null)
+    _setSessionId(null)
+    sessionIdRef.current = null
+
+    // Re-initialize from the new storage key
+    initSession()
+  }, [storageKey, initSession])
 
   const connect = useCallback(() => {
     // Clean up existing connection

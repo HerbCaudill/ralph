@@ -974,6 +974,118 @@ describe("useAgentChat localStorage persistence", () => {
     })
   })
 
+  // ── storageKey changes (workspace switching) ─────────────────────────
+
+  describe("storageKey changes", () => {
+    it("loads the correct sessionId when storageKey changes", async () => {
+      // Simulate two workspaces with different stored sessions
+      localStorage.setItem("workspace-a-session-id", "session-for-workspace-a")
+      localStorage.setItem("workspace-b-session-id", "session-for-workspace-b")
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/session-for-workspace-a") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "session-for-workspace-a",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        if (url === "/api/sessions/session-for-workspace-b") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "session-for-workspace-b",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      // Start with workspace-a
+      const { result, rerender } = renderHook(
+        ({ storageKey }: { storageKey: string }) =>
+          useAgentChat({ initialAgent: "claude", storageKey }),
+        { initialProps: { storageKey: "workspace-a" } },
+      )
+
+      // Let WebSocket connect and initSession complete
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.sessionId).toBe("session-for-workspace-a")
+
+      // Switch to workspace-b by changing the storageKey
+      rerender({ storageKey: "workspace-b" })
+
+      // Let the storageKey change effect settle
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // Should now have the session for workspace-b, NOT workspace-a
+      expect(result.current.state.sessionId).toBe("session-for-workspace-b")
+    })
+
+    it("clears sessionId when switching to a workspace with no stored session", async () => {
+      localStorage.setItem("workspace-a-session-id", "session-for-workspace-a")
+      // workspace-b has no stored session
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/sessions/session-for-workspace-a") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "session-for-workspace-a",
+              status: "idle",
+              adapter: "claude",
+            }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result, rerender } = renderHook(
+        ({ storageKey }: { storageKey: string }) =>
+          useAgentChat({ initialAgent: "claude", storageKey }),
+        { initialProps: { storageKey: "workspace-a" } },
+      )
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.sessionId).toBe("session-for-workspace-a")
+
+      // Switch to workspace-b (no stored session)
+      rerender({ storageKey: "workspace-b" })
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // Should be null since workspace-b has no stored session
+      expect(result.current.state.sessionId).toBeNull()
+    })
+  })
+
   // ── localStorage error resilience ─────────────────────────────────────
 
   describe("localStorage error resilience", () => {
