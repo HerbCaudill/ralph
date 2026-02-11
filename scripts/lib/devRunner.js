@@ -35,6 +35,20 @@ const VITE_NOISE = [
   /connected\./i, // WebSocket connected
 ]
 
+/** Server noise patterns — suppressed in "all" mode (redundant with devRunner logs or restart noise). */
+const SERVER_NOISE = [
+  /running at http:/, // beads-server startup (redundant)
+  /listening on http:/, // agent-server startup (redundant)
+  /WebSocket available at/, // beads-server WS info (redundant)
+  /Received SIGTERM/, // shutdown signal
+  /shutting down/i, // shutdown message
+  /Shutdown complete/i, // shutdown complete
+  /\bstopped\b/, // agent-server stopped
+]
+
+/** tsx --watch restart line (e.g. "Restarting 'src/main.ts'"). */
+const TSX_RESTART = /Restarting '/
+
 /** Dim ANSI escape wrapper. */
 const dim = (/** @type {string} */ s) => `\x1B[2m${s}\x1B[22m`
 
@@ -56,7 +70,8 @@ function createOutputFilter(
   let lastLineWasBlank = true // Start true to suppress leading blank lines
   /** Whether we're inside a tsc error section (from first error to "Found N errors") */
   let inErrorSection = false
-  const prefix = name ? dim(`[${name}]`) + " " : ""
+  /** Whether we've already emitted a restart line for the current restart cycle */
+  let restartEmitted = false
 
   return new Transform({
     transform(chunk, _encoding, callback) {
@@ -80,13 +95,30 @@ function createOutputFilter(
 
         if (!shouldEmit) continue
 
+        const plain = line.replace(ANSI_CODES, "")
+
+        if (mode === "all") {
+          // Detect tsx restart lines → emit 🔄 restarted <name>
+          if (TSX_RESTART.test(plain)) {
+            if (!restartEmitted) {
+              this.push(`🔄 restarted ${name}\n`)
+              restartEmitted = true
+            }
+            continue
+          }
+          // Reset restart flag when we see non-noise output after a restart
+          if (restartEmitted && !SERVER_NOISE.some(re => re.test(plain))) {
+            restartEmitted = false
+          }
+        }
+
         if (mode === "errors") {
           // Skip blank lines even within error sections
-          if (line.replace(ANSI_CODES, "").trim() !== "") {
-            this.push(prefix + line + "\n")
+          if (plain.trim() !== "") {
+            this.push(`🔴 ${dim(`error in ${name}:`)} ${line}\n`)
           }
         } else {
-          const isBlank = line.trim() === ""
+          const isBlank = plain.trim() === ""
           if (isBlank) {
             lastLineWasBlank = true
             continue
@@ -103,7 +135,7 @@ function createOutputFilter(
         const shouldEmit = filterLine(buffer, mode, { inErrorSection })
         if (shouldEmit) {
           if (mode === "errors") {
-            this.push(prefix + buffer)
+            this.push(`🔴 ${dim(`error in ${name}:`)} ${buffer}`)
           } else {
             this.push(buffer)
           }
@@ -133,7 +165,8 @@ function filterLine(
   if (PNPM_BANNER.test(plain)) return false
 
   if (mode === "all") {
-    // Pass everything except pnpm banners and blank lines (handled by caller)
+    // Suppress server startup/shutdown noise (redundant with devRunner logs)
+    if (SERVER_NOISE.some(re => re.test(plain))) return false
     return true
   }
 
@@ -153,6 +186,22 @@ function filterLine(
   }
 
   return true
+}
+
+/** Extract human-readable package names from a pnpm --filter command. */
+function extractFilterNames(
+  /** The pnpm command string */
+  cmd,
+) {
+  const names = []
+  const parts = cmd.split(/\s+/)
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] === "--filter" && parts[i + 1]) {
+      names.push(parts[i + 1].replace(/^@[\w-]+\//, ""))
+      i++
+    }
+  }
+  return names.join(", ") || cmd
 }
 
 const MAX_PORT_ATTEMPTS = 10
@@ -273,19 +322,16 @@ export async function runDev(
 
   // Run pre-build commands sequentially (topological dependency order).
   // Output is captured and only shown on failure.
-  if (preBuild.length > 0) {
-    console.log(`[${label}] Building dependencies...`)
-    for (const cmd of preBuild) {
-      console.log(`[${label}]   $ ${cmd}`)
-      try {
-        execSync(cmd, { stdio: "pipe" })
-      } catch (err) {
-        const output = (err.stdout?.toString() ?? "") + (err.stderr?.toString() ?? "")
-        if (output) process.stderr.write(output)
-        throw err
-      }
+  for (const cmd of preBuild) {
+    const names = extractFilterNames(cmd)
+    try {
+      execSync(cmd, { stdio: "pipe" })
+    } catch (err) {
+      const output = (err.stdout?.toString() ?? "") + (err.stderr?.toString() ?? "")
+      if (output) process.stderr.write(output)
+      throw err
     }
-    console.log(`[${label}] Dependencies built.`)
+    console.log(`🛠️  built ${names}`)
   }
 
   // Resolve all ports (only for services that have ports)
@@ -310,16 +356,16 @@ export async function runDev(
     baseEnv[frontend.portEnv] = String(ports._frontend)
   }
 
-  // Log ports and services
+  // Log services
   for (const svc of services) {
     if (ports[svc.name]) {
-      console.log(`[${label}] ${svc.name} → http://localhost:${ports[svc.name]}`)
+      console.log(`🚀 running ${svc.name} http://localhost:${ports[svc.name]}`)
     } else {
-      console.log(`[${label}] ${svc.name} (watcher)`)
+      console.log(`👁️  watching ${svc.name}`)
     }
   }
   if (frontend) {
-    console.log(`[${label}] frontend → http://localhost:${ports._frontend}`)
+    console.log(`🚀 running frontend http://localhost:${ports._frontend}`)
   }
 
   // Start services. Pipe stdout/stderr so we can disconnect them during
@@ -413,7 +459,7 @@ export async function runDev(
     // Exit if any process exits
     for (const { name, proc } of processes) {
       proc.on("exit", code => {
-        console.log(`[${label}] ${name} exited with code ${code}`)
+        console.log(`💀 ${name} exited with code ${code}`)
         cleanup()
         process.exit(code ?? 1)
       })
