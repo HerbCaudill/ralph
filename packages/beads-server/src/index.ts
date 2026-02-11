@@ -11,6 +11,11 @@ import { getAliveWorkspaces } from "./getAliveWorkspaces.js"
 import { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 import { watchMutations } from "./BeadsClient.js"
 import { ThemeDiscovery } from "./ThemeDiscovery.js"
+import {
+  parseThemeObject,
+  mapThemeToCSSVariables,
+  createAppTheme,
+} from "@herbcaudill/agent-view-theme"
 import type { MutationEvent } from "@herbcaudill/beads-sdk"
 import { WorkspaceNotFoundError, type BeadsServerConfig, type WsClient } from "./types.js"
 
@@ -341,6 +346,54 @@ function createApp(_config: BeadsServerConfig): Express {
       themes,
       variant: discovery.getVariantName(),
     })
+  })
+
+  // Theme detail endpoint
+  app.get("/api/themes/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params as { id: string }
+      const decodedId = decodeURIComponent(id)
+
+      const discovery = new ThemeDiscovery()
+      const initialized = await discovery.initialize()
+      if (!initialized) {
+        res.status(404).json({ ok: false, error: "No VS Code installation found" })
+        return
+      }
+
+      const themeMeta = await discovery.findThemeById(decodedId)
+      if (!themeMeta) {
+        res.status(404).json({ ok: false, error: "Theme not found" })
+        return
+      }
+
+      const themeData = await discovery.readThemeFile(themeMeta.path)
+      if (!themeData) {
+        res.status(500).json({ ok: false, error: "Failed to read theme file" })
+        return
+      }
+
+      // Inject the type from package.json metadata (VS Code theme files don't include type)
+      const themeDataWithType = { ...(themeData as object), type: themeMeta.type }
+
+      const parseResult = parseThemeObject(themeDataWithType)
+      if (!parseResult.success) {
+        res.status(500).json({ ok: false, error: `Failed to parse theme: ${parseResult.error}` })
+        return
+      }
+
+      const cssVariables = mapThemeToCSSVariables(parseResult.theme)
+      const appTheme = createAppTheme(parseResult.theme, themeMeta)
+
+      res.status(200).json({
+        ok: true,
+        theme: appTheme,
+        cssVariables,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to get theme"
+      res.status(500).json({ ok: false, error: message })
+    }
   })
 
   // ── Task management (delegated to @herbcaudill/beads-view) ────────

@@ -39,6 +39,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@herbcaudill/agent-view-theme": "workspace:*",
     "@herbcaudill/beads-sdk": "link:../../../beads-sdk",
     "@herbcaudill/beads-view": "workspace:*",
     "@herbcaudill/ralph-shared": "workspace:*",

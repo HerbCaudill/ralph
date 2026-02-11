@@ -383,6 +383,9 @@ importers:
 
   packages/beads-server:
     dependencies:
+      "@herbcaudill/agent-view-theme":
+        specifier: workspace:*
+        version: link:../agent-view-theme
       "@herbcaudill/beads-sdk":
         specifier: link:../../../beads-sdk
         version: link:../../../beads-sdk
@@ -697,6 +700,9 @@ importers:
       "@herbcaudill/agent-view":
         specifier: workspace:*
         version: link:../agent-view
+      "@herbcaudill/agent-view-theme":
+        specifier: workspace:*
+        version: link:../agent-view-theme
       "@herbcaudill/beads-view":
         specifier: workspace:*
         version: link:../beads-view
@@ -7935,7 +7941,7 @@ snapshots:
       "@vitest/mocker": 4.0.18(vite@7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0))
       playwright: 1.58.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
+      vitest: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(jsdom@28.0.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
     transitivePeerDependencies:
       - bufferutil
       - msw
@@ -7951,7 +7957,7 @@ snapshots:
       pngjs: 7.0.0
       sirv: 3.0.2
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
+      vitest: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(jsdom@28.0.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
       ws: 8.19.0
     transitivePeerDependencies:
       - bufferutil
@@ -10440,7 +10446,6 @@ snapshots:
       - terser
       - tsx
       - yaml
-    optional: true
 
   w3c-xmlserializer@5.0.0:
     dependencies:

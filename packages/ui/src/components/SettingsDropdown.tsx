@@ -8,14 +8,9 @@ import {
   IconRefresh,
 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import { useTheme } from "@/hooks/useTheme"
 import { useThemes } from "@/hooks/useThemes"
-import {
-  useUiStore,
-  selectVscodeThemeId,
-  selectLastDarkThemeId,
-  selectLastLightThemeId,
-} from "@/stores/uiStore"
+import { useApplyTheme } from "@/hooks/useApplyTheme"
+import { useUiStore, selectTheme, selectVscodeThemeId } from "@/stores/uiStore"
 
 /**
  * Settings dropdown with appearance mode selector.
@@ -25,16 +20,13 @@ import {
  * - Filters themes by current mode (only shows light themes in light mode, etc.)
  * - Remembers last used theme for each mode (dark/light)
  * - When switching modes, restores the last used theme for that mode
+ * - Applies VS Code theme CSS variables to the document on selection
  */
 export function SettingsDropdown({ className, textColor }: SettingsDropdownProps) {
-  const { theme: appearanceMode, setTheme: setAppearanceMode, resolvedTheme } = useTheme()
-  const { themes, error: themesError, refresh: refreshThemes } = useThemes()
+  const appearanceMode = useUiStore(selectTheme)
   const vscodeThemeId = useUiStore(selectVscodeThemeId)
-  const lastDarkThemeId = useUiStore(selectLastDarkThemeId)
-  const lastLightThemeId = useUiStore(selectLastLightThemeId)
-  const setVscodeThemeId = useUiStore(state => state.setVscodeThemeId)
-  const setLastDarkThemeId = useUiStore(state => state.setLastDarkThemeId)
-  const setLastLightThemeId = useUiStore(state => state.setLastLightThemeId)
+  const { themes, error: themesError, refresh: refreshThemes } = useThemes()
+  const { applyTheme, changeMode, resolvedTheme } = useApplyTheme()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -51,37 +43,14 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
     return [...filteredThemes].sort((a, b) => a.label.localeCompare(b.label))
   }, [filteredThemes])
 
-  // Handle theme selection - save to both current and mode-specific storage
+  // Handle theme selection - fetches and applies CSS variables
   const handleThemeSelect = async (themeId: string) => {
-    setVscodeThemeId(themeId)
-
-    // Find the theme to determine its type
-    const theme = themes.find(t => t.id === themeId)
-    if (theme) {
-      const isDarkTheme = theme.type === "dark" || theme.type === "hcDark"
-      if (isDarkTheme) {
-        setLastDarkThemeId(themeId)
-      } else {
-        setLastLightThemeId(themeId)
-      }
-    }
-
-    // Note: Full theme application (CSS variables, code highlighting) would require
-    // additional implementation. This stores the preference for now.
+    await applyTheme(themeId)
   }
 
   // Handle mode change - restore last used theme for that mode
   const handleModeChange = (mode: "system" | "light" | "dark") => {
-    setAppearanceMode(mode)
-
-    // For system mode, don't change the theme
-    if (mode === "system") return
-
-    // Restore the last used theme for this mode
-    const lastThemeId = mode === "dark" ? lastDarkThemeId : lastLightThemeId
-    if (lastThemeId && themes.some(t => t.id === lastThemeId)) {
-      setVscodeThemeId(lastThemeId)
-    }
+    changeMode(mode)
   }
 
   // Close on click outside
