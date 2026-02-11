@@ -15,62 +15,144 @@ import { setTimeout as delay } from "node:timers/promises"
 process.stdout.setMaxListeners(30)
 process.stderr.setMaxListeners(30)
 
-/**
- * Regex matching tsc --watch noise lines:
- * - "X:XX:XX AM - Starting compilation in watch mode..."
- * - "X:XX:XX AM - Found 0 errors. Watching for file changes."
- */
-const TSC_WATCH_NOISE = /(Starting compilation|Found 0 errors)/
-
 /** Escape sequences tsc --watch uses to clear the screen. */
 const CLEAR_SCREEN_CODES = /\x1Bc|\x1B\[2J\x1B\[H|\x1B\[2J|\x1B\[H/g
 
-/** Pnpm script runner banner lines (e.g. "> @herbcaudill/agent-view@1.2.0 dev ..."). */
-const PNPM_BANNER = /^> [@\w/-]+@[\d.]+ \w+/
+/** ANSI escape codes (colors, bold, dim, etc.). */
+const ANSI_CODES = /\x1B\[[0-9;]*[a-zA-Z]/g
+
+/** Pnpm script runner banner/echo lines (e.g. "> @herbcaudill/ralph@1.2.0 dev" or "> tsx --watch src/main.ts"). */
+const PNPM_BANNER = /^> /
+
+/** Vite noise patterns — matched lines are dropped in "quiet" mode. */
+const VITE_NOISE = [
+  /VITE v\d/, // banner
+  /Local:\s+http/, // local URL (redundant with devRunner port log)
+  /Network:/, // network URL
+  /press h/, // help hint
+  /hmr update/i, // HMR update
+  /page reload/i, // page reload
+  /connected\./i, // WebSocket connected
+]
+
+/** Dim ANSI escape wrapper. */
+const dim = (/** @type {string} */ s) => `\x1B[2m${s}\x1B[22m`
 
 /**
  * Create a transform stream that filters noisy output from child processes.
- * Strips clear-screen codes, pnpm banners, blank lines, and optionally tsc watch noise.
+ *
+ * Modes:
+ * - `"all"` — Strip pnpm banners, clear-screen codes, blank lines. Pass everything else. (servers)
+ * - `"errors"` — Only pass tsc error blocks and "Found N errors" (N>0). Prefix with dim [name]. (tsc watchers)
+ * - `"quiet"` — Drop known Vite noise. Pass everything else (errors, warnings). (frontend)
  */
 function createOutputFilter(
-  /** Whether to also filter tsc --watch status lines */
-  filterTscNoise = false,
+  /** Filter mode: "all" | "errors" | "quiet" */
+  mode = "all",
+  /** Process name, used as prefix in "errors" mode */
+  name = "",
 ) {
   let buffer = ""
   let lastLineWasBlank = true // Start true to suppress leading blank lines
+  /** Whether we're inside a tsc error section (from first error to "Found N errors") */
+  let inErrorSection = false
+  const prefix = name ? dim(`[${name}]`) + " " : ""
+
   return new Transform({
     transform(chunk, _encoding, callback) {
       buffer += chunk.toString().replace(CLEAR_SCREEN_CODES, "")
       const lines = buffer.split("\n")
-      // Keep the last partial line in the buffer
       buffer = lines.pop() ?? ""
+
       for (const line of lines) {
-        const isBlank = line.trim() === ""
-        if (isBlank) {
-          lastLineWasBlank = true
-          continue
+        const shouldEmit = filterLine(line, mode, { inErrorSection })
+
+        // Update error section state machine for "errors" mode.
+        // An error section spans from the first `- error TS` line to the `Found N errors` line.
+        if (mode === "errors") {
+          const plain = line.replace(ANSI_CODES, "")
+          if (!inErrorSection && /error TS\d+/.test(plain)) {
+            inErrorSection = true
+          } else if (inErrorSection && /Found \d+ error/.test(plain)) {
+            inErrorSection = false
+          }
         }
-        if (filterTscNoise && TSC_WATCH_NOISE.test(line)) continue
-        if (PNPM_BANNER.test(line)) continue
-        if (lastLineWasBlank) this.push("\n")
-        lastLineWasBlank = false
-        this.push(line + "\n")
+
+        if (!shouldEmit) continue
+
+        if (mode === "errors") {
+          // Skip blank lines even within error sections
+          if (line.replace(ANSI_CODES, "").trim() !== "") {
+            this.push(prefix + line + "\n")
+          }
+        } else {
+          const isBlank = line.trim() === ""
+          if (isBlank) {
+            lastLineWasBlank = true
+            continue
+          }
+          if (lastLineWasBlank) this.push("\n")
+          lastLineWasBlank = false
+          this.push(line + "\n")
+        }
       }
       callback()
     },
     flush(callback) {
       if (buffer && buffer.trim() !== "") {
-        if (filterTscNoise && TSC_WATCH_NOISE.test(buffer)) {
-          callback()
-          return
-        }
-        if (!PNPM_BANNER.test(buffer)) {
-          this.push(buffer)
+        const shouldEmit = filterLine(buffer, mode, { inErrorSection })
+        if (shouldEmit) {
+          if (mode === "errors") {
+            this.push(prefix + buffer)
+          } else {
+            this.push(buffer)
+          }
         }
       }
       callback()
     },
   })
+}
+
+/**
+ * Decide whether a line should be emitted based on the filter mode.
+ * Returns true if the line should pass through.
+ */
+function filterLine(
+  /** The line to evaluate */
+  line,
+  /** Filter mode */
+  mode,
+  /** State context for the errors mode state machine */
+  { inErrorSection = false } = {},
+) {
+  // Strip ANSI codes for pattern matching
+  const plain = line.replace(ANSI_CODES, "")
+
+  // All modes strip pnpm banners
+  if (PNPM_BANNER.test(plain)) return false
+
+  if (mode === "all") {
+    // Pass everything except pnpm banners and blank lines (handled by caller)
+    return true
+  }
+
+  if (mode === "errors") {
+    // Error section: emit everything from first `- error TS` to `Found N errors` (N>0).
+    if (/error TS\d+/.test(plain)) return true
+    if (inErrorSection) return true
+    const foundMatch = plain.match(/Found (\d+) error/)
+    if (foundMatch && Number(foundMatch[1]) > 0) return true
+    return false
+  }
+
+  if (mode === "quiet") {
+    // Drop Vite noise, pass everything else
+    if (VITE_NOISE.some(re => re.test(plain))) return false
+    return true
+  }
+
+  return true
 }
 
 const MAX_PORT_ATTEMPTS = 10
@@ -189,12 +271,19 @@ export async function runDev(
     waitForHealthz = false,
   } = config
 
-  // Run pre-build commands sequentially (topological dependency order)
+  // Run pre-build commands sequentially (topological dependency order).
+  // Output is captured and only shown on failure.
   if (preBuild.length > 0) {
     console.log(`[${label}] Building dependencies...`)
     for (const cmd of preBuild) {
       console.log(`[${label}]   $ ${cmd}`)
-      execSync(cmd, { stdio: "inherit" })
+      try {
+        execSync(cmd, { stdio: "pipe" })
+      } catch (err) {
+        const output = (err.stdout?.toString() ?? "") + (err.stderr?.toString() ?? "")
+        if (output) process.stderr.write(output)
+        throw err
+      }
     }
     console.log(`[${label}] Dependencies built.`)
   }
@@ -245,9 +334,9 @@ export async function runDev(
       env: svcEnv,
       detached: true,
     })
-    const isWatcher = !svc.portEnv
-    proc.stdout.pipe(createOutputFilter(isWatcher)).pipe(process.stdout)
-    proc.stderr.pipe(createOutputFilter(isWatcher)).pipe(process.stderr)
+    const mode = svc.portEnv ? "all" : "errors"
+    proc.stdout.pipe(createOutputFilter(mode, svc.name)).pipe(process.stdout)
+    proc.stderr.pipe(createOutputFilter(mode, svc.name)).pipe(process.stderr)
     processes.push({ name: svc.name, proc })
   }
 
@@ -283,8 +372,8 @@ export async function runDev(
       env: frontendEnv,
       detached: true,
     })
-    proc.stdout.pipe(createOutputFilter()).pipe(process.stdout)
-    proc.stderr.pipe(createOutputFilter()).pipe(process.stderr)
+    proc.stdout.pipe(createOutputFilter("quiet", "frontend")).pipe(process.stdout)
+    proc.stderr.pipe(createOutputFilter("quiet", "frontend")).pipe(process.stderr)
     processes.push({ name: "frontend", proc })
   }
 
