@@ -170,7 +170,9 @@ describe("orchestratorRoutes", () => {
       const { baseUrl, close } = await setupTestServer(mockOrchestrator)
 
       try {
-        const res = await fetch(`${baseUrl}/api/orchestrator/stop-after-current`, { method: "POST" })
+        const res = await fetch(`${baseUrl}/api/orchestrator/stop-after-current`, {
+          method: "POST",
+        })
         const data = await res.json()
 
         expect(res.status).toBe(200)
