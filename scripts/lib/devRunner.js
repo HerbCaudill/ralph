@@ -20,14 +20,24 @@ process.stderr.setMaxListeners(30)
  * - "X:XX:XX AM - Starting compilation in watch mode..."
  * - "X:XX:XX AM - Found 0 errors. Watching for file changes."
  */
-const TSC_WATCH_NOISE = /^\s*\d+:\d+:\d+ [AP]M - (Starting compilation|Found 0 errors)/
+const TSC_WATCH_NOISE = /(Starting compilation|Found 0 errors)/
 
 /** Escape sequences tsc --watch uses to clear the screen. */
 const CLEAR_SCREEN_CODES = /\x1Bc|\x1B\[2J\x1B\[H|\x1B\[2J|\x1B\[H/g
 
-/** Create a transform stream that filters out tsc --watch noise and screen clears. */
-function createTscNoiseFilter() {
+/** Pnpm script runner banner lines (e.g. "> @herbcaudill/agent-view@1.2.0 dev ..."). */
+const PNPM_BANNER = /^> [@\w/-]+@[\d.]+ \w+/
+
+/**
+ * Create a transform stream that filters noisy output from child processes.
+ * Strips clear-screen codes, pnpm banners, blank lines, and optionally tsc watch noise.
+ */
+function createOutputFilter(
+  /** Whether to also filter tsc --watch status lines */
+  filterTscNoise = false,
+) {
   let buffer = ""
+  let lastLineWasBlank = true // Start true to suppress leading blank lines
   return new Transform({
     transform(chunk, _encoding, callback) {
       buffer += chunk.toString().replace(CLEAR_SCREEN_CODES, "")
@@ -35,15 +45,28 @@ function createTscNoiseFilter() {
       // Keep the last partial line in the buffer
       buffer = lines.pop() ?? ""
       for (const line of lines) {
-        if (!TSC_WATCH_NOISE.test(line)) {
-          this.push(line + "\n")
+        const isBlank = line.trim() === ""
+        if (isBlank) {
+          lastLineWasBlank = true
+          continue
         }
+        if (filterTscNoise && TSC_WATCH_NOISE.test(line)) continue
+        if (PNPM_BANNER.test(line)) continue
+        if (lastLineWasBlank) this.push("\n")
+        lastLineWasBlank = false
+        this.push(line + "\n")
       }
       callback()
     },
     flush(callback) {
-      if (buffer && !TSC_WATCH_NOISE.test(buffer)) {
-        this.push(buffer)
+      if (buffer && buffer.trim() !== "") {
+        if (filterTscNoise && TSC_WATCH_NOISE.test(buffer)) {
+          callback()
+          return
+        }
+        if (!PNPM_BANNER.test(buffer)) {
+          this.push(buffer)
+        }
       }
       callback()
     },
@@ -223,13 +246,8 @@ export async function runDev(
       detached: true,
     })
     const isWatcher = !svc.portEnv
-    if (isWatcher) {
-      proc.stdout.pipe(createTscNoiseFilter()).pipe(process.stdout)
-      proc.stderr.pipe(createTscNoiseFilter()).pipe(process.stderr)
-    } else {
-      proc.stdout.pipe(process.stdout)
-      proc.stderr.pipe(process.stderr)
-    }
+    proc.stdout.pipe(createOutputFilter(isWatcher)).pipe(process.stdout)
+    proc.stderr.pipe(createOutputFilter(isWatcher)).pipe(process.stderr)
     processes.push({ name: svc.name, proc })
   }
 
@@ -265,8 +283,8 @@ export async function runDev(
       env: frontendEnv,
       detached: true,
     })
-    proc.stdout.pipe(process.stdout)
-    proc.stderr.pipe(process.stderr)
+    proc.stdout.pipe(createOutputFilter()).pipe(process.stdout)
+    proc.stderr.pipe(createOutputFilter()).pipe(process.stderr)
     processes.push({ name: "frontend", proc })
   }
 
