@@ -125,8 +125,8 @@ export const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(function TaskC
     () =>
       isSelected ?
         {
-          backgroundColor: `${selectionColor}1A`, // 10% opacity (1A in hex = 10%)
-          boxShadow: `inset 0 0 0 2px ${selectionColor}80`, // 50% opacity ring (80 in hex = 50%)
+          backgroundColor: `${selectionColor}33`, // 20% opacity (33 in hex ≈ 20%)
+          boxShadow: `inset 0 0 0 2px ${selectionColor}b3`, // 70% opacity ring (b3 in hex ≈ 70%)
         }
       : undefined,
     [isSelected, selectionColor],
