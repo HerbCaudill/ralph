@@ -11,8 +11,10 @@ import { fetchSessionEvents } from "../lib/fetchSessionEvents"
 export function useRalphSessions(
   /** The current active session ID (from useRalphLoop). */
   currentSessionId: string | null,
-  /** Workspace ID for resolving task titles. */
+  /** Workspace ID for filtering sessions. */
   workspaceId?: string,
+  /** Local tasks array for resolving task titles without API calls. */
+  tasks?: Array<{ id: string; title: string }>,
 ): UseRalphSessionsReturn {
   const [sessions, setSessions] = useState<RalphSessionIndexEntry[]>([])
   const [historicalEvents, setHistoricalEvents] = useState<ChatEvent[] | null>(null)
@@ -23,20 +25,33 @@ export function useRalphSessions(
     workspaceId: undefined,
   })
 
-  // Fetch sessions on mount and when currentSessionId or workspaceId changes
+  // Fetch sessions on mount and when currentSessionId, workspaceId, or tasks change
   useEffect(() => {
     // Skip if neither session ID nor workspace ID has changed
     if (
       lastParamsRef.current.sessionId === currentSessionId &&
       lastParamsRef.current.workspaceId === workspaceId
     ) {
+      // Still re-resolve titles if tasks changed (sessions already fetched)
+      if (tasks && sessions.length > 0) {
+        const taskMap = new Map(tasks.map(t => [t.id, t.title]))
+        const updated = sessions.map(s => ({
+          ...s,
+          taskTitle: s.taskId ? taskMap.get(s.taskId) : undefined,
+        }))
+        // Only update if titles actually changed
+        const titlesChanged = updated.some((s, i) => s.taskTitle !== sessions[i].taskTitle)
+        if (titlesChanged) {
+          setSessions(updated)
+        }
+      }
       return
     }
     lastParamsRef.current = { sessionId: currentSessionId, workspaceId }
 
     const loadSessions = async () => {
       try {
-        const result = await fetchRalphSessions({ workspaceId })
+        const result = await fetchRalphSessions({ workspaceId, tasks })
         setSessions(result)
       } catch (error) {
         console.error("[useRalphSessions] Failed to fetch sessions:", error)
@@ -44,7 +59,7 @@ export function useRalphSessions(
     }
 
     loadSessions()
-  }, [currentSessionId, workspaceId])
+  }, [currentSessionId, workspaceId, tasks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Select a historical session and load its events.

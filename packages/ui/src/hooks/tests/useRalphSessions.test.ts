@@ -298,11 +298,15 @@ describe("useRalphSessions", () => {
   })
 
   describe("workspaceId parameter", () => {
-    it("should pass workspaceId to fetchRalphSessions", async () => {
-      renderHook(() => useRalphSessions("session-current", "HerbCaudill/ralph"))
+    it("should pass workspaceId and tasks to fetchRalphSessions", async () => {
+      const tasks = [{ id: "task-1", title: "My task" }]
+      renderHook(() => useRalphSessions("session-current", "HerbCaudill/ralph", tasks))
 
       await waitFor(() => {
-        expect(mockFetchRalphSessions).toHaveBeenCalledWith({ workspaceId: "HerbCaudill/ralph" })
+        expect(mockFetchRalphSessions).toHaveBeenCalledWith({
+          workspaceId: "HerbCaudill/ralph",
+          tasks,
+        })
       })
     })
 
@@ -323,6 +327,44 @@ describe("useRalphSessions", () => {
 
       await waitFor(() => {
         expect(mockFetchRalphSessions).toHaveBeenCalledTimes(2)
+      })
+    })
+  })
+
+  describe("tasks parameter", () => {
+    it("should re-resolve titles when tasks change without refetching sessions", async () => {
+      const initialTasks = [{ id: "task-123", title: "Old title" }]
+      const { result, rerender } = renderHook(
+        ({ sessionId, workspaceId, tasks }) =>
+          useRalphSessions(sessionId, workspaceId, tasks),
+        {
+          initialProps: {
+            sessionId: "session-1" as string | null,
+            workspaceId: "owner/repo1",
+            tasks: initialTasks,
+          },
+        },
+      )
+
+      // Wait for initial fetch
+      await waitFor(() => {
+        expect(result.current.sessions).toEqual(mockSessions)
+      })
+
+      // Change tasks without changing sessionId or workspaceId
+      const updatedTasks = [
+        { id: "task-123", title: "Updated title" },
+        { id: "task-456", title: "New feature title" },
+      ]
+      rerender({ sessionId: "session-1", workspaceId: "owner/repo1", tasks: updatedTasks })
+
+      // Should NOT refetch sessions from the server (still only 1 call)
+      expect(mockFetchRalphSessions).toHaveBeenCalledTimes(1)
+
+      // Titles should be re-resolved from the updated tasks
+      await waitFor(() => {
+        const session456 = result.current.sessions.find(s => s.taskId === "task-456")
+        expect(session456?.taskTitle).toBe("New feature title")
       })
     })
   })

@@ -84,9 +84,12 @@ export function WorkspaceView() {
     cancelStopAfterCurrentGlobal,
   } = useRalphLoop(workspaceId)
 
-  // Session history management
+  // Task state from beads-view (declared early so sessions can use it for title resolution)
+  const { tasks, refresh } = useTasks({ all: true })
+
+  // Session history management — pass tasks so titles resolve from local cache
   const { sessions, historicalEvents, isViewingHistorical, selectSession, clearHistorical } =
-    useRalphSessions(sessionId, workspaceId)
+    useRalphSessions(sessionId, workspaceId, tasks)
 
   // Load session from URL when navigating directly to a session URL.
   // Only triggers when URL sessionId is different from the live sessionId.
@@ -114,9 +117,6 @@ export function WorkspaceView() {
   const { sessions: taskChatSessions } = useTaskChatSessions(taskChatState.sessionId, workspaceId)
 
   const clearTasks = useBeadsViewStore(state => state.clearTasks)
-
-  // Task state from beads-view
-  const { tasks, refresh } = useTasks({ all: true })
 
   // Workspace state from beads-view
   const {
