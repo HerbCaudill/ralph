@@ -234,10 +234,20 @@ export async function startServer(config: AgentServerConfig): Promise<{
   // Register custom routes if provided
   config.customRoutes?.(app)
 
-  // Handle WebSocket connections
+  // Handle WebSocket connections.
+  // The getOrchestrator callback reads lazily from app.locals so that
+  // customRoutes (or post-startup code) can set it after startServer returns.
   wss.on("connection", (ws: WebSocket) => {
     handleWsConnection(ws, wsClients, {
       getSessionManager: () => sessionManager,
+      getOrchestrator: workspaceId => {
+        const getter = app.locals.getOrchestrator as
+          | ((
+              wid?: string,
+            ) => import("./lib/WorkerOrchestratorManager.js").WorkerOrchestratorManager | null)
+          | undefined
+        return getter?.(workspaceId) ?? null
+      },
     })
   })
 
