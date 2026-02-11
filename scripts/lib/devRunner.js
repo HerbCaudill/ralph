@@ -7,7 +7,40 @@
  */
 import getPort, { portNumbers } from "get-port"
 import { execSync, spawn } from "node:child_process"
+import { Transform } from "node:stream"
 import { setTimeout as delay } from "node:timers/promises"
+
+/**
+ * Regex matching tsc --watch noise lines:
+ * - "X:XX:XX AM - Starting compilation in watch mode..."
+ * - "X:XX:XX AM - Found 0 errors. Watching for file changes."
+ */
+const TSC_WATCH_NOISE = /^\s*\d+:\d+:\d+ [AP]M - (Starting compilation|Found 0 errors)/
+
+/** Create a transform stream that filters out tsc --watch noise lines. */
+function createTscNoiseFilter() {
+  let buffer = ""
+  return new Transform({
+    transform(chunk, _encoding, callback) {
+      buffer += chunk.toString()
+      const lines = buffer.split("\n")
+      // Keep the last partial line in the buffer
+      buffer = lines.pop() ?? ""
+      for (const line of lines) {
+        if (!TSC_WATCH_NOISE.test(line)) {
+          this.push(line + "\n")
+        }
+      }
+      callback()
+    },
+    flush(callback) {
+      if (buffer && !TSC_WATCH_NOISE.test(buffer)) {
+        this.push(buffer)
+      }
+      callback()
+    },
+  })
+}
 
 const MAX_PORT_ATTEMPTS = 10
 const DEFAULT_WAIT_TIMEOUT_MS = 30_000
@@ -181,8 +214,14 @@ export async function runDev(
       env: svcEnv,
       detached: true,
     })
-    proc.stdout.pipe(process.stdout)
-    proc.stderr.pipe(process.stderr)
+    const isWatcher = !svc.portEnv
+    if (isWatcher) {
+      proc.stdout.pipe(createTscNoiseFilter()).pipe(process.stdout)
+      proc.stderr.pipe(createTscNoiseFilter()).pipe(process.stderr)
+    } else {
+      proc.stdout.pipe(process.stdout)
+      proc.stderr.pipe(process.stderr)
+    }
     processes.push({ name: svc.name, proc })
   }
 
