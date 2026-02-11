@@ -56,6 +56,26 @@ const mockTaskChatSendMessage = vi.fn()
 const mockTaskChatRestoreSession = vi.fn()
 const mockTaskChatNewSession = vi.fn()
 const mockTaskChatInputFocus = vi.fn()
+const workspaceMocks = vi.hoisted(() => {
+  const mockSwitchWorkspace = vi.fn()
+  const mockClearTasks = vi.fn()
+  const mockUseWorkspace = vi.fn(() => ({
+    state: {
+      current: {
+        path: "/test/workspace",
+        name: "Test Workspace",
+        accentColor: "#007ACC",
+        branch: "main",
+      },
+      workspaces: [],
+      isLoading: false,
+      error: null,
+    },
+    actions: { switchWorkspace: mockSwitchWorkspace, refresh: vi.fn() },
+  }))
+
+  return { mockSwitchWorkspace, mockClearTasks, mockUseWorkspace }
+})
 
 // Track navigate calls
 const mockNavigate = vi.fn()
@@ -161,6 +181,7 @@ vi.mock("@herbcaudill/beads-view", () => {
     setSelectedTaskId: vi.fn(),
     visibleTaskIds: [],
     accentColor: null,
+    clearTasks: workspaceMocks.mockClearTasks,
     setAccentColor: vi.fn(),
     initialTaskCount: null,
     setInitialTaskCount: vi.fn(),
@@ -181,20 +202,7 @@ vi.mock("@herbcaudill/beads-view", () => {
     beadsViewStore: { getState: () => storeState },
     selectSelectedTaskId: (state: { selectedTaskId: string | null }) => state.selectedTaskId,
     selectVisibleTaskIds: (state: { visibleTaskIds: string[] }) => state.visibleTaskIds,
-    useWorkspace: () => ({
-      state: {
-        current: {
-          path: "/test/workspace",
-          name: "Test Workspace",
-          accentColor: "#007ACC",
-          branch: "main",
-        },
-        workspaces: [],
-        isLoading: false,
-        error: null,
-      },
-      actions: { switchWorkspace: vi.fn(), refresh: vi.fn() },
-    }),
+    useWorkspace: workspaceMocks.mockUseWorkspace,
     WorkspaceSelector: () => <div data-testid="workspace-selector">Workspace</div>,
     useTaskNavigation: () => ({
       navigatePrevious: vi.fn(),
@@ -343,6 +351,7 @@ describe("WorkspaceView session history wiring", () => {
     ]
     mockHistoricalEvents = null
     mockIsViewingHistorical = false
+    workspaceMocks.mockSwitchWorkspace.mockReset()
   })
 
   describe("passing sessions and sessionId to RalphRunner", () => {
@@ -453,6 +462,20 @@ describe("WorkspaceView session history wiring", () => {
       expect(mockTaskChatNewSession).toHaveBeenCalledTimes(1)
       expect(mockTaskChatInputFocus).toHaveBeenCalledTimes(1)
     })
+  })
+})
+
+describe("WorkspaceView workspace switching", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("passes clearTasks to useWorkspace onSwitchStart", () => {
+    renderWorkspaceView()
+
+    expect(workspaceMocks.mockUseWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({ onSwitchStart: workspaceMocks.mockClearTasks }),
+    )
   })
 })
 

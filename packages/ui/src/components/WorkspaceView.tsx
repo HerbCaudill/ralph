@@ -112,11 +112,16 @@ export function WorkspaceView() {
   // Task chat session history from server
   const { sessions: taskChatSessions } = useTaskChatSessions(taskChatState.sessionId, workspaceId)
 
+  const clearTasks = useBeadsViewStore(state => state.clearTasks)
+
+  // Task state from beads-view
+  const { tasks, refresh } = useTasks({ all: true })
+
   // Workspace state from beads-view
   const {
     state: { current: workspace, workspaces, isLoading: isWorkspaceLoading },
     actions: { switchWorkspace },
-  } = useWorkspace()
+  } = useWorkspace({ onSwitchStart: clearTasks })
 
   // When the route changes (user switches workspace via URL), sync workspace state.
   // Skip the initial render — useWorkspace's init effect handles that.
@@ -145,9 +150,6 @@ export function WorkspaceView() {
   useEffect(() => {
     beadsViewStore.getState().setAccentColor(workspace?.accentColor ?? null)
   }, [workspace?.accentColor])
-
-  // Task state from beads-view
-  const { tasks, refresh } = useTasks({ all: true })
 
   // Real-time task refresh via WebSocket
   useTaskMutations({ workspacePath: workspace?.path })
