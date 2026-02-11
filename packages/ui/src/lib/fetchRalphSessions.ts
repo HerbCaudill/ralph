@@ -2,8 +2,11 @@ import type { AgentType, SessionIndexEntry } from "@herbcaudill/agent-view"
 import type { TaskResponse } from "@herbcaudill/beads-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 
+/** Sentinel value for task IDs that were looked up but not found. */
+const NOT_FOUND = Symbol("not-found")
+
 /** Cache for resolved task titles to avoid repeated API calls. */
-const taskTitleCache = new Map<string, string>()
+const taskTitleCache = new Map<string, string | typeof NOT_FOUND>()
 
 /** Extended session index entry with task details for Ralph sessions. */
 export interface RalphSessionIndexEntry extends SessionIndexEntry {
@@ -110,10 +113,10 @@ async function resolveTaskTitle(
   /** Workspace ID to include as query param. */
   workspaceId?: string,
 ): Promise<string | undefined> {
-  // Check cache first
+  // Check cache first (includes negative results)
   const cached = taskTitleCache.get(taskId)
   if (cached !== undefined) {
-    return cached
+    return cached === NOT_FOUND ? undefined : cached
   }
 
   try {
@@ -123,18 +126,20 @@ async function resolveTaskTitle(
     }
     const response = await fetchFn(url)
     if (!response.ok) {
+      taskTitleCache.set(taskId, NOT_FOUND)
       return undefined
     }
 
     const data = (await response.json()) as TaskResponse
     if (data.ok && data.issue) {
-      // Cache the result
       taskTitleCache.set(taskId, data.issue.title)
       return data.issue.title
     }
 
+    taskTitleCache.set(taskId, NOT_FOUND)
     return undefined
   } catch {
+    // Don't cache network errors — they may be transient
     return undefined
   }
 }

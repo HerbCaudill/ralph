@@ -324,4 +324,52 @@ describe("fetchRalphSessions", () => {
     // The task API should not be called again because the title is cached
     expect(mockFetch).toHaveBeenCalledTimes(3)
   })
+
+  it("caches negative results to avoid repeated 404 requests", async () => {
+    const mockFetch = vi.fn()
+
+    // First call: session list
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "session-1",
+            adapter: "claude",
+            createdAt: 1000,
+            lastMessageAt: 2000,
+            taskId: "w-missing",
+          },
+        ],
+      }),
+    })
+
+    // First call: task fetch returns 404
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+
+    const result1 = await fetchRalphSessions({ fetchFn: mockFetch })
+    expect(result1[0].taskTitle).toBeUndefined()
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    // Second call: same session list
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "session-1",
+            adapter: "claude",
+            createdAt: 1000,
+            lastMessageAt: 2000,
+            taskId: "w-missing",
+          },
+        ],
+      }),
+    })
+
+    // Second fetch — should NOT call task API again (negative result cached)
+    const result2 = await fetchRalphSessions({ fetchFn: mockFetch })
+    expect(result2[0].taskTitle).toBeUndefined()
+    expect(mockFetch).toHaveBeenCalledTimes(3) // 2 + 1 session list only
+  })
 })
