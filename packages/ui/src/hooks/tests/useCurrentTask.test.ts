@@ -30,7 +30,7 @@ describe("useCurrentTask", () => {
     expect(result.current.taskId).toBe("r-abc123")
   })
 
-  it("returns null taskId when last lifecycle event is completed", () => {
+  it("returns taskId even when last lifecycle event is completed (for historical sessions)", () => {
     const events: ChatEvent[] = [
       {
         type: "task_lifecycle",
@@ -46,7 +46,58 @@ describe("useCurrentTask", () => {
       } as TaskLifecycleChatEvent,
     ]
     const { result } = renderHook(() => useCurrentTask(events))
-    expect(result.current).toEqual({ taskId: null, taskTitle: null })
+    expect(result.current.taskId).toBe("r-abc123")
+  })
+
+  it("resolves taskTitle for completed tasks from tasks array", () => {
+    const events: ChatEvent[] = [
+      {
+        type: "task_lifecycle",
+        action: "starting",
+        taskId: "r-abc123",
+        timestamp: Date.now(),
+      } as TaskLifecycleChatEvent,
+      {
+        type: "task_lifecycle",
+        action: "completed",
+        taskId: "r-abc123",
+        timestamp: Date.now(),
+      } as TaskLifecycleChatEvent,
+    ]
+    const tasks = [{ id: "r-abc123", title: "Fix the login bug" }]
+    const { result } = renderHook(() => useCurrentTask(events, tasks as any))
+    expect(result.current).toEqual({ taskId: "r-abc123", taskTitle: "Fix the login bug" })
+  })
+
+  it("returns most recent task when multiple tasks started and completed", () => {
+    const events: ChatEvent[] = [
+      {
+        type: "task_lifecycle",
+        action: "starting",
+        taskId: "r-abc123",
+        timestamp: Date.now(),
+      } as TaskLifecycleChatEvent,
+      {
+        type: "task_lifecycle",
+        action: "completed",
+        taskId: "r-abc123",
+        timestamp: Date.now(),
+      } as TaskLifecycleChatEvent,
+      {
+        type: "task_lifecycle",
+        action: "starting",
+        taskId: "r-def456",
+        timestamp: Date.now(),
+      } as TaskLifecycleChatEvent,
+      {
+        type: "task_lifecycle",
+        action: "completed",
+        taskId: "r-def456",
+        timestamp: Date.now(),
+      } as TaskLifecycleChatEvent,
+    ]
+    const { result } = renderHook(() => useCurrentTask(events))
+    expect(result.current.taskId).toBe("r-def456")
   })
 
   it("resolves taskTitle from tasks array when provided", () => {

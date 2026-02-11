@@ -170,6 +170,32 @@ describe("SessionPicker", () => {
       expect(screen.getByText("No task")).toBeDefined()
     })
 
+    it("should use props taskId/taskTitle for current session dropdown item when session data is missing", () => {
+      renderPicker({
+        currentSessionId: "s1",
+        taskId: "r-xyz99",
+        taskTitle: "Fix auth bug",
+        sessions: [
+          makeSession({ sessionId: "s1" }), // no taskId/taskTitle in session data
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Other session",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByRole("button"))
+      // The current session (s1) dropdown item should NOT show "No task"
+      expect(screen.queryByText("No task")).toBeNull()
+      // The current session dropdown item should show the task info from props
+      // There should be two occurrences of the task ID (trigger + dropdown item)
+      expect(screen.getAllByText("r-xyz99")).toHaveLength(2)
+      expect(screen.getAllByText("Fix auth bug")).toHaveLength(2)
+      // The other session should still show its own data
+      expect(screen.getByText("r-def34")).toBeDefined()
+    })
+
     it("should toggle closed when trigger is clicked again", () => {
       renderPicker({
         sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
