@@ -2,7 +2,7 @@ import { createStore } from "zustand/vanilla"
 import { createJSONStorage, persist } from "zustand/middleware"
 import { apiFetch, getApiClientConfig } from "../lib/apiClient"
 import type { BeadsViewStore } from "./types"
-import type { Task, TaskGroup } from "../types"
+import type { Task, TaskGroup, Comment } from "../types"
 
 /** Default collapsed state for status groups. */
 const DEFAULT_STATUS_COLLAPSED_STATE: Record<TaskGroup, boolean> = {
@@ -24,7 +24,10 @@ const WORKSPACE_STORAGE_KEY = "ralph-workspace-path"
 const DEFAULT_WORKSPACE_CACHE_KEY = "__default__"
 
 /** Persist version for workspace-scoped task cache support. */
-const PERSIST_VERSION = 1
+const PERSIST_VERSION = 2
+
+/** Separator used for workspace/task comment cache keys. */
+const WORKSPACE_TASK_KEY_SEPARATOR = "::"
 
 /**
  * Resolve the active workspace cache key.
@@ -67,6 +70,54 @@ function createUpdatedWorkspaceTaskCache(
   }
 }
 
+/**
+ * Build the comments cache key for a workspace/task pair.
+ */
+function buildWorkspaceTaskCommentCacheKey(
+  /** Task ID to scope comments to. */
+  taskId: string,
+  /** Optional explicit workspace path/ID. */
+  workspacePath?: string,
+): string {
+  const workspaceKey = getWorkspaceCacheKey(workspacePath)
+  return `${workspaceKey}${WORKSPACE_TASK_KEY_SEPARATOR}${taskId}`
+}
+
+/**
+ * Get cached comments for a specific workspace/task pair.
+ */
+function getCachedCommentsByWorkspaceTask(
+  /** Comment cache keyed by workspace/task. */
+  commentCacheByWorkspaceTask: Record<string, Comment[]>,
+  /** Task ID to load comments for. */
+  taskId: string,
+  /** Optional explicit workspace path/ID. */
+  workspacePath?: string,
+): Comment[] {
+  const key = buildWorkspaceTaskCommentCacheKey(taskId, workspacePath)
+  return commentCacheByWorkspaceTask[key] ?? []
+}
+
+/**
+ * Update cached comments for a specific workspace/task pair.
+ */
+function updateCachedCommentsByWorkspaceTask(
+  /** Existing comment cache keyed by workspace/task. */
+  commentCacheByWorkspaceTask: Record<string, Comment[]>,
+  /** Task ID to store comments for. */
+  taskId: string,
+  /** Comments to store. */
+  comments: Comment[],
+  /** Optional explicit workspace path/ID. */
+  workspacePath?: string,
+): Record<string, Comment[]> {
+  const key = buildWorkspaceTaskCommentCacheKey(taskId, workspacePath)
+  return {
+    ...commentCacheByWorkspaceTask,
+    [key]: comments,
+  }
+}
+
 /** Create a beads-view store instance. */
 export function createBeadsViewStore(
   /** Optional initial state overrides. */
@@ -91,6 +142,7 @@ export function createBeadsViewStore(
         parentCollapsedState: {},
         taskInputDraft: "",
         commentDrafts: {},
+        commentCacheByWorkspaceTask: {},
         setIssuePrefix: prefix => set({ issuePrefix: prefix }),
         setAccentColor: color => set({ accentColor: color }),
         setTasks: tasks =>
@@ -211,6 +263,21 @@ export function createBeadsViewStore(
             const { [taskId]: _, ...rest } = state.commentDrafts
             return { commentDrafts: rest }
           }),
+        getCachedCommentsForTask: (taskId, workspacePath) =>
+          getCachedCommentsByWorkspaceTask(
+            get().commentCacheByWorkspaceTask,
+            taskId,
+            workspacePath,
+          ),
+        setCachedCommentsForTask: (taskId, comments, workspacePath) =>
+          set(state => ({
+            commentCacheByWorkspaceTask: updateCachedCommentsByWorkspaceTask(
+              state.commentCacheByWorkspaceTask,
+              taskId,
+              comments,
+              workspacePath,
+            ),
+          })),
         ...initialState,
       }),
       {
@@ -223,8 +290,17 @@ export function createBeadsViewStore(
 
           const hasWorkspaceCache =
             typeof state.taskCacheByWorkspace === "object" && state.taskCacheByWorkspace !== null
+          const hasCommentWorkspaceTaskCache =
+            typeof state.commentCacheByWorkspaceTask === "object" &&
+            state.commentCacheByWorkspaceTask !== null
 
-          if (hasWorkspaceCache) return state
+          if (hasWorkspaceCache && hasCommentWorkspaceTaskCache) return state
+          if (hasWorkspaceCache) {
+            return {
+              ...state,
+              commentCacheByWorkspaceTask: state.commentCacheByWorkspaceTask ?? {},
+            }
+          }
 
           const workspaceKey = getWorkspaceCacheKey()
           const tasks = Array.isArray(state.tasks) ? state.tasks : []
@@ -233,6 +309,7 @@ export function createBeadsViewStore(
             taskCacheByWorkspace: {
               [workspaceKey]: tasks,
             },
+            commentCacheByWorkspaceTask: state.commentCacheByWorkspaceTask ?? {},
           }
         },
         merge: (persistedState, currentState) => {
@@ -246,6 +323,7 @@ export function createBeadsViewStore(
             ...state,
             taskCacheByWorkspace,
             tasks: taskCacheByWorkspace[workspaceKey] ?? [],
+            commentCacheByWorkspaceTask: state.commentCacheByWorkspaceTask ?? {},
           }
         },
         partialize: state => ({
@@ -260,6 +338,7 @@ export function createBeadsViewStore(
           parentCollapsedState: state.parentCollapsedState,
           taskInputDraft: state.taskInputDraft,
           commentDrafts: state.commentDrafts,
+          commentCacheByWorkspaceTask: state.commentCacheByWorkspaceTask,
         }),
       },
     ),

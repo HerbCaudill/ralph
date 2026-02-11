@@ -115,4 +115,43 @@ describe("createBeadsViewStore workspace cache", () => {
 
     expect(persisted.state?.taskCacheByWorkspace?.["workspace/a"]).toEqual([TASK_A])
   })
+
+  it("caches comments by workspace and task ID", () => {
+    const store = createBeadsViewStore()
+    const commentsA = [
+      {
+        id: 1,
+        issue_id: "task-123",
+        author: "a",
+        text: "workspace a comment",
+        created_at: "2026-02-11T00:00:00Z",
+      },
+    ]
+    const commentsB = [
+      {
+        id: 2,
+        issue_id: "task-123",
+        author: "b",
+        text: "workspace b comment",
+        created_at: "2026-02-11T00:00:01Z",
+      },
+    ]
+
+    store.getState().setCachedCommentsForTask("task-123", commentsA, "workspace/a")
+    store.getState().setCachedCommentsForTask("task-123", commentsB, "workspace/b")
+
+    expect(store.getState().getCachedCommentsForTask("task-123", "workspace/a")).toEqual(commentsA)
+    expect(store.getState().getCachedCommentsForTask("task-123", "workspace/b")).toEqual(commentsB)
+
+    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as {
+      state?: { commentCacheByWorkspaceTask?: Record<string, unknown[]> }
+    }
+
+    expect(Object.keys(persisted.state?.commentCacheByWorkspaceTask ?? {})).toContain(
+      "workspace/a::task-123",
+    )
+    expect(Object.keys(persisted.state?.commentCacheByWorkspaceTask ?? {})).toContain(
+      "workspace/b::task-123",
+    )
+  })
 })

@@ -1,4 +1,5 @@
 import type { ClosedTasksTimeFilter, Task, TaskGroup } from "../types"
+import type { Comment } from "../types"
 
 /** Beads-view store state. */
 export interface BeadsViewState {
@@ -28,6 +29,8 @@ export interface BeadsViewState {
   taskInputDraft: string
   /** Draft comments keyed by task ID. */
   commentDrafts: Record<string, string>
+  /** Cached task comments keyed by `workspace::taskId`. */
+  commentCacheByWorkspaceTask: Record<string, Comment[]>
 }
 
 /** Beads-view store actions. */
@@ -76,6 +79,10 @@ export interface BeadsViewActions {
   setCommentDraft: (taskId: string, draft: string) => void
   /** Clear a comment draft for a task. */
   clearCommentDraft: (taskId: string) => void
+  /** Read cached comments for a task in a workspace. */
+  getCachedCommentsForTask: (taskId: string, workspacePath?: string) => Comment[]
+  /** Cache comments for a task in a workspace. */
+  setCachedCommentsForTask: (taskId: string, comments: Comment[], workspacePath?: string) => void
 }
 
 /** Combined beads-view store shape. */

@@ -1,8 +1,31 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { useBeadsViewStore, selectIssuePrefix, selectTasks } from "../store"
 import { linkSessionToTask } from "../lib/linkSessionToTask"
-import { apiFetch } from "../lib/apiClient"
+import { apiFetch, getApiClientConfig } from "../lib/apiClient"
 import type { Task, TaskStatus, TaskUpdateData, Comment } from "../types"
+
+/** LocalStorage key used for the selected workspace path. */
+const WORKSPACE_STORAGE_KEY = "ralph-workspace-path"
+
+/** Fallback workspace key used when no workspace is configured. */
+const DEFAULT_WORKSPACE_CACHE_KEY = "__default__"
+
+/**
+ * Get the active workspace cache key for comment hydration.
+ */
+function getActiveWorkspaceCacheKey(): string {
+  try {
+    const savedWorkspacePath = localStorage.getItem(WORKSPACE_STORAGE_KEY)
+    if (savedWorkspacePath?.trim()) return savedWorkspacePath.trim()
+  } catch {
+    // Ignore storage errors.
+  }
+
+  const config = getApiClientConfig()
+  if (config.workspaceId?.trim()) return config.workspaceId.trim()
+  if (config.workspacePath?.trim()) return config.workspacePath.trim()
+  return DEFAULT_WORKSPACE_CACHE_KEY
+}
 
 /**
  * Hook to manage task details form state and API interactions.
@@ -15,6 +38,9 @@ export function useTaskDetails(
 
   const issuePrefix = useBeadsViewStore(selectIssuePrefix)
   const allTasks = useBeadsViewStore(selectTasks)
+  const getCachedCommentsForTask = useBeadsViewStore(state => state.getCachedCommentsForTask)
+  const setCachedCommentsForTask = useBeadsViewStore(state => state.setCachedCommentsForTask)
+  const activeWorkspaceCacheKey = getActiveWorkspaceCacheKey()
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -56,6 +82,8 @@ export function useTaskDetails(
           console.error("Failed to fetch labels:", err)
         })
 
+      const cachedComments = getCachedCommentsForTask(task.id, activeWorkspaceCacheKey)
+      setComments(cachedComments)
       setIsLoadingComments(true)
       setCommentsError(null)
       apiFetch(`/api/tasks/${task.id}/comments`)
@@ -63,6 +91,7 @@ export function useTaskDetails(
         .then((data: { ok: boolean; comments?: Comment[]; error?: string }) => {
           if (data.ok && data.comments) {
             setComments(data.comments)
+            setCachedCommentsForTask(task.id, data.comments, activeWorkspaceCacheKey)
           } else {
             setCommentsError(data.error || "Failed to load comments")
           }
@@ -75,7 +104,7 @@ export function useTaskDetails(
           setIsLoadingComments(false)
         })
     }
-  }, [task, open])
+  }, [task, open, getCachedCommentsForTask, setCachedCommentsForTask, activeWorkspaceCacheKey])
 
   useEffect(() => {
     const taskId = task?.id ?? null
@@ -348,6 +377,7 @@ export function useTaskDetails(
           }
           if (commentsData.ok && commentsData.comments) {
             setComments(commentsData.comments)
+            setCachedCommentsForTask(task.id, commentsData.comments, activeWorkspaceCacheKey)
           }
         } else {
           throw new Error(data.error || "Failed to add comment")
@@ -357,7 +387,7 @@ export function useTaskDetails(
         throw err
       }
     },
-    [task, readOnly],
+    [task, readOnly, setCachedCommentsForTask, activeWorkspaceCacheKey],
   )
 
   return {

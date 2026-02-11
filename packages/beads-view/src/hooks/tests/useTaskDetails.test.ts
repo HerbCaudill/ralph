@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { renderHook, act } from "@testing-library/react"
+import { renderHook, act, waitFor } from "@testing-library/react"
 import { useTaskDetails } from ".././useTaskDetails"
 import { beadsViewStore } from "../../store"
+import { configureApiClient } from "../../lib/apiClient"
 import type { TaskCardTask } from "../../types"
 
 // Mock fetch
@@ -49,7 +50,9 @@ describe("useTaskDetails", () => {
     beadsViewStore.setState({
       tasks: [],
       issuePrefix: "TEST",
+      commentCacheByWorkspaceTask: {},
     })
+    configureApiClient({})
     // Default mock for labels fetch
     mockFetch.mockResolvedValue({
       ok: true,
@@ -553,6 +556,171 @@ describe("useTaskDetails", () => {
       // Should have saved and closed
       expect(onSave).toHaveBeenCalledWith("task-123", { title: "Pending Title" })
       expect(onClose).toHaveBeenCalled()
+    })
+  })
+
+  describe("comments cache", () => {
+    it("hydrates comments from cache immediately and then revalidates from API", async () => {
+      vi.useRealTimers()
+      configureApiClient({ workspacePath: "workspace/a" })
+      const cachedComments = [
+        {
+          id: 1,
+          issue_id: "task-123",
+          author: "cached",
+          text: "cached comment",
+          created_at: "2026-02-11T00:00:00Z",
+        },
+      ]
+      const freshComments = [
+        {
+          id: 2,
+          issue_id: "task-123",
+          author: "fresh",
+          text: "fresh comment",
+          created_at: "2026-02-11T00:01:00Z",
+        },
+      ]
+
+      beadsViewStore.getState().setCachedCommentsForTask("task-123", cachedComments, "workspace/a")
+
+      let resolveCommentsFetch: ((value: unknown) => void) | null = null
+      const commentsFetchPromise = new Promise(resolve => {
+        resolveCommentsFetch = resolve
+      })
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes("/labels")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, labels: ["label1"] }),
+          })
+        }
+        if (url.includes("/comments")) {
+          return commentsFetchPromise as Promise<Response>
+        }
+        throw new Error(`Unexpected URL: ${url}`)
+      })
+
+      const { result } = renderHook(() => useTaskDetails(defaultOptions))
+
+      await waitFor(() => {
+        expect(result.current.comments).toEqual(cachedComments)
+      })
+
+      resolveCommentsFetch?.({
+        ok: true,
+        json: () => Promise.resolve({ ok: true, comments: freshComments }),
+      })
+
+      await waitFor(() => {
+        expect(result.current.comments).toEqual(freshComments)
+      })
+
+      expect(beadsViewStore.getState().getCachedCommentsForTask("task-123", "workspace/a")).toEqual(
+        freshComments,
+      )
+    })
+
+    it("keeps task comment caches isolated by workspace", async () => {
+      vi.useRealTimers()
+      const commentsA = [
+        {
+          id: 1,
+          issue_id: "task-123",
+          author: "a",
+          text: "workspace a comment",
+          created_at: "2026-02-11T00:00:00Z",
+        },
+      ]
+      const commentsB = [
+        {
+          id: 2,
+          issue_id: "task-123",
+          author: "b",
+          text: "workspace b comment",
+          created_at: "2026-02-11T00:00:01Z",
+        },
+      ]
+
+      beadsViewStore.getState().setCachedCommentsForTask("task-123", commentsA, "workspace/a")
+      beadsViewStore.getState().setCachedCommentsForTask("task-123", commentsB, "workspace/b")
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes("/labels")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, labels: [] }),
+          })
+        }
+        if (url.includes("/comments")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, comments: [] }),
+          })
+        }
+        throw new Error(`Unexpected URL: ${url}`)
+      })
+
+      configureApiClient({ workspacePath: "workspace/a" })
+      const { result, rerender } = renderHook(() => useTaskDetails(defaultOptions))
+
+      await waitFor(() => {
+        expect(result.current.comments).toEqual(commentsA)
+      })
+
+      configureApiClient({ workspacePath: "workspace/b" })
+      rerender()
+
+      await waitFor(() => {
+        expect(result.current.comments).toEqual(commentsB)
+      })
+    })
+
+    it("updates comment cache after adding a comment", async () => {
+      vi.useRealTimers()
+      configureApiClient({ workspacePath: "workspace/a" })
+      const updatedComments = [
+        {
+          id: 11,
+          issue_id: "task-123",
+          author: "user",
+          text: "new comment",
+          created_at: "2026-02-11T00:01:00Z",
+        },
+      ]
+
+      mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+        if (url.includes("/labels")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, labels: [] }),
+          })
+        }
+        if (url.includes("/comments") && init?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true }),
+          })
+        }
+        if (url.includes("/comments")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, comments: updatedComments }),
+          })
+        }
+        throw new Error(`Unexpected URL: ${url}`)
+      })
+
+      const { result } = renderHook(() => useTaskDetails(defaultOptions))
+
+      await act(async () => {
+        await result.current.handleAddComment("new comment")
+      })
+
+      expect(beadsViewStore.getState().getCachedCommentsForTask("task-123", "workspace/a")).toEqual(
+        updatedComments,
+      )
     })
   })
 })
