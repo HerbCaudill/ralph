@@ -8,12 +8,18 @@ function isWorkspaceNotFoundError(err: unknown): boolean {
   return err instanceof Error && err.name === "WorkspaceNotFoundError"
 }
 
+/** Check if an error indicates that an issue was not found by `bd`. */
+function isIssueNotFoundError(err: unknown): boolean {
+  return err instanceof Error && /no issue found/i.test(err.message)
+}
+
 /**
  * Send an appropriate error response based on the error type.
  */
 function sendErrorResponse(res: Response, err: unknown, defaultMessage: string): void {
-  if (isWorkspaceNotFoundError(err)) {
-    res.status(404).json({ ok: false, error: (err as Error).message })
+  if (isWorkspaceNotFoundError(err) || isIssueNotFoundError(err)) {
+    const message = err instanceof Error ? err.message : "Not found"
+    res.status(404).json({ ok: false, error: message })
   } else {
     const message = err instanceof Error ? err.message : defaultMessage
     res.status(500).json({ ok: false, error: message })

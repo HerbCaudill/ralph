@@ -569,6 +569,27 @@ describe("registerTaskRoutes", () => {
       })
     })
 
+    it("returns 404 when bd show throws 'no issue found' error", async () => {
+      const bdProxy = createMockBdProxy({
+        show: vi
+          .fn()
+          .mockRejectedValue(
+            new Error(
+              'bd exited with code 1: {"error": "resolving ID w-0kt: operation failed: failed to resolve ID: no issue found matching \\"w-0kt\\""}',
+            ),
+          ),
+      })
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({ app, getBdProxy: () => bdProxy })
+
+      const handler = routes.get.get("/api/tasks/:id")!
+      const { req, res } = createMockReqRes({ params: { id: "w-0kt" } })
+
+      await handler(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(404)
+    })
+
     it("returns 500 for other errors", async () => {
       const { app, routes } = createMockApp()
       registerTaskRoutes({
