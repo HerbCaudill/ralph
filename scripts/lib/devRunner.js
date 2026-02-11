@@ -169,17 +169,19 @@ export async function runDev(
     console.log(`[${label}] frontend → http://localhost:${ports._frontend}`)
   }
 
-  // Start services. Pipe stderr so we can suppress pnpm's noisy error
-  // messages during shutdown (they report SIGINT/SIGTERM as failures).
+  // Start services. Pipe stdout/stderr so we can disconnect them during
+  // shutdown to suppress pnpm's noisy "Command failed with signal" messages.
+  // FORCE_COLOR preserves colored output despite the piped stdio.
   const processes = []
   for (const svc of services) {
     const [cmd, ...args] = svc.command.split(" ")
-    const svcEnv = { ...baseEnv, ...(svc.env || {}) }
+    const svcEnv = { ...baseEnv, FORCE_COLOR: "1", ...(svc.env || {}) }
     const proc = spawn(cmd, args, {
-      stdio: ["ignore", "inherit", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"],
       env: svcEnv,
       detached: true,
     })
+    proc.stdout.pipe(process.stdout)
     proc.stderr.pipe(process.stderr)
     processes.push({ name: svc.name, proc })
   }
@@ -210,12 +212,13 @@ export async function runDev(
     if (frontend.extraArgs) {
       uiArgs.push(...frontend.extraArgs)
     }
-    const frontendEnv = { ...baseEnv, ...(frontend.env || {}) }
+    const frontendEnv = { ...baseEnv, FORCE_COLOR: "1", ...(frontend.env || {}) }
     const proc = spawn("pnpm", uiArgs, {
-      stdio: ["ignore", "inherit", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"],
       env: frontendEnv,
       detached: true,
     })
+    proc.stdout.pipe(process.stdout)
     proc.stderr.pipe(process.stderr)
     processes.push({ name: "frontend", proc })
   }
@@ -225,13 +228,13 @@ export async function runDev(
   const cleanup = () => {
     if (cleanedUp) return
     cleanedUp = true
-    // Disconnect stderr pipes first so pnpm's shutdown error messages
-    // (e.g. "Command failed with signal SIGINT") are discarded.
+    // Disconnect output pipes first so pnpm's shutdown error messages
+    // (e.g. "Command failed with signal SIGTERM") are discarded.
     for (const { proc } of processes) {
-      if (proc.stderr) {
-        proc.stderr.unpipe(process.stderr)
-        proc.stderr.destroy()
-      }
+      proc.stdout?.unpipe(process.stdout)
+      proc.stdout?.destroy()
+      proc.stderr?.unpipe(process.stderr)
+      proc.stderr?.destroy()
     }
     for (const { proc } of processes) {
       try {
