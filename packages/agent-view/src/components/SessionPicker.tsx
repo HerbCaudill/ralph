@@ -95,7 +95,7 @@ export function SessionPicker({
                     className="shrink-0 animate-spin text-muted-foreground"
                     aria-label="Worker running"
                   />
-                : <span data-testid="spacer" className="w-[14px] shrink-0" />}
+                : <span data-testid="spacer" className="w-3.5 shrink-0" />}
                 {/* Task ID (muted) + Task title, like the trigger button format */}
                 {sessionTaskId ?
                   <>

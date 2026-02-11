@@ -8,7 +8,7 @@ const meta: Meta<typeof EventList> = {
   parameters: {},
   decorators: [
     Story => (
-      <div className="border-border h-[500px] overflow-y-auto rounded-md border">
+      <div className="border-border h-125 overflow-y-auto rounded-md border">
         <Story />
       </div>
     ),

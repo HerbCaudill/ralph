@@ -84,7 +84,7 @@ export function ThemePicker({
           className="size-4"
           style={isHeaderVariant ? { color: textColor } : undefined}
         />
-        <span className="max-w-[150px] truncate">{displayName}</span>
+        <span className="max-w-37.5 truncate">{displayName}</span>
         <IconChevronDown className={cn("size-3 transition-transform", isOpen && "rotate-180")} />
       </button>
 

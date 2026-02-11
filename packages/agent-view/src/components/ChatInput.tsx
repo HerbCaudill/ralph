@@ -116,7 +116,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             "w-full resize-none border-0 px-3 py-2 text-sm leading-relaxed",
             "focus:ring-0 focus:outline-none",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            "max-h-[200px] overflow-auto",
+            "max-h-50 overflow-auto",
           )}
         />
         <InputGroupAddon align="inline-end" className="self-end pb-2">

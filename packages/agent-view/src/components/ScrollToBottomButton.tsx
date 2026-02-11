@@ -18,7 +18,7 @@ export function ScrollToBottomButton({
     <Button
       onClick={onClick}
       className={cn(
-        "absolute right-4 bottom-[46px] z-10 rounded-full shadow-lg transition-opacity hover:opacity-90",
+        "absolute right-4 bottom-11.5 z-10 rounded-full shadow-lg transition-opacity hover:opacity-90",
         className,
       )}
       aria-label={ariaLabel}

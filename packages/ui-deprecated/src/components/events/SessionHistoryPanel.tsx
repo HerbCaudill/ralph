@@ -224,7 +224,7 @@ export function SessionHistoryPanelView({
         )}
 
         {/* Session list with top padding to account for floating search */}
-        <div className={cn("h-full overflow-y-auto", sessions.length > 0 && "pt-[48px]")}>
+        <div className={cn("h-full overflow-y-auto", sessions.length > 0 && "pt-12")}>
           {sessions.length === 0 ?
             <div
               className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm"

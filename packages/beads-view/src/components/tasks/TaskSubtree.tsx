@@ -83,9 +83,9 @@ const DEPTH_PADDING_CLASSES: Record<number, string | undefined> = {
   0: undefined,
   1: "pl-6", // 24px
   2: "pl-12", // 48px
-  3: "pl-[72px]", // 72px
+  3: "pl-18", // 72px
   4: "pl-24", // 96px
-  5: "pl-[120px]", // 120px
+  5: "pl-30", // 120px
   6: "pl-36", // 144px
 }
 

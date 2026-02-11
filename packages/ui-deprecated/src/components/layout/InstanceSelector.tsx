@@ -108,7 +108,7 @@ export function InstanceSelector({
             data-testid="instance-selector-status"
           />
         )}
-        <span className="max-w-[120px] truncate">{activeInstance?.name ?? "No instance"}</span>
+        <span className="max-w-30 truncate">{activeInstance?.name ?? "No instance"}</span>
         {runningCount > 1 && (
           <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-xs">{runningCount}</span>
         )}

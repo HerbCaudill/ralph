@@ -147,7 +147,7 @@ export function MarkdownEditor({
         readOnly={readOnly}
         autoFocus={autoFocus}
         contentEditableClassName={cn(
-          "prose dark:prose-invert max-w-none min-h-[100px]",
+          "prose dark:prose-invert max-w-none min-h-25",
           size === "sm" ? "prose-sm" : "prose-base",
           "prose-p:my-1 prose-p:leading-snug",
           "prose-strong:font-medium",

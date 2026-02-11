@@ -9,7 +9,7 @@ const meta: Meta<typeof EventDisplay> = {
   parameters: {},
   decorators: [
     Story => (
-      <div className="border-border h-[500px] overflow-hidden rounded-md border">
+      <div className="border-border h-125 overflow-hidden rounded-md border">
         <Story />
       </div>
     ),

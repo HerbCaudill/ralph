@@ -8,7 +8,7 @@ const meta: Meta<typeof EventStream> = {
   parameters: {},
   decorators: [
     Story => (
-      <div className="border-border h-[600px] overflow-hidden rounded-md border">
+      <div className="border-border h-150 overflow-hidden rounded-md border">
         <Story />
       </div>
     ),

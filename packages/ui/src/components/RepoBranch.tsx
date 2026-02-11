@@ -13,7 +13,7 @@ export function RepoBranch({ workspaceName, branch, workspacePath, className }: 
   return (
     <div
       className={cn(
-        "text-muted-foreground flex items-center gap-1 text-xs max-w-[150px] truncate",
+        "text-muted-foreground flex items-center gap-1 text-xs max-w-37.5 truncate",
         className,
       )}
       title={workspacePath ?? undefined}

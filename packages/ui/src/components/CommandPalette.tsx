@@ -187,7 +187,7 @@ export function CommandPalette({
   return (
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <Command className="fixed inset-x-0 top-20 z-50 mx-auto w-[480px] max-w-[90vw] overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+      <Command className="fixed inset-x-0 top-20 z-50 mx-auto w-120 max-w-[90vw] overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
         <Command.Input
           value={search}
           onValueChange={setSearch}
@@ -195,7 +195,7 @@ export function CommandPalette({
           autoFocus
           className="w-full border-b border-border bg-background px-3 py-2 text-sm outline-none"
         />
-        <Command.List className="max-h-[400px] overflow-y-auto">
+        <Command.List className="max-h-100 overflow-y-auto">
           <Command.Empty className="p-4 text-center text-sm text-muted-foreground">
             No commands found.
           </Command.Empty>

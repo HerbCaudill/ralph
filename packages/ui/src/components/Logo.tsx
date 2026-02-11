@@ -7,7 +7,7 @@ import logoSvg from "@/assets/logo.svg?raw"
 export function Logo() {
   return (
     <div className="flex items-center gap-2" data-testid="logo">
-      <div className="h-[22px] w-[28px]" dangerouslySetInnerHTML={{ __html: logoSvg }} />
+      <div className="h-5.5 w-7" dangerouslySetInnerHTML={{ __html: logoSvg }} />
       <span className="text-lg font-semibold">Ralph</span>
     </div>
   )

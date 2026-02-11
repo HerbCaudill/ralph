@@ -85,10 +85,10 @@ export function TaskChat({
       {/* Messages container with floating input */}
       <div className="relative min-h-0 flex-1">
         <AutoScroll
-          className="h-full overflow-hidden pb-[72px]"
+          className="h-full overflow-hidden pb-18"
           ariaLabel="Task chat messages"
           dependencies={[events]}
-          scrollButtonClassName="bottom-[76px]"
+          scrollButtonClassName="bottom-19"
           emptyState={
             <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
               <IconMessageChatbot className="size-8 opacity-50" />

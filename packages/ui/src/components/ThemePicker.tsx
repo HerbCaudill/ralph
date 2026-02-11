@@ -58,7 +58,7 @@ export function ThemePicker({
             data-testid="theme-picker-trigger"
           >
             <IconPalette className="size-4" />
-            <span className="max-w-[150px] truncate">{displayName}</span>
+            <span className="max-w-37.5 truncate">{displayName}</span>
             <IconChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} />
           </button>
         </PopoverTrigger>

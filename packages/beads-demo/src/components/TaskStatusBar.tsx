@@ -35,7 +35,7 @@ export function TaskStatusBar({
 
       {/* Progress bar - center */}
       <TaskProgressBar
-        className="min-w-[100px] max-w-[200px] flex-1 border-none px-2"
+        className="min-w-25 max-w-50 flex-1 border-none px-2"
         isRunning={isRunning}
         tasks={tasks}
         initialTaskCount={initialTaskCount}
@@ -46,7 +46,7 @@ export function TaskStatusBar({
       {/* Workspace path - right aligned */}
       {workspace?.path && (
         <div className="flex items-center pr-4">
-          <span className="max-w-[300px] truncate font-mono text-[10px]">{workspace.path}</span>
+          <span className="max-w-75 truncate font-mono text-[10px]">{workspace.path}</span>
         </div>
       )}
     </div>

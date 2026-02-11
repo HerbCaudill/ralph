@@ -13,7 +13,7 @@ export function RepoBranch({}: Props) {
   return (
     <div className="text-muted-foreground flex items-center gap-1 text-xs">
       <IconGitBranch className="size-3 shrink-0" />
-      <span className="max-w-[150px] truncate">
+      <span className="max-w-37.5 truncate">
         {repoName}
         {branch && (
           <>

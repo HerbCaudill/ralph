@@ -34,9 +34,7 @@ export function TaskChatPanel({
         <div className="flex flex-col">
           <span className="text-sm font-medium">Task chat</span>
           {taskTitle && (
-            <span className="max-w-[300px] truncate text-xs text-muted-foreground">
-              {taskTitle}
-            </span>
+            <span className="max-w-75 truncate text-xs text-muted-foreground">{taskTitle}</span>
           )}
         </div>
       </div>

@@ -9,7 +9,7 @@ const meta: Meta<typeof TaskList> = {
   parameters: {},
   decorators: [
     Story => (
-      <div className="border-border h-[500px] max-w-md overflow-hidden rounded-md border">
+      <div className="border-border h-125 max-w-md overflow-hidden rounded-md border">
         <Story />
       </div>
     ),

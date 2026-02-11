@@ -125,7 +125,7 @@ function TaskDetailsDemo({
           Current task: {formValues.title} ({formValues.status})
         </p>
       </div>
-      <div className="h-full w-[400px]">
+      <div className="h-full w-100">
         <TaskDetails
           task={task}
           open={open}
@@ -245,7 +245,7 @@ export const ResponsiveButtonGroups: Story = {
       return (
         <div className="flex h-screen gap-4 p-4">
           {/* Narrow panel - should show icon-only buttons */}
-          <div className="flex h-full w-[280px] flex-col">
+          <div className="flex h-full w-70 flex-col">
             <h2 className="text-muted-foreground mb-2 text-sm font-medium">
               Narrow (280px) - Icon only
             </h2>
@@ -284,7 +284,7 @@ export const ResponsiveButtonGroups: Story = {
           </div>
 
           {/* Wide panel - should show icons with text labels */}
-          <div className="flex h-full w-[400px] flex-col">
+          <div className="flex h-full w-100 flex-col">
             <h2 className="text-muted-foreground mb-2 text-sm font-medium">
               Wide (400px) - Icon + text
             </h2>
@@ -382,7 +382,7 @@ function TaskDetailsTestWrapper({
 }) {
   const taskToUse = task === undefined ? sampleTask : task
   return (
-    <div className="h-screen w-[400px]">
+    <div className="h-screen w-100">
       <TaskDetails
         task={taskToUse}
         open={true}
@@ -461,7 +461,7 @@ function StatefulTaskDetailsWrapper({
   }, [])
 
   return (
-    <div className="h-screen w-[400px]">
+    <div className="h-screen w-100">
       <TaskDetails
         task={task}
         open={true}

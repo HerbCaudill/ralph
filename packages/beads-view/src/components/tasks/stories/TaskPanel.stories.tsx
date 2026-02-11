@@ -11,7 +11,7 @@ const meta: Meta<typeof TaskPanel> = {
   parameters: {},
   decorators: [
     Story => (
-      <div className="border-border h-[600px] w-80 border-r">
+      <div className="border-border h-150 w-80 border-r">
         <Story />
       </div>
     ),

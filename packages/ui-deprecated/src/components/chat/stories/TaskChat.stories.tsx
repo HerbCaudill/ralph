@@ -9,7 +9,7 @@ const meta: Meta<typeof TaskChat> = {
   parameters: {},
   decorators: [
     Story => (
-      <div className="border-border h-[600px] w-96 border-r">
+      <div className="border-border h-150 w-96 border-r">
         <Story />
       </div>
     ),

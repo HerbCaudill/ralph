@@ -158,7 +158,7 @@ export function CommandPalette({
         data-testid="command-backdrop"
         onClick={onClose}
       />
-      <Command className="bg-popover text-foreground fixed inset-x-0 top-20 z-50 mx-auto w-[480px] max-w-[90vw] overflow-hidden rounded-lg border shadow-lg">
+      <Command className="bg-popover text-foreground fixed inset-x-0 top-20 z-50 mx-auto w-120 max-w-[90vw] overflow-hidden rounded-lg border shadow-lg">
         <Command.Input
           value={search}
           onValueChange={setSearch}
@@ -167,7 +167,7 @@ export function CommandPalette({
           className="border-border bg-background text-foreground w-full border-b px-3 py-2 text-sm outline-none"
           data-testid="command-input"
         />
-        <Command.List className="bg-popover text-foreground max-h-[400px] overflow-y-auto">
+        <Command.List className="bg-popover text-foreground max-h-100 overflow-y-auto">
           <Command.Empty className="text-muted-foreground p-4 text-center text-sm">
             No commands found.
           </Command.Empty>

@@ -263,7 +263,7 @@ export function WorkspacePicker({
               : (accentColor ?? undefined),
           }}
         />
-        <span className="max-w-[200px] truncate">{displayName}</span>
+        <span className="max-w-50 truncate">{displayName}</span>
         {issueCount !== undefined && (
           <span
             className={cn(
