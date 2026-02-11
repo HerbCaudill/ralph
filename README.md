@@ -131,7 +131,7 @@ Ralph supports two deployment modes:
 - **Combined mode** (default): A single server on port 4242 handles all API routes and WebSocket connections. Use `pnpm dev` or `pnpm serve`.
 - **Split mode**: Two separate servers run independently — a **beads-server** (port 4243) for task/workspace management, and an **agent-server** (port 4244) for AI agent control and chat. Use `pnpm dev:split`.
 
-In split mode, the UI automatically routes API requests and WebSocket connections to the correct server based on path prefixes (`/api/tasks`, `/api/labels`, `/api/workspace` → beads-server; `/api/ralph`, `/api/task-chat`, `/api/instances` → agent-server).
+In split mode, the UI automatically routes API requests and WebSocket connections to the correct server based on path prefixes (`/api/tasks`, `/api/labels`, `/api/workspace` → beads-server; `/api/ralph`, `/api/task-chat`, `/api/instances`, `/api/orchestrator`, `/api/workers` → agent-server).
 
 ## Environment variables
 
