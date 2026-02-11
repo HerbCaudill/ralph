@@ -247,7 +247,7 @@ function getBdProxy(workspace: string) {
     },
 
     async getComments(id: string): Promise<unknown[]> {
-      return (await transport.send("comments", { id })) as unknown[]
+      return (await transport.send("comment_list", { id })) as unknown[]
     },
 
     async getInfo(): Promise<unknown> {
