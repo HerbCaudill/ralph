@@ -107,7 +107,7 @@ export function RalphLoopPanel({
             onClick={onStart}
             disabled={!isConnected}
             aria-label="Start Ralph"
-            className="mt-4 flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-4 flex items-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <IconPlayerPlayFilled size={20} />
             Start

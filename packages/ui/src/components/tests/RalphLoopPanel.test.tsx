@@ -418,6 +418,13 @@ describe("RalphLoopPanel", () => {
       expect(screen.getByRole("button", { name: /start/i })).toBeInTheDocument()
     })
 
+    it("uses accent styling for the start button", () => {
+      render(<RalphLoopPanel {...defaultProps} events={[]} controlState="idle" />)
+      const startButton = screen.getByRole("button", { name: /start/i })
+      expect(startButton).toHaveClass("bg-accent", "hover:bg-accent/90")
+      expect(startButton).not.toHaveClass("bg-green-600", "hover:bg-green-700")
+    })
+
     it("calls onStart when start button is clicked", () => {
       render(<RalphLoopPanel {...defaultProps} events={[]} controlState="idle" />)
       fireEvent.click(screen.getByRole("button", { name: /start/i }))
