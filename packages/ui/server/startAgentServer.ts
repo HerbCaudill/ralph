@@ -45,7 +45,6 @@ async function main() {
       })
       orchestrators.set(targetId, orchestrator)
 
-      console.log(`[agent-server] orchestrator created for workspace ${targetId}`)
       return orchestrator
     }
   } catch (err) {
