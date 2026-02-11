@@ -278,7 +278,6 @@ export function WorkspaceView() {
   useBeadsHotkeys({
     handlers: {
       focusSearch: handleFocusSearch,
-      focusTaskInput: handleFocusSearch,
       previousTask: navigatePrevious,
       nextTask: navigateNext,
       openTask: openSelected,
@@ -475,7 +474,6 @@ export function WorkspaceView() {
           toggleToolOutput: handleToggleToolOutput,
           startRalph: handleStartRalph,
           focusSearch: handleFocusSearch,
-          focusTaskInput: handleFocusSearch,
           previousTask: navigatePrevious,
           nextTask: navigateNext,
           openTask: openSelected,

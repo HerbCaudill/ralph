@@ -5,11 +5,6 @@
       "description": "Focus task search",
       "category": "Navigation"
     },
-    "focusTaskInput": {
-      "key": "cmd+k",
-      "description": "Show task search",
-      "category": "Navigation"
-    },
     "previousTask": {
       "key": "ArrowUp",
       "description": "Select previous task",

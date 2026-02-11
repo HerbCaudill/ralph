@@ -90,10 +90,6 @@ function AppContent() {
     searchInputRef.current?.focus()
   }, [])
 
-  const handleFocusTaskInput = useCallback(() => {
-    taskInputRef.current?.focus()
-  }, [])
-
   // Task navigation with auto-open on arrow key navigation
   const { navigatePrevious, navigateNext, openSelected } = useTaskNavigation({
     onOpenTask: handleTaskClick,
@@ -107,7 +103,6 @@ function AppContent() {
   const { registeredHotkeys } = useBeadsHotkeys({
     handlers: {
       focusSearch: handleFocusSearch,
-      focusTaskInput: handleFocusTaskInput,
       previousTask: navigatePrevious,
       nextTask: navigateNext,
       openTask: openSelected,

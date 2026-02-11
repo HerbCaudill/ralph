@@ -42,7 +42,6 @@ function createFakeInput(tagName = "INPUT"): HTMLElement {
 describe("hotkeys config", () => {
   const ALL_ACTIONS: BeadsHotkeyAction[] = [
     "focusSearch",
-    "focusTaskInput",
     "previousTask",
     "nextTask",
     "openTask",
@@ -76,11 +75,6 @@ describe("hotkeys config", () => {
     expect(hotkeys.focusSearch.modifiers).toEqual(["cmd"])
   })
 
-  it("parses cmd+k into key='k' with modifiers=['cmd']", () => {
-    expect(hotkeys.focusTaskInput.key).toBe("k")
-    expect(hotkeys.focusTaskInput.modifiers).toEqual(["cmd"])
-  })
-
   it("parses ArrowUp with no modifiers", () => {
     expect(hotkeys.previousTask.key).toBe("ArrowUp")
     expect(hotkeys.previousTask.modifiers).toEqual([])
@@ -103,7 +97,6 @@ describe("hotkeys config", () => {
 
   it("assigns correct categories", () => {
     expect(hotkeys.focusSearch.category).toBe("Navigation")
-    expect(hotkeys.focusTaskInput.category).toBe("Navigation")
     expect(hotkeys.previousTask.category).toBe("Navigation")
     expect(hotkeys.nextTask.category).toBe("Navigation")
     expect(hotkeys.openTask.category).toBe("Navigation")
@@ -412,18 +405,6 @@ describe("useBeadsHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
-    it("allows focusTaskInput when target is an input element", () => {
-      const handler = vi.fn()
-      renderHook(() =>
-        useBeadsHotkeys({
-          handlers: { focusTaskInput: handler },
-        }),
-      )
-
-      fireKey({ key: "k", ctrlKey: true, target: inputEl })
-      expect(handler).toHaveBeenCalledTimes(1)
-    })
-
     it("allows showHotkeys when target is an input element", () => {
       const handler = vi.fn()
       renderHook(() =>
@@ -491,11 +472,10 @@ describe("useBeadsHotkeys", () => {
       const { result } = renderHook(() => useBeadsHotkeys({ handlers: {} }))
 
       const registered = result.current.registeredHotkeys
-      expect(registered).toHaveLength(6)
+      expect(registered).toHaveLength(5)
 
       const actions = registered.map(r => r.action)
       expect(actions).toContain("focusSearch")
-      expect(actions).toContain("focusTaskInput")
       expect(actions).toContain("previousTask")
       expect(actions).toContain("nextTask")
       expect(actions).toContain("openTask")

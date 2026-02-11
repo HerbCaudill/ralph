@@ -39,7 +39,6 @@ export type CommandAction =
   | "scrollToBottom"
   | "startRalph"
   | "focusSearch"
-  | "focusTaskInput"
   | "previousTask"
   | "nextTask"
   | "openTask"
@@ -102,7 +101,6 @@ export function CommandPalette({
   const beadsHotkeyIcons: Record<BeadsHotkeyAction, React.ReactNode> = useMemo(
     () => ({
       focusSearch: <IconSearch className="h-4 w-4" />,
-      focusTaskInput: <IconSearch className="h-4 w-4" />,
       previousTask: <IconChevronUp className="h-4 w-4" />,
       nextTask: <IconChevronDown className="h-4 w-4" />,
       openTask: <IconCornerDownLeft className="h-4 w-4" />,

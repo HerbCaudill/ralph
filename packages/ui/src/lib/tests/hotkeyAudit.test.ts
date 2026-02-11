@@ -96,7 +96,6 @@ describe("cross-package hotkey audit", () => {
 
     const expectedBeadsActions: BeadsHotkeyAction[] = [
       "focusSearch",
-      "focusTaskInput",
       "previousTask",
       "nextTask",
       "openTask",
@@ -183,14 +182,13 @@ describe("cross-package hotkey audit", () => {
 
       // Other beads actions should remain
       expect(deduplicatedActions).toContain("focusSearch")
-      expect(deduplicatedActions).toContain("focusTaskInput")
       expect(deduplicatedActions).toContain("previousTask")
       expect(deduplicatedActions).toContain("nextTask")
       expect(deduplicatedActions).toContain("openTask")
 
-      // Total unique entries should be agent(6) + beads(5, minus showHotkeys) = 11
+      // Total unique entries should be agent(6) + beads(4, minus showHotkeys) = 10
       const totalEntries = Object.keys(agentHotkeys).length + deduplicatedBeadsEntries.length
-      expect(totalEntries).toBe(11)
+      expect(totalEntries).toBe(10)
     })
   })
 })

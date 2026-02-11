@@ -15,7 +15,6 @@ describe("CommandPalette", () => {
     scrollToBottom: vi.fn(),
     startRalph: vi.fn(),
     focusSearch: vi.fn(),
-    focusTaskInput: vi.fn(),
     previousTask: vi.fn(),
     nextTask: vi.fn(),
     openTask: vi.fn(),

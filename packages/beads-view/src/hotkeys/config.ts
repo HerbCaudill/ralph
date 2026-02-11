@@ -63,7 +63,6 @@ function loadHotkeys(): HotkeysConfig {
 /** All available beads-view hotkey actions */
 export type BeadsHotkeyAction =
   | "focusSearch"
-  | "focusTaskInput"
   | "previousTask"
   | "nextTask"
   | "openTask"
